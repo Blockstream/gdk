@@ -1,0 +1,235 @@
+import json
+try:
+    import queue
+except:
+    import Queue as queue
+
+try:
+    basestring
+except NameError:
+    basestring = str
+
+
+class Call(object):
+    """Handler class to process a call potentally requiring twofactor.
+
+    Initialize the class with the auth_handler object returned from
+    functions that may require authentication. Then call resolve()
+    on the object, optionally passing in callables to select and enter
+    twofactor auth methods and codes.
+
+    """
+
+    def __init__(self, call_obj):
+        self.call_obj = call_obj
+
+    def status(self):
+        return json.loads(auth_handler_get_status(self.call_obj))
+
+    def _select_method(self, methods):
+        # Default implementation just uses the first method provided
+        return methods[0]
+
+    def _resolve_code(self, method):
+        # Default implementation just uses localtest dummy 2fa code
+        return '555555'
+
+    def resolve(self, select_method_fn=None, resolve_code_fn=None):
+        select_method_fn = select_method_fn or self._select_method
+        resolve_code_fn = resolve_code_fn or self._resolve_code
+        while True:
+            status = self.status()
+            state = status['status']
+            if state == 'error':
+                self.call_obj = None
+                raise RuntimeError(status['error'])
+            if state == 'done':
+                self.call_obj = None
+                return status['result']
+            if state == 'request_code':
+                method = select_method_fn(status['methods'])
+                auth_handler_request_code(self.call_obj, method.encode('utf-8'))
+            elif state == 'resolve_code':
+                if status['device']:
+                    # Hardware device authorization requested
+                    code = resolve_code_fn(status['required_data'])
+                else:
+                    # Twofactor authorization requested
+                    code = resolve_code_fn(status['method'])
+                auth_handler_resolve_code(self.call_obj, code.encode('utf-8'))
+            elif state == 'call':
+                auth_handler_call(self.call_obj)
+
+
+class Session(object):
+    """A GreenAddress session
+
+    """
+    def __init__(self, network, proxy_uri='', use_tor=False, debug=False):
+        self.notifications = queue.Queue()
+        self.session_obj = create_session()
+        _python_set_callback_handler(self.session_obj, self._callback_handler)
+        if proxy_uri or use_tor:
+            return self.connect_with_proxy(network, proxy_uri, use_tor, debug)
+        return self.connect(network, debug)
+
+    def _callback_handler(self, obj, event):
+        assert obj is self.session_obj
+        try:
+            self.callback_handler(json.loads(event))
+        except Exception as e:
+            print('exception {}\n'.format(e))
+
+    def callback_handler(self, event):
+        """Callback handler.
+
+         Override or monkey patch to handle notifications, or read the
+         self.notification queue to receive events.
+
+         """
+        timeout_seconds = 60
+        self.notifications.put(event, timeout_seconds)
+
+    @staticmethod
+    def _to_json(obj):
+        return obj if isinstance(obj, basestring) else json.dumps(obj)
+
+    def connect(self, network, debug=False):
+        return connect(self.session_obj, network, debug)
+
+    def connect_with_proxy(self, network, proxy_uri, use_tor=False, debug=False):
+        return connect_with_proxy(self.session_obj, network, proxy_uri, use_tor, debug)
+
+    def disconnect(self):
+        return disconnect(self.session_obj)
+
+    def register_user(self, hw_device, mnemonic):
+        return Call(register_user(self.session_obj, self._to_json(hw_device), mnemonic))
+
+    def login_with_pin(self, pin, pin_data):
+        login_with_pin(self.session_obj, pin, self._to_json(pin_data))
+        return self
+
+    def login(self, hw_device, mnemonic, password=''):
+        return Call(login(self.session_obj, self._to_json(hw_device), mnemonic, password))
+
+    def set_watch_only(self, username, password):
+        set_watch_only(self.session_obj, username, password)
+        return self
+
+    def login_watch_only(self, username, password):
+        login_watch_only(self.session_obj, username, password)
+        return self
+
+    def remove_account(self):
+        return Call(remove_account(self.session_obj))
+
+    def set_pin(self, mnemonic, pin, hw_device):
+        return json.loads(set_pin(self.session_obj, mnemonic, pin, hw_device))
+
+    def set_current_subaccount(self, subaccount):
+        return set_current_subaccount(self.session_obj, subaccount)
+
+    def create_subaccount(self, details):
+        return Call(create_subaccount(self.session_obj, self._to_json(details)))
+
+    def get_subaccounts(self):
+        return json.loads(get_subaccounts(self.session_obj))
+
+    def get_transactions(self, subaccount=0, page_id=0):
+        return json.loads(get_transactions(self.session_obj, subaccount, page_id))
+
+    def get_receive_address(self, subaccount=0):
+        return get_receive_address(self.session_obj, subaccount)
+
+    def get_unspent_outputs(self, subaccount=0, num_confs=1):
+        return json.loads(get_unspent_outputs(self.session_obj, subaccount, num_confs))
+
+    def get_unspent_outputs_for_private_key(self, private_key, password, unused):
+        return json.loads(
+            get_unspent_outputs_for_private_key(self.session_obj, private_key, password, unused)
+        )
+
+    def get_transaction_details(self, txhash_hex):
+        return json.loads(get_transaction_details(self.session_obj, txhash_hex))
+
+    def convert_amount(self, details):
+        return json.loads(convert_amount(self.session_obj, self._to_json(details)))
+
+    def get_balance(self, subaccount=0, num_confs=0):
+        return json.loads(get_balance(self.session_obj, subaccount, num_confs))
+
+    def get_available_currencies(self):
+        return json.loads(get_available_currencies(self.session_obj))
+
+    def create_transaction(self, transaction_details):
+        return json.loads(create_transaction(self.session_obj, self._to_json(transaction_details)))
+
+    def sign_transaction(self, transaction_details):
+        return Call(sign_transaction(self.session_obj, self._to_json(transaction_details)))
+
+    def send_transaction(self, transaction_details):
+        return Call(send_transaction(self.session_obj, self._to_json(transaction_details)))
+
+    def broadcast_transaction(self, tx_hex):
+        return broadcast_transaction(self.session_obj, tx_hex)
+
+    def send_nlocktimes(self):
+        return send_nlocktimes(self.session_obj)
+
+    def set_transaction_memo(self, txhash_hex, memo, memo_type):
+        return set_transaction_memo(self.session_obj, txhash_hex, memo, memo_type)
+
+    def get_fee_estimates(self):
+        return json.loads(get_fee_estimates(self.session_obj))
+
+    def get_mnemonic_passphrase(self, password):
+        return get_mnemonic_passphrase(self.session_obj, password)
+
+    def get_system_message(self):
+        return get_system_message(self.session_obj)
+
+    def ack_system_message(self, hw_device, message_text):
+        return Call(ack_system_message(self.session_obj, self._to_json(hw_device), message_text))
+
+    def get_twofactor_config(self):
+        return json.loads(get_twofactor_config(self.session_obj))
+
+    def change_settings_twofactor(self, method, details):
+        return Call(change_settings_twofactor(self.session_obj, method, self._to_json(details)))
+
+    def get_settings(self):
+        return json.loads(get_settings(self.session_obj))
+
+    def change_settings(self, settings):
+        return Call(change_settings(self.session_obj, self._to_json(settings)))
+
+    def twofactor_reset(self, email, is_dispute):
+        return Call(twofactor_reset(self.session_obj, email, is_dispute))
+
+    def twofactor_cancel_reset(self):
+        return Call(twofactor_cancel_reset(self.session_obj))
+
+    def twofactor_change_limits(self, details):
+        return Call(twofactor_change_limits(self.session_obj, self._to_json(details)))
+
+    def encrypt(self, plaintext):
+        return json.loads(encrypt(self.session_obj, self._to_json(plaintext)))
+
+    def decrypt(self, ciphertext):
+        return json.loads(decrypt(self.session_obj, self._to_json(ciphertext)))
+
+
+_old_get_networks = get_networks
+def get_networks():
+    return json.loads(_old_get_networks())
+
+_old_register_network = register_network
+def register_network(name, details):
+    return _old_register_network(name, Session._to_json(details))
+
+_old_get_random_bytes = get_random_bytes
+def get_random_bytes(n):
+    out = bytearray(n)
+    _old_get_random_bytes(n, out)
+    return bytes(out)

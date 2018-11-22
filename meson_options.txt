@@ -1,0 +1,3 @@
+option('clang-tidy-version', type : 'string', value : '', description : 'specify clang-tidy-version')
+option('lto', type : 'boolean', value : false, description : 'override meson lto values for finer grained control')
+option('time-report', type : 'boolean', value : false, description : 'generate time reports')

@@ -1,0 +1,194 @@
+#include <mutex>
+
+#include "assertion.hpp"
+#include "containers.hpp"
+#include "network_parameters.hpp"
+
+// TODO: Use std::string_view when its fully supported
+
+namespace {
+
+// TODO: generate these from pem file?
+// https://www.identrust.com/certificates/trustid/root-download-x3.html
+static const char* IDENTX3 = R"(
+-----BEGIN CERTIFICATE-----
+MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/
+MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
+DkRTVCBSb290IENBIFgzMB4XDTAwMDkzMDIxMTIxOVoXDTIxMDkzMDE0MDExNVow
+PzEkMCIGA1UEChMbRGlnaXRhbCBTaWduYXR1cmUgVHJ1c3QgQ28uMRcwFQYDVQQD
+Ew5EU1QgUm9vdCBDQSBYMzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
+AN+v6ZdQCINXtMxiZfaQguzH0yxrMMpb7NnDfcdAwRgUi+DoM3ZJKuM/IUmTrE4O
+rz5Iy2Xu/NMhD2XSKtkyj4zl93ewEnu1lcCJo6m67XMuegwGMoOifooUMM0RoOEq
+OLl5CjH9UL2AZd+3UWODyOKIYepLYYHsUmu5ouJLGiifSKOeDNoJjj4XLh7dIN9b
+xiqKqy69cK3FCxolkHRyxXtqqzTWMIn/5WgTe1QLyNau7Fqckh49ZLOMxt+/yUFw
+7BZy1SbsOFU5Q9D8/RhcQPGX69Wam40dutolucbY38EVAjqr2m7xPi71XAicPNaD
+aeQQmxkqtilX4+U9m5/wAl0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNV
+HQ8BAf8EBAMCAQYwHQYDVR0OBBYEFMSnsaR7LHH62+FLkHX/xBVghYkQMA0GCSqG
+SIb3DQEBBQUAA4IBAQCjGiybFwBcqR7uKGY3Or+Dxz9LwwmglSBd49lZRNI+DT69
+ikugdB/OEIKcdBodfpga3csTS7MgROSR6cz8faXbauX+5v3gTt23ADq1cEmv8uXr
+AvHRAosZy5Q6XkjEGB5YGV8eAlrwDPGxrancWYaLbumR9YbK+rlmM6pZW87ipxZz
+R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5
+JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo
+Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ
+-----END CERTIFICATE-----)";
+
+// https://letsencrypt.org/certs/isrgrootx1.pems.txt
+static const char* LEX1 = R"(
+-----BEGIN CERTIFICATE-----
+MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
+TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
+cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
+WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
+ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
+MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc
+h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
+0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
+A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
+T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
+B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
+B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
+KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
+OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
+jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
+qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
+rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
+HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
+hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
+ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
+3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
+NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
+ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
+TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
+jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
+oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
+4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
+mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
+emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----)";
+
+static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_networks
+    = { { "localtest",
+            std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Localtest" }, { "network", "localtest" },
+                { "wamp_url", "ws://localhost:8080/v2/ws" }, { "wamp_onion_url", std::string() },
+                { "wamp_cert_pins", nlohmann::json::array() }, { "wamp_cert_roots", nlohmann::json::array() },
+                { "address_explorer_url", std::string() }, { "tx_explorer_url", std::string() },
+                { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
+                { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
+                { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
+                { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false }, { "development", true } })) },
+
+          { "mainnet",
+              std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Bitcoin" }, { "network", "mainnet" },
+                  { "wamp_url", "wss://prodwss.greenaddress.it/v2/ws" },
+                  { "wamp_onion_url", "ws://s7a4rvc6425y72d2.onion/v2/ws/" },
+                  { "wamp_cert_pins",
+                      std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
+                          "a74b0c32b65b95fe2c4f8f098947a68b695033bed0b51dd8b984ecae89571bb6" } },
+                  { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, LEX1 } },
+                  { "address_explorer_url", "https://blockstream.info/address/" },
+                  { "tx_explorer_url", "https://blockstream.info/tx/" },
+                  { "service_pubkey", "0322c5f5c9c4b9d1c3e22ca995e200d724c2d7d8b6953f7b38fddf9296053c961f" },
+                  { "service_chain_code", "e9a563d68686999af372a33157209c6860fe79197a4dafd9ec1dbaa49523351d" },
+                  { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
+                  { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false } })) },
+
+          { "testnet",
+              std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Testnet" }, { "network", "testnet" },
+                  { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" },
+                  { "wamp_onion_url", "ws://gu5ke7a2aguwfqhz.onion/v2/ws" },
+                  { "wamp_cert_pins",
+                      std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
+                          "a74b0c32b65b95fe2c4f8f098947a68b695033bed0b51dd8b984ecae89571bb6" } },
+                  { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, LEX1 } },
+                  { "address_explorer_url", "https://blockstream.info/testnet/address/" },
+                  { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
+                  { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
+                  { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
+                  { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
+                  { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false }, { "development", false } })) },
+
+          { "regtest",
+              std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Regtest" }, { "network", "regtest" },
+                  { "wamp_url", "ws://10.0.2.2:8080/v2/ws" }, { "wamp_onion_url", std::string() },
+                  { "wamp_cert_pins", nlohmann::json::array() }, { "wamp_cert_roots", nlohmann::json::array() },
+                  { "address_explorer_url", "http://192.168.56.1:8080/address/" },
+                  { "tx_explorer_url", "http://192.168.56.1:8080/tx/" },
+                  { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
+                  { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
+                  { "default_peers", std::vector<std::string>{ { "192.168.56.1:19000" } } }, { "p2pkh_version", 111u },
+                  { "p2sh_version", 196u }, { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false },
+                  { "development", true } })) } };
+
+static std::mutex registered_networks_mutex;
+} // namespace
+
+namespace ga {
+namespace sdk {
+
+    network_parameters::network_parameters(const nlohmann::json& details)
+        : m_details(details)
+        , m_network{ details.at("network").get<std::string>() }
+        , m_gait_wamp_url{ details.at("wamp_url").get<std::string>() }
+        , m_gait_wamp_cert_pins{ details.at("wamp_cert_pins").get<std::vector<std::string>>() }
+        , m_gait_wamp_cert_roots{ details.at("wamp_cert_roots").get<std::vector<std::string>>() }
+        , m_block_explorer_address{ details.at("address_explorer_url").get<std::string>() }
+        , m_block_explorer_tx{ details.at("tx_explorer_url").get<std::string>() }
+        , m_chain_code{ details.at("service_chain_code").get<std::string>() }
+        , m_pub_key{ details.at("service_pubkey").get<std::string>() }
+        , m_gait_onion{ details.at("wamp_onion_url").get<std::string>() }
+        , m_default_peers{ details.at("default_peers").get<std::vector<std::string>>() }
+        , m_bech32_prefix{ details.at("bech32_prefix").get<std::string>() }
+        , m_btc_version{ details.at("p2pkh_version") }
+        , m_btc_p2sh_version{ details.at("p2sh_version") }
+        , m_main_net{ json_get_value(details, "mainnet", false) }
+    {
+    }
+
+    network_parameters::~network_parameters() {}
+
+    void network_parameters::add(const std::string& name, const nlohmann::json& details)
+    {
+        std::unique_lock<std::mutex> l{ registered_networks_mutex };
+
+        const auto p = registered_networks.find(name);
+        const bool found = p != registered_networks.end();
+        if (details.is_null() || details.empty()) {
+            // Remove
+            if (found) {
+                registered_networks.erase(p);
+            }
+        } else {
+            // Validate and add, overwriting any existing entry
+            auto np = std::make_shared<nlohmann::json>(network_parameters(details).get_json());
+            registered_networks[name] = np;
+        }
+    }
+
+    nlohmann::json network_parameters::get_all()
+    {
+        // We manually order mainnet/testnet first for nice wallet/UX display ordering
+        std::vector<std::string> all_networks{ "mainnet", "testnet" };
+        nlohmann::json ret;
+
+        std::unique_lock<std::mutex> l{ registered_networks_mutex };
+        all_networks.reserve(registered_networks.size());
+        for (const auto p : registered_networks) {
+            ret[p.first] = *p.second;
+            if (std::find(all_networks.begin(), all_networks.end(), p.first) == all_networks.end()) {
+                all_networks.emplace_back(p.first);
+            }
+        }
+        ret["all_networks"] = all_networks;
+        return ret;
+    }
+
+    std::shared_ptr<nlohmann::json> network_parameters::get(const std::string& name)
+    {
+        std::unique_lock<std::mutex> l{ registered_networks_mutex };
+
+        const auto p = registered_networks.find(name);
+        GDK_RUNTIME_ASSERT_MSG(p != registered_networks.end(), "Unknown network");
+        return p->second;
+    }
+} // namespace sdk
+} // namespace ga

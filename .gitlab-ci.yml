@@ -1,0 +1,204 @@
+cache:
+  paths:
+    - subprojects/packagecache/
+
+before_script:
+  - ./tools/clean.sh meson
+
+image: greenaddress/ci@sha256:dd9486edee6ffcf4f9833db2c68761630728e8865ef89815c133ccacc326f47c
+
+.fedora_images:
+  image: greenaddress/fedora_ci@sha256:1b504d941e5d9953ed2fa40798c9c9e071cc3dbe1868115c25eee9f979f3c3ae
+  tags:
+    - ga
+
+.ndk_release:
+  tags:
+    - ga
+  artifacts:
+    expire_in: 1 day
+    when: on_success
+    paths:
+    - gdk-android-jni
+
+.osx_test:
+  tags:
+    - osx
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+      - subprojects/packagecache/
+
+test_gcc:
+  tags:
+    - ga
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --gcc
+
+test_fedora_gcc:
+  extends: .fedora_images
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --gcc
+
+test_fedora_clang:
+  extends: .fedora_images
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --clang
+
+test_clang:
+  tags:
+    - ga
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --clang
+    - ./tools/format.sh && git diff --exit-code
+
+test_clang_tidy:
+  tags:
+    - ga
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --clang-tidy-version=3.8 --clang
+
+gdk_clang_ndk_armeabi-v7a:
+  extends: .ndk_release
+  script:
+    - cd $CI_PROJECT_DIR
+    - mkdir gdk-android-jni
+    - ANDROID_NDK=/android-ndk-r18b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
+
+gdk_clang_ndk_arm64-v8a:
+  extends: .ndk_release
+  script:
+    - cd $CI_PROJECT_DIR
+    - mkdir gdk-android-jni
+    - ANDROID_NDK=/android-ndk-r18b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
+
+gdk_clang_ndk_x86:
+  extends: .ndk_release
+  script:
+    - cd $CI_PROJECT_DIR
+    - mkdir gdk-android-jni
+    - ANDROID_NDK=/android-ndk-r18b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
+
+gdk_clang_ndk_x86_64:
+  extends: .ndk_release
+  script:
+    - cd $CI_PROJECT_DIR
+    - mkdir gdk-android-jni
+    - ANDROID_NDK=/android-ndk-r18b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
+
+test_osx_clang:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --lto=false --clang
+
+test_osx_ios:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --lto=false --iphone static
+
+test_osx_ios_sim:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --lto=false --iphonesim static
+
+test_osx_clang_ndk_armeabi-v7a:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --ndk armeabi-v7a
+
+test_osx_clang_ndk_arm64-v8a:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --ndk arm64-v8a
+
+test_osx_clang_ndk_x86:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --ndk x86
+
+test_osx_clang_ndk_x86_64:
+  extends: .osx_test
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --ndk x86_64
+
+test_freebsd_gcc:
+  tags:
+    - freebsd
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --gcc
+
+test_freebsd_clang:
+  tags:
+    - freebsd
+  before_script:
+    - export PATH="/usr/local/llvm60/bin:$PATH"
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --clang
+
+test_windows_mingw_w64_cross:
+  tags:
+    - ga
+  artifacts:
+    expire_in: 1 hour
+    when: on_success
+    paths:
+    - build-windows-mingw-w64/src/libgreenaddress*
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --mingw-w64
+
+apidocs:
+  tags:
+    - ga
+  artifacts:
+    expire_in: 14 days
+    when: on_success
+    paths:
+    - apidocs.tar.gz
+  script:
+    - cd $CI_PROJECT_DIR
+    - tools/clean.sh
+    - virtualenv -p python3 .venv
+    - source .venv/bin/activate
+    - pip3 install sphinx sphinx_rtd_theme
+    - sphinx-build -b html -a -c docs/source docs/source docs/build/html
+    - cd docs/build && tar czf ../../apidocs.tar.gz html/ && cd ../..
+    - deactivate
+    - tools/clean.sh
+
+package_release:
+  tags:
+    - garelease
+  stage: deploy
+  artifacts:
+    expire_in: 14 days
+    paths:
+    - $CI_PROJECT_DIR/gdk_dist
+    when: on_success
+  script:
+    - cd $CI_PROJECT_DIR
+    - find gdk-android-jni -name "*.a" -type f -delete
+    - mkdir gdk_dist
+    - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
+    - cd gdk_dist
+    - /opt/process_release
+  dependencies:
+  - gdk_clang_ndk_armeabi-v7a
+  - gdk_clang_ndk_arm64-v8a
+  - gdk_clang_ndk_x86
+  - gdk_clang_ndk_x86_64
+  - apidocs

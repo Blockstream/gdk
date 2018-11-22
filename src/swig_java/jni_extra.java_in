@@ -1,0 +1,4 @@
+
+  public final static byte[] get_random_bytes(long jarg1) {
+      return get_random_bytes(jarg1, 0, 0);
+  }

@@ -1,0 +1,6 @@
+[wrap-file]
+directory = json-3.4.0
+
+source_url = https://github.com/nlohmann/json/archive/v3.4.0.tar.gz
+source_filename = json-3.4.0.tar.gz
+source_hash = c377963a95989270c943d522bfefe7b889ef5ed0e1e15d535fd6f6f16ed70732

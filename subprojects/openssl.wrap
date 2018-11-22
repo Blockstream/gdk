@@ -1,0 +1,10 @@
+[wrap-file]
+directory = openssl-OpenSSL_1_0_2p
+
+source_url = https://github.com/openssl/openssl/archive/OpenSSL_1_0_2p.tar.gz
+source_filename = OpenSSL_1_0_2p.tar.gz
+source_hash = 95ca65a25bdd41e127e5f4054539e8532a46be602b43b44af7c7100172e7cd50
+
+patch_url = file:./subprojects/openssl-meson/openssl-meson-95ca65a25bdd41e127e5f4054539e8532a46be602b43b44af7c7100172e7cd50.tar
+patch_filename = openssl-meson-95ca65a25bdd41e127e5f4054539e8532a46be602b43b44af7c7100172e7cd50.tar
+patch_hash = 4b22448df16087e9f0eec364910560e781cd732ad494dfb7d280460dedbab77b

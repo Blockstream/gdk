@@ -1,0 +1,10 @@
+[wrap-file]
+directory = websocketpp-294cc0d42957078176ff8f39397862e089838543
+
+source_url = https://github.com/greenaddress/websocketpp/archive/294cc0d42957078176ff8f39397862e089838543.tar.gz
+source_filename = websocketpp-294cc0d42957078176ff8f39397862e089838543.tar.gz
+source_hash = 1c9fbac4818f6e7fff6d3aa0c8ac149d5067b4bee6793b93437481ea23309c90
+
+patch_url = file:./subprojects/websocketpp-meson/websocketpp-meson-1c9fbac4818f6e7fff6d3aa0c8ac149d5067b4bee6793b93437481ea23309c90.tar
+patch_filename = websocketpp-meson-1c9fbac4818f6e7fff6d3aa0c8ac149d5067b4bee6793b93437481ea23309c90.tar
+patch_hash = ec886b78012974cccfba5e6cb3543f4f5f6017812d72da7e0e9b337ae351eba5
