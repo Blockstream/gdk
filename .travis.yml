@@ -1,0 +1,9 @@
+language: generic
+sudo: required
+
+services:
+  - docker
+
+script:
+  - docker run -v $PWD:/gdk greenaddress/ci@sha256:dd9486edee6ffcf4f9833db2c68761630728e8865ef89815c133ccacc326f47c /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
+  - docker run -v $PWD:/gdk greenaddress/ci@sha256:dd9486edee6ffcf4f9833db2c68761630728e8865ef89815c133ccacc326f47c /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
