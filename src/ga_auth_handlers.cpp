@@ -43,34 +43,37 @@ namespace sdk {
     //
     // Common auth handling
     //
-    auth_handler::auth_handler(
-        session& session, const std::string& action, const nlohmann::json& hw_device, bool pre_login)
+    auth_handler::auth_handler(session& session, const std::string& action, const nlohmann::json& hw_device)
         : m_session(session)
         , m_action(action)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
-    {
-        init(hw_device, pre_login);
-    }
-
-    auth_handler::auth_handler(session& session, const std::string& action, bool pre_login)
-        : m_session(session)
-        , m_action(action)
-        , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
-    {
-        init({}, pre_login);
-    }
-
-    void auth_handler::init(const nlohmann::json& hw_device_in, bool pre_login)
     {
         try {
-            const nlohmann::json hw_device = !pre_login ? m_session.get_hw_device() : hw_device_in;
-            m_hw_device = hw_device.empty() ? hw_device : hw_device.at("device");
-            m_methods = m_hw_device.empty() && !pre_login ? m_session.get_enabled_twofactor_methods()
-                                                          : std::vector<std::string>();
-            m_state = m_methods.empty() && hw_device.empty() ? state_type::make_call : state_type::request_code;
+            init(hw_device.empty() ? hw_device : hw_device.at("device"), true);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
+    }
+
+    auth_handler::auth_handler(session& session, const std::string& action)
+        : m_session(session)
+        , m_action(action)
+        , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
+    {
+        try {
+            init(m_session.get_hw_device(), false);
+        } catch (const std::exception& e) {
+            set_error(e.what());
+        }
+    }
+
+    void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
+    {
+        m_hw_device = hw_device;
+        if (!is_pre_login) {
+            m_methods = m_session.get_enabled_twofactor_methods();
+        }
+        m_state = m_methods.empty() ? state_type::make_call : state_type::request_code;
     }
 
     void auth_handler::set_error(const std::string& error_message)
@@ -202,7 +205,7 @@ namespace sdk {
     // Register
     //
     register_call::register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic)
-        : auth_handler(session, "get_xpubs", hw_device, true)
+        : auth_handler(session, "get_xpubs", hw_device)
         , m_mnemonic(mnemonic)
     {
         if (m_state == state_type::error) {
@@ -250,7 +253,7 @@ namespace sdk {
     //
     login_call::login_call(
         session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
-        : auth_handler(session, "get_xpubs", hw_device, true)
+        : auth_handler(session, "get_xpubs", hw_device)
         , m_mnemonic(mnemonic)
         , m_password(password)
     {
@@ -323,20 +326,25 @@ namespace sdk {
     create_subaccount_call::create_subaccount_call(session& session, const nlohmann::json& details)
         : auth_handler(session, "get_xpubs")
         , m_details(details)
+        , m_subaccount(0)
     {
         if (m_state == state_type::error) {
             return;
         }
 
-        m_subaccount = m_hw_device.empty() ? 0 : session.get_next_subaccount();
         if (m_hw_device.empty()) {
             m_state = state_type::make_call;
         } else {
-            m_state = state_type::resolve_code;
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
-            std::vector<nlohmann::json> paths;
-            paths.emplace_back(ga_user_pubkeys::get_subaccount_path(m_subaccount));
-            m_twofactor_data["paths"] = paths;
+            try {
+                m_state = state_type::resolve_code;
+                m_subaccount = session.get_next_subaccount();
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+                std::vector<nlohmann::json> paths;
+                paths.emplace_back(ga_user_pubkeys::get_subaccount_path(m_subaccount));
+                m_twofactor_data["paths"] = paths;
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
         }
     }
 
@@ -365,10 +373,14 @@ namespace sdk {
         if (m_hw_device.empty()) {
             m_state = state_type::make_call;
         } else {
-            m_message_info = m_session.get_system_message_info(msg);
-            m_state = state_type::resolve_code;
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
-            m_twofactor_data["paths"] = m_message_info.second;
+            try {
+                m_message_info = m_session.get_system_message_info(msg);
+                m_state = state_type::resolve_code;
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+                m_twofactor_data["paths"] = m_message_info.second;
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
         }
     }
 
@@ -397,38 +409,43 @@ namespace sdk {
         if (m_hw_device.empty()) {
             m_state = state_type::make_call;
         } else {
-            // Compute the data we need for the hardware to sign the transaction
-            m_state = state_type::resolve_code;
+            try {
+                // Compute the data we need for the hardware to sign the transaction
+                m_state = state_type::resolve_code;
 
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", tx_details } };
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", tx_details } };
 
-            // We need the inputs, augmented with types, scripts and paths
-            const auto signing_inputs = get_ga_signing_inputs(tx_details);
-            std::set<std::string> addr_types;
-            nlohmann::json prev_txs;
-            for (const auto& input : signing_inputs) {
-                const auto& addr_type = input.at("address_type");
-                GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
-                addr_types.insert(addr_type.get<std::string>());
+                // We need the inputs, augmented with types, scripts and paths
+                const auto signing_inputs = get_ga_signing_inputs(tx_details);
+                std::set<std::string> addr_types;
+                nlohmann::json prev_txs;
+                for (const auto& input : signing_inputs) {
+                    const auto& addr_type = input.at("address_type");
+                    GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
+                    addr_types.insert(addr_type.get<std::string>());
 
-                const script_type utxo_script_type = input.at("script_type");
-                if (utxo_script_type != script_type::p2sh_p2wsh_fortified_out
-                    && utxo_script_type != script_type::p2sh_p2wsh_csv_fortified_out) {
-                    // Not a segwit script type, so fetch the previous tx
-                    const std::string txhash = input.at("txhash");
-                    if (prev_txs.find(txhash) == prev_txs.end()) {
-                        prev_txs[txhash] = session.get_transaction_details(txhash)["transaction"];
+                    const script_type utxo_script_type = input.at("script_type");
+                    if (utxo_script_type != script_type::p2sh_p2wsh_fortified_out
+                        && utxo_script_type != script_type::p2sh_p2wsh_csv_fortified_out) {
+                        // Not a segwit script type, so fetch the previous tx
+                        const std::string txhash = input.at("txhash");
+                        if (prev_txs.find(txhash) == prev_txs.end()) {
+                            prev_txs[txhash] = session.get_transaction_details(txhash)["transaction"];
+                        }
                     }
                 }
+                if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
+                    // FIXME: Use the software signer to sign sweep txs
+                    GDK_RUNTIME_ASSERT(false);
+                }
+                m_twofactor_data["signing_address_types"]
+                    = std::vector<std::string>(addr_types.begin(), addr_types.end());
+                m_twofactor_data["signing_inputs"] = signing_inputs;
+                m_twofactor_data["signing_transactions"] = prev_txs;
+                m_twofactor_data["transaction_outputs"] = tx_details["transaction_outputs"];
+            } catch (const std::exception& e) {
+                set_error(e.what());
             }
-            if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
-                // FIXME: Use the software signer to sign sweep txs
-                GDK_RUNTIME_ASSERT(false);
-            }
-            m_twofactor_data["signing_address_types"] = std::vector<std::string>(addr_types.begin(), addr_types.end());
-            m_twofactor_data["signing_inputs"] = signing_inputs;
-            m_twofactor_data["signing_transactions"] = prev_txs;
-            m_twofactor_data["transaction_outputs"] = tx_details["transaction_outputs"];
         }
     }
 
@@ -486,46 +503,50 @@ namespace sdk {
             return;
         }
 
-        m_current_config = session.get_twofactor_config();
-        GDK_RUNTIME_ASSERT(m_current_config.find(method_to_update) != m_current_config.end());
+        try {
+            m_current_config = session.get_twofactor_config();
+            GDK_RUNTIME_ASSERT(m_current_config.find(method_to_update) != m_current_config.end());
 
-        const auto& current_subconfig = m_current_config[method_to_update];
+            const auto& current_subconfig = m_current_config[method_to_update];
 
-        const bool set_email = !m_enabling && method_to_update == "email" && m_details.value("confirmed", false)
-            && !current_subconfig.value("confirmed", false);
+            const bool set_email = !m_enabling && method_to_update == "email" && m_details.value("confirmed", false)
+                && !current_subconfig.value("confirmed", false);
 
-        if (!set_email && current_subconfig.value("enabled", !m_enabling) == m_enabling) {
-            // Caller is attempting to enable or disable when thats already the current state
-            set_error(method_to_update + " is already " + (m_enabling ? "enabled" : "disabled"));
-            return;
-        }
+            if (!set_email && current_subconfig.value("enabled", !m_enabling) == m_enabling) {
+                // Caller is attempting to enable or disable when thats already the current state
+                set_error(method_to_update + " is already " + (m_enabling ? "enabled" : "disabled"));
+                return;
+            }
 
-        // The data associated with method_to_update e.g. email, phone etc
-        const std::string data = json_get_value(m_details, "data");
+            // The data associated with method_to_update e.g. email, phone etc
+            const std::string data = json_get_value(m_details, "data");
 
-        if (m_enabling) {
-            if (method_to_update == "gauth") {
-                // For gauth the user must pass in the current seed returned by the
-                // server.
-                // FIXME: Allow the user to specify their own seed in the future.
-                if (data != json_get_value(current_subconfig, "data")) {
-                    set_error(res::id_inconsistent_data_provided_for);
-                    return;
+            if (m_enabling) {
+                if (method_to_update == "gauth") {
+                    // For gauth the user must pass in the current seed returned by the
+                    // server.
+                    // FIXME: Allow the user to specify their own seed in the future.
+                    if (data != json_get_value(current_subconfig, "data")) {
+                        set_error(res::id_inconsistent_data_provided_for);
+                        return;
+                    }
+                }
+                m_twofactor_data = { { "method", m_method_to_update } };
+            } else {
+                if (set_email) {
+                    // The caller set confirmed=true but enabled=false: they only want
+                    // to set the email associated with twofactor but not enable it for 2fa.
+                    // This is useful since notifications and 2fa currently share the
+                    // same 2fa email address.
+                    m_action = "set_email";
+                    m_twofactor_data = { { "address", data } };
+                } else {
+                    m_action = "disable_2fa";
+                    m_twofactor_data = { { "method", method_to_update } };
                 }
             }
-            m_twofactor_data = { { "method", m_method_to_update } };
-        } else {
-            if (set_email) {
-                // The caller set confirmed=true but enabled=false: they only want
-                // to set the email associated with twofactor but not enable it for 2fa.
-                // This is useful since notifications and 2fa currently share the
-                // same 2fa email address.
-                m_action = "set_email";
-                m_twofactor_data = { { "address", data } };
-            } else {
-                m_action = "disable_2fa";
-                m_twofactor_data = { { "method", method_to_update } };
-            }
+        } catch (const std::exception& e) {
+            set_error(e.what());
         }
     }
 
@@ -623,22 +644,26 @@ namespace sdk {
             return;
         }
 
-        // Transform the details json that is passed in into the json that the api expects
-        // The api expects {is_fiat: bool, total: in satoshis, per_tx: not really used}
-        // This function takes a full amount json, e.g. {'BTC': 1234}
-        const bool is_fiat = details.at("is_fiat").get<bool>();
-        GDK_RUNTIME_ASSERT(is_fiat == (details.find("fiat") != details.end()));
-        m_limit_details = { { "is_fiat", is_fiat }, { "per_tx", 0 } };
-        if (is_fiat) {
-            m_limit_details["total"] = amount::get_fiat_cents(details["fiat"]);
-        } else {
-            m_limit_details["total"] = session.convert_amount(details)["satoshi"];
-        }
+        try {
+            // Transform the details json that is passed in into the json that the api expects
+            // The api expects {is_fiat: bool, total: in satoshis, per_tx: not really used}
+            // This function takes a full amount json, e.g. {'BTC': 1234}
+            const bool is_fiat = details.at("is_fiat").get<bool>();
+            GDK_RUNTIME_ASSERT(is_fiat == (details.find("fiat") != details.end()));
+            m_limit_details = { { "is_fiat", is_fiat }, { "per_tx", 0 } };
+            if (is_fiat) {
+                m_limit_details["total"] = amount::get_fiat_cents(details["fiat"]);
+            } else {
+                m_limit_details["total"] = session.convert_amount(details)["satoshi"];
+            }
 
-        if (m_is_decrease) {
-            m_state = state_type::make_call; // Limit decreases do not require 2fa
-        } else {
-            m_twofactor_data = m_limit_details;
+            if (m_is_decrease) {
+                m_state = state_type::make_call; // Limit decreases do not require 2fa
+            } else {
+                m_twofactor_data = m_limit_details;
+            }
+        } catch (const std::exception& e) {
+            set_error(e.what());
         }
     }
 
@@ -685,23 +710,27 @@ namespace sdk {
             return;
         }
 
-        const uint32_t limit = m_twofactor_required ? session.get_spending_limits()["satoshi"].get<uint32_t>() : 0;
-        const uint32_t satoshi = m_tx_details["satoshi"];
-        const uint32_t fee = m_tx_details["fee"];
-        const uint32_t change_index = m_tx_details["change_index"];
+        try {
+            const uint32_t limit = m_twofactor_required ? session.get_spending_limits()["satoshi"].get<uint32_t>() : 0;
+            const uint32_t satoshi = m_tx_details["satoshi"];
+            const uint32_t fee = m_tx_details["fee"];
+            const uint32_t change_index = m_tx_details["change_index"];
 
-        m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
-            { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
+            m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
+                { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
 
-        if (limit != 0 && satoshi + fee <= limit) {
-            // 2fa is enabled and we have a spending limit, but this tx is under it.
-            m_under_limit = true;
-            m_state = state_type::make_call;
-        }
+            if (limit != 0 && satoshi + fee <= limit) {
+                // 2fa is enabled and we have a spending limit, but this tx is under it.
+                m_under_limit = true;
+                m_state = state_type::make_call;
+            }
 
-        if (m_state == state_type::make_call) {
-            // We are ready to call, so make the required twofactor data
-            create_twofactor_data();
+            if (m_state == state_type::make_call) {
+                // We are ready to call, so make the required twofactor data
+                create_twofactor_data();
+            }
+        } catch (const std::exception& e) {
+            set_error(e.what());
         }
     }
 
@@ -712,8 +741,12 @@ namespace sdk {
         // 2) Tx was thought to be under limits but limits have now changed
         // Prevent the call from trying to send using the limit next time through the state machine
         m_under_limit = false;
-        create_twofactor_data();
-        auth_handler::request_code(method);
+        try {
+            create_twofactor_data();
+            auth_handler::request_code(method);
+        } catch (const std::exception& e) {
+            set_error(e.what());
+        }
     }
 
     void send_transaction_call::create_twofactor_data()

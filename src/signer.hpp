@@ -33,7 +33,7 @@ namespace sdk {
         // Returns true if if this signer can sign arbitrary scripts
         virtual bool supports_arbitrary_scripts() const;
 
-        nlohmann::json get_hw_device() const;
+        virtual nlohmann::json get_hw_device() const;
 
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
@@ -93,7 +93,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
 
-        nlohmann::json get_hw_device() const;
+        nlohmann::json get_hw_device() const override;
 
         std::string get_challenge() override;
 

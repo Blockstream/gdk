@@ -7,9 +7,8 @@
 namespace ga {
 namespace sdk {
     struct auth_handler {
-        auth_handler(ga::sdk::session& session, const std::string& action, const nlohmann::json& hw_device,
-            bool pre_login = false);
-        auth_handler(ga::sdk::session& session, const std::string& action, bool pre_login = false);
+        auth_handler(ga::sdk::session& session, const std::string& action, const nlohmann::json& hw_device);
+        auth_handler(ga::sdk::session& session, const std::string& action);
         auth_handler(const auth_handler&) = delete;
         auth_handler& operator=(const auth_handler&) = delete;
         auth_handler(auth_handler&&) = delete;
@@ -49,7 +48,7 @@ namespace sdk {
         nlohmann::json m_hw_device;
 
     private:
-        void init(const nlohmann::json& hw_device, bool pre_login);
+        void init(const nlohmann::json& hw_device, bool is_pre_login);
     };
 } // namespace sdk
 } // namespace ga

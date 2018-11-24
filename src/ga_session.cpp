@@ -840,8 +840,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         if (m_signer.get() == nullptr) {
+            GDK_LOG_SEV(log_level::debug) << "authenticate called for hardware device";
             // Logging in with a hardware wallet; create our proxy signer
-            GDK_RUNTIME_ASSERT(!hw_device.is_null());
             m_signer = std::make_unique<hardware_signer>(m_net_params, hw_device);
         }
 
@@ -900,6 +900,7 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         // Create our signer
+        GDK_LOG_SEV(log_level::debug) << "creating signer for mnemonic";
         m_signer = std::make_unique<software_signer>(m_net_params, mnemonic);
 
         // Create our local user keys repository
