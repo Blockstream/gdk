@@ -18,10 +18,9 @@ namespace sdk {
         static const uint32_t TWO_FACTOR_ATTEMPTS = 3;
         static const std::string CHALLENGE_PREFIX("greenaddress.it      login ");
 
-        // Return true if the error represents 'two factor authentication required'
-        static bool is_twofactor_invalid_code_error(const autobahn::call_error& e)
+        static bool is_twofactor_invalid_code_error(const std::string& msg)
         {
-            return get_error_details(e).second == "Invalid Two Factor Authentication Code";
+            return msg == "Invalid Two Factor Authentication Code";
         }
 
         static auto get_xpub(const std::string& bip32_xpub_str)
@@ -125,7 +124,8 @@ namespace sdk {
             }
             m_state = call_impl();
         } catch (const autobahn::call_error& e) {
-            if (is_twofactor_invalid_code_error(e)) {
+            auto details = get_error_details(e);
+            if (is_twofactor_invalid_code_error(details.second)) {
                 // The caller entered the wrong code
                 // FIXME: Go back to resolve code if the methods time limit is up
                 // FIXME: If we are rate limited, move to error with a message
@@ -138,8 +138,8 @@ namespace sdk {
                     m_state = state_type::resolve_code;
                 }
             } else {
-                const auto& error_message = get_error_details(e).second;
-                set_error(error_message.empty() ? std::string(e.what()) : error_message);
+                details = remap_ga_server_error(details);
+                set_error(details.second.empty() ? std::string(e.what()) : details.second);
                 m_state = state_type::error;
             }
         } catch (const std::exception& e) {
@@ -596,7 +596,8 @@ namespace sdk {
                 try {
                     m_session.enable_gauth(m_code, m_gauth_data);
                 } catch (const autobahn::call_error& e) {
-                    if (is_twofactor_invalid_code_error(e)) {
+                    const auto details = get_error_details(e);
+                    if (is_twofactor_invalid_code_error(details.second)) {
                         // The caller entered the wrong code
                         // We can't know if they entered the wrong gauth code
                         // or the wrong initial 2fa code to enable gauth (unless

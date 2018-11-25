@@ -1,8 +1,15 @@
 #include "exception.hpp"
 #include "boost_wrapper.hpp"
+#include "ga_strings.hpp"
 
 namespace ga {
 namespace sdk {
+    namespace {
+        static bool is_prevout_missing(const std::string& msg)
+        {
+            return boost::algorithm::starts_with(msg, "Missing prevout:");
+        }
+    } // namespace
 
     std::pair<std::string, std::string> get_error_details(const autobahn::call_error& e)
     {
@@ -20,5 +27,17 @@ namespace sdk {
         }
         return std::make_pair(std::string(), std::string());
     }
+
+    std::pair<std::string, std::string> remap_ga_server_error(const std::pair<std::string, std::string>& details)
+    {
+        if (is_prevout_missing(details.second)) {
+            // Missing prevout indicates that a tx being bumped has been
+            // confirmed and therefore the bump tx's previous output cannot
+            // be found. Remap this to a more friendly error message.
+            return std::make_pair(details.first, res::id_transaction_already_confirmed);
+        }
+        return details;
+    }
+
 } // namespace sdk
 } // namespace ga
