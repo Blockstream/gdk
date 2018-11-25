@@ -310,7 +310,7 @@ namespace sdk {
         std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys;
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
-        std::atomic<uint32_t> m_block_height;
+        uint32_t m_block_height;
         std::unique_ptr<signer> m_signer;
 
         uint32_t m_system_message_id; // Next system message
