@@ -406,7 +406,10 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty()) {
+        if (m_hw_device.empty() || json_get_value(tx_details, "is_sweep", false)) {
+            // TODO: Once tx aggregation is implemented, merge the sweep logic
+            // with general tx construction to allow HW devices to sign individual
+            // inputs (currently HW expects to sign all tx inputs)
             m_state = state_type::make_call;
         } else {
             try {
@@ -451,7 +454,7 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        if (m_hw_device.empty()) {
+        if (m_hw_device.empty() || json_get_value(m_tx_details, "is_sweep", false)) {
             m_result = m_session.sign_transaction(m_tx_details);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
