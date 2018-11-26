@@ -68,7 +68,10 @@ namespace sdk {
 
     void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
     {
-        m_hw_device = hw_device;
+        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx") {
+            // Hardware action, so provide the caller with the device information
+            m_hw_device = hw_device;
+        }
         if (!is_pre_login) {
             m_methods = m_session.get_enabled_twofactor_methods();
         }
