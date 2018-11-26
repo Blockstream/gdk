@@ -364,7 +364,7 @@ namespace sdk {
             // Since addressing transactions is normally done first by users
             size_t num_addressees = 0;
             if (addressees_p == result.end() || addressees_p->empty()) {
-                set_tx_error(result, res::id_no_outputs); // No outputs
+                set_tx_error(result, res::id_no_recipients); // No outputs
             } else {
                 num_addressees = addressees_p->size();
             }
