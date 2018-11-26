@@ -675,9 +675,10 @@ namespace sdk {
 
     std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details)
     {
-        if (!json_get_value(details, "error").empty()) {
+        const std::string error = json_get_value(details, "error");
+        if (!error.empty()) {
             GDK_LOG_SEV(log_level::debug) << " attempt to sign with error: " << details.dump();
-            GDK_RUNTIME_ASSERT_MSG(false, "Invalid Transaction");
+            GDK_RUNTIME_ASSERT_MSG(false, error);
         }
 
         const auto& used_utxos = details.at("used_utxos");
