@@ -63,9 +63,6 @@ namespace sdk {
         const std::string id_choose_twofactor_authentication{
             "id_choose_twofactor_authentication"
         }; // Choose Two-Factor Authentication method
-        const std::string id_choose_word_number_d_from_the{
-            "id_choose_word_number_d_from_the"
-        }; // Choose word number %d from the options
         const std::string id_clear{ "id_clear" }; // CLEAR
         const std::string id_completed{ "id_completed" }; // Completed
         const std::string id_configure_pin{ "id_configure_pin" }; // Configure PIN
@@ -103,7 +100,7 @@ namespace sdk {
         const std::string id_date{ "id_date" }; // Date
         const std::string id_day{ "id_day" }; // day
         const std::string id_days{ "id_days" }; // days
-        const std::string id_days_remaining_s_s{ "id_days_remaining_s_s" }; // Days remaining %s %s
+        const std::string id_days_remaining_s{ "id_days_remaining_s" }; // Days remaining: %s
         const std::string id_default_custom_fee_rate{ "id_default_custom_fee_rate" }; // Default custom fee rate
         const std::string id_default_transaction_priority{
             "id_default_transaction_priority"
@@ -119,6 +116,7 @@ namespace sdk {
             "id_displays_the_progress_of_spv"
         }; // Displays the progress of SPV synchronization
         const std::string id_dispute_twofactor_reset{ "id_dispute_twofactor_reset" }; // Dispute Two-Factor reset
+        const std::string id_disputed{ "id_disputed" }; // Disputed
         const std::string id_done{ "id_done" }; // Done
         const std::string id_dont_store_your_mnemonic_in{
             "id_dont_store_your_mnemonic_in"
@@ -237,6 +235,7 @@ namespace sdk {
         const std::string id_invalid_replacement_fee_rate{
             "id_invalid_replacement_fee_rate"
         }; // Invalid replacement fee rate
+        const std::string id_invalid_twofactor_code{ "id_invalid_twofactor_code" }; // Invalid Two-Factor code
         const std::string id_invalid_url{ "id_invalid_url" }; // Invalid URL
         const std::string id_is_a_noncustodial{ "id_is_a_noncustodial" }; // is a non-custodial
         const std::string id_last_ping_1d_ms{ "id_last_ping_1d_ms" }; // Last ping: %1$d ms
@@ -400,6 +399,7 @@ namespace sdk {
         const std::string id_second{ "id_second" }; // second
         const std::string id_seconds{ "id_seconds" }; // seconds
         const std::string id_select_network{ "id_select_network" }; // Select network
+        const std::string id_select_word_number_d{ "id_select_word_number_d" }; // Select word number %d
         const std::string id_send{ "id_send" }; // Send
         const std::string id_send_all_funds{ "id_send_all_funds" }; // Send All Funds
         const std::string id_send_all_requires_a_single{
@@ -580,9 +580,9 @@ namespace sdk {
         const std::string id_your_s_sent_to_s_has_been{
             "id_your_s_sent_to_s_has_been"
         }; // Your %s sent to %s has been confirmed
-        const std::string id_your_sent_and_recieved{
-            "id_your_sent_and_recieved"
-        }; // Your sent and recieved transactions will be shown here.
+        const std::string id_your_sent_and_received{
+            "id_your_sent_and_received"
+        }; // Your sent and received transactions will be shown here.
         const std::string id_your_transaction_threshold_is_s{
             "id_your_transaction_threshold_is_s"
         }; // Your transaction threshold is %s.

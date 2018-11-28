@@ -49,7 +49,6 @@ namespace sdk {
         extern const std::string id_change;
         extern const std::string id_choose;
         extern const std::string id_choose_twofactor_authentication;
-        extern const std::string id_choose_word_number_d_from_the;
         extern const std::string id_clear;
         extern const std::string id_completed;
         extern const std::string id_configure_pin;
@@ -73,7 +72,7 @@ namespace sdk {
         extern const std::string id_date;
         extern const std::string id_day;
         extern const std::string id_days;
-        extern const std::string id_days_remaining_s_s;
+        extern const std::string id_days_remaining_s;
         extern const std::string id_default_custom_fee_rate;
         extern const std::string id_default_transaction_priority;
         extern const std::string id_delete_pin;
@@ -82,6 +81,7 @@ namespace sdk {
         extern const std::string id_deposit;
         extern const std::string id_displays_the_progress_of_spv;
         extern const std::string id_dispute_twofactor_reset;
+        extern const std::string id_disputed;
         extern const std::string id_done;
         extern const std::string id_dont_store_your_mnemonic_in;
         extern const std::string id_dont_take_screenshots_of_your;
@@ -152,6 +152,7 @@ namespace sdk {
         extern const std::string id_invalid_pin_you_dont_have_any;
         extern const std::string id_invalid_pin_you_have_1d;
         extern const std::string id_invalid_replacement_fee_rate;
+        extern const std::string id_invalid_twofactor_code;
         extern const std::string id_invalid_url;
         extern const std::string id_is_a_noncustodial;
         extern const std::string id_last_ping_1d_ms;
@@ -263,6 +264,7 @@ namespace sdk {
         extern const std::string id_second;
         extern const std::string id_seconds;
         extern const std::string id_select_network;
+        extern const std::string id_select_word_number_d;
         extern const std::string id_send;
         extern const std::string id_send_all_funds;
         extern const std::string id_send_all_requires_a_single;
@@ -361,7 +363,7 @@ namespace sdk {
         extern const std::string id_your_green_wallet_is_now_ready;
         extern const std::string id_your_notifications_will_be;
         extern const std::string id_your_s_sent_to_s_has_been;
-        extern const std::string id_your_sent_and_recieved;
+        extern const std::string id_your_sent_and_received;
         extern const std::string id_your_transaction_threshold_is_s;
         extern const std::string id_your_wallet_is_not_yet_fully;
         extern const std::string id_your_watchonly_username_will_be;

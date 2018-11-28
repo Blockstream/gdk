@@ -130,12 +130,10 @@ namespace sdk {
             auto details = get_error_details(e);
             if (is_twofactor_invalid_code_error(details.second)) {
                 // The caller entered the wrong code
-                // FIXME: Go back to resolve code if the methods time limit is up
-                // FIXME: If we are rate limited, move to error with a message
+                // FIXME: Error if the methods time limit is up or we are rate limited
                 if (m_method != "gauth" && --m_attempts_remaining == 0) {
-                    // No more attempts left.
-                    // Caller should request another code/choose another method
-                    m_state = state_type::request_code;
+                    // No more attempts left, caller should try the action again
+                    set_error(res::id_invalid_twofactor_code);
                 } else {
                     // Caller should try entering the code again
                     m_state = state_type::resolve_code;
@@ -143,11 +141,9 @@ namespace sdk {
             } else {
                 details = remap_ga_server_error(details);
                 set_error(details.second.empty() ? std::string(e.what()) : details.second);
-                m_state = state_type::error;
             }
         } catch (const std::exception& e) {
             set_error(m_action + std::string(" exception:") + e.what());
-            m_state = state_type::error;
         }
     }
 
