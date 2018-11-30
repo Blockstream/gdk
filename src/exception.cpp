@@ -35,6 +35,8 @@ namespace sdk {
             // confirmed and therefore the bump tx's previous output cannot
             // be found. Remap this to a more friendly error message.
             return std::make_pair(details.first, res::id_transaction_already_confirmed);
+        } else if (details.second == "Invalid PGP key") {
+            return std::make_pair(details.first, res::id_invalid_pgp_key);
         }
         return details;
     }

@@ -20,10 +20,10 @@ namespace sdk {
         extern const std::string id_5_seconds_minimum;
         extern const std::string id_a_new_transaction_has_just;
         extern const std::string id_accept;
+        extern const std::string id_action_canceled;
         extern const std::string id_add_amount;
         extern const std::string id_add_custom_network_by_qr_code;
         extern const std::string id_add_custom_network_by_url;
-        extern const std::string id_add_twofactor_authentication;
         extern const std::string id_add_wallet;
         extern const std::string id_address;
         extern const std::string id_address_1s;
@@ -51,7 +51,6 @@ namespace sdk {
         extern const std::string id_choose_twofactor_authentication;
         extern const std::string id_clear;
         extern const std::string id_completed;
-        extern const std::string id_configure_pin;
         extern const std::string id_confirmation;
         extern const std::string id_confirmation_in_12_blocks_2;
         extern const std::string id_confirmation_in_3_blocks_30;
@@ -61,7 +60,7 @@ namespace sdk {
         extern const std::string id_continue;
         extern const std::string id_copy_to_clipboard;
         extern const std::string id_create;
-        extern const std::string id_create_a_pin_to_protect_your;
+        extern const std::string id_create_a_pin_to_access_your;
         extern const std::string id_create_wallet;
         extern const std::string id_currency;
         extern const std::string id_custom;
@@ -77,6 +76,7 @@ namespace sdk {
         extern const std::string id_default_transaction_priority;
         extern const std::string id_delete_pin;
         extern const std::string id_deleting_your_pin_will_remove;
+        extern const std::string id_deleting_your_pin_will_require;
         extern const std::string id_denomination;
         extern const std::string id_deposit;
         extern const std::string id_displays_the_progress_of_spv;
@@ -98,6 +98,7 @@ namespace sdk {
         extern const std::string id_enable_touch_id;
         extern const std::string id_enabled_1s;
         extern const std::string id_enter;
+        extern const std::string id_enter_a_pgp_public_key_to_have;
         extern const std::string id_enter_a_valid_onion_or_ip;
         extern const std::string id_enter_a_valid_username;
         extern const std::string id_enter_new_email;
@@ -111,6 +112,7 @@ namespace sdk {
         extern const std::string id_error;
         extern const std::string id_error_nfc_tag_not_writable;
         extern const std::string id_error_nfc_tag_too_small;
+        extern const std::string id_estimated_blocks_until;
         extern const std::string id_example_89014283334011612858333;
         extern const std::string id_face_id;
         extern const std::string id_fee;
@@ -147,6 +149,7 @@ namespace sdk {
         extern const std::string id_invalid_mnemonic;
         extern const std::string id_invalid_mnemonic_must_be_24_or;
         extern const std::string id_invalid_network_configuration;
+        extern const std::string id_invalid_pgp_key;
         extern const std::string id_invalid_phone_number_format;
         extern const std::string id_invalid_pin_remaining_attempts;
         extern const std::string id_invalid_pin_you_dont_have_any;
@@ -207,6 +210,7 @@ namespace sdk {
         extern const std::string id_outdated_hardware_wallet;
         extern const std::string id_outgoing;
         extern const std::string id_password;
+        extern const std::string id_pgp_key;
         extern const std::string id_phone_call;
         extern const std::string id_phone_number;
         extern const std::string id_pin;
@@ -217,7 +221,6 @@ namespace sdk {
         extern const std::string id_please_follow_the_instructions;
         extern const std::string id_please_provide_your_1s;
         extern const std::string id_please_provide_your_1s_code;
-        extern const std::string id_please_provide_your_btchip_pin;
         extern const std::string id_please_provide_your_passphrase;
         extern const std::string id_please_reconnect_your_hardware;
         extern const std::string id_please_secure_your_mnemonic_and;
@@ -276,6 +279,7 @@ namespace sdk {
         extern const std::string id_set_twofactor_threshold;
         extern const std::string id_set_up_twofactor_authentication;
         extern const std::string id_set_watchonly;
+        extern const std::string id_setting_updated;
         extern const std::string id_settings;
         extern const std::string id_share;
         extern const std::string id_share_address;
@@ -291,6 +295,7 @@ namespace sdk {
         extern const std::string id_something_went_wrong;
         extern const std::string id_spv_is_always_synchronized_on;
         extern const std::string id_spv_notifications;
+        extern const std::string id_spv_synchronization;
         extern const std::string id_sweep;
         extern const std::string id_sweep_from_paper_wallet;
         extern const std::string id_synchronize_spv_on_mobile;
@@ -344,7 +349,6 @@ namespace sdk {
         extern const std::string id_watchonly_disabled;
         extern const std::string id_watchonly_login;
         extern const std::string id_welcome;
-        extern const std::string id_will_confirm_after_blocks;
         extern const std::string id_write_down_the_words;
         extern const std::string id_write_down_your_mnemonic_words;
         extern const std::string id_year;

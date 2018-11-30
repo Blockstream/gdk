@@ -18,14 +18,12 @@ namespace sdk {
             "id_a_new_transaction_has_just"
         }; // A new transaction has just arrived in your wallet.
         const std::string id_accept{ "id_accept" }; // ACCEPT
+        const std::string id_action_canceled{ "id_action_canceled" }; // Action canceled
         const std::string id_add_amount{ "id_add_amount" }; // Add Amount
         const std::string id_add_custom_network_by_qr_code{
             "id_add_custom_network_by_qr_code"
         }; // Add custom network by QR Code
         const std::string id_add_custom_network_by_url{ "id_add_custom_network_by_url" }; // Add custom network by URL
-        const std::string id_add_twofactor_authentication{
-            "id_add_twofactor_authentication"
-        }; // Add Two-Factor Authentication
         const std::string id_add_wallet{ "id_add_wallet" }; // Add Wallet
         const std::string id_address{ "id_address" }; // Address
         const std::string id_address_1s{ "id_address_1s" }; // Address: %1$s
@@ -35,7 +33,7 @@ namespace sdk {
         const std::string id_amount{ "id_amount" }; // Amount
         const std::string id_are_you_sure_you_want_to_view{
             "id_are_you_sure_you_want_to_view"
-        }; // Are you sure you want to view the transaction using $@?
+        }; // Are you sure you want to view the transaction using %s?
         const std::string id_auto_logout_timeout{ "id_auto_logout_timeout" }; // Auto logout timeout
         const std::string id_autolock_after{ "id_autolock_after" }; // Autolock After
         const std::string id_be_aware_other_apps_can_read_or{
@@ -65,7 +63,6 @@ namespace sdk {
         }; // Choose Two-Factor Authentication method
         const std::string id_clear{ "id_clear" }; // CLEAR
         const std::string id_completed{ "id_completed" }; // Completed
-        const std::string id_configure_pin{ "id_configure_pin" }; // Configure PIN
         const std::string id_confirmation{ "id_confirmation" }; // Confirmation
         const std::string id_confirmation_in_12_blocks_2{
             "id_confirmation_in_12_blocks_2"
@@ -83,9 +80,9 @@ namespace sdk {
         const std::string id_continue{ "id_continue" }; // Continue
         const std::string id_copy_to_clipboard{ "id_copy_to_clipboard" }; // Copy To Clipboard
         const std::string id_create{ "id_create" }; // Create
-        const std::string id_create_a_pin_to_protect_your{
-            "id_create_a_pin_to_protect_your"
-        }; // Create a PIN to protect your wallet.
+        const std::string id_create_a_pin_to_access_your{
+            "id_create_a_pin_to_access_your"
+        }; // Create a PIN to access your wallet.
         const std::string id_create_wallet{ "id_create_wallet" }; // Create Wallet
         const std::string id_currency{ "id_currency" }; // Currency
         const std::string id_custom{ "id_custom" }; // Custom
@@ -110,6 +107,9 @@ namespace sdk {
             "id_deleting_your_pin_will_remove"
         }; // Deleting your PIN will remove wallet access permanently unless you have your mnemonic available. Press
            // "OK" to continue.
+        const std::string id_deleting_your_pin_will_require{
+            "id_deleting_your_pin_will_require"
+        }; // Deleting your PIN will require your mnemonic to log in in the future.
         const std::string id_denomination{ "id_denomination" }; // Denomination
         const std::string id_deposit{ "id_deposit" }; // Deposit
         const std::string id_displays_the_progress_of_spv{
@@ -141,6 +141,9 @@ namespace sdk {
         const std::string id_enable_touch_id{ "id_enable_touch_id" }; // Enable Touch ID
         const std::string id_enabled_1s{ "id_enabled_1s" }; // Enabled: %1$s
         const std::string id_enter{ "id_enter" }; // Enter
+        const std::string id_enter_a_pgp_public_key_to_have{
+            "id_enter_a_pgp_public_key_to_have"
+        }; // Enter a PGP public key to have emails encrypted for better privacy.
         const std::string id_enter_a_valid_onion_or_ip{
             "id_enter_a_valid_onion_or_ip"
         }; // Enter a valid .onion or IP address (.onion preferred)
@@ -162,6 +165,9 @@ namespace sdk {
             "id_error_nfc_tag_not_writable"
         }; // Error: NFC tag not writable
         const std::string id_error_nfc_tag_too_small{ "id_error_nfc_tag_too_small" }; // Error: NFC tag too small
+        const std::string id_estimated_blocks_until{
+            "id_estimated_blocks_until"
+        }; // Estimated blocks until confirmation: %d
         const std::string id_example_89014283334011612858333{
             "id_example_89014283334011612858333"
         }; // Example: 8.90.14.2:8333,40.116.12.85:8333
@@ -220,6 +226,7 @@ namespace sdk {
         const std::string id_invalid_network_configuration{
             "id_invalid_network_configuration"
         }; // Invalid network configuration
+        const std::string id_invalid_pgp_key{ "id_invalid_pgp_key" }; // Invalid PGP key
         const std::string id_invalid_phone_number_format{
             "id_invalid_phone_number_format"
         }; // Invalid phone number format
@@ -306,6 +313,7 @@ namespace sdk {
         }; // Outdated hardware wallet firmware. Please upgrade to the latest firmware from your desktop.
         const std::string id_outgoing{ "id_outgoing" }; // Outgoing
         const std::string id_password{ "id_password" }; // Password
+        const std::string id_pgp_key{ "id_pgp_key" }; // PGP Key
         const std::string id_phone_call{ "id_phone_call" }; // Phone call
         const std::string id_phone_number{ "id_phone_number" }; // phone number
         const std::string id_pin{ "id_pin" }; // PIN
@@ -328,9 +336,6 @@ namespace sdk {
         const std::string id_please_provide_your_1s_code{
             "id_please_provide_your_1s_code"
         }; // Please provide your %1$s code.
-        const std::string id_please_provide_your_btchip_pin{
-            "id_please_provide_your_btchip_pin"
-        }; // Please provide your BTChip PIN:
         const std::string id_please_provide_your_passphrase{
             "id_please_provide_your_passphrase"
         }; // Please provide your passphrase:
@@ -415,6 +420,7 @@ namespace sdk {
             "id_set_up_twofactor_authentication"
         }; // Set up Two-Factor Authentication
         const std::string id_set_watchonly{ "id_set_watchonly" }; // Set Watch-Only
+        const std::string id_setting_updated{ "id_setting_updated" }; // Setting updated
         const std::string id_settings{ "id_settings" }; // Settings
         const std::string id_share{ "id_share" }; // Share
         const std::string id_share_address{ "id_share_address" }; // Share Address
@@ -437,6 +443,7 @@ namespace sdk {
         }; // SPV is always synchronized on non mobile networks like WiFi or Ethernet. This setting also synchronizes
            // when using mobile data. This can be expensive depending on your data plan so take care when enabling.
         const std::string id_spv_notifications{ "id_spv_notifications" }; // SPV notifications
+        const std::string id_spv_synchronization{ "id_spv_synchronization" }; // SPV Synchronization
         const std::string id_sweep{ "id_sweep" }; // Sweep
         const std::string id_sweep_from_paper_wallet{ "id_sweep_from_paper_wallet" }; // Sweep From Paper Wallet
         const std::string id_synchronize_spv_on_mobile{ "id_synchronize_spv_on_mobile" }; // Synchronize SPV on mobile
@@ -490,7 +497,7 @@ namespace sdk {
         const std::string id_unable_to_contact_the_green{
             "id_unable_to_contact_the_green"
         }; // Unable to contact the Green service. Please check your network connection and wait to be reconnected.
-        const std::string id_unconfirmed{ "id_unconfirmed" }; // unconfirmed
+        const std::string id_unconfirmed{ "id_unconfirmed" }; // Unconfirmed
         const std::string id_unknown_bip21_parameter{ "id_unknown_bip21_parameter" }; // Unknown bip21 parameter
         const std::string id_unknown_custom{ "id_unknown_custom" }; // Unknown (Custom)
         const std::string id_updated{ "id_updated" }; // updated
@@ -530,9 +537,6 @@ namespace sdk {
         const std::string id_watchonly_disabled{ "id_watchonly_disabled" }; // Watch-Only disabled
         const std::string id_watchonly_login{ "id_watchonly_login" }; // Watch-Only Login
         const std::string id_welcome{ "id_welcome" }; // Welcome
-        const std::string id_will_confirm_after_blocks{
-            "id_will_confirm_after_blocks"
-        }; // Will confirm after blocks (estimated): %1$d
         const std::string id_write_down_the_words{ "id_write_down_the_words" }; // Write down the words
         const std::string id_write_down_your_mnemonic_words{
             "id_write_down_your_mnemonic_words"
