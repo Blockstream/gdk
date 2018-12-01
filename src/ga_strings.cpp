@@ -239,6 +239,7 @@ namespace sdk {
         const std::string id_invalid_pin_you_have_1d{
             "id_invalid_pin_you_have_1d"
         }; // Invalid PIN, you have %1$d attempts left
+        const std::string id_invalid_private_key{ "id_invalid_private_key" }; // Invalid private key
         const std::string id_invalid_replacement_fee_rate{
             "id_invalid_replacement_fee_rate"
         }; // Invalid replacement fee rate

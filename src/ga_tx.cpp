@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "boost_wrapper.hpp"
+#include "exception.hpp"
 #include "ga_strings.hpp"
 #include "logging.hpp"
 #include "session.hpp"
@@ -315,7 +316,10 @@ namespace sdk {
                     try {
                         utxos = session.get_unspent_outputs_for_private_key(
                             result["private_key"], json_get_value(result, "passphrase"), 0);
-                    } catch (const std::exception&) {
+                    } catch (const assertion_error& ex) {
+                        set_tx_error(result, res::id_invalid_private_key); // Invalid private key
+                    } catch (const std::exception& ex) {
+                        GDK_LOG_SEV(log_level::error) << "Exception getting outputs for private key: " << ex.what();
                     }
                     result["utxos"] = utxos;
                     if (utxos.empty())

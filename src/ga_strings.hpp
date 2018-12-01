@@ -154,6 +154,7 @@ namespace sdk {
         extern const std::string id_invalid_pin_remaining_attempts;
         extern const std::string id_invalid_pin_you_dont_have_any;
         extern const std::string id_invalid_pin_you_have_1d;
+        extern const std::string id_invalid_private_key;
         extern const std::string id_invalid_replacement_fee_rate;
         extern const std::string id_invalid_twofactor_code;
         extern const std::string id_invalid_url;
