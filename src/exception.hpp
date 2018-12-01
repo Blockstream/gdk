@@ -38,6 +38,14 @@ namespace sdk {
         }
     };
 
+    class assertion_error : public std::runtime_error {
+    public:
+        assertion_error(const std::string& what)
+            : std::runtime_error(what)
+        {
+        }
+    };
+
     class user_error : public std::runtime_error {
     public:
         user_error(const std::string& what)

@@ -54,6 +54,9 @@ namespace sdk {
                 log_exception("call error:", e);
             }
             throw;
+        } catch (const assertion_error& e) {
+            // Already logged by the assertion that failed
+            throw;
         } catch (const user_error& e) {
             log_exception("user error:", e);
             throw;

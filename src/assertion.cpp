@@ -1,6 +1,7 @@
 #include <stdexcept>
 
 #include "assertion.hpp"
+#include "exception.hpp"
 #include "logging.hpp"
 
 namespace ga {
@@ -12,7 +13,7 @@ namespace sdk {
             const std::string msg
                 = std::string("assertion failure: ") + file + ":" + func + ":" + line + ":" + error_message;
             GDK_LOG_SEV(log_level::error) << msg;
-            throw std::runtime_error(msg);
+            throw assertion_error(msg);
         }
     }
 } // namespace sdk
