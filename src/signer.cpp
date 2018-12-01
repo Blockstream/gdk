@@ -35,6 +35,48 @@ namespace sdk {
     } // namespace
 
     //
+    // Watch-only signer
+    //
+    watch_only_signer::watch_only_signer(const network_parameters& net_params)
+        : signer(net_params)
+    {
+    }
+
+    watch_only_signer::~watch_only_signer() {}
+
+    // Watch-only can only sign sweep txs, which are low r
+    bool watch_only_signer::supports_low_r() const { return true; }
+    bool watch_only_signer::supports_arbitrary_scripts() const { return true; };
+
+    std::string watch_only_signer::get_challenge()
+    {
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
+    xpub_t watch_only_signer::get_xpub(gsl::span<const uint32_t> path)
+    {
+        (void)path;
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
+    std::string watch_only_signer::get_bip32_xpub(gsl::span<const uint32_t> path)
+    {
+        (void)path;
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
+    ecdsa_sig_t watch_only_signer::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
+    {
+        (void)path;
+        (void)hash;
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
+    //
     // Software signer
     //
     software_signer::software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub)

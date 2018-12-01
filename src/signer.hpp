@@ -49,6 +49,30 @@ namespace sdk {
     };
 
     //
+    // Watch-only signer for watch-only sessions
+    //
+    class watch_only_signer final : public signer {
+    public:
+        watch_only_signer(const network_parameters& net_params);
+
+        watch_only_signer(const watch_only_signer&) = delete;
+        watch_only_signer& operator=(const watch_only_signer&) = delete;
+        watch_only_signer(watch_only_signer&&) = delete;
+        watch_only_signer& operator=(watch_only_signer&&) = delete;
+        ~watch_only_signer() override;
+
+        bool supports_low_r() const override;
+        bool supports_arbitrary_scripts() const override;
+
+        std::string get_challenge() override;
+
+        xpub_t get_xpub(gsl::span<const uint32_t> path = empty_span<uint32_t>()) override;
+        std::string get_bip32_xpub(gsl::span<const uint32_t> path) override;
+
+        ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) override;
+    };
+
+    //
     // A signer that signs using a private key held in memory
     //
     class software_signer final : public signer {

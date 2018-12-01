@@ -415,7 +415,7 @@ namespace sdk {
 
         const auto challenge_hash = uint256_to_base256(challenge);
 
-        return { sig_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
+        return { sig_to_der_hex(get_signer().sign_hash(path, challenge_hash)), b2h(path_bytes) };
     }
 
     nlohmann::json ga_session::set_fee_estimates(ga_session::locker_t& locker, const nlohmann::json& fee_estimates)
@@ -861,7 +861,7 @@ namespace sdk {
         nlohmann::json login_data;
         {
             unique_unlock unlocker(locker);
-            const auto& user_agent = m_signer->supports_arbitrary_scripts() ? USER_AGENT : USER_AGENT_NO_CSV;
+            const auto& user_agent = get_signer().supports_arbitrary_scripts() ? USER_AGENT : USER_AGENT_NO_CSV;
             wamp_call([&login_data](wamp_call_result result) { login_data = get_json_result(result.get()); },
                 "com.greenaddress.login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
         }
@@ -914,16 +914,16 @@ namespace sdk {
         m_signer = std::make_unique<software_signer>(m_net_params, mnemonic);
 
         // Create our local user keys repository
-        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, m_signer->get_xpub());
+        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, get_signer().get_xpub());
 
         // Cache local encryption password
-        const auto pwd_xpub = m_signer->get_xpub(PASSWORD_PATH);
+        const auto pwd_xpub = get_signer().get_xpub(PASSWORD_PATH);
         const auto local_password = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
         m_local_encryption_password.assign(std::begin(local_password), std::end(local_password));
 
         // TODO: Unify normal and trezor logins
         std::string challenge;
-        const auto challenge_arg = m_signer->get_challenge();
+        const auto challenge_arg = get_signer().get_challenge();
         {
             unique_unlock unlocker(locker);
             wamp_call([&challenge](wamp_call_result result) { challenge = result.get().argument<std::string>(0); },
@@ -1026,6 +1026,7 @@ namespace sdk {
         }
         locker_t locker(m_mutex);
         constexpr bool watch_only = true;
+        m_signer = std::make_unique<watch_only_signer>(m_net_params);
         update_login_data(locker, login_data, watch_only);
     }
 
@@ -1106,7 +1107,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(message == m_system_message_ack);
 
         const auto hash = format_bitcoin_message_hash(ustring_span(info.first));
-        const auto sig_der_hex = sig_to_der_hex(m_signer->sign_hash(info.second, hash));
+        const auto sig_der_hex = sig_to_der_hex(get_signer().sign_hash(info.second, hash));
 
         ack_system_message(locker, info.first, sig_der_hex);
     }
@@ -1248,7 +1249,7 @@ namespace sdk {
             // Add user and recovery pubkeys for the subaccount
             if (m_user_pubkeys.get() && !m_user_pubkeys->have_subaccount(subaccount)) {
                 const uint32_t path[2] = { harden(3), harden(subaccount) };
-                m_user_pubkeys->add_subaccount(subaccount, m_signer->get_xpub(path));
+                m_user_pubkeys->add_subaccount(subaccount, get_signer().get_xpub(path));
             }
 
             if (m_recovery_pubkeys.get() && !recovery_chain_code.empty()) {
@@ -1271,7 +1272,7 @@ namespace sdk {
     {
         const uint32_t subaccount = get_next_subaccount();
         const uint32_t path[2] = { harden(3), harden(subaccount) };
-        const auto xpub = m_signer->get_xpub(path); // Note doesnt need a lock
+        const auto xpub = get_signer().get_xpub(path); // Note doesnt need a lock
         return create_subaccount(details, subaccount, xpub);
     }
 
@@ -2127,7 +2128,7 @@ namespace sdk {
     // Post-login idempotent
     signer& ga_session::get_signer()
     {
-        GDK_RUNTIME_ASSERT_MSG(m_signer.get() != nullptr, "Cannot sign in watch-only mode");
+        GDK_RUNTIME_ASSERT(m_signer.get() != nullptr);
         return *m_signer;
     };
 
