@@ -427,17 +427,23 @@ namespace sdk {
                     addr_types.insert(addr_type.get<std::string>());
 
                     const script_type utxo_script_type = input.at("script_type");
-                    if (utxo_script_type != script_type::p2sh_p2wsh_fortified_out
-                        && utxo_script_type != script_type::p2sh_p2wsh_csv_fortified_out) {
+                    switch (utxo_script_type) {
+                    case script_type::p2sh_p2wsh_csv_fortified_out:
+                    case script_type::redeem_p2sh_p2wsh_csv_fortified:
+                    case script_type::p2sh_p2wsh_fortified_out:
+                    case script_type::redeem_p2sh_p2wsh_fortified:
+                        // Segwit script type, nothing to do
+                        break;
+                    default:
                         // Not a segwit script type, so fetch the previous tx
                         const std::string txhash = input.at("txhash");
                         if (prev_txs.find(txhash) == prev_txs.end()) {
-                            prev_txs[txhash] = session.get_transaction_details(txhash)["transaction"];
+                            prev_txs.emplace(txhash, session.get_transaction_details(txhash).at("transaction"));
                         }
                     }
                 }
                 if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
-                    // FIXME: Use the software signer to sign sweep txs
+                    // TODO: Support mixed/batched sweep transactions with non-sweep inputs
                     GDK_RUNTIME_ASSERT(false);
                 }
                 m_twofactor_data["signing_address_types"]
