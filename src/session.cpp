@@ -487,6 +487,12 @@ namespace sdk {
         return m_impl->get_min_fee_rate(); // Note no exception_wrapper
     }
 
+    amount session::get_default_fee_rate() const
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return m_impl->get_default_fee_rate(); // Note no exception_wrapper
+    }
+
     bool session::have_subaccounts() const
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

@@ -452,6 +452,9 @@ namespace sdk {
                 }
             }
 
+            if (result.find("fee_rate") == result.end()) {
+                result["fee_rate"] = session.get_default_fee_rate().value();
+            }
             const amount dust_threshold = session.get_dust_threshold();
             const amount user_fee_rate = amount(result.at("fee_rate"));
             const amount min_fee_rate = session.get_min_fee_rate();

@@ -147,6 +147,7 @@ namespace sdk {
         nlohmann::json decrypt(const nlohmann::json& input_json) const;
 
         amount get_min_fee_rate() const;
+        amount get_default_fee_rate() const;
         uint32_t get_block_height() const;
         bool have_subaccounts() const;
         amount get_dust_threshold() const;

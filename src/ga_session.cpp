@@ -647,6 +647,18 @@ namespace sdk {
         return amount(m_min_fee_rate);
     }
 
+    amount ga_session::get_default_fee_rate() const
+    {
+        locker_t locker(m_mutex);
+        const auto appearance_p = m_login_data.find("appearance");
+        uint32_t block = 0;
+        if (appearance_p != m_login_data.end()) {
+            block = json_get_value(*appearance_p, "required_num_blocks", 0);
+            GDK_RUNTIME_ASSERT(block < NUM_FEE_ESTIMATES);
+        }
+        return amount(m_fee_estimates[block]);
+    }
+
     uint32_t ga_session::get_block_height() const
     {
         locker_t locker(m_mutex);

@@ -123,6 +123,7 @@ namespace sdk {
         nlohmann::json decrypt(const nlohmann::json& input_json);
 
         amount get_min_fee_rate() const;
+        amount get_default_fee_rate() const;
         bool have_subaccounts() const;
         uint32_t get_block_height() const;
         amount get_dust_threshold() const;
