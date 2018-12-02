@@ -458,7 +458,7 @@ namespace sdk {
             const amount old_fee = amount(json_get_value(result, "old_fee", 0u));
             const amount network_fee = amount(json_get_value(result, "network_fee", 0u));
 
-            bool force_add_uxto = false;
+            bool force_add_utxo = false;
 
             const size_t max_loop_iterations = utxos.size() * 2 + 1; // +1 in case empty+send all
             size_t loop_iterations;
@@ -488,10 +488,10 @@ namespace sdk {
                 }
 
                 required_with_fee = required_total + fee;
-                if (total < required_with_fee || force_add_uxto) {
+                if (total < required_with_fee || force_add_utxo) {
                     // We don't have enough funds to cover the fee yet, or we
                     // need to add more to avoid a dusty change output
-                    force_add_uxto = false;
+                    force_add_utxo = false;
                     if (manual_selection || used_utxos.size() == utxos.size()) {
                         // Used all inputs and do not have enough funds
                         set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
@@ -530,7 +530,7 @@ namespace sdk {
                 // (cost vs privacy), which isn't exposed yet, and besides, a
                 // better UTXO selection algorithm should prevent this rare case.
                 if (have_change_output) {
-                    force_add_uxto = true;
+                    force_add_utxo = true;
                     continue;
                 }
 
