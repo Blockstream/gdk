@@ -405,7 +405,8 @@ namespace sdk {
 
             if (is_rbf) {
                 // Add all the old utxos. Note we don't add them to used_utxos
-                // since the user can't choose to remove them
+                // since the user can't choose to remove them, and we won't
+                // randomise them in the final transaction
                 for (auto& utxo : result.at("old_used_utxos")) {
                     v = add_utxo(session, tx, utxo);
                     available_total += v;
@@ -558,6 +559,24 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(false);
             }
 
+            if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
+                // Randomise any newly added UTXOs
+                std::vector<uint32_t> unshuffled_utxos(used_utxos.begin(), used_utxos.end());
+                std::shuffle(used_utxos.begin(), used_utxos.end(), uniform_uint32_rng());
+
+                // Update inputs in our created transaction to match the new random order
+                std::map<uint32_t, size_t> new_position_of;
+                for (size_t i = 0; i < used_utxos.size(); ++i) {
+                    new_position_of.emplace(used_utxos[i], i);
+                }
+                wally_tx_input* in_p = tx->inputs + (tx->num_inputs - used_utxos.size());
+                std::vector<wally_tx_input> reordered_inputs(used_utxos.size());
+                for (size_t i = 0; i < unshuffled_utxos.size(); ++i) {
+                    const size_t new_position = new_position_of[unshuffled_utxos[i]];
+                    reordered_inputs[new_position] = in_p[i];
+                }
+                std::copy(reordered_inputs.begin(), reordered_inputs.end(), in_p);
+            }
             result["used_utxos"] = used_utxos;
             result["have_change"] = have_change_output;
             result["satoshi"] = required_total.value();

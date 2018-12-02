@@ -15,15 +15,40 @@ namespace ga {
 namespace sdk {
     void get_random_bytes(std::size_t num_bytes, void* output_bytes, std::size_t siz);
 
-    // Return a uint32_t in the range 0 to (upper_bound - 1) without bias
-    uint32_t get_uniform_uint32_t(uint32_t upper_bound);
-
     template <std::size_t N> std::array<unsigned char, N> get_random_bytes()
     {
         std::array<unsigned char, N> buff{ { 0 } };
         get_random_bytes(N, buff.data(), buff.size());
         return buff;
     }
+
+    // Return a uint32_t in the range 0 to (upper_bound - 1) without bias
+    uint32_t get_uniform_uint32_t(uint32_t upper_bound);
+
+    // STL compatible RNG returning uniform uint32_t's
+    struct uniform_uint32_rng {
+        uniform_uint32_rng()
+            : m_index(m_entropy.size() - 1u)
+        {
+        }
+
+        using result_type = uint32_t;
+        constexpr static result_type min() { return std::numeric_limits<result_type>::min(); }
+        constexpr static result_type max() { return std::numeric_limits<result_type>::max(); }
+        result_type operator()()
+        {
+            if (++m_index == m_entropy.size()) {
+                m_index = 0;
+                const size_t num_bytes = m_entropy.size() * sizeof(result_type);
+                get_random_bytes(num_bytes, m_entropy.data(), num_bytes);
+            }
+            return m_entropy[m_index];
+        }
+
+    private:
+        std::array<result_type, 8> m_entropy;
+        size_t m_index;
+    };
 
     template <typename InputIt, typename OutputIt, typename BinaryOperation>
     void adjacent_transform(InputIt first, InputIt last, OutputIt d_first, BinaryOperation binary_op)

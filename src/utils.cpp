@@ -159,10 +159,10 @@ namespace sdk {
     uint32_t get_uniform_uint32_t(uint32_t upper_bound)
     {
         // Algorithm from the PCG family of random generators
+        uniform_uint32_rng rng;
         const uint32_t lower_threshold = -upper_bound % upper_bound;
         while (true) {
-            uint32_t v;
-            get_random_bytes(sizeof(v), &v, sizeof(v));
+            uint32_t v = rng();
             if (v >= lower_threshold) {
                 return v % upper_bound;
             }
