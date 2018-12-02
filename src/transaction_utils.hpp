@@ -42,7 +42,7 @@ namespace sdk {
         const network_parameters& net_params, byte_span_t script, const std::string& addr_type);
 
     std::vector<unsigned char> output_script(ga_pubkeys& pubkeys, ga_user_pubkeys& user_pubkeys,
-        ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& data);
+        ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
     // Make a multisig scriptSig
     std::vector<unsigned char> input_script(signer& user_signer, const std::vector<unsigned char>& prevout_script,

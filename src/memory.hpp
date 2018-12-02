@@ -29,7 +29,7 @@ namespace sdk {
     }
 
     // Make an empty byte span
-    template <typename T = unsigned char> inline auto empty_span() { return gsl::make_span<const T>(nullptr, 0); }
+    template <typename T = unsigned char> inline auto empty_span() { return gsl::make_span<const T>(nullptr, nullptr); }
 } // namespace sdk
 } // namespace ga
 

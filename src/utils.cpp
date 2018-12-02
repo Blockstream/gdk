@@ -169,6 +169,16 @@ namespace sdk {
         }
     }
 
+    uniform_uint32_rng::result_type uniform_uint32_rng::operator()()
+    {
+        if (++m_index == m_entropy.size()) {
+            m_index = 0;
+            const size_t num_bytes = m_entropy.size() * sizeof(result_type);
+            get_random_bytes(num_bytes, m_entropy.data(), num_bytes);
+        }
+        return m_entropy[m_index];
+    }
+
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password)
     {
         const auto entropy = bip39_mnemonic_to_bytes(encrypted_mnemonic);

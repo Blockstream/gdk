@@ -70,7 +70,7 @@ namespace sdk {
 
 #define GDK_LOG_NAMED_SCOPE(name)                                                                                      \
     BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), boost::log::trivial::info)                                             \
-        << __FILE__ << ':' << __LINE__ << ':' << name << ':' << __func__;
+        << __FILE__ << ':' << __LINE__ << ':' << (name) << ':' << __func__;
 
 #define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), ::ga::sdk::sev)
 
@@ -92,7 +92,11 @@ namespace sdk {
         }
 
         void set_channels(wlog::level l) { m_level = l; }
-        void clear_channels(wlog::level) { m_level = 0; }
+        void clear_channels(wlog::level l)
+        {
+            (void)l;
+            m_level = 0;
+        }
         void write(wlog::level l, const std::string& s)
         {
             if (dynamic_test(l)) {

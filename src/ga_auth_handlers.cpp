@@ -581,11 +581,13 @@ namespace sdk {
             m_session.set_email(data, m_twofactor_data);
             // Move to activate email
             return on_init_done("activate_");
-        } else if (m_action == "activate_email") {
+        }
+        if (m_action == "activate_email") {
             const std::string data = json_get_value(m_details, "data");
             m_session.activate_email(m_code);
             return state_type::done;
-        } else if (m_action == "enable_2fa") {
+        }
+        if (m_action == "enable_2fa") {
             if (m_method_to_update != "gauth") {
                 // gauth doesn't have an init_enable step
                 const std::string data = json_get_value(m_details, "data");
@@ -593,7 +595,8 @@ namespace sdk {
             }
             // Move to enable the 2fa method
             return on_init_done("enable_");
-        } else if (boost::algorithm::starts_with(m_action, "enable_")) {
+        }
+        if (boost::algorithm::starts_with(m_action, "enable_")) {
             // The user has authorized enabling 2fa (if required), so enable the
             // method using its code (which proves the user got a code from the
             // method being enabled)
@@ -622,9 +625,9 @@ namespace sdk {
             } else {
                 m_session.enable_twofactor(m_method_to_update, m_code);
             }
-
             return state_type::done;
-        } else if (m_action == "disable_2fa") {
+        }
+        if (m_action == "disable_2fa") {
             m_session.disable_twofactor(m_method_to_update, m_twofactor_data);
             // For gauth, we must reset the sessions 2fa data since once it is
             // disabled, the server must create a new secret (which it only
@@ -635,10 +638,9 @@ namespace sdk {
             const bool reset_cached = m_method_to_update == "gauth";
             m_result = m_session.get_twofactor_config(reset_cached).at(m_method_to_update);
             return state_type::done;
-        } else {
-            GDK_RUNTIME_ASSERT(false);
-            __builtin_unreachable();
         }
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
     }
 
     //

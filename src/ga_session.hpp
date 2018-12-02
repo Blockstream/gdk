@@ -74,7 +74,7 @@ namespace sdk {
 
         template <typename T>
         void change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data);
-        void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data);
+        void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
         nlohmann::json get_transactions(uint32_t subaccount, uint32_t page_id);
 
@@ -85,7 +85,7 @@ namespace sdk {
         uint32_t get_next_subaccount();
         nlohmann::json create_subaccount(const nlohmann::json& details);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const xpub_t& xpub);
-        nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type);
+        nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_balance(uint32_t subaccount, uint32_t num_confs);
         nlohmann::json get_available_currencies() const;
         nlohmann::json get_hw_device() const;
@@ -152,7 +152,7 @@ namespace sdk {
         bool have_subaccounts() const;
         amount get_dust_threshold() const;
         nlohmann::json get_spending_limits() const;
-        bool is_spending_limits_decrease(const nlohmann::json& limit_details);
+        bool is_spending_limits_decrease(const nlohmann::json& details);
         const network_parameters& get_network_parameters() const { return m_net_params; }
 
         signer& get_signer();
@@ -178,7 +178,7 @@ namespace sdk {
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
         void update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
-        void update_spending_limits(locker_t& locker, const nlohmann::json& details);
+        void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;
         nlohmann::json get_subaccount(locker_t& locker, uint32_t subaccount);
         nlohmann::json get_balance(locker_t& locker, uint32_t subaccount, uint32_t num_confs);

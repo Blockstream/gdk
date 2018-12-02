@@ -386,7 +386,7 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        if (m_notification_handler) {
+        if (m_notification_handler != nullptr) {
             call_notification_handler(locker, new nlohmann::json());
         }
         no_std_exception_escape([this] { m_session->leave().get(); });
@@ -598,14 +598,14 @@ namespace sdk {
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
         // Notify the caller of their settings
-        if (m_notification_handler) {
+        if (m_notification_handler != nullptr) {
             const auto settings = get_settings(locker);
             call_notification_handler(
                 locker, new nlohmann::json({ { "event", "settings" }, { "settings", settings } }));
         }
 
         // Notify the caller of 2fa reset status
-        if (m_notification_handler) {
+        if (m_notification_handler != nullptr) {
             const auto& days_remaining = login_data["reset_2fa_days_remaining"];
             const auto& disputed = login_data["reset_2fa_disputed"];
             nlohmann::json reset_status
@@ -803,7 +803,7 @@ namespace sdk {
         if (block_height > m_block_height) {
             m_block_height = block_height;
         }
-        if (m_notification_handler) {
+        if (m_notification_handler != nullptr) {
             details.erase("diverged_count");
             call_notification_handler(
                 locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
@@ -814,7 +814,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         // Note: notification recipient must destroy the passed JSON
-        if (m_notification_handler) {
+        if (m_notification_handler != nullptr) {
             auto sa = get_subaccount(locker, subaccount);
             call_notification_handler(locker, new nlohmann::json({ { "event", "subaccount" }, { "subaccount", sa } }));
         }
@@ -826,7 +826,7 @@ namespace sdk {
         auto new_estimates = set_fee_estimates(locker, details);
 
         // Note: notification recipient must destroy the passed JSON
-        if (m_notification_handler) {
+        if (m_notification_handler != nullptr) {
             call_notification_handler(locker, new nlohmann::json({ { "event", "fees" }, { "fees", new_estimates } }));
         }
     }
@@ -861,7 +861,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        if (m_signer.get() == nullptr) {
+        if (m_signer == nullptr) {
             GDK_LOG_SEV(log_level::debug) << "authenticate called for hardware device";
             // Logging in with a hardware wallet; create our proxy signer
             m_signer = std::make_unique<hardware_signer>(m_net_params, hw_device);
@@ -1351,11 +1351,11 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(r);
     }
 
-    void ga_session::change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)
+    void ga_session::change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        change_settings("tx_limits", as_messagepack(limit_details).get(), twofactor_data);
+        change_settings("tx_limits", as_messagepack(details).get(), twofactor_data);
         locker_t locker(m_mutex);
-        update_spending_limits(locker, limit_details);
+        update_spending_limits(locker, details);
     }
 
     void ga_session::change_settings_pricing_source(const std::string& currency, const std::string& exchange)
@@ -1634,7 +1634,7 @@ namespace sdk {
         wamp_call(
             [&utxos](wamp_call_result result) {
                 const auto r = result.get();
-                if (r.number_of_arguments()) {
+                if (r.number_of_arguments() != 0) {
                     utxos = get_json_result(r);
                 }
             },
@@ -1684,7 +1684,7 @@ namespace sdk {
         wamp_call(
             [&utxos](wamp_call_result result) {
                 const auto r = result.get();
-                if (r.number_of_arguments()) {
+                if (r.number_of_arguments() != 0) {
                     utxos = get_json_result(r);
                 }
             },
@@ -2140,30 +2140,30 @@ namespace sdk {
     // Post-login idempotent
     signer& ga_session::get_signer()
     {
-        GDK_RUNTIME_ASSERT(m_signer.get() != nullptr);
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
         return *m_signer;
     };
 
     // Post-login idempotent
     ga_pubkeys& ga_session::get_ga_pubkeys()
     {
-        GDK_RUNTIME_ASSERT(m_ga_pubkeys.get() != nullptr);
+        GDK_RUNTIME_ASSERT(m_ga_pubkeys != nullptr);
         return *m_ga_pubkeys;
     }
 
     // Post-login idempotent
     ga_user_pubkeys& ga_session::get_user_pubkeys()
     {
-        GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys.get() != nullptr, "Cannot derive keys in watch-only mode");
-        GDK_RUNTIME_ASSERT(m_user_pubkeys.get() != nullptr);
+        GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
+        GDK_RUNTIME_ASSERT(m_user_pubkeys != nullptr);
         return *m_user_pubkeys;
     }
 
     // Post-login idempotent
     ga_user_pubkeys& ga_session::get_recovery_pubkeys()
     {
-        GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys.get() != nullptr, "Cannot derive keys in watch-only mode");
-        GDK_RUNTIME_ASSERT(m_recovery_pubkeys.get() != nullptr);
+        GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
+        GDK_RUNTIME_ASSERT(m_recovery_pubkeys != nullptr);
         return *m_recovery_pubkeys;
     }
 

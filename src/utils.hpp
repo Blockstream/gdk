@@ -35,15 +35,7 @@ namespace sdk {
         using result_type = uint32_t;
         constexpr static result_type min() { return std::numeric_limits<result_type>::min(); }
         constexpr static result_type max() { return std::numeric_limits<result_type>::max(); }
-        result_type operator()()
-        {
-            if (++m_index == m_entropy.size()) {
-                m_index = 0;
-                const size_t num_bytes = m_entropy.size() * sizeof(result_type);
-                get_random_bytes(num_bytes, m_entropy.data(), num_bytes);
-            }
-            return m_entropy[m_index];
-        }
+        result_type operator()();
 
     private:
         std::array<result_type, 8> m_entropy;
@@ -60,7 +52,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json parse_bitcoin_uri(const std::string& s);
+    nlohmann::json parse_bitcoin_uri(const std::string& uri);
 
     // Mnemonic handling
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);

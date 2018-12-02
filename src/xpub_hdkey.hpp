@@ -75,7 +75,7 @@ namespace sdk {
         ga_pubkeys& operator=(const ga_pubkeys&) = default;
         ga_pubkeys(ga_pubkeys&&) = default;
         ga_pubkeys& operator=(ga_pubkeys&&) = default;
-        virtual ~ga_pubkeys() = default;
+        ~ga_pubkeys() override = default;
 
         // Return the path that must be used to deriving the gait_path xpub
         static std::array<uint32_t, 1> get_gait_generation_path();
@@ -108,7 +108,7 @@ namespace sdk {
         ga_user_pubkeys& operator=(const ga_user_pubkeys&) = default;
         ga_user_pubkeys(ga_user_pubkeys&&) = default;
         ga_user_pubkeys& operator=(ga_user_pubkeys&&) = default;
-        virtual ~ga_user_pubkeys() = default;
+        ~ga_user_pubkeys() override = default;
 
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
         static std::vector<uint32_t> get_subaccount_path(uint32_t subaccount);

@@ -74,7 +74,7 @@ namespace sdk {
         exception_wrapper([&] {
             std::unique_lock<std::mutex> l{ session_impl_mutex };
 
-            if (m_impl.get() != nullptr) {
+            if (m_impl != nullptr) {
                 if (m_impl->is_connected(name, proxy, use_tor)) {
                     return; // No-op
                 }
