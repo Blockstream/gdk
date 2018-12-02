@@ -53,15 +53,8 @@ test_clang:
     - ga
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --clang
-    - ./tools/format.sh && git diff --exit-code
-
-test_clang_tidy:
-  tags:
-    - ga
-  script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --clang-tidy-version=3.8 --clang
+    - ./tools/format.sh && git diff --exit-code
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
