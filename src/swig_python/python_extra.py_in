@@ -124,8 +124,8 @@ class Session(object):
     def remove_account(self):
         return Call(remove_account(self.session_obj))
 
-    def set_pin(self, mnemonic, pin, hw_device):
-        return json.loads(set_pin(self.session_obj, mnemonic, pin, hw_device))
+    def set_pin(self, mnemonic, pin, device_id):
+        return json.loads(set_pin(self.session_obj, mnemonic, pin, device_id))
 
     def set_current_subaccount(self, subaccount):
         return set_current_subaccount(self.session_obj, subaccount)
@@ -189,8 +189,8 @@ class Session(object):
     def get_system_message(self):
         return get_system_message(self.session_obj)
 
-    def ack_system_message(self, hw_device, message_text):
-        return Call(ack_system_message(self.session_obj, self._to_json(hw_device), message_text))
+    def ack_system_message(self, message_text):
+        return Call(ack_system_message(self.session_obj, message_text))
 
     def get_twofactor_config(self):
         return json.loads(get_twofactor_config(self.session_obj))
