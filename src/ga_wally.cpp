@@ -413,21 +413,6 @@ namespace sdk {
         return ret;
     }
 
-    // FIXME: move to wally?
-    namespace {
-        std::pair<byte_span_t, bool> wif_bytes_to_private_key_bytes(
-            const std::vector<unsigned char>& priv_key, unsigned char version)
-        {
-            GDK_RUNTIME_ASSERT(priv_key.size() == 33 || priv_key.size() == 34);
-            GDK_RUNTIME_ASSERT(priv_key[0] == version);
-            const bool compressed_pub_key = priv_key.size() == 34;
-            if (compressed_pub_key) {
-                GDK_RUNTIME_ASSERT(priv_key[33] == 0x01);
-            }
-            return { gsl::make_span(priv_key).subspan(1).first(EC_PRIVATE_KEY_LEN), compressed_pub_key };
-        }
-    } // namespace
-
     std::pair<std::vector<unsigned char>, bool> to_private_key_bytes(
         const std::string& priv_key, const std::string& passphrase, bool mainnet)
     {
@@ -442,20 +427,25 @@ namespace sdk {
             return { ret, compressed };
         }
 
-        GDK_RUNTIME_ASSERT(priv_key.size() == 51 || priv_key.size() == 52 || priv_key.size() == 58);
-
-        auto bytes = base58check_to_bytes(priv_key);
-        if (bytes.size() == 33 || bytes.size() == 34) {
+        // FIXME: Add wally constants for the WIF base58 lengths
+        if (priv_key.size() == 51u || priv_key.size() == 52u) {
             // WIF
-            const auto tmp = wif_bytes_to_private_key_bytes(bytes, mainnet ? 0x80 : 0xef);
-            return { std::vector<unsigned char>(tmp.first.cbegin(), tmp.first.cend()), tmp.second };
+            const bool compressed = priv_key.size() == 52u;
+            std::vector<unsigned char> priv_key_bytes(EC_PRIVATE_KEY_LEN);
+            GDK_VERIFY(wally_wif_to_bytes(priv_key.c_str(), mainnet ? 0x80 : 0xef,
+                compressed ? WALLY_WIF_FLAG_COMPRESSED : WALLY_WIF_FLAG_UNCOMPRESSED, priv_key_bytes.data(),
+                priv_key_bytes.size()));
+            return { priv_key_bytes, compressed };
         }
+
         // BIP38
+        GDK_RUNTIME_ASSERT(priv_key.size() == 58);
+        auto bytes = base58check_to_bytes(priv_key);
         const size_t flags = bip38_raw_get_flags(bytes);
-        const bool compressed_pub_key = (flags & BIP38_KEY_COMPRESSED) != 0;
+        const bool compressed = (flags & BIP38_KEY_COMPRESSED) != 0;
         return { bip38_raw_to_private_key(gsl::make_span(bytes), ustring_span(passphrase),
                      flags | (mainnet ? BIP38_KEY_MAINNET : BIP38_KEY_TESTNET)),
-            compressed_pub_key };
+            compressed };
     }
 
     //
