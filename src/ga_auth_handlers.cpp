@@ -72,7 +72,7 @@ namespace sdk {
             // Hardware action, so provide the caller with the device information
             m_hw_device = hw_device;
         }
-        if (!is_pre_login) {
+        if (!is_pre_login && !m_session.is_watch_only()) {
             m_methods = m_session.get_enabled_twofactor_methods();
         }
         m_state = m_methods.empty() ? state_type::make_call : state_type::request_code;
