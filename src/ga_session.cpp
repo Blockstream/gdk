@@ -1040,6 +1040,17 @@ namespace sdk {
         constexpr bool watch_only = true;
         m_signer = std::make_unique<watch_only_signer>(m_net_params);
         update_login_data(locker, login_data, watch_only);
+
+        const std::string receiving_id = m_login_data["receiving_id"];
+        std::vector<autobahn::wamp_subscription> subscriptions;
+
+        subscriptions.emplace_back(
+            subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+                locker_t notify_locker(m_mutex);
+                on_new_transaction(notify_locker, get_json_result(event));
+            }));
+
+        m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
     }
 
     void ga_session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
