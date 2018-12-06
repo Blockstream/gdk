@@ -421,6 +421,7 @@ namespace sdk {
                 const auto signing_inputs = get_ga_signing_inputs(tx_details);
                 std::set<std::string> addr_types;
                 nlohmann::json prev_txs;
+                bool need_prev_txs = false;
                 for (const auto& input : signing_inputs) {
                     const auto& addr_type = input.at("address_type");
                     GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
@@ -435,16 +436,21 @@ namespace sdk {
                         // Segwit script type, nothing to do
                         break;
                     default:
-                        // Not a segwit script type, so fetch the previous tx
-                        const std::string txhash = input.at("txhash");
-                        if (prev_txs.find(txhash) == prev_txs.end()) {
-                            prev_txs.emplace(txhash, session.get_transaction_details(txhash).at("transaction"));
-                        }
+                        // Not a segwit script type, so we need to fetch previous txs
+                        need_prev_txs = true;
                     }
                 }
                 if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
                     // TODO: Support mixed/batched sweep transactions with non-sweep inputs
                     GDK_RUNTIME_ASSERT(false);
+                }
+                if (need_prev_txs) {
+                    for (const auto& input : signing_inputs) {
+                        const std::string txhash = input.at("txhash");
+                        if (prev_txs.find(txhash) == prev_txs.end()) {
+                            prev_txs.emplace(txhash, session.get_transaction_details(txhash).at("transaction"));
+                        }
+                    }
                 }
                 m_twofactor_data["signing_address_types"]
                     = std::vector<std::string>(addr_types.begin(), addr_types.end());
