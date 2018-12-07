@@ -2119,13 +2119,15 @@ namespace sdk {
         const auto seed = bip39_mnemonic_to_seed(mnemonic);
 
         // Ask the server to create a new PIN identifier and PIN password
-        std::string pin_identifier;
-        wamp_call(
-            [&pin_identifier](wamp_call_result result) { pin_identifier = result.get().argument<std::string>(0); },
-            "com.greenaddress.pin.set_pin_login", pin, device_id);
+        std::string pin_info;
+        constexpr bool return_password = true;
+        wamp_call([&pin_info](wamp_call_result result) { pin_info = result.get().argument<std::string>(0); },
+            "com.greenaddress.pin.set_pin_login", pin, device_id, return_password);
 
-        // TODO: Get password from pin.set_pin_login when server is updated
-        const auto password = get_pin_password(pin, pin_identifier);
+        std::vector<std::string> id_and_password;
+        boost::algorithm::split(id_and_password, pin_info, boost::is_any_of(";"));
+        GDK_RUNTIME_ASSERT(id_and_password.size() == 2u);
+        const auto& password = id_and_password.back();
 
         // Encrypt the users mnemonic and seed using a key dervied from the
         // PIN password and a randomly generated salt.
@@ -2133,12 +2135,12 @@ namespace sdk {
         // old GreenBits installs.
         const auto salt = get_random_bytes<16>();
         const auto salt_b64 = websocketpp::base64_encode(salt.data(), salt.size());
-        const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt_b64));
+        const auto key = pbkdf2_hmac_sha512_256(ustring_span(password), ustring_span(salt_b64));
 
         // FIXME: secure string
         const std::string json = nlohmann::json({ { "mnemonic", mnemonic }, { "seed", b2h(seed) } }).dump();
 
-        return { { "pin_identifier", pin_identifier }, { "salt", salt_b64 },
+        return { { "pin_identifier", id_and_password.front() }, { "salt", salt_b64 },
             { "encrypted_data", aes_cbc_encrypt(key, json) } };
     }
 
