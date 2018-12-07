@@ -10,13 +10,13 @@ namespace ga {
 namespace sdk {
     namespace res {
 
-        extern const std::string id_1020_minutes;
-        extern const std::string id_1_hour;
+        extern const std::string id_1030_minutes;
         extern const std::string id_1d_2s_ago;
         extern const std::string id_1d_minutes;
         extern const std::string id_1s_blocks_left_2d;
         extern const std::string id_1s_twofactor_set_up;
         extern const std::string id_2_hours;
+        extern const std::string id_4_hours;
         extern const std::string id_5_seconds_minimum;
         extern const std::string id_a_new_transaction_has_just;
         extern const std::string id_accept;
@@ -53,8 +53,8 @@ namespace sdk {
         extern const std::string id_completed;
         extern const std::string id_confirmation;
         extern const std::string id_confirmation_in_12_blocks_2;
+        extern const std::string id_confirmation_in_24_blocks_4;
         extern const std::string id_confirmation_in_3_blocks_30;
-        extern const std::string id_confirmation_in_6_blocks_1_hour;
         extern const std::string id_congratulations;
         extern const std::string id_connecting_to_tor_onion_nodes;
         extern const std::string id_continue;

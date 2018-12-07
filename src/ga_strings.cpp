@@ -6,13 +6,13 @@ namespace ga {
 namespace sdk {
     namespace res {
 
-        const std::string id_1020_minutes{ "id_1020_minutes" }; // ~ 10-20 Minutes
-        const std::string id_1_hour{ "id_1_hour" }; // ~ 1 Hour
+        const std::string id_1030_minutes{ "id_1030_minutes" }; // ~ 10-30 Minutes
         const std::string id_1d_2s_ago{ "id_1d_2s_ago" }; // %1$d %2$s ago
         const std::string id_1d_minutes{ "id_1d_minutes" }; // %1$d minutes
         const std::string id_1s_blocks_left_2d{ "id_1s_blocks_left_2d" }; // %1$s blocks left %2$d
         const std::string id_1s_twofactor_set_up{ "id_1s_twofactor_set_up" }; // %1$s Two-Factor set up
         const std::string id_2_hours{ "id_2_hours" }; // ~ 2 Hours
+        const std::string id_4_hours{ "id_4_hours" }; // ~ 4 Hours
         const std::string id_5_seconds_minimum{ "id_5_seconds_minimum" }; // 5 seconds minimum
         const std::string id_a_new_transaction_has_just{
             "id_a_new_transaction_has_just"
@@ -67,12 +67,12 @@ namespace sdk {
         const std::string id_confirmation_in_12_blocks_2{
             "id_confirmation_in_12_blocks_2"
         }; // Confirmation in 12 blocks, 2 hours on average
+        const std::string id_confirmation_in_24_blocks_4{
+            "id_confirmation_in_24_blocks_4"
+        }; // Confirmation in 24 blocks, 4 hours on average
         const std::string id_confirmation_in_3_blocks_30{
             "id_confirmation_in_3_blocks_30"
         }; // Confirmation in 3 blocks, 30 minutes on average
-        const std::string id_confirmation_in_6_blocks_1_hour{
-            "id_confirmation_in_6_blocks_1_hour"
-        }; // Confirmation in 6 blocks, 1 hour on average
         const std::string id_congratulations{ "id_congratulations" }; // Congratulations!
         const std::string id_connecting_to_tor_onion_nodes{
             "id_connecting_to_tor_onion_nodes"

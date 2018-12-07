@@ -218,6 +218,30 @@ namespace sdk {
             }
             return total;
         }
+
+        // Make sure appearance settings match our expectations
+        static void cleanup_appearance_settings(const ga_session::locker_t& locker, nlohmann::json& appearance)
+        {
+            GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+            // Add any missing defaults
+            json_add_if_missing(appearance, "unit", std::string("BTC"), true);
+            json_add_if_missing(appearance, "replace_by_fee", true, true);
+            json_add_if_missing(appearance, "sound", false, true);
+            json_add_if_missing(appearance, "current_subaccount", 0u, true);
+            json_add_if_missing(appearance, "altimeout", 5u, true);
+
+            // Make sure the default block target is one of [3, 12, or 24]
+            uint32_t required_num_blocks = json_get_value(appearance, "required_num_blocks", 12u);
+            if (required_num_blocks > 12u) {
+                required_num_blocks = 24u;
+            } else if (required_num_blocks >= 6u) {
+                required_num_blocks = 12u;
+            } else {
+                required_num_blocks = 3u;
+            }
+            appearance["required_num_blocks"] = required_num_blocks;
+        }
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -585,16 +609,10 @@ namespace sdk {
         const auto p = m_login_data.find("limits");
         update_spending_limits(locker, p == m_login_data.end() ? nlohmann::json() : *p);
 
-        // Set defaults if this is wallet was created before the server provided them
         auto& appearance = m_login_data["appearance"];
-        json_add_if_missing(appearance, "unit", std::string("BTC"), true);
-        json_add_if_missing(appearance, "replace_by_fee", true, true);
-        json_add_if_missing(appearance, "sound", false, true);
-        json_add_if_missing(appearance, "current_subaccount", 0u, true);
-        json_add_if_missing(appearance, "required_num_blocks", 6u, true);
-        json_add_if_missing(appearance, "altimeout", 5u, true);
+        cleanup_appearance_settings(locker, appearance);
 
-        m_current_subaccount = appearance.at("current_subaccount");
+        m_current_subaccount = appearance["current_subaccount"];
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
         // Notify the caller of their settings
@@ -650,12 +668,8 @@ namespace sdk {
     amount ga_session::get_default_fee_rate() const
     {
         locker_t locker(m_mutex);
-        const auto appearance_p = m_login_data.find("appearance");
-        uint32_t block = 0;
-        if (appearance_p != m_login_data.end()) {
-            block = json_get_value(*appearance_p, "required_num_blocks", 0);
-            GDK_RUNTIME_ASSERT(block < NUM_FEE_ESTIMATES);
-        }
+        const uint32_t block = json_get_value(m_login_data["appearance"], "required_num_blocks", 0u);
+        GDK_RUNTIME_ASSERT(block < NUM_FEE_ESTIMATES);
         return amount(m_fee_estimates[block]);
     }
 
@@ -958,27 +972,25 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
+        auto& appearance = m_login_data["appearance"];
         nlohmann::json settings;
 
         // Re-map settings that are erroneously inside "appearance" to the top level
         // For historic reasons certain settings have been put under appearance and the server
         // still expects to find them there, but logically they don't belong there at all so
         // a more consistent scheme is presented via the gdk
-        const auto appearance_p = m_login_data.find("appearance");
-        if (appearance_p != m_login_data.end()) {
-            const auto remap_appearance_setting = [&](auto src, auto dst) {
-                const auto source_p = appearance_p->find(src);
-                if (source_p != appearance_p->end()) {
-                    settings[dst] = *source_p;
-                }
-            };
-            remap_appearance_setting("notifications_settings", "notifications");
-            remap_appearance_setting("unit", "unit");
-            remap_appearance_setting("pgp", "pgp");
-            remap_appearance_setting("sound", "sound");
-            remap_appearance_setting("altimeout", "altimeout");
-            remap_appearance_setting("required_num_blocks", "required_num_blocks");
-        }
+        const auto remap_appearance_setting = [&](auto src, auto dst) {
+            const auto source_p = appearance.find(src);
+            if (source_p != appearance.end()) {
+                settings[dst] = *source_p;
+            }
+        };
+        remap_appearance_setting("notifications_settings", "notifications");
+        remap_appearance_setting("unit", "unit");
+        remap_appearance_setting("pgp", "pgp");
+        remap_appearance_setting("sound", "sound");
+        remap_appearance_setting("altimeout", "altimeout");
+        remap_appearance_setting("required_num_blocks", "required_num_blocks");
 
         settings["pricing"]["currency"] = m_fiat_currency;
         settings["pricing"]["exchange"] = m_fiat_source;
@@ -990,11 +1002,13 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
+        auto& appearance = m_login_data["appearance"];
+
         // Remap appearance settings, see comment above in get_settings
         const auto remap_appearance_setting = [&](auto src, auto dst) {
             const auto source_p = settings.find(src);
             if (source_p != settings.end()) {
-                m_login_data["appearance"][dst] = *source_p;
+                appearance[dst] = *source_p;
             }
         };
         remap_appearance_setting("notifications", "notifications_settings");
@@ -1003,6 +1017,8 @@ namespace sdk {
         remap_appearance_setting("sound", "sound");
         remap_appearance_setting("altimeout", "altimeout");
         remap_appearance_setting("required_num_blocks", "required_num_blocks");
+
+        cleanup_appearance_settings(locker, appearance);
         push_appearance_to_server(locker);
 
         const auto pricing_p = settings.find("pricing");
