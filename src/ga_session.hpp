@@ -190,7 +190,7 @@ namespace sdk {
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
         void call_notification_handler(locker_t& locker, nlohmann::json* details);
 
-        void on_subaccount_changed(locker_t& locker, uint32_t subaccount);
+        void on_subaccount_changed(locker_t& locker);
         void on_new_transaction(locker_t& locker, nlohmann::json details);
         void on_new_block(locker_t& locker, nlohmann::json details);
         void on_new_fees(locker_t& locker, const nlohmann::json& details);

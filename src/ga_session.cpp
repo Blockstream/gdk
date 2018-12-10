@@ -633,7 +633,7 @@ namespace sdk {
         }
 
         // Notify the caller of the current subaccount
-        on_subaccount_changed(locker, m_current_subaccount);
+        on_subaccount_changed(locker);
 
         // Notify the caller of the current fees
         on_new_fees(locker, m_login_data["fee_estimates"]);
@@ -824,12 +824,12 @@ namespace sdk {
         }
     }
 
-    void ga_session::on_subaccount_changed(locker_t& locker, uint32_t subaccount)
+    void ga_session::on_subaccount_changed(locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         // Note: notification recipient must destroy the passed JSON
         if (m_notification_handler != nullptr) {
-            auto sa = get_subaccount(locker, subaccount);
+            auto sa = get_subaccount(locker, m_current_subaccount);
             call_notification_handler(locker, new nlohmann::json({ { "event", "subaccount" }, { "subaccount", sa } }));
         }
     }
@@ -1885,7 +1885,7 @@ namespace sdk {
         // receive a tx notification that affects it, and get the updated
         // balance notified automatically.
         m_current_subaccount = subaccount;
-        on_subaccount_changed(locker, subaccount);
+        on_subaccount_changed(locker);
     }
 
     const std::string& ga_session::get_default_address_type(locker_t& locker) const
