@@ -1936,8 +1936,14 @@ namespace sdk {
             nlohmann::json gauth_config
                 = { { "enabled", gauth_enabled }, { "confirmed", gauth_enabled }, { "data", gauth_data } };
 
-            nlohmann::json twofactor_config = { { "all_methods", ALL_2FA_METHODS }, { "email", email_config },
-                { "sms", sms_config }, { "phone", phone_config }, { "gauth", gauth_config } };
+            const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
+            const auto& disputed = m_login_data["reset_2fa_disputed"];
+            nlohmann::json reset_status
+                = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+
+            nlohmann::json twofactor_config
+                = { { "all_methods", ALL_2FA_METHODS }, { "email", email_config }, { "sms", sms_config },
+                      { "phone", phone_config }, { "gauth", gauth_config }, { "twofactor_reset", reset_status } };
             set_enabled_twofactor_methods(locker, twofactor_config);
             std::swap(m_twofactor_config, twofactor_config);
         }
