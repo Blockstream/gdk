@@ -100,6 +100,28 @@ namespace sdk {
             return amount(utxo.at("satoshi"));
         }
 
+        static void calculate_input_subtype(nlohmann::json& utxo, const wally_tx_ptr& tx, size_t i)
+        {
+            // Calculate the subtype of a tx input we wish to present as a utxo.
+            uint32_t subtype = 0;
+            if (utxo["address_type"] == address_type::csv) {
+                // CSV inputs use the CSV time as the subtype: fetch this from the
+                // redeem script in the inputs witness data. The user can change
+                // their CSV time at any time, so we must use the value that was
+                // originally used in the tx rather than the users current setting.
+                GDK_RUNTIME_ASSERT(i < tx->num_inputs);
+                const auto& witness = tx->inputs[i].witness;
+                GDK_RUNTIME_ASSERT(witness != nullptr);
+                GDK_RUNTIME_ASSERT(witness->num_items != 0);
+                // The redeem script is the last witness item
+                const auto& witness_item = witness->items[witness->num_items - 1];
+                GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
+                const auto redeem_script = gsl::make_span(witness_item.witness, witness_item.witness_len);
+                subtype = get_csv_blocks_from_csv_redeem_script(redeem_script);
+            }
+            utxo["subtype"] = subtype;
+        }
+
         // Check if a tx to bump is present, and if so add the details required to bump it
         static std::pair<bool, bool> check_bump_tx(
             session& session, nlohmann::json& result, uint32_t current_subaccount)
@@ -228,6 +250,7 @@ namespace sdk {
                         std::reverse(&tx->inputs[i].txhash[0], &tx->inputs[i].txhash[0] + WALLY_TXHASH_LEN);
                         utxo["txhash"] = b2h(tx->inputs[i].txhash);
                         utxo["pt_idx"] = tx->inputs[i].index;
+                        calculate_input_subtype(utxo, tx, i);
                         used_utxos_map.emplace(i, utxo);
                     }
                     GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx->num_inputs);

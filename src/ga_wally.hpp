@@ -118,6 +118,8 @@ namespace sdk {
     void scriptpubkey_csv_2of3_then_2_from_bytes(
         byte_span_t keys, uint32_t csv_blocks, std::vector<unsigned char>& out);
 
+    uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script);
+
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 
     std::vector<unsigned char> scriptpubkey_p2pkh_from_hash160(byte_span_t hash);

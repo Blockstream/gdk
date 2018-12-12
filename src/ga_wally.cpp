@@ -191,6 +191,37 @@ namespace sdk {
         out.resize(written);
     }
 
+    uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script)
+    {
+        GDK_RUNTIME_ASSERT(redeem_script.at(0) == OP_DEPTH);
+        GDK_RUNTIME_ASSERT(redeem_script.at(1) == OP_1SUB);
+        size_t csv_blocks_offset;
+        if (redeem_script.at(2) == OP_IF) {
+            // 2of2 redeem script, with csv_blocks at:
+            // OP_DEPTH OP_1SUB OP_IF <main_pubkey> OP_CHECKSIGVERIFY OP_ELSE <csv_blocks>
+            csv_blocks_offset = 39;
+        } else if (redeem_script.at(2) == OP_1SUB) {
+            // 2of3 redeem script, with csv_blocks at:
+            // OP_DEPTH OP_1SUB OP_1SUB OP_IF OP_2 <main_pubkey> OP_ELSE <csv_blocks>
+            csv_blocks_offset = 40;
+        } else {
+            GDK_RUNTIME_ASSERT_MSG(false, "Invalid CSV redeem script");
+            __builtin_unreachable();
+        }
+        // TODO: Move script integer parsing to wally and generalize
+        size_t len = redeem_script.at(csv_blocks_offset);
+        GDK_RUNTIME_ASSERT(len <= 4);
+        // Negative CSV blocks are not allowed
+        GDK_RUNTIME_ASSERT((redeem_script.at(csv_blocks_offset + len) & 0x80) == 0);
+
+        uint32_t csv_blocks = 0;
+        for (size_t i = 0; i < len; ++i) {
+            uint32_t b = redeem_script.at(csv_blocks_offset + 1 + i);
+            csv_blocks |= (b << (8 * i));
+        }
+        return csv_blocks;
+    }
+
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out)
     {
         GDK_RUNTIME_ASSERT(!out.empty());
