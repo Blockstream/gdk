@@ -487,7 +487,7 @@ namespace sdk {
 
             bool force_add_utxo = false;
 
-            const size_t max_loop_iterations = utxos.size() * 2 + 1; // +1 in case empty+send all
+            const size_t max_loop_iterations = std::max(size_t(8), utxos.size() * 2 + 1); // +1 in case empty+send all
             size_t loop_iterations;
 
             for (loop_iterations = 0; loop_iterations < max_loop_iterations; ++loop_iterations) {
