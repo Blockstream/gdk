@@ -36,6 +36,7 @@ namespace sdk {
             disconnect();
             throw reconnect_error();
         } catch (const login_error& e) {
+            on_failed_login();
             throw;
         } catch (const autobahn::network_error& e) {
             disconnect();
@@ -550,6 +551,13 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return m_impl->get_recovery_pubkeys(); // Note no exception_wrapper
+    }
+
+    void session::on_failed_login()
+    {
+        if (m_impl) {
+            m_impl->on_failed_login();
+        }
     }
 
 } // namespace sdk

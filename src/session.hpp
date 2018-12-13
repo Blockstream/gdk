@@ -139,6 +139,8 @@ namespace sdk {
     private:
         template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
 
+        void on_failed_login();
+
         GA_notification_handler m_notification_handler;
         void* m_notification_context;
 

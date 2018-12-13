@@ -931,6 +931,18 @@ namespace sdk {
         //#endif
     }
 
+    void ga_session::on_failed_login()
+    {
+        try {
+            locker_t locker(m_mutex);
+            m_signer.reset();
+            m_user_pubkeys.reset();
+            m_mnemonic.clear();
+            m_local_encryption_password.clear();
+        } catch (const std::exception& ex) {
+        }
+    }
+
     void ga_session::login(const std::string& mnemonic)
     {
         locker_t locker(m_mutex);
