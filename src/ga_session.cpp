@@ -2241,7 +2241,8 @@ namespace sdk {
             "com.greenaddress.vault.send_raw_tx", tx_hex, as_messagepack(twofactor_data).get(),
             as_messagepack(private_data).get(), return_tx);
 
-        {
+        amount::value_type decrease = tx_details.at("limit_decrease");
+        if (decrease != 0) {
             locker_t locker(m_mutex);
             update_spending_limits(locker, tx_details["limits"]);
         }
