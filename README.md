@@ -150,3 +150,17 @@ Use clang-analyzer (it'll analyze GDK and its direct dependencies)
 Use tools/upgrade_deps.sh, for example to upgrade wally
 
 * ./tools/upgrade_deps.sh -l libwally-core -s 987575025520d18bac31e6e2d27c8c936d812c64 -u https://github.com/ElementsProject/libwally-core/archive/987575025520d18bac31e6e2d27c8c936d812c64.tar.gz
+
+### Java and Python wrappers
+
+Java and Python wrappers are available if [SWIG](http://www.swig.org/) is installed.
+
+If JAVA_HOME is set while the library is built, a Java wrapper is built exposing the API.
+
+Similarly, if PYTHON_VERSION is set to 2.x, e.g. 2.7, a Python wrapper is built. Python 3
+has not been tested with the wrapper at this time and should be considered experimental.
+
+### Swift wrapper
+
+A swift wrapper is available at ./src/swift/GreenAddress/Sources/GreenAddress/GreenAddress.swift.
+Note that this wrapper is currently under development and may change at any time.
