@@ -64,6 +64,7 @@ namespace sdk {
     boost::log::sources::logger_mt& websocket_boost_logger::m_log = gdk_logger::get();
 
     namespace {
+        static const std::string SOCKS5("socks5://");
         static const std::string USER_AGENT("[v2,sw,csv]");
         static const std::string USER_AGENT_NO_CSV("[v2,sw]");
         // TODO: The server should return these
@@ -242,6 +243,15 @@ namespace sdk {
             }
             appearance["required_num_blocks"] = required_num_blocks;
         }
+
+        static std::string socksify(const std::string& proxy)
+        {
+            const std::string trimmed = boost::algorithm::trim_copy(proxy);
+            if (!boost::algorithm::starts_with(trimmed, SOCKS5)) {
+                return SOCKS5 + trimmed;
+            }
+            return trimmed;
+        }
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -265,7 +275,7 @@ namespace sdk {
 
     ga_session::ga_session(const network_parameters& net_params, const std::string& proxy, bool use_tor, bool debug)
         : m_net_params(net_params)
-        , m_proxy(proxy)
+        , m_proxy(socksify(proxy))
         , m_use_tor(use_tor)
         , m_io(new boost::asio::io_context)
         , m_controller(*m_io)
@@ -299,7 +309,7 @@ namespace sdk {
     bool ga_session::is_connected(const std::string& name, const std::string& proxy, bool use_tor)
     {
         locker_t locker(m_mutex);
-        return proxy == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
+        return socksify(proxy) == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
     }
 
     void ga_session::unsubscribe()
