@@ -420,7 +420,7 @@ namespace sdk {
 
     void ga_session::reset()
     {
-        m_mnemonic.clear(); // FIXME: securely clear
+        on_failed_login();
         unsubscribe();
         disconnect();
         // FIXME: securely destroy all held data
