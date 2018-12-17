@@ -60,7 +60,7 @@ namespace sdk {
         const std::string id_choose{ "id_choose" }; // Choose
         const std::string id_choose_twofactor_authentication{
             "id_choose_twofactor_authentication"
-        }; // Choose Two-Factor Authentication method
+        }; // Choose Two-Factor authentication method
         const std::string id_clear{ "id_clear" }; // CLEAR
         const std::string id_completed{ "id_completed" }; // Completed
         const std::string id_confirmation{ "id_confirmation" }; // Confirmation
@@ -74,6 +74,8 @@ namespace sdk {
             "id_confirmation_in_3_blocks_30"
         }; // Confirmation in 3 blocks, 30 minutes on average
         const std::string id_congratulations{ "id_congratulations" }; // Congratulations!
+        const std::string id_connect_through_a_proxy{ "id_connect_through_a_proxy" }; // Connect through a proxy
+        const std::string id_connect_with_tor{ "id_connect_with_tor" }; // Connect with Tor
         const std::string id_connecting_to_tor_onion_nodes{
             "id_connecting_to_tor_onion_nodes"
         }; // Connecting to Tor (.onion) nodes allows maximum privacy and security. Press "OK" to continue.
@@ -82,7 +84,7 @@ namespace sdk {
         const std::string id_create{ "id_create" }; // Create
         const std::string id_create_a_pin_to_access_your{
             "id_create_a_pin_to_access_your"
-        }; // Create a PIN to access your wallet.
+        }; // Create a PIN to access your wallet
         const std::string id_create_wallet{ "id_create_wallet" }; // Create Wallet
         const std::string id_currency{ "id_currency" }; // Currency
         const std::string id_custom{ "id_custom" }; // Custom
@@ -102,14 +104,10 @@ namespace sdk {
         const std::string id_default_transaction_priority{
             "id_default_transaction_priority"
         }; // Default transaction priority
-        const std::string id_delete_pin{ "id_delete_pin" }; // Delete PIN
         const std::string id_deleting_your_pin_will_remove{
             "id_deleting_your_pin_will_remove"
         }; // Deleting your PIN will remove wallet access permanently unless you have your mnemonic available. Press
            // "OK" to continue.
-        const std::string id_deleting_your_pin_will_require{
-            "id_deleting_your_pin_will_require"
-        }; // Deleting your PIN will require your mnemonic to log in in the future.
         const std::string id_denomination{ "id_denomination" }; // Denomination
         const std::string id_deposit{ "id_deposit" }; // Deposit
         const std::string id_displays_the_progress_of_spv{
@@ -133,11 +131,7 @@ namespace sdk {
             "id_enable_custom_networks_debug"
         }; // Enable custom networks debug options
         const std::string id_enable_face_id{ "id_enable_face_id" }; // Enable Face ID
-        const std::string id_enable_nlocktime_recovery_emails{
-            "id_enable_nlocktime_recovery_emails"
-        }; // Enable nLocktime recovery emails
         const std::string id_enable_spv{ "id_enable_spv" }; // Enable SPV
-        const std::string id_enable_tor{ "id_enable_tor" }; // Enable Tor
         const std::string id_enable_touch_id{ "id_enable_touch_id" }; // Enable Touch ID
         const std::string id_enabled_1s{ "id_enabled_1s" }; // Enabled: %1$s
         const std::string id_enter{ "id_enter" }; // Enter
@@ -148,10 +142,12 @@ namespace sdk {
             "id_enter_a_valid_onion_or_ip"
         }; // Enter a valid .onion or IP address (.onion preferred)
         const std::string id_enter_a_valid_username{ "id_enter_a_valid_username" }; // Enter a valid username
+        const std::string id_enter_an_address_or_private_key{
+            "id_enter_an_address_or_private_key"
+        }; // Enter an address or private key
         const std::string id_enter_new_email{ "id_enter_new_email" }; // Enter new email
         const std::string id_enter_phone_number{ "id_enter_phone_number" }; // Enter phone number
         const std::string id_enter_pin{ "id_enter_pin" }; // Enter PIN
-        const std::string id_enter_the_address{ "id_enter_the_address" }; // Enter the address
         const std::string id_enter_the_matching_words{ "id_enter_the_matching_words" }; // Enter The Matching Words
         const std::string id_enter_the_pin_for_your_hardware{
             "id_enter_the_pin_for_your_hardware"
@@ -286,6 +282,9 @@ namespace sdk {
         const std::string id_next{ "id_next" }; // Next
         const std::string id_nfc_logo{ "id_nfc_logo" }; // NFC Logo
         const std::string id_nfc_tags_written{ "id_nfc_tags_written" }; // NFC TAGs Written:
+        const std::string id_nlocktime_transaction_emails{
+            "id_nlocktime_transaction_emails"
+        }; // nLocktime transaction emails
         const std::string id_nlocktime_transaction_request{
             "id_nlocktime_transaction_request"
         }; // nLocktime transaction request sent
@@ -314,6 +313,8 @@ namespace sdk {
         }; // Outdated hardware wallet firmware. Please upgrade to the latest firmware from your desktop.
         const std::string id_outgoing{ "id_outgoing" }; // Outgoing
         const std::string id_password{ "id_password" }; // Password
+        const std::string id_password_protected{ "id_password_protected" }; // Password protected
+        const std::string id_paste{ "id_paste" }; // Paste
         const std::string id_pgp_key{ "id_pgp_key" }; // PGP Key
         const std::string id_phone_call{ "id_phone_call" }; // Phone call
         const std::string id_phone_number{ "id_phone_number" }; // phone number
@@ -359,7 +360,6 @@ namespace sdk {
         const std::string id_receive{ "id_receive" }; // Receive
         const std::string id_received{ "id_received" }; // Received
         const std::string id_received_on{ "id_received_on" }; // Received on
-        const std::string id_receiving{ "id_receiving" }; // RECEIVING
         const std::string id_recipient{ "id_recipient" }; // Recipient
         const std::string id_recovery_and_notifications{
             "id_recovery_and_notifications"
@@ -371,17 +371,13 @@ namespace sdk {
         const std::string id_remember_me{ "id_remember_me" }; // Remember me
         const std::string id_remember_username{ "id_remember_username" }; // Remember username
         const std::string id_remove_custom_network{ "id_remove_custom_network" }; // Remove custom network
-        const std::string id_request{ "id_request" }; // Request
+        const std::string id_request_amount{ "id_request_amount" }; // REQUEST AMOUNT
         const std::string id_request_failed{ "id_request_failed" }; // Request Failed
-        const std::string id_request_nlocktime{ "id_request_nlocktime" }; // Request nLockTime
         const std::string id_request_nlocktime_transactions{
             "id_request_nlocktime_transactions"
         }; // Request nLocktime transactions
         const std::string id_request_sent{ "id_request_sent" }; // Request Sent
         const std::string id_request_twofactor_reset{ "id_request_twofactor_reset" }; // Request Two-Factor reset
-        const std::string id_request_will_send_nlocktimezip{
-            "id_request_will_send_nlocktimezip"
-        }; // Request will send nlocktime.zip to your email address
         const std::string id_requested_fee_rate_too_low{
             "id_requested_fee_rate_too_low"
         }; // Requested fee rate too low
@@ -419,7 +415,7 @@ namespace sdk {
         const std::string id_set_twofactor_threshold{ "id_set_twofactor_threshold" }; // Set Two-Factor Threshold
         const std::string id_set_up_twofactor_authentication{
             "id_set_up_twofactor_authentication"
-        }; // Set up Two-Factor Authentication
+        }; // Set up Two-Factor authentication
         const std::string id_set_watchonly{ "id_set_watchonly" }; // Set Watch-Only
         const std::string id_setting_updated{ "id_setting_updated" }; // Setting updated
         const std::string id_settings{ "id_settings" }; // Settings
@@ -489,7 +485,7 @@ namespace sdk {
         }; // Transaction already confirmed
         const std::string id_transaction_details{ "id_transaction_details" }; // Transaction details
         const std::string id_transaction_sent{ "id_transaction_sent" }; // Transaction Sent
-        const std::string id_twofactor_authentication{ "id_twofactor_authentication" }; // Two-Factor Authentication
+        const std::string id_twofactor_authentication{ "id_twofactor_authentication" }; // Two-Factor authentication
         const std::string id_twofactor_reset_in_progress{
             "id_twofactor_reset_in_progress"
         }; // Two-Factor reset in progress, your wallet is currently locked.
@@ -554,9 +550,6 @@ namespace sdk {
             "id_you_have_full_control_of_your"
         }; // You have full control of your funds.
         const std::string id_you_have_received_s{ "id_you_have_received_s" }; // You have received %s
-        const std::string id_you_must_enable_twofactor{
-            "id_you_must_enable_twofactor"
-        }; // You must enable Two-Factor Authentication before you can change this setting.
         const std::string id_you_must_first_log_out_before{
             "id_you_must_first_log_out_before"
         }; // You must first log out before logging in.
@@ -566,16 +559,13 @@ namespace sdk {
         const std::string id_you_need_to_enable_the_proxy{
             "id_you_need_to_enable_the_proxy"
         }; // You need to enable the proxy configuration (Orbot Socks5) first to enable Tor.
-        const std::string id_you_need_to_enable_twofactor{
-            "id_you_need_to_enable_twofactor"
-        }; // You need to enable Two-Factor Authentication before setting the threshold
-        const std::string id_you_need_to_set_an_email{
-            "id_you_need_to_set_an_email"
-        }; // You need to set an email address to request nLocktime transactions
         const std::string id_you_only_have_one_twofactor{
             "id_you_only_have_one_twofactor"
         }; // You only have one Two-Factor authentication method enabled.\nPlease enable another authentication method
            // to avoid losing access to your funds.
+        const std::string id_you_will_need_to_reenter_your{
+            "id_you_will_need_to_reenter_your"
+        }; // You will need to re-enter your mnemonic to login again if you do not set up a PIN. Press "OK" to continue.
         const std::string id_your_green_wallet_is_now_ready{
             "id_your_green_wallet_is_now_ready"
         }; // Your Green wallet is now ready to use.
