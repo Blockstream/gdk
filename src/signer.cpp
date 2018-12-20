@@ -89,6 +89,17 @@ namespace sdk {
             const auto seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
             const uint32_t version = m_net_params.main_net() ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
+        } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
+            // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
+            // FIXME: Some previously supported HWs do not have bip39 support.
+            // Entering the hex seed in the recover phase should provide access
+            // to the wallet. A better approach could be to separate the bip32
+            // seed derivation from 'mnemonic to seed' derivation, which should
+            // facilitate non-bip39 mnemonic future integration. For these
+            // reasons this is a temporary solution.
+            const auto seed = h2b(mnemonic_or_xpub.substr(0, 128));
+            const uint32_t version = m_net_params.main_net() ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+            m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
         } else {
             // xpub
             m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
