@@ -245,6 +245,15 @@ public class Session {
         try callWrapper(fun: GA_set_watch_only(session, username, password))
     }
 
+    public func getWatchOnlyUsername() throws -> String {
+        var buff: UnsafeMutablePointer<Int8>? = nil
+        try callWrapper(fun: GA_get_watch_only_username(session, &buff))
+        defer {
+            GA_destroy_string(buff)
+        }
+        return String(cString: buff!)
+    }
+
     public func removeAccount() throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
         try callWrapper(fun: GA_remove_account(session, &optr));

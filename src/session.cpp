@@ -160,6 +160,12 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->set_watch_only(username, password); });
     }
 
+    std::string session::get_watch_only_username()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_watch_only_username(); });
+    }
+
     bool session::remove_account(const nlohmann::json& twofactor_data)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

@@ -133,6 +133,14 @@ GDK_API int GA_login_with_pin(struct GA_session* session, const char* pin, const
 GDK_API int GA_set_watch_only(struct GA_session* session, const char* username, const char* password);
 
 /**
+ * Get the current watch-only login for the wallet, if any.
+ *
+ * :param session: The session to use.
+ * :param username: Destination for the watch-only username. Empty string if not set.
+ */
+GDK_API int GA_get_watch_only_username(struct GA_session* session, char** username);
+
+/**
  * Authenticate a user in watch only mode.
  *
  * :param session: The session to use.

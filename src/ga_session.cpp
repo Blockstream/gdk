@@ -1234,6 +1234,14 @@ namespace sdk {
         return r;
     }
 
+    std::string ga_session::get_watch_only_username()
+    {
+        nlohmann::json r;
+        wamp_call([&r](wamp_call_result result) { r = get_json_result(result.get()); },
+            "com.greenaddress.addressbook.get_sync_status");
+        return json_get_value(r, "username");
+    }
+
     // Idempotent
     bool ga_session::remove_account(const nlohmann::json& twofactor_data)
     {

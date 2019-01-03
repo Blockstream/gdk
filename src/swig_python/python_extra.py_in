@@ -117,6 +117,9 @@ class Session(object):
         set_watch_only(self.session_obj, username, password)
         return self
 
+    def get_watch_only_username(self):
+        return get_watch_only_username(self.session_obj)
+
     def login_watch_only(self, username, password):
         login_watch_only(self.session_obj, username, password)
         return self

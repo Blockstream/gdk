@@ -71,6 +71,7 @@ namespace sdk {
         void on_failed_login();
 
         bool set_watch_only(const std::string& username, const std::string& password);
+        std::string get_watch_only_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
         template <typename T>
