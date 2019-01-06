@@ -176,6 +176,15 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
 GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts);
 
 /**
+ * Get subaccount details.
+ *
+ * :param session: The session to use.
+ * :param subaccount: Subaccount to get.
+ * :param output: Destination for the subaccount.
+ */
+GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, GA_json** output);
+
+/**
  * Get a page of the user's transaction history.
  *
  * :param session: The session to use.

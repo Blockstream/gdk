@@ -133,6 +133,9 @@ class Session(object):
     def get_subaccounts(self):
         return json.loads(get_subaccounts(self.session_obj))
 
+    def get_subaccount(self, subaccount):
+        return json.loads(get_subaccount(self.session_obj, subaccount))
+
     def get_transactions(self, subaccount=0, page_id=0):
         return json.loads(get_transactions(self.session_obj, subaccount, page_id))
 

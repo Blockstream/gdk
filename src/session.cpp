@@ -190,6 +190,12 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_subaccounts(); });
     }
 
+    nlohmann::json session::get_subaccount(uint32_t subaccount)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_subaccount(subaccount); });
+    }
+
     nlohmann::json session::get_settings()
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

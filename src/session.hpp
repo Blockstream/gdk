@@ -61,6 +61,8 @@ namespace sdk {
 
         nlohmann::json get_subaccounts();
 
+        nlohmann::json get_subaccount(uint32_t subaccount);
+
         nlohmann::json get_balance(uint32_t subaccount, uint32_t num_confs);
 
         nlohmann::json get_available_currencies();

@@ -267,6 +267,12 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
+    public func getSubaccount(subaccount: UInt32) throws -> [String: Any]? {
+        var result: OpaquePointer? = nil
+        try callWrapper(fun: GA_get_subaccount(session, subaccount, &result))
+        return try convertOpaqueJsonToDict(o: result!)
+    }
+
     public func getTransactions(subaccount: UInt32, page: UInt32) throws -> [String: Any]? {
         var result: OpaquePointer? = nil
         try callWrapper(fun: GA_get_transactions(session, subaccount, page, &result))
