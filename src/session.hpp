@@ -69,8 +69,6 @@ namespace sdk {
 
         bool is_rbf_enabled();
         bool is_watch_only();
-        uint32_t get_current_subaccount();
-        void set_current_subaccount(uint32_t subaccount);
         nlohmann::json get_settings();
         void change_settings(const nlohmann::json& settings);
 

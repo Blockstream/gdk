@@ -269,17 +269,6 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
 GDK_API int GA_set_pin(
     struct GA_session* session, const char* mnemonic, const char* pin, const char* device_id, GA_json** pin_data);
 
-/**
- * Set the sessions current subaccount.
- *
- * :param session: The session to use.
- * :param subaccount: The subaccount number to set as the current subaccount.
- *
- * This results in a notification of the subaccount change which includes the
- * subaccounts current balance.
- */
-GDK_API int GA_set_current_subaccount(struct GA_session* session, uint32_t subaccount);
-
 /*
  * Construct a transaction.
  *

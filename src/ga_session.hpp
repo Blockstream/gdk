@@ -92,8 +92,6 @@ namespace sdk {
         nlohmann::json get_hw_device() const;
         bool is_rbf_enabled() const;
         bool is_watch_only() const;
-        uint32_t get_current_subaccount();
-        void set_current_subaccount(uint32_t subaccount);
 
         nlohmann::json get_twofactor_config(bool reset_cached);
         nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false);
@@ -191,7 +189,6 @@ namespace sdk {
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
         void call_notification_handler(locker_t& locker, nlohmann::json* details);
 
-        void on_subaccount_changed(locker_t& locker);
         void on_new_transaction(locker_t& locker, nlohmann::json details);
         void on_new_block(locker_t& locker, nlohmann::json details);
         void on_new_fees(locker_t& locker, const nlohmann::json& details);
@@ -303,7 +300,6 @@ namespace sdk {
         std::string m_fiat_source;
         std::string m_fiat_rate;
         std::string m_fiat_currency;
-        uint32_t m_current_subaccount;
         uint64_t m_earliest_block_time;
 
         std::map<uint32_t, nlohmann::json> m_subaccounts; // Includes 0 for main

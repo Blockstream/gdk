@@ -123,8 +123,7 @@ namespace sdk {
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
-        static std::pair<bool, bool> check_bump_tx(
-            session& session, nlohmann::json& result, uint32_t current_subaccount)
+        static std::pair<bool, bool> check_bump_tx(session& session, nlohmann::json& result, uint32_t subaccount)
         {
             if (result.find("previous_transaction") == result.end()) {
                 return std::make_pair(false, false);
@@ -147,8 +146,8 @@ namespace sdk {
             // programming error so assert it rather than returning in "error"
             bool subaccount_ok = false;
             for (const auto& io : prev_tx.at(is_rbf ? "inputs" : "outputs")) {
-                const auto subaccount = io.find("subaccount");
-                if (subaccount != io.end() && *subaccount == current_subaccount) {
+                const auto prev_subaccount = io.find("subaccount");
+                if (prev_subaccount != io.end() && *prev_subaccount == subaccount) {
                     subaccount_ok = true;
                     break;
                 }
@@ -299,18 +298,21 @@ namespace sdk {
             result["user_signed"] = false;
             result["server_signed"] = false;
 
-            const uint32_t current_subaccount = result.value("subaccount", session.get_current_subaccount());
+            // Must specify subaccount to use
+            const auto p_subaccount = result.find("subaccount");
+            GDK_RUNTIME_ASSERT(p_subaccount != result.end());
+            const uint32_t subaccount = *p_subaccount;
 
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
-            std::tie(is_rbf, is_cpfp) = check_bump_tx(session, result, current_subaccount);
+            std::tie(is_rbf, is_cpfp) = check_bump_tx(session, result, subaccount);
 
             const bool is_redeposit = json_get_value(result, "is_redeposit", false);
 
             if (is_redeposit) {
                 if (result.find("addressees") == result.end()) {
                     // For re-deposit/CPFP, create the addressee if not present already
-                    const auto address = session.get_receive_address(current_subaccount).at("address");
+                    const auto address = session.get_receive_address(subaccount).at("address");
                     std::vector<nlohmann::json> addressees;
                     addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
                     result["addressees"] = addressees;
@@ -355,7 +357,7 @@ namespace sdk {
                     addressees_p->at(0)["satoshi"] = 0;
                 } else {
                     // Send to an address in the current subaccount
-                    const auto address = session.get_receive_address(current_subaccount).at("address");
+                    const auto address = session.get_receive_address(subaccount).at("address");
                     std::vector<nlohmann::json> addressees;
                     addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
                     result["addressees"] = addressees;
@@ -369,7 +371,7 @@ namespace sdk {
                 // Even in testnet, if RBFing, require 1 confirmation.
                 const bool main_net = net_params.main_net();
                 const uint32_t num_confs = (main_net || is_rbf || is_cpfp) && !is_sweep ? 1 : 0;
-                result["utxos"] = session.get_unspent_outputs(current_subaccount, num_confs);
+                result["utxos"] = session.get_unspent_outputs(subaccount, num_confs);
             }
 
             const bool send_all = json_add_if_missing(result, "send_all", false);
@@ -568,7 +570,7 @@ namespace sdk {
                 if (change_address_p == result.end()) {
                     // No previously generated change address found, so generate one.
                     // Find out where to send any change
-                    const uint32_t change_subaccount = result.value("change_subaccount", current_subaccount);
+                    const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
                     result["change_subaccount"] = change_subaccount;
                     auto change_address = session.get_receive_address(change_subaccount);
                     add_paths(session, change_address);

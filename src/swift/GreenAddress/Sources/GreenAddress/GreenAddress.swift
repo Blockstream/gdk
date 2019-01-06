@@ -312,10 +312,6 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
-    public func setCurrentSubaccount(subaccount: UInt32) throws -> Void {
-        try callWrapper(fun: GA_set_current_subaccount(session, subaccount))
-    }
-
     public func getTwoFactorConfig() throws -> [String: Any]? {
         var result: OpaquePointer? = nil
         try callWrapper(fun: GA_get_twofactor_config(session, &result))

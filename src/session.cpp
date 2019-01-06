@@ -257,18 +257,6 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->is_watch_only(); });
     }
 
-    uint32_t session::get_current_subaccount()
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->get_current_subaccount(); });
-    }
-
-    void session::set_current_subaccount(uint32_t subaccount)
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        exception_wrapper([&] { m_impl->set_current_subaccount(subaccount); });
-    }
-
     nlohmann::json session::get_twofactor_config(bool reset_cached)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

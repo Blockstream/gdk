@@ -230,7 +230,6 @@ namespace sdk {
             json_add_if_missing(appearance, "unit", std::string("BTC"), true);
             json_add_if_missing(appearance, "replace_by_fee", true, true);
             json_add_if_missing(appearance, "sound", false, true);
-            json_add_if_missing(appearance, "current_subaccount", 0u, true);
             json_add_if_missing(appearance, "altimeout", 5u, true);
 
             // Make sure the default block target is one of [3, 12, or 24]
@@ -283,7 +282,6 @@ namespace sdk {
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
-        , m_current_subaccount(0)
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
         , m_block_height(0)
@@ -632,7 +630,6 @@ namespace sdk {
         auto& appearance = m_login_data["appearance"];
         cleanup_appearance_settings(locker, appearance);
 
-        m_current_subaccount = appearance["current_subaccount"];
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
         // Notify the caller of their settings
@@ -651,9 +648,6 @@ namespace sdk {
             call_notification_handler(
                 locker, new nlohmann::json({ { "event", "twofactor_reset" }, { "twofactor_reset", reset_status } }));
         }
-
-        // Notify the caller of the current subaccount
-        on_subaccount_changed(locker);
 
         // Notify the caller of the current fees
         on_new_fees(locker, m_login_data["fee_estimates"]);
@@ -841,16 +835,6 @@ namespace sdk {
             details.erase("diverged_count");
             call_notification_handler(
                 locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
-        }
-    }
-
-    void ga_session::on_subaccount_changed(locker_t& locker)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        // Note: notification recipient must destroy the passed JSON
-        if (m_notification_handler != nullptr) {
-            auto sa = get_subaccount(locker, m_current_subaccount);
-            call_notification_handler(locker, new nlohmann::json({ { "event", "subaccount" }, { "subaccount", sa } }));
         }
     }
 
@@ -1900,24 +1884,6 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
         return m_watch_only;
-    }
-
-    uint32_t ga_session::get_current_subaccount()
-    {
-        locker_t locker(m_mutex);
-        return m_current_subaccount;
-    }
-
-    void ga_session::set_current_subaccount(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        // Note we don't check if the subaccount is the same. This lets
-        // callers who choose to run their balance updating logic entirely
-        // from notifications simply set the current subaccount when they
-        // receive a tx notification that affects it, and get the updated
-        // balance notified automatically.
-        m_current_subaccount = subaccount;
-        on_subaccount_changed(locker);
     }
 
     const std::string& ga_session::get_default_address_type(locker_t& locker) const

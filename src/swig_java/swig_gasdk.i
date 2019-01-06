@@ -516,7 +516,6 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_remove_account, GA_auth_handler)
 %returns_void__(GA_send_nlocktimes)
 %returns_struct(GA_send_transaction, GA_auth_handler)
-%returns_void__(GA_set_current_subaccount)
 %returns_struct(GA_set_pin, GA_json)
 %returns_void__(GA_set_transaction_memo)
 %returns_void__(GA_set_watch_only)

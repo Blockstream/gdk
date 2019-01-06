@@ -127,9 +127,6 @@ class Session(object):
     def set_pin(self, mnemonic, pin, device_id):
         return json.loads(set_pin(self.session_obj, mnemonic, pin, device_id))
 
-    def set_current_subaccount(self, subaccount):
-        return set_current_subaccount(self.session_obj, subaccount)
-
     def create_subaccount(self, details):
         return Call(create_subaccount(self.session_obj, self._to_json(details)))
 
