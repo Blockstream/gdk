@@ -822,7 +822,6 @@ namespace sdk {
         const bool is_deposit = satoshi >= 0;
         details["type"] = is_deposit ? "incoming" : "outgoing";
         details.erase("value");
-        details.erase("wallet_id");
         call_notification_handler(
             locker, new nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
     }
