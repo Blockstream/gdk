@@ -11,6 +11,7 @@ public enum GaError: Error {
     case ReconnectError
     case SessionLost
     case TimeoutError
+    case NotAuthorizedError
 }
 
 public enum Network: String {
@@ -29,6 +30,8 @@ fileprivate func errorWrapper(_ r: Int32) throws {
                 throw GaError.SessionLost
             case GA_TIMEOUT:
                 throw GaError.TimeoutError
+            case GA_NOT_AUTHORIZED:
+                throw GaError.NotAuthorizedError
             default:
                 throw GaError.GenericError
         }

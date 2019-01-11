@@ -36,7 +36,7 @@ template <typename F, typename... Args> static auto c_invoke(F&& f, Args&&... ar
         f(std::forward<Args>(args)...);
         return GA_OK;
     } catch (const ga::sdk::login_error& e) {
-        return GA_ERROR;
+        return GA_NOT_AUTHORIZED;
     } catch (const autobahn::no_session_error& e) {
         return GA_SESSION_LOST;
     } catch (const ga::sdk::reconnect_error& e) {
