@@ -226,14 +226,17 @@ namespace sdk {
         {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-            // Add any missing defaults
-            json_add_if_missing(appearance, "unit", std::string("BTC"), true);
-            json_add_if_missing(appearance, "replace_by_fee", true, true);
-            json_add_if_missing(appearance, "sound", false, true);
-            json_add_if_missing(appearance, "altimeout", 5u, true);
+            nlohmann::json clean({
+                { "unit", std::string("BTC") },
+                { "replace_by_fee", true },
+                { "sound", true },
+                { "altimeout", 5u },
+                { "required_num_blocks", 12u },
+            });
+            clean.update(appearance);
 
             // Make sure the default block target is one of [3, 12, or 24]
-            uint32_t required_num_blocks = json_get_value(appearance, "required_num_blocks", 12u);
+            uint32_t required_num_blocks = clean["required_num_blocks"];
             if (required_num_blocks > 12u) {
                 required_num_blocks = 24u;
             } else if (required_num_blocks >= 6u) {
@@ -241,7 +244,9 @@ namespace sdk {
             } else {
                 required_num_blocks = 3u;
             }
-            appearance["required_num_blocks"] = required_num_blocks;
+            clean["required_num_blocks"] = required_num_blocks;
+
+            appearance = clean;
         }
 
         static std::string socksify(const std::string& proxy)
