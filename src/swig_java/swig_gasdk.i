@@ -17,7 +17,6 @@ static const char* TO_STRING_METHOD_NAME = "toJSONString";
 static const char* TO_STRING_METHOD_ARGS = "(Ljava/lang/Object;)Ljava/lang/String;";
 static const char* NOTIFY_METHOD_NAME = "callNotificationHandler";
 static const char* NOTIFY_METHOD_ARGS = "(Ljava/lang/Object;Ljava/lang/Object;)V";
-
 static const char* OBJ_CLASS  = "com/blockstream/libgreenaddress/GDK$Obj";
 
 static JavaVM* g_jvm;
@@ -94,11 +93,13 @@ LOCALFUNC unsigned char* malloc_or_throw(JNIEnv *jenv, size_t len) {
 
 LOCALFUNC int check_result(JNIEnv *jenv, int result, const char* msg)
 {
+    char buffer[60];
+    snprintf(buffer, 60, "GDK_ERROR_CODE %d %s", result, msg);
     switch (result) {
     case GA_OK:
         break;
-    default: /* GA_ERROR */
-        SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, msg);
+    default:
+        SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, buffer);
         break;
     }
     return result;
@@ -339,7 +340,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 /* Raise an exception whenever a function fails */
 %exception {
     $action
-    check_result(jenv, result, "$name call failed");
+    check_result(jenv, result, "$name");
 }
 
 /* Don't use our int return value except for exception checking */
@@ -460,7 +461,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
     }
     if (!skip) {
         $action
-        if (check_result(jenv, result, "$name call failed") == GA_OK && !jarg ## ARRAYARG) {
+        if (check_result(jenv, result, "$name") == GA_OK && !jarg ## ARRAYARG) {
             jresult = create_array(jenv, arg ## ARRAYARG, LEN);
         }
         if (!jarg ## ARRAYARG) {
