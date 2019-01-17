@@ -721,7 +721,6 @@ namespace sdk {
         , m_tx_details(tx_details)
         , m_twofactor_required(!m_methods.empty())
         , m_under_limit(false)
-        , m_bumping_fee(tx_details.find("previous_transaction") != tx_details.end())
     {
         if (m_state == state_type::error) {
             return;
@@ -736,7 +735,22 @@ namespace sdk {
             m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
                 { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
 
-            if (limit != 0 && satoshi + fee <= limit) {
+            // If this transaction has a previous transaction, i.e. it is replacing a previous transaction
+            // for example by RBF, then define m_bump_amount as the additional cost of this transaction
+            // compared to the original
+            const auto previous_transaction = tx_details.find("previous_transaction");
+            if (previous_transaction != tx_details.end()) {
+                const uint64_t previous_fee = previous_transaction->at("fee").get<uint64_t>();
+                GDK_RUNTIME_ASSERT(previous_fee < fee);
+                m_bump_amount = fee - previous_fee;
+            }
+
+            // limit_delta is the amount to deduct from the current spending limit for this tx
+            // For a fee bump (RBF) it is just the bump amount, i.e. the additional fee, because the
+            // previous fee and tx amount has already been deducted from the limits
+            const uint64_t limit_delta = m_bump_amount ? m_bump_amount : satoshi + fee;
+
+            if (limit != 0 && limit_delta <= limit) {
                 // 2fa is enabled and we have a spending limit, but this tx is under it.
                 m_under_limit = true;
                 m_state = state_type::make_call;
@@ -770,14 +784,10 @@ namespace sdk {
     {
         m_twofactor_data = nlohmann::json();
         if (m_twofactor_required) {
-            if (m_bumping_fee) {
+            if (m_bump_amount) {
                 m_action = "bump_fee";
-
-                const auto previous_fee = m_tx_details["previous_transaction"].at("fee").get<int>();
-                const auto new_fee = m_limit_details.at("fee").get<int>();
-                const auto bump_amount = new_fee - previous_fee;
                 const auto amount_key = m_under_limit ? "try_under_limits_bump" : "amount";
-                m_twofactor_data[amount_key] = bump_amount;
+                m_twofactor_data[amount_key] = m_bump_amount;
             } else {
                 if (m_under_limit) {
                     // Tx is under the limit and a send hasn't previously failed causing
@@ -800,7 +810,7 @@ namespace sdk {
         json_rename_key(m_twofactor_data, "fee", "send_raw_tx_fee");
         json_rename_key(m_twofactor_data, "change_idx", "send_raw_tx_change_idx");
 
-        const char* amount_key = m_bumping_fee ? "bump_fee_amount" : "send_raw_tx_amount";
+        const char* amount_key = m_bump_amount ? "bump_fee_amount" : "send_raw_tx_amount";
         json_rename_key(m_twofactor_data, "amount", amount_key);
 
         // TODO: Add the recipient to twofactor_data for more server verification
