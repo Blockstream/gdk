@@ -56,17 +56,20 @@ namespace sdk {
             }
         }
     };
+#endif
 
     BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(gdk_logger, boost::log::sources::logger_mt)
     {
+#ifdef __ANDROID__
         using sink_t = boost::log::sinks::asynchronous_sink<android_backend>;
         auto sink = boost::make_shared<sink_t>(boost::make_shared<android_backend>());
         boost::log::core::get()->add_sink(sink);
+#endif
+#ifdef NDEBUG
+        boost::log::core::get()->set_filter(boost::log::trivial::severity >= boost::log::trivial::warning);
+#endif
         return boost::log::sources::logger_mt{};
     }
-#else
-    BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(gdk_logger, boost::log::sources::logger_mt)
-#endif
 
 #define GDK_LOG_NAMED_SCOPE(name)                                                                                      \
     BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), boost::log::trivial::info)                                             \

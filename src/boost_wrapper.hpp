@@ -26,6 +26,8 @@
 #include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/log/attributes/named_scope.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
 #include <boost/log/sinks/async_frontend.hpp>
 #include <boost/log/sinks/basic_sink_backend.hpp>
 #include <boost/log/sources/global_logger_storage.hpp>
