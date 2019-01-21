@@ -27,7 +27,7 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
 using darwin : $SDK_ARCH :
-${SDK_PLATFORM}-clang++
+${CXX}
 :
 <compileflags>-std=c++14
 <compileflags>"${SDK_CPPFLAGS}"

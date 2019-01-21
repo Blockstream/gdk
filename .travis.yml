@@ -5,5 +5,5 @@ services:
   - docker
 
 script:
-  - docker run -v $PWD:/gdk greenaddress/ci@sha256:dd9486edee6ffcf4f9833db2c68761630728e8865ef89815c133ccacc326f47c /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
-  - docker run -v $PWD:/gdk greenaddress/ci@sha256:dd9486edee6ffcf4f9833db2c68761630728e8865ef89815c133ccacc326f47c /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
+  - docker run -v $PWD:/gdk greenaddress/ci@sha256:fca49ce887b12dd2edaa02b24b3550432e37fd36ba646063117a2b2618d81218 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
+  - docker run -v $PWD:/gdk greenaddress/ci@sha256:fca49ce887b12dd2edaa02b24b3550432e37fd36ba646063117a2b2618d81218 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"

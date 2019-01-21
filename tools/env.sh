@@ -1,6 +1,6 @@
-export CFLAGS="$SDK_CFLAGS --sysroot=${MESON_BUILD_ROOT}/toolchain/sysroot -O3"
-export LDFLAGS="$SDK_LDFLAGS --sysroot=${MESON_BUILD_ROOT}/toolchain/sysroot"
+export CFLAGS="$SDK_CFLAGS --sysroot=$NDK_TOOLSDIR/sysroot -O3"
+export LDFLAGS="$SDK_LDFLAGS --sysroot=$NDK_TOOLSDIR/sysroot"
 export CPPFLAGS="$SDK_CFLAGS"
-export SYSROOT="${MESON_BUILD_ROOT}/toolchain/sysroot"
-export CC=clang
-export CXX=clang++
+export SYSROOT="$NDK_TOOLSDIR/sysroot"
+export CC=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang)
+export CXX=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang++)

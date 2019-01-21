@@ -1,6 +1,0 @@
-FROM fedora:28@sha256:166e65e720695024e6f89877f96a83ca2d0fd4863ae9afad4ca7f54fc0c4aed3
-COPY fedora28_deps.sh /deps.sh
-COPY requirements.txt /requirements.txt
-RUN /deps.sh && rm /deps.sh
-CMD cd /sdk && ./tools/build.sh --clang
-

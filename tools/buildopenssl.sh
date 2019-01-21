@@ -86,8 +86,8 @@ EOF
 #endif
 #endif
 EOF
-	cp build-x86_64/tmp/x86_64/lib/libcrypto.a $openssl_prefix/lib/libcrypto.a
-	cp build-x86_64/tmp/x86_64/lib/libssl.a $openssl_prefix/lib/libssl.a
+        cp build-x86_64/tmp/x86_64/lib/libcrypto.a $openssl_prefix/lib/libcrypto.a
+        cp build-x86_64/tmp/x86_64/lib/libssl.a $openssl_prefix/lib/libssl.a
     else
         cat > $openssl_prefix/include/openssl/opensslconf.h << EOF
 #if __ARM_ARCH_7A__
@@ -115,8 +115,8 @@ EOF
 #endif
 #endif
 EOF
-	cp build-arm64/tmp/arm64/lib/libcrypto.a $openssl_prefix/lib/libcrypto.a
-	cp build-arm64/tmp/arm64/lib/libssl.a $openssl_prefix/lib/libssl.a
+        cp build-arm64/tmp/arm64/lib/libcrypto.a $openssl_prefix/lib/libcrypto.a
+        cp build-arm64/tmp/arm64/lib/libssl.a $openssl_prefix/lib/libssl.a
     fi
 elif [ \( "$1" = "--windows" \) ]; then
     ./Configure mingw64 --cross-compile-prefix=x86_64-w64-mingw32- --prefix="$openssl_prefix" $OPENSSL_OPTIONS

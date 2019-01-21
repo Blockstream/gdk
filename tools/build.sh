@@ -22,8 +22,15 @@ BUILDTYPE="release"
 NDK_ARCH=""
 
 GETOPT='getopt'
+if [ -z "$ANDROID_NDK" ]; then
+    if have_cmd ndk-build; then
+        export ANDROID_NDK=$(dirname $(command -v ndk-build))
+    fi
+fi
+export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64"
 if [ "$(uname)" == "Darwin" ]; then
     GETOPT='/usr/local/opt/gnu-getopt/bin/getopt'
+    export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/darwin-x86_64"
 elif [ "$(uname)" == "FreeBSD" ]; then
     GETOPT='/usr/local/bin/getopt'
 fi
@@ -170,11 +177,6 @@ if [ \( "$BUILD" = "--clang" \) ]; then
     build clang clang++
 fi
 
-if [ -z "$ANDROID_NDK" ]; then
-    if have_cmd ndk-build; then
-        export ANDROID_NDK=$(dirname $(command -v ndk-build))
-    fi
-fi
 
 if [ \( -d "$ANDROID_NDK" \) -a \( "$BUILD" = "--ndk" \) ]; then
 
@@ -191,20 +193,28 @@ if [ \( -d "$ANDROID_NDK" \) -a \( "$BUILD" = "--ndk" \) ]; then
         else
             export ANDROID_VERSION="19"
         fi
-        export PATH=$bld_root/toolchain/bin:$PATH_BASE
+
+        export PATH=$NDK_TOOLSDIR/bin:$PATH_BASE
+        mkdir -p build-clang-$1-$2
 
         if [ ! -f "build-clang-$1-$2/build.ninja" ]; then
             rm -rf build-clang-$1-$2/meson-private
-            if [ ! -d "build-clang-$1-$2/toolchain" ]; then
-                NDK_ARCH=$SDK_ARCH
-                if [[ $SDK_ARCH == "aarch64" ]]; then
-                    NDK_ARCH="arm64"
-                fi
-                $ANDROID_NDK/build/tools/make_standalone_toolchain.py --stl libc++ --arch $NDK_ARCH --api $ANDROID_VERSION --install-dir="$bld_root/toolchain" &>/dev/null
-            fi
-            export SDK_PLATFORM=$(basename $(find $bld_root/toolchain/ -maxdepth 1 -type d -name "*linux-android*"))
-            export AR="$bld_root/toolchain/bin/$SDK_PLATFORM-ar"
-            export RANLIB="$bld_root/toolchain/bin/$SDK_PLATFORM-ranlib"
+            export archfilename=$SDK_ARCH
+            export clangarchname=$HOST_ARCH
+            case $archfilename in
+                armeabi-v7a) archfilename=arm;;
+                arm64-v8a) archfilename=aarch64;;
+                x86) archfilename=i686;;
+            esac
+            case $clangarchname in
+                armeabi-v7a) clangarchname=armv7a;;
+                arm64-v8a) clangarchname=aarch64;;
+                x86) clangarchname=i686;;
+            esac
+            export SDK_PLATFORM=$(basename $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip | sed 's/-strip$//')
+            export AR="$NDK_TOOLSDIR/bin/$SDK_PLATFORM-ar"
+            export RANLIB="$NDK_TOOLSDIR/bin/$SDK_PLATFORM-ranlib"
+
             ./tools/make_txt.sh $bld_root $bld_root/$1_$2_ndk.txt $1 ndk $2
             compress_patch
             meson $bld_root --cross-file $bld_root/$1_$2_ndk.txt --default-library=${LIBTYPE} ${MESON_OPTIONS}

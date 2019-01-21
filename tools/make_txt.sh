@@ -6,10 +6,10 @@ function comma_separate() {
 }
 
 if [ \( "$3" = "android" \) ]; then
-    C_COMPILER="$1/toolchain/bin/clang"
-    CXX_COMPILER="$1/toolchain/bin/clang++"
-    STRIP="$1/toolchain/bin/$SDK_PLATFORM-strip"
-    CFLAGS=$(comma_separate "--sysroot=$1/toolchain/sysroot" $SDK_CFLAGS)
+    C_COMPILER=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang)
+    CXX_COMPILER=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang++)
+    STRIP="$(ls $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip)"
+    CFLAGS=$(comma_separate "--sysroot=$NDK_TOOLSDIR/sysroot" $SDK_CFLAGS)
     LDFLAGS=$(comma_separate $SDK_LDFLAGS)
     ARCHS="[]"
     HOST_SYSTEM=$3

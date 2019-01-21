@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-WALLYCORE_NAME="libwally-core-4d655a88aa71c57348db18379819404af7bcbdff"
+WALLYCORE_NAME="libwally-core-df058f3fef178f064ca2a8699c43f28b625bf524"
 
 cp -r "${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}" "${MESON_BUILD_ROOT}/libwally-core"
 
@@ -38,7 +38,11 @@ if [ \( "$1" = "--ndk" \) ]; then
     export CFLAGS="$SDK_CFLAGS -DPIC -fPIC"
     export LDFLAGS="$SDK_LDFLAGS"
 
-    android_build_wally $HOST_ARCH "${MESON_BUILD_ROOT}/toolchain" $ANDROID_VERSION --build=$HOST_OS \
+    case $HOST_ARCH in
+        x86) HOST_ARCH=i686;;
+    esac
+
+    android_build_wally $HOST_ARCH $NDK_TOOLSDIR $ANDROID_VERSION --build=$HOST_OS \
           $CONFIGURE_ARGS --$ENABLE_SWIG_JAVA --disable-swig-python --target=$SDK_PLATFORM $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
 
     make -o configure install
