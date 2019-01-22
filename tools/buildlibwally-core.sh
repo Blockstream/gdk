@@ -29,7 +29,7 @@ if [[ $BUILDTYPE == "debug" ]]; then
     ENABLE_DEBUG="--enable-debug"
 fi
 
-CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements"
+CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --enable-ecmult-static-precomputation"
 
 if [ \( "$1" = "--ndk" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
