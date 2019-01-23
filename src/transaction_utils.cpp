@@ -259,9 +259,11 @@ namespace sdk {
             result["error"] = res::id_invalid_amount;
         }
 
+        // Invalid amount if above coin supply.
         // Transactions with outputs below the dust threshold (except OP_RETURN)
         // are not relayed by network nodes
-        if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold()) {
+        if ((satoshi.value() > static_cast<uint64_t>(WALLY_SATOSHI_PER_BTC) * WALLY_BTC_MAX)
+            || (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold())) {
             result["error"] = res::id_invalid_amount;
         }
 
