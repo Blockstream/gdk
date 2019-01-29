@@ -12,6 +12,9 @@ static int check_result(int result)
     case GA_ERROR:
         PyErr_SetString(PyExc_RuntimeError, "Failed");
         break;
+    case GA_NOT_AUTHORIZED:
+        PyErr_SetString(PyExc_RuntimeError, "Not Authorized");
+        break;
     default: /* FIXME */
         PyErr_SetString(PyExc_RuntimeError, "Connection Error");
         break;

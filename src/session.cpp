@@ -48,11 +48,16 @@ namespace sdk {
             disconnect();
             throw reconnect_error();
         } catch (const autobahn::call_error& e) {
+            std::pair<std::string, std::string> details;
             try {
-                std::pair<std::string, std::string> details = get_error_details(e);
+                details = get_error_details(e);
                 GDK_LOG_SEV(log_level::debug) << "server exception (" << details.first << "):" << details.second;
             } catch (const std::exception&) {
                 log_exception("call error:", e);
+            }
+            if (details.first == "password") {
+                // Server sends this response if the PIN is incorrect
+                throw login_error(details.second);
             }
             throw;
         } catch (const assertion_error& e) {

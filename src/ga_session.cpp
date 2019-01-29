@@ -2164,20 +2164,8 @@ namespace sdk {
     std::vector<unsigned char> ga_session::get_pin_password(const std::string& pin, const std::string& pin_identifier)
     {
         std::string password;
-        std::string error;
-        wamp_call(
-            [&password, &error](wamp_call_result result) {
-                try {
-                    password = result.get().argument<std::string>(0);
-                } catch (const std::exception& e) {
-                    error = e.what();
-                }
-            },
+        wamp_call([&password](wamp_call_result result) { password = result.get().argument<std::string>(0); },
             "com.greenaddress.pin.get_password", pin, pin_identifier);
-
-        if (!error.empty()) {
-            throw login_error(error);
-        }
 
         return std::vector<unsigned char>(password.begin(), password.end());
     }
