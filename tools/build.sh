@@ -49,7 +49,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,unity: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,unity:,python-version: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -65,6 +65,7 @@ while true; do
         --clang-tidy-version) MESON_OPTIONS="$MESON_OPTIONS -Dclang-tidy-version=-$2"; NINJA_TARGET="src/clang-tidy"; shift 2 ;;
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
         --unity) MESON_OPTIONS="$MESON_OPTIONS --unity=$2"; shift 2 ;;
+        --python-version) MESON_OPTIONS="$MESON_OPTIONS -Dpython-version=$2"; shift 2 ;;
         -- ) shift; break ;;
         *) break ;;
     esac
@@ -87,7 +88,7 @@ export BUILDTYPE
 MESON_OPTIONS="${MESON_OPTIONS} --buildtype=${BUILDTYPE}"
 
 if [ \( "$BUILDTYPE" = "release" \) ]; then
-    if ! [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
+    if ! ([ "$BUILD" = "--iphone" ] || [ "$BUILD" = "--iphonesim" ] || ([[ $MESON_OPTIONS =~ "Dpython-version" ]] && [ "$(uname)" = "Darwin" ])); then
         MESON_OPTIONS="${MESON_OPTIONS} --strip"
     fi
 fi

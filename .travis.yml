@@ -5,5 +5,7 @@ services:
   - docker
 
 script:
-  - docker run -v $PWD:/gdk greenaddress/ci@sha256:fca49ce887b12dd2edaa02b24b3550432e37fd36ba646063117a2b2618d81218 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
-  - docker run -v $PWD:/gdk greenaddress/ci@sha256:fca49ce887b12dd2edaa02b24b3550432e37fd36ba646063117a2b2618d81218 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
+  - docker run -v $PWD:/gdk greenaddress/ci@sha256:62f35f4b138a1b0cad32c6854465128acf9b4ee8098dc426512ae1c1ca166a43 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
+  - docker run -v $PWD:/gdk greenaddress/ci@sha256:62f35f4b138a1b0cad32c6854465128acf9b4ee8098dc426512ae1c1ca166a43 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
+  - docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
+  - docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"

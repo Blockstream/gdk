@@ -1,5 +1,6 @@
 %module greenaddress
 %{
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #define SWIG_FILE_WITH_INIT
 #include "../../include/gdk.h"
 #include <limits.h>

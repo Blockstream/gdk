@@ -87,7 +87,7 @@ install_headers(
 if cross_android_build
     libga_installdir = join_paths('lib', meson.get_cross_property('ndk_lib_dir'))
 else
-    libga_installdir = join_paths('lib', host_machine.cpu() + '_' + host_machine.system())
+    libga_installdir = 'lib'
 endif
 
 libga = both_libraries('greenaddress',

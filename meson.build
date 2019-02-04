@@ -122,7 +122,6 @@ if swig.found()
     python3 = pymodule.find_python()
 
     environment_variables = [
-        'PYTHON_VERSION',
         'JAVA_HOME',
         'JAVA_TARGET'
     ]
@@ -134,13 +133,17 @@ if swig.found()
             message(v + ' set to ' + stdout)
         else
             set_variable(v.to_lower(), '')
-            message(v + ' not set. Disabling...')
         endif
     endforeach
 
-    if python_version != ''
-        python_dep = compiler.find_library('python' + python_version)
+    python_config_dir = host_machine.system()
+    if python_config_dir.contains('linux')
+        python_config_dir = 'x86_64-linux-gnu'
     endif
+
+    python_version = get_option('python-version')
+    run_command('virtualenv', '--clear', '-p', 'python' + python_version, join_paths(meson.build_root(), 'venv'))
+    python_dep = compiler.find_library('python' + python_version + 'm', dirs : join_paths(meson.build_root(), 'venv', 'lib', 'python' + python_version, 'config-' + python_version + 'm-' + python_config_dir), required : false)
 
     if java_target == ''
         java_target = '1.7'
@@ -157,7 +160,7 @@ endif
 jni_deps  = swig.found() and javac and java_home != ''
 jni_disabled = cross_win_build or cross_iphone_build or not jni_deps
 build_jni = (jni_deps or cross_android_build) and not jni_disabled
-build_swig_python = swig.found() and python_version != ''
+build_swig_python = swig.found() and python_dep.found() and not cross_iphone_build and not cross_android_build
 
 clang_format = find_program('clang-format', required : false)
 clang_tidy = find_program('run-clang-tidy' + get_option('clang-tidy-version') + '.py', required : false)

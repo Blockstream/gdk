@@ -157,8 +157,9 @@ Java and Python wrappers are available if [SWIG](http://www.swig.org/) is instal
 
 If JAVA_HOME is set while the library is built, a Java wrapper is built exposing the API.
 
-Similarly, if PYTHON_VERSION is set to 2.x, e.g. 2.7, a Python wrapper is built. Python 3
-has not been tested with the wrapper at this time and should be considered experimental.
+Similarly, if --python-version is passed to tools/build.sh a Python wrapper is built, for example:
+
+* ./tools/build.sh --install $PWD --gcc --python-version 3.7
 
 ### Swift wrapper
 

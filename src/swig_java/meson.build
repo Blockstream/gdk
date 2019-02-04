@@ -14,4 +14,4 @@ libswig_java = static_library('swig_java', swig_target,
                               c_args : ['-fno-strict-aliasing'],
                               dependencies : dependencies)
 
-meson.add_install_script(join_paths(meson.source_root(), 'tools', 'install.sh'))
+meson.add_install_script(join_paths(meson.source_root(), 'tools', 'install_jni.sh'))
