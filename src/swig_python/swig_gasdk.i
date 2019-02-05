@@ -22,6 +22,41 @@ static int check_result(int result)
     return result;
 }
 
+static int python_string_to_GA_json(PyObject* in, struct GA_json** out)
+{
+    *out = NULL;
+
+#if PY_MAJOR_VERSION >= 3
+    if (!PyUnicode_Check(in)) {
+        PyErr_SetString(PyExc_TypeError, "Expected unicode argument for GA_json");
+        return GA_ERROR;
+    }
+
+    PyObject* utf8_encoded = PyUnicode_AsEncodedString(in, "utf-8", "strict");
+    if (!utf8_encoded) {
+        PyErr_SetString(PyExc_UnicodeEncodeError, "Failed to encode GA_json string as utf-8");
+        return GA_ERROR;
+    }
+
+    const char* utf8_ntbs = PyBytes_AsString(utf8_encoded);
+#else
+    if (!PyString_Check(in)) {
+        PyErr_SetString(PyExc_TypeError, "Expected string argument for GA_json");
+        return GA_ERROR;
+    }
+
+    const char* utf8_ntbs = PyString_AsString(in);
+#endif
+
+    const int result = check_result(GA_convert_string_to_json(utf8_ntbs, out));
+
+#if PY_MAJOR_VERSION >= 3
+    Py_DECREF(utf8_encoded);
+#endif
+
+    return result;
+}
+
 static void notification_handler(void* context_p, const GA_json* details)
 {
     PyObject* session_capsule = (PyObject*) context_p;
@@ -164,14 +199,12 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
    w = 0; $1 = ($1_ltype)&w;
 }
 %typemap (in) const GA_json * {
-    $1 = NULL;
-    if ($input != Py_None)
-        check_result(GA_convert_string_to_json(PyString_AsString($input), &$1));
+    if (python_string_to_GA_json($input, &$1) != GA_OK)
+        SWIG_fail;
 }
 %typemap (in) GA_json * {
-    $1 = NULL;
-    if ($input != Py_None)
-        check_result(GA_convert_string_to_json(PyString_AsString($input), &$1));
+    if (python_string_to_GA_json($input, &$1) != GA_OK)
+        SWIG_fail;
 }
 %typemap (freearg) GA_json * {
     GA_destroy_json($1);
