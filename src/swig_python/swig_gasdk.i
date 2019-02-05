@@ -173,6 +173,9 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
     if ($input != Py_None)
         check_result(GA_convert_string_to_json(PyString_AsString($input), &$1));
 }
+%typemap (freearg) GA_json * {
+    GA_destroy_json($1);
+}
 %typemap(argout) GA_json ** {
    if (*$1 != NULL) {
        Py_DecRef($result);
