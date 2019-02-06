@@ -14,9 +14,10 @@
 namespace ga {
 namespace sdk {
     class ga_session;
-    class signer;
     class ga_pubkeys;
     class ga_user_pubkeys;
+    struct session_context;
+    class signer;
 
     class session {
     public:
@@ -140,12 +141,13 @@ namespace sdk {
     private:
         template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
 
-        void on_failed_login();
-
-        GA_notification_handler m_notification_handler;
-        void* m_notification_context;
+        void reconnect();
 
         std::unique_ptr<ga_session> m_impl;
+        std::unique_ptr<session_context> m_session_context;
+
+        GA_notification_handler m_notification_handler{ nullptr };
+        void* m_notification_context{ nullptr };
     };
 } // namespace sdk
 } // namespace ga

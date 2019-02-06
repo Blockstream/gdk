@@ -12,4 +12,4 @@ secp256k1_lib=$1/libwally-core/build/lib/libsecp256k1.a
 wally_lib=$1/libwally-core/build/lib/libwallycore.a
 
 libraries="$boost_chrono_lib $boost_log_lib $boost_system_lib $boost_thread_lib $openssl_crypto_lib $openssl_ssl_lib $secp256k1_lib $wally_lib"
-libtool -static -o ${greenaddress_lib} $libraries $1/src/src@@greenaddress@sha/*.o
+libtool -static -o ${greenaddress_lib} $libraries $1/src/*@@greenaddress@sha/*.o

@@ -43,6 +43,8 @@ namespace sdk {
     public:
         using transport_t = boost::variant<std::shared_ptr<transport>, std::shared_ptr<transport_tls>>;
         using locker_t = std::unique_lock<std::mutex>;
+        using heartbeat_t = websocketpp::pong_timeout_handler;
+        using ping_fail_t = std::function<void()>;
 
         ga_session(const network_parameters& net_params, const std::string& proxy, bool use_tor, bool debug);
         ga_session(const ga_session& other) = delete;
@@ -53,7 +55,11 @@ namespace sdk {
         ~ga_session();
 
         void connect();
+        bool reconnect();
         bool is_connected(const std::string& name, const std::string& proxy, bool use_tor);
+
+        void set_heartbeat_timeout_handler(heartbeat_t handler);
+        void set_ping_fail_handler(ping_fail_t handler);
 
         void register_user(const std::string& mnemonic, bool supports_csv);
         void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
@@ -66,6 +72,7 @@ namespace sdk {
 
         void login(const std::string& mnemonic);
         void login(const std::string& mnemonic, const std::string& password);
+        bool login_from_cached(const std::string& mnemonic);
         void login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
         void login_watch_only(const std::string& username, const std::string& password);
         void on_failed_login();
@@ -155,6 +162,8 @@ namespace sdk {
         bool is_spending_limits_decrease(const nlohmann::json& details);
         const network_parameters& get_network_parameters() const { return m_net_params; }
 
+        void emit_notification(std::string event, nlohmann::json details);
+
         signer& get_signer();
         ga_pubkeys& get_ga_pubkeys();
         ga_user_pubkeys& get_user_pubkeys();
@@ -162,6 +171,8 @@ namespace sdk {
 
     private:
         void reset();
+
+        bool is_connected() const;
 
         void register_user(locker_t& locker, const std::string& mnemonic, bool supports_csv);
         void register_user(locker_t& locker, const std::string& master_pub_key_hex,
@@ -212,10 +223,35 @@ namespace sdk {
         template <typename T> void make_client();
         template <typename T> void make_transport();
 
-        template <typename T> void disconnect_transport() const
+        template <typename T> bool is_transport_connected() const
         {
-            no_std_exception_escape([this] { boost::get<std::shared_ptr<T>>(m_transport)->disconnect().get(); });
+            const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
+            if (transport != nullptr && transport->is_connected()) {
+                return true;
+            }
+            return false;
         }
+
+        template <typename T> void disconnect_transport() const;
+
+        template <typename T> bool ping() const
+        {
+            bool expect_pong = false;
+            no_std_exception_escape([this, &expect_pong] {
+                expect_pong = boost::get<std::shared_ptr<T>>(m_transport)->ping(std::string{});
+            });
+            return expect_pong;
+        }
+
+        template <typename T, typename U> bool set_socket_option(U option) const
+        {
+            bool ret = false;
+            no_std_exception_escape(
+                [this, &ret, option] { ret = boost::get<std::shared_ptr<T>>(m_transport)->set_socket_option(option); });
+            return ret;
+        }
+
+        void set_socket_options();
 
         void disconnect();
         void unsubscribe();
@@ -228,13 +264,15 @@ namespace sdk {
             call_options.set_timeout(std::chrono::seconds(timeout));
             auto fn = m_session->call(method_name, std::make_tuple(std::forward<Args>(args)...), call_options)
                           .then(std::forward<F>(body));
-            const auto status = fn.wait_for(boost::chrono::seconds(timeout));
-            fn.get();
-
-            if (status == boost::future_status::timeout) {
-                throw timeout_error{};
+            for (;;) {
+                const auto status = fn.wait_for(boost::chrono::seconds(timeout));
+                if (status == boost::future_status::timeout && !is_connected()) {
+                    throw timeout_error{};
+                } else if (status == boost::future_status::ready) {
+                    break;
+                }
             }
-            GDK_RUNTIME_ASSERT(status == boost::future_status::ready);
+            fn.get();
         }
 
         template <typename F> void no_std_exception_escape(F&& fn) const
@@ -251,6 +289,8 @@ namespace sdk {
         }
 
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
+
+        void ping_timer_handler(const boost::system::error_code& ec);
 
         // Locking per-session assumes the following thread safety model:
         // 1) wamp_call is assumed thread-safe
@@ -285,8 +325,11 @@ namespace sdk {
         transport_t m_transport;
         wamp_session_ptr m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
+        heartbeat_t m_heartbeat_handler;
+        ping_fail_t m_ping_fail_handler;
 
         event_loop_controller m_controller;
+        boost::asio::deadline_timer m_ping_timer;
 
         GA_notification_handler m_notification_handler;
         void* m_notification_context;

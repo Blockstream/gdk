@@ -1,4 +1,7 @@
+#include <algorithm>
+#include <chrono>
 #include <mutex>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -10,6 +13,8 @@
 #include "ga_tx.hpp"
 #include "logging.hpp"
 
+using namespace std::literals;
+
 namespace ga {
 namespace sdk {
     namespace {
@@ -17,7 +22,79 @@ namespace sdk {
         // expected to ensure that methods are only called on a connected
         // session/are serialised.
         static std::mutex session_impl_mutex;
+        static std::mutex session_context_mutex;
+
+        class exponential_backoff {
+        public:
+            exponential_backoff(std::chrono::seconds limit = 1200s)
+                : m_limit(limit)
+            {
+            }
+
+            std::chrono::seconds backoff(uint32_t n)
+            {
+                m_elapsed += m_waiting;
+                const auto v
+                    = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(n, uint32_t{ 31 }));
+                std::random_device rd;
+                std::uniform_int_distribution<uint32_t> d(v / 2, v);
+                m_waiting = std::chrono::seconds(d(rd));
+                return m_waiting;
+            }
+
+            bool limit_reached() const { return m_elapsed >= m_limit; }
+            std::chrono::seconds elapsed() const { return m_elapsed; }
+            std::chrono::seconds waiting() const { return m_waiting; }
+
+        private:
+            const std::chrono::seconds m_limit;
+            std::chrono::seconds m_elapsed{ 0s };
+            std::chrono::seconds m_waiting{ 0s };
+        };
+
+        template <class T> struct flag_type {
+
+            flag_type() { flag.second = flag.first.get_future(); }
+
+            void set() { flag.first.set_value(); }
+            std::future_status wait(std::chrono::seconds secs = 0s) const { return flag.second.wait_for(secs); }
+
+            std::pair<std::promise<T>, std::future<T>> flag;
+        };
+
     } // namespace
+
+    struct session_context final {
+
+        using flag_t = flag_type<void>;
+
+        void reset_reconnect() { m_reconnect_flag = flag_t{}; }
+        void set_reconnect() { m_reconnect_flag.set(); }
+        bool reconnecting() const { return m_reconnect_flag.wait() != std::future_status::ready; }
+
+        void reset_exit() { m_exit_flag = flag_t{}; }
+        void set_exit() { m_exit_flag.set(); }
+        bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
+
+        void terminate_reconnect_thread()
+        {
+            set_exit();
+            if (m_reconnect_thread.joinable()) {
+                m_reconnect_thread.join();
+            }
+        }
+
+        void destroy()
+        {
+            terminate_reconnect_thread();
+            reset_reconnect();
+            reset_exit();
+        }
+
+        std::thread m_reconnect_thread;
+        flag_t m_reconnect_flag;
+        flag_t m_exit_flag;
+    };
 
     static void log_exception(const char* preamble, const std::exception& e)
     {
@@ -33,19 +110,21 @@ namespace sdk {
         try {
             return f(std::forward<Args>(args)...);
         } catch (const autobahn::abort_error& e) {
-            disconnect();
+            reconnect();
             throw reconnect_error();
         } catch (const login_error& e) {
-            on_failed_login();
-            throw;
+            if (m_impl) {
+                m_impl->on_failed_login();
+            }
+            std::rethrow_exception(std::current_exception());
         } catch (const autobahn::network_error& e) {
-            disconnect();
+            reconnect();
             throw reconnect_error();
         } catch (const autobahn::no_transport_error& e) {
-            disconnect();
+            reconnect();
             throw reconnect_error();
         } catch (const autobahn::protocol_error& e) {
-            disconnect();
+            reconnect();
             throw reconnect_error();
         } catch (const autobahn::call_error& e) {
             std::pair<std::string, std::string> details;
@@ -59,18 +138,24 @@ namespace sdk {
                 // Server sends this response if the PIN is incorrect
                 throw login_error(details.second);
             }
-            throw;
+            std::rethrow_exception(std::current_exception());
         } catch (const assertion_error& e) {
             // Already logged by the assertion that failed
-            throw;
+            std::rethrow_exception(std::current_exception());
         } catch (const user_error& e) {
             log_exception("user error:", e);
-            throw;
+            std::rethrow_exception(std::current_exception());
         } catch (const reconnect_error& e) {
-            throw;
+            std::rethrow_exception(std::current_exception());
+        } catch (const timeout_error& e) {
+            reconnect();
+            throw reconnect_error();
+        } catch (const websocketpp::exception& e) {
+            reconnect();
+            throw reconnect_error();
         } catch (const std::exception& e) {
             log_exception("uncaught exception:", e);
-            throw;
+            std::rethrow_exception(std::current_exception());
         }
         __builtin_unreachable();
     }
@@ -86,26 +171,88 @@ namespace sdk {
                 }
                 throw reconnect_error(); // Need to disconnect first
             }
+
             network_parameters net_params{ *network_parameters::get(name) };
             m_impl = std::make_unique<ga_session>(net_params, proxy, use_tor, debug);
+            std::unique_lock<std::mutex> o{ session_context_mutex };
+            m_session_context = std::make_unique<session_context>();
+            m_impl->set_ping_fail_handler([this] {
+                GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
+                reconnect();
+            });
+            m_impl->set_heartbeat_timeout_handler([this](websocketpp::connection_hdl, const std::string&) {
+                GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
+                reconnect();
+            });
             m_impl->connect();
             m_impl->set_notification_handler(m_notification_handler, m_notification_context);
+            m_session_context->set_reconnect();
         });
     }
 
-    session::session()
-        : m_notification_handler(nullptr)
-        , m_notification_context(nullptr)
-        , m_impl()
-    {
-    }
-
+    session::session() = default;
     session::~session() = default;
+
+    void session::reconnect()
+    {
+        std::unique_lock<std::mutex> l{ session_context_mutex };
+        if (!m_session_context) {
+            GDK_LOG_SEV(log_level::info) << "null session context. backing off...";
+            return;
+        }
+        if (m_session_context->reconnecting()) {
+            GDK_LOG_SEV(log_level::info) << "reconnect in progress. backing off...";
+            return;
+        }
+
+        m_session_context->destroy();
+        m_session_context->m_reconnect_thread = std::thread([this] {
+            GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::this_thread::get_id() << " started.";
+            exponential_backoff bo;
+            uint32_t n = 0;
+            for (;;) {
+                const auto backoff_time = bo.backoff(n++);
+                {
+                    std::unique_lock<std::mutex> l{ session_impl_mutex };
+                    nlohmann::json network_status = { { "connected", false }, { "elapsed", bo.elapsed().count() },
+                        { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } };
+                    GDK_RUNTIME_ASSERT(m_impl != nullptr);
+                    m_impl->emit_notification("network", network_status);
+                }
+                GDK_RUNTIME_ASSERT(m_session_context != nullptr);
+                if (!m_session_context->retrying(backoff_time)) {
+                    GDK_LOG_SEV(log_level::info)
+                        << "reconnect thread " << std::this_thread::get_id() << " exiting on request.";
+                    break;
+                }
+
+                std::unique_lock<std::mutex> l{ session_impl_mutex };
+                GDK_RUNTIME_ASSERT(m_impl != nullptr);
+                const bool result = m_impl->reconnect();
+                if (result) {
+                    GDK_RUNTIME_ASSERT(m_session_context != nullptr);
+                    m_session_context->set_reconnect();
+                    GDK_LOG_SEV(log_level::info)
+                        << "reconnect thread " << std::this_thread::get_id() << " exiting on reconnect.";
+                    break;
+                }
+            }
+        });
+    }
 
     void session::disconnect()
     {
-        std::unique_lock<std::mutex> l{ session_impl_mutex };
-        m_impl.reset();
+        {
+            std::unique_lock<std::mutex> l{ session_context_mutex };
+            if (m_session_context) {
+                m_session_context->destroy();
+            }
+            m_session_context.reset();
+        }
+        {
+            std::unique_lock<std::mutex> l{ session_impl_mutex };
+            m_impl.reset();
+        }
     }
 
     void session::register_user(const std::string& mnemonic, bool supports_csv)
@@ -144,18 +291,21 @@ namespace sdk {
     void session::login(const std::string& mnemonic, const std::string& password)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        GDK_RUNTIME_ASSERT(m_session_context != nullptr);
         return exception_wrapper([&] { m_impl->login(mnemonic, password); });
     }
 
     void session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        GDK_RUNTIME_ASSERT(m_session_context != nullptr);
         return exception_wrapper([&] { m_impl->login_with_pin(pin, pin_data); });
     }
 
     void session::login_watch_only(const std::string& username, const std::string& password)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        GDK_RUNTIME_ASSERT(m_session_context != nullptr);
         return exception_wrapper([&] { m_impl->login_watch_only(username, password); });
     }
 
@@ -234,6 +384,7 @@ namespace sdk {
     void session::set_notification_handler(GA_notification_handler handler, void* context)
     {
         GDK_RUNTIME_ASSERT(m_impl == nullptr);
+        GDK_RUNTIME_ASSERT(m_session_context == nullptr);
         m_notification_handler = handler;
         m_notification_context = context;
     }
@@ -556,13 +707,6 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return m_impl->get_recovery_pubkeys(); // Note no exception_wrapper
-    }
-
-    void session::on_failed_login()
-    {
-        if (m_impl) {
-            m_impl->on_failed_login();
-        }
     }
 
 } // namespace sdk

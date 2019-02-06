@@ -81,25 +81,13 @@ fileprivate func convertOpaqueJsonToDict(o: OpaquePointer) throws -> [String: An
     return convertJSONBytesToDict(buff!)
 }
 
-public func completion<Result>(onResult: @escaping (Result) -> Void, onError: @escaping (Error) -> Void) -> ((Result?, Error?) -> Void) {
-    return { (maybeResult, maybeError) in
-        if let result = maybeResult {
-            onResult(result)
-        } else if let error = maybeError {
-            onError(error)
-        } else {
-            onError(GaError.GenericError)
-        }
-    }
-}
-
 // Dummy resolver for Hardware calls
 public func DummyResolve(call: TwoFactorCall) throws -> [String : Any] {
     while true {
         let json = try call.getStatus()
         let status = json!["status"] as! String
         if status == "call" {
-            try call.call()
+            _ = try call.call()
         } else if status == "done" {
             return json!
         } else {
@@ -130,7 +118,7 @@ public class TwoFactorCall {
 
     // Request that the backend sends a 2fa code
     public func requestCode(method: String?) throws -> Promise<Void> {
-        if (method != nil) {
+        if method != nil {
             try callWrapper(fun: GA_auth_handler_request_code(self.optr, method))
         }
         return Promise<Void> { seal in seal.fulfill(()) }
@@ -138,7 +126,7 @@ public class TwoFactorCall {
 
     // Provide the 2fa code sent by the server
     public func resolveCode(code: String?) throws -> Promise<Void> {
-        if (code != nil) {
+        if code != nil {
             try callWrapper(fun: GA_auth_handler_resolve_code(self.optr, code))
         }
         return Promise<Void> { seal in seal.fulfill(()) }
@@ -152,44 +140,42 @@ public class TwoFactorCall {
     }
 }
 
+public typealias NotificationCompletionHandler = (_ notification: [String: Any]?) -> Void
+
 fileprivate class NotificationContext {
     private var session: OpaquePointer
 
-    init(session: OpaquePointer) {
-        self.session = session
-    }
-}
+    var notificationCompletionHandler: NotificationCompletionHandler
 
-protocol SessionNotificationDelegate: class {
-    func newNotification(notification: [String: Any]?)
+    init(session: OpaquePointer, notificationCompletionHandler: @escaping NotificationCompletionHandler) {
+        self.session = session
+        self.notificationCompletionHandler = notificationCompletionHandler
+    }
 }
 
 public class Session {
     private typealias NotificationHandler = @convention(c) (UnsafeMutableRawPointer?, OpaquePointer?) -> Void
-    static var delegate: SessionNotificationDelegate? = nil
 
-    // TODO: ADD SUPPORT FOR MULTIPLE SESSIONS
     private let notificationHandler : NotificationHandler = { (context: UnsafeMutableRawPointer?, details: OpaquePointer?) -> Void in
         let context : NotificationContext = Unmanaged.fromOpaque(context!).takeUnretainedValue()
         if let jsonDetails = details {
-            if let dict = try? convertOpaqueJsonToDict(o: jsonDetails) {
-                delegate?.newNotification(notification: dict)
-            }
+            let dict = try? convertOpaqueJsonToDict(o: jsonDetails)
+            context.notificationCompletionHandler(dict!)
         }
     }
 
     private var session: OpaquePointer? = nil
     private var notificationContext: NotificationContext? = nil
 
-    private func setNotificationHandler() throws {
-        notificationContext = NotificationContext(session: session!)
+    private func setNotificationHandler(notificationCompletionHandler: @escaping NotificationCompletionHandler) throws {
+        notificationContext = NotificationContext(session: session!, notificationCompletionHandler: notificationCompletionHandler)
         let context = UnsafeMutableRawPointer(Unmanaged.passUnretained(self.notificationContext!).toOpaque())
         try callWrapper(fun: GA_set_notification_handler(session, notificationHandler, context))
     }
 
-    public init() throws {
+    public init(notificationCompletionHandler: @escaping NotificationCompletionHandler) throws {
         try callWrapper(fun: GA_create_session(&session))
-        try setNotificationHandler()
+        try setNotificationHandler(notificationCompletionHandler: notificationCompletionHandler)
     }
 
     deinit {
@@ -529,38 +515,4 @@ public func getBIP39WordList() -> [String] {
         words.append(String(cString: word!))
     }
     return words
-}
-
-public func retry<T>(session: Session,
-                     network: Network,
-                     maxRetryCount: UInt = 3,
-                     delay: DispatchTimeInterval = .seconds(2),
-                     on: DispatchQueue = DispatchQueue.global(qos : .background),
-                     mnemonic: String? = nil,
-                     _ fun: @escaping () -> Promise<T>) -> Promise<T> {
-    var attempts = 0
-    func retry_() -> Promise<T> {
-        attempts += 1
-        return fun().recover { error -> Promise<T> in
-            guard attempts < maxRetryCount && error as! GaError == GaError.ReconnectError else { throw error }
-            return after(delay).then(on: on) {
-                return retry(session: session, network: network, on: on) { wrap { try session.connect(network: network, debug: true) } }
-            }.then(on: on, retry_)
-        }
-    }
-    return retry_()
-}
-
-public func wrap<T>(_ fun: @escaping () throws -> T) -> Promise<T> {
-    return Promise<T> { seal in
-        do {
-            seal.fulfill(try fun())
-        } catch GaError.ReconnectError {
-            seal.reject(GaError.ReconnectError)
-        } catch GaError.TimeoutError {
-            seal.reject(GaError.TimeoutError)
-        } catch {
-            seal.reject(GaError.GenericError)
-        }
-    }
 }

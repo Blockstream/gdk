@@ -35,6 +35,8 @@ namespace sdk {
 #endif
         using rng_type = websocket_rng_type;
 
+        static const long timeout_pong = 20000; // in ms
+
         struct transport_config : public websocketpp::config::asio_client::transport_config {
             using alog_type = websocket_boost_logger;
             using elog_type = websocket_boost_logger;
@@ -53,6 +55,8 @@ namespace sdk {
         static const websocketpp::log::level elog_level = websocketpp::log::elevel::devel;
 #endif
         using rng_type = websocket_rng_type;
+
+        static const long timeout_pong = 20000; // in ms
 
         struct transport_config : public websocketpp::config::asio_tls_client::transport_config {
             using alog_type = websocket_boost_logger;
@@ -75,6 +79,13 @@ namespace sdk {
 
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
         static const uint32_t NUM_FEE_ESTIMATES = 25; // Min fee followed by blocks 1-24
+
+        // networking defaults
+        static const uint32_t DEFAULT_PING = 20; // ping message interval in seconds
+        static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
+        static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
+        static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
+        static const uint32_t DEFAULT_DISCONNECT_WAIT = 5; // maximum wait time on disconnect in seconds
 
         static const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
         static const std::array<unsigned char, 8> PASSWORD_SALT = {
@@ -284,6 +295,7 @@ namespace sdk {
         , m_use_tor(use_tor)
         , m_io(new boost::asio::io_context)
         , m_controller(*m_io)
+        , m_ping_timer(*m_io)
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
@@ -302,18 +314,28 @@ namespace sdk {
         one_time_setup();
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         connect_with_tls() ? make_client<client_tls>() : make_client<client>();
+
+        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
+        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
     }
 
     ga_session::~ga_session()
     {
+        m_ping_timer.cancel();
         reset();
         m_io->stop();
+    }
+
+    bool ga_session::is_connected() const
+    {
+        const bool tls = connect_with_tls();
+        return tls ? is_transport_connected<transport_tls>() : is_transport_connected<transport>();
     }
 
     bool ga_session::is_connected(const std::string& name, const std::string& proxy, bool use_tor)
     {
         locker_t locker(m_mutex);
-        return socksify(proxy) == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
+        return is_connected() && socksify(proxy) == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
     }
 
     void ga_session::unsubscribe()
@@ -321,7 +343,13 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         for (const auto& sub : m_subscriptions) {
-            no_std_exception_escape([this, &sub] { m_session->unsubscribe(sub).get(); });
+            no_std_exception_escape([this, &sub] {
+                const auto status
+                    = m_session->unsubscribe(sub).wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                if (status != boost::future_status::ready) {
+                    GDK_LOG_SEV(log_level::info) << "future not ready on unsubscribe";
+                }
+            });
         }
         m_subscriptions.clear();
     }
@@ -329,6 +357,33 @@ namespace sdk {
     bool ga_session::connect_with_tls() const
     {
         return boost::algorithm::starts_with(m_net_params.get_connection_string(m_use_tor), "wss://");
+    }
+
+    void ga_session::set_socket_options()
+    {
+        auto set_option = [this](auto option) {
+            const bool tls = connect_with_tls();
+            GDK_RUNTIME_ASSERT(tls ? set_socket_option<transport_tls>(option) : set_socket_option<transport>(option));
+        };
+
+        boost::asio::ip::tcp::no_delay no_delay(true);
+        set_option(no_delay);
+        boost::asio::socket_base::keep_alive keep_alive(true);
+        set_option(keep_alive);
+
+#if defined __APPLE__
+        using tcp_keep_alive = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPALIVE>;
+        set_option(tcp_keep_alive{ DEFAULT_KEEPIDLE });
+#elif __linux__ || __ANDROID__ || __FreeBSD__
+        using keep_idle = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPIDLE>;
+        set_option(keep_idle{ DEFAULT_KEEPIDLE });
+#endif
+#ifndef __WIN64
+        using keep_interval = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPINTVL>;
+        set_option(keep_interval{ DEFAULT_KEEPINTERVAL });
+        using keep_count = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPCNT>;
+        set_option(keep_count{ DEFAULT_KEEPCNT });
+#endif
     }
 
     void ga_session::connect()
@@ -339,6 +394,8 @@ namespace sdk {
         tls ? make_transport<transport_tls>() : make_transport<transport>();
         tls ? connect_to_endpoint<transport_tls>(m_session, m_transport)
             : connect_to_endpoint<transport>(m_session, m_transport);
+
+        set_socket_options();
     }
 
     template <typename T> std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler() {}
@@ -371,9 +428,22 @@ namespace sdk {
             proxy_details = std::string(" through proxy ") + proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting to " << server << proxy_details;
+        boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
         m_transport = std::make_shared<T>(*boost::get<client_type>(m_client), server, proxy, m_debug);
         boost::get<std::shared_ptr<T>>(m_transport)
             ->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
+    }
+
+    template <typename T> void ga_session::disconnect_transport() const
+    {
+        no_std_exception_escape([this] {
+            const auto status = boost::get<std::shared_ptr<T>>(m_transport)
+                                    ->disconnect()
+                                    .wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+            if (status != boost::future_status::ready) {
+                GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
+            }
+        });
     }
 
     context_ptr ga_session::tls_init_handler_impl()
@@ -429,16 +499,82 @@ namespace sdk {
         return ctx;
     }
 
+    void ga_session::ping_timer_handler(const boost::system::error_code& ec)
+    {
+        if (ec == boost::asio::error::operation_aborted) {
+            return;
+        }
+        const bool tls = connect_with_tls();
+        const bool expect_pong = tls ? ping<transport_tls>() : ping<transport>();
+        if (!expect_pong) {
+            GDK_RUNTIME_ASSERT(m_ping_fail_handler != nullptr);
+            m_ping_fail_handler();
+        }
+
+        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
+        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
+    }
+
+    void ga_session::set_heartbeat_timeout_handler(heartbeat_t handler) { m_heartbeat_handler = handler; }
+
+    void ga_session::set_ping_fail_handler(ping_fail_t handler) { m_ping_fail_handler = handler; }
+
+    void ga_session::emit_notification(std::string event, nlohmann::json details)
+    {
+        auto t = std::thread([this, event, details] {
+            if (m_notification_handler != nullptr) {
+                locker_t locker{ m_mutex };
+                call_notification_handler(locker, new nlohmann::json({ { "event", event }, { event, details } }));
+            }
+        });
+        t.detach();
+    }
+
+    bool ga_session::reconnect()
+    {
+        try {
+            if (is_connected()) {
+                GDK_LOG_SEV(log_level::info) << "attempting to reconnect but transport still connected. backing off...";
+                emit_notification(
+                    "network", { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
+                return true;
+            }
+
+            disconnect();
+            connect();
+
+            const bool logged_in = !m_mnemonic.empty() && login_from_cached(m_mnemonic);
+            emit_notification(
+                "network", { { "connected", true }, { "login_required", !logged_in }, { "heartbeat_timeout", false } });
+
+            return true;
+        } catch (const std::exception&) {
+            return false;
+        }
+    }
+
     void ga_session::disconnect()
     {
-        locker_t locker(m_mutex);
+        locker_t locker{ m_mutex };
 
         if (m_notification_handler != nullptr) {
             call_notification_handler(locker, new nlohmann::json());
         }
-        no_std_exception_escape([this] { m_session->leave().get(); });
-        no_std_exception_escape([this] { m_session->stop().get(); });
+        no_std_exception_escape([this] {
+            const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+            if (status != boost::future_status::ready) {
+                GDK_LOG_SEV(log_level::info) << "future not ready on leave session";
+            }
+        });
+        no_std_exception_escape([this] {
+            const auto status = m_session->stop().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+            if (status != boost::future_status::ready) {
+                GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
+            }
+        });
         connect_with_tls() ? disconnect_transport<transport_tls>() : disconnect_transport<transport>();
+
+        m_signer.reset();
     }
 
     void ga_session::reset()
@@ -948,6 +1084,16 @@ namespace sdk {
             m_mnemonic.clear();
             m_local_encryption_password.clear();
         } catch (const std::exception& ex) {
+        }
+    }
+
+    bool ga_session::login_from_cached(const std::string& mnemonic)
+    {
+        try {
+            login(mnemonic);
+            return true;
+        } catch (const std::exception&) {
+            return false;
         }
     }
 

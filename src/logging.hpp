@@ -14,7 +14,7 @@ namespace sdk {
     namespace log_level = boost::log::trivial;
     namespace wlog = websocketpp::log;
 
-    namespace {
+    namespace detail {
         constexpr boost::log::trivial::severity_level sev(wlog::level l)
         {
             switch (l) {
@@ -33,7 +33,7 @@ namespace sdk {
                 return boost::log::trivial::info;
             }
         }
-    } // namespace
+    } // namespace detail
 
 #ifdef __ANDROID__
     class android_backend : public boost::log::sinks::basic_formatted_sink_backend<char> {
@@ -103,13 +103,13 @@ namespace sdk {
         void write(wlog::level l, const std::string& s)
         {
             if (dynamic_test(l)) {
-                BOOST_LOG_SEV(m_log, sev(l)) << s;
+                BOOST_LOG_SEV(m_log, detail::sev(l)) << s;
             }
         }
         void write(wlog::level l, char const* s)
         {
             if (dynamic_test(l)) {
-                BOOST_LOG_SEV(m_log, sev(l)) << s;
+                BOOST_LOG_SEV(m_log, detail::sev(l)) << s;
             }
         }
         bool static_test(wlog::level l) const { return (m_level & l) != 0; }
