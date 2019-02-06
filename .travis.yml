@@ -1,11 +1,19 @@
 language: generic
 sudo: required
-
 services:
   - docker
 
+env:
+  global:
+    - DOCKERBUILDER=greenaddress/ci
+    - DOCKERHASH=62f35f4b138a1b0cad32c6854465128acf9b4ee8098dc426512ae1c1ca166a43
+    - COMPILER=gcc
+  matrix:
+    - UNUSED=true
+    - COMPILER=clang
+    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
+    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47 COMPILER=clang
+
+
 script:
-  - docker run -v $PWD:/gdk greenaddress/ci@sha256:62f35f4b138a1b0cad32c6854465128acf9b4ee8098dc426512ae1c1ca166a43 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
-  - docker run -v $PWD:/gdk greenaddress/ci@sha256:62f35f4b138a1b0cad32c6854465128acf9b4ee8098dc426512ae1c1ca166a43 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
-  - docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
-  - docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
+  - docker run -v $PWD:/gdk $DOCKERBUILDER@sha256:$DOCKERHASH /bin/bash -c "cd /gdk && ./tools/build.sh --$COMPILER"
