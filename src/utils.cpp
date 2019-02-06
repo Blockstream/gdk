@@ -364,14 +364,15 @@ int GA_generate_mnemonic(char** output)
     }
 }
 
-int GA_validate_mnemonic(const char* mnemonic)
+int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
 {
+    *valid = GA_FALSE;
     try {
         GDK_VERIFY(bip39_mnemonic_validate(nullptr, mnemonic));
-        return GA_TRUE;
+        *valid = GA_TRUE;
     } catch (const std::exception& e) {
-        return GA_FALSE;
     }
+    return GA_OK;
 }
 
 void GA_destroy_string(const char* str) { delete[] str; }

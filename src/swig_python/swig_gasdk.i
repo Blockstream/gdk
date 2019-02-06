@@ -219,6 +219,13 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
        GA_destroy_json(*$1);
    }
 }
+%typemap(in, numinputs=0) uint32_t * (uint32_t temp) {
+   $1 = &temp;
+}
+%typemap(argout) uint32_t* {
+    Py_DecRef($result);
+    $result = PyInt_FromLong(*$1);
+}
 
 /* Tell swig about uin32_t */
 typedef unsigned int uint32_t;

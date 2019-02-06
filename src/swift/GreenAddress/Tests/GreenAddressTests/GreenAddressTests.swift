@@ -28,16 +28,21 @@ class GreenAddressTests : XCTestCase {
         return session
     }
 
-    // Use wally functions contained in module.
-    func validateMnemonic() {
-        XCTAssert(bip39_mnemonic_validate(nil, self.DEFAULT_MNEMONIC) == WALLY_OK)
+    func testValidateMnemonic() {
+        let valid: String = self.DEFAULT_MNEMONIC;
+        let invalid: String = String(valid.reversed());
+
+        XCTAssert(bip39_mnemonic_validate(nil, valid) == WALLY_OK)
+        XCTAssert(bip39_mnemonic_validate(nil, invalid) == WALLY_EINVAL)
+        XCTAssert(try validateMnemonic(mnemonic: valid))
+        XCTAssertFalse(try validateMnemonic(mnemonic: invalid))
     }
 }
 
 extension GreenAddressTests {
     static var allTests : [(String, (GreenAddressTests) -> () throws -> Void)] {
         return [
-            ("validateMnemonic", validateMnemonic)
+            ("testValidateMnemonic", testValidateMnemonic)
         ]
     }
 }

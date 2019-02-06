@@ -623,10 +623,9 @@ GDK_API int GA_generate_mnemonic(char** output);
  * Validate a BIP 39 mnemonic.
  *
  * :param mnemonic: The mnemonic phrase
- *
- * GA_FALSE if mnemonic validation fails
+ * :param valid: Destination for the result: GA_TRUE if the mnemonic is valid else GA_FALSE
  */
-GDK_API int GA_validate_mnemonic(const char* mnemonic);
+GDK_API int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid);
 
 /**
  * Register a network configuration

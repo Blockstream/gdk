@@ -533,7 +533,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_get_settings, GA_json)
 %returns_void__(GA_auth_handler_request_code)
 %returns_void__(GA_auth_handler_resolve_code)
-%returns_void__(GA_validate_mnemonic)
+%returns_uint32(GA_validate_mnemonic)
 
 /* TODO
 GA_convert_json_value_to_bool

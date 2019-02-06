@@ -490,8 +490,10 @@ public func generateMnemonic() throws -> String {
     return String(cString: buff!)
 }
 
-public func validateMnemonic(mnemonic: String) -> Bool {
-    return GA_validate_mnemonic(mnemonic) == GA_TRUE
+public func validateMnemonic(mnemonic: String) throws -> Bool {
+    var result: UInt32 = 0
+    try callWrapper(fun: GA_validate_mnemonic(mnemonic, &result))
+    return result == GA_TRUE
 }
 
 public func registerNetwork(name: String, details: [String: Any]) throws -> Void {
