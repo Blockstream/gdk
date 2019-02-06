@@ -608,21 +608,21 @@ GDK_API void GA_destroy_string(const char* str);
  *
  * Generates up to 32 random bytes using the same strategy as Bitcoin Core code.
  * :param output_bytes: bytes output buffer
- * :param siz: number of bytes to return (max. 32)
+ * :param siz: Number of bytes to return (max. 32)
  */
 GDK_API int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len);
 
 /**
  * Generate a new random BIP 39 mnemonic.
  *
- * :param output: the generated mnemonic phrase
+ * :param output: The generated mnemonic phrase
  */
 GDK_API int GA_generate_mnemonic(char** output);
 
 /**
  * Validate a BIP 39 mnemonic.
  *
- * :param mnemonic: the mnemonic phrase
+ * :param mnemonic: The mnemonic phrase
  *
  * GA_FALSE if mnemonic validation fails
  */
