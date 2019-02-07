@@ -195,6 +195,14 @@ public class Session {
         try callWrapper(fun: GA_disconnect(session))
     }
 
+    public func reconnectHint(hint: [String: Any]) throws {
+        var hintJson: OpaquePointer = try convertDictToJSON(dict: hint)
+        defer {
+            GA_destroy_json(hintJson)
+        }
+        try callWrapper(fun: GA_reconnect_hint(session, hintJson))
+    }
+
     public func registerUser(mnemonic: String) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
         var hw_device: OpaquePointer? = nil

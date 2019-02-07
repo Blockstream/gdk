@@ -16,7 +16,7 @@ namespace sdk {
     class ga_session;
     class ga_pubkeys;
     class ga_user_pubkeys;
-    struct session_context;
+    class network_control_context;
     class signer;
 
     class session {
@@ -33,6 +33,7 @@ namespace sdk {
         void connect(const std::string& name, const std::string& proxy = std::string(), bool use_tor = false,
             bool debug = false);
         void disconnect();
+        void reconnect_hint(const nlohmann::json& hint);
 
         void register_user(const std::string& mnemonic, bool supports_csv);
         void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
@@ -144,7 +145,7 @@ namespace sdk {
         void reconnect();
 
         std::unique_ptr<ga_session> m_impl;
-        std::unique_ptr<session_context> m_session_context;
+        std::unique_ptr<network_control_context> m_network_control_context;
 
         GA_notification_handler m_notification_handler{ nullptr };
         void* m_notification_context{ nullptr };

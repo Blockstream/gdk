@@ -22,11 +22,11 @@ namespace sdk {
         // expected to ensure that methods are only called on a connected
         // session/are serialised.
         static std::mutex session_impl_mutex;
-        static std::mutex session_context_mutex;
+        static std::mutex network_control_context_mutex;
 
         class exponential_backoff {
         public:
-            exponential_backoff(std::chrono::seconds limit = 1200s)
+            exponential_backoff(std::chrono::seconds limit = 300s)
                 : m_limit(limit)
             {
             }
@@ -56,7 +56,15 @@ namespace sdk {
 
             flag_type() { flag.second = flag.first.get_future(); }
 
-            void set() { flag.first.set_value(); }
+            template <bool is_void = std::is_void<T>::value> std::enable_if_t<is_void> set() { flag.first.set_value(); }
+
+            template <bool is_void = std::is_void<T>::value> void set(std::enable_if_t<!is_void, T> v)
+            {
+                flag.first.set_value(v);
+            }
+
+            T get() { return flag.second.get(); }
+
             std::future_status wait(std::chrono::seconds secs = 0s) const { return flag.second.wait_for(secs); }
 
             std::pair<std::promise<T>, std::future<T>> flag;
@@ -64,8 +72,8 @@ namespace sdk {
 
     } // namespace
 
-    struct session_context final {
-
+    class network_control_context final {
+    public:
         using flag_t = flag_type<void>;
 
         void reset_reconnect() { m_reconnect_flag = flag_t{}; }
@@ -76,7 +84,26 @@ namespace sdk {
         void set_exit() { m_exit_flag.set(); }
         bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
 
-        void terminate_reconnect_thread()
+        void set_enabled(bool v) { m_enabled = v; }
+        bool is_enabled() const { return m_enabled; }
+
+        template <class F> void reconnect(F&& fn) { start_reconnect(fn); }
+
+        void stop_reconnect()
+        {
+            stop_reconnect_thread();
+            reset_reconnect();
+            reset_exit();
+        }
+
+    private:
+        template <class F> void start_reconnect(F&& fn)
+        {
+            stop_reconnect();
+            m_reconnect_thread = std::thread(fn);
+        }
+
+        void stop_reconnect_thread()
         {
             set_exit();
             if (m_reconnect_thread.joinable()) {
@@ -84,16 +111,10 @@ namespace sdk {
             }
         }
 
-        void destroy()
-        {
-            terminate_reconnect_thread();
-            reset_reconnect();
-            reset_exit();
-        }
-
         std::thread m_reconnect_thread;
         flag_t m_reconnect_flag;
         flag_t m_exit_flag;
+        bool m_enabled{ true };
     };
 
     static void log_exception(const char* preamble, const std::exception& e)
@@ -174,8 +195,8 @@ namespace sdk {
 
             network_parameters net_params{ *network_parameters::get(name) };
             m_impl = std::make_unique<ga_session>(net_params, proxy, use_tor, debug);
-            std::unique_lock<std::mutex> o{ session_context_mutex };
-            m_session_context = std::make_unique<session_context>();
+            std::unique_lock<std::mutex> o{ network_control_context_mutex };
+            m_network_control_context = std::make_unique<network_control_context>();
             m_impl->set_ping_fail_handler([this] {
                 GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
                 reconnect();
@@ -186,7 +207,7 @@ namespace sdk {
             });
             m_impl->connect();
             m_impl->set_notification_handler(m_notification_handler, m_notification_context);
-            m_session_context->set_reconnect();
+            m_network_control_context->set_reconnect();
         });
     }
 
@@ -195,18 +216,23 @@ namespace sdk {
 
     void session::reconnect()
     {
-        std::unique_lock<std::mutex> l{ session_context_mutex };
-        if (!m_session_context) {
+        std::unique_lock<std::mutex> l{ network_control_context_mutex };
+        if (!m_network_control_context) {
             GDK_LOG_SEV(log_level::info) << "null session context. backing off...";
             return;
         }
-        if (m_session_context->reconnecting()) {
+
+        if (m_network_control_context->reconnecting()) {
             GDK_LOG_SEV(log_level::info) << "reconnect in progress. backing off...";
             return;
         }
 
-        m_session_context->destroy();
-        m_session_context->m_reconnect_thread = std::thread([this] {
+        if (!m_network_control_context->is_enabled()) {
+            GDK_LOG_SEV(log_level::info) << "reconnect is disabled. backing off...";
+            return;
+        }
+
+        m_network_control_context->reconnect([this] {
             GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::this_thread::get_id() << " started.";
             exponential_backoff bo;
             uint32_t n = 0;
@@ -219,8 +245,9 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(m_impl != nullptr);
                     m_impl->emit_notification("network", network_status);
                 }
-                GDK_RUNTIME_ASSERT(m_session_context != nullptr);
-                if (!m_session_context->retrying(backoff_time)) {
+
+                GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
+                if (!m_network_control_context->retrying(backoff_time)) {
                     GDK_LOG_SEV(log_level::info)
                         << "reconnect thread " << std::this_thread::get_id() << " exiting on request.";
                     break;
@@ -230,8 +257,8 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(m_impl != nullptr);
                 const bool result = m_impl->reconnect();
                 if (result) {
-                    GDK_RUNTIME_ASSERT(m_session_context != nullptr);
-                    m_session_context->set_reconnect();
+                    GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
+                    m_network_control_context->set_reconnect();
                     GDK_LOG_SEV(log_level::info)
                         << "reconnect thread " << std::this_thread::get_id() << " exiting on reconnect.";
                     break;
@@ -243,16 +270,38 @@ namespace sdk {
     void session::disconnect()
     {
         {
-            std::unique_lock<std::mutex> l{ session_context_mutex };
-            if (m_session_context) {
-                m_session_context->destroy();
+            std::unique_lock<std::mutex> l{ network_control_context_mutex };
+            if (m_network_control_context) {
+                m_network_control_context->stop_reconnect();
             }
-            m_session_context.reset();
+            m_network_control_context.reset();
         }
         {
             std::unique_lock<std::mutex> l{ session_impl_mutex };
             m_impl.reset();
         }
+    }
+
+    void session::reconnect_hint(const nlohmann::json& hint)
+    {
+        exception_wrapper([&] {
+            {
+                std::unique_lock<std::mutex> l{ network_control_context_mutex };
+                if (!m_network_control_context) {
+                    return;
+                }
+                if (!m_network_control_context->reconnecting()) {
+                    GDK_LOG_SEV(log_level::info) << "no reconnect in progress. ignoring.";
+                    return;
+                }
+                const std::string option = hint["hint"];
+                GDK_RUNTIME_ASSERT(option == "now" || option == "disable");
+                m_network_control_context->stop_reconnect();
+                m_network_control_context->set_enabled(option != "disable");
+                m_network_control_context->set_reconnect();
+            }
+            reconnect();
+        });
     }
 
     void session::register_user(const std::string& mnemonic, bool supports_csv)
@@ -291,21 +340,21 @@ namespace sdk {
     void session::login(const std::string& mnemonic, const std::string& password)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        GDK_RUNTIME_ASSERT(m_session_context != nullptr);
+        GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
         return exception_wrapper([&] { m_impl->login(mnemonic, password); });
     }
 
     void session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        GDK_RUNTIME_ASSERT(m_session_context != nullptr);
+        GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
         return exception_wrapper([&] { m_impl->login_with_pin(pin, pin_data); });
     }
 
     void session::login_watch_only(const std::string& username, const std::string& password)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        GDK_RUNTIME_ASSERT(m_session_context != nullptr);
+        GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
         return exception_wrapper([&] { m_impl->login_watch_only(username, password); });
     }
 
@@ -384,7 +433,7 @@ namespace sdk {
     void session::set_notification_handler(GA_notification_handler handler, void* context)
     {
         GDK_RUNTIME_ASSERT(m_impl == nullptr);
-        GDK_RUNTIME_ASSERT(m_session_context == nullptr);
+        GDK_RUNTIME_ASSERT(m_network_control_context == nullptr);
         m_notification_handler = handler;
         m_notification_context = context;
     }

@@ -103,6 +103,9 @@ class Session(object):
     def disconnect(self):
         return disconnect(self.session_obj)
 
+    def reconnect_hint(self, hint):
+        return reconnect_hint(self.session_obj, self._to_json(hint))
+
     def register_user(self, hw_device, mnemonic):
         return Call(register_user(self.session_obj, self._to_json(hw_device), mnemonic))
 

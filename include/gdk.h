@@ -93,6 +93,14 @@ GDK_API int GA_connect_with_proxy(
 GDK_API int GA_disconnect(struct GA_session* session);
 
 /**
+ * Configure networking behaviour when reconnecting.
+ *
+ * :param session: The session to use.
+ * :param hint: the hint JSON to configure.
+ */
+GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
+
+/**
  * Create a new user account using a hardware wallet/HSM/TPM.
  *
  * :param session: The session to use.

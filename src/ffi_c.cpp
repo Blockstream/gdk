@@ -174,6 +174,9 @@ GDK_DEFINE_C_FUNCTION_5(GA_connect_with_proxy, struct GA_session*, session, cons
 
 GDK_DEFINE_C_FUNCTION_1(GA_disconnect, struct GA_session*, session, { session->disconnect(); })
 
+GDK_DEFINE_C_FUNCTION_2(GA_reconnect_hint, struct GA_session*, session, const GA_json*, hint,
+    { session->reconnect_hint(*json_cast(hint)); });
+
 GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::register_call(*session, *json_cast(hw_device), mnemonic)); })
