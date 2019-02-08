@@ -199,6 +199,7 @@ library_deps += compiler.find_library('atomic', required : false)
 library_deps += compiler.find_library('dl', required : false)
 library_deps += compiler.find_library('ws2_32', required : cross_win_build)
 library_deps += compiler.find_library('bcrypt', required : cross_win_build)
+library_deps += compiler.find_library('crypt32', required : cross_win_build)
 library_deps += compiler.find_library('ssp', required : cross_win_build)
 library_deps += compiler.find_library('log', required : cross_android_build)
 if debug and build_machine.system() == 'linux'
