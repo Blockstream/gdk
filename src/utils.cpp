@@ -33,86 +33,90 @@
 namespace ga {
 namespace sdk {
 
-    // This function copied from bitcoin core
-    static inline int64_t GetPerformanceCounter()
-    {
-        // Read the hardware time stamp counter when available.
-        // See https://en.wikipedia.org/wiki/Time_Stamp_Counter for more information.
+    // from bitcoin core
+    namespace {
+        inline int64_t GetPerformanceCounter()
+        {
+            // Read the hardware time stamp counter when available.
+            // See https://en.wikipedia.org/wiki/Time_Stamp_Counter for more information.
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-        return __rdtsc();
+            return __rdtsc();
 #elif !defined(_MSC_VER) && defined(__i386__)
-        uint64_t r = 0;
-        __asm__ volatile("rdtsc" : "=A"(r)); // Constrain the r variable to the eax:edx pair.
-        return r;
+            uint64_t r = 0;
+            __asm__ volatile("rdtsc" : "=A"(r)); // Constrain the r variable to the eax:edx pair.
+            return r;
 #elif !defined(_MSC_VER) && (defined(__x86_64__) || defined(__amd64__))
-        uint64_t r1 = 0, r2 = 0;
-        __asm__ volatile("rdtsc" : "=a"(r1), "=d"(r2)); // Constrain r1 to rax and r2 to rdx.
-        return (r2 << 32) | r1;
+            uint64_t r1 = 0, r2 = 0;
+            __asm__ volatile("rdtsc" : "=a"(r1), "=d"(r2)); // Constrain r1 to rax and r2 to rdx.
+            return (r2 << 32) | r1;
 #else
-        // Fall back to using C++11 clock (usually microsecond or nanosecond precision)
-        return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+            // Fall back to using C++11 clock (usually microsecond or nanosecond precision)
+            return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 #endif
-    }
-
-    static void GetOSRand(unsigned char* buf)
-    {
-#if !defined _WIN32 && !defined WIN32 && !defined __CYGWIN__
-        int random_device = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-        GDK_RUNTIME_ASSERT(random_device != -1);
-        const auto random_device_ptr = std::unique_ptr<int, std::function<void(int*)>>(
-            &random_device, [](const int* device) { ::close(*device); });
-
-        GDK_RUNTIME_ASSERT(static_cast<size_t>(read(random_device, buf, 32)) == 32);
-#else
-        GDK_RUNTIME_ASSERT(BCryptGenRandom(NULL, buf, 32, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0x0);
-#endif
-    }
-
-    static bool Random_TimeSanityCheck(uint64_t start)
-    {
-        // Check that GetPerformanceCounter increases at least during a GetOSRand() call + 1ms sleep.
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        const uint64_t stop = GetPerformanceCounter();
-        if (stop == start)
-            return false;
-
-        // We called GetPerformanceCounter. Use it as entropy.
-        RAND_add((const unsigned char*)&start, sizeof(start), 1);
-        RAND_add((const unsigned char*)&stop, sizeof(stop), 1);
-
-        return true;
-    }
-
-    static bool Random_SanityCheck()
-    {
-        uint64_t start = GetPerformanceCounter();
-
-        /* This does not measure the quality of randomness, but it does test that
-         * GetOSRandom() flips every bit from its output at least once given MAX_TRIES
-         * attempts. On average this takes ln(256) = 8 tries.
-         */
-        constexpr int MAX_TRIES = 64;
-        constexpr int NUM_OS_RANDOM_BYTES = 32;
-        uint8_t zeros[NUM_OS_RANDOM_BYTES] = { 0 };
-        uint8_t ones[NUM_OS_RANDOM_BYTES] = { 0xff };
-
-        for (int tries = 0; tries < MAX_TRIES; ++tries) {
-            uint8_t data[NUM_OS_RANDOM_BYTES] = { 0 };
-            GetOSRand(data);
-
-            size_t num_zeros_flipped = 0, num_ones_flipped = 0;
-            for (size_t i = 0; i < sizeof(data); ++i) {
-                zeros[i] |= data[i];
-                num_zeros_flipped += zeros[i] == 0xff;
-                ones[i] &= data[i];
-                num_ones_flipped += ones[i] == 0;
-            }
-            if (num_zeros_flipped == sizeof(zeros) && num_ones_flipped == sizeof(ones)) {
-                return Random_TimeSanityCheck(start);
-            }
         }
-        return false;
-    }
+
+        void GetOSRand(unsigned char* buf)
+        {
+#if !defined _WIN32 && !defined WIN32 && !defined __CYGWIN__
+            int random_device = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+            GDK_RUNTIME_ASSERT(random_device != -1);
+            const auto random_device_ptr = std::unique_ptr<int, std::function<void(int*)>>(
+                &random_device, [](const int* device) { ::close(*device); });
+
+            GDK_RUNTIME_ASSERT(static_cast<size_t>(read(random_device, buf, 32)) == 32);
+#else
+            GDK_RUNTIME_ASSERT(BCryptGenRandom(NULL, buf, 32, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0x0);
+#endif
+        }
+
+        bool Random_SanityCheck()
+        {
+            constexpr int NUM_OS_RANDOM_BYTES = 32;
+
+            uint64_t start = GetPerformanceCounter();
+
+            /* This does not measure the quality of randomness, but it does test that
+             * OSRandom() overwrites all 32 bytes of the output given a maximum
+             * number of tries.
+             */
+            static const ssize_t MAX_TRIES = 1024;
+            uint8_t data[NUM_OS_RANDOM_BYTES];
+            bool overwritten[NUM_OS_RANDOM_BYTES] = {}; /* Tracks which bytes have been overwritten at least once */
+            int num_overwritten;
+            int tries = 0;
+            /* Loop until all bytes have been overwritten at least once, or max number tries reached */
+            do {
+                memset(data, 0, NUM_OS_RANDOM_BYTES);
+                GetOSRand(data);
+                for (int x = 0; x < NUM_OS_RANDOM_BYTES; ++x) {
+                    overwritten[x] |= (data[x] != 0);
+                }
+
+                num_overwritten = 0;
+                for (int x = 0; x < NUM_OS_RANDOM_BYTES; ++x) {
+                    if (overwritten[x]) {
+                        num_overwritten += 1;
+                    }
+                }
+
+                tries += 1;
+            } while (num_overwritten < NUM_OS_RANDOM_BYTES && tries < MAX_TRIES);
+            if (num_overwritten != NUM_OS_RANDOM_BYTES)
+                return false; /* If this failed, bailed out after too many tries */
+
+            // Check that GetPerformanceCounter increases at least during a GetOSRand() call + 1ms sleep.
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            uint64_t stop = GetPerformanceCounter();
+            if (stop == start)
+                return false;
+
+            // We called GetPerformanceCounter. Use it as entropy.
+            RAND_add((const unsigned char*)&start, sizeof(start), 1);
+            RAND_add((const unsigned char*)&stop, sizeof(stop), 1);
+
+            return true;
+        }
+    } // namespace
 
     // use the same strategy as bitcoin core
     void get_random_bytes(std::size_t num_bytes, void* output_bytes, std::size_t siz)
