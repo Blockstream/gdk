@@ -16,7 +16,7 @@ namespace sdk {
 
     class login_error : public std::runtime_error {
     public:
-        login_error(const std::string& what)
+        explicit login_error(const std::string& what)
             : std::runtime_error("login failed:" + what)
         {
         }
@@ -40,7 +40,7 @@ namespace sdk {
 
     class assertion_error : public std::runtime_error {
     public:
-        assertion_error(const std::string& what)
+        explicit assertion_error(const std::string& what)
             : std::runtime_error(what)
         {
         }
@@ -48,7 +48,7 @@ namespace sdk {
 
     class user_error : public std::runtime_error {
     public:
-        user_error(const std::string& what)
+        explicit user_error(const std::string& what)
             : std::runtime_error(what)
         {
         }

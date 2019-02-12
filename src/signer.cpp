@@ -9,7 +9,7 @@ namespace sdk {
     {
     }
 
-    signer::~signer() {}
+    signer::~signer() = default;
 
     bool signer::supports_low_r() const
     {
@@ -42,7 +42,7 @@ namespace sdk {
     {
     }
 
-    watch_only_signer::~watch_only_signer() {}
+    watch_only_signer::~watch_only_signer() = default;
 
     // Watch-only can only sign sweep txs, which are low r
     bool watch_only_signer::supports_low_r() const { return true; }
@@ -106,7 +106,7 @@ namespace sdk {
         }
     }
 
-    software_signer::~software_signer() {}
+    software_signer::~software_signer() = default;
 
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; };
@@ -156,7 +156,7 @@ namespace sdk {
     {
     }
 
-    hardware_signer::~hardware_signer() {}
+    hardware_signer::~hardware_signer() = default;
 
     bool hardware_signer::supports_low_r() const { return json_get_value(m_hw_device, "supports_low_r", false); }
     bool hardware_signer::supports_arbitrary_scripts() const

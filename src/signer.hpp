@@ -16,12 +16,12 @@ namespace sdk {
     //
     class signer {
     public:
-        signer(const network_parameters& net_params);
+        explicit signer(const network_parameters& net_params);
 
-        signer(const signer&) = default;
-        signer& operator=(const signer&) = default;
-        signer(signer&&) = default;
-        signer& operator=(signer&&) = default;
+        signer(const signer&) = delete;
+        signer& operator=(const signer&) = delete;
+        signer(signer&&) = delete;
+        signer& operator=(signer&&) = delete;
         virtual ~signer();
 
         // Get the challenge to sign for GA authentication
@@ -53,7 +53,7 @@ namespace sdk {
     //
     class watch_only_signer final : public signer {
     public:
-        watch_only_signer(const network_parameters& net_params);
+        explicit watch_only_signer(const network_parameters& net_params);
 
         watch_only_signer(const watch_only_signer&) = delete;
         watch_only_signer& operator=(const watch_only_signer&) = delete;

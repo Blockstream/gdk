@@ -291,11 +291,10 @@ namespace sdk {
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
                     m_twofactor_data["path"] = std::vector<uint32_t>{ 0x4741b11e };
                     return state_type::resolve_code;
-                } else {
-                    // Register the xpub for each of our subaccounts
-                    m_session.register_subaccount_xpubs(xpubs);
-                    return state_type::done;
                 }
+                // Register the xpub for each of our subaccounts
+                m_session.register_subaccount_xpubs(xpubs);
+                return state_type::done;
             } else if (m_action == "sign_message") {
                 // Log in and set up the session
                 m_session.authenticate(args.at("signature"), "GA", std::string(), m_hw_device);
@@ -740,7 +739,7 @@ namespace sdk {
             // compared to the original
             const auto previous_transaction = tx_details.find("previous_transaction");
             if (previous_transaction != tx_details.end()) {
-                const uint64_t previous_fee = previous_transaction->at("fee").get<uint64_t>();
+                const auto previous_fee = previous_transaction->at("fee").get<uint64_t>();
                 GDK_RUNTIME_ASSERT(previous_fee < fee);
                 m_bump_amount = fee - previous_fee;
             }
@@ -748,7 +747,7 @@ namespace sdk {
             // limit_delta is the amount to deduct from the current spending limit for this tx
             // For a fee bump (RBF) it is just the bump amount, i.e. the additional fee, because the
             // previous fee and tx amount has already been deducted from the limits
-            const uint64_t limit_delta = m_bump_amount ? m_bump_amount : satoshi + fee;
+            const uint64_t limit_delta = m_bump_amount != 0u ? m_bump_amount : satoshi + fee;
 
             if (limit != 0 && limit_delta <= limit) {
                 // 2fa is enabled and we have a spending limit, but this tx is under it.
@@ -784,7 +783,7 @@ namespace sdk {
     {
         m_twofactor_data = nlohmann::json();
         if (m_twofactor_required) {
-            if (m_bump_amount) {
+            if (m_bump_amount != 0u) {
                 m_action = "bump_fee";
                 const auto amount_key = m_under_limit ? "try_under_limits_bump" : "amount";
                 m_twofactor_data[amount_key] = m_bump_amount;
@@ -810,7 +809,7 @@ namespace sdk {
         json_rename_key(m_twofactor_data, "fee", "send_raw_tx_fee");
         json_rename_key(m_twofactor_data, "change_idx", "send_raw_tx_change_idx");
 
-        const char* amount_key = m_bump_amount ? "bump_fee_amount" : "send_raw_tx_amount";
+        const char* amount_key = m_bump_amount != 0u ? "bump_fee_amount" : "send_raw_tx_amount";
         json_rename_key(m_twofactor_data, "amount", amount_key);
 
         // TODO: Add the recipient to twofactor_data for more server verification
@@ -842,11 +841,10 @@ namespace sdk {
             m_methods = { { "email" } };
             m_method = "email";
             return state_type::resolve_code;
-        } else {
-            // Confirm the reset
-            m_result = m_session.confirm_twofactor_reset(m_reset_email, m_is_dispute, m_twofactor_data);
-            return state_type::done;
         }
+        // Confirm the reset
+        m_result = m_session.confirm_twofactor_reset(m_reset_email, m_is_dispute, m_twofactor_data);
+        return state_type::done;
     }
 
     //

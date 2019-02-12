@@ -40,7 +40,7 @@ namespace sdk {
         //
         class xpub_hdkeys_base {
         public:
-            xpub_hdkeys_base(const network_parameters& net_params);
+            explicit xpub_hdkeys_base(const network_parameters& net_params);
             xpub_hdkeys_base(const network_parameters& net_params, const xpub_t& xpub);
 
             xpub_hdkeys_base(const xpub_hdkeys_base&) = default;
@@ -101,7 +101,7 @@ namespace sdk {
     //
     class ga_user_pubkeys final : public detail::xpub_hdkeys_base {
     public:
-        ga_user_pubkeys(const network_parameters& net_params);
+        explicit ga_user_pubkeys(const network_parameters& net_params);
         ga_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub);
 
         ga_user_pubkeys(const ga_user_pubkeys&) = default;

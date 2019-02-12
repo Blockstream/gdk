@@ -105,7 +105,7 @@ namespace sdk {
 
     class remove_account_call : public auth_handler {
     public:
-        remove_account_call(session& session);
+        explicit remove_account_call(session& session);
 
     private:
         state_type call_impl() override;
@@ -143,7 +143,7 @@ namespace sdk {
 
     class twofactor_cancel_reset_call final : public auth_handler {
     public:
-        twofactor_cancel_reset_call(session& session);
+        explicit twofactor_cancel_reset_call(session& session);
 
     private:
         state_type call_impl() override;

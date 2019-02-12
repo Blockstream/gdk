@@ -28,7 +28,7 @@ endforeach
 
 # language options
 add_project_arguments(compiler.first_supported_argument(['-std=c++17', '-std=c++14']), language : 'cpp')
-add_project_arguments(['-DMSGPACK_DEFAULT_API_VERSION=1', '-Wno-deprecated-declarations', '-funsigned-char'], language : 'cpp')
+add_project_arguments(['-Wno-deprecated-declarations', '-funsigned-char'], language : 'cpp')
 
 static_libstdc = compiler.has_link_argument('-static-libstdc++')
 
@@ -163,7 +163,11 @@ build_jni = (jni_deps or cross_android_build) and not jni_disabled
 build_swig_python = swig.found() and python_dep.found() and not cross_iphone_build and not cross_android_build
 
 clang_format = find_program('clang-format', required : false)
-clang_tidy = find_program('run-clang-tidy' + get_option('clang-tidy-version') + '.py', required : false)
+
+clang_tidy_name = 'run-clang-tidy' + get_option('clang-tidy-version')
+clang_tidy = find_program(clang_tidy_name, clang_tidy_name + '.py', required : false)
+
+pvs_studio_analyzer = find_program('pvs-studio-analyzer', required : false)
 
 sphinx_build = find_program('sphinx-build', required : false)
 if sphinx_build.found()

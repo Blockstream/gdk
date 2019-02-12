@@ -68,12 +68,17 @@ namespace sdk {
 
     // Scoped unlocker
     struct unique_unlock {
-        unique_unlock(std::unique_lock<std::mutex>& locker)
+        explicit unique_unlock(std::unique_lock<std::mutex>& locker)
             : m_locker(locker)
             , m_owns_lock(true)
         {
             unlock();
         }
+
+        unique_unlock(const unique_unlock&) = delete;
+        unique_unlock(unique_unlock&&) = delete;
+        unique_unlock& operator=(const unique_unlock&) = delete;
+        unique_unlock& operator=(unique_unlock&&) = delete;
 
         void lock()
         {

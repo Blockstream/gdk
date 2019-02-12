@@ -144,7 +144,7 @@ namespace sdk {
     {
     }
 
-    network_parameters::~network_parameters() {}
+    network_parameters::~network_parameters() = default;
 
     void network_parameters::add(const std::string& name, const nlohmann::json& details)
     {
