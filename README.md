@@ -54,18 +54,6 @@ You can quickly run a single targets build from the 'build-<target>' sub-directo
 
 * tools/clean.sh
 
-### To run tests:
-
-#### Using testnet as backend:
-
-From the 'build-<target>' sub-directory:
-
-* ninja test
-
-#### Using local backend (GreenAddress developers only):
-
-* meson test --no-rebuild --print-errorlogs --test-args '\-l'
-
 ### Docker based deps & build
 
 This doesn't require any of the previous steps but requires docker installed; it will build the project
@@ -112,16 +100,15 @@ The clang-tidy targets are enabled if found in the PATH. Extra options exist to 
 
 then use as follows
 
-* ninja src/compile_commands.json (reconstruct compilation commands database due to some options not being recognised by libTooling)
 * ninja src/clang-tidy
 
 #### Sanitizers
 
 A sanitizer build can be invoked using
 
-* tools/build.sh --sanitize=<type> --gcc
+* tools/build.sh --sanitizer=\<type\> --gcc
 
-where <type> is any available sanitizer of your choice and available on the toolchain being used.
+where \<type\> is any available sanitizer of your choice and available on the toolchain being used.
 
 #### Compiler versions
 
@@ -139,7 +126,7 @@ Use clang-5.0, no LTO, enable clang-tidy and debug build
 
 Use address sanitizer with gcc-7, no LTO, enable clang-tidy and debug build
 
-* ./tools/build.sh --compiler-version=7 --buildtype=debug --lto=false --sanitize=address --clang-tidy-version=5.0 --gcc
+* ./tools/build.sh --compiler-version=7 --buildtype=debug --lto=false --sanitizer=address --clang-tidy-version=5.0 --gcc
 
 Use clang-analyzer (it'll analyze GDK and its direct dependencies)
 
@@ -164,4 +151,3 @@ Similarly, if --python-version is passed to tools/build.sh a Python wrapper is b
 ### Swift wrapper
 
 A swift wrapper is available at ./src/swift/GreenAddress/Sources/GreenAddress/GreenAddress.swift.
-Note that this wrapper is currently under development and may change at any time.
