@@ -206,13 +206,15 @@ namespace sdk {
         void connect_to_endpoint(const wamp_session_ptr& session, const ga_session::transport_t& transport)
         {
             std::array<boost::future<void>, 3> futures;
-            futures[0] = boost::get<std::shared_ptr<T>>(transport)->connect().then([&](boost::future<void> connected) {
-                connected.get();
-                futures[1] = session->start().then([&](boost::future<void> started) {
-                    started.get();
-                    futures[2] = session->join("realm1").then([&](boost::future<uint64_t> joined) { joined.get(); });
+            futures[0] = boost::get<std::shared_ptr<T>>(transport)->connect().then(
+                boost::launch::deferred, [&](boost::future<void> connected) {
+                    connected.get();
+                    futures[1] = session->start().then(boost::launch::deferred, [&](boost::future<void> started) {
+                        started.get();
+                        futures[2] = session->join("realm1").then(
+                            boost::launch::deferred, [&](boost::future<uint64_t> joined) { joined.get(); });
+                    });
                 });
-            });
 
             for (auto&& f : futures) {
                 f.get();
@@ -283,7 +285,7 @@ namespace sdk {
         m_run_thread = std::thread([&] { io.run(); });
     }
 
-    event_loop_controller::~event_loop_controller()
+    void event_loop_controller::reset()
     {
         m_work_guard.reset();
         m_run_thread.join();
@@ -293,9 +295,9 @@ namespace sdk {
         : m_net_params(net_params)
         , m_proxy(socksify(proxy))
         , m_use_tor(use_tor)
-        , m_io(new boost::asio::io_context)
-        , m_controller(*m_io)
-        , m_ping_timer(*m_io)
+        , m_io()
+        , m_controller(m_io)
+        , m_ping_timer(m_io)
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
@@ -323,7 +325,9 @@ namespace sdk {
     {
         m_ping_timer.cancel();
         reset();
-        m_io->stop();
+        m_controller.reset();
+        m_io.stop();
+        m_io.reset();
     }
 
     bool ga_session::is_connected() const
@@ -388,7 +392,7 @@ namespace sdk {
 
     void ga_session::connect()
     {
-        m_session = std::make_shared<autobahn::wamp_session>(*m_io, m_debug);
+        m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug);
 
         const bool tls = connect_with_tls();
         tls ? make_transport<transport_tls>() : make_transport<transport>();
@@ -409,7 +413,7 @@ namespace sdk {
     template <typename T> void ga_session::make_client()
     {
         m_client = std::make_unique<T>();
-        boost::get<std::unique_ptr<T>>(m_client)->init_asio(m_io);
+        boost::get<std::unique_ptr<T>>(m_client)->init_asio(&m_io);
         set_tls_init_handler<T>();
     }
 
@@ -444,6 +448,7 @@ namespace sdk {
                 GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
             }
         });
+        no_std_exception_escape([this] { boost::get<std::shared_ptr<T>>(m_transport)->detach(); });
     }
 
     context_ptr ga_session::tls_init_handler_impl()
@@ -1784,7 +1789,8 @@ namespace sdk {
         autobahn::wamp_subscription sub;
         auto subscribe_future
             = m_session->subscribe(topic, callback, autobahn::wamp_subscribe_options("exact"))
-                  .then([&sub](boost::future<autobahn::wamp_subscription> subscription) { sub = subscription.get(); });
+                  .then(boost::launch::deferred,
+                      [&sub](boost::future<autobahn::wamp_subscription> subscription) { sub = subscription.get(); });
         subscribe_future.get();
         GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
         return sub;

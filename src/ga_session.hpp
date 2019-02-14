@@ -33,7 +33,7 @@ namespace sdk {
     struct event_loop_controller {
         explicit event_loop_controller(boost::asio::io_service& io);
 
-        ~event_loop_controller();
+        void reset();
 
         std::thread m_run_thread;
         std::unique_ptr<boost::asio::io_service::work> m_work_guard;
@@ -317,10 +317,7 @@ namespace sdk {
         const std::string m_proxy;
         const bool m_use_tor;
 
-        // FIXME: leaks so we won't linger on dns resolution in case of
-        // no network connectivity.
-        // this is a limited case so is fixable in principle.
-        boost::asio::io_context* m_io;
+        boost::asio::io_context m_io;
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
         transport_t m_transport;
         wamp_session_ptr m_session;
