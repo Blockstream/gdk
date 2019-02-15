@@ -360,8 +360,10 @@ int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t le
 int GA_generate_mnemonic(char** output)
 {
     try {
-        const auto entropy = ga::sdk::get_random_bytes<32>();
+        GDK_RUNTIME_ASSERT(output);
+        auto entropy = ga::sdk::get_random_bytes<32>();
         GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
+        wally_bzero(entropy.data(), entropy.size());
         return GA_OK;
     } catch (const std::exception& e) {
         return GA_ERROR;
@@ -379,4 +381,4 @@ int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
     return GA_OK;
 }
 
-void GA_destroy_string(const char* str) { delete[] str; }
+void GA_destroy_string(char* str) { free(str); }

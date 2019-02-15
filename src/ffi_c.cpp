@@ -51,7 +51,7 @@ template <typename F, typename... Args> static auto c_invoke(F&& f, Args&&... ar
 
 static char* to_c_string(const std::string& s)
 {
-    auto* str = new char[s.size() + 1];
+    char* str = static_cast<char*>(malloc(s.size() + 1));
     std::copy(s.begin(), s.end(), str);
     *(str + s.size()) = 0;
     return str;

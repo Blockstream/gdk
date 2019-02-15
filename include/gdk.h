@@ -608,7 +608,7 @@ GDK_API int GA_twofactor_change_limits(
  *
  * :param str: The string to free.
  */
-GDK_API void GA_destroy_string(const char* str);
+GDK_API void GA_destroy_string(char* str);
 #endif /* SWIG */
 
 /**
