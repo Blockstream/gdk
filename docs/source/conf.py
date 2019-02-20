@@ -86,7 +86,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'GDK'
-copyright = u'2018, Blockstream Corporation'
+copyright = u'2019, Blockstream Corporation'
 author = u'Blockstream Corporation'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -94,7 +94,12 @@ author = u'Blockstream Corporation'
 # built documents.
 #
 # The short X.Y version.
-version = u'0.0.1'
+
+with open('../../meson.build', 'r') as meson_file:
+    raw_meson = meson_file.readline()
+label = " version: "
+version = [e for e in raw_meson.split(",") if label in e][0][(len(label)+1):-1]
+
 # The full version, including alpha/beta/rc tags.
 release = version
 
