@@ -106,8 +106,6 @@ libga = both_libraries('greenaddress',
                         install : true,
                         install_dir : libga_installdir)
 
-libga_dep = declare_dependency(include_directories : incdir, link_with : libga.get_static_lib())
-
 if cross_iphone_build
     output = 'allsym_libgreenaddress.a'
     archiver = custom_target('archiver',

@@ -4,7 +4,8 @@ swig_py_target = custom_target('swig-python',
                      command : [join_paths(meson.source_root(), 'tools', 'swig_python.sh'),
                                 sed, '@OUTDIR@/gasdk_py_wrap.c', '@OUTDIR@', '@INPUT0@', '@INPUT1@'],
                      input : ['swig_gasdk.i', 'python_extra.py_in'],
-                     output : ['gasdk_py_wrap.c'])
+                     output : ['gasdk_py_wrap.c'],
+                     depend_files : files(join_paths('..', '..', 'include', 'gdk.h')))
 
 python_inc_dir = include_directories(join_paths('..', '..', meson.build_root().split('/')[-1], 'venv', 'include', 'python' + python_version + 'm'))
 
