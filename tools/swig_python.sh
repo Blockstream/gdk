@@ -10,7 +10,7 @@ swig_extra=$5
 module_dir="$outdir/greenaddress"
 mkdir -p $module_dir
 
-swig -python -threads -o $generated_c -outdir $outdir -o $generated_c $swig_src
+swig -python -py3 -threads -o $generated_c -outdir $outdir -o $generated_c $swig_src
 swig_result="$outdir/greenaddress.py"
 
 # Fix up shared library names

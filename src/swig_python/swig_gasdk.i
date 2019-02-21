@@ -211,13 +211,15 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
     GA_destroy_json($1);
 }
 %typemap(argout) GA_json ** {
-   if (*$1 != NULL) {
-       Py_DecRef($result);
-       char* str = NULL;
-       if (check_result(GA_convert_json_to_string(*$1, &str)) == GA_OK)
-           $result = PyString_FromString(str);
-       GA_destroy_json(*$1);
-   }
+    if (*$1 != NULL) {
+        Py_DecRef($result);
+        char* str = NULL;
+        if (check_result(GA_convert_json_to_string(*$1, &str)) != GA_OK) {
+            SWIG_fail;
+        }
+        $result = PyString_FromString(str);
+        GA_destroy_json(*$1);
+    }
 }
 %typemap(in, numinputs=0) uint32_t * (uint32_t temp) {
    $1 = &temp;
