@@ -205,13 +205,12 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, G
  * Get a page of the user's transaction history.
  *
  * :param session: The session to use.
- * :param subaccount: The subaccount to fetch transactions for.
- * :param page_id: The page to fetch, starting from 0.
+ * :param details: JSON giving the details to get the transactions for.
  * :param txs: The list of transactions.
  *
- * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
+ * .. note:: Transactions are returned from newest to oldest.
  */
-GDK_API int GA_get_transactions(struct GA_session* session, uint32_t subaccount, uint32_t page_id, GA_json** txs);
+GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, GA_json** txs);
 
 /**
  * Get a new address to receive coins to.
@@ -226,12 +225,10 @@ GDK_API int GA_get_receive_address(struct GA_session* session, uint32_t subaccou
  * Get the user's unspent transaction outputs.
  *
  * :param session: The session to use.
- * :param subaccount: The subaccount to fetch UTXOs from.
- * :param num_confs: The minimum number of confirmations required for UTXOs to return.
+ * :param details: JSON giving the details to get the unspent transaction outputs for.
  * :param utxos: Destination for the returned utxos.
  */
-GDK_API int GA_get_unspent_outputs(
-    struct GA_session* session, uint32_t subaccount, uint32_t num_confs, GA_json** utxos);
+GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, GA_json** utxos);
 
 /**
  * Get the unspent transaction outputs associated with a non-wallet private key.
@@ -260,11 +257,10 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  * The sum of unspent outputs destined to user's wallet.
  *
  * :param session: The session to use.
- * :param subaccount: The subaccount to get the balance for.
- * :param num_confs: The number of required confirmations.
+ * :param details: JSON giving the subaccount details to get the balance for.
  * :param balance: The returned balance.
  */
-GDK_API int GA_get_balance(struct GA_session* session, uint32_t subaccount, uint32_t num_confs, GA_json** balance);
+GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, GA_json** balance);
 
 /**
  * The list of allowed currencies for all available pricing sources.

@@ -371,7 +371,8 @@ namespace sdk {
                 // Even in testnet, if RBFing, require 1 confirmation.
                 const bool main_net = net_params.main_net();
                 const uint32_t num_confs = (main_net || is_rbf || is_cpfp) ? 1 : 0;
-                result["utxos"] = session.get_unspent_outputs(subaccount, num_confs);
+                result["utxos"] = session.get_unspent_outputs(
+                    nlohmann::json({ { "subaccount", subaccount }, { "num_confs", num_confs } }));
             }
 
             const bool send_all = json_add_if_missing(result, "send_all", false);

@@ -279,16 +279,12 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
-    public func getTransactions(subaccount: UInt32, page: UInt32) throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_transactions(session, subaccount, page, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func getTransactions(details: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_transactions)
     }
 
-    public func getUnspentOutputs(subaccount: UInt32, num_confs: UInt32) throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_unspent_outputs(session, subaccount, num_confs, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func getUnspentOutputs(details: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_unspent_outputs)
     }
 
     public func getUnspentOutputsForPrivateKey(private_key: String, password: String, unused: UInt32) throws -> [String: Any]? {
@@ -306,10 +302,8 @@ public class Session {
         return String(cString: buff!)
     }
 
-    public func getBalance(subaccount: UInt32, numConfs: UInt32) throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_balance(session, subaccount, numConfs, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func getBalance(details: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_balance)
     }
 
     public func getAvailableCurrencies() throws -> [String: Any]? {

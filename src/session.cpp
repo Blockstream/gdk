@@ -424,10 +424,10 @@ namespace sdk {
         return exception_wrapper([&] { m_impl->change_settings_limits(limit_details, twofactor_data); });
     }
 
-    nlohmann::json session::get_transactions(uint32_t subaccount, uint32_t page_id)
+    nlohmann::json session::get_transactions(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->get_transactions(subaccount, page_id); });
+        return exception_wrapper([&] { return m_impl->get_transactions(details); });
     }
 
     void session::set_notification_handler(GA_notification_handler handler, void* context)
@@ -444,10 +444,10 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_receive_address(subaccount, addr_type); });
     }
 
-    nlohmann::json session::get_balance(uint32_t subaccount, uint32_t num_confs)
+    nlohmann::json session::get_balance(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->get_balance(subaccount, num_confs); });
+        return exception_wrapper([&] { return m_impl->get_balance(details); });
     }
 
     nlohmann::json session::get_available_currencies()
@@ -561,10 +561,10 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->set_pin(mnemonic, pin, device_id); });
     }
 
-    nlohmann::json session::get_unspent_outputs(uint32_t subaccount, uint32_t num_confs)
+    nlohmann::json session::get_unspent_outputs(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->get_unspent_outputs(subaccount, num_confs); });
+        return exception_wrapper([&] { return m_impl->get_unspent_outputs(details); });
     }
 
     nlohmann::json session::get_unspent_outputs_for_private_key(

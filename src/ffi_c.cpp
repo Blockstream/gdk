@@ -249,17 +249,17 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_subaccounts, struct GA_session*, session, GA_json
 GDK_DEFINE_C_FUNCTION_3(GA_get_subaccount, struct GA_session*, session, uint32_t, subaccount, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->get_subaccount(subaccount)); })
 
-GDK_DEFINE_C_FUNCTION_4(GA_get_transactions, struct GA_session*, session, uint32_t, subaccount, uint32_t, page_id,
-    GA_json**, txs, { *json_cast(txs) = new nlohmann::json(session->get_transactions(subaccount, page_id)); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, const GA_json*, details, GA_json**, txs,
+    { *json_cast(txs) = new nlohmann::json(session->get_transactions(*json_cast(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, uint32_t, subaccount, char**, output,
     { *output = to_c_string(session->get_receive_address(subaccount)["address"]); })
 
-GDK_DEFINE_C_FUNCTION_4(GA_get_balance, struct GA_session*, session, uint32_t, subaccount, uint32_t, num_confs,
-    GA_json**, balance, { *json_cast(balance) = new nlohmann::json(session->get_balance(subaccount, num_confs)); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_balance, struct GA_session*, session, const GA_json*, details, GA_json**, balance,
+    { *json_cast(balance) = new nlohmann::json(session->get_balance(*json_cast(details))); })
 
-GDK_DEFINE_C_FUNCTION_4(GA_get_unspent_outputs, struct GA_session*, session, uint32_t, subaccount, uint32_t, num_confs,
-    GA_json**, utxos, { *json_cast(utxos) = new nlohmann::json(session->get_unspent_outputs(subaccount, num_confs)); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs, struct GA_session*, session, const GA_json*, details, GA_json**, utxos,
+    { *json_cast(utxos) = new nlohmann::json(session->get_unspent_outputs(*json_cast(details))); })
 
 GDK_DEFINE_C_FUNCTION_5(GA_get_unspent_outputs_for_private_key, struct GA_session*, session, const char*, private_key,
     const char*, password, uint32_t, unused, GA_json**, utxos, {

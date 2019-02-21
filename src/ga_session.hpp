@@ -85,7 +85,8 @@ namespace sdk {
         void change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data);
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
-        nlohmann::json get_transactions(uint32_t subaccount, uint32_t page_id);
+        nlohmann::json get_transaction_list(uint32_t subaccount, uint32_t max_transactions, bool all);
+        nlohmann::json get_transactions(const nlohmann::json& details);
 
         void set_notification_handler(GA_notification_handler handler, void* context);
 
@@ -95,7 +96,7 @@ namespace sdk {
         nlohmann::json create_subaccount(const nlohmann::json& details);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const xpub_t& xpub);
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
-        nlohmann::json get_balance(uint32_t subaccount, uint32_t num_confs);
+        nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
         nlohmann::json get_hw_device() const;
         bool is_rbf_enabled() const;
@@ -125,7 +126,7 @@ namespace sdk {
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
 
-        nlohmann::json get_unspent_outputs(uint32_t subaccount, uint32_t num_confs);
+        nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json get_transaction_details(const std::string& txhash) const;
