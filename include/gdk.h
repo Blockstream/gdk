@@ -30,6 +30,11 @@ extern "C" {
 #define GA_TIMEOUT (-4)
 #define GA_NOT_AUTHORIZED (-5)
 
+/** Logging levels */
+#define GA_NONE 0
+#define GA_INFO 1
+#define GA_DEBUG 2
+
 /** Boolean values */
 #define GA_TRUE 1
 #define GA_FALSE 0
@@ -69,9 +74,9 @@ GDK_API int GA_destroy_session(struct GA_session* session);
  *
  * :param session: The session to use.
  * :param network: The name of the network to connect to.
- * :param debug: GA_TRUE to enable debug logging, GA_FALSE otherwise.
+ * :param log_level: GA_NONE, GA_INFO or GA_DEBUG in levels of increased logging and verbosity.
  */
-GDK_API int GA_connect(struct GA_session* session, const char* network, uint32_t debug);
+GDK_API int GA_connect(struct GA_session* session, const char* network, uint32_t log_level);
 
 /**
  * Connect to a remote server using the specified network and proxy.
@@ -80,10 +85,10 @@ GDK_API int GA_connect(struct GA_session* session, const char* network, uint32_t
  * :param network: The name of the network to connect to.
  * :param proxy: The proxy server to use.
  * :param use_tor: GA_TRUE to connect through Tor, GA_FALSE otherwise.
- * :param debug: GA_TRUE to enable debug logging, GA_FALSE otherwise.
+ * :param log_level: GA_NONE, GA_INFO or GA_DEBUG in levels of increased logging and verbosity.
  */
 GDK_API int GA_connect_with_proxy(
-    struct GA_session* session, const char* network, const char* proxy_uri, uint32_t use_tor, uint32_t debug);
+    struct GA_session* session, const char* network, const char* proxy_uri, uint32_t use_tor, uint32_t log_level);
 
 /**
  * Disconnect from a connected remote server.

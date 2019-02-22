@@ -182,13 +182,13 @@ public class Session {
         GA_destroy_session(session)
     }
 
-    public func connect(network: Network, debug: Bool = false) throws {
-        try callWrapper(fun: GA_connect(session, network.rawValue, UInt32(debug ? GA_TRUE : GA_FALSE)))
+    public func connect(network: Network, log_level: Int32 = GA_NONE) throws {
+        try callWrapper(fun: GA_connect(session, network.rawValue, UInt32(log_level)))
     }
 
-    public func connectWithProxy(network: Network, proxy_uri: String, use_tor: Bool, debug: Bool = false) throws {
+    public func connectWithProxy(network: Network, proxy_uri: String, use_tor: Bool, log_level: Int32 = GA_NONE) throws {
         try callWrapper(fun: GA_connect_with_proxy(session, network.rawValue, proxy_uri, UInt32(use_tor ? GA_TRUE : GA_FALSE),
-                                                    UInt32(debug ? GA_TRUE : GA_FALSE)))
+                                                   UInt32(log_level)))
     }
 
     public func disconnect() throws {

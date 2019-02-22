@@ -65,7 +65,7 @@ namespace sdk {
         using transport_type = websocketpp::transport::asio::endpoint<websocketpp_gdk_tls_config::transport_config>;
     };
 
-    boost::log::sources::logger_mt& websocket_boost_logger::m_log = gdk_logger::get();
+    gdk_logger_t& websocket_boost_logger::m_log = gdk_logger::get();
 
     namespace {
         static const std::string SOCKS5("socks5://");
@@ -294,7 +294,8 @@ namespace sdk {
         m_run_thread.join();
     }
 
-    ga_session::ga_session(const network_parameters& net_params, const std::string& proxy, bool use_tor, bool debug)
+    ga_session::ga_session(
+        const network_parameters& net_params, const std::string& proxy, bool use_tor, logging_levels log_level)
         : m_net_params(net_params)
         , m_proxy(socksify(proxy))
         , m_use_tor(use_tor)
@@ -313,9 +314,14 @@ namespace sdk {
         , m_is_locked(false)
         , m_rfc2818_verifier(websocketpp::uri(m_net_params.gait_wamp_url()).get_host())
         , m_cert_pin_validated(false)
-        , m_debug(debug)
+        , m_log_level(log_level)
         , m_tx_last_notification(std::chrono::system_clock::now())
     {
+        boost::log::core::get()->set_filter(
+            log_level::severity >= (m_log_level == logging_levels::debug
+                                           ? log_level::severity_level::debug
+                                           : m_log_level == logging_levels::info ? log_level::severity_level::info
+                                                                                 : log_level::severity_level::fatal));
         one_time_setup();
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         connect_with_tls() ? make_client<client_tls>() : make_client<client>();
@@ -395,7 +401,7 @@ namespace sdk {
 
     void ga_session::connect()
     {
-        m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug);
+        m_session = std::make_shared<autobahn::wamp_session>(m_io, m_log_level == logging_levels::debug);
 
         const bool tls = connect_with_tls();
         tls ? make_transport<transport_tls>() : make_transport<transport>();
@@ -436,7 +442,8 @@ namespace sdk {
         }
         GDK_LOG_SEV(log_level::info) << "Connecting to " << server << proxy_details;
         boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
-        m_transport = std::make_shared<T>(*boost::get<client_type>(m_client), server, proxy, m_debug);
+        m_transport = std::make_shared<T>(
+            *boost::get<client_type>(m_client), server, proxy, m_log_level == logging_levels::debug);
         boost::get<std::shared_ptr<T>>(m_transport)
             ->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }

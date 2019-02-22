@@ -14,6 +14,8 @@ namespace sdk {
     namespace log_level = boost::log::trivial;
     namespace wlog = websocketpp::log;
 
+    using gdk_logger_t = boost::log::sources::severity_logger_mt<log_level::severity_level>;
+
     namespace detail {
         constexpr boost::log::trivial::severity_level sev(wlog::level l)
         {
@@ -58,60 +60,58 @@ namespace sdk {
     };
 #endif
 
-    BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(gdk_logger, boost::log::sources::logger_mt)
+    BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(gdk_logger, gdk_logger_t)
     {
 #ifdef __ANDROID__
         using sink_t = boost::log::sinks::asynchronous_sink<android_backend>;
         auto sink = boost::make_shared<sink_t>(boost::make_shared<android_backend>());
         boost::log::core::get()->add_sink(sink);
 #endif
-#ifdef NDEBUG
-        boost::log::core::get()->set_filter(boost::log::trivial::severity >= boost::log::trivial::warning);
-#endif
-        return boost::log::sources::logger_mt{};
+        return gdk_logger_t{};
     }
 
 #define GDK_LOG_NAMED_SCOPE(name)                                                                                      \
-    BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), boost::log::trivial::info)                                             \
+    BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), log_level::severity_level::info)                                       \
         << __FILE__ << ':' << __LINE__ << ':' << (name) << ':' << __func__;
 
-#define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), ::ga::sdk::sev)
+#define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), sev)
 
     class websocket_boost_logger {
     public:
-        static boost::log::sources::logger_mt& m_log;
+        static gdk_logger_t& m_log;
 
         explicit websocket_boost_logger(wlog::channel_type_hint::value hint)
             : websocket_boost_logger(0, hint)
         {
         }
+
         websocket_boost_logger(wlog::level l, wlog::channel_type_hint::value)
             : m_level(l)
         {
         }
+
         websocket_boost_logger()
             : websocket_boost_logger(0, 0)
         {
         }
 
         void set_channels(wlog::level l) { m_level = l; }
-        void clear_channels(wlog::level l)
-        {
-            (void)l;
-            m_level = 0;
-        }
+        void clear_channels(wlog::level __attribute__((unused)) l) { m_level = 0; }
+
         void write(wlog::level l, const std::string& s)
         {
             if (dynamic_test(l)) {
                 BOOST_LOG_SEV(m_log, detail::sev(l)) << s;
             }
         }
+
         void write(wlog::level l, char const* s)
         {
             if (dynamic_test(l)) {
                 BOOST_LOG_SEV(m_log, detail::sev(l)) << s;
             }
         }
+
         bool static_test(wlog::level l) const { return (m_level & l) != 0; }
         bool dynamic_test(wlog::level l) { return (m_level & l) != 0; }
 

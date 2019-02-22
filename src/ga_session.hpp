@@ -46,7 +46,8 @@ namespace sdk {
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using ping_fail_t = std::function<void()>;
 
-        ga_session(const network_parameters& net_params, const std::string& proxy, bool use_tor, bool debug);
+        ga_session(
+            const network_parameters& net_params, const std::string& proxy, bool use_tor, logging_levels log_level);
         ga_session(const ga_session& other) = delete;
         ga_session(ga_session&& other) noexcept = delete;
         ga_session& operator=(const ga_session& other) = delete;
@@ -360,7 +361,7 @@ namespace sdk {
         bool m_is_locked;
         const boost::asio::ssl::rfc2818_verification m_rfc2818_verifier;
         bool m_cert_pin_validated;
-        bool m_debug;
+        logging_levels m_log_level;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
     };

@@ -19,6 +19,12 @@ namespace sdk {
     class network_control_context;
     class signer;
 
+    enum class logging_levels : uint32_t {
+        none = 0,
+        info = 1,
+        debug = 2,
+    };
+
     class session {
     public:
         session();
@@ -31,7 +37,7 @@ namespace sdk {
         session& operator=(session&&) = delete;
 
         void connect(const std::string& name, const std::string& proxy = std::string(), bool use_tor = false,
-            bool debug = false);
+            logging_levels log_level = logging_levels::none);
         void disconnect();
         void reconnect_hint(const nlohmann::json& hint);
 
