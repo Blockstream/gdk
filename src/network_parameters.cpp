@@ -127,20 +127,6 @@ namespace sdk {
 
     network_parameters::network_parameters(const nlohmann::json& details)
         : m_details(details)
-        , m_network{ details.at("network").get<std::string>() }
-        , m_gait_wamp_url{ details.at("wamp_url").get<std::string>() }
-        , m_gait_wamp_cert_pins{ details.at("wamp_cert_pins").get<std::vector<std::string>>() }
-        , m_gait_wamp_cert_roots{ details.at("wamp_cert_roots").get<std::vector<std::string>>() }
-        , m_block_explorer_address{ details.at("address_explorer_url").get<std::string>() }
-        , m_block_explorer_tx{ details.at("tx_explorer_url").get<std::string>() }
-        , m_chain_code{ details.at("service_chain_code").get<std::string>() }
-        , m_pub_key{ details.at("service_pubkey").get<std::string>() }
-        , m_gait_onion{ details.at("wamp_onion_url").get<std::string>() }
-        , m_default_peers{ details.at("default_peers").get<std::vector<std::string>>() }
-        , m_bech32_prefix{ details.at("bech32_prefix").get<std::string>() }
-        , m_btc_version{ details.at("p2pkh_version") }
-        , m_btc_p2sh_version{ details.at("p2sh_version") }
-        , m_main_net{ json_get_value(details, "mainnet", false) }
     {
     }
 
