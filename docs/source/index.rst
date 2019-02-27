@@ -6,7 +6,7 @@ GDK documentation
    :caption: Contents:
 
    gdk
-
+   gdk-json
 
 Indices and tables
 ==================

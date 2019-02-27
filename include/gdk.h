@@ -101,7 +101,7 @@ GDK_API int GA_disconnect(struct GA_session* session);
  * Configure networking behaviour when reconnecting.
  *
  * :param session: The session to use.
- * :param hint: the hint JSON to configure.
+ * :param hint: the :ref:`hint` to configure.
  */
 GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 
@@ -109,7 +109,7 @@ GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
  * Create a new user account using a hardware wallet/HSM/TPM.
  *
  * :param session: The session to use.
- * :param hw_device: Details about the hardware device being used to register.
+ * :param hw_device: Details about the :ref:`hw-device` being used to register.
  * :param mnemonic: The user's mnemonic passphrase.
  * :param call: Destination for the resulting GA_auth_handler to perform the registration.
  */
@@ -120,7 +120,7 @@ GDK_API int GA_register_user(
  * Authenticate a user using a hardware wallet/HSM/TPM.
  *
  * :param session: The session to use.
- * :param hw_device: Details about the hardware device being used to login.
+ * :param hw_device: Details about the :ref:`hw-device` being used to login.
  * :param mnemonic: The user's mnemonic passphrase.
  * :param password: The user's password to decrypt a 27 word mnemonic, or a blank string if none.
  * :param call: Destination for the resulting GA_auth_handler to perform the login.
@@ -133,7 +133,7 @@ GDK_API int GA_login(struct GA_session* session, const GA_json* hw_device, const
  *
  * :param session: The session to use.
  * :param pin: The user PIN.
- * :param pin_data: The PIN data returned by `GA_set_pin`.
+ * :param pin_data: The :ref:`pin-data` returned by `GA_set_pin`.
  */
 GDK_API int GA_login_with_pin(struct GA_session* session, const char* pin, const GA_json* pin_data);
 
@@ -175,7 +175,7 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  * Create a subaccount.
  *
  * :param session: The session to use.
- * :param details: The subaccount details. "name" (which must not be already used in
+ * :param details: The :ref:`subaccount`. "name" (which must not be already used in
  *|     the wallet) and "type" (either "2of2" or "2of3") must be populated. For
  *|     type "2of3" the caller may provide either "recovery_mnemonic" or "recovery_xpub"
  *|     if they do not wish to have a mnemonic passphrase generated automatically.
@@ -193,7 +193,7 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
  * Get the user's subaccount details.
  *
  * :param session: The session to use.
- * :param subaccounts: Destination for the user's subaccounts.
+ * :param subaccounts: Destination for the user's :ref:`subaccount-list`.
  */
 GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts);
 
@@ -202,7 +202,7 @@ GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts
  *
  * :param session: The session to use.
  * :param subaccount: Subaccount to get.
- * :param output: Destination for the subaccount.
+ * :param output: Destination for the :ref:`subaccount-detail`.
  */
 GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, GA_json** output);
 
@@ -211,7 +211,7 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, G
  *
  * :param session: The session to use.
  * :param details: JSON giving the details to get the transactions for.
- * :param txs: The list of transactions.
+ * :param txs: The :ref:`tx-list`.
  *
  * .. note:: Transactions are returned from newest to oldest.
  */
@@ -231,7 +231,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, uint32_t subaccou
  *
  * :param session: The session to use.
  * :param details: JSON giving the details to get the unspent transaction outputs for.
- * :param utxos: Destination for the returned utxos.
+ * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
  */
 GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, GA_json** utxos);
 
@@ -242,7 +242,7 @@ GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* de
  * :param key: The private key in WIF or BIP 38 format.
  * :param password: The password the key is encrypted with, if any.
  * :param unused: unused, must be 0
- * :param utxos: Destination for the returned utxos.
+ * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
  *
  * .. note:: Neither the private key or its derived public key are transmitted.
  */
@@ -254,7 +254,7 @@ GDK_API int GA_get_unspent_outputs_for_private_key(
  *
  * :param session: The session to use.
  * :param txhash_hex: The transaction hash of the transaction to fetch.
- * :param transaction: Destination for the transaction details.
+ * :param transaction: Destination for the :ref:`tx-detail`.
  */
 GDK_API int GA_get_transaction_details(struct GA_session* session, const char* txhash_hex, GA_json** transaction);
 
@@ -263,7 +263,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  *
  * :param session: The session to use.
  * :param details: JSON giving the subaccount details to get the balance for.
- * :param balance: The returned balance.
+ * :param balance: The returned :ref:`balance-data`.
  */
 GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, GA_json** balance);
 
@@ -271,7 +271,7 @@ GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, G
  * The list of allowed currencies for all available pricing sources.
  *
  * :param session: The session to use.
- * :param currencies: The returned list of currencies.
+ * :param currencies: The returned list of :ref:`currencies`.
  */
 GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** currencies);
 
@@ -279,8 +279,8 @@ GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** cu
  * Convert Fiat to BTC and vice-versa.
  *
  * :param session: The session to use.
- * :param value_details: JSON giving the value to convert.
- * :param output: Destination for the converted values.
+ * :param value_details: :ref:`convert` giving the value to convert.
+ * :param output: Destination for the converted values :ref:`balance-data`.
  */
 GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_details, GA_json** output);
 
@@ -291,7 +291,7 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
  * :param mnemonic: The user's mnemonic passphrase.
  * :param pin: The user PIN.
  * :param device_id: The user device identifier.
- * :param pin_data: The returned PIN data containing the user's encrypted mnemonic passphrase.
+ * :param pin_data: The returned :ref:`pin-data` containing the user's encrypted mnemonic passphrase.
  */
 GDK_API int GA_set_pin(
     struct GA_session* session, const char* mnemonic, const char* pin, const char* device_id, GA_json** pin_data);
@@ -529,7 +529,7 @@ GDK_API int GA_destroy_json(GA_json* json);
  * Get the status/result of an action requiring authorization.
  *
  * :param call: The auth_handler whose status is to be queried.
- * :param output: Destination for the resulting status JSON.
+ * :param output: Destination for the resulting :ref:`twofactor-status`.
  */
 GDK_API int GA_auth_handler_get_status(struct GA_auth_handler* call, GA_json** output);
 
@@ -568,7 +568,7 @@ GDK_API int GA_destroy_auth_handler(struct GA_auth_handler* call);
  *
  * :param session: The session to use
  * :param method: The two factor method to enable/disable, i.e. "email", "sms", "phone", "gauth"
- * :param twofactor_details: The two factor method and associated data such as an email address
+ * :param twofactor_details: The two factor method and associated data such as an email address. :ref:`twofactor-detail`
  * :param call: Destination for the resulting GA_auth_handler to perform the action
  */
 GDK_API int GA_change_settings_twofactor(
@@ -597,7 +597,7 @@ GDK_API int GA_twofactor_cancel_reset(struct GA_session* session, struct GA_auth
  * Change twofactor limits settings.
  *
  * :param session: The session to use.
- * :param limit_details: Details of the new transaction limits
+ * :param limit_details: Details of the new transaction :ref:`limits`
  * :param call: Destination for the resulting GA_auth_handler to perform the change.
  */
 GDK_API int GA_twofactor_change_limits(
@@ -640,7 +640,7 @@ GDK_API int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid);
  * Register a network configuration
  *
  * :param name: The name of the network to register
- * :param network_details: The network configuration JSON to register
+ * :param network_details: The :ref:`network` configuration to register
  *
  * Any existing configuration with the same name is overwritten.
  * If the provided JSON is empty, any existing configuration for
@@ -651,7 +651,7 @@ GDK_API int GA_register_network(const char* name, const GA_json* network_details
 /**
  * Get the available network configurations
  *
- * :param output: Destination for the network configuration JSON
+ * :param output: Destination for the :ref:`networks-list`
  */
 GDK_API int GA_get_networks(GA_json** output);
 
