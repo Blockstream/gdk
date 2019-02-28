@@ -1,5 +1,9 @@
 # GreenAddress C/C++ SDK
 
+GDK is a cross-platform, cross-language library for Blockstream Green wallets.
+
+Read the API documentation at https://gdk.readthedocs.io/en/latest/
+
 [![Build Status](https://travis-ci.org/Blockstream/gdk.svg?branch=master)](https://travis-ci.org/Blockstream/gdk)
 
 ## Meson/Ninja build:
