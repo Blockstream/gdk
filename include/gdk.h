@@ -59,6 +59,7 @@ typedef void (*GA_notification_handler)(void* context, const GA_json* details);
  * Create a new session.
  *
  * :param session: Destination for the resulting session.
+ *|     Returned session should be freed using `GA_destroy_session`.
  */
 GDK_API int GA_create_session(struct GA_session** session);
 
@@ -112,6 +113,7 @@ GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
  * :param hw_device: Details about the :ref:`hw-device` being used to register.
  * :param mnemonic: The user's mnemonic passphrase.
  * :param call: Destination for the resulting GA_auth_handler to perform the registration.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_register_user(
     struct GA_session* session, const GA_json* hw_device, const char* mnemonic, struct GA_auth_handler** call);
@@ -124,6 +126,7 @@ GDK_API int GA_register_user(
  * :param mnemonic: The user's mnemonic passphrase.
  * :param password: The user's password to decrypt a 27 word mnemonic, or a blank string if none.
  * :param call: Destination for the resulting GA_auth_handler to perform the login.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_login(struct GA_session* session, const GA_json* hw_device, const char* mnemonic, const char* password,
     struct GA_auth_handler** call);
@@ -151,6 +154,7 @@ GDK_API int GA_set_watch_only(struct GA_session* session, const char* username, 
  *
  * :param session: The session to use.
  * :param username: Destination for the watch-only username. Empty string if not set.
+ *|     Returned string should be freed using `GA_destroy_string`.
  */
 GDK_API int GA_get_watch_only_username(struct GA_session* session, char** username);
 
@@ -168,6 +172,7 @@ GDK_API int GA_login_watch_only(struct GA_session* session, const char* username
  *
  * :param session: The session to use.
  * :param call: Destination for the resulting GA_auth_handler to perform the removal.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler** call);
 
@@ -186,6 +191,7 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  *|     values should be stored safely by the caller as they will not be returned again
  *|     by any GDK call such as GA_get_subaccounts.
  * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
@@ -194,6 +200,7 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
  *
  * :param session: The session to use.
  * :param subaccounts: Destination for the user's :ref:`subaccount-list`.
+ *|      Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts);
 
@@ -203,6 +210,7 @@ GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts
  * :param session: The session to use.
  * :param subaccount: Subaccount to get.
  * :param output: Destination for the :ref:`subaccount-detail`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, GA_json** output);
 
@@ -212,6 +220,7 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, G
  * :param session: The session to use.
  * :param details: JSON giving the details to get the transactions for.
  * :param txs: The :ref:`tx-list`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
  */
@@ -223,6 +232,7 @@ GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* detai
  * :param session: The session to use.
  * :param subaccount: The subaccount to generate an address for.
  * :param output: The generated address.
+ *|     Returned string should be freed using `GA_destroy_string`.
  */
 GDK_API int GA_get_receive_address(struct GA_session* session, uint32_t subaccount, char** output);
 
@@ -232,6 +242,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, uint32_t subaccou
  * :param session: The session to use.
  * :param details: JSON giving the details to get the unspent transaction outputs for.
  * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, GA_json** utxos);
 
@@ -243,6 +254,7 @@ GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* de
  * :param password: The password the key is encrypted with, if any.
  * :param unused: unused, must be 0
  * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * .. note:: Neither the private key or its derived public key are transmitted.
  */
@@ -255,6 +267,7 @@ GDK_API int GA_get_unspent_outputs_for_private_key(
  * :param session: The session to use.
  * :param txhash_hex: The transaction hash of the transaction to fetch.
  * :param transaction: Destination for the :ref:`tx-detail`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_transaction_details(struct GA_session* session, const char* txhash_hex, GA_json** transaction);
 
@@ -264,6 +277,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  * :param session: The session to use.
  * :param details: JSON giving the subaccount details to get the balance for.
  * :param balance: The returned :ref:`balance-data`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, GA_json** balance);
 
@@ -272,6 +286,7 @@ GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, G
  *
  * :param session: The session to use.
  * :param currencies: The returned list of :ref:`currencies`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** currencies);
 
@@ -281,6 +296,7 @@ GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** cu
  * :param session: The session to use.
  * :param value_details: :ref:`convert` giving the value to convert.
  * :param output: Destination for the converted values :ref:`balance-data`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_details, GA_json** output);
 
@@ -292,6 +308,7 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
  * :param pin: The user PIN.
  * :param device_id: The user device identifier.
  * :param pin_data: The returned :ref:`pin-data` containing the user's encrypted mnemonic passphrase.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_set_pin(
     struct GA_session* session, const char* mnemonic, const char* pin, const char* device_id, GA_json** pin_data);
@@ -302,6 +319,7 @@ GDK_API int GA_set_pin(
  * :param session: The session to use.
  * :param transaction_details: The transaction details for constructing.
  * :param transaction: Destination for the resulting transaction's details.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_create_transaction(
     struct GA_session* session, const GA_json* transaction_details, GA_json** transaction);
@@ -312,6 +330,7 @@ GDK_API int GA_create_transaction(
  * :param session: The session to use.
  * :param transaction_details: The transaction details for signing, previously returned from GA_create_transaction.
  * :param call: Destination for the resulting GA_auth_handler to perform the signing.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_sign_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
@@ -322,6 +341,7 @@ GDK_API int GA_sign_transaction(
  * :param session: The session to use.
  * :param transaction_hex: The signed transaction in hex to broadcast.
  * :param tx_hash: Destination for the resulting transactions hash.
+ *|     Returned string should be freed using `GA_destroy_string`.
  */
 GDK_API int GA_broadcast_transaction(struct GA_session* session, const char* transaction_hex, char** tx_hash);
 
@@ -331,6 +351,7 @@ GDK_API int GA_broadcast_transaction(struct GA_session* session, const char* tra
  * :param session: The session to use.
  * :param transaction_details: The signed transaction details for sending.
  * :param call: Destination for the resulting GA_auth_handler to perform the send.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_send_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
@@ -358,6 +379,7 @@ GDK_API int GA_set_transaction_memo(
  *
  * :param session: The session to use.
  * :param estimates: Destination for the returned estimates.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * The estimates are returned as an array of 25 elements. Each element is
  * an integer representing the fee estimate expressed as satoshi per 1000
@@ -375,6 +397,7 @@ GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates
  * :param mnemonic: Destination for the user's 24 word mnemonic passphrase. if a
  *|     non-empty password is given, the returned mnemonic passphrase will be
  *|     27 words long and will require the password to use for logging in.
+ *|     Returned string should be freed using `GA_destroy_string`.
  */
 GDK_API int GA_get_mnemonic_passphrase(struct GA_session* session, const char* password, char** mnemonic);
 
@@ -383,6 +406,7 @@ GDK_API int GA_get_mnemonic_passphrase(struct GA_session* session, const char* p
  *
  * :param session: The session to use.
  * :param message_text: The returned UTF-8 encoded message text.
+ *|     Returned string should be freed using `GA_destroy_string`.
  *
  * .. note:: If all current messages are acknowledged, an empty string is returned.
  */
@@ -397,6 +421,7 @@ GDK_API int GA_get_system_message(struct GA_session* session, char** message_tex
  * :param session: The session to use.
  * :param message_text: UTF-8 encoded message text being acknowledged.
  * :param call: Destination for the resulting GA_auth_handler to acknowledge the message.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_ack_system_message(struct GA_session* session, const char* message_text, struct GA_auth_handler** call);
 
@@ -405,6 +430,7 @@ GDK_API int GA_ack_system_message(struct GA_session* session, const char* messag
  *
  * :param session: The session to use.
  * :param config: Destination for the returned configuration.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config);
 
@@ -414,6 +440,7 @@ GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config
  * :param session: The session to use.
  * :param input: The data to encrypt.
  * :param output: Destination for the encrypted data.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * If no key is given, the data is encrypted using a key derived from the user's mnemonics.
  * This will fail to decrypt the data correctly if the user is logged in in watch-only
@@ -427,6 +454,7 @@ GDK_API int GA_encrypt(struct GA_session* session, const GA_json* input, GA_json
  * :param session: The session to use.
  * :param input: The data to decrypt.
  * :param output: Destination for the decrypted data.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * See GA_encrypt.
  */
@@ -437,6 +465,8 @@ GDK_API int GA_decrypt(struct GA_session* session, const GA_json* input, GA_json
  *
  * :param session: The session to use.
  * :param settings: The new settings values.
+ * :param call: Destination for the resulting GA_auth_handler.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settings, struct GA_auth_handler** call);
 
@@ -445,6 +475,7 @@ GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settin
  *
  * :param session: The session to use.
  * :param settings Destination for the current settings.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
 
@@ -530,6 +561,7 @@ GDK_API int GA_destroy_json(GA_json* json);
  *
  * :param call: The auth_handler whose status is to be queried.
  * :param output: Destination for the resulting :ref:`twofactor-status`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_auth_handler_get_status(struct GA_auth_handler* call, GA_json** output);
 
@@ -570,6 +602,7 @@ GDK_API int GA_destroy_auth_handler(struct GA_auth_handler* call);
  * :param method: The two factor method to enable/disable, i.e. "email", "sms", "phone", "gauth"
  * :param twofactor_details: The two factor method and associated data such as an email address. :ref:`twofactor-detail`
  * :param call: Destination for the resulting GA_auth_handler to perform the action
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_change_settings_twofactor(
     struct GA_session* session, const char* method, const GA_json* twofactor_details, struct GA_auth_handler** call);
@@ -581,6 +614,7 @@ GDK_API int GA_change_settings_twofactor(
  * :param email: The new email address to enable once the reset waiting period expires.
  * :param is_dispute: GA_TRUE if the reset request is disputed, GA_FALSE otherwise.
  * :param call: Destination for the resulting GA_auth_handler to request the reset.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_twofactor_reset(
     struct GA_session* session, const char* email, uint32_t is_dispute, struct GA_auth_handler** call);
@@ -590,6 +624,7 @@ GDK_API int GA_twofactor_reset(
  *
  * :param session: The session to use.
  * :param call: Destination for the resulting GA_auth_handler to cancel the reset.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_twofactor_cancel_reset(struct GA_session* session, struct GA_auth_handler** call);
 
@@ -599,6 +634,7 @@ GDK_API int GA_twofactor_cancel_reset(struct GA_session* session, struct GA_auth
  * :param session: The session to use.
  * :param limit_details: Details of the new transaction :ref:`limits`
  * :param call: Destination for the resulting GA_auth_handler to perform the change.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_twofactor_change_limits(
     struct GA_session* session, const GA_json* limit_details, struct GA_auth_handler** call);
@@ -624,7 +660,8 @@ GDK_API int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, s
 /**
  * Generate a new random BIP 39 mnemonic.
  *
- * :param output: The generated mnemonic phrase
+ * :param output: The generated mnemonic phrase.
+ *|     Returned string should be freed using `GA_destroy_string`.
  */
 GDK_API int GA_generate_mnemonic(char** output);
 
@@ -652,6 +689,7 @@ GDK_API int GA_register_network(const char* name, const GA_json* network_details
  * Get the available network configurations
  *
  * :param output: Destination for the :ref:`networks-list`
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_networks(GA_json** output);
 
