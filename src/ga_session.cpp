@@ -87,9 +87,6 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 5; // maximum wait time on disconnect in seconds
 
-        // other defaults
-        const uint32_t MAX_TRANSACTIONS = 30;
-
         static const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
         static const std::array<unsigned char, 8> PASSWORD_SALT = {
             { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'
@@ -1600,70 +1597,52 @@ namespace sdk {
         update_fiat_rate(locker, fiat_rate);
     }
 
-    nlohmann::json ga_session::get_transaction_list(uint32_t subaccount, uint32_t max_transactions, bool all)
-    {
-        nlohmann::json txs;
-        std::vector<nlohmann::json> tx_list;
-        for (uint32_t page_id = 0; tx_list.size() < max_transactions || all;) {
-            wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
-
-            {
-                locker_t locker(m_mutex);
-                // Update our local block height from the returned results
-                // TODO: Use block_hash/height reversal to detect reorgs & uncache
-                const uint32_t block_height = txs["cur_block"];
-                if (block_height > m_block_height) {
-                    m_block_height = block_height;
-                }
-
-                // Note: fiat_value is actually the fiat exchange rate
-                if (!txs["fiat_value"].is_null()) {
-                    const double fiat_rate = txs["fiat_value"];
-                    update_fiat_rate(locker, std::to_string(fiat_rate));
-                }
-            }
-            // Postprocess the returned API data
-            // TODO: confidential transactions, social payments/BIP70
-            //
-            // Remove all replaced transactions
-            // TODO: Add 'replaces' to txs that were bumped, and mark replaced
-            // txs that aren't in our list as double spent
-            tx_list.reserve(tx_list.size() + txs["list"].size());
-            for (auto& tx_details : txs["list"]) {
-                if (tx_details.find("replaced_by") == tx_details.end()) {
-                    tx_list.emplace_back(tx_details);
-                }
-            }
-
-            const auto p = txs.find("next_page_id");
-            if (p == txs.end() || p->is_null()) {
-                break;
-            } else {
-                page_id = p->get<uint32_t>();
-            }
-        }
-
-        for (auto k : { "fiat_value", "cur_block", "block_hash", "unclaimed", "fiat_currency", "next_page_id" }) {
-            txs.erase(k);
-        }
-
-        if (tx_list.size() > max_transactions && !all) {
-            tx_list.resize(max_transactions);
-        }
-        txs["list"] = tx_list;
-        return txs;
-    }
-
     nlohmann::json ga_session::get_transactions(const nlohmann::json& details)
     {
         const uint32_t subaccount = details.at("subaccount");
-        const uint32_t max_transactions = json_get_value(details, "max_transactions", MAX_TRANSACTIONS);
-        const bool all = json_get_value(details, "all", false);
+        const uint32_t page_id = details.at("page_id");
 
-        auto txs = get_transaction_list(subaccount, max_transactions, all);
+        nlohmann::json txs;
+        wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
+            "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
 
+        {
+            locker_t locker(m_mutex);
+            // Update our local block height from the returned results
+            // TODO: Use block_hash/height reversal to detect reorgs & uncache
+            const uint32_t block_height = txs["cur_block"];
+            if (block_height > m_block_height) {
+                m_block_height = block_height;
+            }
+
+            // Note: fiat_value is actually the fiat exchange rate
+            if (!txs["fiat_value"].is_null()) {
+                const double fiat_rate = txs["fiat_value"];
+                update_fiat_rate(locker, std::to_string(fiat_rate));
+            }
+        }
+        // Postprocess the returned API data
+        // TODO: confidential transactions, social payments/BIP70
+        txs.erase("fiat_value");
+        txs.erase("cur_block");
+        txs.erase("block_hash");
+        txs.erase("unclaimed"); // Always empty, never used
+        txs.erase("fiat_currency");
+        txs["page_id"] = page_id;
+        json_add_if_missing(txs, "next_page_id", 0, true);
+
+        // Remove all replaced transactions
+        // TODO: Add 'replaces' to txs that were bumped, and mark replaced
+        // txs that aren't in our list as double spent
+        std::vector<nlohmann::json> tx_list;
+        tx_list.reserve(txs["list"].size());
         for (auto& tx_details : txs["list"]) {
+            if (tx_details.find("replaced_by") == tx_details.end()) {
+                tx_list.emplace_back(tx_details);
+            }
+        }
+
+        for (auto& tx_details : tx_list) {
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
             // TODO: Server should set subaccount to null if this is a spend from multiple subaccounts
             json_add_if_missing(tx_details, "has_payment_request", false);
@@ -1808,6 +1787,7 @@ namespace sdk {
             tx_details["user_signed"] = true;
             tx_details["server_signed"] = true;
         }
+        txs["list"] = tx_list;
         return txs;
     }
 

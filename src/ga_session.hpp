@@ -86,7 +86,6 @@ namespace sdk {
         void change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data);
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
-        nlohmann::json get_transaction_list(uint32_t subaccount, uint32_t max_transactions, bool all);
         nlohmann::json get_transactions(const nlohmann::json& details);
 
         void set_notification_handler(GA_notification_handler handler, void* context);

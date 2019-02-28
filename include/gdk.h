@@ -213,7 +213,7 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, G
  * :param details: JSON giving the details to get the transactions for.
  * :param txs: The :ref:`tx-list`.
  *
- * .. note:: Transactions are returned from newest to oldest.
+ * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
  */
 GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, GA_json** txs);
 
