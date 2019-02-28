@@ -331,8 +331,8 @@ namespace sdk {
     {
         m_ping_timer.cancel();
         reset();
-        m_controller.reset();
         m_io.stop();
+        m_controller.reset();
         m_io.reset();
     }
 
@@ -350,8 +350,6 @@ namespace sdk {
 
     void ga_session::unsubscribe()
     {
-        locker_t locker(m_mutex);
-
         for (const auto& sub : m_subscriptions) {
             no_std_exception_escape([this, &sub] {
                 const auto status
@@ -361,6 +359,7 @@ namespace sdk {
                 }
             });
         }
+        locker_t locker(m_mutex);
         m_subscriptions.clear();
     }
 
@@ -567,11 +566,16 @@ namespace sdk {
 
     void ga_session::disconnect()
     {
-        locker_t locker{ m_mutex };
+        {
+            locker_t locker{ m_mutex };
 
-        if (m_notification_handler != nullptr) {
-            call_notification_handler(locker, new nlohmann::json());
+            if (m_notification_handler != nullptr) {
+                call_notification_handler(locker, new nlohmann::json());
+            }
+
+            m_signer.reset();
         }
+
         no_std_exception_escape([this] {
             const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
             if (status != boost::future_status::ready) {
@@ -585,8 +589,6 @@ namespace sdk {
             }
         });
         connect_with_tls() ? disconnect_transport<transport_tls>() : disconnect_transport<transport>();
-
-        m_signer.reset();
     }
 
     void ga_session::reset()
