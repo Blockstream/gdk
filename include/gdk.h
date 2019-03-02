@@ -487,7 +487,7 @@ GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
  * :param handler: The handler to receive notifications.
  * :param context: A context pointer to be passed to the handler.
  *
- * This must be called after before GA_connect/GA_connect_with_proxy.
+ * This must be called before GA_connect/GA_connect_with_proxy.
  * Notifications may arrive on different threads so the caller must ensure
  * that shared data is correctly locked within the handler.
  * The GA_json object passed to the caller must be destroyed by the caller
