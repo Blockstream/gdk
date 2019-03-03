@@ -5,7 +5,7 @@ cache:
 before_script:
   - ./tools/clean.sh meson
 
-image: greenaddress/ci@sha256:62f35f4b138a1b0cad32c6854465128acf9b4ee8098dc426512ae1c1ca166a43
+image: greenaddress/ci@sha256:5324e4619173e4ae01c2d2b5ad484ac613cb822339b73057a4380cfdf819042a
 
 .fedora_images:
   image: greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
@@ -95,28 +95,28 @@ gdk_clang_ndk_armeabi-v7a:
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19 ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
+    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19 ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
+    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
+    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
+    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
 
 test_osx_clang:
   extends: .osx_test
