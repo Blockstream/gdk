@@ -369,3 +369,9 @@ GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_uint32, const GA_json*, json, c
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_uint64, const GA_json*, json, const char*, path, uint64_t*, output,
     { json_convert(*json_cast(json), path, output); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_json, const GA_json*, json, const char*, path, GA_json**, output, {
+    nlohmann::json* v = new nlohmann::json();
+    json_convert(*json_cast(json), path, v);
+    *json_cast(output) = v;
+})

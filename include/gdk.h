@@ -509,6 +509,8 @@ GDK_API int GA_convert_json_value_to_uint64(const GA_json* json, const char* pat
 
 GDK_API int GA_convert_json_value_to_bool(const GA_json* json, const char* path, uint32_t* output);
 
+GDK_API int GA_convert_json_value_to_json(const GA_json* json, const char* path, GA_json** output);
+
 /**
  * Free a GA_json object.
  * :param json: GA_json object to free.
