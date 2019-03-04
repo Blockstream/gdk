@@ -239,7 +239,10 @@ namespace sdk {
         {
             bool expect_pong = false;
             no_std_exception_escape([this, &expect_pong] {
-                expect_pong = boost::get<std::shared_ptr<T>>(m_transport)->ping(std::string{});
+                const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
+                if (transport != nullptr && transport->is_connected()) {
+                    expect_pong = transport->ping(std::string{});
+                }
             });
             return expect_pong;
         }

@@ -322,14 +322,10 @@ namespace sdk {
         one_time_setup();
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         connect_with_tls() ? make_client<client_tls>() : make_client<client>();
-
-        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
-        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
     }
 
     ga_session::~ga_session()
     {
-        m_ping_timer.cancel();
         reset();
         m_io.stop();
         m_controller.reset();
@@ -405,6 +401,9 @@ namespace sdk {
             : connect_to_endpoint<transport>(m_session, m_transport);
 
         set_socket_options();
+
+        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
+        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
     }
 
     template <typename T> std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler() {}
@@ -575,6 +574,8 @@ namespace sdk {
 
             m_signer.reset();
         }
+
+        m_ping_timer.cancel();
 
         no_std_exception_escape([this] {
             const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
