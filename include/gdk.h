@@ -658,7 +658,8 @@ GDK_API void GA_destroy_string(char* str);
 /**
  * Get up to 32 random bytes.
  *
- * Generates up to 32 random bytes using the same strategy as Bitcoin Core code.
+ * Generate up to 32 random bytes using the same strategy as Bitcoin Core code.
+ *
  * :param output_bytes: bytes output buffer
  * :param siz: Number of bytes to return (max. 32)
  */
