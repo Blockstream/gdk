@@ -386,6 +386,7 @@ GDK_API int GA_set_transaction_memo(
  * bytes. The first element is the minimum relay fee as returned by the
  * network, while the remaining elements are the current estimates to use
  * for a transaction to confirm from 1 to 24 blocks.
+ *
  */
 GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates);
 
@@ -445,6 +446,7 @@ GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config
  * If no key is given, the data is encrypted using a key derived from the user's mnemonics.
  * This will fail to decrypt the data correctly if the user is logged in in watch-only
  * mode. For watch only users a key must be provided by the caller.
+ *
  */
 GDK_API int GA_encrypt(struct GA_session* session, const GA_json* input, GA_json** output);
 
@@ -457,6 +459,7 @@ GDK_API int GA_encrypt(struct GA_session* session, const GA_json* input, GA_json
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * See GA_encrypt.
+ *
  */
 GDK_API int GA_decrypt(struct GA_session* session, const GA_json* input, GA_json** output);
 
@@ -474,7 +477,7 @@ GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settin
  * Get settings
  *
  * :param session: The session to use.
- * :param settings Destination for the current settings.
+ * :param settings: Destination for the current settings.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
@@ -495,6 +498,7 @@ GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
  * using GA_destroy_json. Failing to do so will result in memory leaks.
  * When the session is disconnected/destroyed, a final call will be made to
  * the handler with a NULL notification.
+ *
  */
 GDK_API int GA_set_notification_handler(struct GA_session* session, GA_notification_handler handler, void* context);
 
@@ -514,6 +518,7 @@ GDK_API int GA_convert_json_value_to_json(const GA_json* json, const char* path,
 
 /**
  * Free a GA_json object.
+ *
  * :param json: GA_json object to free.
  */
 GDK_API int GA_destroy_json(GA_json* json);
@@ -521,6 +526,12 @@ GDK_API int GA_destroy_json(GA_json* json);
 #endif /* SWIG */
 
 /**
+ * Get the status/result of an action requiring authorization.
+ *
+ * :param call: The auth_handler whose status is to be queried.
+ * :param output: Destination for the resulting :ref:`twofactor-status`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ *
  * Methods in the api that may require two factor or hardware authentication
  * to complete return a GA_auth_handler object. This object encapsulates the
  * process of determining whether authentication is required and handling
@@ -539,32 +550,25 @@ GDK_API int GA_destroy_json(GA_json* json);
  * The state machine has the following states, which are returned in the
  * "status" element from GA_auth_handler_get_status():
  *
- * - "done": The action has been completed successfully. Any data returned
- *   from the action is present in the "result" element of the status JSON.
+ * * "done": The action has been completed successfully. Any data returned
+ *|  from the action is present in the "result" element of the status JSON.
  *
- * - "error": A non-recoverable error occurred performing the action. The
- *   associated error message is given in the status element "error". The
- *   auth_handler object should be destroyed and the action restarted from
- *   scratch if this state is returned.
+ * * "error": A non-recoverable error occurred performing the action. The
+ *| associated error message is given in the status element "error". The
+ *| auth_handler object should be destroyed and the action restarted from
+ *| scratch if this state is returned.
  *
- * - "request_code": Two factor authorization is required. The caller should
- *   prompt the user to choose a two factor method from the "methods" element
- *   and call GA_auth_handler_request_code() with the selected method.
+ * * "request_code": Two factor authorization is required. The caller should
+ *| prompt the user to choose a two factor method from the "methods" element
+ *| and call GA_auth_handler_request_code() with the selected method.
  *
- * - "resolve_code": The caller should prompt the user to enter the code from
- *   the twofactor method chosen in the "request_code" step, and pass this
- *   code to GA_auth_handler_resolve_code().
+ * * "resolve_code": The caller should prompt the user to enter the code from
+ *| the twofactor method chosen in the "request_code" step, and pass this
+ *| code to GA_auth_handler_resolve_code().
  *
- * - "call": Twofactor or hardwre authorization is complete and the caller
- *   should call GA_auth_handler_call() to perform the action.
- */
-
-/**
- * Get the status/result of an action requiring authorization.
+ * * "call": Twofactor or hardwre authorization is complete and the caller
+ *| should call GA_auth_handler_call() to perform the action.
  *
- * :param call: The auth_handler whose status is to be queried.
- * :param output: Destination for the resulting :ref:`twofactor-status`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_auth_handler_get_status(struct GA_auth_handler* call, GA_json** output);
 
@@ -699,9 +703,7 @@ GDK_API int GA_get_networks(GA_json** output);
 /**
  * Get a uint32_t in the range 0 to (upper_bound - 1) without bias
  *
- * @output Destination for the generated uint32_t.
- *
- * GA_ERROR if the output cannot be generated.
+ * :param output: Destination for the generated uint32_t.
  */
 GDK_API int GA_get_uniform_uint32_t(uint32_t upper_bound, uint32_t* output);
 
