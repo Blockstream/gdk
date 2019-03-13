@@ -690,6 +690,7 @@ GDK_API int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid);
  * Any existing configuration with the same name is overwritten.
  * If the provided JSON is empty, any existing configuration for
  * the network is removed.
+ *
  */
 GDK_API int GA_register_network(const char* name, const GA_json* network_details);
 
