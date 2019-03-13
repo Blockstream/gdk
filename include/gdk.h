@@ -313,7 +313,7 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
 GDK_API int GA_set_pin(
     struct GA_session* session, const char* mnemonic, const char* pin, const char* device_id, GA_json** pin_data);
 
-/*
+/**
  * Construct a transaction.
  *
  * :param session: The session to use.
@@ -324,7 +324,7 @@ GDK_API int GA_set_pin(
 GDK_API int GA_create_transaction(
     struct GA_session* session, const GA_json* transaction_details, GA_json** transaction);
 
-/*
+/**
  * Sign the user's inputs to a transaction.
  *
  * :param session: The session to use.
@@ -335,7 +335,7 @@ GDK_API int GA_create_transaction(
 GDK_API int GA_sign_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
 
-/*
+/**
  * Broadcast a non-Green signed transaction to the P2P network.
  *
  * :param session: The session to use.
@@ -345,7 +345,7 @@ GDK_API int GA_sign_transaction(
  */
 GDK_API int GA_broadcast_transaction(struct GA_session* session, const char* transaction_hex, char** tx_hash);
 
-/*
+/**
  * Send a transaction created by GA_create_transaction and signed by GA_sign_transaction.
  *
  * :param session: The session to use.
@@ -374,7 +374,7 @@ GDK_API int GA_send_nlocktimes(struct GA_session* session);
 GDK_API int GA_set_transaction_memo(
     struct GA_session* session, const char* txhash_hex, const char* memo, uint32_t memo_type);
 
-/*
+/**
  * Get the current network's fee estimates.
  *
  * :param session: The session to use.
@@ -389,7 +389,7 @@ GDK_API int GA_set_transaction_memo(
  */
 GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates);
 
-/*
+/**
  * Get the user's mnemonic passphrase.
  *
  * :param session: The session to use.
@@ -401,7 +401,7 @@ GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates
  */
 GDK_API int GA_get_mnemonic_passphrase(struct GA_session* session, const char* password, char** mnemonic);
 
-/*
+/**
  * Get the latest un-acknowledged system message.
  *
  * :param session: The session to use.
@@ -412,7 +412,7 @@ GDK_API int GA_get_mnemonic_passphrase(struct GA_session* session, const char* p
  */
 GDK_API int GA_get_system_message(struct GA_session* session, char** message_text);
 
-/*
+/**
  * Sign and acknowledge a system message.
  *
  * The message text will be signed with a key derived from the wallet master key and the signature
@@ -425,7 +425,7 @@ GDK_API int GA_get_system_message(struct GA_session* session, char** message_tex
  */
 GDK_API int GA_ack_system_message(struct GA_session* session, const char* message_text, struct GA_auth_handler** call);
 
-/*
+/**
  * Get the two factor configuration for the current user.
  *
  * :param session: The session to use.
@@ -434,7 +434,7 @@ GDK_API int GA_ack_system_message(struct GA_session* session, const char* messag
  */
 GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config);
 
-/*
+/**
  * Encrypt data.
  *
  * :param session: The session to use.
@@ -448,7 +448,7 @@ GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config
  */
 GDK_API int GA_encrypt(struct GA_session* session, const GA_json* input, GA_json** output);
 
-/*
+/**
  * Decrypt data.
  *
  * :param session: The session to use.
@@ -460,7 +460,7 @@ GDK_API int GA_encrypt(struct GA_session* session, const GA_json* input, GA_json
  */
 GDK_API int GA_decrypt(struct GA_session* session, const GA_json* input, GA_json** output);
 
-/*
+/**
  * Change settings
  *
  * :param session: The session to use.
@@ -470,7 +470,7 @@ GDK_API int GA_decrypt(struct GA_session* session, const GA_json* input, GA_json
  */
 GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settings, struct GA_auth_handler** call);
 
-/*
+/**
  * Get settings
  *
  * :param session: The session to use.
@@ -479,8 +479,9 @@ GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settin
  */
 GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
 
+
 #ifndef SWIG
-/*
+/**
  * Set a handler to be called when notifications arrive.
  *
  * :param session: The server session to receive notifications for.
@@ -519,7 +520,7 @@ GDK_API int GA_destroy_json(GA_json* json);
 
 #endif /* SWIG */
 
-/*
+/**
  * Methods in the api that may require two factor or hardware authentication
  * to complete return a GA_auth_handler object. This object encapsulates the
  * process of determining whether authentication is required and handling
