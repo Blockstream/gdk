@@ -482,7 +482,6 @@ GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settin
  */
 GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
 
-
 #ifndef SWIG
 /**
  * Set a handler to be called when notifications arrive.
