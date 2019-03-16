@@ -333,9 +333,6 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
         private int get_id() { return id; }
     }
 %}
-%pragma(java) jniclassimports=%{
-    import java.util.Date;
-%}
 
 /* Raise an exception whenever a function fails */
 %exception {
