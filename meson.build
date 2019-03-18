@@ -9,7 +9,7 @@ cross_android_build = host_machine.system() == 'android'
 is_freebsd = host_machine.system().startswith('freebsd')
 is_clang = compiler.get_id() == 'clang'
 freebsd_requires_gold = is_freebsd and is_clang
-use_gold = (build_machine.system() == 'linux' or cross_android_build or freebsd_requires_gold) and not cross_win_build
+use_gold = (build_machine.system() == 'linux' or freebsd_requires_gold) and not cross_win_build
 
 # header checks (must be architecture independent)
 check_headers = [
@@ -39,6 +39,12 @@ if get_option('lto')
 endif
 if use_gold
     add_project_link_arguments(['-fuse-ld=gold', '-ldl'], language : 'cpp')
+elif cross_android_build
+    if build_machine.system() == 'darwin'
+        add_project_link_arguments(['-fuse-ld=bfd', '-ldl'], language : 'cpp')
+    else
+        add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')
+    endif
 endif
 
 common_compile_options = [

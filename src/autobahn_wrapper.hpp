@@ -14,14 +14,16 @@
 #if !defined __APPLE__ && __clang_major__ >= 6
 #pragma clang diagnostic ignored "-Wenum-compare"
 #endif
-#pragma clang diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wignored-qualifiers"
+#pragma clang diagnostic warning "-Wnon-virtual-dtor"
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #endif
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic warning "-Wnon-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #if __GNUC__ > 7
 #pragma GCC diagnostic ignored "-Wclass-memaccess"

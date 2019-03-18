@@ -5,7 +5,7 @@ function compile_flags() {
     echo "`python -c "import sys; print('<compile_flags>'.join([''] + map(lambda x: x + '\n', sys.argv[1:])))" $@`"
 }
 
-BOOST_NAME="boost_1_66_0"
+BOOST_NAME="boost_1_69_0"
 
 if [ "x${NUM_JOBS}" == "x" ]; then
     NUM_JOBS=4
@@ -22,11 +22,10 @@ boost_src_home="${MESON_BUILD_ROOT}/boost"
 boost_bld_home="${MESON_BUILD_ROOT}/boost/build"
 cd $boost_src_home
 if [ \( "$BUILD" = "--ndk" \) ]; then
-    cp "${MESON_SOURCE_ROOT}/tools/darwin.jam" "$boost_src_home/tools/build/src/tools"
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
-using darwin : $SDK_ARCH :
+using clang : $SDK_ARCH :
 ${CXX}
 :
 <compileflags>-std=c++14
@@ -43,7 +42,7 @@ $(compile_flags $@)
 EOF
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags=-fPIC toolset=darwin-${SDK_ARCH} target-os=android link=static release install
+    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang-${SDK_ARCH} target-os=android link=static release install
     if [ "$(uname)" == "Darwin" ]; then
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
@@ -86,7 +85,7 @@ $(compile_flags $@)
 EOF
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc-mingw target-os=windows link=static release install
+    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
 else
     TOOLSET=
     if [[ ${CC} == *"clang"* ]]; then

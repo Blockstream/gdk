@@ -4,11 +4,13 @@
 
 #if __clang__
 #pragma clang diagnostic push
+#pragma clang diagnostic warning "-Wnon-virtual-dtor"
 #pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic warning "-Wnon-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
