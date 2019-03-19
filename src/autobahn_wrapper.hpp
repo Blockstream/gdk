@@ -15,7 +15,7 @@
 #pragma clang diagnostic ignored "-Wenum-compare"
 #endif
 #pragma clang diagnostic ignored "-Wignored-qualifiers"
-#pragma clang diagnostic warning "-Wnon-virtual-dtor"
+#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #endif
 
@@ -23,7 +23,7 @@
 #pragma GCC diagnostic ignored "-Wattributes"
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wparentheses"
-#pragma GCC diagnostic warning "-Wnon-virtual-dtor"
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #if __GNUC__ > 7
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
