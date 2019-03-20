@@ -208,7 +208,7 @@ GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts
  * Get subaccount details.
  *
  * :param session: The session to use.
- * :param subaccount: Subaccount to get.
+ * :param subaccount: The value of "pointer" from :ref:`subaccount-list` for the subaccount.
  * :param output: Destination for the :ref:`subaccount-detail`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
@@ -230,7 +230,8 @@ GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* detai
  * Get a new address to receive coins to.
  *
  * :param session: The session to use.
- * :param subaccount: The subaccount to generate an address for.
+ * :param subaccount: The value of "pointer" from :ref:`subaccount-list` or
+ *|                   :ref:`subaccount-detail` for the subaccount to generate an address for.
  * :param output: The generated address.
  *|     Returned string should be freed using `GA_destroy_string`.
  */
