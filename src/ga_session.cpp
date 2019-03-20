@@ -237,6 +237,14 @@ namespace sdk {
         // Make sure appearance settings match our expectations
         static void cleanup_appearance_settings(const ga_session::locker_t& locker, nlohmann::json& appearance)
         {
+            auto convert_to_default_if_not_t = [](auto value, auto default_v) {
+                decltype(default_v) v;
+                if (!boost::conversion::try_lexical_convert(value, v)) {
+                    return default_v;
+                }
+                return v;
+            };
+
             GDK_RUNTIME_ASSERT(locker.owns_lock());
 
             nlohmann::json clean({
@@ -247,6 +255,12 @@ namespace sdk {
                 { "required_num_blocks", 12u },
             });
             clean.update(appearance);
+
+            clean["altimeout"] = convert_to_default_if_not_t(clean["altimeout"], 5u);
+            clean["replace_by_fee"] = convert_to_default_if_not_t(clean["replace_by_fee"], true);
+            clean["required_num_blocks"] = convert_to_default_if_not_t(clean["required_num_blocks"], 12u);
+            clean["sound"] = convert_to_default_if_not_t(clean["sound"], true);
+            clean["unit"] = convert_to_default_if_not_t(clean["unit"], std::string("BTC"));
 
             // Make sure the default block target is one of [3, 12, or 24]
             uint32_t required_num_blocks = clean["required_num_blocks"];
