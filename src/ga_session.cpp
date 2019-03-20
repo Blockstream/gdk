@@ -1473,6 +1473,18 @@ namespace sdk {
         return details;
     }
 
+    void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
+    {
+        locker_t locker(m_mutex);
+        wamp_call([](wamp_call_result result) { GDK_RUNTIME_ASSERT(result.get().argument<bool>(0)); },
+            "com.greenaddress.txs.rename_subaccount", subaccount, new_name);
+
+        const auto p = m_subaccounts.find(subaccount);
+        if (p != m_subaccounts.end()) {
+            p->second["name"] = new_name;
+        }
+    }
+
     nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,
         const std::string& name, const std::string& receiving_id, const std::string& recovery_pub_key,
         const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs)

@@ -406,6 +406,12 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_subaccount(subaccount); });
     }
 
+    void session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        exception_wrapper([&] { m_impl->rename_subaccount(subaccount, new_name); });
+    }
+
     nlohmann::json session::get_settings()
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

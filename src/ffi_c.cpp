@@ -257,6 +257,9 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_subaccounts, struct GA_session*, session, GA_json
 GDK_DEFINE_C_FUNCTION_3(GA_get_subaccount, struct GA_session*, session, uint32_t, subaccount, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->get_subaccount(subaccount)); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_rename_subaccount, struct GA_session*, session, uint32_t, subaccount, const char*, new_name,
+    { session->rename_subaccount(subaccount, new_name); })
+
 GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, const GA_json*, details, GA_json**, txs,
     { *json_cast(txs) = new nlohmann::json(session->get_transactions(*json_cast(details))); })
 

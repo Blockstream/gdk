@@ -72,6 +72,8 @@ namespace sdk {
 
         nlohmann::json get_subaccount(uint32_t subaccount);
 
+        void rename_subaccount(uint32_t subaccount, const std::string& new_name);
+
         nlohmann::json get_balance(const nlohmann::json& details);
 
         nlohmann::json get_available_currencies();

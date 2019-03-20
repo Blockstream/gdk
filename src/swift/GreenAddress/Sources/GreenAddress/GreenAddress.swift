@@ -279,6 +279,10 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
+    public func renameSubaccount(subaccount: UInt32, newName: String) throws -> Void {
+        try callWrapper(fun: GA_rename_subaccount(session, subaccount, newName));
+    }
+
     public func getTransactions(details: [String: Any]) throws -> [String: Any]? {
         return try jsonFuncToJsonWrapper(input: details, fun: GA_get_transactions)
     }
