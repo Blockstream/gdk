@@ -20,6 +20,7 @@ namespace sdk {
     using conversion_type = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<15>>;
 
     namespace {
+        static constexpr int64_t SATOSHI_MAX = static_cast<int64_t>(WALLY_BTC_MAX) * WALLY_SATOSHI_PER_BTC;
         static const conversion_type COIN_VALUE_100("100");
         static const conversion_type COIN_VALUE_DECIMAL("100000000");
         static const conversion_type COIN_VALUE_DECIMAL_MBTC("100000");
@@ -63,7 +64,7 @@ namespace sdk {
 
         const std::string fr_str = fiat_rate.empty() ? "0" : fiat_rate;
         const conversion_type fr(fr_str);
-        uint64_t satoshi;
+        int64_t satoshi;
 
         // Compute satoshi from our input
         if (satoshi_p != end_p) {
@@ -82,6 +83,8 @@ namespace sdk {
             const conversion_type btc_decimal = conversion_type(fiat_str) / fr;
             satoshi = (btc_type(btc_decimal) * COIN_VALUE_DECIMAL).convert_to<value_type>();
         }
+        GDK_RUNTIME_ASSERT_MSG(satoshi >= 0, "amount cannot be negative");
+        GDK_RUNTIME_ASSERT_MSG(satoshi <= SATOSHI_MAX, "amount cannot exceed maximum number of bitcoins");
 
         // Then compute the other denominations and fiat amount
         const conversion_type satoshi_conv = conversion_type(satoshi);
