@@ -7,7 +7,14 @@ before_script:
 
 image: greenaddress/ci@sha256:5324e4619173e4ae01c2d2b5ad484ac613cb822339b73057a4380cfdf819042a
 
+.fedora_images:
+  image: greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
+  tags:
+    - ga
+
 .ndk_release:
+  tags:
+    - ga
   artifacts:
     expire_in: 1 day
     when: on_success
@@ -23,6 +30,8 @@ image: greenaddress/ci@sha256:5324e4619173e4ae01c2d2b5ad484ac613cb822339b73057a4
       - subprojects/packagecache/
 
 .py_release:
+  tags:
+    - ga
   before_script:
     - mkdir $CI_PROJECT_DIR/gdk-python
   artifacts:
@@ -32,6 +41,8 @@ image: greenaddress/ci@sha256:5324e4619173e4ae01c2d2b5ad484ac613cb822339b73057a4
     - gdk-python
 
 test_gcc:
+  tags:
+    - ga
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --gcc
@@ -58,18 +69,20 @@ release_py3m_osx:
     - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7
 
 test_fedora_gcc:
-  image: greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
+  extends: .fedora_images
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --gcc
 
 test_fedora_clang:
-  image: greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
+  extends: .fedora_images
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --clang
 
 test_clang:
+  tags:
+    - ga
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --clang-tidy-version=3.8 --clang
@@ -164,6 +177,8 @@ test_freebsd_clang:
     - ./tools/build.sh --clang
 
 test_windows_mingw_w64_cross:
+  tags:
+    - ga
   artifacts:
     expire_in: 1 hour
     when: on_success
@@ -174,6 +189,8 @@ test_windows_mingw_w64_cross:
     - ./tools/build.sh --mingw-w64
 
 apidocs:
+  tags:
+    - ga
   artifacts:
     expire_in: 14 days
     when: on_success
