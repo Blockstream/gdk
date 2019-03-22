@@ -12,7 +12,11 @@ namespace sdk {
         if (!condition) {
             const std::string msg
                 = std::string("assertion failure: ") + file + ":" + func + ":" + line + ":" + error_message;
-            GDK_LOG_SEV(log_level::error) << msg;
+            GDK_LOG_SEV(log_level::error) << msg
+#if defined(__linux__) and not defined(NDEBUG) and defined(HAVE_BACKTRACE)
+                                          << "\n:backtrace " << boost::stacktrace::stacktrace()
+#endif
+                ;
             throw assertion_error(msg);
         }
     }

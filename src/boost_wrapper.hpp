@@ -37,6 +37,11 @@
 #include <boost/log/trivial.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#if defined(__linux__) and not defined(NDEBUG) and defined(HAVE_BACKTRACE)
+#define BOOST_STACKTRACE_USE_ADDR2LINE
+#define BOOST_STACKTRACE_USE_BACKTRACE
+#include <boost/stacktrace.hpp>
+#endif
 #include <boost/variant.hpp>
 
 #if __clang__

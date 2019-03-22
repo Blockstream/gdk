@@ -57,7 +57,7 @@ if pvs_studio_analyzer.found()
     custom_target('pvs-studio-analyzer', output : 'pvs-studio-analyzer', command : [join_paths(meson.source_root(), 'tools', 'run_pvs_studio_analyzer.sh'), meson.build_root()], depends : fix_compile_commands)
 endif
 
-dependencies = subproject_deps + [atomic_dep, m_dep, threads_dep, dl_dep, ws2_dep, bcrypt_dep, ssp_dep, log_dep]
+dependencies = subproject_deps + library_deps
 
 local_link_args = []
 link_whole = []

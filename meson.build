@@ -10,6 +10,7 @@ is_freebsd = host_machine.system().startswith('freebsd')
 is_clang = compiler.get_id() == 'clang'
 freebsd_requires_gold = is_freebsd and is_clang
 use_gold = (build_machine.system() == 'linux' or freebsd_requires_gold) and not cross_win_build
+debug = get_option('buildtype') == 'debug'
 
 # header checks (must be architecture independent)
 check_headers = [
@@ -80,7 +81,7 @@ if get_option('b_sanitize') == 'address' and is_clang
     add_project_link_arguments(['-shared-libasan'], language : ['c', 'cpp'])
 endif
 
-if get_option('buildtype') == 'debug'
+if debug
     add_project_arguments(['-g', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC'], language : ['c', 'cpp'])
 else
     add_project_arguments(['-DNDEBUG'], language : ['c', 'cpp'])
@@ -185,14 +186,23 @@ else
 endif
 
 # dependencies
-threads_dep = dependency('threads')
-m_dep = compiler.find_library('m', required : false)
-atomic_dep = compiler.find_library('atomic', required : false)
-dl_dep = compiler.find_library('dl', required : false)
-ws2_dep = compiler.find_library('ws2_32', required : cross_win_build)
-bcrypt_dep = compiler.find_library('bcrypt', required : cross_win_build)
-ssp_dep = compiler.find_library('ssp', required : cross_win_build)
-log_dep = compiler.find_library('log', required : cross_android_build)
+library_deps = []
+
+library_deps += dependency('threads')
+library_deps += compiler.find_library('m', required : false)
+library_deps += compiler.find_library('atomic', required : false)
+library_deps += compiler.find_library('dl', required : false)
+library_deps += compiler.find_library('ws2_32', required : cross_win_build)
+library_deps += compiler.find_library('bcrypt', required : cross_win_build)
+library_deps += compiler.find_library('ssp', required : cross_win_build)
+library_deps += compiler.find_library('log', required : cross_android_build)
+if debug and build_machine.system() == 'linux'
+    backtrace_dep = compiler.find_library('backtrace', required : false)
+    if backtrace_dep.found()
+        library_deps += backtrace_dep
+        add_project_arguments(['-DHAVE_BACKTRACE'], language : ['c', 'cpp'])
+    endif
+endif
 
 subproject_deps = []
 
