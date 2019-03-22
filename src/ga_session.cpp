@@ -971,7 +971,7 @@ namespace sdk {
             // TODO: Handle other logged in sessions creating subaccounts
             GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
             p->second["has_transactions"] = true;
-            p->second["is_dirty"] = true;
+            p->second.erase("balance");
         }
 
         // TODO: Mark cached tx lists (when implemented) as dirty
@@ -1450,27 +1450,36 @@ namespace sdk {
         return get_subaccount(locker, subaccount);
     }
 
+    nlohmann::json ga_session::get_subaccount_balance_from_server(
+        ga_session::locker_t& locker, uint32_t subaccount, uint32_t num_confs)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        nlohmann::json balance;
+        {
+            unique_unlock unlocker(locker);
+            wamp_call([&balance](wamp_call_result result) { balance = get_json_result(result.get()); },
+                "com.greenaddress.txs.get_balance", subaccount, num_confs);
+        }
+        // TODO: Make sure another session didn't change fiat currency
+        update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
+        const std::string satoshi_str = json_get_value(balance, "satoshi");
+        const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
+        return convert_amount(locker, { { "satoshi", satoshi } });
+    }
+
     nlohmann::json ga_session::get_subaccount(ga_session::locker_t& locker, uint32_t subaccount)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         const auto p = m_subaccounts.find(subaccount);
-        GDK_RUNTIME_ASSERT(p != m_subaccounts.end());
-        nlohmann::json details;
-        nlohmann::json balance;
+        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
 
-        if (json_get_value(p->second, "is_dirty", true)) {
-            balance = get_balance(locker, subaccount, 0); // Update the details
-            details = m_subaccounts.at(subaccount);
-        } else {
-            details = p->second;
-            balance = convert_amount(locker, p->second);
+        auto& details = p->second;
+        const auto p_balance = details.find("balance");
+        if (p_balance == details.end()) {
+            details["balance"] = get_subaccount_balance_from_server(locker, subaccount, 0);
         }
 
-        for (const auto kv : balance.items()) {
-            details[kv.key()] = kv.value();
-        }
-        details.erase("is_dirty");
         return details;
     }
 
@@ -1497,9 +1506,10 @@ namespace sdk {
 
         // FIXME: replace "pointer" with "subaccount"; pointer should only be used
         // for the final path element in a derivation
+        const auto balance = convert_amount(locker, { { "satoshi", satoshi.value() } });
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "satoshi", satoshi.value() }, { "has_transactions", has_txs }, { "is_dirty", false } };
+            { "balance", balance }, { "has_transactions", has_txs } };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
@@ -2021,42 +2031,13 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        amount::value_type satoshi;
-        bool use_cached = false;
-
         if (num_confs == 0) {
-            // See if we can return our cached value
-            const auto p = m_subaccounts.find(subaccount);
-            GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-            if (!json_get_value(p->second, "is_dirty", true)) {
-                satoshi = p->second["satoshi"];
-                use_cached = true;
-            }
+            // The subaccount details contains the confs=0 balance
+            return get_subaccount(locker, subaccount)["balance"];
+        } else {
+            // Anything other than confs=0 needs to be fetched from the server
+            return get_subaccount_balance_from_server(locker, subaccount, num_confs);
         }
-
-        if (!use_cached) {
-            nlohmann::json balance;
-            {
-                unique_unlock unlocker(locker);
-                wamp_call([&balance](wamp_call_result result) { balance = get_json_result(result.get()); },
-                    "com.greenaddress.txs.get_balance", subaccount, num_confs);
-            }
-            // TODO: Make sure another session didn't change fiat currency
-            update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
-            const std::string satoshi_str = json_get_value(balance, "satoshi");
-            satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
-        }
-
-        if (num_confs == 0 && !use_cached) {
-            // Cache the balance
-            auto& sa = m_subaccounts[subaccount];
-            sa["satoshi"] = satoshi;
-            sa["is_dirty"] = false;
-        }
-
-        nlohmann::json details = convert_amount(locker, { { "satoshi", satoshi } });
-        details["subaccount"] = subaccount;
-        return details;
     }
 
     // Idempotent
