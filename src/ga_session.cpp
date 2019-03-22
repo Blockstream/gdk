@@ -1470,6 +1470,7 @@ namespace sdk {
         for (const auto kv : balance.items()) {
             details[kv.key()] = kv.value();
         }
+        details.erase("is_dirty");
         return details;
     }
 
