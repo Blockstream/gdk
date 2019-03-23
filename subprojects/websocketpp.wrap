@@ -7,4 +7,4 @@ source_hash = b335e6cd313bdd5e162a823bc888218201577836756b1e52858cfd6e267d4d5b
 
 patch_url = file:./subprojects/websocketpp-meson/websocketpp-meson-b335e6cd313bdd5e162a823bc888218201577836756b1e52858cfd6e267d4d5b.tar
 patch_filename = websocketpp-meson-b335e6cd313bdd5e162a823bc888218201577836756b1e52858cfd6e267d4d5b.tar
-patch_hash = e38d4bbd0f4d336f6cf8018a3b6594df9e7a23732a753c1a1359f76dde189ce4
+patch_hash = e18d4c3b12fdb9b77e4f0885afb20053f532be449b75ecb9362f52444c463f73

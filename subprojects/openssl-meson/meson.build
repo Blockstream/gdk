@@ -1,4 +1,4 @@
-project('openssl', ['c'], meson_version : '>= 0.41.1')
+project('openssl', ['c'], meson_version : '>= 0.50')
 
 compiler = meson.get_compiler('c')
 

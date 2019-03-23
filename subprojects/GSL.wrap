@@ -7,4 +7,4 @@ source_hash = be81db4ab1b57102a0fa1cd0c4a6469294eb9daf24294347592245b754f65ff6
 
 patch_url = file:./subprojects/GSL-meson/GSL-meson-be81db4ab1b57102a0fa1cd0c4a6469294eb9daf24294347592245b754f65ff6.tar
 patch_filename = GSL-meson-be81db4ab1b57102a0fa1cd0c4a6469294eb9daf24294347592245b754f65ff6.tar
-patch_hash = 46f26dc41df8be4ddb8c29925739a66a0bec6c32da581fce4e252ef34790f069
+patch_hash = 18fd849f19ab497633f90a7a6cab0ef5f12a7ef844eabd245c22a7f78899fc0d

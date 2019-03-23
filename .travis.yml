@@ -6,7 +6,7 @@ services:
 env:
   global:
     - DOCKERBUILDER=greenaddress/ci
-    - DOCKERHASH=5324e4619173e4ae01c2d2b5ad484ac613cb822339b73057a4380cfdf819042a
+    - DOCKERHASH=a8589f9da893a50a401296234e9426a31a31f33e3b8c4478ea070e7b455112b5
     - COMPILER=gcc
   matrix:
     - UNUSED=true

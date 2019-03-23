@@ -1,4 +1,4 @@
-project('libwally-core', ['cpp'], meson_version : '>= 0.41.1')
+project('libwally-core', ['cpp'], meson_version : '>= 0.50')
 
 compiler = meson.get_compiler('cpp')
 

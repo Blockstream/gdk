@@ -5,10 +5,10 @@ cache:
 before_script:
   - ./tools/clean.sh meson
 
-image: greenaddress/ci@sha256:5324e4619173e4ae01c2d2b5ad484ac613cb822339b73057a4380cfdf819042a
+image: greenaddress/ci@sha256:a8589f9da893a50a401296234e9426a31a31f33e3b8c4478ea070e7b455112b5
 
 .fedora_images:
-  image: greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
+  image: greenaddress/fedora_ci@sha256:01c66f5905debff4fb0b4c613b1ab437010c28cde44572c0bcce34f678fb0fa8
   tags:
     - ga
 
@@ -55,7 +55,7 @@ release_py3m_stretch:
 
 release_py3m_fedora:
   extends: .py_release
-  image: greenaddress/fedora_ci@sha256:3d710f476b3d44376acc9fca6e26129e954053834f09ad4327756d67a232bd47
+  image: greenaddress/fedora_ci@sha256:01c66f5905debff4fb0b4c613b1ab437010c28cde44572c0bcce34f678fb0fa8
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7
@@ -95,28 +95,28 @@ gdk_clang_ndk_armeabi-v7a:
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
 
 test_osx_clang:
   extends: .osx_test
