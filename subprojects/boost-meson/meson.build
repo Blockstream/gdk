@@ -3,8 +3,9 @@ project('boost', ['c'], meson_version : '>= 0.50')
 compiler = meson.get_compiler('cpp')
 
 run_cmd_args = []
-if meson.is_cross_build()
-    run_cmd_args += ['--' + meson.get_cross_property('target_os')]
+target_os = meson.get_cross_property('target_os', '')
+if target_os != ''
+    run_cmd_args += ['--' + target_os]
 endif
 
 if get_option('buildtype') == 'debug'

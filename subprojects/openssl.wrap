@@ -7,4 +7,4 @@ source_hash = a53acc4648e1375f989501a17d11c179b4a2c6ed8d697cae758c1fe56bb4a0ef
 
 patch_url = file:./subprojects/openssl-meson/openssl-meson-a53acc4648e1375f989501a17d11c179b4a2c6ed8d697cae758c1fe56bb4a0ef.tar
 patch_filename = openssl-meson-a53acc4648e1375f989501a17d11c179b4a2c6ed8d697cae758c1fe56bb4a0ef.tar
-patch_hash = 394431ef63710bec615ca8aca8946394e8f0ffdc66fd8c0671a31933fda63bdc
+patch_hash = 56476065b47944574f1c344117fcbb7bba1a6eaebc0e9bbac627fb9d5a046737

@@ -3,8 +3,8 @@ project('gdk', ['c', 'cpp'], version: '0.0.8', meson_version : '>= 0.50')
 # commonly used checks
 compiler = meson.get_compiler('cpp')
 
-cross_win_build = meson.is_cross_build() and meson.get_cross_property('target_os') == 'windows'
-cross_iphone_build = meson.is_cross_build() and meson.get_cross_property('target_os').contains('iphone')
+cross_win_build = meson.get_cross_property('target_os', '') == 'windows'
+cross_iphone_build =  meson.get_cross_property('target_os', '').contains('iphone')
 cross_android_build = host_machine.system() == 'android'
 is_freebsd = host_machine.system().startswith('freebsd')
 is_clang = compiler.get_id() == 'clang'

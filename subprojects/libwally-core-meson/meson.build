@@ -4,8 +4,10 @@ compiler = meson.get_compiler('cpp')
 
 message('Building libwally-core...')
 run_cmd_args = []
-if meson.is_cross_build()
-    run_cmd_args += ['--' + meson.get_cross_property('target_os')]
+
+target_os = meson.get_cross_property('target_os', '')
+if target_os != ''
+    run_cmd_args += ['--' + target_os]
 endif
 res = run_command(join_paths(meson.source_root(), 'tools', 'buildlibwally-core.sh'), run_cmd_args)
 if res.returncode() != 0
