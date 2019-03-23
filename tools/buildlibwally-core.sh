@@ -43,7 +43,7 @@ if [ \( "$1" = "--ndk" \) ]; then
     esac
 
     android_build_wally $HOST_ARCH $NDK_TOOLSDIR $ANDROID_VERSION --build=$HOST_OS \
-          $CONFIGURE_ARGS --$ENABLE_SWIG_JAVA --disable-swig-python --target=$SDK_PLATFORM $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
+          $CONFIGURE_ARGS --enable-swig-java --disable-swig-python --target=$SDK_PLATFORM $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
 
     make -o configure install
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
@@ -53,6 +53,7 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     export LDFLAGS="$SDK_LDFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=9.0"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
+    unset JAVA_HOME
     ./configure --host=armv7-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=$HOST_OS \
                 --disable-swig-java --disable-swig-python \
                 $CONFIGURE_ARGS --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
