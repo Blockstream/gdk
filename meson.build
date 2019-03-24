@@ -9,8 +9,9 @@ cross_android_build = host_machine.system() == 'android'
 is_freebsd = host_machine.system().startswith('freebsd')
 is_clang = compiler.get_id() == 'clang'
 freebsd_requires_gold = is_freebsd and is_clang
-use_gold = (build_machine.system() == 'linux' or freebsd_requires_gold) and not cross_win_build
+use_gold = (build_machine.system() == 'linux' or freebsd_requires_gold) and not cross_win_build and not cross_android_build
 debug = get_option('buildtype') == 'debug'
+lto = get_option('lto')
 
 # header checks (must be architecture independent)
 check_headers = [
@@ -34,18 +35,22 @@ add_project_arguments(['-Wno-deprecated-declarations', '-funsigned-char'], langu
 static_libstdc = compiler.has_link_argument('-static-libstdc++')
 
 # language related arguments
-if get_option('lto')
+if lto
     add_project_arguments(['-flto'], language : 'cpp')
     add_project_link_arguments(['-flto'], language : 'cpp')
 endif
 if use_gold
     add_project_link_arguments(['-fuse-ld=gold', '-ldl'], language : 'cpp')
 elif cross_android_build
-    if build_machine.system() == 'darwin'
+    if build_machine.system() == 'darwin' and not lto
         add_project_link_arguments(['-fuse-ld=bfd', '-ldl'], language : 'cpp')
     else
         add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')
     endif
+endif
+if cross_iphone_build
+    add_project_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
+    add_project_link_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
 endif
 
 common_compile_options = [

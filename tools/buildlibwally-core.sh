@@ -31,30 +31,33 @@ fi
 
 CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --enable-ecmult-static-precomputation"
 
+if [ $LTO = "true" ]; then
+    EXTRA_FLAGS="-flto"
+fi
+
 if [ \( "$1" = "--ndk" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     . tools/android_helpers.sh
 
-    export CFLAGS="$SDK_CFLAGS -DPIC -fPIC"
-    export LDFLAGS="$SDK_LDFLAGS"
+    export CFLAGS="$SDK_CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
+    export LDFLAGS="$SDK_LDFLAGS $EXTRA_FLAGS"
 
     case $HOST_ARCH in
         x86) HOST_ARCH=i686;;
     esac
 
     android_build_wally $HOST_ARCH $NDK_TOOLSDIR $ANDROID_VERSION --build=$HOST_OS \
-          $CONFIGURE_ARGS --enable-swig-java --disable-swig-python --target=$SDK_PLATFORM $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
+          $CONFIGURE_ARGS ac_cv_c_bigendian=no --enable-swig-java --disable-swig-python --target=$SDK_PLATFORM $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
 
     make -o configure install
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
 
-    export CFLAGS="$SDK_CFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=9.0 -O3"
-    export LDFLAGS="$SDK_LDFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=9.0"
+    export CFLAGS="$SDK_CFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 -O3 $EXTRA_FLAGS"
+    export LDFLAGS="$SDK_LDFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 $EXTRA_FLAGS"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
-    unset JAVA_HOME
-    ./configure --host=armv7-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=$HOST_OS \
+    ./configure --host=arm-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=$HOST_OS \
                 --disable-swig-java --disable-swig-python \
                 $CONFIGURE_ARGS --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
     make -o configure clean -j$NUM_JOBS
@@ -68,7 +71,8 @@ elif [ \( "$1" = "--windows" \) ]; then
     make -j$NUM_JOBS
     make install
 else
-    export CFLAGS="$SDK_CFLAGS -DPIC -fPIC"
+    export CFLAGS="$SDK_CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
+    export LDFLAGS="$SDK_LDFLAGS $EXTRA_FLAGS"
 
     ./configure --$ENABLE_SWIG_JAVA --host=$HOST_OS $CONFIGURE_ARGS $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
 

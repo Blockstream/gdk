@@ -95,46 +95,46 @@ gdk_clang_ndk_armeabi-v7a:
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
+    - ANDROID_NDK=/android-ndk-r19c ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true
 
 test_osx_clang:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --lto=false --clang
+    - ./tools/build.sh --clang --lto=true
 
 test_osx_ios:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --lto=false --iphone static
+    - ./tools/build.sh --iphone static --lto=true
 
 test_osx_ios_sim:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --lto=false --iphonesim static
+    - ./tools/build.sh --iphonesim static --lto=true
 
 test_osx_clang_ndk_armeabi-v7a:
   extends: .osx_test

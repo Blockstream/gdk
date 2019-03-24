@@ -2,8 +2,12 @@
 set -e
 
 OPENSSL_NAME="openssl-OpenSSL_1_0_2r"
-OPENSSL_OPTIONS="no-krb5 no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden"
+OPENSSL_OPTIONS="no-krb6 no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden"
 OPENSSL_MOBILE="no-hw no-engine"
+
+if [ $LTO = "true" ]; then
+    OPENSSL_OPTIONS="$OPENSSL_OPTIONS -flto"
+fi
 
 cp -r "${MESON_SOURCE_ROOT}/subprojects/${OPENSSL_NAME}" "${MESON_BUILD_ROOT}/openssl"
 cd "${MESON_BUILD_ROOT}/openssl"
@@ -17,6 +21,7 @@ if [ \( "$1" = "--ndk" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     ./Configure android --prefix="$openssl_prefix" $OPENSSL_OPTIONS $OPENSSL_MOBILE
     sed -ie "s!-ldl!!" "Makefile"
+    sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
     make depend
     make -j$NUM_JOBS 2> /dev/null
     make install_sw
@@ -45,7 +50,8 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
         fi
         KERNEL_BITS=$ARCH_BITS ./Configure iphoneos-cross $NOASM --prefix=$openssl_prefix $OPENSSL_OPTIONS $OPENSSL_MOBILE
         sed -ie "s!-fomit-frame-pointer!!" "Makefile"
-        sed -ie "s!^CFLAG=!CFLAG=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -arch ${CURRENT_ARCH} -miphoneos-version-min=9.0 !" "Makefile"
+        sed -ie "s!^CFLAG=!CFLAG=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -arch ${CURRENT_ARCH} -miphoneos-version-min=11.0 !" "Makefile"
+        sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
         rm -rf build-$arch
         rm -rf $openssl_prefix
         make clean
@@ -120,16 +126,18 @@ EOF
     fi
 elif [ \( "$1" = "--windows" \) ]; then
     ./Configure mingw64 --cross-compile-prefix=x86_64-w64-mingw32- --prefix="$openssl_prefix" $OPENSSL_OPTIONS
+    sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
     make depend
     make -j$NUM_JOBS 2> /dev/null
     make install_sw
 else
-    if [ "$(uname)" == "Darwin" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
         ./Configure darwin64-x86_64-cc --prefix="$openssl_prefix" $OPENSSL_OPTIONS
     else
         ./config --prefix="$openssl_prefix" $OPENSSL_OPTIONS
         sed -ie "s!^CFLAG=!CFLAG=-fPIC -DPIC !" "Makefile"
     fi
+    sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
     make depend
     make -j$NUM_JOBS 2> /dev/null
     make install_sw

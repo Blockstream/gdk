@@ -20,6 +20,7 @@ COMPILER_VERSION=""
 BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
+LTO="false"
 
 GETOPT='getopt'
 if [ -z "$ANDROID_NDK" ]; then
@@ -61,7 +62,7 @@ while true; do
         --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
         --compiler-version) COMPILER_VERSION="-$2"; shift 2 ;;
-        --lto) MESON_OPTIONS="$MESON_OPTIONS -Dlto=$2"; shift 2 ;;
+        --lto) MESON_OPTIONS="$MESON_OPTIONS -Db_lto=$2"; LTO="$2"; shift 2 ;;
         --clang-tidy-version) MESON_OPTIONS="$MESON_OPTIONS -Dclang-tidy-version=-$2"; NINJA_TARGET="src/clang-tidy"; shift 2 ;;
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
         --unity) MESON_OPTIONS="$MESON_OPTIONS --unity=$2"; shift 2 ;;
@@ -70,6 +71,8 @@ while true; do
         *) break ;;
     esac
 done
+
+export LTO
 
 if have_cmd ninja-build; then
     NINJA=$(command -v ninja-build)
@@ -142,7 +145,9 @@ function set_cross_build_env() {
             export SDK_ARCH=arm
             export SDK_CPU=armv7
             export SDK_CFLAGS="-march=armv7-a -mfloat-abi=softfp -mfpu=neon -mthumb"
-            export SDK_LDFLAGS="-Wl,--fix-cortex-a8"
+            if [ "$(uname)" = "Darwin" -a $LTO = "false" ]; then
+                export SDK_LDFLAGS="-Wl,--fix-cortex-a8"
+            fi
             ;;
         arm64-v8a)
             export SDK_ARCH=aarch64
@@ -152,12 +157,10 @@ function set_cross_build_env() {
         iphone)
             export SDK_ARCH=aarch64
             export SDK_CPU=arm64
-            export SDK_CFLAGS="-miphoneos-version-min=9"
             ;;
         iphonesim)
             export SDK_ARCH=x86_64
             export SDK_CPU=x86_64
-            export SDK_CFLAGS="-miphoneos-version-min=9"
             ;;
         x86_64)
             export SDK_ARCH=$HOST_ARCH

@@ -17,6 +17,11 @@ if (($# > 0)); then
     shift
 fi
 
+if [ $LTO = "true" ]; then
+    EXTRA_COMPILE_FLAGS="<compileflags>-flto"
+    EXTRA_LINK_FLAGS="<linkflags>-flto"
+fi
+
 cp -r "${MESON_SOURCE_ROOT}/subprojects/${BOOST_NAME}" "${MESON_BUILD_ROOT}/boost"
 boost_src_home="${MESON_BUILD_ROOT}/boost"
 boost_bld_home="${MESON_BUILD_ROOT}/boost/build"
@@ -30,12 +35,14 @@ ${CXX}
 :
 <compileflags>-std=c++14
 <compileflags>"${SDK_CPPFLAGS}"
+$EXTRA_COMPILE_FLAGS
 <compileflags>"--sysroot=${SYSROOT}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
 $(compile_flags $@)
 <archiver>$AR
 <linkflags>"--sysroot=${SYSROOT}"
+$EXTRA_LINK_FLAGS
 <architecture>${SDK_ARCH}
 <target-os>android
 ;
@@ -43,7 +50,7 @@ EOF
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     ./b2 --clean
     ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang-${SDK_ARCH} target-os=android link=static release install
-    if [ "$(uname)" == "Darwin" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
 elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
@@ -57,12 +64,14 @@ ${XCODE_DEFAULT_PATH}/clang++
 <root>${IOS_SDK_PATH}
 <compileflags>-std=c++14
 <compileflags>"${SDK_CFLAGS}"
-<compileflags>"-miphoneos-version-min=9.0"
+$EXTRA_COMPILE_FLAGS
+<compileflags>"-miphoneos-version-min=11.0"
 <compileflags>"-isysroot ${IOS_SDK_PATH}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
 $(compile_flags $@)
-<linkflags>"-miphoneos-version-min=9.0"
+<linkflags>"-miphoneos-version-min=11.0"
+$EXTRA_LINK_FLAGS
 <linkflags>"-isysroot ${IOS_SDK_PATH}"
 <target-os>iphone
 ;
@@ -94,9 +103,17 @@ else
         TOOLSET=gcc
     fi
 
-    cxxflags="-DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
+
+    EXTRAFLAGS=""
+    LINKFLAGS=""
+    if [ $LTO = "true" ]; then
+        EXTRAFLAGS="-flto"
+        LINKFLAGS="linkflags=-flto"
+    fi
+
+    cxxflags="$EXTRAFLAGS -DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
 
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread --with-toolset=${TOOLSET}
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags="$cxxflags" link=static release install
+    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install
 fi
