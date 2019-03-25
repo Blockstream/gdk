@@ -649,7 +649,7 @@ GDK_API int GA_twofactor_cancel_reset(struct GA_session* session, struct GA_auth
  * Change twofactor limits settings.
  *
  * :param session: The session to use.
- * :param limit_details: Details of the new transaction :ref:`limits`
+ * :param limit_details: Details of the new :ref:`transaction-limits`
  * :param call: Destination for the resulting GA_auth_handler to perform the change.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */

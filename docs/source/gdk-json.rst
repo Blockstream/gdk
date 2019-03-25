@@ -307,14 +307,15 @@ Networks list JSON
   ]
 
 
-.. _limits:
+.. _transaction-limits:
 
-Limits JSON
-----------------------
+Transaction Limits JSON
+-----------------------
 
 .. code-block:: json
 
   {"is_fiat":false,"mbtc":"555"}
+  {"is_fiat":true,"fiat":"555"}
 
 .. _twofactor-detail:
 
