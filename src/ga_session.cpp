@@ -2021,23 +2021,19 @@ namespace sdk {
 
     nlohmann::json ga_session::get_balance(const nlohmann::json& details)
     {
-        locker_t locker(m_mutex);
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
-        return get_balance(locker, subaccount, num_confs);
-    }
 
-    nlohmann::json ga_session::get_balance(ga_session::locker_t& locker, uint32_t subaccount, uint32_t num_confs)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-
+        nlohmann::json balance{ { "subaccount", subaccount } };
         if (num_confs == 0) {
             // The subaccount details contains the confs=0 balance
-            return get_subaccount(locker, subaccount)["balance"];
+            balance.update(get_subaccount(subaccount)["balance"]);
         } else {
             // Anything other than confs=0 needs to be fetched from the server
-            return get_subaccount_balance_from_server(locker, subaccount, num_confs);
+            locker_t locker(m_mutex);
+            balance.update(get_subaccount_balance_from_server(locker, subaccount, num_confs));
         }
+        return balance;
     }
 
     // Idempotent
