@@ -461,7 +461,7 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
-    public func getMnemmonicPassphrase(password: String) throws -> String {
+    public func getMnemonicPassphrase(password: String) throws -> String {
         var buff: UnsafeMutablePointer<Int8>? = nil
         try callWrapper(fun: GA_get_mnemonic_passphrase(session, password, &buff))
         defer {
