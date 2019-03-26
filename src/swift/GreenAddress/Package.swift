@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "GreenAddress",
     dependencies: [
-        .package(url: "https://github.com/mxcl/PromiseKit", from: "6.0.0")
+        .package(url: "https://github.com/mxcl/PromiseKit", .exact("6.8.3"))
     ],
     targets: [
         .target(
