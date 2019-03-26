@@ -7,4 +7,4 @@ source_hash = 1e81116abc3fd3c6501c55e80734e46329ead102d4778bb35035e17978993881
 
 patch_url = file:./subprojects/libwally-core-meson/libwally-core-meson-1e81116abc3fd3c6501c55e80734e46329ead102d4778bb35035e17978993881.tar
 patch_filename = libwally-core-meson-1e81116abc3fd3c6501c55e80734e46329ead102d4778bb35035e17978993881.tar
-patch_hash = 633398aebc8037a4b92985f035b05ced953beb598bb626e4af54401e3647ec90
+patch_hash = 5696e6622ee5fd2aebbb05f9732f5ce114b537005d9abfb04114c78a825eb33c
