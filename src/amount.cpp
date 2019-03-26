@@ -25,8 +25,8 @@ namespace sdk {
         static const conversion_type COIN_VALUE_DECIMAL("100000000");
         static const conversion_type COIN_VALUE_DECIMAL_MBTC("100000");
         static const conversion_type COIN_VALUE_DECIMAL_UBTC("100");
-        static const std::vector<std::string> NON_SATOSHI_KEYS{ "btc", "mbtc", "ubtc", "bits", "fiat", "fiat_currency",
-            "fiat_rate" };
+        static const std::vector<std::string> NON_SATOSHI_KEYS{ "btc", "mbtc", "ubtc", "bits", "sats", "fiat",
+            "fiat_currency", "fiat_rate" };
 
         template <typename T> static std::string fmt(const T& fiat, size_t dp = 2)
         {
@@ -47,10 +47,11 @@ namespace sdk {
         const auto mbtc_p = amount_json.find("mbtc");
         const auto ubtc_p = amount_json.find("ubtc");
         const auto bits_p = amount_json.find("bits");
+        const auto sats_p = amount_json.find("sats");
         const auto fiat_p = amount_json.find("fiat");
         const auto end_p = amount_json.end();
         const int key_count = (satoshi_p != end_p) + (btc_p != end_p) + (mbtc_p != end_p) + (ubtc_p != end_p)
-            + (bits_p != end_p) + (fiat_p != end_p);
+            + (bits_p != end_p) + (sats_p != end_p) + (fiat_p != end_p);
         if (key_count != 1) {
             throw user_error(res::id_no_amount_specified);
         }
@@ -72,6 +73,9 @@ namespace sdk {
         } else if (ubtc_p != end_p || bits_p != end_p) {
             const std::string ubtc_str = *(ubtc_p == end_p ? bits_p : ubtc_p);
             satoshi = (conversion_type(ubtc_str) * COIN_VALUE_DECIMAL_UBTC).convert_to<value_type>();
+        } else if (sats_p != end_p) {
+            const std::string sats_str = *sats_p;
+            satoshi = (conversion_type(sats_str)).convert_to<value_type>();
         } else {
             const std::string fiat_str = *fiat_p;
             const conversion_type btc_decimal = conversion_type(fiat_str) / fr;
@@ -85,12 +89,14 @@ namespace sdk {
         const std::string btc = fmt(btc_type(satoshi_conv / COIN_VALUE_DECIMAL), 8);
         const std::string mbtc = fmt(btc_type(satoshi_conv / COIN_VALUE_DECIMAL_MBTC), 5);
         const std::string ubtc = fmt(btc_type(satoshi_conv / COIN_VALUE_DECIMAL_UBTC), 2);
+        const std::string sats = std::to_string(satoshi);
 
         const conversion_type fiat_decimal = fr * conversion_type(satoshi) / COIN_VALUE_DECIMAL;
 
         // TODO: If the server returned the ISO country code, the caller could do locale aware formatting
         return { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc }, { "bits", ubtc },
-            { "fiat", fmt(fiat_type(fiat_decimal)) }, { "fiat_currency", fiat_currency }, { "fiat_rate", fr_str } };
+            { "sats", sats }, { "fiat", fmt(fiat_type(fiat_decimal)) }, { "fiat_currency", fiat_currency },
+            { "fiat_rate", fr_str } };
     }
 
     void amount::strip_non_satoshi_keys(nlohmann::json& amount_json)

@@ -59,6 +59,7 @@ Subaccount JSON
        "fiat_rate": "1.10000000",
        "mbtc": "20.34469",
        "satoshi": 2034469,
+       "sats": "2034469",
        "ubtc": "20344.69"
        },
      "has_transactions": true,
@@ -89,6 +90,7 @@ Subaccounts list JSON
          "fiat_rate": "1.10000000",
          "mbtc": "20.34469",
          "satoshi": 2034469,
+         "sats": "2034469",
          "ubtc": "20344.69"
          },
        "has_transactions": true,
@@ -108,6 +110,7 @@ Subaccounts list JSON
          "fiat_rate": "1.10000000",
          "mbtc": "9.77907",
          "satoshi": 977907,
+         "sats": "977907",
          "ubtc": "9779.07"
          },
        "has_transactions": true,
@@ -568,6 +571,7 @@ Two-Factor Config JSON
     "is_fiat": false,
     "mbtc": "5.00000",
     "satoshi": 500000,
+    "sats": "500000",
     "ubtc": "5000.00"
   },
   "phone": {
@@ -801,6 +805,7 @@ Balance data JSON
     "fiat_rate": "1.10000000",
     "mbtc": "20.34469",
     "satoshi": 2034469,
+    "sats": "2034469",
     "subaccount": 0,
     "ubtc": "20344.69"
   }
