@@ -38,9 +38,13 @@ fi
 if [ \( "$1" = "--ndk" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     . tools/android_helpers.sh
+    export CFLAGS="$CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
+    export LDFLAGS="$LDFLAGS $EXTRA_FLAGS"
+    # FIXME: this function can be removed when wally gets updated
+    function android_get_ldflags() {
+       echo $LDFLAGS
+    }
 
-    export CFLAGS="$SDK_CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
-    export LDFLAGS="$SDK_LDFLAGS $EXTRA_FLAGS"
 
     case $HOST_ARCH in
         x86) HOST_ARCH=i686;;
@@ -49,7 +53,7 @@ if [ \( "$1" = "--ndk" \) ]; then
     android_build_wally $HOST_ARCH $NDK_TOOLSDIR $ANDROID_VERSION --build=$HOST_OS \
           $CONFIGURE_ARGS ac_cv_c_bigendian=no --enable-swig-java --disable-swig-python --target=$SDK_PLATFORM $ENABLE_DEBUG --prefix="${MESON_BUILD_ROOT}/libwally-core/build"
 
-    make -o configure install
+    make -o configure install -j$NUM_JOBS
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
 

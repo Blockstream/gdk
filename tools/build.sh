@@ -145,9 +145,6 @@ function set_cross_build_env() {
             export SDK_ARCH=arm
             export SDK_CPU=armv7
             export SDK_CFLAGS="-march=armv7-a -mfloat-abi=softfp -mfpu=neon -mthumb"
-            if [ "$(uname)" = "Darwin" -a $LTO = "false" ]; then
-                export SDK_LDFLAGS="-Wl,--fix-cortex-a8"
-            fi
             ;;
         arm64-v8a)
             export SDK_ARCH=aarch64
