@@ -244,6 +244,7 @@ namespace sdk {
                 { "sound", true },
                 { "altimeout", 5u },
                 { "required_num_blocks", 12u },
+                { "notifications_settings", nlohmann::json({}) },
             });
             clean.update(appearance);
 
@@ -262,6 +263,16 @@ namespace sdk {
             if (!clean["unit"].is_string()) {
                 clean["unit"] = std::string("BTC");
             }
+
+            GDK_RUNTIME_ASSERT(clean["notifications_settings"].is_object());
+            nlohmann::json clean_notifications_settings({
+                { "email_incoming", false },
+                { "email_outgoing", false },
+            });
+            clean_notifications_settings.update(clean["notifications_settings"]);
+            clean["notifications_settings"] = clean_notifications_settings;
+            GDK_RUNTIME_ASSERT(clean["notifications_settings"]["email_incoming"].is_boolean());
+            GDK_RUNTIME_ASSERT(clean["notifications_settings"]["email_outgoing"].is_boolean());
 
             // Make sure the default block target is one of [3, 12, or 24]
             uint32_t required_num_blocks = clean["required_num_blocks"];
