@@ -233,8 +233,8 @@ namespace sdk {
                     GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
                     reconnect();
                 });
-                m_impl->connect();
                 m_impl->set_notification_handler(m_notification_handler, m_notification_context);
+                m_impl->connect();
             }
 
             {

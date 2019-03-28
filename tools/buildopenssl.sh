@@ -16,7 +16,7 @@ else
 fi
 
 OPENSSL_NAME="openssl-OpenSSL_1_1_1c"
-OPENSSL_OPTIONS="no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
+OPENSSL_OPTIONS="enable-ec_nistp_64_gcc_128 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
 OPENSSL_MOBILE="no-hw no-engine"
 
 if [ $LTO = "true" ]; then
@@ -27,6 +27,9 @@ cp -r "${MESON_SOURCE_ROOT}/subprojects/${OPENSSL_NAME}" "${MESON_BUILD_ROOT}/op
 cd "${MESON_BUILD_ROOT}/openssl"
 openssl_prefix="${MESON_BUILD_ROOT}/openssl/build"
 if [ \( "$1" = "--ndk" \) ]; then
+    if [ "$ANDROID_VERSION" = "19" ]; then
+            OPENSSL_OPTIONS=$(echo $OPENSSL_OPTIONS | $SED -e "s/enable-ec_nistp_64_gcc_128//g")
+    fi
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     $SED -ie "115s!\$triarch\-!!" "Configurations/15-android.conf"
     $SED -ie "119s!\$triarch\-!!" "Configurations/15-android.conf"

@@ -11,6 +11,7 @@
 #include "exception.hpp"
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
+#include "ga_tor.hpp"
 #include "ga_tx.hpp"
 #include "http_client.hpp"
 #include "logging.hpp"
@@ -91,6 +92,7 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 5; // maximum wait time on disconnect in seconds
+        static const uint32_t DEFAULT_TOR_SOCKS_WAIT = 15; // maximum timeout for the tor socks to get ready
 
         static const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
         static const std::array<unsigned char, 8> PASSWORD_SALT = {
@@ -501,22 +503,38 @@ namespace sdk {
         set_tls_init_handler<T>(websocketpp::uri(m_net_params.gait_wamp_url()).get_host());
     }
 
+    std::weak_ptr<tor_controller> ga_session::s_tor_ctrl;
     template <typename T> void ga_session::make_transport()
     {
         using client_type
             = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
 
-        GDK_RUNTIME_ASSERT(!(m_use_tor && m_proxy.empty()));
+        auto proxy = m_proxy;
+        if (m_use_tor && m_proxy.empty()) {
+            if (!(m_tor_ctrl = s_tor_ctrl.lock())) {
+                GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
+                s_tor_ctrl = m_tor_ctrl = std::make_shared<tor_controller>();
+            }
+
+            proxy
+                = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
+                      emit_notification("tor",
+                          { { "tag", phase->tag }, { "summary", phase->summary }, { "progress", phase->progress } });
+                  });
+
+            GDK_RUNTIME_ASSERT(!proxy.empty());
+            GDK_LOG_SEV(log_level::info) << "tor_socks address " << proxy;
+        }
 
         const auto server = m_net_params.get_connection_string(m_use_tor);
         std::string proxy_details;
-        if (!m_proxy.empty()) {
-            proxy_details = std::string(" through proxy ") + m_proxy;
+        if (!proxy.empty()) {
+            proxy_details = std::string(" through proxy ") + proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting to " << server << proxy_details;
         boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
         m_transport = std::make_shared<T>(
-            *boost::get<client_type>(m_client), server, m_proxy, m_log_level == logging_levels::debug);
+            *boost::get<client_type>(m_client), server, proxy, m_log_level == logging_levels::debug);
         boost::get<std::shared_ptr<T>>(m_transport)
             ->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }

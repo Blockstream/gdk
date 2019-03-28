@@ -71,11 +71,18 @@ add_project_arguments(common_compile_options, language : ['c', 'cpp'])
 add_project_arguments('-fvisibility-inlines-hidden', language : ['cpp'])
 
 common_link_args = [
-    '-Wl,-z,defs',
     '-Wl,-z,now',
     '-Wl,-z,relro',
     '-Wl,-z,noexecstack'
 ]
+
+if is_freebsd
+    if freebsd_requires_gold
+        common_link_args += ['-Wl,--weak-unresolved-symbols']
+    else
+        common_link_args += ['-Wl,-z,undefs']
+    endif
+endif
 
 if (build_machine.system() != 'darwin' and not cross_win_build) or cross_android_build
     add_project_link_arguments(common_link_args, language : ['c', 'cpp'])
@@ -200,6 +207,7 @@ library_deps += compiler.find_library('dl', required : false)
 library_deps += compiler.find_library('ws2_32', required : cross_win_build)
 library_deps += compiler.find_library('bcrypt', required : cross_win_build)
 library_deps += compiler.find_library('crypt32', required : cross_win_build)
+library_deps += compiler.find_library('iphlpapi', required : cross_win_build)
 library_deps += compiler.find_library('ssp', required : cross_win_build)
 library_deps += compiler.find_library('log', required : cross_android_build)
 if debug and build_machine.system() == 'linux'
@@ -209,6 +217,7 @@ if debug and build_machine.system() == 'linux'
         add_project_arguments(['-DHAVE_BACKTRACE'], language : ['c', 'cpp'])
     endif
 endif
+library_deps += compiler.find_library('execinfo', required : is_freebsd)
 
 subproject_deps = []
 
@@ -221,6 +230,7 @@ subproject_deps += dependency('external_json', fallback : ['json', 'nlohmann_jso
 subproject_deps += dependency('external_msgpack', fallback : ['msgpack', 'msgpack_dep'])
 subproject_deps += dependency('external_openssl', fallback : ['openssl', 'openssl_dep'])
 subproject_deps += dependency('external_websocketpp', fallback : ['websocketpp', 'websocketpp_dep'])
+subproject_deps += dependency('external_tor', fallback : ['tor', 'tor_dep'])
 
 # includes
 sdk_inc_dir = '.'

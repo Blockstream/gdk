@@ -25,6 +25,7 @@ namespace sdk {
 
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
+    struct tor_controller;
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
@@ -395,6 +396,8 @@ namespace sdk {
         tx_list_caches m_tx_list_caches;
 
         std::vector<nlohmann::json> get_transactions(uint32_t subaccount, uint32_t page_id);
+        static std::weak_ptr<tor_controller> s_tor_ctrl;
+        std::shared_ptr<tor_controller> m_tor_ctrl;
     };
 
 } // namespace sdk

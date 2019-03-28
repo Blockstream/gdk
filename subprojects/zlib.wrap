@@ -1,0 +1,10 @@
+[wrap-file]
+directory = zlib-1.2.11
+
+source_url = https://github.com/madler/zlib/archive/v1.2.11.tar.gz
+source_filename = zlib-v1.2.11.tar.gz
+source_hash = 629380c90a77b964d896ed37163f5c3a34f6e6d897311f1df2a7016355c45eff
+
+patch_url = file:./subprojects/zlib-meson/zlib-meson-629380c90a77b964d896ed37163f5c3a34f6e6d897311f1df2a7016355c45eff.tar
+patch_filename = zlib-meson-629380c90a77b964d896ed37163f5c3a34f6e6d897311f1df2a7016355c45eff.tar
+patch_hash = 635e8eeab0eaac724f8c12bb55c9f80a29ad1e6e6a81b40a5cb1ed28b40a2684
