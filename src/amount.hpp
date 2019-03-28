@@ -23,8 +23,6 @@ namespace sdk {
         {
         }
 
-        explicit amount(const std::string& str_value);
-
         amount(const amount&) = default;
         amount& operator=(const amount&) = default;
         amount(amount&&) = default;

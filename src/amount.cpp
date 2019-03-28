@@ -34,12 +34,6 @@ namespace sdk {
         }
     } // namespace
 
-    // convert to internal representation (from Bitcoin Core)
-    amount::amount(const std::string& str_value)
-        : m_value(btc_type(conversion_type(str_value) * COIN_VALUE_DECIMAL).convert_to<value_type>())
-    {
-    }
-
     amount::amount(const nlohmann::json& json_value)
         : amount(json_value.get<amount::value_type>())
     {
@@ -71,13 +65,13 @@ namespace sdk {
             satoshi = *satoshi_p;
         } else if (btc_p != end_p) {
             const std::string btc_str = *btc_p;
-            satoshi = amount(btc_str).value();
+            satoshi = (conversion_type(btc_str) * COIN_VALUE_DECIMAL).convert_to<value_type>();
         } else if (mbtc_p != end_p) {
             const std::string mbtc_str = *mbtc_p;
-            satoshi = (amount(mbtc_str) / 1000).value();
+            satoshi = (conversion_type(mbtc_str) * COIN_VALUE_DECIMAL_MBTC).convert_to<value_type>();
         } else if (ubtc_p != end_p || bits_p != end_p) {
             const std::string ubtc_str = *(ubtc_p == end_p ? bits_p : ubtc_p);
-            satoshi = (amount(ubtc_str) / 1000000).value();
+            satoshi = (conversion_type(ubtc_str) * COIN_VALUE_DECIMAL_UBTC).convert_to<value_type>();
         } else {
             const std::string fiat_str = *fiat_p;
             const conversion_type btc_decimal = conversion_type(fiat_str) / fr;
