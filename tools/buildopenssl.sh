@@ -2,7 +2,7 @@
 set -e
 
 OPENSSL_NAME="openssl-OpenSSL_1_0_2r"
-OPENSSL_OPTIONS="no-krb6 no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden"
+OPENSSL_OPTIONS="no-krb6 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
 OPENSSL_MOBILE="no-hw no-engine"
 
 if [ $LTO = "true" ]; then
