@@ -5,14 +5,6 @@ WALLYCORE_NAME="libwally-core-5c998edfa71dcc2f181053f0b219fe51eb8f130d"
 
 cp -r "${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}" "${MESON_BUILD_ROOT}/libwally-core"
 
-if [ "$(uname)" == "Darwin" ]; then
-    export HOST_OS="x86_64-apple-darwin"
-    SED=gsed
-else
-    export HOST_OS="i686-linux-gnu"
-    SED=sed
-fi
-
 ENABLE_SWIG_JAVA=disable-swig-java
 if [ "x$JAVA_HOME" != "x" ]; then
     ENABLE_SWIG_JAVA=enable-swig-java
@@ -25,7 +17,7 @@ cd "${MESON_BUILD_ROOT}/libwally-core"
 $SED -i 's/\"wallycore\"/\"greenaddress\"/' ${MESON_BUILD_ROOT}/libwally-core/src/swig_java/swig.i
 
 ENABLE_DEBUG=""
-if [[ $BUILDTYPE == "debug" ]]; then
+if [[ $BUILDTYPE = "debug" ]]; then
     ENABLE_DEBUG="--enable-debug"
 fi
 

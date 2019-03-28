@@ -7,7 +7,7 @@ function compile_flags() {
 
 BOOST_NAME="boost_1_69_0"
 
-if [ "x${NUM_JOBS}" == "x" ]; then
+if [ "x${NUM_JOBS}" = "x" ]; then
     NUM_JOBS=4
 fi
 
@@ -97,9 +97,9 @@ EOF
     ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
 else
     TOOLSET=
-    if [[ ${CC} == *"clang"* ]]; then
+    if [[ ${CC} = *"clang"* ]]; then
         TOOLSET=clang
-    elif [[ ${CC} == *"gcc"* ]]; then
+    elif [[ ${CC} = *"gcc"* ]]; then
         TOOLSET=gcc
     fi
 

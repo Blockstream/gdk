@@ -3,9 +3,6 @@ cache:
   paths:
     - subprojects/packagecache/
 
-before_script:
-  - ./tools/clean.sh meson
-
 image: greenaddress/ci@sha256:a8589f9da893a50a401296234e9426a31a31f33e3b8c4478ea070e7b455112b5
 
 .fedora_images:

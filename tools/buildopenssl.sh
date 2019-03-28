@@ -13,15 +13,11 @@ cp -r "${MESON_SOURCE_ROOT}/subprojects/${OPENSSL_NAME}" "${MESON_BUILD_ROOT}/op
 cd "${MESON_BUILD_ROOT}/openssl"
 openssl_prefix="${MESON_BUILD_ROOT}/openssl/build"
 if [ \( "$1" = "--ndk" \) ]; then
-    if [ "$(uname)" == "Darwin" ]; then
-        gsed -i 's/-mandroid//g' ${MESON_BUILD_ROOT}/openssl/Configure
-    else
-        sed -i 's/-mandroid//g' ${MESON_BUILD_ROOT}/openssl/Configure
-    fi
+    $SED -i 's/-mandroid//g' ${MESON_BUILD_ROOT}/openssl/Configure
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     ./Configure android --prefix="$openssl_prefix" $OPENSSL_OPTIONS $OPENSSL_MOBILE
-    sed -ie "s!-ldl!!" "Makefile"
-    sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
+    $SED -ie "s!-ldl!!" "Makefile"
+    $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
     make depend
     make -j$NUM_JOBS 2> /dev/null
     make install_sw
@@ -32,7 +28,7 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     export CROSS_TOP="${XCODE_PATH}/Platforms/${IOS_PLATFORM}.platform/Developer"
     export CROSS_SDK="${IOS_PLATFORM}.sdk"
     export PATH="${XCODE_DEFAULT_PATH}:$PATH"
-    if test "x$1" == "x--iphonesim"; then
+    if test "x$1" = "x--iphonesim"; then
         all_archs="x86_64"
     else
         all_archs="arm64"
@@ -41,17 +37,17 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
         export CURRENT_ARCH=$arch
         ARCH_BITS=32
         NOASM=
-        if test "x$arch" == "arm64" || test "x$arch" == "xx86_64"; then
+        if test "x$arch" = "arm64" || test "x$arch" = "xx86_64"; then
             ARCH_BITS=64
         fi
 
-        if test "x$arch" == "i386" || test "x$arch" == "xx86_64"; then
+        if test "x$arch" = "i386" || test "x$arch" = "xx86_64"; then
             NOASM=no-asm
         fi
         KERNEL_BITS=$ARCH_BITS ./Configure iphoneos-cross $NOASM --prefix=$openssl_prefix $OPENSSL_OPTIONS $OPENSSL_MOBILE
-        sed -ie "s!-fomit-frame-pointer!!" "Makefile"
-        sed -ie "s!^CFLAG=!CFLAG=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -arch ${CURRENT_ARCH} -miphoneos-version-min=11.0 !" "Makefile"
-        sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
+        $SED -ie "s!-fomit-frame-pointer!!" "Makefile"
+        $SED -ie "s!^CFLAG=!CFLAG=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -arch ${CURRENT_ARCH} -miphoneos-version-min=11.0 !" "Makefile"
+        $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
         rm -rf build-$arch
         rm -rf $openssl_prefix
         make clean
@@ -69,7 +65,7 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
         cp build-$arch/tmp/$arch/include/openssl/bn.h $openssl_prefix/include/openssl/bn-$arch.h
     done
 
-    if test "x$1" == "x--iphonesim"; then
+    if test "x$1" = "x--iphonesim"; then
         cat > $openssl_prefix/include/openssl/opensslconf.h << EOF
 #if __i386__
 #include "opensslconf-i386.h"
@@ -126,7 +122,7 @@ EOF
     fi
 elif [ \( "$1" = "--windows" \) ]; then
     ./Configure mingw64 --cross-compile-prefix=x86_64-w64-mingw32- --prefix="$openssl_prefix" $OPENSSL_OPTIONS
-    sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
+    $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
     make depend
     make -j$NUM_JOBS 2> /dev/null
     make install_sw
@@ -135,9 +131,9 @@ else
         ./Configure darwin64-x86_64-cc --prefix="$openssl_prefix" $OPENSSL_OPTIONS
     else
         ./config --prefix="$openssl_prefix" $OPENSSL_OPTIONS
-        sed -ie "s!^CFLAG=!CFLAG=-fPIC -DPIC !" "Makefile"
+        $SED -ie "s!^CFLAG=!CFLAG=-fPIC -DPIC !" "Makefile"
     fi
-    sed -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
+    $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
     make depend
     make -j$NUM_JOBS 2> /dev/null
     make install_sw

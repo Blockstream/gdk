@@ -2,10 +2,10 @@
 set -e
 
 clean_meson() {
-  find subprojects/ -mindepth 2 -maxdepth 2 -name '*meson*' -not -name '*build*' | xargs rm -rf --
+  find subprojects/ -mindepth 2 -maxdepth 2 -not -path '*-meson*' -name '*meson*' | xargs rm -rf --
 }
 
-if [ "$1" == "meson" ]; then
+if [ "$1" = "meson" ]; then
   clean_meson
 else
   rm -fr build-*

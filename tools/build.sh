@@ -29,10 +29,14 @@ if [ -z "$ANDROID_NDK" ]; then
     fi
 fi
 export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64"
-if [ "$(uname)" == "Darwin" ]; then
+export SED=sed
+export HOST_OS="i686-linux-gnu"
+if [ "$(uname)" = "Darwin" ]; then
     GETOPT='/usr/local/opt/gnu-getopt/bin/getopt'
     export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/darwin-x86_64"
-elif [ "$(uname)" == "FreeBSD" ]; then
+    export SED=gsed
+    export HOST_OS="x86_64-apple-darwin"
+elif [ "$(uname)" = "FreeBSD" ]; then
     GETOPT='/usr/local/bin/getopt'
 fi
 
@@ -124,7 +128,7 @@ function build() {
     export CC="$C_COMPILER"
 
     SCAN_BUILD=""
-    if [ $ANALYZE == true ] ; then
+    if [ $ANALYZE = true ] ; then
         SCAN_BUILD="scan-build$COMPILER_VERSION --use-cc=$C_COMPILER --use-c++=$CXX_COMPILER"
     fi
 
@@ -189,7 +193,7 @@ if [ \( -d "$ANDROID_NDK" \) -a \( "$BUILD" = "--ndk" \) ]; then
         export SDK_CPPFLAGS="$SDK_CFLAGS"
         export SDK_LDFLAGS="$SDK_LDFLAGS -static-libstdc++"
 
-        if [[ $SDK_ARCH == *"64"* ]]; then
+        if [[ $SDK_ARCH = *"64"* ]]; then
             export ANDROID_VERSION="21"
         else
             export ANDROID_VERSION="19"
@@ -212,7 +216,7 @@ if [ \( -d "$ANDROID_NDK" \) -a \( "$BUILD" = "--ndk" \) ]; then
                 arm64-v8a) clangarchname=aarch64;;
                 x86) clangarchname=i686;;
             esac
-            export SDK_PLATFORM=$(basename $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip | sed 's/-strip$//')
+            export SDK_PLATFORM=$(basename $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip | $SED 's/-strip$//')
             export AR="$NDK_TOOLSDIR/bin/$SDK_PLATFORM-ar"
             export RANLIB="$NDK_TOOLSDIR/bin/$SDK_PLATFORM-ranlib"
 
@@ -254,7 +258,7 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
         $NINJA -C $bld_root -j$NUM_JOBS -v $NINJA_TARGET
     }
 
-    if test "$BUILD" == "--iphone"; then
+    if test "$BUILD" = "--iphone"; then
         PLATFORM=iphone
     else
         PLATFORM=iphonesim
