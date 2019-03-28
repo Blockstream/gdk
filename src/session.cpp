@@ -76,6 +76,8 @@ namespace sdk {
     public:
         using flag_t = flag_type<void>;
 
+        ~network_control_context() { stop_reconnect(); }
+
         void reset_reconnect() { m_reconnect_flag = flag_t{}; }
         void set_reconnect() { m_reconnect_flag.set(); }
         bool reconnecting() const { return m_reconnect_flag.wait() != std::future_status::ready; }
@@ -184,30 +186,35 @@ namespace sdk {
     void session::connect(const std::string& name, const std::string& proxy, bool use_tor, logging_levels log_level)
     {
         exception_wrapper([&] {
-            std::unique_lock<std::mutex> l{ session_impl_mutex };
+            {
+                std::unique_lock<std::mutex> l{ session_impl_mutex };
 
-            if (m_impl != nullptr) {
-                if (m_impl->is_connected(name, proxy, use_tor)) {
-                    return; // No-op
+                if (m_impl != nullptr) {
+                    if (m_impl->is_connected(name, proxy, use_tor)) {
+                        return; // No-op
+                    }
+                    throw reconnect_error(); // Need to disconnect first
                 }
-                throw reconnect_error(); // Need to disconnect first
+
+                network_parameters net_params{ *network_parameters::get(name) };
+                m_impl = std::make_unique<ga_session>(net_params, proxy, use_tor, log_level);
+                m_impl->set_ping_fail_handler([this] {
+                    GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
+                    reconnect();
+                });
+                m_impl->set_heartbeat_timeout_handler([this](websocketpp::connection_hdl, const std::string&) {
+                    GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
+                    reconnect();
+                });
+                m_impl->connect();
+                m_impl->set_notification_handler(m_notification_handler, m_notification_context);
             }
 
-            network_parameters net_params{ *network_parameters::get(name) };
-            m_impl = std::make_unique<ga_session>(net_params, proxy, use_tor, log_level);
-            std::unique_lock<std::mutex> o{ network_control_context_mutex };
-            m_network_control_context = std::make_unique<network_control_context>();
-            m_impl->set_ping_fail_handler([this] {
-                GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
-                reconnect();
-            });
-            m_impl->set_heartbeat_timeout_handler([this](websocketpp::connection_hdl, const std::string&) {
-                GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
-                reconnect();
-            });
-            m_impl->connect();
-            m_impl->set_notification_handler(m_notification_handler, m_notification_context);
-            m_network_control_context->set_reconnect();
+            {
+                std::unique_lock<std::mutex> o{ network_control_context_mutex };
+                m_network_control_context = std::make_unique<network_control_context>();
+                m_network_control_context->set_reconnect();
+            }
         });
     }
 
@@ -233,34 +240,45 @@ namespace sdk {
         }
 
         m_network_control_context->reconnect([this] {
-            GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::this_thread::get_id() << " started.";
+            const auto thread_id = std::this_thread::get_id();
+
+            GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::hex << thread_id << " started.";
             exponential_backoff bo;
             uint32_t n = 0;
             for (;;) {
                 const auto backoff_time = bo.backoff(n++);
                 {
-                    std::unique_lock<std::mutex> l{ session_impl_mutex };
                     nlohmann::json network_status = { { "connected", false }, { "elapsed", bo.elapsed().count() },
                         { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } };
-                    GDK_RUNTIME_ASSERT(m_impl != nullptr);
-                    m_impl->emit_notification("network", network_status);
+                    std::unique_lock<std::mutex> l{ session_impl_mutex };
+                    if (m_impl) {
+                        m_impl->emit_notification("network", network_status);
+                    }
                 }
 
-                GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
-                if (!m_network_control_context->retrying(backoff_time)) {
+                if (m_network_control_context == nullptr || !m_network_control_context->retrying(backoff_time)) {
                     GDK_LOG_SEV(log_level::info)
-                        << "reconnect thread " << std::this_thread::get_id() << " exiting on request.";
+                        << "reconnect thread " << std::hex << thread_id << " exiting on request.";
                     break;
                 }
 
-                std::unique_lock<std::mutex> l{ session_impl_mutex };
-                GDK_RUNTIME_ASSERT(m_impl != nullptr);
-                const bool result = m_impl->reconnect();
+                bool result = false;
+                {
+                    std::unique_lock<std::mutex> l{ session_impl_mutex };
+                    if (m_impl == nullptr) {
+                        break;
+                    }
+                    result = m_impl->reconnect();
+                }
                 if (result) {
-                    GDK_RUNTIME_ASSERT(m_network_control_context != nullptr);
-                    m_network_control_context->set_reconnect();
-                    GDK_LOG_SEV(log_level::info)
-                        << "reconnect thread " << std::this_thread::get_id() << " exiting on reconnect.";
+                    if (m_network_control_context != nullptr) {
+                        m_network_control_context->set_reconnect();
+                        GDK_LOG_SEV(log_level::info)
+                            << "reconnect thread " << std::hex << thread_id << " exiting on reconnect.";
+                    } else {
+                        GDK_LOG_SEV(log_level::info)
+                            << "reconnect thread " << std::hex << thread_id << " exiting on null context.";
+                    }
                     break;
                 }
             }
@@ -271,9 +289,6 @@ namespace sdk {
     {
         {
             std::unique_lock<std::mutex> l{ network_control_context_mutex };
-            if (m_network_control_context) {
-                m_network_control_context->stop_reconnect();
-            }
             m_network_control_context.reset();
         }
         {
