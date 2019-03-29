@@ -4,7 +4,7 @@ compiler = meson.get_compiler('cpp')
 
 message('Building Boost...')
 
-run_cmd_args = []
+run_cmd_args = [compiler.get_id()]
 
 target_os = meson.get_cross_property('target_os', '')
 if target_os != ''

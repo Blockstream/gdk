@@ -114,6 +114,8 @@ function compress_patch() {
         cd ${tmpdir}
         $TAR --mode=go=rX,u+rw,a-s --sort=name --owner=0 --group=0 --numeric-owner --mtime="2018-08-01 00:00Z" -cf ${pwd}/$(dirname ${meson_files[$i]})/${patch_names[$i]} ${directories[$i]}
         popd > /dev/null
+        mkdir -p subprojects/packagecache
+        cp ${pwd}/$(dirname ${meson_files[$i]})/${patch_names[$i]} subprojects/packagecache
         rm -rf ${tmpdir}
     done
 }
@@ -132,9 +134,10 @@ function build() {
         SCAN_BUILD="scan-build$COMPILER_VERSION --use-cc=$C_COMPILER --use-c++=$CXX_COMPILER"
     fi
 
+    compress_patch
+
     if [ ! -f "build-$C_COMPILER/build.ninja" ]; then
         rm -rf build-$C_COMPILER/meson-private
-        compress_patch
         CXXFLAGS=$EXTRA_CXXFLAGS $SCAN_BUILD meson build-$C_COMPILER --default-library=${LIBTYPE} --werror ${MESON_OPTIONS}
     fi
 

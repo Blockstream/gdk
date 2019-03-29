@@ -11,6 +11,12 @@ if [ "x${NUM_JOBS}" = "x" ]; then
     NUM_JOBS=4
 fi
 
+COMPILER=""
+if (($# > 0)); then
+    COMPILER="$1"
+    shift
+fi
+
 BUILD=""
 if (($# > 0)); then
     BUILD="$1"
@@ -96,7 +102,7 @@ EOF
     ./b2 --clean
     ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
 else
-    TOOLSET=
+    TOOLSET=$COMPILER
     if [[ ${CC} = *"clang"* ]]; then
         TOOLSET=clang
     elif [[ ${CC} = *"gcc"* ]]; then

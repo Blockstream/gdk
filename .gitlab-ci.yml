@@ -1,5 +1,5 @@
 cache:
-  key: "2"
+  key: "3"
   paths:
     - subprojects/packagecache/
 
@@ -120,42 +120,49 @@ test_osx_clang:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --clang --lto=true
 
 test_osx_ios:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --iphone static --lto=true
 
 test_osx_ios_sim:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --iphonesim static --lto=true
 
 test_osx_clang_ndk_armeabi-v7a:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --ndk armeabi-v7a
 
 test_osx_clang_ndk_arm64-v8a:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --ndk arm64-v8a
 
 test_osx_clang_ndk_x86:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --ndk x86
 
 test_osx_clang_ndk_x86_64:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
     - ./tools/build.sh --ndk x86_64
 
 test_freebsd_gcc:
