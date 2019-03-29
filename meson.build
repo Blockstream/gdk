@@ -77,7 +77,7 @@ common_link_args = [
     '-Wl,-z,noexecstack'
 ]
 
-if use_gold
+if (build_machine.system() != 'darwin' and not cross_win_build) or cross_android_build
     add_project_link_arguments(common_link_args, language : ['c', 'cpp'])
 endif
 
