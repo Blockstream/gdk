@@ -2020,16 +2020,14 @@ namespace sdk {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
 
-        nlohmann::json balance{ { "subaccount", subaccount } };
         if (num_confs == 0) {
             // The subaccount details contains the confs=0 balance
-            balance.update(get_subaccount(subaccount)["balance"]);
+            return get_subaccount(subaccount)["balance"];
         } else {
             // Anything other than confs=0 needs to be fetched from the server
             locker_t locker(m_mutex);
-            balance.update(get_subaccount_balance_from_server(locker, subaccount, num_confs));
+            return get_subaccount_balance_from_server(locker, subaccount, num_confs);
         }
-        return balance;
     }
 
     // Idempotent
