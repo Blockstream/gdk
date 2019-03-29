@@ -33,8 +33,8 @@ PIN data JSON
 
 .. _subaccount:
 
-Subaccount JSON
----------------
+Subaccount detail JSON
+----------------------
 
 .. code-block:: json
 
@@ -45,72 +45,78 @@ Subaccount JSON
 
 .. _subaccount-detail:
 
-Subaccount detail JSON
-----------------------
+Subaccount JSON
+---------------
 
 .. code-block:: json
 
    {
-     "bits": "20344.69",
-     "btc": "0.02034469",
-     "fiat": "0.02",
-     "fiat_currency": "EUR",
-     "fiat_rate": "1.10000000",
+     "balance": {
+       "bits": "20344.69",
+       "btc": "0.02034469",
+       "fiat": "0.02",
+       "fiat_currency": "EUR",
+       "fiat_rate": "1.10000000",
+       "mbtc": "20.34469",
+       "satoshi": 2034469,
+       "ubtc": "20344.69"
+       },
      "has_transactions": true,
-     "mbtc": "20.34469",
      "name": "",
      "pointer": 0,
      "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
      "recovery_chain_code": "",
      "recovery_pub_key": "",
-     "satoshi": 2034469,
-     "type": "2of2",
-     "ubtc": "20344.69"
+     "type": "2of2"
    }
   
 
 
 .. _subaccount-list:
 
-Subaccount list JSON
---------------------
+Subaccounts list JSON
+---------------------
 
 .. code-block:: json
 
    [
      {
-       "bits": "20344.69",
-       "btc": "0.02034469",
-       "fiat": "0.02",
-       "fiat_currency": "EUR",
-       "fiat_rate": "1.10000000",
+       "balance": {
+         "bits": "20344.69",
+         "btc": "0.02034469",
+         "fiat": "0.02",
+         "fiat_currency": "EUR",
+         "fiat_rate": "1.10000000",
+         "mbtc": "20.34469",
+         "satoshi": 2034469,
+         "ubtc": "20344.69"
+         },
        "has_transactions": true,
-       "mbtc": "20.34469",
        "name": "",
        "pointer": 0,
        "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
        "recovery_chain_code": "",
        "recovery_pub_key": "",
-       "satoshi": 2034469,
-       "type": "2of2",
-       "ubtc": "20344.69"
+       "type": "2of2"
      },
      {
-       "bits": "9779.07",
-       "btc": "0.00977907",
-       "fiat": "0.01",
-       "fiat_currency": "EUR",
-       "fiat_rate": "1.10000000",
+       "balance": {
+         "bits": "9779.07",
+         "btc": "0.00977907",
+         "fiat": "0.01",
+         "fiat_currency": "EUR",
+         "fiat_rate": "1.10000000",
+         "mbtc": "9.77907",
+         "satoshi": 977907,
+         "ubtc": "9779.07"
+         },
        "has_transactions": true,
-       "mbtc": "9.77907",
        "name": "Nuovo",
        "pointer": 1,
        "receiving_id": "GA36xH9spaXv3HCUcjbh7UEPxf1f6t",
        "recovery_chain_code": "",
        "recovery_pub_key": "",
-       "satoshi": 977907,
-       "type": "2of2",
-       "ubtc": "9779.07"
+       "type": "2of2"
      }
    ]
 
@@ -207,8 +213,8 @@ Transactions list JSON
 
 .. _tx-detail:
 
-Transaction detail JSON
------------------------
+Transaction details JSON
+------------------------
 
 .. code-block:: json
 
@@ -222,6 +228,422 @@ Transaction detail JSON
     "transaction_weight": 820,
     "txhash": "fe50531d94fae597d9e209582a401e62b1f705ace93eca94fe2e42f187456e4a"
   }
+
+
+
+.. _transaction-details:
+
+Create Transaction JSON
+-----------------------
+
+.. code-block:: json
+
+ {
+  "addressees": [
+    {
+      "address": "bitcoin:2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b?amount=0.001"
+    }
+  ],
+  "subaccount": 0
+ }
+
+ {
+  "addressees": [
+    {
+      "address": "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b",
+      "satoshi": 100000
+    }
+  ],
+  "subaccount": 0,
+  "fee_rate": 1000
+ }
+
+.. _sign-tx-details:
+
+Sign Transaction JSON
+---------------------
+
+.. code-block:: json
+
+  {
+  "addressees": [
+    {
+      "address": "2MtcMpWnde3tf5vfwnHXKBaWuAUS8j89771",
+      "bip21-params": null,
+      "satoshi": 100000
+    }
+  ],
+  "addressees_read_only": false,
+  "amount_read_only": false,
+  "available_total": 4999794,
+  "calculated_fee_rate": 1000,
+  "change_address": {
+    "address": "2NAvvWUygud1YSdsqTZbnntMRjsbx4RxP3Z",
+    "address_type": "p2wsh",
+    "branch": 1,
+    "pointer": 492,
+    "script": "522102da0e5f74219dadbd392dc3157c43c3636e237005e7f3976a338e519901fdf9e32103326c44e51893994677bb43e5d272af11aea967a4ca3f1c431fe41e6a7851a35152ae",
+    "script_type": 14,
+    "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+    "subaccount": 0,
+    "subtype": null,
+    "user_path": [
+      1,
+      492
+    ]
+  },
+  "change_amount": 4889588,
+  "change_index": 0,
+  "change_subaccount": 0,
+  "error": "",
+  "fee": 206,
+  "fee_rate": 1000,
+  "have_change": true,
+  "is_redeposit": false,
+  "is_sweep": false,
+  "network_fee": 0,
+  "satoshi": 100000,
+  "send_all": false,
+  "server_signed": false,
+  "subaccount": 0,
+  "transaction": "02000000000101c01365291a12d995d7afc3234f4e86d3e064f175ab5a7d47e631de7f293a930901000000230000000000000000000000000000000000000000000000000000000000000000000000fdffffff02f49b4a000000000017a914c1fc2f90044f58698bf9c51f3283e25c809ac17d87a08601000000000017a9140ef7660003133f69023f0436dc8bcf427941dcf5870400480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000047522103bad7ac76143368781c4ac3e7afbb63cd6b52f2a923c715576804aa1046cabc1a210264f5fa70969907861ebdb2b2d53beb125523bb5140b90194481e2415ade1787452ae4ca21600",
+  "transaction_locktime": 1483340,
+  "transaction_outputs": [
+    {
+      "address": "2NAvvWUygud1YSdsqTZbnntMRjsbx4RxP3Z",
+      "address_type": "p2wsh",
+      "branch": 1,
+      "is_change": true,
+      "pointer": 492,
+      "satoshi": 4889588,
+      "script": "a914c1fc2f90044f58698bf9c51f3283e25c809ac17d87",
+      "script_type": 14,
+      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "subaccount": 0,
+      "subtype": null,
+      "user_path": [
+        1,
+        492
+      ]
+    },
+    {
+      "address": "2MtcMpWnde3tf5vfwnHXKBaWuAUS8j89771",
+      "is_change": false,
+      "satoshi": 100000,
+      "script": "a9140ef7660003133f69023f0436dc8bcf427941dcf587"
+    }
+  ],
+  "transaction_size": 372,
+  "transaction_version": 2,
+  "transaction_vsize": 206,
+  "transaction_weight": 822,
+  "used_utxos": [
+    0
+  ],
+  "user_signed": false,
+  "utxo_strategy": "default",
+  "utxos": [
+    {
+      "address_type": "p2wsh",
+      "block_height": 1448369,
+      "ga_asset_id": 1,
+      "pointer": 475,
+      "prevout_script": "522103bad7ac76143368781c4ac3e7afbb63cd6b52f2a923c715576804aa1046cabc1a210264f5fa70969907861ebdb2b2d53beb125523bb5140b90194481e2415ade1787452ae",
+      "pt_idx": 1,
+      "satoshi": 4989794,
+      "script_type": 14,
+      "sequence": 4294967293,
+      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "subaccount": 0,
+      "subtype": 0,
+      "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
+      "user_path": [
+        1,
+        475
+      ]
+    },
+    {
+      "address_type": "p2wsh",
+      "block_height": 1448369,
+      "ga_asset_id": 1,
+      "pointer": 474,
+      "pt_idx": 0,
+      "satoshi": 10000,
+      "script_type": 14,
+      "subaccount": 0,
+      "subtype": 0,
+      "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0"
+    }
+  ],
+  "memo": ""
+  }
+
+
+
+.. _send-tx-details:
+
+Send Transaction JSON
+---------------------
+
+.. code-block:: json
+
+  {
+  "addressees": [
+    {
+      "address": "2NDwUefHRbbHuGsumAWMbRZUzigrtBYkwrq",
+      "bip21-params": null,
+      "satoshi": 100000
+    }
+  ],
+  "addressees_read_only": false,
+  "amount_read_only": false,
+  "available_total": 4999588,
+  "calculated_fee_rate": 1281,
+  "change_address": {
+    "address": "2Mtpg961bP6WH9cQvY2qS4rnuceoRBrnutn",
+    "address_type": "p2wsh",
+    "branch": 1,
+    "pointer": 497,
+    "script": "52210350683b20cc33983f818c9b50606909622dbc4387a17699e5ae09b9d5d1b3111c21028598a36a99fbda64ff1d942afef40b1ad80050c2f8d7191f2ac302a58d9db40252ae",
+    "script_type": 14,
+    "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+    "subaccount": 0,
+    "subtype": null,
+    "user_path": [
+      1,
+      497
+    ]
+  },
+  "change_amount": 109663,
+  "change_index": 1,
+  "change_subaccount": 0,
+  "error": "",
+  "fee": 337,
+  "fee_rate": 1000,
+  "have_change": true,
+  "is_redeposit": false,
+  "is_sweep": false,
+  "memo": "",
+  "network_fee": 0,
+  "satoshi": 100000,
+  "send_all": false,
+  "server_signed": false,
+  "subaccount": 0,
+  "transaction": "020000000001027ff3490a29a2fe73f07e3d3f8740249d61c0025fdc0819586dd9443bc6a00bd30100000023220020ed1761c2b0035dd221ec0f7f78ad88b44f7575884daa668def774bf4db97696afdffffffc01365291a12d995d7afc3234f4e86d3e064f175ab5a7d47e631de7f293a9309000000002322002012ba0847af1dcfb9a3d112224d6ed60f361cfdce243f98867aa85836f84bf808fdffffff02a08601000000000017a914e2ff64a1ca976947d47b6b2d214af96d5942e1b2875fac01000000000017a914114baed477ca8fb65f856b96f860acc52619a6fc870147304402200333910d9c37f5749298dbf8017e4f9932df2e727eeae907e65e102d267045e40220636500d1db9d92b7ff9f1fe1662d9445acfc322d19575ca1aefc98de9b37967a01014730440220731c09346ddff84673c7eeb64003339bc86a03eee04f49f6f1730884e2a772b002207e6a88797e9e0a76b0d85f55a1de52fcc70f80b9647028cca68b7790c83a6bd5014ea21600",
+  "transaction_locktime": 1483342,
+  "transaction_outputs": [
+    {
+      "address": "2NDwUefHRbbHuGsumAWMbRZUzigrtBYkwrq",
+      "is_change": false,
+      "satoshi": 100000,
+      "script": "a914e2ff64a1ca976947d47b6b2d214af96d5942e1b287"
+    },
+    {
+      "address": "2Mtpg961bP6WH9cQvY2qS4rnuceoRBrnutn",
+      "address_type": "p2wsh",
+      "branch": 1,
+      "is_change": true,
+      "pointer": 497,
+      "satoshi": 109663,
+      "script": "a914114baed477ca8fb65f856b96f860acc52619a6fc87",
+      "script_type": 14,
+      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "subaccount": 0,
+      "subtype": null,
+      "user_path": [
+        1,
+        497
+      ]
+    }
+  ],
+  "transaction_size": 374,
+  "transaction_version": 2,
+  "transaction_vsize": 263,
+  "transaction_weight": 1052,
+  "used_utxos": [
+    1,
+    0
+  ],
+  "user_signed": true,
+  "utxo_strategy": "default",
+  "utxos": [
+    {
+      "address_type": "p2wsh",
+      "block_height": 1448369,
+      "ga_asset_id": 1,
+      "pointer": 474,
+      "prevout_script": "522102ff54a17dc6efe168673dbf679fe97e06b5cdcaf7dea8ab83dc6732350cd1b4e4210279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e52ae",
+      "pt_idx": 0,
+      "satoshi": 10000,
+      "script_type": 14,
+      "sequence": 4294967293,
+      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "subaccount": 0,
+      "subtype": 0,
+      "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
+      "user_path": [
+        1,
+        474
+      ]
+    },
+    {
+      "address_type": "p2wsh",
+      "block_height": 0,
+      "ga_asset_id": 1,
+      "pointer": 493,
+      "prevout_script": "522102c9465e8b6e98848428b90f21291a19c62fcb20d2dbff76217068219cada5f7a921022e831b15a4faa339ed9a09a6f1bc01da9001f86130e010a397603b4b4230a22552ae",
+      "pt_idx": 1,
+      "satoshi": 200000,
+      "script_type": 14,
+      "sequence": 4294967293,
+      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "subaccount": 0,
+      "subtype": 0,
+      "txhash": "d30ba0c63b44d96d581908dc5f02c0619d2440873f3d7ef073fea2290a49f37f",
+      "user_path": [
+        1,
+        493
+      ]
+    },
+    {
+      "address_type": "p2wsh",
+      "block_height": 0,
+      "ga_asset_id": 1,
+      "pointer": 494,
+      "pt_idx": 0,
+      "satoshi": 4789588,
+      "script_type": 14,
+      "subaccount": 0,
+      "subtype": 0,
+      "txhash": "d30ba0c63b44d96d581908dc5f02c0619d2440873f3d7ef073fea2290a49f37f"
+    }
+  ]
+  }
+
+
+
+.. _estimates:
+
+Fee Estimates JSON
+------------------
+
+.. code-block:: json
+
+  {"fees":[1000,10070,10070,10070,3014,3014,3014,2543,2543,2543,2543,2543,2543,1499,1499,1499,1499,1499,1499,1499,1499,1499,1499,1499,1499]}
+
+.. _configuration:
+
+Two-Factor Config JSON
+----------------------
+
+.. code-block:: json
+
+ {
+  "all_methods": [
+    "email",
+    "sms",
+    "phone",
+    "gauth"
+  ],
+  "any_enabled": true,
+  "email": {
+    "confirmed": true,
+    "data": "test@test.com",
+    "enabled": true
+  },
+  "enabled_methods": [
+    "email"
+  ],
+  "gauth": {
+    "confirmed": false,
+    "data": "otpauth://totp/Green%20Bitcoin?secret=IZ3SMET5RDWVUSHB4CPTKUWBJM4HSYHO",
+    "enabled": false
+  },
+  "limits": {
+    "bits": "5000.00",
+    "btc": "0.00500000",
+    "fiat": "0.01",
+    "fiat_currency": "EUR",
+    "fiat_rate": "1.10000000",
+    "is_fiat": false,
+    "mbtc": "5.00000",
+    "satoshi": 500000,
+    "ubtc": "5000.00"
+  },
+  "phone": {
+    "confirmed": false,
+    "data": "",
+    "enabled": false
+  },
+  "sms": {
+    "confirmed": false,
+    "data": "",
+    "enabled": false
+  },
+  "twofactor_reset": {
+    "days_remaining": -1,
+    "is_active": false,
+    "is_disputed": false
+  }
+ }
+
+
+
+.. _settings:
+
+Settings JSON
+-------------
+
+.. code-block:: json
+
+  {
+    "altimeout": 10,
+    "notifications": {
+      "email_incoming": true,
+      "email_outgoing": true
+    },
+    "pgp": "",
+    "pricing": {
+      "currency": "EUR",
+      "exchange": "KRAKEN"
+    },
+    "required_num_blocks": 12,
+    "sound": true,
+    "unit": "BTC"
+  }
+
+
+
+.. _balance-details:
+
+Balance Details JSON
+--------------------
+
+.. code-block:: json
+
+  {"subaccount":4,"num_confs":0}
+
+
+
+.. _unspent-utxos-details:
+
+Utxos details JSON
+------------------
+
+.. code-block:: json
+
+  {"subaccount":3,"num_confs":0}
+
+
+
+.. _transactions-details:
+
+Transactions Details JSON
+-------------------------
+
+.. code-block:: json
+
+  {"subaccount":0,"page_id":0}
 
 
 
@@ -307,6 +729,7 @@ Networks list JSON
   ]
 
 
+
 .. _transaction-limits:
 
 Transaction Limits JSON
@@ -360,6 +783,8 @@ Convert data JSON
   {
     "satoshi": 1120
   }
+
+
 
 .. _balance-data:
 

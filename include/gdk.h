@@ -228,7 +228,7 @@ GDK_API int GA_rename_subaccount(struct GA_session* session, uint32_t subaccount
  * Get a page of the user's transaction history.
  *
  * :param session: The session to use.
- * :param details: JSON giving the details to get the transactions for.
+ * :param details: :ref:`transactions-details` giving the details to get the transactions for.
  * :param txs: The :ref:`tx-list`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
@@ -251,7 +251,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, uint32_t subaccou
  * Get the user's unspent transaction outputs.
  *
  * :param session: The session to use.
- * :param details: JSON giving the details to get the unspent transaction outputs for.
+ * :param details: :ref:`unspent-utxos-details` to get the unspent transaction outputs for.
  * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
@@ -286,7 +286,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  * The sum of unspent outputs destined to user's wallet.
  *
  * :param session: The session to use.
- * :param details: JSON giving the subaccount details to get the balance for.
+ * :param details: :ref:`balance-details` giving the subaccount details to get the balance for.
  * :param balance: The returned :ref:`balance-data`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
@@ -328,7 +328,7 @@ GDK_API int GA_set_pin(
  * Construct a transaction.
  *
  * :param session: The session to use.
- * :param transaction_details: The transaction details for constructing.
+ * :param transaction_details: The :ref:`transaction-details` for constructing.
  * :param transaction: Destination for the resulting transaction's details.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
@@ -339,7 +339,7 @@ GDK_API int GA_create_transaction(
  * Sign the user's inputs to a transaction.
  *
  * :param session: The session to use.
- * :param transaction_details: The transaction details for signing, previously returned from GA_create_transaction.
+ * :param transaction_details: The :ref:`sign-tx-details` for signing, previously returned from GA_create_transaction.
  * :param call: Destination for the resulting GA_auth_handler to perform the signing.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -360,7 +360,7 @@ GDK_API int GA_broadcast_transaction(struct GA_session* session, const char* tra
  * Send a transaction created by GA_create_transaction and signed by GA_sign_transaction.
  *
  * :param session: The session to use.
- * :param transaction_details: The signed transaction details for sending.
+ * :param transaction_details: The :ref:`send-tx-details` for sending.
  * :param call: Destination for the resulting GA_auth_handler to perform the send.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -389,7 +389,7 @@ GDK_API int GA_set_transaction_memo(
  * Get the current network's fee estimates.
  *
  * :param session: The session to use.
- * :param estimates: Destination for the returned estimates.
+ * :param estimates: Destination for the returned :ref:`estimates`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * The estimates are returned as an array of 25 elements. Each element is
@@ -441,7 +441,7 @@ GDK_API int GA_ack_system_message(struct GA_session* session, const char* messag
  * Get the two factor configuration for the current user.
  *
  * :param session: The session to use.
- * :param config: Destination for the returned configuration.
+ * :param config: Destination for the returned :ref:`configuration`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config);
@@ -478,7 +478,7 @@ GDK_API int GA_decrypt(struct GA_session* session, const GA_json* input, GA_json
  * Change settings
  *
  * :param session: The session to use.
- * :param settings: The new settings values.
+ * :param settings: The new :ref:`settings` values.
  * :param call: Destination for the resulting GA_auth_handler.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -488,7 +488,7 @@ GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settin
  * Get settings
  *
  * :param session: The session to use.
- * :param settings: Destination for the current settings.
+ * :param settings: Destination for the current :ref:`settings`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
