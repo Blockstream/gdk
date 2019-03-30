@@ -69,7 +69,6 @@ namespace sdk {
 
     namespace {
         static const std::string SOCKS5("socks5://");
-        static const std::string DEFAULT_TOR_PROXY("socks5://127.0.0.1:9050");
         static const std::string USER_AGENT("[v2,sw,csv]");
         static const std::string USER_AGENT_NO_CSV("[v2,sw]");
         // TODO: The server should return these
@@ -330,6 +329,7 @@ namespace sdk {
         , m_log_level(log_level)
         , m_tx_last_notification(std::chrono::system_clock::now())
     {
+        GDK_RUNTIME_ASSERT(!(m_use_tor && m_proxy.empty()));
         boost::log::core::get()->set_filter(
             log_level::severity >= (m_log_level == logging_levels::debug
                                            ? log_level::severity_level::debug
@@ -443,18 +443,14 @@ namespace sdk {
             = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
 
         const auto server = m_net_params.get_connection_string(m_use_tor);
-        auto proxy = m_proxy;
-        if (m_use_tor && proxy.empty()) {
-            proxy = DEFAULT_TOR_PROXY;
-        }
         std::string proxy_details;
-        if (!proxy.empty()) {
-            proxy_details = std::string(" through proxy ") + proxy;
+        if (!m_proxy.empty()) {
+            proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting to " << server << proxy_details;
         boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
         m_transport = std::make_shared<T>(
-            *boost::get<client_type>(m_client), server, proxy, m_log_level == logging_levels::debug);
+            *boost::get<client_type>(m_client), server, m_proxy, m_log_level == logging_levels::debug);
         boost::get<std::shared_ptr<T>>(m_transport)
             ->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }
