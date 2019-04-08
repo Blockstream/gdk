@@ -142,7 +142,7 @@ class Session(object):
     def get_subaccount(self, subaccount):
         return json.loads(get_subaccount(self.session_obj, subaccount))
 
-    def get_transactions(self, details={'subaccount': 0}):
+    def get_transactions(self, details={'subaccount': 0, 'page_id': 0}):
         return json.loads(get_transactions(self.session_obj, self._to_json(details)))
 
     def get_receive_address(self, subaccount=0):
