@@ -227,11 +227,11 @@ public class Session {
 
     public func loginWithPin(pin: String, pin_data:String) throws {
         var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_convert_string_to_json(pin_data, &result))
-        try callWrapper(fun: GA_login_with_pin(session, pin, result))
         defer {
             GA_destroy_json(result)
         }
+        try callWrapper(fun: GA_convert_string_to_json(pin_data, &result))
+        try callWrapper(fun: GA_login_with_pin(session, pin, result))
     }
 
     public func loginWatchOnly(username: String, password: String) throws {

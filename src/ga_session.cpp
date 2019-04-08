@@ -340,7 +340,6 @@ namespace sdk {
         , m_log_level(log_level)
         , m_tx_last_notification(std::chrono::system_clock::now())
     {
-        GDK_RUNTIME_ASSERT(!(m_use_tor && m_proxy.empty()));
         boost::log::core::get()->set_filter(
             log_level::severity >= (m_log_level == logging_levels::debug
                                            ? log_level::severity_level::debug
@@ -453,6 +452,8 @@ namespace sdk {
         using client_type
             = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
 
+        GDK_RUNTIME_ASSERT(!(m_use_tor && m_proxy.empty()));
+
         const auto server = m_net_params.get_connection_string(m_use_tor);
         std::string proxy_details;
         if (!m_proxy.empty()) {
@@ -468,15 +469,18 @@ namespace sdk {
 
     template <typename T> void ga_session::disconnect_transport() const
     {
-        no_std_exception_escape([this] {
-            const auto status = boost::get<std::shared_ptr<T>>(m_transport)
-                                    ->disconnect()
-                                    .wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+        auto transport = boost::get<std::shared_ptr<T>>(m_transport);
+        if (!transport) {
+            return;
+        }
+
+        no_std_exception_escape([&] {
+            const auto status = transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
             if (status != boost::future_status::ready) {
                 GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
             }
         });
-        no_std_exception_escape([this] { boost::get<std::shared_ptr<T>>(m_transport)->detach(); });
+        no_std_exception_escape([&] { transport->detach(); });
     }
 
     context_ptr ga_session::tls_init_handler_impl()
