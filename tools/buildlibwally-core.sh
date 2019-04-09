@@ -3,6 +3,20 @@ set -e
 
 WALLYCORE_NAME="libwally-core-c7fb036502bb4d9b1eb83ac10444bf548de22ca0"
 
+have_cmd()
+{
+    command -v "$1" >/dev/null 2>&1
+}
+
+if have_cmd gsed; then
+    SED=$(command -v gsed)
+elif have_cmd tar; then
+    SED=$(command -v sed)
+else
+    echo "Could not find sed or gsed. Please install sed and try again."
+    exit 1
+fi
+
 cp -r "${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}" "${MESON_BUILD_ROOT}/libwally-core"
 
 ENABLE_SWIG_JAVA=disable-swig-java
@@ -36,7 +50,6 @@ if [ \( "$1" = "--ndk" \) ]; then
     function android_get_ldflags() {
        echo $LDFLAGS
     }
-
 
     case $HOST_ARCH in
         x86) HOST_ARCH=i686;;

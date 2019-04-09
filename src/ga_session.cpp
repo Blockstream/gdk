@@ -11,6 +11,7 @@
 #include "exception.hpp"
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
+#include "ga_tx.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "transaction_utils.hpp"
@@ -139,7 +140,37 @@ namespace sdk {
             return msgpack::unpack(reinterpret_cast<const char*>(buffer.data()), buffer.size());
         }
 
-        static nlohmann::json cleanup_utxos(nlohmann::json& utxos)
+        void unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset, signer& signer)
+        {
+            amount::value_type value;
+            if (boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value)) {
+                utxo["satoshi"] = value;
+                utxo["abf"] = b2h(abf_t{ { 0 } });
+                utxo["vbf"] = b2h(vbf_t{ { 0 } });
+                const auto asset_tag = h2b(utxo.value("asset_tag", policy_asset));
+                GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
+                utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag.data() + 1, asset_tag.size() - 1));
+            } else {
+                const auto rangeproof = h2b(utxo.at("range_proof"));
+                const auto commitment = h2b(utxo.at("commitment"));
+                const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
+                const auto asset_tag = h2b(utxo.at("asset_tag"));
+                const auto extra_commitment = h2b(utxo.at("script"));
+
+                GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
+
+                const auto blinding_key = signer.get_blinding_key_from_script(extra_commitment);
+
+                const auto unblinded = asset_unblind(
+                    blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
+                utxo["satoshi"] = std::get<3>(unblinded);
+                utxo["abf"] = b2h(std::get<2>(unblinded));
+                utxo["vbf"] = b2h(std::get<1>(unblinded));
+                utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
+            }
+        }
+
+        static nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset, signer& signer)
         {
             for (auto& utxo : utxos) {
                 // Clean up the type of returned values
@@ -176,7 +207,17 @@ namespace sdk {
                     json_rename_key(utxo, "tx_pos", "pt_idx");
                     utxo["satoshi"] = json_get_value<amount::value_type>(utxo, "value");
                 } else {
-                    utxo["satoshi"] = boost::lexical_cast<amount::value_type>(json_get_value(utxo, "value"));
+                    // TODO: check data returned by server for blinded utxos
+                    if (!policy_asset.empty()) {
+                        if (json_get_value(utxo, "is_relevant", true)) {
+                            unblind_utxo(utxo, policy_asset, signer);
+                        }
+                    } else {
+                        amount::value_type value;
+                        GDK_RUNTIME_ASSERT(
+                            boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value));
+                        utxo["satoshi"] = value;
+                    }
                 }
                 utxo.erase("value");
                 if (utxo.find("block_height") != utxo.end() && utxo["block_height"].is_null()) {
@@ -987,16 +1028,20 @@ namespace sdk {
                 return;
             }
 
-            const std::string value_str = details["value"];
-            int64_t satoshi = strtol(value_str.c_str(), nullptr, 10);
-            details["satoshi"] = abs(satoshi);
+            const std::string value_str = details.value("value", std::string{});
+            if (!value_str.empty()) {
+                int64_t satoshi = strtol(value_str.c_str(), nullptr, 10);
+                details["satoshi"] = abs(satoshi);
 
-            // TODO: We can't determine if this is a re-deposit based on the
-            // information the server give us. We should fetch the tx details
-            // in tx_list format, cache them, and notify that data instead.
-            const bool is_deposit = satoshi >= 0;
-            details["type"] = is_deposit ? "incoming" : "outgoing";
-            details.erase("value");
+                // TODO: We can't determine if this is a re-deposit based on the
+                // information the server give us. We should fetch the tx details
+                // in tx_list format, cache them, and notify that data instead.
+                const bool is_deposit = satoshi >= 0;
+                details["type"] = is_deposit ? "incoming" : "outgoing";
+                details.erase("value");
+            } else {
+                // TODO: figure out what type is for liquid
+            }
             call_notification_handler(
                 locker, new nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
         });
@@ -1468,17 +1513,37 @@ namespace sdk {
         ga_session::locker_t& locker, uint32_t subaccount, uint32_t num_confs)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        nlohmann::json balance;
-        {
-            unique_unlock unlocker(locker);
-            wamp_call([&balance](wamp_call_result result) { balance = get_json_result(result.get()); },
-                "com.greenaddress.txs.get_balance", subaccount, num_confs);
+        if (!m_net_params.liquid()) {
+            nlohmann::json balance;
+            {
+                unique_unlock unlocker(locker);
+                wamp_call([&balance](wamp_call_result result) { balance = get_json_result(result.get()); },
+                    "com.greenaddress.txs.get_balance", subaccount, num_confs);
+            }
+            // TODO: Make sure another session didn't change fiat currency
+            update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
+            const std::string satoshi_str = json_get_value(balance, "satoshi");
+            const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
+            return { { "btc", convert_amount(locker, { { "satoshi", satoshi } }) } };
+        } else {
+            nlohmann::json utxos;
+            {
+                // TODO: consider passing the lock here as well
+                unique_unlock unlocker(locker);
+                utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
+            }
+
+            nlohmann::json balance;
+            for (const auto& item : utxos.items()) {
+                const auto& utxos = item.value();
+                int64_t satoshi = std::accumulate(
+                    std::begin(utxos), std::end(utxos), 0, [](int64_t init, const nlohmann::json& utxo) {
+                        return init + static_cast<amount::value_type>(utxo.at("satoshi"));
+                    });
+                balance[item.key()] = convert_amount(locker, { { "satoshi", satoshi } });
+            }
+            return balance;
         }
-        // TODO: Make sure another session didn't change fiat currency
-        update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
-        const std::string satoshi_str = json_get_value(balance, "satoshi");
-        const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
-        return convert_amount(locker, { { "satoshi", satoshi } });
     }
 
     nlohmann::json ga_session::get_subaccount(ga_session::locker_t& locker, uint32_t subaccount)
@@ -1719,8 +1784,10 @@ namespace sdk {
                 // on the hash of the confirmed transaction.
                 // Once caching is implemented this info can be populated up
                 // front so callers can always expect it.
-                const auto tx = tx_from_hex(tx_data);
-                update_tx_info(tx, tx_details);
+                const auto tx = tx_from_hex(
+                    tx_data, WALLY_TX_FLAG_USE_WITNESS | (m_net_params.liquid() ? WALLY_TX_FLAG_USE_ELEMENTS : 0));
+
+                update_tx_info(m_net_params, tx, tx_details);
             } else {
                 tx_details["transaction_size"] = tx_size;
                 if (tx_details.find("vsize") == tx_details.end() || tx_details["vsize"].is_null()) {
@@ -1736,12 +1803,12 @@ namespace sdk {
             const uint32_t tx_vsize = tx_details["transaction_vsize"];
             tx_details["fee_rate"] = fee * 1000 / tx_vsize;
 
-            amount received, spent;
-            bool is_from_me = false; // Are any inputs from our wallet?
+            std::map<std::string, amount> received, spent;
             std::map<uint32_t, nlohmann::json> in_map, out_map;
+            std::set<std::string> unique_asset_ids;
 
             // Clean up and categorize the endpoints
-            cleanup_utxos(tx_details["eps"]);
+            cleanup_utxos(tx_details["eps"], m_net_params.policy_asset(), get_signer());
 
             for (auto& ep : tx_details["eps"]) {
                 ep.erase("id");
@@ -1752,16 +1819,19 @@ namespace sdk {
                 json_add_if_missing(ep, "address", std::string(), true);
                 ep.erase("is_credit");
 
+                const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
+                unique_asset_ids.emplace(asset_id);
+
                 const bool is_tx_output = json_get_value(ep, "is_output", false);
                 const bool is_relevant = json_get_value(ep, "is_relevant", false);
 
                 if (is_relevant) {
                     // Compute the effect of the input/output on the wallets balance
                     // TODO: Figure out what redeemable value for social payments is about
-                    auto& which_balance = is_tx_output ? received : spent;
                     const amount::value_type satoshi = ep.at("satoshi");
+
+                    auto& which_balance = is_tx_output ? received[asset_id] : spent[asset_id];
                     which_balance += satoshi;
-                    is_from_me |= !is_tx_output;
                 }
 
                 ep["addressee"] = std::string(); // default here, set below where needed
@@ -1769,7 +1839,7 @@ namespace sdk {
                 // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                 const uint32_t pt_idx = ep["pt_idx"];
                 auto& m = is_tx_output ? out_map : in_map;
-                m.emplace(pt_idx, ep);
+                GDK_RUNTIME_ASSERT(m.emplace(pt_idx, ep).second);
             }
 
             // Store the endpoints as inputs/outputs in tx index order
@@ -1785,62 +1855,73 @@ namespace sdk {
             tx_details["outputs"] = outputs;
             tx_details.erase("eps");
 
-            // Compute tx economics and label addressees
-            const bool net_positive = received > spent;
-            const bool is_confirmed = tx_block_height != 0;
             std::vector<std::string> addressees;
+            for (const auto& asset_id : unique_asset_ids) {
+                const auto net_received = received[asset_id];
+                const auto net_spent = spent[asset_id];
+                const bool net_positive = net_received > net_spent;
+                const bool is_confirmed = tx_block_height != 0;
 
-            if (net_positive) {
-                for (auto& ep : tx_details["inputs"]) {
-                    std::string addressee;
-                    if (!json_get_value(ep, "is_relevant", false)) {
-                        // Add unique addressees that aren't ourselves
-                        addressee = json_get_value(ep, "social_source");
-                        if (addressee.empty()) {
-                            addressee = json_get_value(ep, "address");
+                if (net_positive) {
+                    for (auto& ep : tx_details["inputs"]) {
+                        const auto ep_asset_id = asset_id_from_string(ep.value("asset_id", "btc"));
+                        if (ep_asset_id != asset_id) {
+                            continue;
                         }
-                        if (std::find(std::begin(addressees), std::end(addressees), addressee)
-                            == std::end(addressees)) {
-                            addressees.emplace_back(addressee);
-                        }
-                        ep["addressee"] = addressee;
-                    }
-                }
-                tx_details["type"] = "incoming";
-                tx_details["can_rbf"] = false;
-                tx_details["can_cpfp"] = !is_confirmed;
-            } else {
-                for (auto& ep : tx_details["outputs"]) {
-                    std::string addressee;
-                    if (!json_get_value(ep, "is_relevant", false)) {
-                        // Add unique addressees that aren't ourselves
-                        const auto& social_destination = ep.find("social_destination");
-                        if (social_destination != ep.end()) {
-                            if (social_destination->is_object()) {
-                                addressee = (*social_destination)["name"];
-                            } else {
-                                addressee = *social_destination;
+                        std::string addressee;
+                        if (!json_get_value(ep, "is_relevant", false)) {
+                            // Add unique addressees that aren't ourselves
+                            addressee = json_get_value(ep, "social_source");
+                            if (addressee.empty()) {
+                                addressee = json_get_value(ep, "address");
                             }
-                        } else {
-                            addressee = ep["address"];
+                            if (std::find(std::begin(addressees), std::end(addressees), addressee)
+                                == std::end(addressees)) {
+                                addressees.emplace_back(addressee);
+                            }
+                            ep["addressee"] = addressee;
                         }
-
-                        if (std::find(std::begin(addressees), std::end(addressees), addressee)
-                            == std::end(addressees)) {
-                            addressees.emplace_back(addressee);
-                        }
-                        ep["addressee"] = addressee;
                     }
+                    tx_details["type"] = "incoming";
+                    tx_details["can_rbf"] = false;
+                    tx_details["can_cpfp"] = !is_confirmed;
+                } else {
+                    for (auto& ep : tx_details["outputs"]) {
+                        const auto ep_asset_id = asset_id_from_string(ep.value("asset_id", "btc"));
+                        if (ep_asset_id != asset_id) {
+                            continue;
+                        }
+                        std::string addressee;
+                        if (!json_get_value(ep, "is_relevant", false)) {
+                            // Add unique addressees that aren't ourselves
+                            const auto& social_destination = ep.find("social_destination");
+                            if (social_destination != ep.end()) {
+                                if (social_destination->is_object()) {
+                                    addressee = (*social_destination)["name"];
+                                } else {
+                                    addressee = *social_destination;
+                                }
+                            } else {
+                                addressee = ep["address"];
+                            }
+
+                            if (std::find(std::begin(addressees), std::end(addressees), addressee)
+                                == std::end(addressees)) {
+                                addressees.emplace_back(addressee);
+                            }
+                            ep["addressee"] = addressee;
+                        }
+                    }
+                    tx_details["type"] = addressees.empty() ? "redeposit" : "outgoing";
+                    tx_details["can_rbf"] = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
+                    tx_details["can_cpfp"] = false;
                 }
-                tx_details["type"] = addressees.empty() ? "redeposit" : "outgoing";
-                tx_details["can_rbf"] = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
-                tx_details["can_cpfp"] = false;
+
+                const amount total = net_positive ? net_received - net_spent : net_spent - net_received;
+                tx_details["satoshi"][asset_id] = total.value();
             }
 
             tx_details["addressees"] = addressees;
-
-            const amount total = net_positive ? received - spent : spent - received;
-            tx_details["satoshi"] = total.value();
             tx_details["user_signed"] = true;
             tx_details["server_signed"] = true;
         }
@@ -1917,25 +1998,34 @@ namespace sdk {
             },
             "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
 
-        cleanup_utxos(utxos);
+        cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer());
+
+        nlohmann::json asset_utxos;
+        std::for_each(std::begin(utxos), std::end(utxos), [&asset_utxos, this](const nlohmann::json& utxo) {
+            const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
+            asset_utxos[utxo_asset_tag].emplace_back(utxo);
+        });
 
         // Sort the utxos such that the oldest are first, with the default
         // UTXO selection strategy this reduces the number of re-deposits
         // users have to do by recycling UTXOs that are closer to expiry.
         // This also reduces the chance of spending unconfirmed outputs by
         // pushing them to the end of the selection array.
-        std::sort(std::begin(utxos), std::end(utxos), [](const nlohmann::json& lhs, const nlohmann::json& rhs) -> bool {
-            const uint32_t lbh = lhs["block_height"];
-            const uint32_t rbh = rhs["block_height"];
-            if (lbh == 0) {
-                return false;
-            } else if (rbh == 0) {
-                return true;
-            } else {
-                return lbh < rbh;
-            }
+        std::for_each(std::begin(asset_utxos), std::end(asset_utxos), [](nlohmann::json& utxos) {
+            std::sort(std::begin(utxos), std::end(utxos), [](const nlohmann::json& lhs, const nlohmann::json& rhs) {
+                const uint32_t lbh = lhs["block_height"];
+                const uint32_t rbh = rhs["block_height"];
+                if (lbh == 0) {
+                    return false;
+                } else if (rbh == 0) {
+                    return true;
+                } else {
+                    return lbh < rbh;
+                }
+            });
         });
-        return utxos;
+
+        return asset_utxos;
     }
 
     // Idempotent
@@ -1975,7 +2065,7 @@ namespace sdk {
             utxo["script_type"] = script_type::pubkey_hash_out;
         }
 
-        return cleanup_utxos(utxos);
+        return cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer());
     }
 
     // Idempotent
@@ -1985,9 +2075,10 @@ namespace sdk {
         wamp_call([&tx_data](wamp_call_result result) { tx_data = result.get().argument<std::string>(0); },
             "com.greenaddress.txs.get_raw_output", txhash);
 
-        const auto tx = tx_from_hex(tx_data);
+        const uint32_t flags = WALLY_TX_FLAG_USE_WITNESS | (m_net_params.liquid() ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
+        const auto tx = tx_from_hex(tx_data, flags);
         nlohmann::json result = { { "txhash", txhash } };
-        update_tx_info(tx, result);
+        update_tx_info(m_net_params, tx, result);
         return result;
     }
 
@@ -2030,7 +2121,15 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(server_address == user_address);
         }
 
-        address["address"] = server_address;
+        if (m_net_params.liquid()) {
+            GDK_RUNTIME_ASSERT(m_signer != nullptr);
+            const auto public_key
+                = m_signer->get_public_key_from_blinding_key(output_script_for_address(m_net_params, server_address));
+            address["address"] = confidential_addr_from_addr(server_address, m_net_params.blinded_prefix(), public_key);
+        } else {
+            address["address"] = server_address;
+        }
+
         return address;
     }
 
@@ -2039,7 +2138,7 @@ namespace sdk {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
 
-        if (num_confs == 0) {
+        if (num_confs == 0 && !m_net_params.liquid()) {
             // The subaccount details contains the confs=0 balance
             return get_subaccount(subaccount)["balance"];
         } else {
@@ -2065,9 +2164,9 @@ namespace sdk {
         return m_signer->get_hw_device();
     }
 
+#if 1
     // Note: Current design is to always enable RBF if the server supports
     // it, perhaps allowing disabling for individual txs or only for BIP 70
-#if 1
     bool ga_session::is_rbf_enabled() const
     {
         locker_t locker(m_mutex);
@@ -2389,8 +2488,25 @@ namespace sdk {
         return *m_recovery_pubkeys;
     }
 
+    nlohmann::json ga_session::create_transaction(const nlohmann::json& details)
+    {
+        try {
+            return create_ga_transaction(*this, details);
+        } catch (const user_error& e) {
+            return nlohmann::json({ { "error", e.what() } });
+        }
+    }
+
+    nlohmann::json ga_session::sign_transaction(const nlohmann::json& details)
+    {
+        return sign_ga_transaction(*this, details);
+    }
+
     nlohmann::json ga_session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
+        GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
+        GDK_RUNTIME_ASSERT_MSG(json_get_value(details, "user_signed", false), "Tx must be signed before sending");
+
         nlohmann::json result = details;
 
         // We must have a tx and it must be signed by the user
@@ -2400,7 +2516,8 @@ namespace sdk {
         // FIXME: test weight and return error in create_transaction, not here
         const std::string tx_hex = result.at("transaction");
         const size_t MAX_TX_WEIGHT = 400000;
-        const auto unsigned_tx = tx_from_hex(tx_hex);
+        const uint32_t flags = WALLY_TX_FLAG_USE_WITNESS | (details.at("liquid") ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
+        const auto unsigned_tx = tx_from_hex(tx_hex, flags);
         GDK_RUNTIME_ASSERT(tx_get_weight(unsigned_tx) < MAX_TX_WEIGHT);
 
         nlohmann::json private_data;
@@ -2425,7 +2542,7 @@ namespace sdk {
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
         result["txhash"] = tx_details["txhash"];
-        const auto tx = tx_from_hex(tx_details["tx"]);
+        const auto tx = tx_from_hex(tx_details["tx"], flags);
         update_tx_info(tx, result);
         result["server_signed"] = true;
         return result;
@@ -2438,6 +2555,12 @@ namespace sdk {
         wamp_call([&tx_hash](wamp_call_result result) { tx_hash = result.get().argument<std::string>(0); },
             "com.greenaddress.vault.broadcast_raw_tx", tx_hex);
         return tx_hash;
+    }
+
+    void ga_session::sign_input(
+        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
+    {
+        ::ga::sdk::sign_input(*this, tx, index, u, der_hex);
     }
 
     // Idempotent

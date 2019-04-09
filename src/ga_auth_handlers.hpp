@@ -124,9 +124,9 @@ namespace sdk {
 
         nlohmann::json m_tx_details;
         nlohmann::json m_limit_details;
+        uint64_t m_bump_amount = 0;
         bool m_twofactor_required;
         bool m_under_limit;
-        uint64_t m_bump_amount = 0;
     };
 
     class twofactor_reset_call : public auth_handler {

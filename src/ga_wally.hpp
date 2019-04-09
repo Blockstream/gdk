@@ -3,6 +3,7 @@
 #pragma once
 
 #include <array>
+#include <cstring>
 #include <gsl/span>
 #include <memory>
 #include <string>
@@ -44,11 +45,20 @@ namespace sdk {
 
     using byte_span_t = gsl::span<const unsigned char>;
     using uint32_span_t = gsl::span<const uint32_t>;
+    using uint64_span_t = gsl::span<const uint64_t>;
 
     using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
     using chain_code_t = std::array<unsigned char, 32>;
     using pub_key_t = std::array<unsigned char, EC_PUBLIC_KEY_LEN>;
+    using priv_key_t = std::array<unsigned char, EC_PRIVATE_KEY_LEN>;
     using xpub_t = std::pair<chain_code_t, pub_key_t>;
+
+    using asset_id_t = std::array<unsigned char, ASSET_TAG_LEN>;
+    using vbf_t = std::array<unsigned char, 32>;
+    using abf_t = std::array<unsigned char, 32>;
+    using unblind_t = std::tuple<asset_id_t, vbf_t, abf_t, uint64_t>;
+
+    using cvalue_t = std::array<unsigned char, WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN>;
 
 #ifdef __GNUC__
 #define GA_USE_RESULT __attribute__((warn_unused_result))
@@ -148,9 +158,11 @@ namespace sdk {
     // Strings/Addresses
     //
     std::string b2h(byte_span_t data);
+    std::string b2h_rev(byte_span_t data);
 
     std::vector<unsigned char> h2b(const char* hex);
     std::vector<unsigned char> h2b(const std::string& hex);
+    std::vector<unsigned char> h2b(const std::string& hex, uint8_t prefix);
 
     std::vector<unsigned char> h2b_rev(const char* hex);
     std::vector<unsigned char> h2b_rev(const std::string& hex);
@@ -183,17 +195,60 @@ namespace sdk {
     std::pair<std::vector<unsigned char>, bool> to_private_key_bytes(
         const std::string& priv_key, const std::string& passphrase, bool mainnet);
 
+    bool ec_private_key_verify(byte_span_t bytes);
+
+    std::pair<priv_key_t, std::vector<unsigned char>> get_ephemeral_keypair();
+
+    //
+    // Elements
+    //
+    std::array<unsigned char, ASSET_GENERATOR_LEN> asset_generator_from_bytes(byte_span_t asset, byte_span_t abf);
+
+    std::array<unsigned char, ASSET_TAG_LEN> asset_final_vbf(
+        uint64_span_t values, size_t num_inputs, byte_span_t abf, byte_span_t vbf);
+
+    std::array<unsigned char, ASSET_COMMITMENT_LEN> asset_value_commitment(
+        uint64_t value, byte_span_t vbf, byte_span_t generator);
+
+    std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
+        byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
+        byte_span_t generator, uint64_t min_value, int exp, int min_bits);
+
+    std::vector<unsigned char> asset_surjectionproof(byte_span_t output_asset, byte_span_t output_abf,
+        byte_span_t output_generator, byte_span_t bytes, byte_span_t asset, byte_span_t abf, byte_span_t generator);
+
+    unblind_t asset_unblind(byte_span_t private_key, byte_span_t rangeproof, byte_span_t commitment,
+        byte_span_t nonce_commitment, byte_span_t extra_commitment, byte_span_t generator);
+
+    std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix);
+
+    pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix);
+
+    std::string confidential_addr_from_addr(const std::string& address, uint32_t prefix, byte_span_t public_key);
+
     //
     // Transactions
     //
+    GA_USE_RESULT bool tx_is_elements(const wally_tx_ptr& tx);
+
     GA_USE_RESULT size_t tx_get_length(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
     std::vector<unsigned char> tx_to_bytes(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
     void tx_add_raw_output(const wally_tx_ptr& tx, uint64_t satoshi, byte_span_t script);
 
+    void tx_add_elements_raw_output(const wally_tx_ptr& tx, byte_span_t script, byte_span_t asset, byte_span_t value,
+        byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
+
+    void tx_elements_output_commitment_set(const wally_tx_ptr& tx, size_t index, byte_span_t asset, byte_span_t value,
+        byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
+
     std::array<unsigned char, SHA256_LEN> tx_get_btc_signature_hash(const wally_tx_ptr& tx, size_t index,
         byte_span_t script, uint64_t satoshi, uint32_t sighash = WALLY_SIGHASH_ALL,
+        uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+
+    std::array<unsigned char, SHA256_LEN> tx_get_elements_signature_hash(const wally_tx_ptr& tx, size_t index,
+        byte_span_t script, byte_span_t value, uint32_t sighash = WALLY_SIGHASH_ALL,
         uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
     wally_tx_ptr tx_init(uint32_t locktime, size_t inputs_allocation_len, size_t outputs_allocation_len = 2,
@@ -201,12 +256,8 @@ namespace sdk {
 
     wally_tx_ptr tx_from_hex(const std::string& tx_hex, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
-    void tx_add_input(const wally_tx_ptr& tx, const wally_tx_input_ptr& input);
-
-    void tx_add_output(const wally_tx_ptr& tx, const wally_tx_output_ptr& output);
-
     void tx_add_raw_input(const wally_tx_ptr& tx, byte_span_t txhash, uint32_t index, uint32_t sequence,
-        byte_span_t script, const wally_tx_witness_stack_ptr& witness = wally_tx_witness_stack_ptr());
+        byte_span_t script, const wally_tx_witness_stack_ptr& witness = {});
 
     GA_USE_RESULT size_t tx_get_vsize(const wally_tx_ptr& tx);
 
@@ -223,6 +274,10 @@ namespace sdk {
     void tx_witness_stack_add(const wally_tx_witness_stack_ptr& stack, byte_span_t witness);
 
     void tx_witness_stack_add_dummy(const wally_tx_witness_stack_ptr& stack, uint32_t flags);
+
+    cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
+
+    uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
 
     xpub_t make_xpub(const ext_key* hdkey);
     xpub_t make_xpub(const std::string& chain_code_hex, const std::string& pub_key_hex);

@@ -10,7 +10,6 @@
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_session.hpp"
-#include "ga_tx.hpp"
 #include "logging.hpp"
 #include "utils.hpp"
 
@@ -625,27 +624,18 @@ namespace sdk {
     nlohmann::json session::create_transaction(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] {
-            try {
-                return create_ga_transaction(*this, m_impl->get_network_parameters(), details);
-            } catch (const user_error& e) {
-                return nlohmann::json({ { "error", e.what() } });
-            }
-        });
+        return exception_wrapper([&] { return m_impl->create_transaction(details); });
     }
 
     nlohmann::json session::sign_transaction(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return sign_ga_transaction(*this, details); });
+        return exception_wrapper([&] { return m_impl->sign_transaction(details); });
     }
 
     nlohmann::json session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
-        GDK_RUNTIME_ASSERT_MSG(json_get_value(details, "user_signed", false), "Tx must be signed before sending");
-
         return exception_wrapper([&] { return m_impl->send_transaction(details, twofactor_data); });
     }
 
@@ -653,6 +643,13 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return exception_wrapper([&] { return m_impl->broadcast_transaction(tx_hex); });
+    }
+
+    void session::sign_input(
+        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->sign_input(tx, index, u, der_hex); });
     }
 
     void session::send_nlocktimes()
@@ -714,12 +711,6 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return exception_wrapper([&] { return m_impl->convert_amount(amount_json); });
-    }
-
-    nlohmann::json session::convert_amount_nocatch(const nlohmann::json& amount_json)
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return m_impl->convert_amount(amount_json);
     }
 
     nlohmann::json session::encrypt(const nlohmann::json& input_json)

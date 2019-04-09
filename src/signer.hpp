@@ -44,6 +44,12 @@ namespace sdk {
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
         virtual ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) = 0;
 
+        // TODO: from bip32 seed.
+        virtual priv_key_t get_master_blinding_key();
+        virtual priv_key_t get_blinding_key_from_script(byte_span_t script);
+
+        virtual std::vector<unsigned char> get_public_key_from_blinding_key(byte_span_t script);
+
     protected:
         const network_parameters& m_net_params;
     };

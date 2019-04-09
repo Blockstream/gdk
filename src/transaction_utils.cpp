@@ -2,9 +2,9 @@
 
 #include "assertion.hpp"
 #include "exception.hpp"
+#include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "memory.hpp"
-#include "session.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
@@ -71,7 +71,7 @@ namespace sdk {
         __builtin_unreachable();
     }
 
-    static std::vector<unsigned char> output_script_for_address(
+    std::vector<unsigned char> output_script_for_address(
         const network_parameters& net_params, const std::string& address)
     {
         if (boost::starts_with(address, net_params.bech32_prefix())) {
@@ -208,12 +208,17 @@ namespace sdk {
     }
 
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi)
+        const std::string& address, amount::value_type satoshi, const std::string& asset_tag)
     {
+        auto output_address = address;
+        if (net_params.liquid()) {
+            output_address = confidential_addr_to_addr(output_address, net_params.blinded_prefix());
+        }
+
         // TODO: Support OP_RETURN outputs
         std::vector<unsigned char> script;
         try {
-            script = output_script_for_address(net_params, address);
+            script = output_script_for_address(net_params, output_address);
         } catch (const std::exception& e) {
         }
         if (script.empty()) {
@@ -225,11 +230,18 @@ namespace sdk {
             script.resize(HASH160_LEN);
         }
 
-        tx_add_raw_output(tx, satoshi, script);
+        if (net_params.liquid()) {
+            const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+            const auto asset_bytes
+                = !asset_tag.empty() && asset_tag != "btc" ? h2b(asset_tag, 0x1) : h2b(net_params.policy_asset(), 0x1);
+            tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
+        } else {
+            tx_add_raw_output(tx, satoshi, script);
+        }
         return amount(satoshi);
     }
 
-    amount add_tx_addressee(session& session, const network_parameters& net_params, nlohmann::json& result,
+    amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee)
     {
         std::string address = addressee.at("address"); // Assume its a standard address
@@ -245,7 +257,7 @@ namespace sdk {
             if (uri_amount_p != bip21_params.end()) {
                 // Use the amount specified in the URI
                 const nlohmann::json uri_amount = { { "btc", uri_amount_p->get<std::string>() } };
-                addressee["satoshi"] = session.convert_amount_nocatch(uri_amount)["satoshi"];
+                addressee["satoshi"] = session.convert_amount(uri_amount)["satoshi"];
                 amount::strip_non_satoshi_keys(addressee);
             }
         }
@@ -253,7 +265,7 @@ namespace sdk {
         // Convert the users entered value into satoshi
         amount satoshi;
         try {
-            satoshi = session.convert_amount_nocatch(addressee)["satoshi"].get<amount::value_type>();
+            satoshi = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
         } catch (const std::exception&) {
             // Note the error, and create a 0 satoshi output
             result["error"] = res::id_invalid_amount;
@@ -268,7 +280,8 @@ namespace sdk {
         amount::strip_non_satoshi_keys(addressee);
         addressee["satoshi"] = satoshi.value(); // Sets to 0 if not present
 
-        return add_tx_output(net_params, result, tx, address, satoshi.value());
+        return add_tx_output(
+            net_params, result, tx, address, satoshi.value(), addressee.value("asset_tag", std::string{}));
     }
 
     void update_tx_info(const wally_tx_ptr& tx, nlohmann::json& result)
@@ -282,31 +295,71 @@ namespace sdk {
         result["transaction_vsize"] = tx_vsize;
         result["transaction_version"] = tx->version;
         result["transaction_locktime"] = tx->locktime;
+        result["liquid"] = tx_is_elements(tx);
         if (result.find("fee") != result.end()) {
             const amount::value_type fee = result["fee"];
             result["calculated_fee_rate"] = valid ? (fee * 1000 / tx_vsize) : 0;
         }
+    }
+
+    void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
+    {
+        update_tx_info(tx, result);
+
+        const bool valid = tx->num_inputs && tx->num_outputs;
+
         // Note that outputs may be empty if the constructed tx is incomplete
         std::vector<nlohmann::json> outputs;
         if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
             outputs.reserve(tx->num_outputs);
-            const bool have_change = result.value("have_change", false);
-            const uint32_t change_index = have_change ? result.at("change_index").get<uint32_t>() : NO_CHANGE_INDEX;
             size_t addressee_index = 0;
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
-                const auto script_hex = b2h(gsl::make_span(o.script, o.script_len));
+                // TODO: we're only handling assets here when they're still explicit
+                auto asset_id = o.asset && o.asset_len ? b2h(gsl::make_span(o.asset + 1, o.asset_len - 1)) : "btc";
+                if (asset_id == net_params.policy_asset()) {
+                    asset_id = "btc";
+                }
+                const bool is_fee = !o.script && !o.script_len;
+                const auto script_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};
 
-                nlohmann::json output{ { "satoshi", o.satoshi }, { "script", script_hex },
-                    { "is_change", i == change_index } };
+                const bool have_change = result.find("have_change") != result.end()
+                    ? result.at("have_change").value(asset_id, false)
+                    : false;
+                const uint32_t change_index
+                    = have_change ? result.at("change_index").at(asset_id).get<uint32_t>() : NO_CHANGE_INDEX;
 
-                if (i == change_index) {
+                amount::value_type satoshi = o.satoshi;
+                if (net_params.liquid()) {
+                    GDK_RUNTIME_ASSERT(o.value);
+                    if (*o.value == 1) {
+                        satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
+                    }
+                }
+
+                const auto output_asset_id
+                    = net_params.liquid() && asset_id == "btc" ? net_params.policy_asset() : asset_id;
+                nlohmann::json output{ { "satoshi", satoshi }, { "script", script_hex },
+                    { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", output_asset_id } };
+
+                if (is_fee) {
+                    // Nothing to do
+                } else if (i == change_index) {
                     // Insert our change meta-data for the change output
-                    const auto& change_address = result.at("change_address");
+                    const auto& change_address = result.at("change_address").at(asset_id);
                     output.insert(change_address.begin(), change_address.end());
+                    if (net_params.liquid()) {
+                        output["public_key"] = b2h(confidential_addr_to_ec_public_key(
+                            change_address.at("address"), net_params.blinded_prefix()));
+                    }
                 } else {
                     const auto& addressee = result.at("addressees").at(addressee_index);
-                    output["address"] = addressee.at("address");
+                    const auto& address = addressee.at("address");
+                    output["address"] = address;
+                    if (net_params.liquid()) {
+                        output["public_key"]
+                            = b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
+                    }
                     ++addressee_index;
                 }
 

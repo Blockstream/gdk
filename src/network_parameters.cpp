@@ -77,6 +77,19 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false }, { "development", true } })) },
 
+          { "localtest-liquid",
+              std::make_shared<nlohmann::json>(
+                  nlohmann::json({ { "name", "Localtest Liquid" }, { "network", "localtest-liquid" },
+                      { "wamp_url", "ws://localhost:8080/v2/ws" }, { "wamp_onion_url", std::string() },
+                      { "wamp_cert_pins", nlohmann::json::array() }, { "wamp_cert_roots", nlohmann::json::array() },
+                      { "address_explorer_url", std::string() }, { "tx_explorer_url", std::string() },
+                      { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
+                      { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
+                      { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 235u }, { "p2sh_version", 75u },
+                      { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", true }, { "development", true },
+                      { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
+                      { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 36 } })) },
+
           { "mainnet",
               std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Bitcoin" }, { "network", "mainnet" },
                   { "wamp_url", "wss://prodwss.greenaddress.it/v2/ws" },

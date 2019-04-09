@@ -34,6 +34,9 @@ class Call(object):
         # Default implementation just uses localtest dummy 2fa code
         return '555555'
 
+    def request_code(self, method):
+        auth_handler_request_code(self.call_obj, method)
+
     def resolve(self, select_method_fn=None, resolve_code_fn=None):
         select_method_fn = select_method_fn or self._select_method
         resolve_code_fn = resolve_code_fn or self._resolve_code

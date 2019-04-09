@@ -1,6 +1,7 @@
 #include "ga_wally.hpp"
 #include "boost_wrapper.hpp"
 #include "memory.hpp"
+#include "utils.hpp"
 
 namespace ga {
 namespace sdk {
@@ -332,20 +333,37 @@ namespace sdk {
         return make_string(ret);
     }
 
-    static auto h2b(const char* hex, size_t siz, bool rev)
+    std::string b2h_rev(byte_span_t data)
+    {
+        char* ret;
+        std::vector<unsigned char> buff(data.rbegin(), data.rend());
+        GDK_VERIFY(wally_hex_from_bytes(buff.data(), buff.size(), &ret));
+        return make_string(ret);
+    }
+
+    static auto h2b(const char* hex, size_t siz, bool rev, uint8_t prefix = 0)
     {
         size_t written;
-        std::vector<unsigned char> buff(siz / 2);
-        GDK_VERIFY(wally_hex_to_bytes(hex, buff.data(), buff.size(), &written));
-        GDK_RUNTIME_ASSERT(written == buff.size());
+        const size_t bytes_siz = siz / 2;
+        std::vector<unsigned char> buff(bytes_siz + (prefix != 0 ? 1 : 0));
+        auto buff_data = buff.data() + (prefix != 0 ? 1 : 0);
+        GDK_VERIFY(wally_hex_to_bytes(hex, buff_data, bytes_siz, &written));
+        GDK_RUNTIME_ASSERT(written == bytes_siz);
         if (rev) {
-            std::reverse(buff.begin(), buff.end());
+            std::reverse(buff_data, buff_data + bytes_siz);
+        }
+        if (prefix != 0) {
+            buff[0] = prefix;
         }
         return buff;
     }
 
     std::vector<unsigned char> h2b(const char* hex) { return h2b(hex, strlen(hex), false); }
     std::vector<unsigned char> h2b(const std::string& hex) { return h2b(hex.data(), hex.size(), false); }
+    std::vector<unsigned char> h2b(const std::string& hex, uint8_t prefix)
+    {
+        return h2b(hex.data(), hex.size(), false, prefix);
+    }
 
     std::vector<unsigned char> h2b_rev(const char* hex) { return h2b(hex, strlen(hex), true); }
     std::vector<unsigned char> h2b_rev(const std::string& hex) { return h2b(hex.data(), hex.size(), true); }
@@ -486,9 +504,125 @@ namespace sdk {
             compressed };
     }
 
+    bool ec_private_key_verify(byte_span_t bytes)
+    {
+        return wally_ec_private_key_verify(bytes.data(), bytes.size()) == WALLY_OK;
+    }
+
+    std::pair<priv_key_t, std::vector<unsigned char>> get_ephemeral_keypair()
+    {
+        priv_key_t private_key;
+        do {
+            private_key = get_random_bytes<32>();
+        } while (!ec_private_key_verify(private_key));
+        return { private_key, ec_public_key_from_private_key(private_key) };
+    }
+
+    //
+    // Elements
+    //
+    std::array<unsigned char, ASSET_GENERATOR_LEN> asset_generator_from_bytes(byte_span_t asset, byte_span_t abf)
+    {
+        std::array<unsigned char, ASSET_GENERATOR_LEN> generator;
+        GDK_VERIFY(wally_asset_generator_from_bytes(
+            asset.data(), asset.size(), abf.data(), abf.size(), generator.data(), generator.size()));
+        return generator;
+    }
+
+    std::array<unsigned char, ASSET_TAG_LEN> asset_final_vbf(
+        uint64_span_t values, size_t num_inputs, byte_span_t abf, byte_span_t vbf)
+    {
+        std::array<unsigned char, ASSET_TAG_LEN> v;
+        GDK_VERIFY(wally_asset_final_vbf(values.data(), values.size(), num_inputs, abf.data(), abf.size(), vbf.data(),
+            vbf.size(), v.data(), v.size()));
+        return v;
+    }
+
+    std::array<unsigned char, ASSET_COMMITMENT_LEN> asset_value_commitment(
+        uint64_t value, byte_span_t vbf, byte_span_t generator)
+    {
+        std::array<unsigned char, ASSET_COMMITMENT_LEN> commitment;
+        GDK_VERIFY(wally_asset_value_commitment(
+            value, vbf.data(), vbf.size(), generator.data(), generator.size(), commitment.data(), commitment.size()));
+        return commitment;
+    }
+
+    std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
+        byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
+        byte_span_t generator, uint64_t min_value, int exp, int min_bits)
+    {
+        std::vector<unsigned char> rangeproof(ASSET_RANGEPROOF_MAX_LEN);
+        size_t written;
+        GDK_VERIFY(wally_asset_rangeproof(value, public_key.data(), public_key.size(), private_key.data(),
+            private_key.size(), asset.data(), asset.size(), abf.data(), abf.size(), vbf.data(), vbf.size(),
+            commitment.data(), commitment.size(), extra.data(), extra.size(), generator.data(), generator.size(),
+            min_value, exp, min_bits, rangeproof.data(), rangeproof.size(), &written));
+        rangeproof.resize(written);
+        return rangeproof;
+    }
+
+    std::vector<unsigned char> asset_surjectionproof(byte_span_t output_asset, byte_span_t output_abf,
+        byte_span_t output_generator, byte_span_t bytes, byte_span_t asset, byte_span_t abf, byte_span_t generator)
+    {
+        size_t written;
+        GDK_VERIFY(wally_asset_surjectionproof_size(asset.size() / ASSET_TAG_LEN, &written));
+        std::vector<unsigned char> surjproof(written);
+        GDK_VERIFY(wally_asset_surjectionproof(output_asset.data(), output_asset.size(), output_abf.data(),
+            output_abf.size(), output_generator.data(), output_generator.size(), bytes.data(), bytes.size(),
+            asset.data(), asset.size(), abf.data(), abf.size(), generator.data(), generator.size(), surjproof.data(),
+            surjproof.size(), &written));
+        surjproof.resize(written);
+        return surjproof;
+    }
+
+    unblind_t asset_unblind(byte_span_t private_key, byte_span_t rangeproof, byte_span_t commitment,
+        byte_span_t nonce_commitment, byte_span_t extra_commitment, byte_span_t generator)
+    {
+        asset_id_t asset_id;
+        vbf_t vbf;
+        abf_t abf;
+        uint64_t value;
+
+        GDK_VERIFY(wally_asset_unblind(nonce_commitment.data(), nonce_commitment.size(), private_key.data(),
+            private_key.size(), rangeproof.data(), rangeproof.size(), commitment.data(), commitment.size(),
+            extra_commitment.data(), extra_commitment.size(), generator.data(), generator.size(), asset_id.data(),
+            asset_id.size(), abf.data(), abf.size(), vbf.data(), vbf.size(), &value));
+
+        return std::make_tuple(asset_id, vbf, abf, value);
+    }
+
+    std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix)
+    {
+        char* ret;
+        GDK_VERIFY(wally_confidential_addr_to_addr(address.c_str(), prefix, &ret));
+        return make_string(ret);
+    }
+
+    pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix)
+    {
+        pub_key_t pub_key;
+        GDK_VERIFY(wally_confidential_addr_to_ec_public_key(address.c_str(), prefix, pub_key.data(), pub_key.size()));
+        return pub_key;
+    }
+
+    std::string confidential_addr_from_addr(const std::string& address, uint32_t prefix, byte_span_t public_key)
+    {
+        char* ret;
+        GDK_VERIFY(
+            wally_confidential_addr_from_addr(address.c_str(), prefix, public_key.data(), public_key.size(), &ret));
+        return make_string(ret);
+    }
+
     //
     // Transactions
     //
+    bool tx_is_elements(const wally_tx_ptr& tx)
+    {
+        size_t written;
+        GDK_VERIFY(wally_tx_is_elements(tx.get(), &written));
+        return written == 1;
+    }
+
     size_t tx_get_length(const wally_tx_ptr& tx, uint32_t flags)
     {
         size_t written;
@@ -500,7 +634,8 @@ namespace sdk {
     {
         std::vector<unsigned char> buff(tx_get_length(tx, flags));
         size_t written;
-        GDK_VERIFY(wally_tx_to_bytes(tx.get(), flags, buff.data(), buff.size(), &written));
+        GDK_VERIFY(wally_tx_to_bytes(tx.get(), flags | (tx_is_elements(tx) ? WALLY_TX_FLAG_USE_ELEMENTS : 0),
+            buff.data(), buff.size(), &written));
         GDK_RUNTIME_ASSERT(written == buff.size());
         return buff;
     }
@@ -511,12 +646,38 @@ namespace sdk {
         GDK_VERIFY(wally_tx_add_raw_output(tx.get(), satoshi, script.data(), script.size(), flags));
     }
 
+    void tx_add_elements_raw_output(const wally_tx_ptr& tx, byte_span_t script, byte_span_t asset, byte_span_t value,
+        byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof)
+    {
+        GDK_VERIFY(wally_tx_add_elements_raw_output(tx.get(), script.data(), script.size(), asset.data(), asset.size(),
+            value.data(), value.size(), nonce.data(), nonce.size(), surjectionproof.data(), surjectionproof.size(),
+            rangeproof.data(), rangeproof.size(), 0));
+    }
+
+    void tx_elements_output_commitment_set(const wally_tx_ptr& tx, size_t index, byte_span_t asset, byte_span_t value,
+        byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof)
+    {
+        GDK_RUNTIME_ASSERT(index < tx->num_outputs);
+        GDK_VERIFY(wally_tx_elements_output_commitment_set(&tx->outputs[index], asset.data(), asset.size(),
+            value.data(), value.size(), nonce.data(), nonce.size(), surjectionproof.data(), surjectionproof.size(),
+            rangeproof.data(), rangeproof.size()));
+    }
+
     std::array<unsigned char, SHA256_LEN> tx_get_btc_signature_hash(
         const wally_tx_ptr& tx, size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags)
     {
         std::array<unsigned char, SHA256_LEN> tx_hash;
         GDK_VERIFY(wally_tx_get_btc_signature_hash(
             tx.get(), index, script.data(), script.size(), satoshi, sighash, flags, tx_hash.data(), tx_hash.size()));
+        return tx_hash;
+    }
+
+    std::array<unsigned char, SHA256_LEN> tx_get_elements_signature_hash(
+        const wally_tx_ptr& tx, size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags)
+    {
+        std::array<unsigned char, SHA256_LEN> tx_hash;
+        GDK_VERIFY(wally_tx_get_elements_signature_hash(tx.get(), index, script.data(), script.size(), value.data(),
+            value.size(), sighash, flags, tx_hash.data(), tx_hash.size()));
         return tx_hash;
     }
 
@@ -535,22 +696,18 @@ namespace sdk {
         return wally_tx_ptr(p);
     }
 
-    void tx_add_input(const wally_tx_ptr& tx, const wally_tx_input_ptr& input)
-    {
-        GDK_VERIFY(wally_tx_add_input(tx.get(), input.get()));
-    }
-
-    void tx_add_output(const wally_tx_ptr& tx, const wally_tx_output_ptr& output)
-    {
-        GDK_VERIFY(wally_tx_add_output(tx.get(), output.get()));
-    }
-
     void tx_add_raw_input(const wally_tx_ptr& tx, byte_span_t txhash, uint32_t index, uint32_t sequence,
         byte_span_t script, const wally_tx_witness_stack_ptr& witness)
     {
         const uint32_t flags = 0;
-        GDK_VERIFY(wally_tx_add_raw_input(tx.get(), txhash.data(), txhash.size(), index, sequence, script.data(),
-            script.size(), witness.get(), flags));
+        if (!tx_is_elements(tx)) {
+            GDK_VERIFY(wally_tx_add_raw_input(tx.get(), txhash.data(), txhash.size(), index, sequence, script.data(),
+                script.size(), witness.get(), flags));
+        } else {
+            GDK_VERIFY(wally_tx_add_elements_raw_input(tx.get(), txhash.data(), txhash.size(), index, sequence,
+                script.data(), script.size(), witness.get(), nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+                nullptr, 0, nullptr, flags));
+        }
     }
 
     size_t tx_get_vsize(const wally_tx_ptr& tx)
@@ -599,6 +756,20 @@ namespace sdk {
     void tx_witness_stack_add_dummy(const wally_tx_witness_stack_ptr& stack, uint32_t flags)
     {
         GDK_VERIFY(wally_tx_witness_stack_add_dummy(stack.get(), flags));
+    }
+
+    cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi)
+    {
+        cvalue_t ct_value;
+        GDK_VERIFY(wally_tx_confidential_value_from_satoshi(satoshi, ct_value.data(), ct_value.size()));
+        return ct_value;
+    }
+
+    uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value)
+    {
+        uint64_t satoshi;
+        GDK_VERIFY(wally_tx_confidential_value_to_satoshi(ct_value.data(), ct_value.size(), &satoshi));
+        return satoshi;
     }
 
     xpub_t make_xpub(const std::string& chain_code_hex, const std::string& pub_key_hex)

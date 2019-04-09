@@ -119,6 +119,8 @@ namespace sdk {
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
+        void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
+
         void send_nlocktimes();
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
@@ -133,7 +135,6 @@ namespace sdk {
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json);
-        nlohmann::json convert_amount_nocatch(const nlohmann::json& amount_json);
         nlohmann::json encrypt(const nlohmann::json& input_json);
         nlohmann::json decrypt(const nlohmann::json& input_json);
 

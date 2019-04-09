@@ -1,6 +1,20 @@
 #! /usr/bin/env bash
 set -e
 
+have_cmd()
+{
+    command -v "$1" >/dev/null 2>&1
+}
+
+if have_cmd gsed; then
+    SED=$(command -v gsed)
+elif have_cmd tar; then
+    SED=$(command -v sed)
+else
+    echo "Could not find sed or gsed. Please install sed and try again."
+    exit 1
+fi
+
 OPENSSL_NAME="openssl-OpenSSL_1_0_2r"
 OPENSSL_OPTIONS="no-krb6 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
 OPENSSL_MOBILE="no-hw no-engine"

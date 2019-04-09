@@ -40,10 +40,14 @@ namespace sdk {
         std::string chain_code() const { return m_details.at("service_chain_code"); }
         std::string pub_key() const { return m_details.at("service_pubkey"); }
         std::string gait_onion() const { return m_details.at("wamp_onion_url"); }
+        std::string policy_asset() const { return m_details.value("policy_asset", std::string{}); }
         std::vector<std::string> default_peers() const { return m_details.at("default_peers"); }
         std::string bech32_prefix() const { return m_details.at("bech32_prefix"); }
         unsigned char btc_version() const { return m_details.at("p2pkh_version"); }
         unsigned char btc_p2sh_version() const { return m_details.at("p2sh_version"); }
+        uint32_t blinded_prefix() const { return m_details.at("blinded_prefix"); }
+        int ct_exponent() const { return m_details.at("ct_exponent"); }
+        int ct_bits() const { return m_details.at("ct_bits"); }
         bool main_net() const { return m_details.at("mainnet"); }
         bool liquid() const { return m_details.at("liquid"); }
         std::string get_connection_string(bool use_tor) const

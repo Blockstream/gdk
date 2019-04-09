@@ -11,6 +11,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "amount.hpp"
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "logging.hpp"
@@ -19,6 +20,8 @@
 
 namespace ga {
 namespace sdk {
+    enum class logging_levels : uint32_t;
+
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
 
@@ -131,8 +134,12 @@ namespace sdk {
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json get_transaction_details(const std::string& txhash) const;
 
+        nlohmann::json create_transaction(const nlohmann::json& details);
+        nlohmann::json sign_transaction(const nlohmann::json& details);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
+
+        void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
 
         void send_nlocktimes();
 
@@ -169,6 +176,11 @@ namespace sdk {
         ga_pubkeys& get_ga_pubkeys();
         ga_user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
+
+        std::string asset_id_from_string(const std::string& tag)
+        {
+            return tag.empty() || tag == m_net_params.policy_asset() ? "btc" : tag;
+        }
 
     private:
         void reset();

@@ -26,6 +26,24 @@ namespace sdk {
         return nlohmann::json(); // No HW device unless we are a HW signer
     }
 
+    // TODO: implement...
+    priv_key_t signer::get_master_blinding_key()
+    {
+        std::array<unsigned char, 32> blinding_key;
+        std::fill(std::begin(blinding_key), std::end(blinding_key), 1);
+        return blinding_key;
+    }
+
+    priv_key_t signer::get_blinding_key_from_script(byte_span_t script)
+    {
+        return hmac_sha256(get_master_blinding_key(), script);
+    }
+
+    std::vector<unsigned char> signer::get_public_key_from_blinding_key(byte_span_t script)
+    {
+        return ec_public_key_from_private_key(get_blinding_key_from_script(script));
+    }
+
     namespace {
         static wally_ext_key_ptr derive(const wally_ext_key_ptr& hdkey, gsl::span<const uint32_t> path)
         {
