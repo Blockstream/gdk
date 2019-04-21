@@ -1497,10 +1497,10 @@ namespace sdk {
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         GDK_RUNTIME_ASSERT_MSG(subaccount != 0, "Main subaccount name cannot be changed");
-        locker_t locker(m_mutex);
         wamp_call([](wamp_call_result result) { GDK_RUNTIME_ASSERT(result.get().argument<bool>(0)); },
             "com.greenaddress.txs.rename_subaccount", subaccount, new_name);
 
+        locker_t locker(m_mutex);
         const auto p = m_subaccounts.find(subaccount);
         if (p != m_subaccounts.end()) {
             p->second["name"] = new_name;
