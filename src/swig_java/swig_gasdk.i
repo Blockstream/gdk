@@ -311,7 +311,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 
     // Notifications
     public interface NotificationHandler {
-       void onNewNofification(final Object session, final Object jsonObject);
+       void onNewNotification(final Object session, final Object jsonObject);
     }
 
     private static NotificationHandler mNotificationHandler = null;
@@ -322,7 +322,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 
     private static void callNotificationHandler(final Object session, final Object jsonObject) {
         if (mNotificationHandler != null)
-            mNotificationHandler.onNewNofification(session, jsonObject);
+            mNotificationHandler.onNewNotification(session, jsonObject);
     }
 
     static final class Obj {
