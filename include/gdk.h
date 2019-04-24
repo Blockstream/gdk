@@ -56,6 +56,16 @@ typedef void (*GA_notification_handler)(void* context, const GA_json* details);
 #define GA_MEMO_BIP70 1
 
 /**
+ * Set the global configuration and run one-time initialization code. This function must
+ * be called once and only once before calling any other functions. When used in a
+ * multi-threaded context this function should be called before starting any other
+ * threads that call other gdk functions.
+ *
+ * :param config: Configuration object
+ */
+GDK_API int GA_init(const GA_json* config);
+
+/**
  * Create a new session.
  *
  * :param session: Destination for the resulting session.

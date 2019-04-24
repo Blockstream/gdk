@@ -91,18 +91,6 @@ namespace sdk {
             { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'
         };
 
-        static std::once_flag one_time_setup_flag;
-
-        static void one_time_setup()
-        {
-            std::call_once(one_time_setup_flag, [] {
-                GDK_VERIFY(wally_init(0));
-                auto entropy = get_random_bytes<WALLY_SECP_RANDOMIZE_LEN>();
-                GDK_VERIFY(wally_secp_randomize(entropy.data(), entropy.size()));
-                wally_bzero(entropy.data(), entropy.size());
-            });
-        }
-
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
         {
@@ -348,7 +336,6 @@ namespace sdk {
                                            ? log_level::severity_level::debug
                                            : m_log_level == logging_levels::info ? log_level::severity_level::info
                                                                                  : log_level::severity_level::fatal));
-        one_time_setup();
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         connect_with_tls() ? make_client<client_tls>() : make_client<client>();
     }

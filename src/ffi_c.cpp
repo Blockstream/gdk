@@ -142,6 +142,16 @@ struct GA_session final : public ga::sdk::session {
             A4, A5, A6, A7, A8, A9, A10);                                                                              \
     }
 
+int GA_init(const GA_json* config)
+{
+    try {
+        GDK_RUNTIME_ASSERT(config);
+        return ga::sdk::init(*json_cast(config));
+    } catch (const std::exception& e) {
+        return GA_ERROR;
+    }
+}
+
 int GA_create_session(struct GA_session** session)
 {
     try {

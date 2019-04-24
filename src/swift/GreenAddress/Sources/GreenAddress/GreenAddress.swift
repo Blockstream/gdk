@@ -146,6 +146,14 @@ fileprivate class NotificationContext {
     }
 }
 
+public func gdkInit(config: [String: Any]) throws {
+    var config_json: OpaquePointer = try convertDictToJSON(dict: config)
+    defer {
+        GA_destroy_json(config_json)
+    }
+    try callWrapper(fun: GA_init(config_json))
+}
+
 public class Session {
     private typealias NotificationHandler = @convention(c) (UnsafeMutableRawPointer?, OpaquePointer?) -> Void
 

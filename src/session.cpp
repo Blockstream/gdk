@@ -12,6 +12,7 @@
 #include "ga_session.hpp"
 #include "ga_tx.hpp"
 #include "logging.hpp"
+#include "utils.hpp"
 
 using namespace std::literals;
 
@@ -23,6 +24,9 @@ namespace sdk {
         // session/are serialised.
         static std::mutex session_impl_mutex;
         static std::mutex network_control_context_mutex;
+
+        static bool init_done = false;
+        static nlohmann::json global_config;
 
         class exponential_backoff {
         public:
@@ -119,6 +123,24 @@ namespace sdk {
         bool m_enabled{ true };
     };
 
+    int init(const nlohmann::json& config)
+    {
+        GDK_RUNTIME_ASSERT(config.is_object());
+        GDK_RUNTIME_ASSERT(!init_done);
+
+        global_config = config;
+
+        GDK_VERIFY(wally_init(0));
+        auto entropy = get_random_bytes<WALLY_SECP_RANDOMIZE_LEN>();
+        GDK_VERIFY(wally_secp_randomize(entropy.data(), entropy.size()));
+        wally_bzero(entropy.data(), entropy.size());
+        init_done = true;
+
+        return GA_OK;
+    }
+
+    const nlohmann::json& gdk_config() { return global_config; }
+
     static void log_exception(const char* preamble, const std::exception& e)
     {
         try {
@@ -188,6 +210,7 @@ namespace sdk {
         exception_wrapper([&] {
             {
                 std::unique_lock<std::mutex> l{ session_impl_mutex };
+                GDK_RUNTIME_ASSERT_MSG(init_done, "You must call GA_init first");
 
                 if (m_impl != nullptr) {
                     if (m_impl->is_connected(net_params)) {

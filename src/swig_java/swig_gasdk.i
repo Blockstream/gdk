@@ -293,20 +293,17 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 
     private static JSONConverter mJSONConverter = null;
 
-    public static void setJSONConverter(final JSONConverter jsonConverter) {
-        mJSONConverter = jsonConverter;
-    }
-
     private static Object toJSONObject(final String jsonString) {
-        if (mJSONConverter == null)
-            return (Object) jsonString;
         return mJSONConverter.toJSONObject(jsonString);
     }
 
     private static String toJSONString(final Object jsonObject) {
-        if (mJSONConverter == null)
-            return (String) jsonObject;
         return mJSONConverter.toJSONString(jsonObject);
+    }
+
+    public static void init(JSONConverter _JSONConverter, final Object config) {
+        mJSONConverter = _JSONConverter;
+        _internal_GA_init(config);
     }
 
     // Notifications
@@ -432,6 +429,11 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %rename("%(strip:[GA_])s") FUNC;
 %enddef
 
+%define %internal_returns_void__(FUNC)
+%return_decls(FUNC, void, void)
+%rename("_internal_%s") FUNC;
+%enddef
+
 %define %returns_void__(FUNC)
 %return_decls(FUNC, void, void)
 %enddef
@@ -472,6 +474,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %java_opaque_struct(GA_session, GDK_SWIG_SESSION_ID)
 %java_opaque_struct(GA_auth_handler, GDK_SWIG_AUTH_HANDLER_ID)
 
+%internal_returns_void__(GA_init)
 %returns_struct(GA_ack_system_message, GA_auth_handler)
 %returns_string(GA_broadcast_transaction)
 %returns_void__(GA_connect)

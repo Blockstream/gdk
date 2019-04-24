@@ -237,3 +237,7 @@ def get_random_bytes(n):
     out = bytearray(n)
     _old_get_random_bytes(n, out)
     return bytes(out)
+
+_old_init = init
+def init(config):
+    return _old_init(json.dumps(config))

@@ -25,6 +25,9 @@ namespace sdk {
         debug = 2,
     };
 
+    int init(const nlohmann::json& config);
+    const nlohmann::json& gdk_config();
+
     class session {
     public:
         session();
