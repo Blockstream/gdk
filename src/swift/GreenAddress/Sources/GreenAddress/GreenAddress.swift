@@ -159,8 +159,8 @@ public class Session {
     private let notificationHandler : NotificationHandler = { (context: UnsafeMutableRawPointer?, details: OpaquePointer?) -> Void in
         let context : NotificationContext = Unmanaged.fromOpaque(context!).takeUnretainedValue()
         if let jsonDetails = details {
-            let dict = try? convertOpaqueJsonToDict(o: jsonDetails)
-            context.notificationCompletionHandler(dict!)
+            let dict = (try! convertOpaqueJsonToDict(o: jsonDetails)) as [String : Any]?
+            context.notificationCompletionHandler(dict)
         }
     }
 
