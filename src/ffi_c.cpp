@@ -165,20 +165,8 @@ int GA_destroy_json(GA_json* json)
     return GA_OK;
 }
 
-GDK_DEFINE_C_FUNCTION_3(GA_connect, struct GA_session*, session, const char*, network, uint32_t, log_level, {
-    session->connect(network, "", false,
-        ga::sdk::logging_levels{ log_level == GA_DEBUG
-                ? ga::sdk::logging_levels::debug
-                : log_level == GA_INFO ? ga::sdk::logging_levels::info : ga::sdk::logging_levels::none });
-});
-
-GDK_DEFINE_C_FUNCTION_5(GA_connect_with_proxy, struct GA_session*, session, const char*, network, const char*,
-    proxy_uri, uint32_t, use_tor, uint32_t, log_level, {
-        session->connect(network, proxy_uri, use_tor != GA_FALSE,
-            ga::sdk::logging_levels{ log_level == GA_DEBUG
-                    ? ga::sdk::logging_levels::debug
-                    : log_level == GA_INFO ? ga::sdk::logging_levels::info : ga::sdk::logging_levels::none });
-    });
+GDK_DEFINE_C_FUNCTION_2(
+    GA_connect, struct GA_session*, session, const GA_json*, net_params, { session->connect(*json_cast(net_params)); });
 
 GDK_DEFINE_C_FUNCTION_1(GA_disconnect, struct GA_session*, session, { session->disconnect(); })
 

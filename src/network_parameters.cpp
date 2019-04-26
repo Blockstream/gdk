@@ -168,13 +168,13 @@ namespace sdk {
         return ret;
     }
 
-    std::shared_ptr<nlohmann::json> network_parameters::get(const std::string& name)
+    nlohmann::json network_parameters::get(const std::string& name)
     {
         std::unique_lock<std::mutex> l{ registered_networks_mutex };
 
         const auto p = registered_networks.find(name);
         GDK_RUNTIME_ASSERT_MSG(p != registered_networks.end(), "Unknown network");
-        return p->second;
+        return *p->second;
     }
 } // namespace sdk
 } // namespace ga

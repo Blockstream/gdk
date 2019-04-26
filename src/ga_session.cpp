@@ -317,11 +317,10 @@ namespace sdk {
         m_run_thread.join();
     }
 
-    ga_session::ga_session(
-        const network_parameters& net_params, const std::string& proxy, bool use_tor, logging_levels log_level)
-        : m_net_params(net_params)
-        , m_proxy(socksify(proxy))
-        , m_use_tor(use_tor)
+    ga_session::ga_session(const nlohmann::json& net_params)
+        : m_net_params(network_parameters{ network_parameters::get(net_params.at("name")) })
+        , m_proxy(socksify(net_params.value("proxy", std::string{})))
+        , m_use_tor(net_params.value("use_tor", false))
         , m_io()
         , m_controller(m_io)
         , m_ping_timer(m_io)
@@ -337,9 +336,13 @@ namespace sdk {
         , m_is_locked(false)
         , m_rfc2818_verifier(websocketpp::uri(m_net_params.gait_wamp_url()).get_host())
         , m_cert_pin_validated(false)
-        , m_log_level(log_level)
         , m_tx_last_notification(std::chrono::system_clock::now())
     {
+        const auto log_level = net_params.value("log_level", "none");
+        m_log_level = log_level == "none"
+            ? logging_levels::none
+            : log_level == "info" ? logging_levels::info
+                                  : log_level == "debug" ? logging_levels::debug : logging_levels::none;
         boost::log::core::get()->set_filter(
             log_level::severity >= (m_log_level == logging_levels::debug
                                            ? log_level::severity_level::debug
@@ -364,8 +367,12 @@ namespace sdk {
         return tls ? is_transport_connected<transport_tls>() : is_transport_connected<transport>();
     }
 
-    bool ga_session::is_connected(const std::string& name, const std::string& proxy, bool use_tor)
+    bool ga_session::is_connected(const nlohmann::json& net_params)
     {
+        const auto name = net_params.at("network_name");
+        const auto proxy = net_params.value("proxy", std::string{});
+        const auto use_tor = net_params.value("use_tor", false);
+
         locker_t locker(m_mutex);
         return is_connected() && socksify(proxy) == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
     }

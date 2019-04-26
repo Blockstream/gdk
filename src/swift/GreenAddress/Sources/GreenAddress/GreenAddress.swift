@@ -14,13 +14,6 @@ public enum GaError: Error {
     case NotAuthorizedError
 }
 
-public enum Network: String {
-    case MainNet = "mainnet"
-    case TestNet = "testnet"
-    case LocalTest = "localtest"
-    case RegTest = "regtest"
-}
-
 fileprivate func errorWrapper(_ r: Int32) throws {
     guard r == GA_OK else {
         switch r {
@@ -182,13 +175,12 @@ public class Session {
         GA_destroy_session(session)
     }
 
-    public func connect(network: Network, log_level: Int32 = GA_NONE) throws {
-        try callWrapper(fun: GA_connect(session, network.rawValue, UInt32(log_level)))
-    }
-
-    public func connectWithProxy(network: Network, proxy_uri: String, use_tor: Bool, log_level: Int32 = GA_NONE) throws {
-        try callWrapper(fun: GA_connect_with_proxy(session, network.rawValue, proxy_uri, UInt32(use_tor ? GA_TRUE : GA_FALSE),
-                                                   UInt32(log_level)))
+    public func connect(netParams: [String:Any]) throws {
+        var netParamsJson: OpaquePointer = try convertDictToJSON(dict: netParams)
+        defer {
+            GA_destroy_json(netParamsJson)
+        }
+        try callWrapper(fun: GA_connect(session, netParamsJson))
     }
 
     public func disconnect() throws {

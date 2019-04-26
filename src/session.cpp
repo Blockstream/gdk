@@ -183,21 +183,20 @@ namespace sdk {
         __builtin_unreachable();
     }
 
-    void session::connect(const std::string& name, const std::string& proxy, bool use_tor, logging_levels log_level)
+    void session::connect(const nlohmann::json& net_params)
     {
         exception_wrapper([&] {
             {
                 std::unique_lock<std::mutex> l{ session_impl_mutex };
 
                 if (m_impl != nullptr) {
-                    if (m_impl->is_connected(name, proxy, use_tor)) {
+                    if (m_impl->is_connected(net_params)) {
                         return; // No-op
                     }
                     throw reconnect_error(); // Need to disconnect first
                 }
 
-                network_parameters net_params{ *network_parameters::get(name) };
-                m_impl = std::make_unique<ga_session>(net_params, proxy, use_tor, log_level);
+                m_impl = std::make_unique<ga_session>(net_params);
                 m_impl->set_ping_fail_handler([this] {
                     GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
                     reconnect();

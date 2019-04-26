@@ -17,7 +17,7 @@ namespace sdk {
     public:
         static void add(const std::string& name, const nlohmann::json& details);
         static nlohmann::json get_all();
-        static std::shared_ptr<nlohmann::json> get(const std::string& name);
+        static nlohmann::json get(const std::string& name);
 
         explicit network_parameters(const nlohmann::json& details);
 

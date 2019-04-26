@@ -65,13 +65,11 @@ class Session(object):
     """A GreenAddress session
 
     """
-    def __init__(self, network, proxy_uri='', use_tor=False, debug=False):
+    def __init__(self, net_params):
         self.notifications = queue.Queue()
         self.session_obj = create_session()
         _python_set_callback_handler(self.session_obj, self._callback_handler)
-        if proxy_uri or use_tor:
-            return self.connect_with_proxy(network, proxy_uri, use_tor, debug)
-        return self.connect(network, debug)
+        return self.connect(net_params)
 
     def _callback_handler(self, obj, event):
         assert obj is self.session_obj
@@ -94,11 +92,8 @@ class Session(object):
     def _to_json(obj):
         return obj if isinstance(obj, basestring) else json.dumps(obj)
 
-    def connect(self, network, debug=False):
-        return connect(self.session_obj, network, debug)
-
-    def connect_with_proxy(self, network, proxy_uri, use_tor=False, debug=False):
-        return connect_with_proxy(self.session_obj, network, proxy_uri, use_tor, debug)
+    def connect(self, net_params):
+        return connect(self.session_obj, self._to_json(net_params))
 
     def disconnect(self):
         return disconnect(self.session_obj)

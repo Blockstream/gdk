@@ -74,22 +74,9 @@ GDK_API int GA_destroy_session(struct GA_session* session);
  * Connect to a remote server using the specified network.
  *
  * :param session: The session to use.
- * :param network: The name of the network to connect to.
- * :param log_level: GA_NONE, GA_INFO or GA_DEBUG in levels of increased logging and verbosity.
+ * :param net_params: The :ref:`net-params` of the network to connect to.
  */
-GDK_API int GA_connect(struct GA_session* session, const char* network, uint32_t log_level);
-
-/**
- * Connect to a remote server using the specified network and proxy.
- *
- * :param session: The session to use.
- * :param network: The name of the network to connect to.
- * :param proxy: The proxy server to use.
- * :param use_tor: GA_TRUE to connect through Tor, GA_FALSE otherwise.
- * :param log_level: GA_NONE, GA_INFO or GA_DEBUG in levels of increased logging and verbosity.
- */
-GDK_API int GA_connect_with_proxy(
-    struct GA_session* session, const char* network, const char* proxy_uri, uint32_t use_tor, uint32_t log_level);
+GDK_API int GA_connect(struct GA_session* session, const GA_json* net_params);
 
 /**
  * Disconnect from a connected remote server.

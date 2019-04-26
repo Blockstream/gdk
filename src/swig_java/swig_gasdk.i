@@ -475,7 +475,6 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_ack_system_message, GA_auth_handler)
 %returns_string(GA_broadcast_transaction)
 %returns_void__(GA_connect)
-%returns_void__(GA_connect_with_proxy)
 %returns_struct(GA_convert_amount, GA_json)
 %returns_string(GA_convert_json_to_string)
 %returns_string(GA_convert_json_value_to_string)

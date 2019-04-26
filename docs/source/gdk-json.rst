@@ -3,6 +3,20 @@ Gdk JSON
 
 In this section there are some example JSON used by the lib
 
+.. _net-params:
+
+Connection parameter JSON
+-------------------------
+
+.. code-block:: json
+
+   {
+      "name": "testnet",
+      "log_level": "info",
+      "proxy": "localhost:9150",
+      "use_tor": true
+   }
+
 .. _hw-device:
 
 HW device JSON

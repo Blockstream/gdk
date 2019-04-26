@@ -46,8 +46,7 @@ namespace sdk {
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using ping_fail_t = std::function<void()>;
 
-        ga_session(
-            const network_parameters& net_params, const std::string& proxy, bool use_tor, logging_levels log_level);
+        ga_session(const nlohmann::json& net_params);
         ga_session(const ga_session& other) = delete;
         ga_session(ga_session&& other) noexcept = delete;
         ga_session& operator=(const ga_session& other) = delete;
@@ -57,7 +56,7 @@ namespace sdk {
 
         void connect();
         bool reconnect();
-        bool is_connected(const std::string& name, const std::string& proxy, bool use_tor);
+        bool is_connected(const nlohmann::json& net_params);
 
         void set_heartbeat_timeout_handler(heartbeat_t handler);
         void set_ping_fail_handler(ping_fail_t handler);

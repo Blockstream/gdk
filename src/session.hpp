@@ -36,6 +36,7 @@ namespace sdk {
         session& operator=(const session&) = delete;
         session& operator=(session&&) = delete;
 
+        void connect(const nlohmann::json& net_params);
         void connect(const std::string& name, const std::string& proxy = std::string(), bool use_tor = false,
             logging_levels log_level = logging_levels::none);
         void disconnect();
