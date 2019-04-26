@@ -603,7 +603,9 @@ namespace sdk {
             locker_t locker{ m_mutex };
 
             if (m_notification_handler != nullptr) {
-                call_notification_handler(locker, new nlohmann::json());
+                const nlohmann::json details{ { "connected", false } };
+                call_notification_handler(
+                    locker, new nlohmann::json({ { "event", "session" }, { "session", details } }));
             }
 
             m_signer.reset();
