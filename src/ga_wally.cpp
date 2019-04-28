@@ -41,6 +41,13 @@ namespace sdk {
         return ret;
     }
 
+    std::array<unsigned char, HMAC_SHA256_LEN> hmac_sha256(byte_span_t key, byte_span_t data)
+    {
+        std::array<unsigned char, HMAC_SHA256_LEN> ret;
+        GDK_VERIFY(wally_hmac_sha256(key.data(), key.size(), data.data(), data.size(), ret.data(), ret.size()));
+        return ret;
+    }
+
     std::array<unsigned char, HMAC_SHA512_LEN> hmac_sha512(byte_span_t key, byte_span_t data)
     {
         std::array<unsigned char, HMAC_SHA512_LEN> ret;

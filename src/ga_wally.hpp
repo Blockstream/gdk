@@ -67,6 +67,8 @@ namespace sdk {
 
     std::array<unsigned char, SHA512_LEN> sha512(byte_span_t data);
 
+    std::array<unsigned char, HMAC_SHA256_LEN> hmac_sha256(byte_span_t key, byte_span_t data);
+
     std::array<unsigned char, HMAC_SHA512_LEN> hmac_sha512(byte_span_t key, byte_span_t data);
 
     std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> pbkdf2_hmac_sha512(
