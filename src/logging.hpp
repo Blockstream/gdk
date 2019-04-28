@@ -60,6 +60,31 @@ namespace sdk {
     };
 #endif
 
+#if defined(__ANDROID__) and not defined(NDEBUG)
+    static void start_android_std_outerr_bridge()
+    {
+        auto logger_thread = std::thread([] {
+            int pipes[2];
+            setvbuf(stdout, 0, _IOLBF, 0);
+            setvbuf(stderr, 0, _IONBF, 0);
+
+            pipe(pipes);
+            dup2(pipes[1], 1);
+            dup2(pipes[1], 2);
+
+            ssize_t read_size;
+            char buffer[1024];
+            while ((read_size = read(pipes[0], buffer, sizeof buffer - 1)) > 0) {
+                if (buffer[read_size - 1] == '\n')
+                    --read_size;
+                buffer[read_size] = 0;
+                __android_log_write(ANDROID_LOG_DEBUG, "GDK", buffer);
+            }
+        });
+        logger_thread.detach();
+    }
+#endif
+
     BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(gdk_logger, gdk_logger_t)
     {
 #ifdef __ANDROID__

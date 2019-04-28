@@ -134,6 +134,10 @@ namespace sdk {
         auto entropy = get_random_bytes<WALLY_SECP_RANDOMIZE_LEN>();
         GDK_VERIFY(wally_secp_randomize(entropy.data(), entropy.size()));
         wally_bzero(entropy.data(), entropy.size());
+
+#if defined(__ANDROID__) and not defined(NDEBUG)
+        start_android_std_outerr_bridge();
+#endif
         init_done = true;
 
         return GA_OK;
