@@ -356,7 +356,7 @@ namespace sdk {
 
     bool ga_session::is_connected(const nlohmann::json& net_params)
     {
-        const auto name = net_params.at("network_name");
+        const auto name = net_params.at("name");
         const auto proxy = net_params.value("proxy", std::string{});
         const auto use_tor = net_params.value("use_tor", false);
 
