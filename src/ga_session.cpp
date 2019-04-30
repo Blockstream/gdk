@@ -923,108 +923,115 @@ namespace sdk {
 
     void ga_session::on_new_transaction(locker_t& locker, nlohmann::json details)
     {
-        using namespace std::chrono_literals;
+        no_std_exception_escape([&] {
+            using namespace std::chrono_literals;
 
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
+            GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        const auto now = std::chrono::system_clock::now();
-        if (now < m_tx_last_notification || now - m_tx_last_notification > 60s) {
-            // Time has adjusted, or more than 60s since last notification,
-            // clear any cached notifications to deliver new ones even if
-            // duplicates
-            m_tx_notifications.clear();
-        }
-
-        m_tx_last_notification = now;
-
-        // Convert affected subaccounts from (singular/array of)(null/number)
-        // to a sorted array of subaccounts
-        std::vector<uint32_t> affected;
-        const auto& subaccounts = details["subaccounts"];
-        if (subaccounts.is_null()) {
-            affected.push_back(0);
-        } else if (subaccounts.is_array()) {
-            for (const auto& sa : subaccounts) {
-                if (sa.is_null()) {
-                    affected.push_back(0);
-                } else {
-                    affected.push_back(sa.get<uint32_t>());
-                }
+            const auto now = std::chrono::system_clock::now();
+            if (now < m_tx_last_notification || now - m_tx_last_notification > 60s) {
+                // Time has adjusted, or more than 60s since last notification,
+                // clear any cached notifications to deliver new ones even if
+                // duplicates
+                m_tx_notifications.clear();
             }
-        } else {
-            affected.push_back(subaccounts.get<uint32_t>());
-        }
-        std::sort(affected.begin(), affected.end());
-        details["subaccounts"] = affected;
 
-        const auto json_str = details.dump();
-        if (std::find(m_tx_notifications.begin(), m_tx_notifications.end(), json_str) != m_tx_notifications.end()) {
-            GDK_LOG_SEV(log_level::debug) << "eliding notification:" << json_str;
-            return; // Elide duplicate notifications sent by the server
-        }
+            m_tx_last_notification = now;
 
-        m_tx_notifications.emplace_back(json_str); // Record this notification as delivered
+            // Convert affected subaccounts from (singular/array of)(null/number)
+            // to a sorted array of subaccounts
+            std::vector<uint32_t> affected;
+            const auto& subaccounts = details["subaccounts"];
+            if (subaccounts.is_null()) {
+                affected.push_back(0);
+            } else if (subaccounts.is_array()) {
+                for (const auto& sa : subaccounts) {
+                    if (sa.is_null()) {
+                        affected.push_back(0);
+                    } else {
+                        affected.push_back(sa.get<uint32_t>());
+                    }
+                }
+            } else {
+                affected.push_back(subaccounts.get<uint32_t>());
+            }
+            std::sort(affected.begin(), affected.end());
+            details["subaccounts"] = affected;
 
-        if (m_tx_notifications.size() > 8u) {
-            // Limit the size of notifications to elide. It is extremely unlikely
-            // for unique transactions to be notified fast enough for this to occur,
-            // but we strongly bound the vector size just in case.
-            m_tx_notifications.erase(m_tx_notifications.begin()); // pop the oldest
-        }
+            const auto json_str = details.dump();
+            if (std::find(m_tx_notifications.begin(), m_tx_notifications.end(), json_str) != m_tx_notifications.end()) {
+                GDK_LOG_SEV(log_level::debug) << "eliding notification:" << json_str;
+                return; // Elide duplicate notifications sent by the server
+            }
 
-        // Mark the balances of each affected subaccount dirty
-        for (auto subaccount : affected) {
-            const auto p = m_subaccounts.find(subaccount);
-            // TODO: Handle other logged in sessions creating subaccounts
-            GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-            p->second["has_transactions"] = true;
-            p->second.erase("balance");
-        }
+            m_tx_notifications.emplace_back(json_str); // Record this notification as delivered
 
-        // TODO: Mark cached tx lists (when implemented) as dirty
-        if (!m_notification_handler) {
-            return;
-        }
+            if (m_tx_notifications.size() > 8u) {
+                // Limit the size of notifications to elide. It is extremely unlikely
+                // for unique transactions to be notified fast enough for this to occur,
+                // but we strongly bound the vector size just in case.
+                m_tx_notifications.erase(m_tx_notifications.begin()); // pop the oldest
+            }
 
-        const std::string value_str = details["value"];
-        int64_t satoshi = strtol(value_str.c_str(), nullptr, 10);
-        details["satoshi"] = abs(satoshi);
+            // Mark the balances of each affected subaccount dirty
+            for (auto subaccount : affected) {
+                const auto p = m_subaccounts.find(subaccount);
+                // TODO: Handle other logged in sessions creating subaccounts
+                GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+                p->second["has_transactions"] = true;
+                p->second.erase("balance");
+            }
 
-        // TODO: We can't determine if this is a re-deposit based on the
-        // information the server give us. We should fetch the tx details
-        // in tx_list format, cache them, and notify that data instead.
-        const bool is_deposit = satoshi >= 0;
-        details["type"] = is_deposit ? "incoming" : "outgoing";
-        details.erase("value");
-        call_notification_handler(
-            locker, new nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
+            // TODO: Mark cached tx lists (when implemented) as dirty
+            if (!m_notification_handler) {
+                return;
+            }
+
+            const std::string value_str = details["value"];
+            int64_t satoshi = strtol(value_str.c_str(), nullptr, 10);
+            details["satoshi"] = abs(satoshi);
+
+            // TODO: We can't determine if this is a re-deposit based on the
+            // information the server give us. We should fetch the tx details
+            // in tx_list format, cache them, and notify that data instead.
+            const bool is_deposit = satoshi >= 0;
+            details["type"] = is_deposit ? "incoming" : "outgoing";
+            details.erase("value");
+            call_notification_handler(
+                locker, new nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
+        });
     }
 
     void ga_session::on_new_block(locker_t& locker, nlohmann::json details)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        json_rename_key(details, "count", "block_height");
-        details["initial_timestamp"] = m_earliest_block_time;
-        const uint32_t block_height = details["block_height"];
-        if (block_height > m_block_height) {
-            m_block_height = block_height;
-        }
-        if (m_notification_handler != nullptr) {
-            details.erase("diverged_count");
-            call_notification_handler(
-                locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
-        }
+        no_std_exception_escape([&] {
+            GDK_RUNTIME_ASSERT(locker.owns_lock());
+            json_rename_key(details, "count", "block_height");
+            details["initial_timestamp"] = m_earliest_block_time;
+            const uint32_t block_height = details["block_height"];
+            if (block_height > m_block_height) {
+                m_block_height = block_height;
+            }
+            if (m_notification_handler != nullptr) {
+                details.erase("diverged_count");
+                call_notification_handler(
+                    locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
+            }
+        });
     }
 
     void ga_session::on_new_fees(locker_t& locker, const nlohmann::json& details)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        auto new_estimates = set_fee_estimates(locker, details);
+        no_std_exception_escape([&] {
+            GDK_RUNTIME_ASSERT(locker.owns_lock());
+            auto new_estimates = set_fee_estimates(locker, details);
 
-        // Note: notification recipient must destroy the passed JSON
-        if (m_notification_handler != nullptr) {
-            call_notification_handler(locker, new nlohmann::json({ { "event", "fees" }, { "fees", new_estimates } }));
-        }
+            // Note: notification recipient must destroy the passed JSON
+            if (m_notification_handler != nullptr) {
+                call_notification_handler(
+                    locker, new nlohmann::json({ { "event", "fees" }, { "fees", new_estimates } }));
+            }
+        });
     }
 
     void ga_session::login(const std::string& mnemonic, const std::string& password)
