@@ -72,6 +72,12 @@ test_fedora_gcc:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --gcc
 
+test_fedora_debug_gcc:
+  extends: .fedora_images
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --buildtype=debug --gcc
+
 test_fedora_clang:
   extends: .fedora_images
   script:

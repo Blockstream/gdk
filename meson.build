@@ -87,7 +87,7 @@ if get_option('b_sanitize') == 'address' and is_clang
 endif
 
 if debug
-    add_project_arguments(['-g', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC'], language : ['c', 'cpp'])
+    add_project_arguments(['-g', '-Og', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC'], language : ['c', 'cpp'])
 else
     add_project_arguments(['-DNDEBUG'], language : ['c', 'cpp'])
 endif
