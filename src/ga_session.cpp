@@ -1555,7 +1555,7 @@ namespace sdk {
 
         auto& details = p->second;
         const auto p_balance = details.find("balance");
-        if (p_balance == details.end()) {
+        if (p_balance == details.end() || m_net_params.liquid()) {
             details["balance"] = get_subaccount_balance_from_server(locker, subaccount, 0);
         }
 
