@@ -2000,7 +2000,7 @@ namespace sdk {
 
         cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer());
 
-        nlohmann::json asset_utxos;
+        nlohmann::json asset_utxos({});
         std::for_each(std::begin(utxos), std::end(utxos), [&asset_utxos, this](const nlohmann::json& utxo) {
             const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
             asset_utxos[utxo_asset_tag].emplace_back(utxo);
