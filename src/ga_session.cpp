@@ -1586,10 +1586,10 @@ namespace sdk {
 
         // FIXME: replace "pointer" with "subaccount"; pointer should only be used
         // for the final path element in a derivation
-        const auto balance = convert_amount(locker, { { "satoshi", satoshi.value() } });
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "balance", balance }, { "has_transactions", has_txs } };
+            { "has_transactions", has_txs } };
+        sa["balance"]["btc"] = convert_amount(locker, { { "satoshi", satoshi.value() } });
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
