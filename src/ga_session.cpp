@@ -1805,6 +1805,7 @@ namespace sdk {
 
             std::map<std::string, amount> received, spent;
             std::map<uint32_t, nlohmann::json> in_map, out_map;
+            std::map<std::string, std::string> asset_tag_to_id;
             std::set<std::string> unique_asset_ids;
 
             // Clean up and categorize the endpoints
@@ -1819,13 +1820,13 @@ namespace sdk {
                 json_add_if_missing(ep, "address", std::string(), true);
                 ep.erase("is_credit");
 
-                const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
-                unique_asset_ids.emplace(asset_id);
-
                 const bool is_tx_output = json_get_value(ep, "is_output", false);
                 const bool is_relevant = json_get_value(ep, "is_relevant", false);
 
                 if (is_relevant) {
+                    const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
+                    unique_asset_ids.emplace(asset_id);
+                    asset_tag_to_id.emplace(ep.at("asset_tag"), asset_id);
                     // Compute the effect of the input/output on the wallets balance
                     // TODO: Figure out what redeemable value for social payments is about
                     const amount::value_type satoshi = ep.at("satoshi");
@@ -1887,7 +1888,12 @@ namespace sdk {
                     tx_details["can_cpfp"] = !is_confirmed;
                 } else {
                     for (auto& ep : tx_details["outputs"]) {
-                        const auto ep_asset_id = asset_id_from_string(ep.value("asset_id", "btc"));
+                        const auto script = ep["script"];
+                        if (script.empty()) {
+                            GDK_RUNTIME_ASSERT(m_net_params.liquid());
+                            continue;
+                        }
+                        const auto ep_asset_id = asset_tag_to_id.at(ep.at("asset_tag"));
                         if (ep_asset_id != asset_id) {
                             continue;
                         }
