@@ -1765,6 +1765,7 @@ namespace sdk {
             }
         }
 
+        const auto is_liquid = m_net_params.liquid();
         for (auto& tx_details : tx_list) {
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
             // TODO: Server should set subaccount to null if this is a spend from multiple subaccounts
@@ -1827,7 +1828,9 @@ namespace sdk {
                 if (is_relevant) {
                     const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
                     unique_asset_ids.emplace(asset_id);
-                    asset_tag_to_id.emplace(ep.at("asset_tag"), asset_id);
+                    if (is_liquid) {
+                        asset_tag_to_id.emplace(ep.at("asset_tag"), asset_id);
+                    }
                     // Compute the effect of the input/output on the wallets balance
                     // TODO: Figure out what redeemable value for social payments is about
                     const amount::value_type satoshi = ep.at("satoshi");
@@ -1857,6 +1860,8 @@ namespace sdk {
             tx_details["outputs"] = outputs;
             tx_details.erase("eps");
 
+            GDK_RUNTIME_ASSERT(is_liquid || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
+
             std::vector<std::string> addressees;
             for (const auto& asset_id : unique_asset_ids) {
                 const auto net_received = received[asset_id];
@@ -1866,9 +1871,11 @@ namespace sdk {
 
                 if (net_positive) {
                     for (auto& ep : tx_details["inputs"]) {
-                        const auto ep_asset_id = asset_id_from_string(ep.value("asset_id", "btc"));
-                        if (ep_asset_id != asset_id) {
-                            continue;
+                        if (is_liquid) {
+                            const auto ep_asset_id = asset_id_from_string(ep.value("asset_id", "btc"));
+                            if (ep_asset_id != asset_id) {
+                                continue;
+                            }
                         }
                         std::string addressee;
                         if (!json_get_value(ep, "is_relevant", false)) {
@@ -1889,14 +1896,16 @@ namespace sdk {
                     tx_details["can_cpfp"] = !is_confirmed;
                 } else {
                     for (auto& ep : tx_details["outputs"]) {
-                        const std::string script = ep["script"];
-                        if (script.empty()) {
-                            GDK_RUNTIME_ASSERT(m_net_params.liquid());
-                            continue;
-                        }
-                        const auto ep_asset_id = asset_tag_to_id.at(ep.at("asset_tag"));
-                        if (ep_asset_id != asset_id) {
-                            continue;
+                        if (is_liquid) {
+                            const std::string script = ep["script"];
+                            if (script.empty()) {
+                                GDK_RUNTIME_ASSERT(m_net_params.liquid());
+                                continue;
+                            }
+                            const auto ep_asset_id = asset_tag_to_id.at(ep.at("asset_tag"));
+                            if (ep_asset_id != asset_id) {
+                                continue;
+                            }
                         }
                         std::string addressee;
                         if (!json_get_value(ep, "is_relevant", false)) {

@@ -568,7 +568,8 @@ namespace sdk {
                         // We don't have enough funds to cover the fee yet, or we
                         // need to add more to avoid a dusty change output
                         force_add_utxo = false;
-                        if (manual_selection || current_used_utxos.size() == utxos.at(asset_tag).size()) {
+                        if (manual_selection || utxos.empty()
+                            || current_used_utxos.size() == utxos.at(asset_tag).size()) {
                             // Used all inputs and do not have enough funds
                             set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
                             goto leave_loop;
