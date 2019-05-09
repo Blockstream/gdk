@@ -1888,7 +1888,7 @@ namespace sdk {
                     tx_details["can_cpfp"] = !is_confirmed;
                 } else {
                     for (auto& ep : tx_details["outputs"]) {
-                        const auto script = ep["script"];
+                        const std::string script = ep["script"];
                         if (script.empty()) {
                             GDK_RUNTIME_ASSERT(m_net_params.liquid());
                             continue;
