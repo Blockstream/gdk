@@ -61,7 +61,7 @@ namespace sdk {
 #endif
 
 #if defined(__ANDROID__) and not defined(NDEBUG)
-    static void start_android_std_outerr_bridge()
+    inline void start_android_std_outerr_bridge()
     {
         auto logger_thread = std::thread([] {
             int pipes[2];

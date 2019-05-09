@@ -5,7 +5,7 @@ function compile_flags() {
     echo "`python -c "import sys; print('<compile_flags>'.join([''] + map(lambda x: x + '\n', sys.argv[1:])))" $@`"
 }
 
-BOOST_NAME="boost_1_69_0"
+BOOST_NAME="boost_1_70_0"
 
 if [ "x${NUM_JOBS}" = "x" ]; then
     NUM_JOBS=4
@@ -36,7 +36,7 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
-using clang : $SDK_ARCH :
+using clang : :
 ${CXX}
 :
 <compileflags>-std=c++14
@@ -55,7 +55,7 @@ $EXTRA_LINK_FLAGS
 EOF
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang-${SDK_ARCH} target-os=android link=static release install
+    ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang target-os=android link=static release install
     if [ "$(uname)" = "Darwin" ]; then
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
