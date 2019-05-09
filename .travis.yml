@@ -11,8 +11,8 @@ env:
   matrix:
     - UNUSED=true
     - COMPILER=clang
-    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=01c66f5905debff4fb0b4c613b1ab437010c28cde44572c0bcce34f678fb0fa8
-    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=01c66f5905debff4fb0b4c613b1ab437010c28cde44572c0bcce34f678fb0fa8 COMPILER=clang
+    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
+    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850 COMPILER=clang
 
 
 script:

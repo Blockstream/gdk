@@ -6,7 +6,7 @@ cache:
 image: greenaddress/ci@sha256:a8589f9da893a50a401296234e9426a31a31f33e3b8c4478ea070e7b455112b5
 
 .fedora_images:
-  image: greenaddress/fedora_ci@sha256:01c66f5905debff4fb0b4c613b1ab437010c28cde44572c0bcce34f678fb0fa8
+  image: greenaddress/fedora_ci@sha256:79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
   tags:
     - ga
 
@@ -53,7 +53,7 @@ release_py3m_stretch:
 
 release_py3m_fedora:
   extends: .py_release
-  image: greenaddress/fedora_ci@sha256:01c66f5905debff4fb0b4c613b1ab437010c28cde44572c0bcce34f678fb0fa8
+  image: greenaddress/fedora_ci@sha256:79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7
