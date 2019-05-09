@@ -28,6 +28,9 @@
 #if __GNUC__ > 7
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif
+#if __GNUC__ >= 9
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
 
 #include <autobahn/autobahn.hpp>
 #include <autobahn/exceptions.hpp>
