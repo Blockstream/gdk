@@ -1533,7 +1533,7 @@ namespace sdk {
                 utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
             }
 
-            nlohmann::json balance;
+            nlohmann::json balance({ "btc", convert_amount(locker, { { "satoshi", 0 } }) });
             for (const auto& item : utxos.items()) {
                 const auto& utxos = item.value();
                 int64_t satoshi = std::accumulate(
