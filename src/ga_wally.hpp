@@ -166,6 +166,7 @@ namespace sdk {
 
     std::vector<unsigned char> h2b_rev(const char* hex);
     std::vector<unsigned char> h2b_rev(const std::string& hex);
+    std::vector<unsigned char> h2b_rev(const std::string& hex, uint8_t prefix);
 
     std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family);
 
@@ -213,6 +214,8 @@ namespace sdk {
     std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
         byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
         byte_span_t generator, uint64_t min_value, int exp, int min_bits);
+
+    size_t asset_surjectionproof_size(size_t num_inputs);
 
     std::vector<unsigned char> asset_surjectionproof(byte_span_t output_asset, byte_span_t output_abf,
         byte_span_t output_generator, byte_span_t bytes, byte_span_t asset, byte_span_t abf, byte_span_t generator);

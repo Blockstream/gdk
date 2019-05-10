@@ -367,6 +367,10 @@ namespace sdk {
 
     std::vector<unsigned char> h2b_rev(const char* hex) { return h2b(hex, strlen(hex), true); }
     std::vector<unsigned char> h2b_rev(const std::string& hex) { return h2b(hex.data(), hex.size(), true); }
+    std::vector<unsigned char> h2b_rev(const std::string& hex, uint8_t prefix)
+    {
+        return h2b(hex.data(), hex.size(), true, prefix);
+    }
 
     std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family)
     {
@@ -561,12 +565,18 @@ namespace sdk {
         return rangeproof;
     }
 
+    size_t asset_surjectionproof_size(size_t num_inputs)
+    {
+        size_t written;
+        GDK_VERIFY(wally_asset_surjectionproof_size(num_inputs, &written));
+        return written;
+    }
+
     std::vector<unsigned char> asset_surjectionproof(byte_span_t output_asset, byte_span_t output_abf,
         byte_span_t output_generator, byte_span_t bytes, byte_span_t asset, byte_span_t abf, byte_span_t generator)
     {
         size_t written;
-        GDK_VERIFY(wally_asset_surjectionproof_size(asset.size() / ASSET_TAG_LEN, &written));
-        std::vector<unsigned char> surjproof(written);
+        std::vector<unsigned char> surjproof(asset_surjectionproof_size(asset.size() / ASSET_TAG_LEN));
         GDK_VERIFY(wally_asset_surjectionproof(output_asset.data(), output_asset.size(), output_abf.data(),
             output_abf.size(), output_generator.data(), output_generator.size(), bytes.data(), bytes.size(),
             asset.data(), asset.size(), abf.data(), abf.size(), generator.data(), generator.size(), surjproof.data(),

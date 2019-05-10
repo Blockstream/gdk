@@ -233,12 +233,21 @@ namespace sdk {
         if (net_params.liquid()) {
             const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
             const auto asset_bytes
-                = !asset_tag.empty() && asset_tag != "btc" ? h2b(asset_tag, 0x1) : h2b(net_params.policy_asset(), 0x1);
+                = h2b_rev(!asset_tag.empty() && asset_tag != "btc" ? asset_tag : net_params.policy_asset(), 0x1);
             tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
         } else {
             tx_add_raw_output(tx, satoshi, script);
         }
         return amount(satoshi);
+    }
+
+    amount add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
+    {
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+        auto asset_bytes = h2b_rev(net_params.policy_asset());
+        asset_bytes.insert(asset_bytes.begin(), 0x1);
+        tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
+        return amount{ satoshi };
     }
 
     amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
@@ -316,7 +325,7 @@ namespace sdk {
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
                 // TODO: we're only handling assets here when they're still explicit
-                auto asset_id = o.asset && o.asset_len ? b2h(gsl::make_span(o.asset + 1, o.asset_len - 1)) : "btc";
+                auto asset_id = o.asset && o.asset_len ? b2h_rev(gsl::make_span(o.asset + 1, o.asset_len - 1)) : "btc";
                 if (asset_id == net_params.policy_asset()) {
                     asset_id = "btc";
                 }

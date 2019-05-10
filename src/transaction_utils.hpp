@@ -70,6 +70,8 @@ namespace sdk {
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi = 0, const std::string& asset_tag = {});
 
+    amount add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi = 0);
+
     // Add an output from a JSON addressee
     amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee);

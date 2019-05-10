@@ -448,6 +448,8 @@ namespace sdk {
                     });
             }
 
+            const bool is_liquid = net_params.liquid();
+
             auto create_tx_outputs = [&](const std::string& asset_tag) {
                 const bool include_fee = asset_tag == "btc";
 
@@ -509,7 +511,9 @@ namespace sdk {
                 result["available_total"] = available_total.value();
 
                 bool have_change_output = false;
+                bool have_fee_output = false;
                 uint32_t change_index = NO_CHANGE_INDEX;
+                uint32_t fee_index = NO_CHANGE_INDEX;
 
                 if (is_rbf) {
                     const auto have_change_p = result.find("have_change");
@@ -541,7 +545,26 @@ namespace sdk {
                     amount change, required_with_fee;
 
                     if (include_fee) {
-                        fee = get_tx_fee(tx, min_fee_rate, user_fee_rate);
+                        // add fee output so is also part of size calculations
+                        if (is_liquid) {
+                            if (!have_fee_output) {
+                                add_tx_fee_output(net_params, tx, 1);
+                                have_fee_output = true;
+                                fee_index = tx->num_outputs - 1;
+                            }
+                            update_tx_info(net_params, tx, result);
+                            std::vector<nlohmann::json> used_utxos
+                                = json_get_value(result, "used_utxos", std::vector<nlohmann::json>{});
+                            used_utxos.insert(
+                                used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
+                            result["used_utxos"] = used_utxos;
+                            const auto fee_tx = tx_from_hex(blind_ga_transaction(session, result)["transaction"],
+                                WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS);
+                            fee = get_tx_fee(fee_tx, min_fee_rate, user_fee_rate);
+                        } else {
+                            fee = get_tx_fee(tx, min_fee_rate, user_fee_rate);
+                        }
+
                         fee += network_fee;
                     }
 
@@ -629,10 +652,16 @@ namespace sdk {
                         add_paths(session, change_address);
                         result["change_address"][asset_tag] = change_address;
                     }
-                    add_tx_output(net_params, result, tx, result.at("change_address").at(asset_tag).at("address"), 0,
-                        asset_tag == "btc" ? std::string{} : asset_tag);
+                    add_tx_output(net_params, result, tx, result.at("change_address").at(asset_tag).at("address"),
+                        is_liquid ? 1 : 0, asset_tag == "btc" ? std::string{} : asset_tag);
                     have_change_output = true;
                     change_index = tx->num_outputs - 1;
+                    if (is_liquid && include_fee) {
+                        std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
+                        std::swap(fee_index, change_index);
+                    }
+                    result["have_change"][asset_tag] = have_change_output;
+                    result["change_index"][asset_tag] = change_index;
                 }
 
                 used_utxos.insert(used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
@@ -646,18 +675,15 @@ namespace sdk {
                     amount::value_type change_amount = 0;
                     if (have_change_output) {
                         // Set the change amount
-                        auto& change_output = tx->outputs[change_index];
                         change_amount = (total - required_total - fee).value();
-                        if (net_params.liquid()) {
+                        if (is_liquid) {
                             const auto ct_value = tx_confidential_value_from_satoshi(change_amount);
                             const auto asset_bytes
-                                = h2b(asset_tag == "btc" ? "01" + net_params.policy_asset() : "01" + asset_tag);
+                                = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
                             tx_elements_output_commitment_set(tx, change_index, asset_bytes, ct_value, {}, {}, {});
                         } else {
+                            auto& change_output = tx->outputs[change_index];
                             change_output.satoshi = change_amount;
-                        }
-                        // TODO re-enable for liquid
-                        if (!net_params.liquid()) {
                             const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
                             // Randomize change output
                             if (change_index != new_change_index) {
@@ -673,15 +699,13 @@ namespace sdk {
 
                 update_change_output(fee);
 
-                // add fee output
-                if (include_fee && net_params.liquid()) {
+                if (include_fee && is_liquid) {
                     const auto ct_value = tx_confidential_value_from_satoshi(fee.value());
-                    auto asset_bytes = h2b_rev(net_params.policy_asset());
-                    asset_bytes.insert(asset_bytes.begin(), 0x1);
-                    tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
+                    const auto asset_bytes = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
+                    tx_elements_output_commitment_set(tx, fee_index, asset_bytes, ct_value, {}, {}, {});
                 }
 
-                if (required_total == 0 && (!include_fee || !net_params.liquid())) {
+                if (required_total == 0 && (!include_fee || !is_liquid)) {
                     set_tx_error(result, res::id_no_amount_specified); // // No amount specified
                 } else if (user_fee_rate < min_fee_rate) {
                     set_tx_error(
@@ -709,7 +733,7 @@ namespace sdk {
                 }
             };
 
-            if (net_params.liquid()) {
+            if (is_liquid) {
                 std::for_each(std::begin(asset_tags), std::end(asset_tags), [&](const auto& asset_tag) {
                     if (asset_tag != "btc") {
                         create_tx_outputs(asset_tag);
@@ -723,7 +747,7 @@ namespace sdk {
                 randomise_inputs(tx, used_utxos);
             }
 
-            if (net_params.liquid() && json_get_value(result, "error").empty()) {
+            if (is_liquid && json_get_value(result, "error").empty()) {
                 result = blind_ga_transaction(session, result);
             }
         }
