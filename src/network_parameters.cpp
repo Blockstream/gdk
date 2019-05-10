@@ -77,6 +77,22 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false }, { "development", true } })) },
 
+          { "liquid",
+              std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Liquid" }, { "network", "liquid" },
+                  { "wamp_url", "wss://liquidwss.greenaddress.it/v2/ws" }, { "wamp_onion_url", std::string() },
+                  { "wamp_cert_pins",
+                      std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
+                          "a74b0c32b65b95fe2c4f8f098947a68b695033bed0b51dd8b984ecae89571bb6" } },
+                  { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, LEX1 } },
+                  { "address_explorer_url", "https://blockstream.info/liquid/address/" },
+                  { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
+                  { "service_pubkey", "03093dbf539f6642934705de7dd78525815ddeac3c545258b2be16f93c00381b4b" },
+                  { "service_chain_code", "9adf7662e49df9182d320243ec6d4e9a4a65fbced6984c73b266acc2a8964a0a" },
+                  { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 57u }, { "p2sh_version", 39u },
+                  { "bech32_prefix", "lq" }, { "mainnet", true }, { "liquid", true }, { "development", false },
+                  { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
+                  { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 36 } })) },
+
           { "localtest-liquid",
               std::make_shared<nlohmann::json>(
                   nlohmann::json({ { "name", "Localtest Liquid" }, { "network", "localtest-liquid" },
