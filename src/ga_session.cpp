@@ -1807,7 +1807,6 @@ namespace sdk {
 
             std::map<std::string, amount> received, spent;
             std::map<uint32_t, nlohmann::json> in_map, out_map;
-            std::map<std::string, std::string> asset_tag_to_id;
             std::set<std::string> unique_asset_ids;
 
             // Clean up and categorize the endpoints
@@ -1828,9 +1827,7 @@ namespace sdk {
                 if (is_relevant) {
                     const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
                     unique_asset_ids.emplace(asset_id);
-                    if (is_liquid) {
-                        asset_tag_to_id.emplace(ep.at("asset_tag"), asset_id);
-                    }
+
                     // Compute the effect of the input/output on the wallets balance
                     // TODO: Figure out what redeemable value for social payments is about
                     const amount::value_type satoshi = ep.at("satoshi");
@@ -1862,79 +1859,74 @@ namespace sdk {
 
             GDK_RUNTIME_ASSERT(is_liquid || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
 
-            std::vector<std::string> addressees;
+            // TODO: improve the detection of tx type.
+            bool net_positive{ false };
             for (const auto& asset_id : unique_asset_ids) {
+                if (unique_asset_ids.size() > 1 && asset_id == "btc") {
+                    GDK_RUNTIME_ASSERT(is_liquid);
+                    continue;
+                }
                 const auto net_received = received[asset_id];
                 const auto net_spent = spent[asset_id];
-                const bool net_positive = net_received > net_spent;
-                const bool is_confirmed = tx_block_height != 0;
-
-                if (net_positive) {
-                    for (auto& ep : tx_details["inputs"]) {
-                        if (is_liquid) {
-                            const auto ep_asset_id = asset_id_from_string(ep.value("asset_id", "btc"));
-                            if (ep_asset_id != asset_id) {
-                                continue;
-                            }
-                        }
-                        std::string addressee;
-                        if (!json_get_value(ep, "is_relevant", false)) {
-                            // Add unique addressees that aren't ourselves
-                            addressee = json_get_value(ep, "social_source");
-                            if (addressee.empty()) {
-                                addressee = json_get_value(ep, "address");
-                            }
-                            if (std::find(std::begin(addressees), std::end(addressees), addressee)
-                                == std::end(addressees)) {
-                                addressees.emplace_back(addressee);
-                            }
-                            ep["addressee"] = addressee;
-                        }
-                    }
-                    tx_details["type"] = "incoming";
-                    tx_details["can_rbf"] = false;
-                    tx_details["can_cpfp"] = !is_confirmed;
-                } else {
-                    for (auto& ep : tx_details["outputs"]) {
-                        if (is_liquid) {
-                            const std::string script = ep["script"];
-                            if (script.empty()) {
-                                GDK_RUNTIME_ASSERT(m_net_params.liquid());
-                                continue;
-                            }
-                            const auto ep_asset_id = asset_tag_to_id.at(ep.at("asset_tag"));
-                            if (ep_asset_id != asset_id) {
-                                continue;
-                            }
-                        }
-                        std::string addressee;
-                        if (!json_get_value(ep, "is_relevant", false)) {
-                            // Add unique addressees that aren't ourselves
-                            const auto& social_destination = ep.find("social_destination");
-                            if (social_destination != ep.end()) {
-                                if (social_destination->is_object()) {
-                                    addressee = (*social_destination)["name"];
-                                } else {
-                                    addressee = *social_destination;
-                                }
-                            } else {
-                                addressee = ep["address"];
-                            }
-
-                            if (std::find(std::begin(addressees), std::end(addressees), addressee)
-                                == std::end(addressees)) {
-                                addressees.emplace_back(addressee);
-                            }
-                            ep["addressee"] = addressee;
-                        }
-                    }
-                    tx_details["type"] = addressees.empty() ? "redeposit" : "outgoing";
-                    tx_details["can_rbf"] = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
-                    tx_details["can_cpfp"] = false;
-                }
-
+                net_positive = net_received > net_spent;
                 const amount total = net_positive ? net_received - net_spent : net_spent - net_received;
                 tx_details["satoshi"][asset_id] = total.value();
+            }
+
+            const bool is_confirmed = tx_block_height != 0;
+
+            std::vector<std::string> addressees;
+            if (net_positive) {
+                for (auto& ep : tx_details["inputs"]) {
+                    std::string addressee;
+                    if (!json_get_value(ep, "is_relevant", false)) {
+                        // Add unique addressees that aren't ourselves
+                        addressee = json_get_value(ep, "social_source");
+                        if (addressee.empty()) {
+                            addressee = json_get_value(ep, "address");
+                        }
+                        if (std::find(std::begin(addressees), std::end(addressees), addressee)
+                            == std::end(addressees)) {
+                            addressees.emplace_back(addressee);
+                        }
+                        ep["addressee"] = addressee;
+                    }
+                }
+                tx_details["type"] = "incoming";
+                tx_details["can_rbf"] = false;
+                tx_details["can_cpfp"] = !is_confirmed;
+            } else {
+                for (auto& ep : tx_details["outputs"]) {
+                    if (is_liquid) {
+                        const std::string script = ep["script"];
+                        if (script.empty()) {
+                            continue;
+                        }
+                    }
+                    std::string addressee;
+                    if (!json_get_value(ep, "is_relevant", false)) {
+                        // Add unique addressees that aren't ourselves
+                        const auto& social_destination = ep.find("social_destination");
+                        if (social_destination != ep.end()) {
+                            if (social_destination->is_object()) {
+                                addressee = (*social_destination)["name"];
+                            } else {
+                                addressee = *social_destination;
+                            }
+                        } else {
+                            addressee = ep["address"];
+                        }
+
+                        if (std::find(std::begin(addressees), std::end(addressees), addressee)
+                            == std::end(addressees)) {
+                            addressees.emplace_back(addressee);
+                        }
+                        ep["addressee"] = addressee;
+                    }
+                }
+                tx_details["type"] = addressees.empty() ? "redeposit" : "outgoing";
+                tx_details["can_rbf"] = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
+                tx_details["can_cpfp"] = false;
             }
 
             tx_details["addressees"] = addressees;
