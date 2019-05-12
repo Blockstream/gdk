@@ -568,7 +568,7 @@ namespace sdk {
                         fee += network_fee;
                     }
 
-                    if (send_all) {
+                    if (send_all && addressees_p->at(0).value("asset_tag", "btc") == asset_tag) {
                         if (available_total < fee + dust_threshold) {
                             // After paying the fee, we only have dust left, so
                             // the requested amount isn't payable
@@ -578,7 +578,14 @@ namespace sdk {
                             // so compute what we can send (everything minus the
                             // fee) and exit the loop
                             required_total = available_total - fee;
-                            tx->outputs[0].satoshi = required_total.value();
+                            if (is_liquid) {
+                                const auto ct_value = tx_confidential_value_from_satoshi(required_total.value());
+                                const auto asset_bytes
+                                    = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
+                                tx_elements_output_commitment_set(tx, 0, asset_bytes, ct_value, {}, {}, {});
+                            } else {
+                                tx->outputs[0].satoshi = required_total.value();
+                            }
                             if (num_addressees == 1u) {
                                 addressees_p->at(0)["satoshi"] = required_total.value();
                             }
