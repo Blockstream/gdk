@@ -1538,7 +1538,7 @@ namespace sdk {
             for (const auto& item : utxos.items()) {
                 const auto& utxos = item.value();
                 int64_t satoshi = std::accumulate(
-                    std::begin(utxos), std::end(utxos), 0, [](int64_t init, const nlohmann::json& utxo) {
+                    std::begin(utxos), std::end(utxos), int64_t{ 0 }, [](int64_t init, const nlohmann::json& utxo) {
                         return init + static_cast<amount::value_type>(utxo.at("satoshi"));
                     });
                 balance[item.key()] = convert_amount(locker, { { "satoshi", satoshi } });
