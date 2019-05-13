@@ -1533,8 +1533,7 @@ namespace sdk {
                 utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
             }
 
-            nlohmann::json balance;
-            balance["btc"] = convert_amount(locker, { { "satoshi", 0 } });
+            nlohmann::json balance({ { "btc", convert_amount(locker, { { "satoshi", 0 } }) } });
             for (const auto& item : utxos.items()) {
                 const auto& utxos = item.value();
                 int64_t satoshi = std::accumulate(
@@ -1589,8 +1588,8 @@ namespace sdk {
         // for the final path element in a derivation
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
+            { "balance", { { "btc", convert_amount(locker, { { "satoshi", satoshi.value() } }) } } },
             { "has_transactions", has_txs } };
-        sa["balance"]["btc"] = convert_amount(locker, { { "satoshi", satoshi.value() } });
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
