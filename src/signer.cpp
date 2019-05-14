@@ -26,17 +26,17 @@ namespace sdk {
         return nlohmann::json(); // No HW device unless we are a HW signer
     }
 
-    // TODO: implement...
-    priv_key_t signer::get_master_blinding_key()
+    priv_key_t software_signer::get_blinding_key_from_script(byte_span_t script)
     {
-        std::array<unsigned char, 32> blinding_key;
-        std::fill(std::begin(blinding_key), std::end(blinding_key), 1);
+        const priv_key_t blinding_key = hmac_sha256(gsl::make_span(m_master_key->priv_key).subspan(1), script);
+        GDK_RUNTIME_ASSERT(ec_private_key_verify(blinding_key));
         return blinding_key;
     }
 
-    priv_key_t signer::get_blinding_key_from_script(byte_span_t script)
+    priv_key_t signer::get_blinding_key_from_script(__attribute__((unused)) byte_span_t script)
     {
-        return hmac_sha256(get_master_blinding_key(), script);
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
     }
 
     std::vector<unsigned char> signer::get_public_key_from_blinding_key(byte_span_t script)
