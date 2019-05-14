@@ -211,13 +211,13 @@ namespace sdk {
         const std::string& address, amount::value_type satoshi, const std::string& asset_tag)
     {
         auto output_address = address;
-        if (net_params.liquid()) {
-            output_address = confidential_addr_to_addr(output_address, net_params.blinded_prefix());
-        }
 
         // TODO: Support OP_RETURN outputs
         std::vector<unsigned char> script;
         try {
+            if (net_params.liquid()) {
+                output_address = confidential_addr_to_addr(output_address, net_params.blinded_prefix());
+            }
             script = output_script_for_address(net_params, output_address);
         } catch (const std::exception& e) {
         }
