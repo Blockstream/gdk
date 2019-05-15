@@ -13,6 +13,9 @@ c_args = []
 if compiler.has_argument('-Wno-error=cast-function-type')
     c_args +=  ['-Wno-error=cast-function-type']
 endif
+if compiler.has_argument('-Wno-missing-field-initializers')
+    c_args +=  ['-Wno-missing-field-initializers']
+endif
 
 libswig_python = static_library('swig_python', swig_py_target,
                                 include_directories : python_inc_dir,
