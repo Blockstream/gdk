@@ -250,6 +250,14 @@ namespace sdk {
         return amount{ satoshi };
     }
 
+    void set_tx_output_commitment(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,
+        const std::string& asset_tag, amount::value_type satoshi)
+    {
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+        const auto asset_bytes = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
+        tx_elements_output_commitment_set(tx, index, asset_bytes, ct_value, {}, {}, {});
+    }
+
     amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee)
     {

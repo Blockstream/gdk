@@ -579,10 +579,7 @@ namespace sdk {
                             // fee) and exit the loop
                             required_total = available_total - fee;
                             if (is_liquid) {
-                                const auto ct_value = tx_confidential_value_from_satoshi(required_total.value());
-                                const auto asset_bytes
-                                    = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
-                                tx_elements_output_commitment_set(tx, 0, asset_bytes, ct_value, {}, {}, {});
+                                set_tx_output_commitment(net_params, tx, 0, asset_tag, required_total.value());
                             } else {
                                 tx->outputs[0].satoshi = required_total.value();
                             }
@@ -684,10 +681,7 @@ namespace sdk {
                         // Set the change amount
                         change_amount = (total - required_total - fee).value();
                         if (is_liquid) {
-                            const auto ct_value = tx_confidential_value_from_satoshi(change_amount);
-                            const auto asset_bytes
-                                = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
-                            tx_elements_output_commitment_set(tx, change_index, asset_bytes, ct_value, {}, {}, {});
+                            set_tx_output_commitment(net_params, tx, change_index, asset_tag, change_amount);
                         } else {
                             auto& change_output = tx->outputs[change_index];
                             change_output.satoshi = change_amount;
@@ -707,9 +701,7 @@ namespace sdk {
                 update_change_output(fee);
 
                 if (include_fee && is_liquid) {
-                    const auto ct_value = tx_confidential_value_from_satoshi(fee.value());
-                    const auto asset_bytes = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
-                    tx_elements_output_commitment_set(tx, fee_index, asset_bytes, ct_value, {}, {}, {});
+                    set_tx_output_commitment(net_params, tx, fee_index, asset_tag, fee.value());
                 }
 
                 if (required_total == 0 && (!include_fee || !is_liquid)) {

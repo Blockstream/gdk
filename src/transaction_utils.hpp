@@ -72,6 +72,9 @@ namespace sdk {
 
     amount add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi = 0);
 
+    void set_tx_output_commitment(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,
+        const std::string& asset_tag, amount::value_type satoshi);
+
     // Add an output from a JSON addressee
     amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee);
