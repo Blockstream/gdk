@@ -74,6 +74,15 @@ class Session(object):
         _python_set_callback_handler(self.session_obj, self._callback_handler)
         return self.connect(net_params)
 
+    def destroy(self):
+        destroy_session(self.session_obj)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.destroy()
+
     def _callback_handler(self, obj, event):
         assert obj is self.session_obj
         try:
