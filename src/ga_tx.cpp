@@ -351,12 +351,18 @@ namespace sdk {
             // Let the caller know if addressees should not be modified
             result["addressees_read_only"] = is_redeposit || is_rbf || is_cpfp || is_sweep;
 
+            const bool is_liquid = net_params.liquid();
+
             auto addressees_p = result.find("addressees");
             if (is_sweep) {
-                // create sweep transaction
-                if (result.find("utxos") != result.end() && !result["utxos"].empty()) {
+                if (is_liquid) {
+                    set_tx_error(result, "sweep not supported for liquid");
+                    return;
+                }
+
+                if (result.find("utxos") != result.end() && !result["utxos"]["btc"].empty()) {
                     // check for sweep related keys
-                    for (const auto& utxo : result["utxos"]) {
+                    for (const auto& utxo : result["utxos"]["btc"]) {
                         GDK_RUNTIME_ASSERT(!json_get_value(utxo, "private_key").empty());
                     }
                 } else {
@@ -370,8 +376,9 @@ namespace sdk {
                         GDK_LOG_SEV(log_level::error) << "Exception getting outputs for private key: " << ex.what();
                     }
                     result["utxos"]["btc"] = utxos;
-                    if (utxos.empty())
+                    if (utxos.empty()) {
                         set_tx_error(result, res::id_no_utxos_found); // No UTXOs found
+                    }
                 }
                 result["send_all"] = true;
                 if (addressees_p != result.end()) {
@@ -447,8 +454,6 @@ namespace sdk {
                         return session.asset_id_from_string(addressee.value("asset_tag", "btc"));
                     });
             }
-
-            const bool is_liquid = net_params.liquid();
 
             auto create_tx_outputs = [&](const std::string& asset_tag) {
                 const bool include_fee = asset_tag == "btc";
