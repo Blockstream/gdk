@@ -218,6 +218,7 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
             SWIG_fail;
         }
         $result = PyString_FromString(str);
+        GA_destroy_string(str);
         GA_destroy_json(*$1);
     }
 }
