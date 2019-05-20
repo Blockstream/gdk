@@ -2178,7 +2178,7 @@ namespace sdk {
     bool ga_session::is_rbf_enabled() const
     {
         locker_t locker(m_mutex);
-        return json_get_value(m_login_data, "rbf", true);
+        return !m_net_params.liquid() && json_get_value(m_login_data, "rbf", true);
     }
 #else
     bool ga_session::is_rbf_enabled() const
