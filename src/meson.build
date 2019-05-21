@@ -116,6 +116,19 @@ if cross_iphone_build
                              depends : libga)
 endif
 
+# TODO: macOS doesn't have an "official" version of objcopy, maybe brew has something for us.. android works though, because NDK has its own objcopy in the toolchain
+if build_machine.system() != 'darwin' or cross_android_build
+	# Extract the debug symbols from the un-stripped version in build-**
+	custom_target('external debug symbols',
+		      output : 'libgreenaddress.syms',
+		      command : [find_program('objcopy'), '--only-keep-debug', libga.full_path(), join_paths(meson.build_root(), 'src', 'libgreenaddress.syms')],
+		      build_by_default : true,
+		      build_always_stale : true,
+		      install : true,
+		      install_dir : libga_installdir,
+		      depends : libga)
+endif
+
 # tests
 subdirs = ['swift']
 foreach n : subdirs

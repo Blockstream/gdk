@@ -9,6 +9,7 @@ if [ \( "$3" = "android" \) ]; then
     C_COMPILER=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang)
     CXX_COMPILER=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang++)
     STRIP="$(ls $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip)"
+    OBJCOPY="$(ls $NDK_TOOLSDIR/bin/$archfilename-linux-android*-objcopy)"
     CFLAGS=$(comma_separate "--sysroot=$NDK_TOOLSDIR/sysroot" $SDK_CFLAGS)
     LDFLAGS=$(comma_separate $SDK_LDFLAGS)
     ARCHS="[]"
@@ -24,6 +25,7 @@ elif [ \( "$3" = "windows" \) ]; then
     C_COMPILER="x86_64-w64-mingw32-gcc-posix"
     CXX_COMPILER="x86_64-w64-mingw32-g++-posix"
     STRIP="x86_64-w64-mingw32-strip"
+    OBJCOPY="x86_64-w64-mingw32-objcopy"
     ARCHS="[]"
 else
     echo "cross build type not supported" && exit 1
@@ -38,6 +40,7 @@ cpp = '$CXX_COMPILER'
 ar = '$AR'
 pkgconfig = 'pkg-config'
 strip = '$STRIP'
+objcopy = '$OBJCOPY'
 
 [properties]
 target_os = '$4'
@@ -58,6 +61,7 @@ cpp = '$CXX_COMPILER'
 ar = '$AR'
 pkgconfig = 'pkg-config'
 strip = '$STRIP'
+objcopy = '$OBJCOPY'
 
 [properties]
 target_os = '$4'

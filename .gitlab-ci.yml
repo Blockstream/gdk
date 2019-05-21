@@ -229,8 +229,12 @@ package_release:
     when: on_success
   script:
     - cd $CI_PROJECT_DIR
-    - find gdk-android-jni -name "*.a" -type f -delete
+    - mkdir gdk-android-symbols
     - mkdir gdk_dist
+    - find gdk-android-jni -name "*.syms" -type f -exec cp --parents {} gdk-android-symbols \;
+    - tar -czf gdk_dist/gdk-android-symbols.tar.gz gdk-android-symbols --remove-files
+    - find gdk-android-jni -name "*.a" -type f -delete
+    - find gdk-android-jni -name "*.syms" -type f -delete
     - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
     - mv gdk-python/*whl gdk_dist/
     - cd gdk_dist
