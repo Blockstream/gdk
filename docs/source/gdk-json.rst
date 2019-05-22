@@ -144,8 +144,7 @@ Transactions list JSON
 
 .. code-block:: json
 
-  {
-    "list": [
+    [
       {
         "addressees": [
           ""
@@ -221,11 +220,7 @@ Transactions list JSON
         "user_signed": true,
         "vsize": 205
       }
-    ],
-    "next_page_id": 0,
-    "page_id": 0
-  }
-
+    ]
 
 
 .. _tx-detail:
@@ -661,7 +656,7 @@ Transactions Details JSON
 
 .. code-block:: json
 
-  {"subaccount":0,"page_id":0}
+  {"subaccount":0,"first":0,"count":30}
 
 
 

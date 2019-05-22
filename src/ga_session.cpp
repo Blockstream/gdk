@@ -15,6 +15,7 @@
 #include "logging.hpp"
 #include "memory.hpp"
 #include "transaction_utils.hpp"
+#include "tx_list_cache.hpp"
 #include "utils.hpp"
 
 namespace ga {
@@ -1014,16 +1015,19 @@ namespace sdk {
                 m_tx_notifications.erase(m_tx_notifications.begin()); // pop the oldest
             }
 
-            // Mark the balances of each affected subaccount dirty
             for (auto subaccount : affected) {
                 const auto p = m_subaccounts.find(subaccount);
                 // TODO: Handle other logged in sessions creating subaccounts
                 GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+
+                // Mark the balances of each affected subaccount dirty
                 p->second["has_transactions"] = true;
                 p->second.erase("balance");
+
+                // Mark cached tx lists as dirty
+                m_tx_list_caches.purge(subaccount);
             }
 
-            // TODO: Mark cached tx lists (when implemented) as dirty
             if (!m_notification_handler) {
                 return;
             }
@@ -1062,6 +1066,10 @@ namespace sdk {
                 call_notification_handler(
                     locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
             }
+
+            // Erase all cached tx lists
+            // This is much simpler than trying to handle updates, potentially with reorgs
+            m_tx_list_caches.purge_all();
         });
     }
 
@@ -1722,8 +1730,16 @@ namespace sdk {
     nlohmann::json ga_session::get_transactions(const nlohmann::json& details)
     {
         const uint32_t subaccount = details.at("subaccount");
-        const uint32_t page_id = details.at("page_id");
+        const uint32_t first = details.at("first");
+        const uint32_t count = details.at("count");
 
+        return m_tx_list_caches.get(subaccount)->get(first, count, [this, subaccount](uint32_t page) {
+            return get_transactions(subaccount, page);
+        });
+    }
+
+    std::vector<nlohmann::json> ga_session::get_transactions(uint32_t subaccount, uint32_t page_id)
+    {
         nlohmann::json txs;
         wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
             "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
@@ -1935,8 +1951,7 @@ namespace sdk {
             tx_details["user_signed"] = true;
             tx_details["server_signed"] = true;
         }
-        txs["list"] = tx_list;
-        return txs;
+        return tx_list;
     }
 
     autobahn::wamp_subscription ga_session::subscribe(

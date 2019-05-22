@@ -16,6 +16,7 @@
 #include "boost_wrapper.hpp"
 #include "logging.hpp"
 #include "signer.hpp"
+#include "tx_list_cache.hpp"
 #include "xpub_hdkey.hpp"
 
 namespace ga {
@@ -379,6 +380,10 @@ namespace sdk {
         logging_levels m_log_level;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
+
+        tx_list_caches m_tx_list_caches;
+
+        std::vector<nlohmann::json> get_transactions(uint32_t subaccount, uint32_t page_id);
     };
 
 } // namespace sdk
