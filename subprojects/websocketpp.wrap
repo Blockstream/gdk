@@ -1,10 +1,10 @@
 [wrap-file]
-directory = websocketpp-55801fcce1e5f6089baf71bf628801dc46ed116d
+directory = websocketpp-1026e877449aeee27e0bb51746a96ab42d133652
 
-source_url = https://github.com/zaphoyd/websocketpp/archive/55801fcce1e5f6089baf71bf628801dc46ed116d.tar.gz
-source_filename = websocketpp-55801fcce1e5f6089baf71bf628801dc46ed116d.tar.gz
-source_hash = b335e6cd313bdd5e162a823bc888218201577836756b1e52858cfd6e267d4d5b
+source_url = https://github.com/glslang/websocketpp/archive/1026e877449aeee27e0bb51746a96ab42d133652.tar.gz
+source_filename = websocketpp-1026e877449aeee27e0bb51746a96ab42d133652.tar.gz
+source_hash = 82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb
 
-patch_url = file:./subprojects/websocketpp-meson/websocketpp-meson-b335e6cd313bdd5e162a823bc888218201577836756b1e52858cfd6e267d4d5b.tar
-patch_filename = websocketpp-meson-b335e6cd313bdd5e162a823bc888218201577836756b1e52858cfd6e267d4d5b.tar
-patch_hash = e18d4c3b12fdb9b77e4f0885afb20053f532be449b75ecb9362f52444c463f73
+patch_url = file:./subprojects/websocketpp-meson/websocketpp-meson-82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb.tar
+patch_filename = websocketpp-meson-82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb.tar
+patch_hash = 17e5055116ff3d96a595364b20b9560915f1672ad38cf6ed5cc0c2f9e5959916
