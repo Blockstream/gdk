@@ -235,6 +235,12 @@ class Session(object):
     def decrypt(self, ciphertext):
         return json.loads(decrypt(self.session_obj, self._to_json(ciphertext)))
 
+    def http_get(self, params):
+        return json.loads(http_get(self.session_obj, self._to_json(params)))
+
+    def refresh_assets(self):
+        return json.loads(refresh_assets(self.session_obj))
+
 
 _old_get_networks = get_networks
 def get_networks():

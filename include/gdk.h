@@ -104,6 +104,33 @@ GDK_API int GA_disconnect(struct GA_session* session);
 GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 
 /**
+ * Check if server can be reached via the proxy.
+ *
+ * :param params: the :ref:`params-proxy` of the server to connect to.
+ */
+GDK_API int GA_check_proxy_connectivity(const GA_json* params);
+
+/**
+ * Get JSON data from an https server.
+ *
+ * :param session: The session to use.
+ * :param params: the :ref:`params-data` of the server to connect to.
+ * :param output: Destination for the output JSON.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ */
+GDK_API int GA_http_get(struct GA_session* session, const GA_json* params, GA_json** output);
+
+/**
+ *
+ *  Refresh the internal cache asset information.
+ *
+ * :param session: The session to use.
+ * :param output: Destination for the assets JSON.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ */
+GDK_API int GA_refresh_assets(struct GA_session* session, GA_json** output);
+
+/**
  * Create a new user account using a hardware wallet/HSM/TPM.
  *
  * :param session: The session to use.

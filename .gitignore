@@ -21,3 +21,4 @@ docs/source/gdk.rst
 docs/build
 .pytest_cache/
 *.pyc
+*PVS-Studio*

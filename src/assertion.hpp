@@ -23,4 +23,10 @@ namespace sdk {
         condition, error_message, __FILE__, static_cast<const char*>(__func__), GDK_STRINGIFY(__LINE__))
 #define GDK_VERIFY(x) GDK_RUNTIME_ASSERT((x) == WALLY_OK)
 
+#define NET_ERROR_CODE_CHECK(msg, ec)                                                                                  \
+    if (ec) {                                                                                                          \
+        set_exception(std::string{ msg } + ": " + ec.message());                                                       \
+        return;                                                                                                        \
+    }
+
 #endif

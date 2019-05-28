@@ -849,4 +849,34 @@ Session event notification JSON
 
 
 
+.. _params-data:
+
+HTTP params JSON
+----------------
+
+.. code-block:: json
+
+   {
+      "uri":"https://assets.blockstream.info"
+      "target":"/index.json"
+      "proxy":"localhost:9150"
+   }
+
+
+
+.. _params-proxy:
+
+Proxy connectivity params JSON
+------------------------------
+
+.. code-block:: json
+
+   {
+      "name":"testnet"
+      "use_tor":true
+      "proxy":"localhost:9150"
+   }
+
+
+
 

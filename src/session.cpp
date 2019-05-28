@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <future>
 #include <mutex>
 #include <random>
 #include <string>
@@ -11,6 +12,7 @@
 #include "exception.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
+#include "socks_client.hpp"
 #include "utils.hpp"
 
 using namespace std::literals;
@@ -342,6 +344,48 @@ namespace sdk {
             }
             reconnect();
         });
+    }
+
+    bool session::check_proxy_connectivity(const nlohmann::json& params)
+    {
+        boost::asio::io_context io;
+        boost::beast::tcp_stream stream{ boost::asio::make_strand(io) };
+        stream.expires_after(5s);
+
+        const auto net_params = network_parameters{ network_parameters::get(params.at("name")) };
+        const bool use_tor = params.value("use_tor", false);
+        const auto server = net_params.get_connection_string(use_tor);
+        const std::string proxy = params.at("proxy");
+
+        GDK_LOG_SEV(log_level::info) << "attempting connection to " << server;
+
+        auto client = std::make_shared<socks_client>(io, stream);
+        GDK_RUNTIME_ASSERT(client != nullptr);
+
+        auto result = client->run(server, proxy);
+        io.run();
+
+        try {
+            result.get();
+            client->shutdown();
+            return true;
+        } catch (const std::exception&) {
+            throw;
+        }
+
+        __builtin_unreachable();
+    }
+
+    nlohmann::json session::http_get(const nlohmann::json& params)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->http_get(params); });
+    }
+
+    nlohmann::json session::refresh_assets()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->refresh_assets(); });
     }
 
     void session::register_user(const std::string& mnemonic, bool supports_csv)

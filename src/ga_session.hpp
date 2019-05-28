@@ -65,6 +65,9 @@ namespace sdk {
         void set_heartbeat_timeout_handler(heartbeat_t handler);
         void set_ping_fail_handler(ping_fail_t handler);
 
+        nlohmann::json http_get(const nlohmann::json& params);
+        nlohmann::json refresh_assets();
+
         void register_user(const std::string& mnemonic, bool supports_csv);
         void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
@@ -229,12 +232,16 @@ namespace sdk {
 
         nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
+        nlohmann::json refresh_assets(locker_t& locker);
+
         bool connect_with_tls() const;
 
-        context_ptr tls_init_handler_impl();
+        context_ptr tls_init_handler_impl(const std::string& host_name);
 
-        template <typename T> std::enable_if_t<std::is_same<T, client>::value> set_tls_init_handler();
-        template <typename T> std::enable_if_t<std::is_same<T, client_tls>::value> set_tls_init_handler();
+        template <typename T>
+        std::enable_if_t<std::is_same<T, client>::value> set_tls_init_handler(const std::string& host_name);
+        template <typename T>
+        std::enable_if_t<std::is_same<T, client_tls>::value> set_tls_init_handler(const std::string& host_name);
         template <typename T> void make_client();
         template <typename T> void make_transport();
 
@@ -361,6 +368,8 @@ namespace sdk {
         std::string m_fiat_currency;
         uint64_t m_earliest_block_time;
 
+        nlohmann::json m_assets;
+
         std::map<uint32_t, nlohmann::json> m_subaccounts; // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys;
         std::unique_ptr<ga_user_pubkeys> m_user_pubkeys;
@@ -375,7 +384,6 @@ namespace sdk {
         std::string m_system_message_ack; // Currently returned message to ack
         bool m_watch_only;
         bool m_is_locked;
-        const boost::asio::ssl::rfc2818_verification m_rfc2818_verifier;
         bool m_cert_pin_validated;
         logging_levels m_log_level;
         std::vector<std::string> m_tx_notifications;

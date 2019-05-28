@@ -40,10 +40,12 @@ namespace sdk {
         session& operator=(session&&) = delete;
 
         void connect(const nlohmann::json& net_params);
-        void connect(const std::string& name, const std::string& proxy = std::string(), bool use_tor = false,
-            logging_levels log_level = logging_levels::none);
         void disconnect();
         void reconnect_hint(const nlohmann::json& hint);
+
+        static bool check_proxy_connectivity(const nlohmann::json& params);
+        nlohmann::json http_get(const nlohmann::json& params);
+        nlohmann::json refresh_assets();
 
         void register_user(const std::string& mnemonic, bool supports_csv);
         void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,

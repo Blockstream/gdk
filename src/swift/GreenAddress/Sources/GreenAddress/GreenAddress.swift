@@ -469,6 +469,16 @@ public class Session {
         }
         return String(cString: buff!)
     }
+
+    public func httpGet(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_http_get)
+    }
+
+    public func refreshAssets() throws -> [String: Any]? {
+        var result: OpaquePointer? = nil
+        try callWrapper(fun: GA_refresh_assets(session, &result))
+        return try convertOpaqueJsonToDict(o: result!)
+    }
 }
 
 public func generateMnemonic() throws -> String {

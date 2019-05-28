@@ -12,11 +12,15 @@
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
+#include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "transaction_utils.hpp"
 #include "tx_list_cache.hpp"
 #include "utils.hpp"
+
+namespace asio = boost::asio;
+namespace beast = boost::beast;
 
 namespace ga {
 namespace sdk {
@@ -358,13 +362,13 @@ namespace sdk {
         , m_notification_context(nullptr)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
+        , m_assets({ { "btc", { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } })
         , m_next_subaccount(0)
         , m_block_height(0)
         , m_system_message_id(0)
         , m_system_message_ack_id(0)
         , m_watch_only(true)
         , m_is_locked(false)
-        , m_rfc2818_verifier(websocketpp::uri(m_net_params.gait_wamp_url()).get_host())
         , m_cert_pin_validated(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
     {
@@ -466,21 +470,29 @@ namespace sdk {
 
         m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
         m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
+
+        if (m_net_params.liquid()) {
+            refresh_assets();
+        }
     }
 
-    template <typename T> std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler() {}
-    template <typename T> std::enable_if_t<std::is_same<T, client_tls>::value> ga_session::set_tls_init_handler()
+    template <typename T>
+    std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler(const std::string&)
+    {
+    }
+    template <typename T>
+    std::enable_if_t<std::is_same<T, client_tls>::value> ga_session::set_tls_init_handler(const std::string& host_name)
     {
         m_cert_pin_validated = false;
         boost::get<std::unique_ptr<T>>(m_client)->set_tls_init_handler(
-            [this](const websocketpp::connection_hdl) { return tls_init_handler_impl(); });
+            [this, host_name](const websocketpp::connection_hdl) { return tls_init_handler_impl(host_name); });
     }
 
     template <typename T> void ga_session::make_client()
     {
         m_client = std::make_unique<T>();
         boost::get<std::unique_ptr<T>>(m_client)->init_asio(&m_io);
-        set_tls_init_handler<T>();
+        set_tls_init_handler<T>(websocketpp::uri(m_net_params.gait_wamp_url()).get_host());
     }
 
     template <typename T> void ga_session::make_transport()
@@ -519,7 +531,7 @@ namespace sdk {
         no_std_exception_escape([&] { transport->detach(); });
     }
 
-    context_ptr ga_session::tls_init_handler_impl()
+    context_ptr ga_session::tls_init_handler_impl(const std::string& host_name)
     {
         const context_ptr ctx = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
         ctx->set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2
@@ -542,11 +554,11 @@ namespace sdk {
         const auto& pins = m_net_params.gait_wamp_cert_pins();
         if (pins.empty() || pins[0].empty()) {
             // no pins for this network, just do rfc2818 validation
-            ctx->set_verify_callback(m_rfc2818_verifier);
+            ctx->set_verify_callback(asio::ssl::rfc2818_verification{ host_name });
             return ctx;
         }
 
-        ctx->set_verify_callback([this](bool preverified, boost::asio::ssl::verify_context& ctx) {
+        ctx->set_verify_callback([this, host_name](bool preverified, boost::asio::ssl::verify_context& ctx) {
             if (!preverified) {
                 return false;
             }
@@ -564,9 +576,10 @@ namespace sdk {
             if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
                 m_cert_pin_validated = true;
             }
+
             // on top of rfc2818, enforce pin if this is the last cert in the chain
             const int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
-            return m_rfc2818_verifier(m_cert_pin_validated || depth != 0, ctx);
+            return asio::ssl::rfc2818_verification{ host_name }(m_cert_pin_validated || depth != 0, ctx);
         });
 
         return ctx;
@@ -655,6 +668,51 @@ namespace sdk {
             }
         });
         connect_with_tls() ? disconnect_transport<transport_tls>() : disconnect_transport<transport>();
+    }
+
+    nlohmann::json ga_session::http_get(const nlohmann::json& params)
+    {
+        nlohmann::json result;
+        try {
+            const std::string uri = params.at("uri");
+            const std::string target = params.at("target");
+            const std::string proxy = params.value("proxy", socksify(m_proxy));
+
+            websocketpp::uri uri_parts{ uri };
+            const std::string host_name = uri_parts.get_host();
+            const std::string port = uri_parts.get_port_str();
+
+            const auto ssl_ctx = tls_init_handler_impl(host_name);
+            auto client = std::make_shared<http_client>(m_io, *ssl_ctx);
+            GDK_RUNTIME_ASSERT(client != nullptr);
+
+            result = client->get(host_name, port, target, proxy).get();
+        } catch (const std::exception& ex) {
+            result["error"] = ex.what();
+        }
+        return result;
+    }
+
+    nlohmann::json ga_session::refresh_assets()
+    {
+        locker_t locker{ m_mutex };
+        return refresh_assets(locker);
+    }
+
+    nlohmann::json ga_session::refresh_assets(locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        nlohmann::json result;
+        try {
+            result = http_get({ { "uri", m_net_params.asset_registry_url() }, { "target", "/index.json" } });
+            m_assets.update(result);
+            result = m_assets;
+        } catch (const std::exception& ex) {
+            result["error"] = ex.what();
+        }
+
+        return result;
     }
 
     void ga_session::reset()
@@ -1537,19 +1595,24 @@ namespace sdk {
             nlohmann::json utxos;
             {
                 // TODO: consider passing the lock here as well
-                unique_unlock unlocker(locker);
+                unique_unlock unlocker{ locker };
                 utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
             }
 
             nlohmann::json balance({ { "btc", convert_amount(locker, { { "satoshi", 0 } }) } });
             for (const auto& item : utxos.items()) {
+                const auto& key = item.key();
                 const auto& utxos = item.value();
                 int64_t satoshi = std::accumulate(
                     std::begin(utxos), std::end(utxos), int64_t{ 0 }, [](int64_t init, const nlohmann::json& utxo) {
                         return init + static_cast<amount::value_type>(utxo.at("satoshi"));
                     });
-                balance[item.key()] = convert_amount(locker, { { "satoshi", satoshi } });
+                balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
+                if (m_assets.find(key) != m_assets.end()) {
+                    balance[key]["asset_info"] = m_assets[key];
+                }
             }
+
             return balance;
         }
     }
@@ -1740,6 +1803,7 @@ namespace sdk {
 
     std::vector<nlohmann::json> ga_session::get_transactions(uint32_t subaccount, uint32_t page_id)
     {
+        nlohmann::json assets;
         nlohmann::json txs;
         wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
             "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
@@ -1758,6 +1822,8 @@ namespace sdk {
                 const double fiat_rate = txs["fiat_value"];
                 update_fiat_rate(locker, std::to_string(fiat_rate));
             }
+
+            assets = m_assets;
         }
         // Postprocess the returned API data
         // TODO: confidential transactions, social payments/BIP70
@@ -1889,6 +1955,10 @@ namespace sdk {
                 }
                 const amount total = net_positive ? net_received - net_spent : net_spent - net_received;
                 tx_details["satoshi"][asset_id] = total.value();
+
+                if (assets.find(asset_id) != assets.end()) {
+                    tx_details["asset_info"][asset_id] = assets[asset_id];
+                }
             }
 
             const bool is_confirmed = tx_block_height != 0;
@@ -1951,6 +2021,7 @@ namespace sdk {
             tx_details["user_signed"] = true;
             tx_details["server_signed"] = true;
         }
+
         return tx_list;
     }
 

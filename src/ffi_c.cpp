@@ -183,6 +183,15 @@ GDK_DEFINE_C_FUNCTION_1(GA_disconnect, struct GA_session*, session, { session->d
 GDK_DEFINE_C_FUNCTION_2(GA_reconnect_hint, struct GA_session*, session, const GA_json*, hint,
     { session->reconnect_hint(*json_cast(hint)); });
 
+GDK_DEFINE_C_FUNCTION_1(GA_check_proxy_connectivity, const GA_json*, params,
+    { ga::sdk::session::check_proxy_connectivity(*json_cast(params)); });
+
+GDK_DEFINE_C_FUNCTION_3(GA_http_get, struct GA_session*, session, const GA_json*, params, GA_json**, output,
+    { *json_cast(output) = new nlohmann::json(session->http_get(*json_cast((params)))); });
+
+GDK_DEFINE_C_FUNCTION_2(GA_refresh_assets, struct GA_session*, session, GA_json**, output,
+    { *json_cast(output) = new nlohmann::json(session->refresh_assets()); });
+
 GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::register_call(*session, *json_cast(hw_device), mnemonic)); })

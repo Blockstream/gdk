@@ -96,7 +96,7 @@ namespace sdk {
     }
 
 #define GDK_LOG_NAMED_SCOPE(name)                                                                                      \
-    BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), log_level::severity_level::info)                                       \
+    BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), log_level::severity_level::debug)                                      \
         << __FILE__ << ':' << __LINE__ << ':' << (name) << ':' << __func__;
 
 #define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), sev)
