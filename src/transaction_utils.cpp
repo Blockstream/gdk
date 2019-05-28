@@ -312,10 +312,15 @@ namespace sdk {
         result["transaction_vsize"] = tx_vsize;
         result["transaction_version"] = tx->version;
         result["transaction_locktime"] = tx->locktime;
-        result["liquid"] = tx_is_elements(tx);
+        const bool is_liquid = tx_is_elements(tx);
+        result["liquid"] = is_liquid;
         if (result.find("fee") != result.end()) {
-            const amount::value_type fee = result["fee"];
-            result["calculated_fee_rate"] = valid ? (fee * 1000 / tx_vsize) : 0;
+            if (is_liquid) {
+                result["calculated_fee_rate"] = result["fee"];
+            } else {
+                const amount::value_type fee = result["fee"];
+                result["calculated_fee_rate"] = valid ? (fee * 1000 / tx_vsize) : 0;
+            }
         }
     }
 
