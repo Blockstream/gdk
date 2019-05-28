@@ -79,7 +79,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
 
           { "liquid",
               std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Liquid" }, { "network", "liquid" },
-                  { "wamp_url", "wss://liquidwss.greenaddress.it/v2/ws" }, { "wamp_onion_url", std::string() },
+                  { "wamp_url", "wss://liquidwss.greenaddress.it/v2/ws" },
+                  { "wamp_onion_url", "ws://liquidbtc7u746j4.onion/v2/ws/" },
                   { "wamp_cert_pins",
                       std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
                           "a74b0c32b65b95fe2c4f8f098947a68b695033bed0b51dd8b984ecae89571bb6" } },
