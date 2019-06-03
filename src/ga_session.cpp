@@ -1860,10 +1860,17 @@ namespace sdk {
 
             // TODO: improve the detection of tx type.
             bool net_positive{ false };
+            bool net_positive_set{ false };
             for (const auto& asset_id : unique_asset_ids) {
                 const auto net_received = received[asset_id];
                 const auto net_spent = spent[asset_id];
-                net_positive = net_received > net_spent;
+                const auto asset_net_positive = net_received > net_spent;
+                if (net_positive_set) {
+                    GDK_RUNTIME_ASSERT_MSG(net_positive == asset_net_positive, "Ambiguous tx direction");
+                } else {
+                    net_positive = asset_net_positive;
+                    net_positive_set = true;
+                }
                 const amount total = net_positive ? net_received - net_spent : net_spent - net_received;
                 tx_details["satoshi"][asset_id] = total.value();
             }
