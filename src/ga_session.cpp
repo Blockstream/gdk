@@ -1861,10 +1861,6 @@ namespace sdk {
             // TODO: improve the detection of tx type.
             bool net_positive{ false };
             for (const auto& asset_id : unique_asset_ids) {
-                if (unique_asset_ids.size() > 1 && asset_id == "btc") {
-                    GDK_RUNTIME_ASSERT(is_liquid);
-                    continue;
-                }
                 const auto net_received = received[asset_id];
                 const auto net_spent = spent[asset_id];
                 net_positive = net_received > net_spent;
