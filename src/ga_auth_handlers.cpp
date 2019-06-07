@@ -468,15 +468,15 @@ namespace sdk {
             m_result = m_session.sign_transaction(m_tx_details);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            const auto& xpubs = args.at("signatures");
+            const auto& signatures = args.at("signatures");
             const auto& inputs = m_twofactor_data["signing_inputs"];
             const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"));
 
-            GDK_RUNTIME_ASSERT(xpubs.is_array() && xpubs.size() == inputs.size());
+            GDK_RUNTIME_ASSERT(signatures.is_array() && signatures.size() == inputs.size());
 
             size_t i = 0;
             for (const auto& utxo : inputs) {
-                m_session.sign_input(tx, i, utxo, xpubs[i]);
+                m_session.sign_input(tx, i, utxo, signatures[i]);
                 ++i;
             }
 
