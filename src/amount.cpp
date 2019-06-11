@@ -49,13 +49,20 @@ namespace sdk {
         const auto bits_p = amount_json.find("bits");
         const auto sats_p = amount_json.find("sats");
         const auto fiat_p = amount_json.find("fiat");
+        const auto asset_info_p = amount_json.find("asset_info");
+        const nlohmann::json asset_json = amount_json.value("asset_info", nlohmann::json({}));
+        const auto precision = asset_json.value("precision", 0);
+        const auto asset_id = asset_json.value("asset_id", "");
+        const auto asset_p = amount_json.find(asset_id);
         const auto end_p = amount_json.end();
         const int key_count = (satoshi_p != end_p) + (btc_p != end_p) + (mbtc_p != end_p) + (ubtc_p != end_p)
-            + (bits_p != end_p) + (sats_p != end_p) + (fiat_p != end_p);
+            + (bits_p != end_p) + (sats_p != end_p) + (fiat_p != end_p) + (asset_p != end_p);
         if (key_count != 1) {
             throw user_error(res::id_no_amount_specified);
         }
         GDK_RUNTIME_ASSERT(key_count == 1);
+
+        const conversion_type COIN_VALUE_WITH_PRECISION(std::pow(10, precision));
 
         const std::string fr_str = fiat_rate.empty() ? "0" : fiat_rate;
         const conversion_type fr(fr_str);
@@ -76,6 +83,9 @@ namespace sdk {
         } else if (sats_p != end_p) {
             const std::string sats_str = *sats_p;
             satoshi = (conversion_type(sats_str)).convert_to<value_type>();
+        } else if (asset_p != end_p) {
+            const std::string asset_str = *asset_p;
+            satoshi = (conversion_type(asset_str) * COIN_VALUE_WITH_PRECISION).convert_to<value_type>();
         } else {
             const std::string fiat_str = *fiat_p;
             const conversion_type btc_decimal = conversion_type(fiat_str) / fr;
@@ -94,9 +104,14 @@ namespace sdk {
         const conversion_type fiat_decimal = fr * conversion_type(satoshi) / COIN_VALUE_DECIMAL;
 
         // TODO: If the server returned the ISO country code, the caller could do locale aware formatting
-        return { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc }, { "bits", ubtc },
-            { "sats", sats }, { "fiat", fmt(fiat_type(fiat_decimal)) }, { "fiat_currency", fiat_currency },
-            { "fiat_rate", fr_str } };
+        nlohmann::json result = { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc },
+            { "bits", ubtc }, { "sats", sats }, { "fiat", fmt(fiat_type(fiat_decimal)) },
+            { "fiat_currency", fiat_currency }, { "fiat_rate", fr_str } };
+        if (asset_info_p != end_p) {
+            result.emplace(
+                asset_id, precision == 0 ? sats : fmt(btc_type(satoshi_conv / COIN_VALUE_WITH_PRECISION), precision));
+        }
+        return result;
     }
 
     void amount::strip_non_satoshi_keys(nlohmann::json& amount_json)

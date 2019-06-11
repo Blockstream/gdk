@@ -1607,9 +1607,12 @@ namespace sdk {
                     std::begin(utxos), std::end(utxos), int64_t{ 0 }, [](int64_t init, const nlohmann::json& utxo) {
                         return init + static_cast<amount::value_type>(utxo.at("satoshi"));
                     });
-                balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
+
                 if (m_assets.find(key) != m_assets.end()) {
+                    balance[key] = convert_amount(locker, { { "satoshi", satoshi }, { "asset_info", m_assets[key] } });
                     balance[key]["asset_info"] = m_assets[key];
+                } else {
+                    balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
                 }
             }
 
