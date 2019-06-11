@@ -201,7 +201,8 @@ namespace sdk {
 
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
-        const std::string& get_default_address_type(locker_t& locker) const;
+        nlohmann::json get_appearance() const;
+        const std::string& get_default_address_type() const;
         void push_appearance_to_server(locker_t& locker) const;
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
         void update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only);

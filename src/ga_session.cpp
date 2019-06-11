@@ -2183,19 +2183,15 @@ namespace sdk {
 
     nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
     {
-        locker_t locker(m_mutex);
-        std::string addr_type = addr_type_.empty() ? get_default_address_type(locker) : addr_type_;
+        std::string addr_type = addr_type_.empty() ? get_default_address_type() : addr_type_;
         const bool is_known
             = addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv;
 
         GDK_RUNTIME_ASSERT_MSG(is_known, "Unknown address type");
 
         nlohmann::json address;
-        {
-            unique_unlock unlocker(locker);
-            wamp_call([&address](wamp_call_result result) { address = get_json_result(result.get()); },
-                "com.greenaddress.vault.fund", subaccount, true, addr_type);
-        }
+        wamp_call([&address](wamp_call_result result) { address = get_json_result(result.get()); },
+            "com.greenaddress.vault.fund", subaccount, true, addr_type);
         json_rename_key(address, "addr_type", "address_type");
         GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
 
@@ -2285,10 +2281,15 @@ namespace sdk {
         return m_watch_only;
     }
 
-    const std::string& ga_session::get_default_address_type(locker_t& locker) const
+    nlohmann::json ga_session::get_appearance() const
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const auto& appearance = m_login_data.at("appearance");
+        locker_t locker(m_mutex);
+        return m_login_data.at("appearance");
+    }
+
+    const std::string& ga_session::get_default_address_type() const
+    {
+        const auto appearance = get_appearance();
         if (json_get_value(appearance, "use_csv", false)) {
             return address_type::csv;
         }
