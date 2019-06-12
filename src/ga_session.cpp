@@ -2183,7 +2183,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
     {
-        std::string addr_type = addr_type_.empty() ? get_default_address_type() : addr_type_;
+        const std::string addr_type = addr_type_.empty() ? get_default_address_type() : addr_type_;
         const bool is_known
             = addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv;
 
