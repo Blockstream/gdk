@@ -638,6 +638,40 @@ Balance Details JSON
 
 
 
+.. _receive-address-details:
+
+Receive Address Details JSON
+----------------------------
+
+.. code-block:: json
+
+  {"subaccount":0,"address_type":"csv"}
+
+:subaccount: The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to generate an address for. Default 0.
+:address_type: One of "csv", "p2sh", "p2wsh". Default value depends on wallet settings.
+
+
+
+.. _receive-address:
+
+Receive Address JSON
+--------------------
+
+.. code-block:: json
+
+  {
+    "address": "2N2x4EgizS2w3DUiWYWW9pEf4sGYRfo6PAX",
+    "address_type": "p2wsh",
+    "branch": 1,
+    "pointer": 13,
+    "script": "52210338832debc5e15ce143d5cf9241147ac0019e7516d3d9569e04b0e18f3278718921025dfaa85d64963252604e1b139b40182bb859a9e2e1aa2904876c34e82158d85452ae",
+    "script_type": 14,
+    "subaccount": 0,
+    "subtype": null
+  }
+
+
+
 .. _unspent-utxos-details:
 
 Utxos details JSON

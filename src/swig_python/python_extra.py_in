@@ -155,8 +155,8 @@ class Session(object):
     def get_transactions(self, details={'subaccount': 0, 'first': 0, 'count': 30}):
         return json.loads(get_transactions(self.session_obj, self._to_json(details)))
 
-    def get_receive_address(self, subaccount=0):
-        return get_receive_address(self.session_obj, subaccount)
+    def get_receive_address(self, details={}):
+        return json.loads(get_receive_address(self.session_obj, self._to_json(details)))
 
     def get_unspent_outputs(self, details={'subaccount': 0, 'num_confs': 1}):
         return json.loads(get_unspent_outputs(self.session_obj, self._to_json(details)))

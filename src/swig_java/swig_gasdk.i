@@ -511,7 +511,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_get_twofactor_config, GA_json)
 %returns_struct(GA_get_unspent_outputs, GA_json)
 %returns_struct(GA_get_unspent_outputs_for_private_key, GA_json)
-%returns_string(GA_get_receive_address)
+%returns_struct(GA_get_receive_address, GA_json)
 %returns_void__(GA_login)
 %returns_void__(GA_login_watch_only)
 %returns_void__(GA_login_with_pin)

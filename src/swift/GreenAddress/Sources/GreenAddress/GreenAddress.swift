@@ -297,13 +297,8 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
-    public func getReceiveAddress(subaccount: UInt32) throws -> String {
-        var buff: UnsafeMutablePointer<Int8>? = nil
-        try callWrapper(fun: GA_get_receive_address(session, subaccount, &buff))
-        defer {
-            GA_destroy_string(buff)
-        }
-        return String(cString: buff!)
+    public func getReceiveAddress(details: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_receive_address)
     }
 
     public func getBalance(details: [String: Any]) throws -> [String: Any]? {

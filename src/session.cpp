@@ -528,10 +528,10 @@ namespace sdk {
         m_notification_context = context;
     }
 
-    nlohmann::json session::get_receive_address(uint32_t subaccount, const std::string& addr_type)
+    nlohmann::json session::get_receive_address(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->get_receive_address(subaccount, addr_type); });
+        return exception_wrapper([&] { return m_impl->get_receive_address(details); });
     }
 
     nlohmann::json session::get_balance(const nlohmann::json& details)

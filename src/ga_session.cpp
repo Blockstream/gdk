@@ -2228,6 +2228,14 @@ namespace sdk {
         return address;
     }
 
+    nlohmann::json ga_session::get_receive_address(const nlohmann::json& details)
+    {
+        const uint32_t subaccount = details.value("subaccount", 0);
+        const std::string addr_type_ = details.value("address_type", std::string{});
+
+        return get_receive_address(subaccount, addr_type_);
+    }
+
     nlohmann::json ga_session::get_balance(const nlohmann::json& details)
     {
         const uint32_t subaccount = details.at("subaccount");

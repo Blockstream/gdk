@@ -264,12 +264,11 @@ GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* detai
  * Get a new address to receive coins to.
  *
  * :param session: The session to use.
- * :param subaccount: The value of "pointer" from :ref:`subaccount-list` or
- *|                   :ref:`subaccount-detail` for the subaccount to generate an address for.
- * :param output: The generated address.
- *|     Returned string should be freed using `GA_destroy_string`.
+ * :param details: :ref:`receive-address-details`.
+ * :param output: Destination for the generated address :ref:`receive-address`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
-GDK_API int GA_get_receive_address(struct GA_session* session, uint32_t subaccount, char** output);
+GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* details, GA_json** output);
 
 /**
  * Get the user's unspent transaction outputs.

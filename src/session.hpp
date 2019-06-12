@@ -72,7 +72,7 @@ namespace sdk {
 
         void set_notification_handler(GA_notification_handler handler, void* context);
 
-        nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type = std::string());
+        nlohmann::json get_receive_address(const nlohmann::json& details);
 
         nlohmann::json get_subaccounts();
 
