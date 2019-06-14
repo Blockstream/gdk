@@ -2,6 +2,7 @@
 #define GDK_SIGNER_HPP
 #pragma once
 
+#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
@@ -48,6 +49,8 @@ namespace sdk {
         virtual std::vector<unsigned char> get_public_key_from_blinding_key(byte_span_t script);
 
     protected:
+        virtual priv_key_t derive_master_blinding_key(byte_span_t seed);
+
         const network_parameters& m_net_params;
     };
 
@@ -101,7 +104,10 @@ namespace sdk {
         priv_key_t get_blinding_key_from_script(byte_span_t script) override;
 
     private:
+        priv_key_t derive_master_blinding_key(byte_span_t seed) override;
+
         wally_ext_key_ptr m_master_key;
+        boost::optional<priv_key_t> m_master_blinding_key;
     };
 
     //

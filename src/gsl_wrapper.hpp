@@ -9,6 +9,7 @@
 #endif
 #endif
 
+#include <gsl/gsl_util>
 #include <gsl/span>
 
 #if __clang__
