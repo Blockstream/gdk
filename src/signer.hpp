@@ -2,6 +2,7 @@
 #define GDK_SIGNER_HPP
 #pragma once
 
+#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
@@ -102,6 +103,7 @@ namespace sdk {
 
     private:
         wally_ext_key_ptr m_master_key;
+        boost::optional<blinding_key_t> m_master_blinding_key;
     };
 
     //

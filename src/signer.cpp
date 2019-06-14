@@ -4,6 +4,15 @@
 
 namespace ga {
 namespace sdk {
+
+    namespace {
+        static wally_ext_key_ptr derive(const wally_ext_key_ptr& hdkey, gsl::span<const uint32_t> path)
+        {
+            // FIXME: Private keys should be derived into mlocked memory
+            return bip32_key_from_parent_path_alloc(hdkey, path, BIP32_FLAG_KEY_PRIVATE | BIP32_FLAG_SKIP_HASH);
+        }
+    } // namespace
+
     signer::signer(const network_parameters& net_params)
         : m_net_params(net_params)
     {
@@ -26,13 +35,6 @@ namespace sdk {
         return nlohmann::json(); // No HW device unless we are a HW signer
     }
 
-    priv_key_t software_signer::get_blinding_key_from_script(byte_span_t script)
-    {
-        const priv_key_t blinding_key = hmac_sha256(gsl::make_span(m_master_key->priv_key).subspan(1), script);
-        GDK_RUNTIME_ASSERT(ec_private_key_verify(blinding_key));
-        return blinding_key;
-    }
-
     priv_key_t signer::get_blinding_key_from_script(__attribute__((unused)) byte_span_t script)
     {
         GDK_RUNTIME_ASSERT(false);
@@ -43,14 +45,6 @@ namespace sdk {
     {
         return ec_public_key_from_private_key(get_blinding_key_from_script(script));
     }
-
-    namespace {
-        static wally_ext_key_ptr derive(const wally_ext_key_ptr& hdkey, gsl::span<const uint32_t> path)
-        {
-            // FIXME: Private keys should be derived into mlocked memory
-            return bip32_key_from_parent_path_alloc(hdkey, path, BIP32_FLAG_KEY_PRIVATE | BIP32_FLAG_SKIP_HASH);
-        }
-    } // namespace
 
     //
     // Watch-only signer
@@ -107,6 +101,9 @@ namespace sdk {
             const auto seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
             const uint32_t version = m_net_params.main_net() ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
+            if (net_params.liquid()) {
+                m_master_blinding_key = asset_blinding_key_from_seed(seed);
+            }
         } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
             // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
             // FIXME: Some previously supported HWs do not have bip39 support.
@@ -118,13 +115,21 @@ namespace sdk {
             const auto seed = h2b(mnemonic_or_xpub.substr(0, 128));
             const uint32_t version = m_net_params.main_net() ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
+            if (net_params.liquid()) {
+                m_master_blinding_key = asset_blinding_key_from_seed(seed);
+            }
         } else {
             // xpub
             m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
         }
     }
 
-    software_signer::~software_signer() = default;
+    software_signer::~software_signer()
+    {
+        if (m_master_blinding_key) {
+            wally_bzero(m_master_blinding_key->data(), m_master_blinding_key->size());
+        }
+    }
 
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; };
@@ -163,6 +168,12 @@ namespace sdk {
     {
         wally_ext_key_ptr derived = derive(m_master_key, path);
         return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
+    }
+
+    priv_key_t software_signer::get_blinding_key_from_script(byte_span_t script)
+    {
+        GDK_RUNTIME_ASSERT(m_master_blinding_key.has_value());
+        return asset_blinding_key_to_ec_private_key(*m_master_blinding_key, script);
     }
 
     //

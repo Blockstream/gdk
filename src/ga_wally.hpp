@@ -57,8 +57,8 @@ namespace sdk {
     using vbf_t = std::array<unsigned char, 32>;
     using abf_t = std::array<unsigned char, 32>;
     using unblind_t = std::tuple<asset_id_t, vbf_t, abf_t, uint64_t>;
-
     using cvalue_t = std::array<unsigned char, WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN>;
+    using blinding_key_t = std::array<unsigned char, HMAC_SHA512_LEN>;
 
 #ifdef __GNUC__
 #define GA_USE_RESULT __attribute__((warn_unused_result))
@@ -228,6 +228,10 @@ namespace sdk {
     pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix);
 
     std::string confidential_addr_from_addr(const std::string& address, uint32_t prefix, byte_span_t public_key);
+
+    blinding_key_t asset_blinding_key_from_seed(byte_span_t seed);
+
+    priv_key_t asset_blinding_key_to_ec_private_key(byte_span_t blinding_key, byte_span_t script);
 
     //
     // Transactions

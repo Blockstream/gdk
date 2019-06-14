@@ -623,6 +623,22 @@ namespace sdk {
         return make_string(ret);
     }
 
+    blinding_key_t asset_blinding_key_from_seed(byte_span_t seed)
+    {
+        blinding_key_t blinding_key;
+        GDK_VERIFY(
+            wally_asset_blinding_key_from_seed(seed.data(), seed.size(), blinding_key.data(), blinding_key.size()));
+        return blinding_key;
+    }
+
+    priv_key_t asset_blinding_key_to_ec_private_key(byte_span_t blinding_key, byte_span_t script)
+    {
+        priv_key_t priv_key;
+        GDK_VERIFY(wally_asset_blinding_key_to_ec_private_key(
+            blinding_key.data(), blinding_key.size(), script.data(), script.size(), priv_key.data(), priv_key.size()));
+        return priv_key;
+    }
+
     //
     // Transactions
     //
