@@ -44,8 +44,8 @@ namespace sdk {
     std::vector<unsigned char> output_script_for_address(
         const network_parameters& net_params, const std::string& address);
 
-    std::vector<unsigned char> output_script(ga_pubkeys& pubkeys, ga_user_pubkeys& user_pubkeys,
-        ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
+    std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
+        ga_user_pubkeys& user_pubkeys, ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
     // Make a multisig scriptSig
     std::vector<unsigned char> input_script(signer& user_signer, const std::vector<unsigned char>& prevout_script,

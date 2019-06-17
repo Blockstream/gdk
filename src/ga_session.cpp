@@ -2211,7 +2211,8 @@ namespace sdk {
 
         if (!m_watch_only) {
             // Compute the address locally to verify the servers data
-            const auto script = output_script(*m_ga_pubkeys, *m_user_pubkeys, *m_recovery_pubkeys, address);
+            const auto script
+                = output_script_from_utxo(m_net_params, *m_ga_pubkeys, *m_user_pubkeys, *m_recovery_pubkeys, address);
             const auto user_address = get_address_from_script(m_net_params, script, addr_type);
             GDK_RUNTIME_ASSERT(server_address == user_address);
         }

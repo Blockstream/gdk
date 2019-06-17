@@ -125,8 +125,8 @@ namespace sdk {
         return script;
     }
 
-    std::vector<unsigned char> output_script(ga_pubkeys& pubkeys, ga_user_pubkeys& user_pubkeys,
-        ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
+    std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
+        ga_user_pubkeys& user_pubkeys, ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
     {
         const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
         const uint32_t pointer = utxo.at("pointer");
@@ -134,8 +134,13 @@ namespace sdk {
 
         type = utxo.at("script_type");
         uint32_t subtype = 0;
-        if (type == script_type::p2sh_p2wsh_csv_fortified_out)
+        if (type == script_type::p2sh_p2wsh_csv_fortified_out) {
+            // subtype indicates the number of csv blocks and must be one of the known bucket values
             subtype = utxo.at("subtype");
+            const auto csv_buckets = net_params.csv_buckets();
+            const auto csv_bucket_p = std::find(std::begin(csv_buckets), std::end(csv_buckets), subtype);
+            GDK_RUNTIME_ASSERT_MSG(csv_bucket_p != csv_buckets.end(), "Unknown csv bucket");
+        }
 
         const auto ga_pub_key = pubkeys.derive(subaccount, pointer);
         const auto user_pub_key = user_pubkeys.derive(subaccount, pointer);

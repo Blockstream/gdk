@@ -73,8 +73,9 @@ namespace sdk {
             } else {
                 // Populate the prevout script if missing so signing can use it later
                 if (utxo.find("prevout_script") == utxo.end()) {
-                    const auto script = output_script(
-                        session.get_ga_pubkeys(), session.get_user_pubkeys(), session.get_recovery_pubkeys(), utxo);
+                    const auto& net_params = session.get_network_parameters();
+                    const auto script = output_script_from_utxo(net_params, session.get_ga_pubkeys(),
+                        session.get_user_pubkeys(), session.get_recovery_pubkeys(), utxo);
                     utxo["prevout_script"] = b2h(script);
                 }
                 const auto script = h2b(utxo["prevout_script"]);

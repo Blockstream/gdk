@@ -55,6 +55,7 @@ namespace sdk {
         {
             return use_tor ? gait_onion() : gait_wamp_url();
         }
+        std::vector<uint32_t> csv_buckets() const { return m_details.at("csv_buckets"); }
 
     private:
         nlohmann::json m_details;
