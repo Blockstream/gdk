@@ -52,6 +52,9 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     else
         CONFIG_TARGET="ios64-cross"
         NOASM=
+        if [ $LTO = "true" ]; then
+            OPENSSL_OPTIONS="$OPENSSL_OPTIONS -fembed-bitcode"
+        fi
     fi
     KERNEL_BITS=64 ./Configure $CONFIG_TARGET $NOASM --prefix=$openssl_prefix $OPENSSL_OPTIONS $OPENSSL_MOBILE
     make depend
