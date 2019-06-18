@@ -32,6 +32,7 @@ namespace sdk {
         void on_read(boost::beast::error_code ec, size_t bytes_transferred);
         void on_shutdown(boost::beast::error_code ec);
 
+        void set_result();
         void set_exception(const std::string& what);
 
         boost::asio::ip::tcp::resolver m_resolver;

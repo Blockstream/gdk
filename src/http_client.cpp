@@ -112,6 +112,19 @@ namespace sdk {
             return;
         }
 
+        set_result();
+    }
+
+    void http_client::set_result()
+    {
+        const auto result = m_response.result();
+        if (result != beast::http::status::ok) {
+            std::stringstream error;
+            error << result;
+            set_exception(error.str());
+            return;
+        }
+
         try {
             m_promise.set_value(nlohmann::json::parse(m_response.body()));
         } catch (const std::exception& ex) {
