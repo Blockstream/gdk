@@ -190,8 +190,8 @@ namespace sdk {
 
     nlohmann::json network_parameters::get_all()
     {
-        // We manually order mainnet/testnet first for nice wallet/UX display ordering
-        std::vector<std::string> all_networks{ "mainnet", "testnet" };
+        // We manually order mainnet/liquid/testnet first for nice wallet/UX display ordering
+        std::vector<std::string> all_networks{ "mainnet", "liquid", "testnet" };
         nlohmann::json ret;
 
         std::unique_lock<std::mutex> l{ registered_networks_mutex };
