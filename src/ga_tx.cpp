@@ -553,6 +553,11 @@ namespace sdk {
                         // add fee output so is also part of size calculations
                         if (is_liquid) {
                             if (!have_fee_output) {
+                                if (send_all && addressees_p->at(0).value("asset_tag", "btc") == asset_tag) {
+                                    // the output commitment will be corrected below. this is a placeholder for the
+                                    // blinding.
+                                    set_tx_output_commitment(net_params, tx, 0, asset_tag, 1);
+                                }
                                 add_tx_fee_output(net_params, tx, 1);
                                 have_fee_output = true;
                                 fee_index = tx->num_outputs - 1;
