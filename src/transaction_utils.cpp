@@ -9,6 +9,15 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
+#include <cctype>
+
+namespace {
+bool isupper(const std::string& s)
+{
+    return std::all_of(std::begin(s), std::end(s), [](int c) { return !std::islower(c); });
+}
+} // namespace
+
 namespace ga {
 namespace sdk {
     namespace address_type {
@@ -282,6 +291,14 @@ namespace sdk {
                 addressee["satoshi"] = session.convert_amount(uri_amount)["satoshi"];
                 amount::strip_non_satoshi_keys(addressee);
             }
+        }
+
+        // Convert uppercase bech32 alphanumeric strings to lowercase
+        // Only convert all uppercase strings, BIP-173 specifically disallows mixed case strings
+        const std::string bech32_prefix = net_params.bech32_prefix() + "1";
+        if (boost::istarts_with(address, bech32_prefix) && isupper(address)) {
+            boost::to_lower(address);
+            addressee["address"] = address;
         }
 
         // Convert the users entered value into satoshi
