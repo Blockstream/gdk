@@ -474,6 +474,10 @@ public class Session {
         try callWrapper(fun: GA_refresh_assets(session, &result))
         return try convertOpaqueJsonToDict(o: result!)
     }
+
+    public func validateAssetDomainName(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_validate_asset_domain_name)
+    }
 }
 
 public func generateMnemonic() throws -> String {

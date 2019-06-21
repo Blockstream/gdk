@@ -241,6 +241,9 @@ class Session(object):
     def refresh_assets(self):
         return json.loads(refresh_assets(self.session_obj))
 
+    def validate_asset_domain_name(self, params):
+        return json.loads(validate_asset_domain_name(self.session_obj, self._to_json(params)))
+
 
 _old_get_networks = get_networks
 def get_networks():

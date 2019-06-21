@@ -2,6 +2,7 @@
 #include "assertion.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
+#include "utils.hpp"
 
 namespace algo = boost::algorithm;
 namespace asio = boost::asio;
@@ -30,6 +31,13 @@ namespace sdk {
         const std::string& host, const std::string& port, const std::string& target, const std::string& proxy_uri)
     {
         GDK_LOG_NAMED_SCOPE("http_client:get");
+
+        GDK_LOG_SEV(log_level::debug) << "Connecting to " << host << ":" << port << " for target " << target;
+
+        if (!SSL_set_tlsext_host_name(m_stream.native_handle(), host.c_str())) {
+            beast::error_code ec{ static_cast<int>(::ERR_get_error()), asio::error::get_ssl_category() };
+            GDK_RUNTIME_ASSERT_MSG(false, ec.message());
+        }
 
         m_request.version(HTTP_VERSION);
         m_request.method(beast::http::verb::get);
@@ -118,6 +126,12 @@ namespace sdk {
     void http_client::set_result()
     {
         const auto result = m_response.result();
+        if (beast::http::to_status_class(result) == beast::http::status_class::redirection) {
+            const nlohmann::json body = { { "location", m_response[beast::http::field::location] } };
+            m_promise.set_value(body);
+            return;
+        }
+
         if (result != beast::http::status::ok) {
             std::stringstream error;
             error << result;
@@ -126,7 +140,14 @@ namespace sdk {
         }
 
         try {
-            m_promise.set_value(nlohmann::json::parse(m_response.body()));
+            nlohmann::json body;
+            const auto content_type = m_response[beast::http::field::content_type];
+            if (content_type == "application/json") {
+                body = nlohmann::json::parse(m_response.body());
+            } else {
+                body = { { "body", m_response.body() } };
+            }
+            m_promise.set_value(body);
         } catch (const std::exception& ex) {
             m_promise.set_exception(std::make_exception_ptr(ex));
         }

@@ -4,6 +4,7 @@
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "socks_client.hpp"
+#include "utils.hpp"
 
 namespace algo = boost::algorithm;
 namespace asio = boost::asio;
@@ -11,29 +12,6 @@ namespace beast = boost::beast;
 
 namespace ga {
 namespace sdk {
-
-    namespace {
-        // TODO: URI parsing
-        std::pair<std::string, uint16_t> split_url(const std::string& domain_name)
-        {
-            auto endpoint = domain_name;
-            const bool use_tls = algo::starts_with(endpoint, "wss://") || algo::starts_with(endpoint, "https://");
-            if (use_tls) {
-                algo::erase_all(endpoint, "wss://");
-                algo::erase_all(endpoint, "https://");
-            } else {
-                algo::erase_all(endpoint, "ws://");
-            }
-            std::vector<std::string> endpoint_parts;
-            algo::split(endpoint_parts, endpoint, algo::is_any_of("/"));
-            GDK_RUNTIME_ASSERT(endpoint_parts.size() > 0);
-            std::vector<std::string> host_parts;
-            algo::split(host_parts, endpoint_parts[0], algo::is_any_of(":"));
-            GDK_RUNTIME_ASSERT(host_parts.size() > 0);
-            const uint16_t port = host_parts.size() > 1 ? std::stoul(host_parts[1], nullptr, 10) : use_tls ? 443 : 80;
-            return { host_parts[0], htons(port) };
-        }
-    } // namespace
 
     socks_client::socks_client(asio::io_context& io, boost::beast::tcp_stream& stream)
         : m_resolver(asio::make_strand(io))
@@ -167,7 +145,8 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!domain_name.empty());
 
-        const auto host_port = split_url(domain_name);
+        std::string target;
+        const auto host_port = split_url(domain_name, target);
 
         // version: 5
         // command: connect

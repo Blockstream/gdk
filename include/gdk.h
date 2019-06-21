@@ -122,13 +122,20 @@ GDK_API int GA_http_get(struct GA_session* session, const GA_json* params, GA_js
 
 /**
  *
- *  Refresh the internal cache asset information.
+ * Refresh the internal cache asset information.
  *
  * :param session: The session to use.
  * :param output: Destination for the assets JSON.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_refresh_assets(struct GA_session* session, GA_json** output);
+
+/**
+ * Validate asset domain name.
+ * (This is a interface stub)
+ *
+ */
+GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
  * Create a new user account using a hardware wallet/HSM/TPM.

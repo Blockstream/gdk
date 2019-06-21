@@ -674,19 +674,29 @@ namespace sdk {
     {
         nlohmann::json result;
         try {
-            const std::string uri = params.at("uri");
-            const std::string target = params.at("target");
+            std::string uri = params.at("uri");
+            std::string target = params.at("target");
             const std::string proxy = params.value("proxy", socksify(m_proxy));
 
-            websocketpp::uri uri_parts{ uri };
-            const std::string host_name = uri_parts.get_host();
-            const std::string port = uri_parts.get_port_str();
+            const auto ssl_ctx = tls_init_handler_impl(uri);
 
-            const auto ssl_ctx = tls_init_handler_impl(host_name);
-            auto client = std::make_shared<http_client>(m_io, *ssl_ctx);
-            GDK_RUNTIME_ASSERT(client != nullptr);
+            // NOTE: only https is supported.
+            auto&& get = [&](const std::string& host, const std::string& target, const std::string& proxy) {
+                auto client = std::make_shared<http_client>(m_io, *ssl_ctx);
+                GDK_RUNTIME_ASSERT(client != nullptr);
+                return client->get(host, "443", target, proxy).get();
+            };
 
-            result = client->get(host_name, port, target, proxy).get();
+            constexpr uint8_t num_redirects = 5;
+            for (uint8_t i = 0; i < num_redirects; ++i) {
+                result = get(uri, target, proxy);
+                if (!result.value("location", std::string{}).empty()) {
+                    const auto host_port = split_url(result["location"], target);
+                    uri = host_port.first;
+                } else {
+                    break;
+                }
+            }
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
         }
@@ -705,9 +715,35 @@ namespace sdk {
 
         nlohmann::json result;
         try {
-            result = http_get({ { "uri", m_net_params.asset_registry_url() }, { "target", "/index.json" } });
+            std::string target;
+            const auto host_port = split_url(m_net_params.asset_registry_url(), target);
+            result = http_get({ { "uri", host_port.first }, { "target", "/index.json" } });
             m_assets.update(result);
             result = m_assets;
+        } catch (const std::exception& ex) {
+            result["error"] = ex.what();
+        }
+
+        return result;
+    }
+
+    nlohmann::json ga_session::validate_asset_domain_name(__attribute__((unused)) const nlohmann::json& params)
+    {
+        boost::format format_str{ "Authorize linking the domain name %1% to the Liquid asset %2%\n" };
+        boost::format target_str{ "/.well-known/liquid-asset-proof-%1%" };
+
+        nlohmann::json result;
+        try {
+            const std::string domain_name = params.at("domain");
+            const std::string asset_id = params.at("asset_id");
+            const std::string final_target = (target_str % asset_id).str();
+            result = http_get({ { "uri", domain_name }, { "target", final_target } });
+            if (!result.value("error", std::string{}).empty()) {
+                return result;
+            }
+            const std::string body_r = result.at("body");
+            GDK_RUNTIME_ASSERT_MSG(
+                body_r == (format_str % domain_name % asset_id).str(), "found domain name with proof mismatch");
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
         }

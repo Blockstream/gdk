@@ -53,6 +53,8 @@ namespace sdk {
     }
 
     nlohmann::json parse_bitcoin_uri(const std::string& uri);
+    // TODO: URI parsing
+    std::pair<std::string, uint16_t> split_url(const std::string& domain_name, std::string& target);
 
     // Mnemonic handling
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
