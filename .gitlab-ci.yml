@@ -1,5 +1,5 @@
 cache:
-  key: "5"
+  key: "6"
   paths:
     - subprojects/packagecache/
 
