@@ -15,14 +15,13 @@
 
 #include <openssl/rand.h>
 
-#include <gsl/span>
-
 #include "boost_wrapper.hpp"
 
 #include "assertion.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
+#include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
 

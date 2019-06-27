@@ -4,11 +4,11 @@
 
 #include <array>
 #include <cstring>
-#include <gsl/span>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "gsl_wrapper.hpp"
 #include "wally_wrapper.h"
 
 #include "assertion.hpp"

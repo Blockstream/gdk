@@ -2,10 +2,10 @@
 #define GDK_XPUB_HDKEY_HPP
 #pragma once
 
-#include <gsl/span>
 #include <map>
 
 #include "ga_wally.hpp"
+#include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
 

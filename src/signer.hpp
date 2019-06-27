@@ -2,9 +2,8 @@
 #define GDK_SIGNER_HPP
 #pragma once
 
-#include <gsl/span>
-
 #include "ga_wally.hpp"
+#include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
 
