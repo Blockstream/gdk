@@ -38,6 +38,7 @@ namespace sdk {
         std::string block_explorer_address() const { return m_details.at("address_explorer_url"); }
         std::string block_explorer_tx() const { return m_details.at("tx_explorer_url"); }
         std::string asset_registry_url() const { return m_details.at("asset_registry_url"); }
+        std::string asset_registry_onion_url() const { return m_details.at("asset_registry_onion_url"); }
         std::string chain_code() const { return m_details.at("service_chain_code"); }
         std::string pub_key() const { return m_details.at("service_pubkey"); }
         std::string gait_onion() const { return m_details.at("wamp_onion_url"); }
@@ -54,6 +55,10 @@ namespace sdk {
         std::string get_connection_string(bool use_tor) const
         {
             return use_tor ? gait_onion() : gait_wamp_url();
+        }
+        std::string get_registry_connection_string(bool use_tor) const
+        {
+            return use_tor ? asset_registry_onion_url() : asset_registry_url();
         }
         std::vector<uint32_t> csv_buckets() const { return m_details.at("csv_buckets"); }
 

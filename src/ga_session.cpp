@@ -716,7 +716,7 @@ namespace sdk {
         nlohmann::json result;
         try {
             std::string target;
-            const auto host_port = split_url(m_net_params.asset_registry_url(), target);
+            const auto host_port = split_url(m_net_params.get_registry_connection_string(m_use_tor), target);
             result = http_get({ { "uri", host_port.first }, { "target", "/index.json" } });
             m_assets.update(result);
             result = m_assets;
