@@ -7,44 +7,103 @@
 #include <nlohmann/json.hpp>
 
 #include "boost_wrapper.hpp"
+#include "gsl_wrapper.hpp"
 #include "socks_client.hpp"
 
 namespace ga {
 namespace sdk {
 
-    class http_client final : public std::enable_shared_from_this<http_client> {
+    class http_client {
     public:
-        explicit http_client(boost::asio::io_context& io, boost::asio::ssl::context& ssl_ctx);
+        http_client(boost::asio::io_context& io);
 
         http_client(const http_client&) = delete;
         http_client(http_client&&) = delete;
         http_client& operator=(const http_client&) = delete;
         http_client& operator=(http_client&&) = delete;
 
-        std::future<nlohmann::json> get(const std::string& host, const std::string& port, const std::string& target,
-            const std::string& proxy_uri = {});
+        virtual ~http_client() = default;
 
-    private:
+        std::future<nlohmann::json> get(const nlohmann::json& params);
+
         void on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
-        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
-        void on_handshake(boost::beast::error_code ec);
         void on_write(boost::beast::error_code ec, size_t bytes_transferred);
         void on_read(boost::beast::error_code ec, size_t bytes_transferred);
         void on_shutdown(boost::beast::error_code ec);
+
+    protected:
+        virtual boost::beast::tcp_stream& get_lowest_layer() = 0;
+        virtual boost::beast::tcp_stream& get_next_layer() = 0;
+        virtual void async_connect(boost::asio::ip::tcp::resolver::results_type results) = 0;
+        virtual void async_read() = 0;
+        virtual void async_write() = 0;
+        virtual void async_shutdown() = 0;
+        virtual void async_handshake() = 0;
+        virtual void async_resolve(const std::string& host, const std::string& port) = 0;
+        virtual void preamble(const std::string& host);
 
         void set_result();
         void set_exception(const std::string& what);
 
         boost::asio::ip::tcp::resolver m_resolver;
-        boost::beast::ssl_stream<boost::beast::tcp_stream> m_stream;
         boost::beast::flat_buffer m_buffer;
         boost::beast::http::request<boost::beast::http::empty_body> m_request;
         boost::beast::http::response<boost::beast::http::string_body> m_response;
+        std::string m_host;
+        std::string m_port;
 
         std::promise<nlohmann::json> m_promise;
 
         boost::asio::io_context& m_io;
     };
+
+    class tls_http_client final : public std::enable_shared_from_this<tls_http_client>, public http_client {
+    public:
+        tls_http_client(boost::asio::io_context& io, boost::asio::ssl::context& ssl_ctx);
+
+    private:
+        boost::beast::tcp_stream& get_lowest_layer() override;
+        boost::beast::tcp_stream& get_next_layer() override;
+        void async_connect(boost::asio::ip::tcp::resolver::results_type results) override;
+        void async_read() override;
+        void async_write() override;
+        void async_shutdown() override;
+        void async_handshake() override;
+        void async_resolve(const std::string& host, const std::string& port) override;
+        void preamble(const std::string& host) override;
+
+        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
+        void on_handshake(boost::beast::error_code ec);
+
+        boost::beast::ssl_stream<boost::beast::tcp_stream> m_stream;
+    };
+
+    class tcp_http_client final : public std::enable_shared_from_this<tcp_http_client>, public http_client {
+    public:
+        tcp_http_client(boost::asio::io_context& io);
+
+    private:
+        boost::beast::tcp_stream& get_lowest_layer() override;
+        boost::beast::tcp_stream& get_next_layer() override;
+        void async_connect(boost::asio::ip::tcp::resolver::results_type results) override;
+        void async_read() override;
+        void async_write() override;
+        void async_shutdown() override;
+        void async_handshake() override;
+        void async_resolve(const std::string& host, const std::string& port) override;
+
+        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
+
+        boost::beast::tcp_stream m_stream;
+    };
+
+    inline std::shared_ptr<http_client> make_http_client(
+        boost::asio::io_context& io, gsl::owner<boost::asio::ssl::context*> ssl_ctx)
+    {
+        return ssl_ctx != nullptr ? std::shared_ptr<http_client>(new tls_http_client(io, *ssl_ctx))
+                                  : std::shared_ptr<http_client>(new tcp_http_client(io));
+    }
+
 } // namespace sdk
 } // namespace ga
 

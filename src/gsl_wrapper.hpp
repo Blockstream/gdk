@@ -9,7 +9,7 @@
 #endif
 #endif
 
-#include <gsl/gsl_util>
+#include <gsl/pointers>
 #include <gsl/span>
 
 #if __clang__

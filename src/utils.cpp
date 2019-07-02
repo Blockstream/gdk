@@ -344,7 +344,7 @@ namespace sdk {
     }
 
     // TODO: URI parsing
-    std::pair<std::string, uint16_t> split_url(const std::string& domain_name, std::string& target)
+    std::pair<std::string, std::string> split_url(const std::string& domain_name, std::string& target, bool& is_secure)
     {
         namespace algo = boost::algorithm;
         auto endpoint = domain_name;
@@ -352,8 +352,11 @@ namespace sdk {
         if (use_tls) {
             algo::erase_all(endpoint, "wss://");
             algo::erase_all(endpoint, "https://");
+            is_secure = true;
         } else {
             algo::erase_all(endpoint, "ws://");
+            algo::erase_all(endpoint, "http://");
+            is_secure = false;
         }
         std::vector<std::string> endpoint_parts;
         algo::split(endpoint_parts, endpoint, algo::is_any_of("/"));
@@ -365,8 +368,8 @@ namespace sdk {
         std::vector<std::string> host_parts;
         algo::split(host_parts, endpoint_parts[0], algo::is_any_of(":"));
         GDK_RUNTIME_ASSERT(host_parts.size() > 0);
-        const uint16_t port = host_parts.size() > 1 ? std::stoul(host_parts[1], nullptr, 10) : use_tls ? 443 : 80;
-        return { host_parts[0], htons(port) };
+        const std::string port = host_parts.size() > 1 ? host_parts[1] : use_tls ? "443" : "80";
+        return { host_parts[0], port };
     }
 } // namespace sdk
 } // namespace ga

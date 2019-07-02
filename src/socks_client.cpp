@@ -89,13 +89,20 @@ namespace sdk {
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
 
+        if (m_response[1] != static_cast<uint8_t>(reply_code::success)) {
+            return set_exception(get_error_string(m_response[1]));
+        }
+
         if (m_negotiation_phase == negotiation_phase::method_selection) {
             m_negotiation_phase = negotiation_phase::connect;
 
             asio::async_write(m_stream, connect_request(m_endpoint),
                 beast::bind_front_handler(&socks_client::on_write, shared_from_this()));
         } else {
-            GDK_RUNTIME_ASSERT(m_negotiation_phase == negotiation_phase::connect && m_response[1] == 0);
+
+            if (m_negotiation_phase != negotiation_phase::connect) {
+                return set_exception("expected negotiation phase to be connect");
+            }
 
             const size_t response_siz
                 = m_response[3] == 0x1 ? 4 + sizeof(uint16_t) : m_response[3] == 0x4 ? 16 + sizeof(uint16_t) : 1;
@@ -111,7 +118,10 @@ namespace sdk {
         GDK_LOG_NAMED_SCOPE("socks_client:on_connect_read");
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
-        GDK_RUNTIME_ASSERT(m_negotiation_phase == negotiation_phase::connect);
+
+        if (m_negotiation_phase != negotiation_phase::connect) {
+            return set_exception("expected negotiation phase to be connect");
+        }
 
         if (m_response.size() == 1) {
             m_response.resize(m_response[0] + sizeof(uint16_t));
@@ -146,7 +156,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!domain_name.empty());
 
         std::string target;
-        const auto host_port = split_url(domain_name, target);
+        bool is_secure;
+        const auto host_port = split_url(domain_name, target, is_secure);
 
         // version: 5
         // command: connect
@@ -156,10 +167,43 @@ namespace sdk {
         m_request.assign({ 0x5, 0x1, 0x0, 0x3, static_cast<unsigned char>(host_port.first.size()) });
         std::copy(std::cbegin(host_port.first), std::cend(host_port.first), std::back_inserter(m_request));
 
-        const auto p = reinterpret_cast<const unsigned char*>(&host_port.second);
+        uint16_t port = htons(std::stoul(host_port.second, nullptr, 10));
+        const auto p = reinterpret_cast<const unsigned char*>(&port);
         std::copy(p, p + sizeof(uint16_t), std::back_inserter(m_request));
 
         return asio::const_buffer(m_request.data(), m_request.size());
+    }
+
+    std::string socks_client::get_error_string(uint8_t response)
+    {
+        if (response > static_cast<uint8_t>(reply_code::addr_type_not_supported)) {
+            return "unknown error";
+        }
+
+        switch (static_cast<reply_code>(response)) {
+        case reply_code::success:
+            return "succeeded";
+        case reply_code::general_failure:
+            return "general SOCKS server failure";
+        case reply_code::connection_not_allowed:
+            return "connection not allowed by ruleset";
+        case reply_code::network_unreachable:
+            return "network unreachable";
+        case reply_code::host_unreachable:
+            return "host unreachable";
+        case reply_code::connection_refused:
+            return "connection refused";
+        case reply_code::ttl_expired:
+            return "TTL expired";
+        case reply_code::not_supported:
+            return "command not supported";
+        case reply_code::addr_type_not_supported:
+            return "address type not supported";
+        default:
+            return "unknown error";
+        }
+
+        __builtin_unreachable();
     }
 
     void socks_client::set_exception(const std::string& what)

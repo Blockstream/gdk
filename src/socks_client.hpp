@@ -23,6 +23,18 @@ namespace sdk {
         void shutdown();
 
     private:
+        enum class reply_code {
+            success,
+            general_failure,
+            connection_not_allowed,
+            network_unreachable,
+            host_unreachable,
+            connection_refused,
+            ttl_expired,
+            not_supported,
+            addr_type_not_supported
+        };
+
         enum class negotiation_phase { method_selection, connect };
 
         void on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
@@ -32,6 +44,7 @@ namespace sdk {
         void on_connect_read(boost::beast::error_code ec, size_t bytes_transferred);
         void on_domain_name_read(boost::beast::error_code ec, size_t bytes_transferred);
 
+        std::string get_error_string(uint8_t response);
         void set_exception(const std::string& what);
 
         // SOCKS5 request. TODO: this is a simplified version of the code PR'd to websocketpp

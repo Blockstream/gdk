@@ -674,25 +674,30 @@ namespace sdk {
     {
         nlohmann::json result;
         try {
-            std::string uri = params.at("uri");
-            std::string target = params.at("target");
-            const std::string proxy = params.value("proxy", socksify(m_proxy));
+            nlohmann::json curr_params = params;
+            json_add_if_missing(curr_params, "proxy", socksify(m_proxy));
 
-            const auto ssl_ctx = tls_init_handler_impl(uri);
+            std::string target;
+            bool is_secure;
+            auto host_port = split_url(curr_params.at("uri"), target, is_secure);
 
-            // NOTE: only https is supported.
-            auto&& get = [&](const std::string& host, const std::string& target, const std::string& proxy) {
-                auto client = std::make_shared<http_client>(m_io, *ssl_ctx);
+            const auto ssl_ctx = tls_init_handler_impl(host_port.first);
+
+            std::shared_ptr<http_client> client;
+            auto&& get = [&] {
+                client = make_http_client(m_io, is_secure ? ssl_ctx.get() : nullptr);
                 GDK_RUNTIME_ASSERT(client != nullptr);
-                return client->get(host, "443", target, proxy).get();
+                const nlohmann::json get_params = { { "uri", host_port.first }, { "port", host_port.second },
+                    { "target", curr_params.at("target") }, { "proxy", curr_params.at("proxy") } };
+                return client->get(get_params).get();
             };
 
             constexpr uint8_t num_redirects = 5;
             for (uint8_t i = 0; i < num_redirects; ++i) {
-                result = get(uri, target, proxy);
+                result = get();
                 if (!result.value("location", std::string{}).empty()) {
-                    const auto host_port = split_url(result["location"], target);
-                    uri = host_port.first;
+                    GDK_RUNTIME_ASSERT_MSG(!m_use_tor, "redirection over Tor is not supported");
+                    host_port = split_url(result["location"], target, is_secure);
                 } else {
                     break;
                 }
@@ -715,9 +720,9 @@ namespace sdk {
 
         nlohmann::json result;
         try {
-            std::string target;
-            const auto host_port = split_url(m_net_params.get_registry_connection_string(m_use_tor), target);
-            result = http_get({ { "uri", host_port.first }, { "target", "/index.json" } });
+            result = http_get(
+                { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/index.json" } });
+            GDK_RUNTIME_ASSERT_MSG(result.find("body") == result.end(), "expected JSON");
             m_assets.update(result);
             result = m_assets;
         } catch (const std::exception& ex) {
