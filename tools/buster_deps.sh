@@ -4,8 +4,8 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install wget unzip autoconf pkg-config build-essential libtool virtualenv python3-pip ninja-build clang clang-tidy llvm-dev git swig openjdk-8-jdk g++-mingw-w64-x86-64 -yqq
-update-java-alternatives -s java-1.8.0-openjdk-amd64
+apt install wget unzip autoconf pkg-config build-essential libtool virtualenv python3-pip ninja-build clang clang-tidy llvm-dev git swig openjdk-11-jdk g++-mingw-w64-x86-64 -yqq
+update-java-alternatives -s java-1.11.0-openjdk-amd64
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
 

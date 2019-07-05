@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:637e5fa47f09507ad07eda14591aee465f471a5a24de4d32128cf60bbca82333
+image: greenaddress/ci@sha256:ea35420e00313ed7630137d4c0600945c845bebe5c50e403afb23bf4ba6ae792
 
 .fedora_images:
   image: greenaddress/fedora_ci@sha256:79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
@@ -45,11 +45,11 @@ test_gcc:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --gcc
 
-release_py3m_stretch:
+release_py3m_buster:
   extends: .py_release
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.5
+    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7
 
 release_py3m_fedora:
   extends: .py_release
@@ -244,7 +244,7 @@ package_release:
   - gdk_clang_ndk_arm64-v8a
   - gdk_clang_ndk_x86
   - gdk_clang_ndk_x86_64
-  - release_py3m_stretch
+  - release_py3m_buster
   - release_py3m_fedora
   - release_py3m_osx
   - apidocs
