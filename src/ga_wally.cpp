@@ -660,8 +660,7 @@ namespace sdk {
     {
         std::vector<unsigned char> buff(tx_get_length(tx, flags));
         size_t written;
-        GDK_VERIFY(wally_tx_to_bytes(tx.get(), flags | (tx_is_elements(tx) ? WALLY_TX_FLAG_USE_ELEMENTS : 0),
-            buff.data(), buff.size(), &written));
+        GDK_VERIFY(wally_tx_to_bytes(tx.get(), flags, buff.data(), buff.size(), &written));
         GDK_RUNTIME_ASSERT(written == buff.size());
         return buff;
     }
