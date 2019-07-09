@@ -396,12 +396,13 @@ namespace sdk {
                 }
             }
 
+            const bool confidential_utxos_only = json_add_if_missing(result, "confidential_utxos_only", true);
             if (!is_sweep && result.find("utxos") == result.end()) {
                 // Fetch the users utxos from the current subaccount.
                 // if RBF/cpfp, require 1 confirmation.
                 const uint32_t num_confs = (is_rbf || is_cpfp) ? 1 : 0;
-                result["utxos"] = session.get_unspent_outputs(
-                    nlohmann::json({ { "subaccount", subaccount }, { "num_confs", num_confs } }));
+                result["utxos"] = session.get_unspent_outputs(nlohmann::json({ { "subaccount", subaccount },
+                    { "num_confs", num_confs }, { "confidential", confidential_utxos_only } }));
             }
 
             const bool send_all = json_add_if_missing(result, "send_all", false);

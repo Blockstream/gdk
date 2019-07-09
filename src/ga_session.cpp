@@ -155,6 +155,7 @@ namespace sdk {
                 const auto asset_tag = h2b(utxo.value("asset_tag", policy_asset));
                 GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
                 utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag.data() + 1, asset_tag.size() - 1));
+                utxo["confidential"] = false;
             } else {
                 const auto rangeproof = h2b(utxo.at("range_proof"));
                 const auto commitment = h2b(utxo.at("commitment"));
@@ -166,12 +167,17 @@ namespace sdk {
 
                 const auto blinding_key = signer.get_blinding_key_from_script(extra_commitment);
 
-                const auto unblinded = asset_unblind(
-                    blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
-                utxo["satoshi"] = std::get<3>(unblinded);
-                utxo["abf"] = b2h(std::get<2>(unblinded));
-                utxo["vbf"] = b2h(std::get<1>(unblinded));
-                utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
+                try {
+                    const auto unblinded = asset_unblind(
+                        blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
+                    utxo["satoshi"] = std::get<3>(unblinded);
+                    utxo["abf"] = b2h(std::get<2>(unblinded));
+                    utxo["vbf"] = b2h(std::get<1>(unblinded));
+                    utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
+                    utxo["confidential"] = true;
+                } catch (const std::exception& ex) {
+                    utxo["error"] = "failed to unblind utxo";
+                }
             }
         }
 
@@ -1640,20 +1646,34 @@ namespace sdk {
                 utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
             }
 
+            auto accumulate_if = [](const auto& utxos, auto pred) {
+                return std::accumulate(
+                    std::begin(utxos), std::end(utxos), int64_t{ 0 }, [pred](int64_t init, const nlohmann::json& utxo) {
+                        amount::value_type satoshi{ 0 };
+                        if (pred(utxo)) {
+                            satoshi = utxo.at("satoshi");
+                        }
+                        return init + satoshi;
+                    });
+            };
+
             nlohmann::json balance({ { "btc", convert_amount(locker, { { "satoshi", 0 } }) } });
             for (const auto& item : utxos.items()) {
                 const auto& key = item.key();
-                const auto& utxos = item.value();
-                int64_t satoshi = std::accumulate(
-                    std::begin(utxos), std::end(utxos), int64_t{ 0 }, [](int64_t init, const nlohmann::json& utxo) {
-                        return init + static_cast<amount::value_type>(utxo.at("satoshi"));
-                    });
+                const auto& item_utxos = item.value();
+                const int64_t satoshi
+                    = accumulate_if(item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end(); });
+                const int64_t unconfidential_satoshi = accumulate_if(
+                    item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end() && !utxo.at("confidential"); });
 
                 if (m_assets.find(key) != m_assets.end()) {
                     balance[key] = convert_amount(locker, { { "satoshi", satoshi }, { "asset_info", m_assets[key] } });
+                    balance[key]["unconfidential"] = convert_amount(
+                        locker, { { "satoshi", unconfidential_satoshi }, { "asset_info", m_assets[key] } });
                     balance[key]["asset_info"] = m_assets[key];
                 } else {
                     balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
+                    balance[key]["unconfidential"] = convert_amount(locker, { { "satoshi", unconfidential_satoshi } });
                 }
             }
 
@@ -1949,7 +1969,7 @@ namespace sdk {
                 const bool is_tx_output = json_get_value(ep, "is_output", false);
                 const bool is_relevant = json_get_value(ep, "is_relevant", false);
 
-                if (is_relevant) {
+                if (is_relevant && ep.find("error") == ep.end()) {
                     const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
                     unique_asset_ids.emplace(asset_id);
 
@@ -2127,6 +2147,9 @@ namespace sdk {
     {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
+        const bool confidential_only = details.value("confidential", false);
+
+        GDK_RUNTIME_ASSERT(!confidential_only || m_net_params.liquid());
 
         nlohmann::json utxos;
         wamp_call(
@@ -2141,10 +2164,20 @@ namespace sdk {
         cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer());
 
         nlohmann::json asset_utxos({});
-        std::for_each(std::begin(utxos), std::end(utxos), [&asset_utxos, this](const nlohmann::json& utxo) {
-            const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
-            asset_utxos[utxo_asset_tag].emplace_back(utxo);
-        });
+        std::for_each(
+            std::begin(utxos), std::end(utxos), [&asset_utxos, confidential_only, this](const nlohmann::json& utxo) {
+                const auto has_error = utxo.find("error") != utxo.end();
+                if (has_error) {
+                    asset_utxos["error"].emplace_back(utxo);
+                } else {
+                    const bool confidential_utxo = m_net_params.liquid() && utxo.at("confidential");
+                    // either return all or only confidential UTXOs
+                    if (!confidential_only || confidential_utxo) {
+                        const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
+                        asset_utxos[utxo_asset_tag].emplace_back(utxo);
+                    }
+                }
+            });
 
         // Sort the utxos such that the oldest are first, with the default
         // UTXO selection strategy this reduces the number of re-deposits
