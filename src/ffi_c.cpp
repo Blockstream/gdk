@@ -241,6 +241,18 @@ GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const 
 
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_get_expired_deposits, struct GA_session*, session, const GA_json*, deposit_details,
+    GA_json**, output,
+    { *json_cast(output) = new nlohmann::json(session->get_expired_deposits(*json_cast(deposit_details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_set_csvtime, struct GA_session*, session, const GA_json*, locktime_details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::csv_time_call(*session, *json_cast(locktime_details))); });
+
+GDK_DEFINE_C_FUNCTION_3(GA_set_nlocktime, struct GA_session*, session, const GA_json*, locktime_details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::nlocktime_call(*session, *json_cast(locktime_details))); });
+
 GDK_DEFINE_C_FUNCTION_4(GA_set_transaction_memo, struct GA_session*, session, const char*, txhash_hex, const char*,
     memo, uint32_t, memo_type, {
         GDK_RUNTIME_ASSERT(memo_type == GA_MEMO_USER || memo_type == GA_MEMO_BIP70);

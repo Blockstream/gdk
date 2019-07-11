@@ -382,10 +382,21 @@ public class Session {
         try callWrapper(fun: GA_send_nlocktimes(session))
     }
 
+    public func getExpiredDeposits(details: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_expired_deposits)
+    }
+
+    public func setCSVTime(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_set_csvtime)
+    }
+
+    public func setNlockTime(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_set_nlocktime)
+    }
+
     public func setTransactionMemo(txhash_hex: String, memo: String, memo_type: UInt32) throws -> Void {
         try callWrapper(fun: GA_set_transaction_memo(session, txhash_hex, memo, memo_type))
     }
-
 
     public func getSystemMessage() throws -> String {
         var buff: UnsafeMutablePointer<Int8>? = nil

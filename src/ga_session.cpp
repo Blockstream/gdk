@@ -756,6 +756,23 @@ namespace sdk {
         return result;
     }
 
+    ga_session::nlocktime_t ga_session::get_upcoming_nlocktime() const
+    {
+        nlohmann::json upcoming;
+        wamp_call([&upcoming](wamp_call_result result) { upcoming = get_json_result(result.get()); },
+            "com.greenaddress.txs.upcoming_nlocktime");
+
+        const auto upcoming_l = upcoming.at("list");
+
+        std::map<std::pair<std::string, uint32_t>, nlohmann::json> upcoming_nlocktime;
+        std::for_each(std::cbegin(upcoming_l), std::cend(upcoming_l), [&upcoming_nlocktime](const auto& v) {
+            const auto k = std::make_pair<std::string, uint32_t>(v.at("txhash"), v.at("output_n"));
+            upcoming_nlocktime.insert(std::make_pair(k, v));
+        });
+
+        return upcoming_nlocktime;
+    }
+
     nlohmann::json ga_session::validate_asset_domain_name(__attribute__((unused)) const nlohmann::json& params)
     {
         boost::format format_str{ "Authorize linking the domain name %1% to the Liquid asset %2%\n" };
@@ -2179,6 +2196,17 @@ namespace sdk {
             },
             "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
 
+        const auto upcoming_nlocktime = get_upcoming_nlocktime();
+        if (!upcoming_nlocktime.empty()) {
+            std::for_each(std::begin(utxos), std::end(utxos), [&upcoming_nlocktime](auto& utxo) {
+                const auto k = std::make_pair<std::string, uint32_t>(utxo.at("txhash"), utxo.at("pt_idx"));
+                const auto it = upcoming_nlocktime.find(k);
+                if (it != upcoming_nlocktime.end()) {
+                    utxo["nlocktime_at"] = it->second.at("nlocktime_at");
+                }
+            });
+        }
+
         cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer());
 
         nlohmann::json asset_utxos({});
@@ -2770,6 +2798,41 @@ namespace sdk {
         bool r;
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.txs.send_nlocktime");
+        GDK_RUNTIME_ASSERT(r);
+    }
+
+    nlohmann::json ga_session::get_expired_deposits(const nlohmann::json& deposit_details)
+    {
+        auto asset_utxos = get_unspent_outputs(deposit_details);
+
+        const uint32_t curr_block_height = get_block_height();
+        const uint32_t expires_at_block
+            = std::max(curr_block_height, deposit_details.value("expires_at_block", curr_block_height));
+
+        std::for_each(std::begin(asset_utxos), std::end(asset_utxos), [expires_at_block](nlohmann::json& utxos) {
+            utxos.erase(std::remove_if(std::begin(utxos), std::end(utxos),
+                            [expires_at_block](const auto& u) { return u.at("nlocktime_at") > expires_at_block; }),
+                std::end(utxos));
+        });
+
+        return asset_utxos;
+    }
+
+    void ga_session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
+    {
+        bool r;
+        const uint32_t value = locktime_details.at("value");
+        wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
+            "com.greenaddress.login.set_csvtime", value, as_messagepack(twofactor_data).get());
+        GDK_RUNTIME_ASSERT(r);
+    }
+
+    void ga_session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
+    {
+        bool r;
+        const uint32_t value = locktime_details.at("value");
+        wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
+            "com.greenaddress.login.set_nlocktime", value, as_messagepack(twofactor_data).get());
         GDK_RUNTIME_ASSERT(r);
     }
 

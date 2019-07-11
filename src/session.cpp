@@ -699,13 +699,31 @@ namespace sdk {
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->sign_input(tx, index, u, der_hex); });
+        exception_wrapper([&] { m_impl->sign_input(tx, index, u, der_hex); });
     }
 
     void session::send_nlocktimes()
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         exception_wrapper([&] { m_impl->send_nlocktimes(); });
+    }
+
+    nlohmann::json session::get_expired_deposits(const nlohmann::json& deposit_details)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_expired_deposits(deposit_details); });
+    }
+
+    void session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        exception_wrapper([&] { m_impl->set_csvtime(locktime_details, twofactor_data); });
+    }
+
+    void session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        exception_wrapper([&] { m_impl->set_nlocktime(locktime_details, twofactor_data); });
     }
 
     void session::set_transaction_memo(

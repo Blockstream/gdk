@@ -869,5 +869,45 @@ namespace sdk {
         m_result = m_session.cancel_twofactor_reset(m_twofactor_data);
         return state_type::done;
     }
+
+    //
+    // Set CSV time
+    //
+    csv_time_call::csv_time_call(session& session, const nlohmann::json& params)
+        : auth_handler(session, "set_csvtime")
+        , m_params(params)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        m_twofactor_data = { { "value", m_params.at("value") } };
+    }
+
+    auth_handler::state_type csv_time_call::call_impl()
+    {
+        m_session.set_csvtime(m_params, m_twofactor_data);
+        return state_type::done;
+    }
+
+    //
+    // Set nlocktime time
+    //
+    nlocktime_call::nlocktime_call(session& session, const nlohmann::json& params)
+        : auth_handler(session, "set_nlocktime")
+        , m_params(params)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        m_twofactor_data = { { "value", m_params.at("value") } };
+    }
+
+    auth_handler::state_type nlocktime_call::call_impl()
+    {
+        m_session.set_nlocktime(m_params, m_twofactor_data);
+        return state_type::done;
+    }
 } // namespace sdk
 } // namespace ga

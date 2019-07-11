@@ -405,6 +405,40 @@ GDK_API int GA_send_transaction(
 GDK_API int GA_send_nlocktimes(struct GA_session* session);
 
 /**
+ * Return UTXOs that can be spent/or are spendable without two factor authentication after a block value.
+ *
+ * :param session: The session to use.
+ * :param deposit_details: The :ref:`set-deposit-details` for sending.
+ * :param output: Destination for the returned utxos (same format as :ref:`tx-list`).
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ */
+GDK_API int GA_get_expired_deposits(struct GA_session* session, const GA_json* deposit_details, GA_json** output);
+
+/**
+ * Set the number of blocks after which CSV transactions become spendable without two factor authentication.
+ *
+ * :param session: The session to use.
+ * :param locktime_details: The :ref:`set-locktime-details` for setting the block value.
+ * :param call: Destination for the resulting GA_auth_handler to change the locktime.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_set_csvtime(struct GA_session* session, const GA_json* locktime_details, struct GA_auth_handler** call);
+
+/**
+ * Set the number of blocks after which nLockTime transactions become
+ *|    spendable without two factor authentication. When this function
+ *|    succeeds, if the user has an email address associated with the
+ *|    wallet, an updated nlocktimes.zip file will be sent via email.
+ *
+ * :param session: The session to use.
+ * :param locktime_details: The :ref:`set-locktime-details` for setting the block value.
+ * :param call: Destination for the resulting GA_auth_handler to change the locktime.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_set_nlocktime(
+    struct GA_session* session, const GA_json* locktime_details, struct GA_auth_handler** call);
+
+/**
  * Add a transaction memo to a user's GreenAddress transaction.
  *
  * :param session: The session to use.

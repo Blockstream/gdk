@@ -148,6 +148,26 @@ namespace sdk {
     private:
         state_type call_impl() override;
     };
+
+    class csv_time_call : public auth_handler {
+    public:
+        explicit csv_time_call(session& session, const nlohmann::json& params);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_params;
+    };
+
+    class nlocktime_call : public auth_handler {
+    public:
+        explicit nlocktime_call(session& session, const nlohmann::json& params);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_params;
+    };
 } // namespace sdk
 } // namespace ga
 #endif

@@ -913,4 +913,23 @@ Proxy connectivity params JSON
 
 
 
+.. _set-locktime-details:
+
+Locktime Details JSON
+-------------------------
+
+.. code-block:: json
+
+  {"value":65535}
+
+
+
+.. _set-deposit-details:
+
+Deposit Details JSON
+-------------------------
+
+.. code-block:: json
+
+  {"subaccount":3,"num_confs":0, "expires_at_block":65535}
 

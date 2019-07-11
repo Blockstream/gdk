@@ -50,6 +50,7 @@ namespace sdk {
         using locker_t = std::unique_lock<std::mutex>;
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using ping_fail_t = std::function<void()>;
+        using nlocktime_t = std::map<std::pair<std::string, uint32_t>, nlohmann::json>;
 
         ga_session(const nlohmann::json& net_params);
         ga_session(const ga_session& other) = delete;
@@ -149,6 +150,9 @@ namespace sdk {
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
 
         void send_nlocktimes();
+        nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
+        void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
+        void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
@@ -237,6 +241,8 @@ namespace sdk {
         nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
         nlohmann::json refresh_assets(locker_t& locker);
+
+        nlocktime_t get_upcoming_nlocktime() const;
 
         bool connect_with_tls() const;
 
