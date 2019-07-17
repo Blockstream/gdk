@@ -396,7 +396,7 @@ namespace sdk {
                 }
             }
 
-            const bool confidential_utxos_only = json_add_if_missing(result, "confidential_utxos_only", true);
+            const bool confidential_utxos_only = json_add_if_missing(result, "confidential_utxos_only", false);
             if (!is_sweep && result.find("utxos") == result.end()) {
                 // Fetch the users utxos from the current subaccount.
                 // if RBF/cpfp, require 1 confirmation.
