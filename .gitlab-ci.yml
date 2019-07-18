@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:ea35420e00313ed7630137d4c0600945c845bebe5c50e403afb23bf4ba6ae792
+image: greenaddress/ci@sha256:bcf7f422c79b40127cf56f93184c7f8350aafe5de2ca2cfe7977c9b23c46f15c
 
 .fedora_images:
   image: greenaddress/fedora_ci@sha256:79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
@@ -82,10 +82,8 @@ test_clang:
     - ga
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --clang-tidy-version=3.8 --clang
+    - ./tools/build.sh --clang-tidy-version=7 --clang
     - ./tools/format.sh && git diff --exit-code
-
-
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release

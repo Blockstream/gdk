@@ -110,7 +110,7 @@ To build using clang-analyzer use
 
 The clang-tidy targets are enabled if found in the PATH. Extra options exist to specify version of it,
 
-`tools/build.sh --clang-tidy-version=5.0 --clang`
+`tools/build.sh --clang-tidy-version=7 --clang`
 
 then use as follows
 
