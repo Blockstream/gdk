@@ -20,9 +20,6 @@ echo '}' >>$result
 JAVAC_SOURCE=$7
 JAVAC_TARGET=$7
 JAVAC_ARGS="-implicit:none -source $JAVAC_SOURCE -target $JAVAC_TARGET -sourcepath $3/com/blockstream/libgreenaddress/ $3/com/blockstream/libgreenaddress/GDK.java"
-if [ $JAVAC_TARGET = "1.7" ] ; then
-    JAVAC_ARGS="$JAVAC_ARGS -bootclasspath $JAVA_HOME/jre/lib/rt.jar"
-fi
 
 $JAVA_HOME/bin/javac $JAVAC_ARGS
 

@@ -165,7 +165,7 @@ if swig.found()
     python_dep = compiler.find_library('python' + python_version + 'm', dirs : join_paths(meson.build_root(), 'venv', 'lib', 'python' + python_version, 'config-' + python_version + 'm-' + python_config_dir), required : false)
 
     if java_target == ''
-        java_target = '1.7'
+        java_target = '1.8'
     endif
 
     javac = add_languages('java', required : false)
