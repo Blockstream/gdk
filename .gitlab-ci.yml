@@ -6,7 +6,7 @@ cache:
 image: greenaddress/ci@sha256:bcf7f422c79b40127cf56f93184c7f8350aafe5de2ca2cfe7977c9b23c46f15c
 
 .fedora_images:
-  image: greenaddress/fedora_ci@sha256:79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
+  image: greenaddress/fedora_ci@sha256:0eb9c1ba511b75e4ab901ab1df023ed270b4d0e082ed44a87458489514f10a75
   tags:
     - ga
 
