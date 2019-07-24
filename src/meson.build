@@ -53,7 +53,8 @@ if clang_format.found()
 endif
 
 if clang_tidy.found() or pvs_studio_analyzer.found()
-    fix_compile_commands = custom_target('fix-compile-commands', output : 'compile_commands.json', capture : true, command : ['sed', '-e', 's/-MD//g', '-e', 's/-pipe//g', 'compile_commands.json'])
+    fix_compile_commands = custom_target('fix-compile-commands', output : 'compile_commands.json', capture : true,
+                                          command : ['sed', '-e', 's/-MD//g', '-e', 's/-pipe//g', '-e', 's!src!./src!g', 'compile_commands.json'])
 endif
 
 if clang_tidy.found()
