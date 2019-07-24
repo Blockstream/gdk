@@ -48,6 +48,8 @@ tor_evloop=$1/tor/src/lib/libtor-evloop.a
 tor_fdio=$1/tor/src/lib/libtor-fdio.a
 tor_fs=$1/tor/src/lib/libtor-fs.a
 tor_geoip=$1/tor/src/lib/libtor-geoip.a
+tor_version=$1/tor/src/lib/libtor-version.a
+tor_buf=$1/tor/src/lib/libtor-buf.a
 
-libraries="$boost_chrono_lib $boost_log_lib $boost_system_lib $boost_thread_lib $openssl_crypto_lib $openssl_ssl_lib $secp256k1_lib $wally_lib $libevent $libevent_pthread $libcurve25519_donna $libz $tor_ed25519_donna $tor_ed25519_ref10 $tor_core $tor_keccak $tor_trunnel $tor_intmath $tor_lock $tor_malloc $tor_math $tor_memarea $tor_meminfo $tor_osinfo $tor_process $tor_sandbox $tor_smartlist_core $tor_string $tor_term $tor_time $tor_thread $tor_wallclock $tor_log $tor_tls $tor_compress $tor_container $tor_crypt_ops $tor_ctime $tor_encoding $tor_net $tor_err $tor_evloop $tor_fdio $tor_fs $tor_geoip"
+libraries="$boost_chrono_lib $boost_log_lib $boost_system_lib $boost_thread_lib $openssl_crypto_lib $openssl_ssl_lib $secp256k1_lib $wally_lib $libevent $libevent_pthread $libcurve25519_donna $libz $tor_ed25519_donna $tor_ed25519_ref10 $tor_core $tor_keccak $tor_trunnel $tor_intmath $tor_lock $tor_malloc $tor_math $tor_memarea $tor_meminfo $tor_osinfo $tor_process $tor_sandbox $tor_smartlist_core $tor_string $tor_term $tor_time $tor_thread $tor_wallclock $tor_log $tor_tls $tor_compress $tor_container $tor_crypt_ops $tor_ctime $tor_encoding $tor_net $tor_err $tor_evloop $tor_fdio $tor_fs $tor_geoip $tor_version $tor_buf"
 libtool -static -o ${greenaddress_lib} $libraries $1/src/*@@greenaddress@sha/*.o
