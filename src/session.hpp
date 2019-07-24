@@ -75,6 +75,8 @@ namespace sdk {
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
+        std::string get_blinding_key_for_script(const std::string& script_hex);
+        std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
 
         nlohmann::json get_subaccounts();
 
@@ -90,6 +92,7 @@ namespace sdk {
 
         bool is_rbf_enabled();
         bool is_watch_only();
+        bool is_liquid();
         nlohmann::json get_settings();
         void change_settings(const nlohmann::json& settings);
 

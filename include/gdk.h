@@ -282,10 +282,10 @@ GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* detai
  *
  * :param session: The session to use.
  * :param details: :ref:`receive-address-details`.
- * :param output: Destination for the generated address :ref:`receive-address`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* details, GA_json** output);
+GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get the user's unspent transaction outputs.

@@ -570,6 +570,18 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_receive_address(details); });
     }
 
+    std::string session::get_blinding_key_for_script(const std::string& script_hex)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_blinding_key_for_script(script_hex); });
+    }
+
+    std::string session::blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->blind_address(unblinded_addr, blinding_key_hex); });
+    }
+
     nlohmann::json session::get_balance(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
@@ -598,6 +610,12 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return exception_wrapper([&] { return m_impl->is_watch_only(); });
+    }
+
+    bool session::is_liquid()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_network_parameters().liquid(); });
     }
 
     nlohmann::json session::get_twofactor_config(bool reset_cached)

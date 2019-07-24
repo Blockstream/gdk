@@ -112,6 +112,8 @@ namespace sdk {
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
+        std::string get_blinding_key_for_script(const std::string& script_hex);
+        std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
         nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
         nlohmann::json get_hw_device() const;

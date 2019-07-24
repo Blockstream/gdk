@@ -68,7 +68,7 @@ namespace sdk {
 
     void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
     {
-        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx") {
+        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx" || m_action == "get_receive_address") {
             // Hardware action, so provide the caller with the device information
             m_hw_device = hw_device;
         }
@@ -481,6 +481,60 @@ namespace sdk {
             m_result["user_signed"] = true;
             update_tx_info(tx, m_result);
         }
+        return state_type::done;
+    }
+
+    //
+    // Get receive address
+    //
+    get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "get_receive_address")
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        if (m_hw_device.empty() || !m_session.is_liquid()) {
+            // If there's no HW, OR we are on Bitcoin then there's no need to pool the HW, and we are ready for the call
+            m_state = state_type::make_call;
+        } else {
+            try {
+                // Compute the data we need for the hardware to sign the transaction
+                m_state = state_type::resolve_code;
+
+                nlohmann::json address = m_session.get_receive_address(details);
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", address } };
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
+        }
+    }
+
+    auth_handler::state_type get_receive_address_call::call_impl()
+    {
+        if (m_hw_device.empty() || !m_session.is_liquid()) {
+            m_result = m_session.get_receive_address(m_details);
+        } else {
+            // Use the one we generated earlier
+            m_result = m_twofactor_data["address"];
+        }
+
+        std::string pub_blinding_key;
+        if (m_session.is_liquid()) {
+            if (m_hw_device.empty()) {
+                // Get the key from our signer
+                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["script"]);
+            } else {
+                // Use the response from the HW
+                const nlohmann::json args = nlohmann::json::parse(m_code);
+                pub_blinding_key = args.at("blinding_key");
+            }
+
+            // Blind the address
+            m_result["address"] = m_session.blind_address(m_result["address"], pub_blinding_key);
+        }
+
         return state_type::done;
     }
 

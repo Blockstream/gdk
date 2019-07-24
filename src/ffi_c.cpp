@@ -288,8 +288,15 @@ GDK_DEFINE_C_FUNCTION_3(GA_rename_subaccount, struct GA_session*, session, uint3
 GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, const GA_json*, details, GA_json**, txs,
     { *json_cast(txs) = new nlohmann::json(session->get_transactions(*json_cast(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, const GA_json*, details, GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->get_receive_address(*json_cast(details))); })
+/*
+GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const GA_json*, transaction_details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::sign_transaction_call(*session, *json_cast(transaction_details))); });
+    */
+
+GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::get_receive_address_call(*session, *json_cast(details))); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_balance, struct GA_session*, session, const GA_json*, details, GA_json**, balance,
     { *json_cast(balance) = new nlohmann::json(session->get_balance(*json_cast(details))); })

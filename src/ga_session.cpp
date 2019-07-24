@@ -2459,16 +2459,8 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(server_address == user_address);
         }
 
-        if (m_net_params.liquid()) {
-            const auto public_key = [this, &server_address] {
-                locker_t locker{ m_mutex };
-                return get_signer().get_public_key_from_blinding_key(
-                    output_script_for_address(m_net_params, server_address));
-            }();
-            address["address"] = confidential_addr_from_addr(server_address, m_net_params.blinded_prefix(), public_key);
-        } else {
-            address["address"] = server_address;
-        }
+        // Only scriptpubkey, we will add the blinding key later
+        address["address"] = server_address;
 
         return address;
     }
@@ -2479,6 +2471,18 @@ namespace sdk {
         const std::string addr_type_ = details.value("address_type", std::string{});
 
         return get_receive_address(subaccount, addr_type_);
+    }
+
+    std::string ga_session::blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex)
+    {
+        const auto public_key = h2b(blinding_key_hex);
+        return confidential_addr_from_addr(unblinded_addr, m_net_params.blinded_prefix(), public_key);
+    }
+
+    std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
+    {
+        const auto public_key = m_signer->get_public_key_from_blinding_key(h2b(script_hex));
+        return b2h(public_key);
     }
 
     nlohmann::json ga_session::get_balance(const nlohmann::json& details)
