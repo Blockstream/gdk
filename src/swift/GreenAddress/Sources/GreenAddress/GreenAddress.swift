@@ -274,28 +274,40 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
-    public func getSubaccounts() throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_subaccounts(session, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func getSubaccounts() throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        try callWrapper(fun: GA_get_subaccounts(session, &optr))
+        return TwoFactorCall(optr: optr!)
     }
 
-    public func getSubaccount(subaccount: UInt32) throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_subaccount(session, subaccount, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func getSubaccount(subaccount: UInt32) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        try callWrapper(fun: GA_get_subaccount(session, subaccount, &optr))
+        return TwoFactorCall(optr: optr!)
     }
 
     public func renameSubaccount(subaccount: UInt32, newName: String) throws -> Void {
         try callWrapper(fun: GA_rename_subaccount(session, subaccount, newName));
     }
 
-    public func getTransactions(details: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_transactions)
+    public func getTransactions(details: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_get_transactions(session, details_json, &optr))
+        defer {
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!)
     }
 
-    public func getUnspentOutputs(details: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_unspent_outputs)
+    public func getUnspentOutputs(details: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_get_unspent_outputs(session, details_json, &optr))
+        defer {
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!)
     }
 
     public func getUnspentOutputsForPrivateKey(private_key: String, password: String, unused: UInt32) throws -> [String: Any]? {
@@ -304,13 +316,26 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
-    public func getReceiveAddress(details: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_receive_address)
+    public func getReceiveAddress(details: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_get_receive_address(session, details_json, &optr))
+        defer {
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!)
     }
 
-    public func getBalance(details: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_balance)
+    public func getBalance(details: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_get_balance(session, details_json, &optr))
+        defer {
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!)
     }
+
 
     public func getAvailableCurrencies() throws -> [String: Any]? {
         var result: OpaquePointer? = nil
@@ -352,8 +377,14 @@ public class Session {
         return try jsonFuncToJsonWrapper(input: input, fun: GA_decrypt)
     }
 
-    public func createTransaction(details: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: details, fun: GA_create_transaction)
+    public func createTransaction(details: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_create_transaction(session, details_json, &optr))
+        defer {
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!)
     }
 
     public func signTransaction(details: [String: Any]) throws -> TwoFactorCall {

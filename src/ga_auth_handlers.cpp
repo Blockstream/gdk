@@ -8,6 +8,7 @@
 #include "ga_tx.hpp"
 #include "ga_wally.hpp"
 #include "logging.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "xpub_hdkey.hpp"
 
@@ -68,7 +69,10 @@ namespace sdk {
 
     void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
     {
-        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx") {
+        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx"
+            || m_action == "get_receive_address" || m_action == "create_transaction" || m_action == "get_balance"
+            || m_action == "get_subaccounts" || m_action == "get_subaccount" || m_action == "get_transactions"
+            || m_action == "get_unspent_outputs" || m_action == "get_expired_deposits") {
             // Hardware action, so provide the caller with the device information
             m_hw_device = hw_device;
         }
@@ -467,9 +471,36 @@ namespace sdk {
             const nlohmann::json args = nlohmann::json::parse(m_code);
             const auto& signatures = args.at("signatures");
             const auto& inputs = m_twofactor_data["signing_inputs"];
-            const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"));
+            const auto& outputs = m_twofactor_data["transaction_outputs"];
+            const uint32_t flags = m_session.get_network_parameters().liquid()
+                ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS)
+                : 0;
+            const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"), flags);
 
             GDK_RUNTIME_ASSERT(signatures.is_array() && signatures.size() == inputs.size());
+
+            if (m_session.get_network_parameters().liquid()) {
+                GDK_RUNTIME_ASSERT(
+                    args.at("asset_commitments").is_array() && args.at("asset_commitments").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(
+                    args.at("value_commitments").is_array() && args.at("value_commitments").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(args.at("abfs").is_array() && args.at("abfs").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(args.at("vbfs").is_array() && args.at("vbfs").size() == outputs.size());
+
+                const auto& asset_commitments = args.at("asset_commitments");
+                const auto& value_commitments = args.at("value_commitments");
+                const auto& abfs = args.at("abfs");
+                const auto& vbfs = args.at("vbfs");
+
+                size_t i = 0;
+                for (const auto& out : outputs) {
+                    if (!out.at("is_fee")) {
+                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i],
+                            value_commitments[i], abfs[i], vbfs[i]);
+                    }
+                    ++i;
+                }
+            }
 
             size_t i = 0;
             for (const auto& utxo : inputs) {
@@ -479,11 +510,281 @@ namespace sdk {
 
             std::swap(m_result, m_twofactor_data["transaction"]);
             m_result["user_signed"] = true;
+            m_result["blinded"] = true;
             update_tx_info(tx, m_result);
         }
         return state_type::done;
     }
 
+    //
+    // Get receive address
+    //
+    get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "get_receive_address")
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        try {
+            nlohmann::json address = m_session.get_receive_address(details);
+            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", address } };
+        } catch (const std::exception& e) {
+            set_error(e.what());
+            return;
+        }
+
+        // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
+        m_state = (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
+    }
+
+    auth_handler::state_type get_receive_address_call::call_impl()
+    {
+        // initially our result is what we generated earlier
+        m_result = m_twofactor_data["address"];
+
+        // if we are on liquid blind the address
+        if (m_session.is_liquid()) {
+            std::string pub_blinding_key;
+
+            if (m_hw_device.empty()) {
+                // Get the key from our signer
+                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["blinding_script_hash"]);
+            } else {
+                // Use the response from the HW
+                const nlohmann::json args = nlohmann::json::parse(m_code);
+                pub_blinding_key = args.at("blinding_key");
+            }
+
+            // Blind the address
+            m_result["address"] = m_session.blind_address(m_result["address"], pub_blinding_key);
+        }
+
+        return state_type::done;
+    }
+
+    //
+    // Create transaction
+    //
+    create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "create_transaction")
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        try {
+            m_tx = m_session.create_transaction(details);
+            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", m_tx } };
+        } catch (const std::exception& e) {
+            GDK_LOG_SEV(log_level::info) << "exception in create_transaction_call::create_transaction_call()";
+            set_error(e.what());
+            return;
+        }
+
+        // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
+        m_state = (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
+    }
+
+    auth_handler::state_type create_transaction_call::call_impl()
+    {
+        if (!m_session.is_liquid()) {
+            m_result = m_tx; // no need to do much here
+            return state_type::done;
+        }
+
+        // TODO: we might also need to blind other kind of addresses, in case of sweep etc
+        if (m_tx.find("change_address") == m_tx.end()) {
+            m_result = m_tx;
+            return state_type::done;
+        }
+
+        nlohmann::json args;
+        if (!m_hw_device.empty()) {
+            args = nlohmann::json::parse(m_code);
+        }
+
+        for (const auto& it : m_tx.at("change_address").items()) {
+            // already done, skip it
+            if (it.value().value("is_blinded", false)) {
+                continue;
+            }
+
+            const std::string asset_tag = it.key();
+
+            std::string pub_blinding_key;
+            if (m_hw_device.empty()) {
+                // Get the key from our signer
+                pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("blinding_script_hash"));
+            } else {
+                // Use the response from the HW
+                pub_blinding_key = args.at("blinding_keys").at(asset_tag);
+            }
+
+            const std::string& unconf_addr = m_session.extract_confidential_address(it.value().at("address"));
+            m_tx["change_address"][asset_tag]["address"] = m_session.blind_address(unconf_addr, pub_blinding_key);
+            m_tx["change_address"][asset_tag]["is_blinded"] = true;
+        }
+
+        // Update the transaction
+        m_result = m_session.create_transaction(m_tx);
+
+        return state_type::done;
+    }
+
+    static void cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
+    {
+        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
+
+        size_t i = 0;
+
+        for (const auto& nonce : nonces) {
+            const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
+            const std::string& script = blinded_scripts.at(i).at("script");
+
+            if (!session.has_blinding_nonce(pubkey, script)) {
+                session.set_blinding_nonce(pubkey, script, nonce);
+            }
+
+            i++;
+        }
+    }
+
+    // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
+    needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
+        : auth_handler(session, name)
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        if (!m_session.is_liquid() || m_session.hw_liquid_support() == liquid_support_level::full) {
+            m_state = state_type::make_call;
+        } else if (m_session.hw_liquid_support() == liquid_support_level::lite) {
+            try {
+                m_state = state_type::resolve_code;
+
+                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
+                m_twofactor_data
+                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+            } catch (const std::exception& e) {
+                set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
+            }
+        } else if (m_session.hw_liquid_support() == liquid_support_level::none) {
+            set_error("id_the_hardware_wallet_you_are");
+        } else {
+            // should be unreachable
+            GDK_RUNTIME_ASSERT(false);
+        }
+    }
+
+    auth_handler::state_type needs_unblind_call::call_impl()
+    {
+        set_nonces(); // parse and set the nonces we got back
+        return wrapped_call_impl(); // run the actual wrapped call
+    }
+
+    void needs_unblind_call::set_nonces()
+    {
+        // Bitcoin or HW with full support
+        if (!m_session.is_liquid() || m_session.hw_liquid_support() == liquid_support_level::full) {
+            return;
+        }
+
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
+    }
+
+    //
+    // Get balance
+    //
+    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_balance", session, details)
+    {
+    }
+
+    auth_handler::state_type get_balance_call::wrapped_call_impl()
+    {
+        m_result = m_session.get_balance(m_details);
+        return state_type::done;
+    }
+
+    //
+    // Get subaccounts
+    //
+    get_subaccounts_call::get_subaccounts_call(session& session)
+        : needs_unblind_call("get_subaccounts", session, nlohmann::json::object())
+    {
+    }
+
+    auth_handler::state_type get_subaccounts_call::wrapped_call_impl()
+    {
+        m_result = nlohmann::json({ { "subaccounts", m_session.get_subaccounts() } });
+        return state_type::done;
+    }
+
+    //
+    // Get subaccount
+    //
+    get_subaccount_call::get_subaccount_call(session& session, uint32_t subaccount)
+        : needs_unblind_call("get_subaccount", session, nlohmann::json({ { "index", subaccount } }))
+    {
+    }
+
+    auth_handler::state_type get_subaccount_call::wrapped_call_impl()
+    {
+        m_result = m_session.get_subaccount(m_details["index"]);
+        return state_type::done;
+    }
+
+    //
+    // Get transactions
+    //
+    get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_transactions", session, details)
+    {
+    }
+
+    auth_handler::state_type get_transactions_call::wrapped_call_impl()
+    {
+        m_result = { { "transactions", m_session.get_transactions(m_details) } };
+        return state_type::done;
+    }
+
+    //
+    // Get unspent outputs
+    //
+    get_unspent_outputs_call::get_unspent_outputs_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_unspent_outputs", session, details)
+    {
+    }
+
+    auth_handler::state_type get_unspent_outputs_call::wrapped_call_impl()
+    {
+        m_result = { { "unspent_outputs", m_session.get_unspent_outputs(m_details) } };
+        return state_type::done;
+    }
+
+    //
+    // Get expired deposits
+    //
+    get_expired_deposits_call::get_expired_deposits_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_expired_deposits", session, details)
+    {
+    }
+
+    auth_handler::state_type get_expired_deposits_call::wrapped_call_impl()
+    {
+        m_result = m_session.get_expired_deposits(m_details);
+        return state_type::done;
+    }
+
+    //
+    // Change settings
+    //
     change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
         : auth_handler(session, std::string()) // TODO: action empty string because 2FA not yet implemented
         , m_settings(settings)

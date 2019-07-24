@@ -168,6 +168,18 @@ namespace sdk {
     std::vector<unsigned char> h2b_rev(const std::string& hex);
     std::vector<unsigned char> h2b_rev(const std::string& hex, uint8_t prefix);
 
+    template <std::size_t N> std::array<unsigned char, N> h2b(const std::string& hex)
+    {
+        GDK_RUNTIME_ASSERT(hex.size() / 2 == N);
+        std::array<unsigned char, N> buff{ { 0 } };
+
+        const std::vector<unsigned char> bin = h2b(hex);
+        GDK_RUNTIME_ASSERT(bin.size() == N);
+
+        std::copy(std::begin(bin), std::end(bin), buff.begin());
+        return buff;
+    }
+
     std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family);
 
     std::string address_from_xpub(unsigned char btc_version, const xpub_t& xpub);
@@ -224,6 +236,9 @@ namespace sdk {
 
     unblind_t asset_unblind(byte_span_t private_key, byte_span_t rangeproof, byte_span_t commitment,
         byte_span_t nonce_commitment, byte_span_t extra_commitment, byte_span_t generator);
+
+    unblind_t asset_unblind_with_nonce(byte_span_t blinding_nonce, byte_span_t rangeproof, byte_span_t commitment,
+        byte_span_t extra_commitment, byte_span_t generator);
 
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix);
 

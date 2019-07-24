@@ -63,6 +63,88 @@ namespace sdk {
         nlohmann::json m_tx_details;
     };
 
+    class get_receive_address_call : public auth_handler {
+    public:
+        get_receive_address_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+    };
+
+    class create_transaction_call : public auth_handler {
+    public:
+        create_transaction_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+        nlohmann::json m_tx;
+    };
+
+    class needs_unblind_call : public auth_handler {
+    protected:
+        needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
+        void set_nonces();
+
+        virtual state_type wrapped_call_impl() = 0;
+
+        const nlohmann::json m_details;
+
+    private:
+        state_type call_impl() override;
+    };
+
+    class get_balance_call : public needs_unblind_call {
+    public:
+        get_balance_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type wrapped_call_impl() override;
+    };
+
+    class get_subaccounts_call : public needs_unblind_call {
+    public:
+        get_subaccounts_call(session& session);
+
+    private:
+        state_type wrapped_call_impl() override;
+    };
+
+    class get_subaccount_call : public needs_unblind_call {
+    public:
+        get_subaccount_call(session& session, uint32_t subaccount);
+
+    private:
+        state_type wrapped_call_impl() override;
+    };
+
+    class get_transactions_call : public needs_unblind_call {
+    public:
+        get_transactions_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type wrapped_call_impl() override;
+    };
+
+    class get_unspent_outputs_call : public needs_unblind_call {
+    public:
+        get_unspent_outputs_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type wrapped_call_impl() override;
+    };
+
+    class get_expired_deposits_call : public needs_unblind_call {
+    public:
+        get_expired_deposits_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type wrapped_call_impl() override;
+    };
+
     class change_settings_call : public auth_handler {
     public:
         change_settings_call(session& session, const nlohmann::json& settings);

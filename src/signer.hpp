@@ -12,6 +12,13 @@ namespace ga {
 namespace sdk {
     class network_parameters;
 
+    // Enum to represent the "level" of support for Liquid on an HW
+    enum class liquid_support_level : uint32_t {
+        none, // Liquid is not supported
+        lite, // Liquid is supported, but the unblinding is done on the host
+        full // Everything is done on the HW
+    };
+
     //
     // Interface to signing and deriving privately derived xpub keys
     //
@@ -33,6 +40,9 @@ namespace sdk {
 
         // Returns true if if this signer can sign arbitrary scripts
         virtual bool supports_arbitrary_scripts() const;
+
+        // Returns the level of liquid support
+        virtual liquid_support_level supports_liquid() const;
 
         virtual nlohmann::json get_hw_device() const;
 
@@ -68,6 +78,7 @@ namespace sdk {
 
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
+        liquid_support_level supports_liquid() const override;
 
         std::string get_challenge() override;
 
@@ -93,6 +104,7 @@ namespace sdk {
 
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
+        liquid_support_level supports_liquid() const override;
 
         std::string get_challenge() override;
 
@@ -123,6 +135,7 @@ namespace sdk {
 
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
+        liquid_support_level supports_liquid() const override;
 
         nlohmann::json get_hw_device() const override;
 
@@ -132,6 +145,7 @@ namespace sdk {
         std::string get_bip32_xpub(gsl::span<const uint32_t> path) override;
 
         ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) override;
+        priv_key_t get_blinding_key_from_script(byte_span_t script) override;
 
     private:
         const nlohmann::json m_hw_device;

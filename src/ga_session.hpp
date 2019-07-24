@@ -13,6 +13,7 @@
 #include "amount.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
+#include "signer.hpp"
 #include "threading.hpp"
 #include "tx_list_cache.hpp"
 #include "utils.hpp"
@@ -44,6 +45,13 @@ namespace sdk {
 
         std::thread m_run_thread;
         std::unique_ptr<boost::asio::io_service::work> m_work_guard;
+    };
+
+    struct BlindingNoncesHash {
+        std::size_t operator()(const std::pair<std::string, std::string>& k) const
+        {
+            return std::hash<std::string>()(k.first) ^ (std::hash<std::string>()(k.second) << 1);
+        }
     };
 
     class ga_session final {
@@ -112,6 +120,9 @@ namespace sdk {
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
+        std::string get_blinding_key_for_script(const std::string& script_hex);
+        std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
+        std::string extract_confidential_address(const std::string& blinded_address);
         nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
         nlohmann::json get_hw_device() const;
@@ -142,6 +153,7 @@ namespace sdk {
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
 
+        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
@@ -154,6 +166,9 @@ namespace sdk {
         std::string broadcast_transaction(const std::string& tx_hex);
 
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
+        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+            const nlohmann::json& output, const std::string& asset_commitment_hex,
+            const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
@@ -178,6 +193,10 @@ namespace sdk {
         nlohmann::json encrypt(const nlohmann::json& input_json) const;
         nlohmann::json decrypt(const nlohmann::json& input_json) const;
 
+        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
+        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
+        std::array<unsigned char, 32> get_blinding_nonce(const std::string& pubkey, const std::string& script);
+
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
         uint32_t get_block_height() const;
@@ -198,6 +217,7 @@ namespace sdk {
         std::string get_service_xpub(uint32_t subaccount);
         std::string get_recovery_xpub(uint32_t subaccount);
         bool supports_low_r() const;
+        liquid_support_level hw_liquid_support() const;
 
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
 
@@ -387,6 +407,11 @@ namespace sdk {
         std::string m_fiat_rate GDK_GUARDED_BY(m_mutex);
         std::string m_fiat_currency GDK_GUARDED_BY(m_mutex);
         uint64_t m_earliest_block_time GDK_GUARDED_BY(m_mutex);
+
+        nlohmann::json m_assets;
+
+        std::unordered_map<std::pair<std::string, std::string>, std::string, BlindingNoncesHash>
+            m_blinding_nonces GDK_GUARDED_BY(m_mutex);
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);

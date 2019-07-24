@@ -570,6 +570,24 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_receive_address(details); });
     }
 
+    std::string session::get_blinding_key_for_script(const std::string& script_hex)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_blinding_key_for_script(script_hex); });
+    }
+
+    std::string session::blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->blind_address(unblinded_addr, blinding_key_hex); });
+    }
+
+    std::string session::extract_confidential_address(const std::string& blinded_address)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->extract_confidential_address(blinded_address); });
+    }
+
     nlohmann::json session::get_balance(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
@@ -598,6 +616,18 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return exception_wrapper([&] { return m_impl->is_watch_only(); });
+    }
+
+    bool session::is_liquid()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_network_parameters().liquid(); });
+    }
+
+    liquid_support_level session::hw_liquid_support()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->hw_liquid_support(); });
     }
 
     nlohmann::json session::get_twofactor_config(bool reset_cached)
@@ -693,6 +723,24 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_unspent_outputs(details); });
     }
 
+    nlohmann::json session::get_blinded_scripts(const nlohmann::json& details)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_blinded_scripts(details); });
+    }
+
+    bool session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->has_blinding_nonce(pubkey, script); });
+    }
+
+    void session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->set_blinding_nonce(pubkey, script, nonce); });
+    }
+
     nlohmann::json session::get_unspent_outputs_for_private_key(
         const std::string& private_key, const std::string& password, uint32_t unused)
     {
@@ -730,6 +778,15 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         exception_wrapper([&] { m_impl->sign_input(tx, index, u, der_hex); });
+    }
+
+    void session::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+        const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
+        const std::string& abf, const std::string& vbf)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        exception_wrapper(
+            [&] { m_impl->blind_output(details, tx, index, o, asset_commitment_hex, value_commitment_hex, abf, vbf); });
     }
 
     void session::send_nlocktimes()

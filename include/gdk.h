@@ -240,20 +240,20 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
  * Get the user's subaccount details.
  *
  * :param session: The session to use.
- * :param subaccounts: Destination for the user's :ref:`subaccount-list`.
- *|      Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts);
+GDK_API int GA_get_subaccounts(struct GA_session* session, struct GA_auth_handler** call);
 
 /**
  * Get subaccount details.
  *
  * :param session: The session to use.
  * :param subaccount: The value of "pointer" from :ref:`subaccount-list` for the subaccount.
- * :param output: Destination for the :ref:`subaccount-detail`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, GA_json** output);
+GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, struct GA_auth_handler** call);
 
 /**
  * Rename a subaccount.
@@ -270,32 +270,32 @@ GDK_API int GA_rename_subaccount(struct GA_session* session, uint32_t subaccount
  *
  * :param session: The session to use.
  * :param details: :ref:`transactions-details` giving the details to get the transactions for.
- * :param txs: The :ref:`tx-list`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
  */
-GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, GA_json** txs);
+GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get a new address to receive coins to.
  *
  * :param session: The session to use.
  * :param details: :ref:`receive-address-details`.
- * :param output: Destination for the generated address :ref:`receive-address`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* details, GA_json** output);
+GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get the user's unspent transaction outputs.
  *
  * :param session: The session to use.
  * :param details: :ref:`unspent-utxos-details` to get the unspent transaction outputs for.
- * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, GA_json** utxos);
+GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get the unspent transaction outputs associated with a non-wallet private key.
@@ -327,10 +327,10 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  *
  * :param session: The session to use.
  * :param details: :ref:`balance-details` giving the subaccount details to get the balance for.
- * :param balance: The returned :ref:`balance-data`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, GA_json** balance);
+GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * The list of allowed currencies for all available pricing sources.
@@ -369,11 +369,11 @@ GDK_API int GA_set_pin(
  *
  * :param session: The session to use.
  * :param transaction_details: The :ref:`transaction-details` for constructing.
- * :param transaction: Destination for the resulting transaction's details.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_create_transaction(
-    struct GA_session* session, const GA_json* transaction_details, GA_json** transaction);
+    struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
 
 /**
  * Sign the user's inputs to a transaction.
@@ -419,10 +419,11 @@ GDK_API int GA_send_nlocktimes(struct GA_session* session);
  *
  * :param session: The session to use.
  * :param deposit_details: The :ref:`set-deposit-details` for sending.
- * :param output: Destination for the returned utxos (same format as :ref:`tx-list`).
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to change the locktime.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_expired_deposits(struct GA_session* session, const GA_json* deposit_details, GA_json** output);
+GDK_API int GA_get_expired_deposits(
+    struct GA_session* session, const GA_json* deposit_details, struct GA_auth_handler** call);
 
 /**
  * Set the number of blocks after which CSV transactions become spendable without two factor authentication.

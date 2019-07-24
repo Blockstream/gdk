@@ -9,6 +9,7 @@
 
 #include "amount.hpp"
 #include "ga_wally.hpp"
+#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
@@ -75,6 +76,9 @@ namespace sdk {
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
+        std::string get_blinding_key_for_script(const std::string& script_hex);
+        std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
+        std::string extract_confidential_address(const std::string& blinded_address);
 
         nlohmann::json get_subaccounts();
 
@@ -90,6 +94,8 @@ namespace sdk {
 
         bool is_rbf_enabled();
         bool is_watch_only();
+        bool is_liquid();
+        liquid_support_level hw_liquid_support();
         nlohmann::json get_settings();
         void change_settings(const nlohmann::json& settings);
 
@@ -113,10 +119,14 @@ namespace sdk {
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
 
+        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json get_transaction_details(const std::string& txhash_hex);
+
+        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
+        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
 
         nlohmann::json create_transaction(const nlohmann::json& details);
         nlohmann::json sign_transaction(const nlohmann::json& details);
@@ -124,6 +134,9 @@ namespace sdk {
         std::string broadcast_transaction(const std::string& tx_hex);
 
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
+        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
+            const std::string& abf, const std::string& vbf);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
