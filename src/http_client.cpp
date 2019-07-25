@@ -4,7 +4,6 @@
 #include "network_parameters.hpp"
 #include "utils.hpp"
 
-namespace algo = boost::algorithm;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
 
@@ -66,7 +65,7 @@ namespace sdk {
 
         NET_ERROR_CODE_CHECK("on resolve", ec);
         get_lowest_layer().expires_after(HTTP_TIMEOUT);
-        async_connect(results);
+        async_connect(std::move(results));
     }
 
     void http_client::on_write(beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
@@ -142,7 +141,8 @@ namespace sdk {
     {
     }
 
-    void tls_http_client::on_connect(beast::error_code ec, asio::ip::tcp::resolver::results_type::endpoint_type)
+    void tls_http_client::on_connect(
+        beast::error_code ec, __attribute__((unused)) const asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
         GDK_LOG_NAMED_SCOPE("http_client:on_connect");
 
@@ -241,8 +241,8 @@ namespace sdk {
 
     void tcp_http_client::async_resolve(const std::string& host, const std::string& port) { ASYNC_RESOLVE; }
 
-    void tcp_http_client::on_connect(
-        boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type)
+    void tcp_http_client::on_connect(boost::beast::error_code ec,
+        __attribute__((unused)) const boost::asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
         GDK_LOG_NAMED_SCOPE("tcp_http_client");
 

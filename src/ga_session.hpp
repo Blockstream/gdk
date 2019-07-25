@@ -52,7 +52,7 @@ namespace sdk {
         using ping_fail_t = std::function<void()>;
         using nlocktime_t = std::map<std::pair<std::string, uint32_t>, nlohmann::json>;
 
-        ga_session(const nlohmann::json& net_params);
+        explicit ga_session(const nlohmann::json& net_params);
         ga_session(const ga_session& other) = delete;
         ga_session(ga_session&& other) noexcept = delete;
         ga_session& operator=(const ga_session& other) = delete;
@@ -258,10 +258,7 @@ namespace sdk {
         template <typename T> bool is_transport_connected() const
         {
             const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
-            if (transport != nullptr && transport->is_connected()) {
-                return true;
-            }
-            return false;
+            return transport != nullptr && transport->is_connected();
         }
 
         template <typename T> void disconnect_transport() const;
@@ -270,8 +267,8 @@ namespace sdk {
         {
             bool expect_pong = false;
             no_std_exception_escape([this, &expect_pong] {
-                const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
-                if (transport != nullptr && transport->is_connected()) {
+                if (is_transport_connected<T>()) {
+                    const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
                     expect_pong = transport->ping(std::string{});
                 }
             });
@@ -303,7 +300,8 @@ namespace sdk {
                 const auto status = fn.wait_for(boost::chrono::seconds(timeout));
                 if (status == boost::future_status::timeout && !is_connected()) {
                     throw timeout_error{};
-                } else if (status == boost::future_status::ready) {
+                }
+                if (status == boost::future_status::ready) {
                     break;
                 }
             }

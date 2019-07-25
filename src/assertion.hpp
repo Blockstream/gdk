@@ -25,7 +25,7 @@ namespace sdk {
 
 #define NET_ERROR_CODE_CHECK(msg, ec)                                                                                  \
     if (ec) {                                                                                                          \
-        set_exception(std::string{ msg } + ": " + ec.message());                                                       \
+        set_exception(std::string{ msg } + ": " + (ec).message());                                                     \
         return;                                                                                                        \
     }
 

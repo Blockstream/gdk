@@ -114,8 +114,7 @@ namespace sdk {
                 // originally used in the tx rather than the users current setting.
                 GDK_RUNTIME_ASSERT(i < tx->num_inputs);
                 const auto& witness = tx->inputs[i].witness;
-                GDK_RUNTIME_ASSERT(witness != nullptr);
-                GDK_RUNTIME_ASSERT(witness->num_items != 0);
+                GDK_RUNTIME_ASSERT(witness != nullptr && witness->num_items != 0);
                 // The redeem script is the last witness item
                 const auto& witness_item = witness->items[witness->num_items - 1];
                 GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);

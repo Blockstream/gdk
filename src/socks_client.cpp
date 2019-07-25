@@ -52,7 +52,7 @@ namespace sdk {
         }
     }
 
-    void socks_client::on_resolve(beast::error_code ec, asio::ip::tcp::resolver::results_type results)
+    void socks_client::on_resolve(beast::error_code ec, const asio::ip::tcp::resolver::results_type& results)
     {
         GDK_LOG_NAMED_SCOPE("socks_client:on_resolve");
 
@@ -60,7 +60,8 @@ namespace sdk {
         m_stream.async_connect(results, beast::bind_front_handler(&socks_client::on_connect, shared_from_this()));
     }
 
-    void socks_client::on_connect(beast::error_code ec, asio::ip::tcp::resolver::results_type::endpoint_type)
+    void socks_client::on_connect(
+        beast::error_code ec, __attribute__((unused)) const asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
         GDK_LOG_NAMED_SCOPE("socks_client:on_connect");
 

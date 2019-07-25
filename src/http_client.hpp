@@ -15,13 +15,10 @@ namespace sdk {
 
     class http_client {
     public:
-        http_client(boost::asio::io_context& io);
-
         http_client(const http_client&) = delete;
         http_client(http_client&&) = delete;
         http_client& operator=(const http_client&) = delete;
         http_client& operator=(http_client&&) = delete;
-
         virtual ~http_client() = default;
 
         std::future<nlohmann::json> get(const nlohmann::json& params);
@@ -32,6 +29,8 @@ namespace sdk {
         void on_shutdown(boost::beast::error_code ec);
 
     protected:
+        explicit http_client(boost::asio::io_context& io);
+
         virtual boost::beast::tcp_stream& get_lowest_layer() = 0;
         virtual boost::beast::tcp_stream& get_next_layer() = 0;
         virtual void async_connect(boost::asio::ip::tcp::resolver::results_type results) = 0;
@@ -59,7 +58,7 @@ namespace sdk {
 
     class tls_http_client final : public std::enable_shared_from_this<tls_http_client>, public http_client {
     public:
-        tls_http_client(boost::asio::io_context& io, boost::asio::ssl::context& ssl_ctx);
+        explicit tls_http_client(boost::asio::io_context& io, boost::asio::ssl::context& ssl_ctx);
 
     private:
         boost::beast::tcp_stream& get_lowest_layer() override;
@@ -72,7 +71,8 @@ namespace sdk {
         void async_resolve(const std::string& host, const std::string& port) override;
         void preamble(const std::string& host) override;
 
-        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
+        void on_connect(
+            boost::beast::error_code ec, const boost::asio::ip::tcp::resolver::results_type::endpoint_type& type);
         void on_handshake(boost::beast::error_code ec);
 
         boost::beast::ssl_stream<boost::beast::tcp_stream> m_stream;
@@ -80,7 +80,7 @@ namespace sdk {
 
     class tcp_http_client final : public std::enable_shared_from_this<tcp_http_client>, public http_client {
     public:
-        tcp_http_client(boost::asio::io_context& io);
+        explicit tcp_http_client(boost::asio::io_context& io);
 
     private:
         boost::beast::tcp_stream& get_lowest_layer() override;
@@ -92,7 +92,8 @@ namespace sdk {
         void async_handshake() override;
         void async_resolve(const std::string& host, const std::string& port) override;
 
-        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
+        void on_connect(
+            boost::beast::error_code ec, const boost::asio::ip::tcp::resolver::results_type::endpoint_type& type);
 
         boost::beast::tcp_stream m_stream;
     };

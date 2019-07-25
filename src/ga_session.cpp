@@ -21,7 +21,6 @@
 #include "utils.hpp"
 
 namespace asio = boost::asio;
-namespace beast = boost::beast;
 
 namespace ga {
 namespace sdk {
@@ -396,10 +395,12 @@ namespace sdk {
 
     ga_session::~ga_session()
     {
-        reset();
-        m_io.stop();
-        m_controller.reset();
-        m_io.reset();
+        no_std_exception_escape([this] {
+            reset();
+            m_io.stop();
+            m_controller.reset();
+            m_io.reset();
+        });
     }
 
     bool ga_session::is_connected() const
@@ -485,7 +486,8 @@ namespace sdk {
     }
 
     template <typename T>
-    std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler(const std::string&)
+    std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler(
+        __attribute__((unused)) const std::string& host_name)
     {
     }
     template <typename T>
@@ -587,12 +589,12 @@ namespace sdk {
                 return false;
             }
             const auto cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
-            if (!cert) {
+            if (cert == nullptr) {
                 return false;
             }
             std::array<unsigned char, SHA256_LEN> buf;
             unsigned int written = 0;
-            if (!X509_digest(cert, EVP_sha256(), buf.data(), &written) || written != buf.size()) {
+            if (X509_digest(cert, EVP_sha256(), buf.data(), &written) == 0 || written != buf.size()) {
                 return false;
             }
             const auto& pins = m_net_params.gait_wamp_cert_pins();
@@ -625,9 +627,9 @@ namespace sdk {
         m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
     }
 
-    void ga_session::set_heartbeat_timeout_handler(heartbeat_t handler) { m_heartbeat_handler = handler; }
+    void ga_session::set_heartbeat_timeout_handler(heartbeat_t handler) { m_heartbeat_handler = std::move(handler); }
 
-    void ga_session::set_ping_fail_handler(ping_fail_t handler) { m_ping_fail_handler = handler; }
+    void ga_session::set_ping_fail_handler(ping_fail_t handler) { m_ping_fail_handler = std::move(handler); }
 
     void ga_session::emit_notification(std::string event, nlohmann::json details)
     {
@@ -1092,15 +1094,15 @@ namespace sdk {
         const bool new_is_fiat = details.at("is_fiat").get<bool>();
         GDK_RUNTIME_ASSERT(new_is_fiat == (details.find("fiat") != details.end()));
 
-        if (current_is_fiat != new_is_fiat)
+        if (current_is_fiat != new_is_fiat) {
             return false;
+        }
 
         const amount::value_type current_total = m_limits_data["total"];
         if (new_is_fiat) {
             return amount::get_fiat_cents(details["fiat"]) <= current_total;
-        } else {
-            return convert_amount(locker, details)["satoshi"] <= current_total;
         }
+        return convert_amount(locker, details)["satoshi"] <= current_total;
     }
 
     void ga_session::on_new_transaction(locker_t& locker, nlohmann::json details)
@@ -1168,7 +1170,7 @@ namespace sdk {
                 m_tx_list_caches.purge(subaccount);
             }
 
-            if (!m_notification_handler) {
+            if (m_notification_handler == nullptr) {
                 return;
             }
 
@@ -1479,7 +1481,7 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(!m_subaccounts.empty());
         GDK_RUNTIME_ASSERT(bip32_xpubs.size() == m_subaccounts.size());
-        GDK_RUNTIME_ASSERT(!m_user_pubkeys.get());
+        GDK_RUNTIME_ASSERT(!m_user_pubkeys);
 
         m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, make_xpub(bip32_xpubs[0]));
         for (size_t i = 1; i < m_subaccounts.size(); ++i) {
@@ -1509,11 +1511,13 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        if (!m_system_message_ack.empty())
+        if (!m_system_message_ack.empty()) {
             return m_system_message_ack; // Existing unacked message
+        }
 
-        if (m_watch_only || m_system_message_id == 0)
+        if (m_watch_only || m_system_message_id == 0) {
             return std::string(); // Watch-only user, or no outstanding messages
+        }
 
         // Get the next message to ack
         nlohmann::json details;
@@ -1645,8 +1649,9 @@ namespace sdk {
         std::vector<nlohmann::json> details;
         details.reserve(m_subaccounts.size());
 
-        for (auto sa : m_subaccounts)
+        for (const auto& sa : m_subaccounts) {
             details.emplace_back(get_subaccount(locker, sa.first));
+        }
 
         return details;
     }
@@ -1673,47 +1678,46 @@ namespace sdk {
             const std::string satoshi_str = json_get_value(balance, "satoshi");
             const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", convert_amount(locker, { { "satoshi", satoshi } }) } };
-        } else {
-            nlohmann::json utxos;
-            {
-                // TODO: consider passing the lock here as well
-                unique_unlock unlocker{ locker };
-                utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
-            }
-
-            auto accumulate_if = [](const auto& utxos, auto pred) {
-                return std::accumulate(
-                    std::begin(utxos), std::end(utxos), int64_t{ 0 }, [pred](int64_t init, const nlohmann::json& utxo) {
-                        amount::value_type satoshi{ 0 };
-                        if (pred(utxo)) {
-                            satoshi = utxo.at("satoshi");
-                        }
-                        return init + satoshi;
-                    });
-            };
-
-            nlohmann::json balance({ { "btc", convert_amount(locker, { { "satoshi", 0 } }) } });
-            for (const auto& item : utxos.items()) {
-                const auto& key = item.key();
-                const auto& item_utxos = item.value();
-                const int64_t satoshi
-                    = accumulate_if(item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end(); });
-                const int64_t unconfidential_satoshi = accumulate_if(
-                    item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end() && !utxo.at("confidential"); });
-
-                if (m_assets.find(key) != m_assets.end()) {
-                    balance[key] = convert_amount(locker, { { "satoshi", satoshi }, { "asset_info", m_assets[key] } });
-                    balance[key]["unconfidential"] = convert_amount(
-                        locker, { { "satoshi", unconfidential_satoshi }, { "asset_info", m_assets[key] } });
-                    balance[key]["asset_info"] = m_assets[key];
-                } else {
-                    balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
-                    balance[key]["unconfidential"] = convert_amount(locker, { { "satoshi", unconfidential_satoshi } });
-                }
-            }
-
-            return balance;
         }
+        nlohmann::json utxos;
+        {
+            // TODO: consider passing the lock here as well
+            unique_unlock unlocker{ locker };
+            utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
+        }
+
+        auto accumulate_if = [](const auto& utxos, auto pred) {
+            return std::accumulate(
+                std::begin(utxos), std::end(utxos), int64_t{ 0 }, [pred](int64_t init, const nlohmann::json& utxo) {
+                    amount::value_type satoshi{ 0 };
+                    if (pred(utxo)) {
+                        satoshi = utxo.at("satoshi");
+                    }
+                    return init + satoshi;
+                });
+        };
+
+        nlohmann::json balance({ { "btc", convert_amount(locker, { { "satoshi", 0 } }) } });
+        for (const auto& item : utxos.items()) {
+            const auto& key = item.key();
+            const auto& item_utxos = item.value();
+            const int64_t satoshi
+                = accumulate_if(item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end(); });
+            const int64_t unconfidential_satoshi = accumulate_if(
+                item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end() && !utxo.at("confidential"); });
+
+            if (m_assets.find(key) != m_assets.end()) {
+                balance[key] = convert_amount(locker, { { "satoshi", satoshi }, { "asset_info", m_assets[key] } });
+                balance[key]["unconfidential"] = convert_amount(
+                    locker, { { "satoshi", unconfidential_satoshi }, { "asset_info", m_assets[key] } });
+                balance[key]["asset_info"] = m_assets[key];
+            } else {
+                balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
+                balance[key]["unconfidential"] = convert_amount(locker, { { "satoshi", unconfidential_satoshi } });
+            }
+        }
+
+        return balance;
     }
 
     nlohmann::json ga_session::get_subaccount(ga_session::locker_t& locker, uint32_t subaccount)
@@ -1764,12 +1768,12 @@ namespace sdk {
 
         if (subaccount != 0) {
             // Add user and recovery pubkeys for the subaccount
-            if (m_user_pubkeys.get() && !m_user_pubkeys->have_subaccount(subaccount)) {
+            if (m_user_pubkeys != nullptr && !m_user_pubkeys->have_subaccount(subaccount)) {
                 const uint32_t path[2] = { harden(3), harden(subaccount) };
                 m_user_pubkeys->add_subaccount(subaccount, get_signer().get_xpub(path));
             }
 
-            if (m_recovery_pubkeys.get() && !recovery_chain_code.empty()) {
+            if (m_recovery_pubkeys != nullptr && !recovery_chain_code.empty()) {
                 m_recovery_pubkeys->add_subaccount(subaccount, make_xpub(recovery_chain_code, recovery_pub_key));
             }
         }
@@ -2157,7 +2161,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_notification_handler != nullptr);
         // Note: notification recipient must destroy the passed JSON
-        const GA_json* details_c = reinterpret_cast<const GA_json*>(details);
+        const auto details_c = reinterpret_cast<const GA_json*>(details);
         {
             GA_notification_handler handler = m_notification_handler;
             void* context = m_notification_context;
@@ -2165,7 +2169,7 @@ namespace sdk {
             unique_unlock unlocker(locker);
             handler(context, details_c);
         }
-        if (!details_c) {
+        if (details_c == nullptr) {
             set_notification_handler(locker, nullptr, nullptr);
         }
     }
@@ -2236,11 +2240,11 @@ namespace sdk {
                 const uint32_t rbh = rhs["block_height"];
                 if (lbh == 0) {
                     return false;
-                } else if (rbh == 0) {
-                    return true;
-                } else {
-                    return lbh < rbh;
                 }
+                if (rbh == 0) {
+                    return true;
+                }
+                return lbh < rbh;
             });
         });
 
@@ -2365,11 +2369,10 @@ namespace sdk {
         if (num_confs == 0 && !m_net_params.liquid()) {
             // The subaccount details contains the confs=0 balance
             return get_subaccount(subaccount)["balance"];
-        } else {
-            // Anything other than confs=0 needs to be fetched from the server
-            locker_t locker(m_mutex);
-            return get_subaccount_balance_from_server(locker, subaccount, num_confs);
         }
+        // Anything other than confs=0 needs to be fetched from the server
+        locker_t locker(m_mutex);
+        return get_subaccount_balance_from_server(locker, subaccount, num_confs);
     }
 
     // Idempotent

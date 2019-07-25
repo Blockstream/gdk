@@ -1,52 +1,55 @@
-sources = ['amount.cpp',
+cpp_headers = [
            'amount.hpp',
-           'assertion.cpp',
            'assertion.hpp',
            'auth_handler.hpp',
            'autobahn_wrapper.hpp',
            'boost_wrapper.hpp',
            'containers.hpp',
-           'containers.cpp',
-           'exception.cpp',
            'exception.hpp',
-           'ffi_c.cpp',
            'ga_auth_handlers.hpp',
-           'ga_auth_handlers.cpp',
-           'ga_wally.cpp',
            'ga_wally.hpp',
-           'ga_session.cpp',
            'ga_session.hpp',
-           'ga_strings.cpp',
            'ga_strings.hpp',
-           'ga_tor.cpp',
            'ga_tor.hpp',
-           'ga_tx.cpp',
            'ga_tx.hpp',
            'gsl_wrapper.hpp',
-           'http_client.cpp',
            'http_client.hpp',
            'logging.hpp',
            'memory.hpp',
-           'network_parameters.cpp',
-           'session.cpp',
            'session.hpp',
-           'signer.cpp',
            'signer.hpp',
-           'socks_client.cpp',
            'socks_client.hpp',
-           'transaction_utils.cpp',
            'transaction_utils.hpp',
-           'tx_list_cache.cpp',
            'tx_list_cache.hpp',
            'utils.hpp',
-           'utils.cpp',
-           'xpub_hdkey.cpp',
            'xpub_hdkey.hpp',
            'wally_wrapper.h']
 
+cpp_sources = [
+           'amount.cpp',
+           'assertion.cpp',
+           'containers.cpp',
+           'exception.cpp',
+           'ffi_c.cpp',
+           'ga_auth_handlers.cpp',
+           'ga_wally.cpp',
+           'ga_session.cpp',
+           'ga_strings.cpp',
+           'ga_tor.cpp',
+           'ga_tx.cpp',
+           'http_client.cpp',
+           'network_parameters.cpp',
+           'session.cpp',
+           'signer.cpp',
+           'socks_client.cpp',
+           'transaction_utils.cpp',
+           'tx_list_cache.cpp',
+           'utils.cpp',
+           'xpub_hdkey.cpp']
+
 headers = ['../include/gdk.h']
 
-sources += headers
+sources = cpp_headers + cpp_sources + headers
 
 if clang_format.found()
     custom_target('clang-format', input : sources, output : 'clang-format', command : [clang_format, '-i', '@INPUT@'])
@@ -58,13 +61,13 @@ if clang_tidy.found() or pvs_studio_analyzer.found()
 endif
 
 if clang_tidy.found()
-    custom_target('clang-tidy', output : 'clang-tidy', command : [clang_tidy, '-header-filter=../src/*',
-                  '-checks=*,-fuchsia*,-google-*,-llvm-*,-mpi-*,-objc-*,-zircon-*', '-p=' + join_paths(meson.build_root(), 'src')],
+    custom_target('clang-tidy', input : cpp_sources, output : 'clang-tidy', command : [clang_tidy, '-p=' + join_paths(meson.build_root(), 'src'), '@INPUT@'],
                    depends : fix_compile_commands)
 endif
 
 if pvs_studio_analyzer.found()
-    custom_target('pvs-studio-analyzer', output : 'pvs-studio-analyzer', command : [join_paths(meson.source_root(), 'tools', 'run_pvs_studio_analyzer.sh'), meson.build_root()], depends : fix_compile_commands)
+    custom_target('pvs-studio-analyzer', output : 'pvs-studio-analyzer',
+                   command : [join_paths(meson.source_root(), 'tools', 'run_pvs_studio_analyzer.sh'), meson.build_root()], depends : fix_compile_commands)
 endif
 
 dependencies = subproject_deps + library_deps

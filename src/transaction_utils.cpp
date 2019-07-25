@@ -14,7 +14,7 @@
 namespace {
 bool isupper(const std::string& s)
 {
-    return std::all_of(std::begin(s), std::end(s), [](int c) { return !std::islower(c); });
+    return std::all_of(std::begin(s), std::end(s), [](int c) { return std::islower(c) == 0; });
 }
 } // namespace
 
@@ -73,7 +73,8 @@ namespace sdk {
     {
         if (addr_type == address_type::p2sh) {
             return base58check_from_bytes(p2sh_address_from_bytes(net_params, script));
-        } else if (addr_type == address_type::p2wsh || addr_type == address_type::csv) {
+        }
+        if (addr_type == address_type::p2wsh || addr_type == address_type::csv) {
             return base58check_from_bytes(p2sh_p2wsh_address_from_bytes(net_params, script));
         }
         GDK_RUNTIME_ASSERT(false);
@@ -86,20 +87,19 @@ namespace sdk {
         if (boost::starts_with(address, net_params.bech32_prefix())) {
             // Segwit v0 P2WPKH or P2WSH
             return addr_segwit_v0_to_bytes(address, net_params.bech32_prefix());
-        } else {
-            // Base58 encoded bitcoin address
-            const auto addr_bytes = base58check_to_bytes(address);
-            GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
-            const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
-
-            if (addr_bytes.front() == net_params.btc_p2sh_version()) {
-                return scriptpubkey_p2sh_from_hash160(script_hash);
-            } else if (addr_bytes.front() == net_params.btc_version()) {
-                return scriptpubkey_p2pkh_from_hash160(script_hash);
-            } else {
-                return std::vector<unsigned char>(); // Unknown address version
-            }
         }
+        // Base58 encoded bitcoin address
+        const auto addr_bytes = base58check_to_bytes(address);
+        GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
+        const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
+
+        if (addr_bytes.front() == net_params.btc_p2sh_version()) {
+            return scriptpubkey_p2sh_from_hash160(script_hash);
+        }
+        if (addr_bytes.front() == net_params.btc_version()) {
+            return scriptpubkey_p2pkh_from_hash160(script_hash);
+        }
+        return std::vector<unsigned char>(); // Unknown address version
     }
 
     static std::vector<unsigned char> output_script(const pub_key_t& ga_pub_key, const pub_key_t& user_pub_key,
@@ -157,10 +157,9 @@ namespace sdk {
         if (recovery_pubkeys.have_subaccount(subaccount)) {
             // 2of3
             return output_script(ga_pub_key, user_pub_key, recovery_pubkeys.derive(subaccount, pointer), type, subtype);
-        } else {
-            // 2of2
-            return output_script(ga_pub_key, user_pub_key, empty_span(), type, subtype);
         }
+        // 2of2
+        return output_script(ga_pub_key, user_pub_key, empty_span(), type, subtype);
     }
 
     std::vector<unsigned char> input_script(signer& user_signer, const std::vector<unsigned char>& prevout_script,
@@ -325,7 +324,7 @@ namespace sdk {
 
     void update_tx_info(const wally_tx_ptr& tx, nlohmann::json& result)
     {
-        const bool valid = tx->num_inputs && tx->num_outputs;
+        const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
         result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
         const auto weight = tx_get_weight(tx);
         result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
@@ -350,7 +349,7 @@ namespace sdk {
     {
         update_tx_info(tx, result);
 
-        const bool valid = tx->num_inputs && tx->num_outputs;
+        const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
 
         // Note that outputs may be empty if the constructed tx is incomplete
         std::vector<nlohmann::json> outputs;
@@ -360,11 +359,13 @@ namespace sdk {
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
                 // TODO: we're only handling assets here when they're still explicit
-                auto asset_id = o.asset && o.asset_len ? b2h_rev(gsl::make_span(o.asset + 1, o.asset_len - 1)) : "btc";
+                auto asset_id = o.asset != nullptr && o.asset_len != 0u
+                    ? b2h_rev(gsl::make_span(o.asset + 1, o.asset_len - 1))
+                    : "btc";
                 if (asset_id == net_params.policy_asset()) {
                     asset_id = "btc";
                 }
-                const bool is_fee = !o.script && !o.script_len;
+                const bool is_fee = o.script == nullptr && o.script_len == 0u;
                 const auto script_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};
 
                 const bool have_change = result.find("have_change") != result.end()

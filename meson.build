@@ -183,8 +183,8 @@ build_swig_python = swig.found() and python_dep.found() and not cross_iphone_bui
 
 clang_format = find_program('clang-format', required : false)
 
-clang_tidy_name = 'run-clang-tidy' + get_option('clang-tidy-version')
-clang_tidy = find_program(clang_tidy_name, clang_tidy_name + '.py', required : false)
+clang_tidy_name = 'clang-tidy' + get_option('clang-tidy-version')
+clang_tidy = find_program(clang_tidy_name, required : false)
 
 pvs_studio_analyzer = find_program('pvs-studio-analyzer', required : false)
 

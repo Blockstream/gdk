@@ -97,7 +97,7 @@ namespace sdk {
 
 #define GDK_LOG_NAMED_SCOPE(name)                                                                                      \
     BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), log_level::severity_level::debug)                                      \
-        << __FILE__ << ':' << __LINE__ << ':' << (name) << ':' << __func__;
+        << __FILE__ << ':' << __LINE__ << ':' << (name) << ':' << __func__; // NOLINT: compiler specific types.
 
 #define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), sev)
 
@@ -110,7 +110,7 @@ namespace sdk {
         {
         }
 
-        websocket_boost_logger(wlog::level l, wlog::channel_type_hint::value)
+        websocket_boost_logger(wlog::level l, __attribute__((unused)) wlog::channel_type_hint::value hint)
             : m_level(l)
         {
         }

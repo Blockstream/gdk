@@ -27,7 +27,7 @@ namespace sdk {
 
     // STL compatible RNG returning uniform uint32_t's
     struct uniform_uint32_rng {
-        uniform_uint32_rng()
+        uniform_uint32_rng() // NOLINT: ignored for valgrind use
             : m_index(m_entropy.size() - 1u)
         {
         }
@@ -38,7 +38,7 @@ namespace sdk {
         result_type operator()();
 
     private:
-        std::array<result_type, 8> m_entropy;
+        std::array<result_type, 8> m_entropy; // NOLINT: ignored for valgrind use
         size_t m_index;
     };
 

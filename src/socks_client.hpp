@@ -18,6 +18,7 @@ namespace sdk {
         socks_client(socks_client&&) = delete;
         socks_client& operator=(const socks_client&) = delete;
         socks_client& operator=(socks_client&&) = delete;
+        ~socks_client() = default;
 
         std::future<void> run(const std::string& endpoint, const std::string& proxy_uri);
         void shutdown();
@@ -37,8 +38,9 @@ namespace sdk {
 
         enum class negotiation_phase { method_selection, connect };
 
-        void on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
-        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
+        void on_resolve(boost::beast::error_code ec, const boost::asio::ip::tcp::resolver::results_type& results);
+        void on_connect(
+            boost::beast::error_code ec, const boost::asio::ip::tcp::resolver::results_type::endpoint_type& type);
         void on_write(boost::beast::error_code ec, size_t bytes_transferred);
         void on_read(boost::beast::error_code ec, size_t bytes_transferred);
         void on_connect_read(boost::beast::error_code ec, size_t bytes_transferred);

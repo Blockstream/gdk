@@ -31,7 +31,7 @@ namespace sdk {
 
         class exponential_backoff {
         public:
-            exponential_backoff(std::chrono::seconds limit = 300s)
+            explicit exponential_backoff(std::chrono::seconds limit = 300s)
                 : m_limit(limit)
             {
             }
@@ -81,6 +81,11 @@ namespace sdk {
     public:
         using flag_t = flag_type<void>;
 
+        network_control_context() = default;
+        network_control_context(const network_control_context& context) = delete;
+        network_control_context& operator=(const network_control_context& context) = delete;
+        network_control_context(network_control_context&& context) = delete;
+        network_control_context& operator=(network_control_context&& context) = delete;
         ~network_control_context() { stop_reconnect(); }
 
         void reset_reconnect() { m_reconnect_flag = flag_t{}; }

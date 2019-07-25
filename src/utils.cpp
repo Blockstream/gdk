@@ -92,7 +92,7 @@ namespace sdk {
                 }
 
                 num_overwritten = 0;
-                for (int x = 0; x < NUM_OS_RANDOM_BYTES; ++x) {
+                for (int x = 0; x < NUM_OS_RANDOM_BYTES; ++x) { // NOLINT: original from Core.
                     if (overwritten[x]) {
                         num_overwritten += 1;
                     }
@@ -100,14 +100,16 @@ namespace sdk {
 
                 tries += 1;
             } while (num_overwritten < NUM_OS_RANDOM_BYTES && tries < MAX_TRIES);
-            if (num_overwritten != NUM_OS_RANDOM_BYTES)
+            if (num_overwritten != NUM_OS_RANDOM_BYTES) {
                 return false; /* If this failed, bailed out after too many tries */
+            }
 
             // Check that GetPerformanceCounter increases at least during a GetOSRand() call + 1ms sleep.
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             uint64_t stop = GetPerformanceCounter();
-            if (stop == start)
+            if (stop == start) {
                 return false;
+            }
 
             // We called GetPerformanceCounter. Use it as entropy.
             RAND_add((const unsigned char*)&start, sizeof(start), 1);
@@ -360,21 +362,21 @@ namespace sdk {
         }
         std::vector<std::string> endpoint_parts;
         algo::split(endpoint_parts, endpoint, algo::is_any_of("/"));
-        GDK_RUNTIME_ASSERT(endpoint_parts.size() > 0);
+        GDK_RUNTIME_ASSERT(!endpoint_parts.empty());
         if (endpoint_parts.size() > 1) {
             target = "/"
                 + algo::join(std::vector<std::string>(std::begin(endpoint_parts) + 1, std::end(endpoint_parts)), "/");
         }
         std::vector<std::string> host_parts;
         algo::split(host_parts, endpoint_parts[0], algo::is_any_of(":"));
-        GDK_RUNTIME_ASSERT(host_parts.size() > 0);
+        GDK_RUNTIME_ASSERT(!host_parts.empty());
         const std::string port = host_parts.size() > 1 ? host_parts[1] : use_tls ? "443" : "80";
         return { host_parts[0], port };
     }
 } // namespace sdk
 } // namespace ga
 
-int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len)
+extern "C" int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len)
 {
     try {
         ga::sdk::get_random_bytes(num_bytes, output_bytes, len);
@@ -384,7 +386,7 @@ int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t le
     }
 }
 
-int GA_generate_mnemonic(char** output)
+extern "C" int GA_generate_mnemonic(char** output)
 {
     try {
         GDK_RUNTIME_ASSERT(output);
@@ -397,7 +399,7 @@ int GA_generate_mnemonic(char** output)
     }
 }
 
-int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
+extern "C" int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
 {
     *valid = GA_FALSE;
     try {
