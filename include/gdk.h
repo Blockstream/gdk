@@ -373,7 +373,7 @@ GDK_API int GA_set_pin(
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_create_transaction(
-    struct GA_session* session, const GA_json* transaction_details, GA_json** transaction);
+    struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
 
 /**
  * Sign the user's inputs to a transaction.

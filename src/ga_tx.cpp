@@ -318,6 +318,8 @@ namespace sdk {
             result["server_signed"] = false;
             result["liquid"] = net_params.liquid();
 
+            std::map<uint32_t, std::string> our_unblinded_scripts;
+
             // Must specify subaccount to use
             const auto p_subaccount = result.find("subaccount");
             GDK_RUNTIME_ASSERT(p_subaccount != result.end());

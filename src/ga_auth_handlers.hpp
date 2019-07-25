@@ -73,6 +73,17 @@ namespace sdk {
         nlohmann::json m_details;
     };
 
+    class create_transaction_call : public auth_handler {
+    public:
+        create_transaction_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+        nlohmann::json m_tx;
+    };
+
     class change_settings_call : public auth_handler {
     public:
         change_settings_call(session& session, const nlohmann::json& settings);
