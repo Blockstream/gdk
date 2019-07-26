@@ -223,21 +223,30 @@ namespace sdk {
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi, const std::string& asset_tag)
     {
-        auto output_address = address;
+        const auto is_liquid = net_params.liquid();
 
+        auto output_address = address;
         // TODO: Support OP_RETURN outputs
         std::vector<unsigned char> script;
+        bool confidential_addr = is_liquid;
         try {
-            if (net_params.liquid()) {
-                output_address = confidential_addr_to_addr(output_address, net_params.blinded_prefix());
+            if (is_liquid) {
+                try {
+                    output_address = confidential_addr_to_addr(output_address, net_params.blinded_prefix());
+                } catch (const std::exception& ex) {
+                    confidential_addr = false;
+                }
             }
             script = output_script_for_address(net_params, output_address);
         } catch (const std::exception& e) {
         }
-        if (script.empty()) {
+
+        const bool is_liquid_unconfidential = is_liquid && !confidential_addr && !script.empty();
+        if (script.empty() || is_liquid_unconfidential) {
             // Overwite any existing error in the transaction as addressees
             // are entered and should be corrected first.
-            result["error"] = res::id_invalid_address;
+            result["error"]
+                = is_liquid_unconfidential ? res::id_nonconfidential_addresses_not : res::id_invalid_address;
             // Create a dummy script so that the caller gets back a reasonable
             // estimate of the tx size/fee etc when the address is corrected.
             script.resize(HASH160_LEN);
