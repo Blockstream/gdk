@@ -481,7 +481,8 @@ namespace sdk {
         m_tor_run_thread = std::thread([&] {
             tor_main_configuration_t* tor_conf = tor_main_configuration_new();
             GDK_RUNTIME_ASSERT(tor_conf);
-            std::vector<const char*> argv_conf(15);
+            std::vector<const char*> argv_conf;
+            argv_conf.reserve(15);
             argv_conf.push_back("tor");
             argv_conf.push_back("SafeSocks");
             argv_conf.push_back("1");
