@@ -187,6 +187,7 @@ clang_tidy_name = 'clang-tidy' + get_option('clang-tidy-version')
 clang_tidy = find_program(clang_tidy_name, required : false)
 
 pvs_studio_analyzer = find_program('pvs-studio-analyzer', required : false)
+infer = find_program('infer', required : false)
 
 sphinx_build = find_program('sphinx-build', required : false)
 if sphinx_build.found()

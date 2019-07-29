@@ -55,7 +55,8 @@ if clang_format.found()
     custom_target('clang-format', input : sources, output : 'clang-format', command : [clang_format, '-i', '@INPUT@'])
 endif
 
-if clang_tidy.found() or pvs_studio_analyzer.found()
+fix_compilation_db = clang_tidy.found() or pvs_studio_analyzer.found() or infer.found()
+if fix_compilation_db
     fix_compile_commands = custom_target('fix-compile-commands', output : 'compile_commands.json', capture : true,
                                           command : ['sed', '-e', 's/-MD//g', '-e', 's/-pipe//g', '-e', 's!src!./src!g', 'compile_commands.json'])
 endif
@@ -68,6 +69,11 @@ endif
 if pvs_studio_analyzer.found()
     custom_target('pvs-studio-analyzer', output : 'pvs-studio-analyzer',
                    command : [join_paths(meson.source_root(), 'tools', 'run_pvs_studio_analyzer.sh'), meson.build_root()], depends : fix_compile_commands)
+endif
+
+if infer.found()
+    custom_target('infer', output : 'infer',
+                   command : [infer, '--keep-going', '-a', 'checkers', '--compilation-database', 'compile_commands.json'], depends : fix_compile_commands)
 endif
 
 dependencies = subproject_deps + library_deps
