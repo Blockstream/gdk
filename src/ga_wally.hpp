@@ -225,6 +225,9 @@ namespace sdk {
     unblind_t asset_unblind(byte_span_t private_key, byte_span_t rangeproof, byte_span_t commitment,
         byte_span_t nonce_commitment, byte_span_t extra_commitment, byte_span_t generator);
 
+    unblind_t asset_unblind_with_nonce(byte_span_t blinding_nonce, byte_span_t rangeproof, byte_span_t commitment,
+        byte_span_t extra_commitment, byte_span_t generator);
+
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix);
 
     pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix);

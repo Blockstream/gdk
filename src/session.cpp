@@ -711,6 +711,24 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_unspent_outputs(details); });
     }
 
+    nlohmann::json session::get_blinded_scripts(const nlohmann::json& details)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_blinded_scripts(details); });
+    }
+
+    bool session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->has_blinding_nonce(pubkey, script); });
+    }
+
+    void session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->set_blinding_nonce(pubkey, script, nonce); });
+    }
+
     nlohmann::json session::get_unspent_outputs_for_private_key(
         const std::string& private_key, const std::string& password, uint32_t unused)
     {

@@ -144,6 +144,7 @@ namespace sdk {
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
 
+        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
@@ -179,6 +180,10 @@ namespace sdk {
 
         nlohmann::json encrypt(const nlohmann::json& input_json) const;
         nlohmann::json decrypt(const nlohmann::json& input_json) const;
+
+        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
+        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
+        std::array<unsigned char, 32> get_blinding_nonce(const std::string& pubkey, const std::string& script);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
@@ -270,6 +275,7 @@ namespace sdk {
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
         nlocktime_t get_upcoming_nlocktime() const;
+        std::array<unsigned char, 32> calc_blinding_nonce_map_key(const std::string& pubkey, const std::string& script);
 
         bool connect_with_tls() const;
 
@@ -389,6 +395,11 @@ namespace sdk {
         std::string m_fiat_rate GDK_GUARDED_BY(m_mutex);
         std::string m_fiat_currency GDK_GUARDED_BY(m_mutex);
         uint64_t m_earliest_block_time GDK_GUARDED_BY(m_mutex);
+
+        nlohmann::json m_assets;
+
+        // key = sha256(nonce_commitment || script)
+        std::map<std::array<unsigned char, 32>, std::string> m_blinding_nonces GDK_PT_GUARDED_BY(m_mutex);
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);

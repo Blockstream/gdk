@@ -116,10 +116,14 @@ namespace sdk {
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
 
+        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json get_transaction_details(const std::string& txhash_hex);
+
+        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
+        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
 
         nlohmann::json create_transaction(const nlohmann::json& details);
         nlohmann::json sign_transaction(const nlohmann::json& details);

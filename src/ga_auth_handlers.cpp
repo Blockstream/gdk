@@ -68,7 +68,8 @@ namespace sdk {
 
     void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
     {
-        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx" || m_action == "get_receive_address" || m_action == "create_transaction") {
+        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx" || m_action == "get_receive_address" 
+            || m_action == "create_transaction" || m_action == "get_balance" || m_action == "get_transactions" || m_action == "get_unspent_outputs") {
             // Hardware action, so provide the caller with the device information
             m_hw_device = hw_device;
         }
@@ -611,6 +612,138 @@ namespace sdk {
 
         return state_type::done;
     }
+
+    bool parse_set_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
+    {
+        if (blinded_scripts.size() != nonces.size()) {
+            return false; // TODO: raise an exception?
+        }
+
+        size_t i = 0;
+
+        for (const auto& nonce : nonces) {
+            const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
+            const std::string& script = blinded_scripts.at(i).at("script");
+
+            if (!session.has_blinding_nonce(pubkey, script)) {
+                session.set_blinding_nonce(pubkey, script, nonce);
+            }
+
+            i++;
+        }
+
+        return true;
+    }
+
+    //
+    // Get balance
+    //
+    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "get_balance")
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        if (m_hw_device.empty() || !m_session.is_liquid()) {
+            m_state = state_type::make_call;
+        } else {
+            try {
+                m_state = state_type::resolve_code;
+
+                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
+        }
+    }
+
+    auth_handler::state_type get_balance_call::call_impl()
+    {
+        if (!m_hw_device.empty() && m_session.is_liquid()) {
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
+        }
+
+        m_result = m_session.get_balance(m_details);
+        return state_type::done;
+    }
+
+    //
+    // Get transactions
+    //
+    get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "get_transactions")
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        if (m_hw_device.empty() || !m_session.is_liquid()) {
+            m_state = state_type::make_call;
+        } else {
+            try {
+                m_state = state_type::resolve_code;
+
+                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
+        }
+    }
+
+    
+    auth_handler::state_type get_transactions_call::call_impl()
+    {
+        if (!m_hw_device.empty() && m_session.is_liquid()) {
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
+        }
+
+        m_result = { { "transactions", m_session.get_transactions(m_details) } };
+        return state_type::done;
+    }
+
+    //
+    // Get unspent outputs
+    //
+    get_unspent_outputs_call::get_unspent_outputs_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "get_unspent_outputs")
+        , m_details(details)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        if (m_hw_device.empty() || !m_session.is_liquid()) {
+            m_state = state_type::make_call;
+        } else {
+            try {
+                m_state = state_type::resolve_code;
+
+                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
+                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
+        }
+    }
+
+    auth_handler::state_type get_unspent_outputs_call::call_impl()
+    {
+        if (!m_hw_device.empty() && m_session.is_liquid()) {
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
+        }
+
+        m_result = { {"unspent_outputs", m_session.get_unspent_outputs(m_details) } };
+        return state_type::done;
+    }
+
 
     change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
         : auth_handler(session, std::string()) // TODO: action empty string because 2FA not yet implemented

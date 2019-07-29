@@ -84,6 +84,36 @@ namespace sdk {
         nlohmann::json m_tx;
     };
 
+    class get_balance_call : public auth_handler {
+    public:
+        get_balance_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
+    class get_transactions_call : public auth_handler {
+    public:
+        get_transactions_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
+    class get_unspent_outputs_call : public auth_handler {
+    public:
+        get_unspent_outputs_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
     class change_settings_call : public auth_handler {
     public:
         change_settings_call(session& session, const nlohmann::json& settings);

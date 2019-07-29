@@ -609,6 +609,23 @@ namespace sdk {
         return std::make_tuple(asset_id, vbf, abf, value);
     }
 
+    unblind_t asset_unblind_with_nonce(byte_span_t blinding_nonce, byte_span_t rangeproof, byte_span_t commitment,
+        byte_span_t extra_commitment, byte_span_t generator)
+    {
+        asset_id_t asset_id;
+        vbf_t vbf;
+        abf_t abf;
+        uint64_t value;
+
+        GDK_VERIFY(wally_asset_unblind_with_nonce(blinding_nonce.data(), blinding_nonce.size(),
+            rangeproof.data(), rangeproof.size(), commitment.data(), commitment.size(),
+            extra_commitment.data(), extra_commitment.size(), generator.data(), generator.size(), asset_id.data(),
+            asset_id.size(), abf.data(), abf.size(), vbf.data(), vbf.size(), &value));
+
+        return std::make_tuple(asset_id, vbf, abf, value);
+    }
+
+
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix)
     {
         char* ret;

@@ -275,7 +275,7 @@ GDK_API int GA_rename_subaccount(struct GA_session* session, uint32_t subaccount
  *
  * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
  */
-GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, GA_json** txs);
+GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get a new address to receive coins to.
@@ -295,7 +295,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* de
  * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
-GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, GA_json** utxos);
+GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get the unspent transaction outputs associated with a non-wallet private key.
@@ -330,7 +330,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  * :param balance: The returned :ref:`balance-data`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
-GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, GA_json** balance);
+GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * The list of allowed currencies for all available pricing sources.
