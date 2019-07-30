@@ -51,6 +51,13 @@ release_py3m_buster:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7
 
+release_py3m_buster_debug:
+  extends: .py_release
+  when: manual
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7
+
 release_py3m_ubuntu_18.04:
   image: greenaddress/ci@sha256:5b65c5766f5291b67902d9789923a99afcae669a00ef74412093a473699dae45
   extends: .py_release
