@@ -1807,11 +1807,12 @@ namespace sdk {
     {
         const uint32_t subaccount = get_next_subaccount();
         const uint32_t path[2] = { harden(3), harden(subaccount) };
-        const auto xpub = get_signer().get_xpub(path); // Note doesnt need a lock
+        const auto xpub = get_signer().get_bip32_xpub(path); // Note doesnt need a lock
         return create_subaccount(details, subaccount, xpub);
     }
 
-    nlohmann::json ga_session::create_subaccount(const nlohmann::json& details, uint32_t subaccount, const xpub_t& xpub)
+    nlohmann::json ga_session::create_subaccount(
+        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {
         const std::string name = details.at("name");
         const std::string type = details.at("type");
@@ -1819,6 +1820,8 @@ namespace sdk {
         std::string recovery_pub_key;
         std::string recovery_chain_code;
         std::string recovery_bip32_xpub;
+
+        std::vector<std::string> xpubs{ { xpub } };
 
         GDK_RUNTIME_ASSERT(subaccount < 16384u); // Disallow more than 16k subaccounts
 
@@ -1837,6 +1840,7 @@ namespace sdk {
             software_signer subsigner(m_net_params, recovery_mnemonic);
 
             const uint32_t path[2] = { 1, subaccount };
+            xpubs.emplace_back(subsigner.get_bip32_xpub(path));
             const auto recovery_xpub = subsigner.get_xpub(path);
 
             recovery_chain_code = b2h(recovery_xpub.first);
@@ -1848,13 +1852,12 @@ namespace sdk {
         {
             wamp_call(
                 [&receiving_id](wamp_call_result result) { receiving_id = result.get().argument<std::string>(0); },
-                "com.greenaddress.txs.create_subaccount", subaccount, name, b2h(xpub.second), b2h(xpub.first),
-                recovery_pub_key, recovery_chain_code);
+                "com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs);
         }
 
         locker_t locker(m_mutex);
         constexpr bool has_txs = false;
-        m_user_pubkeys->add_subaccount(subaccount, xpub);
+        m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
         nlohmann::json subaccount_details = insert_subaccount(
             locker, subaccount, name, receiving_id, recovery_pub_key, recovery_chain_code, type, amount(), has_txs);
         if (type == "2of3") {

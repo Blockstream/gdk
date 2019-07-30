@@ -352,10 +352,7 @@ namespace sdk {
             m_result = m_session.create_subaccount(m_details);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            const std::vector<std::string> xpubs = args.at("xpubs");
-            const auto subaccount_xpub = get_xpub(xpubs.at(0));
-
-            m_result = m_session.create_subaccount(m_details, m_subaccount, subaccount_xpub);
+            m_result = m_session.create_subaccount(m_details, m_subaccount, args.at("xpubs").at(0));
         }
         return state_type::done;
     }

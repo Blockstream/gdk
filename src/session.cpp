@@ -477,7 +477,8 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->create_subaccount(details); });
     }
 
-    nlohmann::json session::create_subaccount(const nlohmann::json& details, uint32_t subaccount, const xpub_t& xpub)
+    nlohmann::json session::create_subaccount(
+        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
         return exception_wrapper([&] { return m_impl->create_subaccount(details, subaccount, xpub); });
