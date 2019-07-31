@@ -768,6 +768,13 @@ namespace sdk {
         exception_wrapper([&] { m_impl->sign_input(tx, index, u, der_hex); });
     }
 
+    void session::blind_output(
+        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        exception_wrapper([&] { m_impl->blind_output(details, tx, index, o, asset_commitment_hex, value_commitment_hex); });
+    }
+
     void session::send_nlocktimes()
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

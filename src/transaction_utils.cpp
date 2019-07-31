@@ -332,6 +332,10 @@ namespace sdk {
     void update_tx_info(const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
+
+        const bool is_liquid = tx_is_elements(tx);
+        result["liquid"] = is_liquid;
+        //uint32_t flags = is_liquid ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS) : 0;
         result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
         const auto weight = tx_get_weight(tx);
         result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
@@ -340,8 +344,6 @@ namespace sdk {
         result["transaction_vsize"] = tx_vsize;
         result["transaction_version"] = tx->version;
         result["transaction_locktime"] = tx->locktime;
-        const bool is_liquid = tx_is_elements(tx);
-        result["liquid"] = is_liquid;
         if (result.find("fee") != result.end()) {
             if (is_liquid) {
                 result["calculated_fee_rate"] = result["fee"];
@@ -352,11 +354,114 @@ namespace sdk {
         }
     }
 
+    vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,
+        const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs)
+    {
+        auto&& flatten_into = [](auto& bfs, const auto& out_bfs) {
+            std::for_each(std::begin(out_bfs), std::end(out_bfs),
+                [&bfs](const auto& bf) { bfs.insert(bfs.end(), std::begin(bf), std::end(bf)); });
+        };
+
+        std::vector<unsigned char> abfs(std::begin(input_abfs), std::end(input_abfs));
+        flatten_into(abfs, output_abfs);
+
+        std::vector<unsigned char> vbfs(std::begin(input_vbfs), std::end(input_vbfs));
+        flatten_into(vbfs, output_vbfs);
+
+        return asset_final_vbf(input_values, num_inputs, abfs, vbfs);
+    }
+
     void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
     {
         update_tx_info(tx, result);
 
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
+
+        // TODO: there's a ton of duplicated code with ga_tx here
+
+        size_t num_outputs = 0; // excluding fees
+        if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
+            for (size_t i = 0; i < tx->num_outputs; ++i) {
+                const auto& o = tx->outputs[i];
+
+                if (!o.script && !o.script_len) {
+                    continue;
+                }
+
+                num_outputs++;
+            }
+        }
+
+        // generate the blinding factors here, we will assign them later to each output
+        size_t bfs_index = 0;
+        bool set_bfs = false;
+        std::vector<abf_t> output_abfs;
+        std::vector<vbf_t> output_vbfs;
+        for (size_t i = 0; i < num_outputs; ++i) {
+            output_abfs.emplace_back(get_random_bytes<32>());
+            if (i < num_outputs - 1) {
+                output_vbfs.emplace_back(get_random_bytes<32>());
+            }
+        }
+
+        if (net_params.liquid() && result.contains("used_utxos")) {
+            set_bfs = true;
+
+            const auto num_inputs = result.at("used_utxos").size();
+    
+            std::vector<unsigned char> input_abfs;
+            std::vector<unsigned char> input_vbfs;
+            std::vector<uint64_t> input_values;
+
+            for (const auto& utxo : result["used_utxos"]) {
+                const auto abf = h2b(utxo["abf"]);
+                input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
+                const auto vbf = h2b(utxo["vbf"]);
+                input_vbfs.insert(input_vbfs.end(), std::begin(vbf), std::end(vbf));
+                input_values.emplace_back(utxo["satoshi"]);
+            }
+
+            for (size_t i = 0; i < tx->num_outputs; ++i) {
+                const auto& o = tx->outputs[i];
+                if (!o.script && !o.script_len) {
+                    continue;
+                }
+
+                amount::value_type satoshi = o.satoshi;
+                GDK_RUNTIME_ASSERT(o.value);
+                if (*o.value == 1) {
+                    satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
+                }
+
+                input_values.emplace_back(satoshi);
+            }
+
+            try {
+#if 0
+                GDK_LOG_SEV(log_level::info) << "###### final_vbf ######";
+
+                GDK_LOG_SEV(log_level::info) << "num_inputs=" << num_inputs;
+                GDK_LOG_SEV(log_level::info) << "\tinput_abfs=" << b2h(input_abfs);
+                GDK_LOG_SEV(log_level::info) << "\tinput_vbfs=" << b2h(input_vbfs);
+
+                GDK_LOG_SEV(log_level::info) << "num_outputs=" << num_outputs;
+                for (size_t i = 0; i < num_outputs; ++i) {
+                    GDK_LOG_SEV(log_level::info) << "\toutput_abfs[" << i << "]=" << b2h(output_abfs[i]);
+                    if (i < num_outputs - 1) {
+                        GDK_LOG_SEV(log_level::info) << "\toutput_vbfs[" << i << "]=" << b2h(output_vbfs[i]);
+                    }
+                }
+
+                for (auto s : input_values) {
+                    GDK_LOG_SEV(log_level::info) << "\tval=" << s;
+                }
+#endif
+                output_vbfs.emplace_back(
+                    generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
+            } catch (const std::exception& e) {
+                set_bfs = false;
+            }
+        }
 
         // Note that outputs may be empty if the constructed tx is incomplete
         std::vector<nlohmann::json> outputs;
@@ -413,6 +518,18 @@ namespace sdk {
                             = b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
                     }
                     ++addressee_index;
+                }
+
+                // TODO: we always overwrite them, this could cause issues
+                if (set_bfs && !is_fee) {
+                    output["abf"] = b2h(output_abfs.at(bfs_index));
+                    output["vbf"] = b2h(output_vbfs.at(bfs_index));
+
+                    auto ephemeral_keypair = get_ephemeral_keypair();
+                    output["eph_keypair_sec"] = b2h(ephemeral_keypair.first);
+                    output["eph_keypair_pub"] = b2h(ephemeral_keypair.second);
+
+                    bfs_index++;
                 }
 
                 outputs.emplace_back(output);

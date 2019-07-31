@@ -755,8 +755,8 @@ namespace sdk {
                 randomise_inputs(tx, used_utxos);
             }
 
-            if (is_liquid && json_get_value(result, "error").empty()) {
-                result = blind_ga_transaction(session, result);
+            if (is_liquid && json_get_value(result, "error").empty() && session.get_hw_device().is_null()) {
+                result = blind_ga_transaction(session, result); // TODO: if we don't try to blind the tx we won't know if all the output addresses are blinded
             }
         }
 
@@ -896,25 +896,6 @@ namespace sdk {
         return result;
     }
 
-    namespace {
-        vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,
-            const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs)
-        {
-            auto&& flatten_into = [](auto& bfs, const auto& out_bfs) {
-                std::for_each(std::begin(out_bfs), std::end(out_bfs),
-                    [&bfs](const auto& bf) { bfs.insert(bfs.end(), std::begin(bf), std::end(bf)); });
-            };
-
-            std::vector<unsigned char> abfs(std::begin(input_abfs), std::end(input_abfs));
-            flatten_into(abfs, output_abfs);
-
-            std::vector<unsigned char> vbfs(std::begin(input_vbfs), std::end(input_vbfs));
-            flatten_into(vbfs, output_vbfs);
-
-            return asset_final_vbf(input_values, num_inputs, abfs, vbfs);
-        }
-    } // namespace
-
     nlohmann::json blind_ga_transaction(ga_session& session, const nlohmann::json& details)
     {
         const auto& net_params = session.get_network_parameters();
@@ -957,6 +938,7 @@ namespace sdk {
             ++num_outputs;
         }
 
+        // TODO: use abfs, vbfs from `output`
         std::vector<abf_t> output_abfs;
         output_abfs.reserve(num_outputs);
         for (size_t i = 0; i < num_outputs; ++i) {
@@ -1023,6 +1005,61 @@ namespace sdk {
         }
         update_tx_info(tx, result);
         return result;
+    }
+
+
+    void blind_output(ga_session& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o,
+        const std::string& asset_commitment_hex, const std::string& value_commitment_hex)
+    {
+        const auto& net_params = session.get_network_parameters();
+        GDK_RUNTIME_ASSERT(net_params.liquid());
+        GDK_RUNTIME_ASSERT(!o.at("is_fee"));
+
+        const std::string error = json_get_value(details, "error");
+        if (!error.empty()) {
+            GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
+            GDK_RUNTIME_ASSERT_MSG(false, error);
+        }
+
+        std::vector<unsigned char> input_assets;
+        std::vector<unsigned char> input_abfs;
+        std::vector<unsigned char> input_ags;
+        for (const auto& utxo : details["used_utxos"]) {
+            const auto asset_id = h2b_rev(utxo["asset_id"]);
+            input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
+            const auto abf = h2b(utxo["abf"]);
+            const auto generator = asset_generator_from_bytes(asset_id, abf);
+            input_ags.insert(input_ags.end(), std::begin(generator), std::end(generator));
+            input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
+        }
+
+        const auto asset_id = h2b_rev(o.at("asset_id"));
+        const auto script = h2b(o.at("script"));
+        const auto pub_key = h2b(o.at("public_key"));
+        const uint64_t value = o.at("satoshi");
+
+        const auto generator = h2b(asset_commitment_hex);
+        const auto value_commitment = h2b(value_commitment_hex);
+
+        const auto eph_keypair_sec = h2b(o.at("eph_keypair_sec"));
+        const auto eph_keypair_pub = h2b(o.at("eph_keypair_pub"));
+
+        GDK_LOG_SEV(log_level::info) << o;
+        GDK_LOG_SEV(log_level::info) << asset_commitment_hex;
+        GDK_LOG_SEV(log_level::info) << value_commitment_hex;
+
+        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, h2b(o["abf"]),
+            h2b(o["vbf"]), value_commitment, script, generator, 1,
+            std::min(std::max(net_params.ct_exponent(), -1), 18), std::min(std::max(net_params.ct_bits(), 1), 51));
+
+        const auto surjectionproof = asset_surjectionproof(
+            asset_id, h2b(o["abf"]), generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+
+        tx_elements_output_commitment_set(
+            tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
+
+        // TODO
+        //wally_bzero(ephemeral_keypair.first.data(), ephemeral_keypair.first.size());
     }
 
 } // namespace sdk

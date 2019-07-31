@@ -468,15 +468,32 @@ namespace sdk {
             const nlohmann::json args = nlohmann::json::parse(m_code);
             const auto& signatures = args.at("signatures");
             const auto& inputs = m_twofactor_data["signing_inputs"];
-            const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"));
+            const auto& outputs = m_twofactor_data["transaction_outputs"];
+            uint32_t flags = m_session.get_network_parameters().liquid() ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS) : 0;
+            const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"), flags);
 
             GDK_RUNTIME_ASSERT(signatures.is_array() && signatures.size() == inputs.size());
+
+            if (m_session.get_network_parameters().liquid()) {
+                const auto& asset_commitments = args.at("asset_commitments");
+                const auto& value_commitments = args.at("value_commitments");
+
+                size_t i = 0;
+                for (const auto& out : outputs) {
+                    if (!out.at("is_fee")) {
+                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i], value_commitments[i]);
+                    }
+                    ++i;
+                }
+            }
 
             size_t i = 0;
             for (const auto& utxo : inputs) {
                 m_session.sign_input(tx, i, utxo, signatures[i]);
                 ++i;
             }
+
+            GDK_LOG_SEV(log_level::info) << "signed=" << b2h(tx_to_bytes(tx, WALLY_TX_FLAG_USE_WITNESS));
 
             std::swap(m_result, m_twofactor_data["transaction"]);
             m_result["user_signed"] = true;
@@ -521,11 +538,13 @@ namespace sdk {
             m_result = m_twofactor_data["address"];
         }
 
-        std::string pub_blinding_key;
         if (m_session.is_liquid()) {
+            std::string pub_blinding_key;
+
             if (m_hw_device.empty()) {
                 // Get the key from our signer
-                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["script"]);
+                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["script_hash"]);
+                GDK_LOG_SEV(log_level::info) << "receive_key =" << m_result["script_hash"];
             } else {
                 // Use the response from the HW
                 const nlohmann::json args = nlohmann::json::parse(m_code);
@@ -592,13 +611,10 @@ namespace sdk {
 
             std::string asset_tag = it.key();
 
-            GDK_LOG_SEV(log_level::info) << "change addr for " << it.key();
-            GDK_LOG_SEV(log_level::info) << "original " << it.value().at("address");
-
             std::string pub_blinding_key;
             if (m_hw_device.empty()) {
                 // Get the key from our signer
-                pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("script"));
+                pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("script_hash"));
             } else {
                 // Use the response from the HW
                 pub_blinding_key = args.at("blinding_keys").at(it.key());
@@ -608,7 +624,8 @@ namespace sdk {
             m_tx["change_address"][asset_tag]["is_blinded"] = true;
         }
 
-        m_result = m_tx;
+        // Update the transaction
+        m_result = m_session.create_transaction(m_tx);
 
         return state_type::done;
     }

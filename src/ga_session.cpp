@@ -186,13 +186,9 @@ namespace sdk {
                         unblinded = asset_unblind(
                             blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
                     } else if (session.has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
-                        GDK_LOG_SEV(log_level::info) << "Unblinding using cached nonce";
-
                         const auto blinding_nonce = session.get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
                         unblinded = asset_unblind_with_nonce(
                             blinding_nonce, rangeproof, commitment, extra_commitment, asset_tag);
-
-                        GDK_LOG_SEV(log_level::info) << "unblinding successful";
                     } else {
                         // hw and missing nonce in the map
                         utxo["error"] = "missing blinding nonce";
@@ -2429,7 +2425,6 @@ namespace sdk {
         // TODO: handle unconfidential transactions
         nlohmann::json answer = nlohmann::json::array();
         for (const auto& utxo : utxos) {
-            GDK_LOG_SEV(log_level::info) << utxo;
             // don't ask for the same nonces multiple times
             if (!has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
                 answer.push_back({ { "script", utxo.at("script") }, { "pubkey", utxo.at("nonce_commitment")  } });
@@ -3152,6 +3147,12 @@ namespace sdk {
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
     {
         ::ga::sdk::sign_input(*this, tx, index, u, der_hex);
+    }
+
+    void ga_session::blind_output(
+        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex)
+    {
+        ::ga::sdk::blind_output(*this, details, tx, index, o, asset_commitment_hex, value_commitment_hex);
     }
 
     // Idempotent
