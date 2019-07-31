@@ -347,7 +347,7 @@ namespace sdk {
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;
         const network_parameters m_net_params;
-        const std::string m_proxy;
+        std::string m_proxy;
         const bool m_use_tor;
 
         boost::asio::io_context m_io;

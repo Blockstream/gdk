@@ -511,32 +511,31 @@ namespace sdk {
         using client_type
             = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
 
-        auto proxy = m_proxy;
         if (m_use_tor && m_proxy.empty()) {
             if (!(m_tor_ctrl = s_tor_ctrl.lock())) {
                 GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
                 s_tor_ctrl = m_tor_ctrl = std::make_shared<tor_controller>();
             }
 
-            proxy
+            m_proxy
                 = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
                       emit_notification("tor",
                           { { "tag", phase->tag }, { "summary", phase->summary }, { "progress", phase->progress } });
                   });
 
-            GDK_RUNTIME_ASSERT(!proxy.empty());
-            GDK_LOG_SEV(log_level::info) << "tor_socks address " << proxy;
+            GDK_RUNTIME_ASSERT(!m_proxy.empty());
+            GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_proxy;
         }
 
         const auto server = m_net_params.get_connection_string(m_use_tor);
         std::string proxy_details;
-        if (!proxy.empty()) {
-            proxy_details = std::string(" through proxy ") + proxy;
+        if (!m_proxy.empty()) {
+            proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting to " << server << proxy_details;
         boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
         m_transport = std::make_shared<T>(
-            *boost::get<client_type>(m_client), server, proxy, m_log_level == logging_levels::debug);
+            *boost::get<client_type>(m_client), server, m_proxy, m_log_level == logging_levels::debug);
         boost::get<std::shared_ptr<T>>(m_transport)
             ->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }
