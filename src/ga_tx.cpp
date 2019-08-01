@@ -957,9 +957,18 @@ namespace sdk {
             ++num_outputs;
         }
 
-        std::vector<abf_t> output_abfs(num_outputs, get_random_bytes<32>());
+        std::vector<abf_t> output_abfs;
+        output_abfs.reserve(num_outputs);
+        for (size_t i = 0; i < num_outputs; ++i) {
+            output_abfs.emplace_back(get_random_bytes<32>());
+        }
 
-        std::vector<vbf_t> output_vbfs(num_outputs - 1, get_random_bytes<32>());
+        std::vector<vbf_t> output_vbfs;
+        output_vbfs.reserve(num_outputs - 1);
+        for (size_t i = 0; i < num_outputs - 1; ++i) {
+            output_vbfs.emplace_back(get_random_bytes<32>());
+        }
+
         output_vbfs.emplace_back(
             generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
 
