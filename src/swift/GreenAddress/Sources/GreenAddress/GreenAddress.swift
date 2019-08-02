@@ -203,24 +203,22 @@ public class Session {
         try callWrapper(fun: GA_reconnect_hint(session, hintJson))
     }
 
-    public func registerUser(mnemonic: String) throws -> TwoFactorCall {
+    public func registerUser(mnemonic: String, hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
-        var hw_device: OpaquePointer? = nil
-        try callWrapper(fun: GA_convert_string_to_json("{}", &hw_device))
-        try callWrapper(fun: GA_register_user(session, hw_device, mnemonic, &optr))
+        var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)
+        try callWrapper(fun: GA_register_user(session, hw_device_json, mnemonic, &optr))
         defer {
-            GA_destroy_json(hw_device)
+            GA_destroy_json(hw_device_json)
         }
         return TwoFactorCall(optr: optr!);
     }
 
-    public func login(mnemonic: String, password: String = "") throws -> TwoFactorCall {
+    public func login(mnemonic: String = "", password: String = "", hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
-        var hw_device: OpaquePointer? = nil
-        try callWrapper(fun: GA_convert_string_to_json("{}", &hw_device))
-        try callWrapper(fun: GA_login(session, hw_device, mnemonic, password, &optr))
+        var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)
+        try callWrapper(fun: GA_login(session, hw_device_json, mnemonic, password, &optr))
         defer {
-            GA_destroy_json(hw_device)
+            GA_destroy_json(hw_device_json)
         }
         return TwoFactorCall(optr: optr!);
     }
@@ -541,4 +539,41 @@ public func getBIP39WordList() -> [String] {
         words.append(String(cString: word!))
     }
     return words
+}
+
+func compressPublicKey(_ publicKey: [UInt8]) throws -> [UInt8] {
+    switch publicKey[0] {
+    case 0x04:
+        if publicKey.count != 65 {
+            throw GaError.GenericError
+        }
+    case 0x02, 0x03:
+        if publicKey.count != 33 {
+            throw GaError.GenericError
+        }
+        return publicKey
+    default:
+        throw GaError.GenericError
+    }
+    let type = publicKey[64] & 1 != 0 ? 0x03 : 0x02
+    return [UInt8(type)] + publicKey[1..<32+1]
+}
+
+public func bip32KeyToBase58(isMainnet: Bool = true, pubKey: [UInt8], chainCode: [UInt8] ) throws -> String {
+    let version = isMainnet ? BIP32_VER_MAIN_PUBLIC : BIP32_VER_TEST_PUBLIC
+    var extkey: UnsafeMutablePointer<ext_key>?
+    var base58: UnsafeMutablePointer<Int8>?
+    let pubKey_: UnsafePointer<UInt8> = UnsafePointer(pubKey)
+    let chainCode_: UnsafePointer<UInt8> = UnsafePointer(chainCode)
+    defer {
+        bip32_key_free(extkey)
+    }
+    if (bip32_key_init_alloc(UInt32(version), UInt32(1), UInt32(0), chainCode_, chainCode.count,
+                             pubKey_, pubKey.count, nil, 0, nil, 0, nil, 0, &extkey) != WALLY_OK) {
+        throw GaError.GenericError
+    }
+    if (bip32_key_to_base58(extkey, UInt32(BIP32_FLAG_KEY_PUBLIC), &base58) != WALLY_OK) {
+        throw GaError.GenericError
+    }
+    return String(cString: base58!)
 }
