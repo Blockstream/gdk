@@ -1431,6 +1431,21 @@ namespace sdk {
             const std::string currency = pricing_p->value("currency", m_fiat_currency);
             const std::string exchange = pricing_p->value("exchange", m_fiat_source);
             change_settings_pricing_source(locker, currency, exchange);
+
+            // For non-liquid wallets the balances including the fiat values are cached
+            // in m_subaccounts. Update them here with the new pricing settings.
+            // TODO: Implement a notification for updated settings and use that to update
+            // the cached balances, this update will only work for local changes.
+            if (!m_net_params.liquid()) {
+                for (auto& subaccount : m_subaccounts) {
+                    nlohmann::json& subaccount_json = subaccount.second;
+                    const auto p_balance = subaccount_json.find("balance");
+                    if (p_balance != subaccount_json.end()) {
+                        const amount::value_type satoshi = (*p_balance)["btc"]["satoshi"];
+                        subaccount_json["balance"]["btc"] = { convert_amount(locker, { { "satoshi", satoshi } }) };
+                    }
+                }
+            }
         }
     }
 
