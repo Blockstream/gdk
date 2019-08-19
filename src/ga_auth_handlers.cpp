@@ -477,11 +477,13 @@ namespace sdk {
             if (m_session.get_network_parameters().liquid()) {
                 const auto& asset_commitments = args.at("asset_commitments");
                 const auto& value_commitments = args.at("value_commitments");
+                const auto& abfs = args.at("abfs");
+                const auto& vbfs = args.at("vbfs");
 
                 size_t i = 0;
                 for (const auto& out : outputs) {
                     if (!out.at("is_fee")) {
-                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i], value_commitments[i]);
+                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i], value_commitments[i], abfs[i], vbfs[i]);
                     }
                     ++i;
                 }

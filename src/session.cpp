@@ -769,10 +769,10 @@ namespace sdk {
     }
 
     void session::blind_output(
-        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex)
+        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        exception_wrapper([&] { m_impl->blind_output(details, tx, index, o, asset_commitment_hex, value_commitment_hex); });
+        exception_wrapper([&] { m_impl->blind_output(details, tx, index, o, asset_commitment_hex, value_commitment_hex, abf, vbf); });
     }
 
     void session::send_nlocktimes()

@@ -1009,7 +1009,7 @@ namespace sdk {
 
 
     void blind_output(ga_session& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o,
-        const std::string& asset_commitment_hex, const std::string& value_commitment_hex)
+        const std::string& asset_commitment_hex, const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf)
     {
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.liquid());
@@ -1048,12 +1048,12 @@ namespace sdk {
         GDK_LOG_SEV(log_level::info) << asset_commitment_hex;
         GDK_LOG_SEV(log_level::info) << value_commitment_hex;
 
-        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, h2b(o["abf"]),
-            h2b(o["vbf"]), value_commitment, script, generator, 1,
+        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, h2b(abf),
+            h2b(vbf), value_commitment, script, generator, 1,
             std::min(std::max(net_params.ct_exponent(), -1), 18), std::min(std::max(net_params.ct_bits(), 1), 51));
 
         const auto surjectionproof = asset_surjectionproof(
-            asset_id, h2b(o["abf"]), generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+            asset_id, h2b(abf), generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
 
         tx_elements_output_commitment_set(
             tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);

@@ -3150,9 +3150,9 @@ namespace sdk {
     }
 
     void ga_session::blind_output(
-        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex)
+        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf)
     {
-        ::ga::sdk::blind_output(*this, details, tx, index, o, asset_commitment_hex, value_commitment_hex);
+        ::ga::sdk::blind_output(*this, details, tx, index, o, asset_commitment_hex, value_commitment_hex, abf, vbf);
     }
 
     // Idempotent

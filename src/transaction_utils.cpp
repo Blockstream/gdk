@@ -392,21 +392,7 @@ namespace sdk {
             }
         }
 
-        // generate the blinding factors here, we will assign them later to each output
-        size_t bfs_index = 0;
-        bool set_bfs = false;
-        std::vector<abf_t> output_abfs;
-        std::vector<vbf_t> output_vbfs;
-        for (size_t i = 0; i < num_outputs; ++i) {
-            output_abfs.emplace_back(get_random_bytes<32>());
-            if (i < num_outputs - 1) {
-                output_vbfs.emplace_back(get_random_bytes<32>());
-            }
-        }
-
         if (net_params.liquid() && result.contains("used_utxos")) {
-            set_bfs = true;
-
             const auto num_inputs = result.at("used_utxos").size();
     
             std::vector<unsigned char> input_abfs;
@@ -434,32 +420,6 @@ namespace sdk {
                 }
 
                 input_values.emplace_back(satoshi);
-            }
-
-            try {
-#if 0
-                GDK_LOG_SEV(log_level::info) << "###### final_vbf ######";
-
-                GDK_LOG_SEV(log_level::info) << "num_inputs=" << num_inputs;
-                GDK_LOG_SEV(log_level::info) << "\tinput_abfs=" << b2h(input_abfs);
-                GDK_LOG_SEV(log_level::info) << "\tinput_vbfs=" << b2h(input_vbfs);
-
-                GDK_LOG_SEV(log_level::info) << "num_outputs=" << num_outputs;
-                for (size_t i = 0; i < num_outputs; ++i) {
-                    GDK_LOG_SEV(log_level::info) << "\toutput_abfs[" << i << "]=" << b2h(output_abfs[i]);
-                    if (i < num_outputs - 1) {
-                        GDK_LOG_SEV(log_level::info) << "\toutput_vbfs[" << i << "]=" << b2h(output_vbfs[i]);
-                    }
-                }
-
-                for (auto s : input_values) {
-                    GDK_LOG_SEV(log_level::info) << "\tval=" << s;
-                }
-#endif
-                output_vbfs.emplace_back(
-                    generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
-            } catch (const std::exception& e) {
-                set_bfs = false;
             }
         }
 
@@ -521,15 +481,10 @@ namespace sdk {
                 }
 
                 // TODO: we always overwrite them, this could cause issues
-                if (set_bfs && !is_fee) {
-                    output["abf"] = b2h(output_abfs.at(bfs_index));
-                    output["vbf"] = b2h(output_vbfs.at(bfs_index));
-
+                if (net_params.liquid() && !is_fee) {
                     auto ephemeral_keypair = get_ephemeral_keypair();
                     output["eph_keypair_sec"] = b2h(ephemeral_keypair.first);
                     output["eph_keypair_pub"] = b2h(ephemeral_keypair.second);
-
-                    bfs_index++;
                 }
 
                 outputs.emplace_back(output);
