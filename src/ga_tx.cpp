@@ -1044,17 +1044,28 @@ namespace sdk {
         const auto eph_keypair_sec = h2b(o.at("eph_keypair_sec"));
         const auto eph_keypair_pub = h2b(o.at("eph_keypair_pub"));
 
+        GDK_LOG_SEV(log_level::info) << b2h(input_assets);
+        GDK_LOG_SEV(log_level::info) << b2h(input_abfs);
+        GDK_LOG_SEV(log_level::info) << b2h(input_ags);
+
         GDK_LOG_SEV(log_level::info) << o;
         GDK_LOG_SEV(log_level::info) << asset_commitment_hex;
         GDK_LOG_SEV(log_level::info) << value_commitment_hex;
+        GDK_LOG_SEV(log_level::info) << abf;
+        GDK_LOG_SEV(log_level::info) << vbf;
 
-        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, h2b(abf),
-            h2b(vbf), value_commitment, script, generator, 1,
+        const auto abf_bin = h2b<32>(abf);
+        const auto vbf_bin = h2b<32>(vbf);
+
+        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf_bin,
+            vbf_bin, value_commitment, script, generator, 1,
             std::min(std::max(net_params.ct_exponent(), -1), 18), std::min(std::max(net_params.ct_bits(), 1), 51));
 
         const auto surjectionproof = asset_surjectionproof(
-            asset_id, h2b(abf), generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+            asset_id, abf_bin, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
 
+        /* const auto surjectionproof = asset_surjectionproof(
+                asset_id, output_abfs[i], generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags); */
         tx_elements_output_commitment_set(
             tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
 
