@@ -482,8 +482,10 @@ namespace sdk {
             tor_main_configuration_t* tor_conf = tor_main_configuration_new();
             GDK_RUNTIME_ASSERT(tor_conf);
             std::vector<const char*> argv_conf;
-            argv_conf.reserve(15);
+            argv_conf.reserve(17);
             argv_conf.push_back("tor");
+            argv_conf.push_back("__DisableSignalHandlers");
+            argv_conf.push_back("1");
             argv_conf.push_back("SafeSocks");
             argv_conf.push_back("1");
             argv_conf.push_back("SocksPort");
@@ -513,7 +515,6 @@ namespace sdk {
             tor_main_configuration_free(tor_conf);
 
             event_base_loopbreak(m_base);
-            m_tor_control_thread.join();
 
             m_base = nullptr;
         });
@@ -542,18 +543,14 @@ namespace sdk {
 
         m_stopping = true;
 
-        if (!m_conn->command("SIGNAL HALT", std::bind(&tor_controller_impl::stopped_cb, this))) {
-            GDK_LOG_SEV(log_level::info) << "tor: could not send the HALT signal, is Tor already stopped?";
-        } else {
-            // This is blocking because if we return immediately the caller could try to start tor while the
-            // background thread is still running, triggering an assert inside Tor's codebase
+        no_std_exception_escape([this] {
+            if (!m_conn->command("SIGNAL HALT", std::bind(&tor_controller_impl::stopped_cb, this))) {
+                GDK_LOG_SEV(log_level::info) << "tor: could not send the HALT signal, is Tor already stopped?";
+            }
 
-            m_bootstrap_phase->progress = 0;
-            m_bootstrap_phase->tag = "";
-            m_bootstrap_phase->summary = "Stopping Tor...";
-
-            m_tor_run_thread.join();
-        }
+            m_tor_control_thread.detach();
+            m_tor_run_thread.detach();
+        });
     }
 
     void tor_controller_impl::connected_cb(tor_control_connection& _conn)
@@ -723,6 +720,9 @@ namespace sdk {
             // This will wake up either when tstop is reached (timeout) or when we got a notification
             // The notification could come from an updated boostrap phase or when socks5 is set
             m_init_cv.wait_until(lock, tstop);
+
+            // update the timestamp
+            now = std::chrono::steady_clock::now();
         }
 
         return m_socks5;

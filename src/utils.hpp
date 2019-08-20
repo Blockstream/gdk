@@ -10,6 +10,7 @@
 #include "containers.hpp"
 #include "ga_wally.hpp"
 #include "include/gdk.h"
+#include "logging.hpp"
 
 namespace ga {
 namespace sdk {
@@ -49,6 +50,19 @@ namespace sdk {
         while (next != last) {
             auto prev = next++;
             *d_first++ = binary_op(*prev, *next++);
+        }
+    }
+
+    template <typename F> void no_std_exception_escape(F&& fn)
+    {
+        try {
+            fn();
+        } catch (const std::exception& e) {
+            try {
+                const auto what = e.what();
+                GDK_LOG_SEV(log_level::debug) << "ignoring exception:" << what;
+            } catch (const std::exception&) {
+            }
         }
     }
 

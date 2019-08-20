@@ -17,6 +17,7 @@
 #include "logging.hpp"
 #include "signer.hpp"
 #include "tx_list_cache.hpp"
+#include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
 namespace ga {
@@ -308,19 +309,6 @@ namespace sdk {
             fn.get();
         }
 
-        template <typename F> void no_std_exception_escape(F&& fn) const
-        {
-            try {
-                fn();
-            } catch (const std::exception& e) {
-                try {
-                    const auto what = e.what();
-                    GDK_LOG_SEV(log_level::debug) << "ignoring exception:" << what;
-                } catch (const std::exception&) {
-                }
-            }
-        }
-
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
 
         void ping_timer_handler(const boost::system::error_code& ec);
@@ -400,8 +388,7 @@ namespace sdk {
         tx_list_caches m_tx_list_caches;
 
         std::vector<nlohmann::json> get_transactions(uint32_t subaccount, uint32_t page_id);
-        static std::weak_ptr<tor_controller> s_tor_ctrl;
-        std::shared_ptr<tor_controller> m_tor_ctrl;
+        static std::unique_ptr<tor_controller> s_tor_ctrl;
     };
 
 } // namespace sdk
