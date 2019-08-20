@@ -756,7 +756,8 @@ namespace sdk {
             }
 
             if (is_liquid && json_get_value(result, "error").empty() && session.get_hw_device().is_null()) {
-                result = blind_ga_transaction(session, result); // TODO: if we don't try to blind the tx we won't know if all the output addresses are blinded
+                result = blind_ga_transaction(session, result); // TODO: if we don't try to blind the tx we won't know
+                                                                // if all the output addresses are blinded
             }
         }
 
@@ -938,7 +939,6 @@ namespace sdk {
             ++num_outputs;
         }
 
-        // TODO: use abfs, vbfs from `output`
         std::vector<abf_t> output_abfs;
         output_abfs.reserve(num_outputs);
         for (size_t i = 0; i < num_outputs; ++i) {
@@ -961,29 +961,22 @@ namespace sdk {
         std::vector<std::string> blinding_nonces;
 
         for (const auto& output : transaction_outputs) {
+            // IMPORTANT: we assume the fee is always the last output
             if (output.at("is_fee")) {
                 if (authorized_assets) {
                     blinding_nonces.emplace_back(std::string{});
                 }
-                continue;
+                break;
             }
 
             const auto asset_id = h2b_rev(output.at("asset_id"));
-            const auto script = h2b(output.at("script"));
             const auto pub_key = h2b(output.at("public_key"));
             const uint64_t value = output.at("satoshi");
 
             const auto generator = asset_generator_from_bytes(asset_id, output_abfs[i]);
             const auto value_commitment = asset_value_commitment(value, output_vbfs[i], generator);
 
-            auto ephemeral_keypair = get_ephemeral_keypair();
-
-            const auto rangeproof = asset_rangeproof(value, pub_key, ephemeral_keypair.first, asset_id, output_abfs[i],
-                output_vbfs[i], value_commitment, script, generator, 1,
-                std::min(std::max(net_params.ct_exponent(), -1), 18), std::min(std::max(net_params.ct_bits(), 1), 51));
-
-            const auto surjectionproof = asset_surjectionproof(
-                asset_id, output_abfs[i], generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+            blind_output(session, details, tx, i, output, generator, value_commitment, output_abfs[i], output_vbfs[i]);
 
             if (authorized_assets) {
                 const auto blinding_nonce = sha256(ecdh(pub_key, ephemeral_keypair.first));
@@ -1007,9 +1000,10 @@ namespace sdk {
         return result;
     }
 
-
-    void blind_output(ga_session& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o,
-        const std::string& asset_commitment_hex, const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf)
+    void blind_output(ga_session& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+        const nlohmann::json& o, const std::array<unsigned char, 33>& generator,
+        const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
+        const std::array<unsigned char, 32>& vbf)
     {
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.liquid());
@@ -1038,39 +1032,21 @@ namespace sdk {
         const auto pub_key = h2b(o.at("public_key"));
         const uint64_t value = o.at("satoshi");
 
-        const auto generator = h2b(asset_commitment_hex);
-        const auto value_commitment = h2b(value_commitment_hex);
-
         const auto eph_keypair_sec = h2b(o.at("eph_keypair_sec"));
         const auto eph_keypair_pub = h2b(o.at("eph_keypair_pub"));
 
-        GDK_LOG_SEV(log_level::info) << b2h(input_assets);
-        GDK_LOG_SEV(log_level::info) << b2h(input_abfs);
-        GDK_LOG_SEV(log_level::info) << b2h(input_ags);
-
-        GDK_LOG_SEV(log_level::info) << o;
-        GDK_LOG_SEV(log_level::info) << asset_commitment_hex;
-        GDK_LOG_SEV(log_level::info) << value_commitment_hex;
-        GDK_LOG_SEV(log_level::info) << abf;
-        GDK_LOG_SEV(log_level::info) << vbf;
-
-        const auto abf_bin = h2b<32>(abf);
-        const auto vbf_bin = h2b<32>(vbf);
-
-        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf_bin,
-            vbf_bin, value_commitment, script, generator, 1,
-            std::min(std::max(net_params.ct_exponent(), -1), 18), std::min(std::max(net_params.ct_bits(), 1), 51));
+        const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf, vbf, value_commitment,
+            script, generator, 1, std::min(std::max(net_params.ct_exponent(), -1), 18),
+            std::min(std::max(net_params.ct_bits(), 1), 51));
 
         const auto surjectionproof = asset_surjectionproof(
-            asset_id, abf_bin, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+            asset_id, abf, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
 
-        /* const auto surjectionproof = asset_surjectionproof(
-                asset_id, output_abfs[i], generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags); */
         tx_elements_output_commitment_set(
             tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
 
         // TODO
-        //wally_bzero(ephemeral_keypair.first.data(), ephemeral_keypair.first.size());
+        // wally_bzero(ephemeral_keypair.first.data(), ephemeral_keypair.first.size());
     }
 
 } // namespace sdk

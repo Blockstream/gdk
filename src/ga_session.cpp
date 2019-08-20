@@ -186,7 +186,8 @@ namespace sdk {
                         unblinded = asset_unblind(
                             blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
                     } else if (session.has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
-                        const auto blinding_nonce = session.get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
+                        const auto blinding_nonce
+                            = session.get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
                         unblinded = asset_unblind_with_nonce(
                             blinding_nonce, rangeproof, commitment, extra_commitment, asset_tag);
                     } else {
@@ -206,7 +207,8 @@ namespace sdk {
             }
         }
 
-        static nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset, signer& signer, ga_session& session)
+        static nlohmann::json cleanup_utxos(
+            nlohmann::json& utxos, const std::string& policy_asset, signer& signer, ga_session& session)
         {
             for (auto& utxo : utxos) {
                 // Clean up the type of returned values
@@ -2427,17 +2429,18 @@ namespace sdk {
         for (const auto& utxo : utxos) {
             // don't ask for the same nonces multiple times
             if (!has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
-                answer.push_back({ { "script", utxo.at("script") }, { "pubkey", utxo.at("nonce_commitment")  } });
+                answer.push_back({ { "script", utxo.at("script") }, { "pubkey", utxo.at("nonce_commitment") } });
             }
         }
 
         return answer;
     }
 
-    std::array<unsigned char, 32> ga_session::calc_blinding_nonce_map_key(const std::string& pubkey, const std::string& script)
+    std::array<unsigned char, 32> ga_session::calc_blinding_nonce_map_key(
+        const std::string& pubkey, const std::string& script)
     {
-        auto pubkey_bytes = h2b(pubkey); 
-        auto script_bytes = h2b(script); 
+        auto pubkey_bytes = h2b(pubkey);
+        auto script_bytes = h2b(script);
 
         std::vector<unsigned char> data;
         std::copy(pubkey_bytes.begin(), pubkey_bytes.end(), std::back_inserter(data));
@@ -2450,7 +2453,7 @@ namespace sdk {
     {
         const auto key = calc_blinding_nonce_map_key(pubkey, script);
         const auto data = h2b(m_blinding_nonces.at(key));
-        
+
         std::array<unsigned char, 32> answer;
         std::copy(data.begin(), data.end(), answer.begin());
         return answer;
@@ -2621,13 +2624,18 @@ namespace sdk {
         const auto server_script = h2b(address["script"]);
         const auto server_address = get_address_from_script(m_net_params, server_script, addr_type);
 
-        // TODO: this assumes the script is a wrapped P2WSH
-        const auto script_sha = sha256(server_script);
-        std::vector<unsigned char> witness_program = {0x00, 0x20};
-        std::copy(script_sha.begin(), script_sha.end(), std::back_inserter(witness_program));
+        if (m_net_params.liquid()) {
+            // we treat the script as a segwit wrapped script, which is the only supported type on Liquid at the moment
+            GDK_RUNTIME_ASSERT(addr_script_type == script_type::p2sh_p2wsh_csv_fortified_out
+                || addr_script_type == script_type::p2sh_p2wsh_fortified_out);
 
-        const auto script_hash = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
-        address["script_hash"] = b2h(script_hash);
+            const auto script_sha = sha256(server_script);
+            std::vector<unsigned char> witness_program = { 0x00, 0x20 };
+            std::copy(script_sha.begin(), script_sha.end(), std::back_inserter(witness_program));
+
+            const auto script_hash = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
+            address["blinding_script_hash"] = b2h(script_hash);
+        }
 
         if (!m_watch_only) {
             // Compute the address locally to verify the servers data
@@ -3149,10 +3157,12 @@ namespace sdk {
         ::ga::sdk::sign_input(*this, tx, index, u, der_hex);
     }
 
-    void ga_session::blind_output(
-        const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf)
+    void ga_session::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+        const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
+        const std::string& abf, const std::string& vbf)
     {
-        ::ga::sdk::blind_output(*this, details, tx, index, o, asset_commitment_hex, value_commitment_hex, abf, vbf);
+        ::ga::sdk::blind_output(*this, details, tx, index, o, h2b<33>(asset_commitment_hex),
+            h2b<33>(value_commitment_hex), h2b<32>(abf), h2b<32>(vbf));
     }
 
     // Idempotent

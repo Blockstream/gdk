@@ -270,8 +270,8 @@ GDK_API int GA_rename_subaccount(struct GA_session* session, uint32_t subaccount
  *
  * :param session: The session to use.
  * :param details: :ref:`transactions-details` giving the details to get the transactions for.
- * :param txs: The :ref:`tx-list`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
  */
@@ -292,8 +292,8 @@ GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* de
  *
  * :param session: The session to use.
  * :param details: :ref:`unspent-utxos-details` to get the unspent transaction outputs for.
- * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
@@ -327,8 +327,8 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  *
  * :param session: The session to use.
  * :param details: :ref:`balance-details` giving the subaccount details to get the balance for.
- * :param balance: The returned :ref:`balance-data`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
@@ -369,8 +369,8 @@ GDK_API int GA_set_pin(
  *
  * :param session: The session to use.
  * :param transaction_details: The :ref:`transaction-details` for constructing.
- * :param transaction: Destination for the resulting transaction's details.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_create_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);

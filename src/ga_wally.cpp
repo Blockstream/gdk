@@ -617,14 +617,13 @@ namespace sdk {
         abf_t abf;
         uint64_t value;
 
-        GDK_VERIFY(wally_asset_unblind_with_nonce(blinding_nonce.data(), blinding_nonce.size(),
-            rangeproof.data(), rangeproof.size(), commitment.data(), commitment.size(),
-            extra_commitment.data(), extra_commitment.size(), generator.data(), generator.size(), asset_id.data(),
-            asset_id.size(), abf.data(), abf.size(), vbf.data(), vbf.size(), &value));
+        GDK_VERIFY(wally_asset_unblind_with_nonce(blinding_nonce.data(), blinding_nonce.size(), rangeproof.data(),
+            rangeproof.size(), commitment.data(), commitment.size(), extra_commitment.data(), extra_commitment.size(),
+            generator.data(), generator.size(), asset_id.data(), asset_id.size(), abf.data(), abf.size(), vbf.data(),
+            vbf.size(), &value));
 
         return std::make_tuple(asset_id, vbf, abf, value);
     }
-
 
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix)
     {

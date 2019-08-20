@@ -68,8 +68,9 @@ namespace sdk {
 
     void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
     {
-        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx" || m_action == "get_receive_address" 
-            || m_action == "create_transaction" || m_action == "get_balance" || m_action == "get_transactions" || m_action == "get_unspent_outputs") {
+        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx"
+            || m_action == "get_receive_address" || m_action == "create_transaction" || m_action == "get_balance"
+            || m_action == "get_transactions" || m_action == "get_unspent_outputs") {
             // Hardware action, so provide the caller with the device information
             m_hw_device = hw_device;
         }
@@ -469,12 +470,21 @@ namespace sdk {
             const auto& signatures = args.at("signatures");
             const auto& inputs = m_twofactor_data["signing_inputs"];
             const auto& outputs = m_twofactor_data["transaction_outputs"];
-            uint32_t flags = m_session.get_network_parameters().liquid() ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS) : 0;
+            uint32_t flags = m_session.get_network_parameters().liquid()
+                ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS)
+                : 0;
             const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"), flags);
 
             GDK_RUNTIME_ASSERT(signatures.is_array() && signatures.size() == inputs.size());
 
             if (m_session.get_network_parameters().liquid()) {
+                GDK_RUNTIME_ASSERT(
+                    args.at("asset_commitments").is_array() && args.at("asset_commitments").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(
+                    args.at("value_commitments").is_array() && args.at("value_commitments").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(args.at("abfs").is_array() && args.at("abfs").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(args.at("vbfs").is_array() && args.at("vbfs").size() == outputs.size());
+
                 const auto& asset_commitments = args.at("asset_commitments");
                 const auto& value_commitments = args.at("value_commitments");
                 const auto& abfs = args.at("abfs");
@@ -483,7 +493,8 @@ namespace sdk {
                 size_t i = 0;
                 for (const auto& out : outputs) {
                     if (!out.at("is_fee")) {
-                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i], value_commitments[i], abfs[i], vbfs[i]);
+                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i],
+                            value_commitments[i], abfs[i], vbfs[i]);
                     }
                     ++i;
                 }
@@ -495,10 +506,9 @@ namespace sdk {
                 ++i;
             }
 
-            GDK_LOG_SEV(log_level::info) << "signed=" << b2h(tx_to_bytes(tx, WALLY_TX_FLAG_USE_WITNESS));
-
             std::swap(m_result, m_twofactor_data["transaction"]);
             m_result["user_signed"] = true;
+            m_result["blinded"] = true;
             update_tx_info(tx, m_result);
         }
         return state_type::done;
@@ -545,8 +555,7 @@ namespace sdk {
 
             if (m_hw_device.empty()) {
                 // Get the key from our signer
-                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["script_hash"]);
-                GDK_LOG_SEV(log_level::info) << "receive_key =" << m_result["script_hash"];
+                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["blinding_script_hash"]);
             } else {
                 // Use the response from the HW
                 const nlohmann::json args = nlohmann::json::parse(m_code);
@@ -592,7 +601,7 @@ namespace sdk {
         if (!m_session.is_liquid()) {
             m_result = m_tx; // no need to do much here
             return state_type::done;
-        } 
+        }
 
         // TODO: we might also need to blind other kind of addresses, in case of sweep etc
         if (m_tx.find("change_address") == m_tx.end()) {
@@ -616,13 +625,14 @@ namespace sdk {
             std::string pub_blinding_key;
             if (m_hw_device.empty()) {
                 // Get the key from our signer
-                pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("script_hash"));
+                pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("blinding_script_hash"));
             } else {
                 // Use the response from the HW
                 pub_blinding_key = args.at("blinding_keys").at(it.key());
             }
 
-            m_tx["change_address"][asset_tag]["address"] = m_session.blind_address(it.value().at("address"), pub_blinding_key);
+            m_tx["change_address"][asset_tag]["address"]
+                = m_session.blind_address(it.value().at("address"), pub_blinding_key);
             m_tx["change_address"][asset_tag]["is_blinded"] = true;
         }
 
@@ -672,7 +682,8 @@ namespace sdk {
                 m_state = state_type::resolve_code;
 
                 nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+                m_twofactor_data
+                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
@@ -708,14 +719,14 @@ namespace sdk {
                 m_state = state_type::resolve_code;
 
                 nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+                m_twofactor_data
+                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
         }
     }
 
-    
     auth_handler::state_type get_transactions_call::call_impl()
     {
         if (!m_hw_device.empty() && m_session.is_liquid()) {
@@ -745,7 +756,8 @@ namespace sdk {
                 m_state = state_type::resolve_code;
 
                 nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+                m_twofactor_data
+                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
@@ -759,10 +771,9 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
         }
 
-        m_result = { {"unspent_outputs", m_session.get_unspent_outputs(m_details) } };
+        m_result = { { "unspent_outputs", m_session.get_unspent_outputs(m_details) } };
         return state_type::done;
     }
-
 
     change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
         : auth_handler(session, std::string()) // TODO: action empty string because 2FA not yet implemented

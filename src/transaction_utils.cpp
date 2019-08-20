@@ -335,7 +335,6 @@ namespace sdk {
 
         const bool is_liquid = tx_is_elements(tx);
         result["liquid"] = is_liquid;
-        //uint32_t flags = is_liquid ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS) : 0;
         result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
         const auto weight = tx_get_weight(tx);
         result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
@@ -377,24 +376,7 @@ namespace sdk {
 
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
 
-        // TODO: there's a ton of duplicated code with ga_tx here
-
-        size_t num_outputs = 0; // excluding fees
-        if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
-            for (size_t i = 0; i < tx->num_outputs; ++i) {
-                const auto& o = tx->outputs[i];
-
-                if (!o.script && !o.script_len) {
-                    continue;
-                }
-
-                num_outputs++;
-            }
-        }
-
         if (net_params.liquid() && result.contains("used_utxos")) {
-            const auto num_inputs = result.at("used_utxos").size();
-    
             std::vector<unsigned char> input_abfs;
             std::vector<unsigned char> input_vbfs;
             std::vector<uint64_t> input_values;
@@ -480,8 +462,7 @@ namespace sdk {
                     ++addressee_index;
                 }
 
-                // TODO: we always overwrite them, this could cause issues
-                if (net_params.liquid() && !is_fee) {
+                if (net_params.liquid() && !is_fee && !output.contains("eph_keypair_sec")) {
                     auto ephemeral_keypair = get_ephemeral_keypair();
                     output["eph_keypair_sec"] = b2h(ephemeral_keypair.first);
                     output["eph_keypair_pub"] = b2h(ephemeral_keypair.second);

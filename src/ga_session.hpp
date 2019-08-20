@@ -157,7 +157,9 @@ namespace sdk {
         std::string broadcast_transaction(const std::string& tx_hex);
 
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
-        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf);
+        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
+            const std::string& abf, const std::string& vbf);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
