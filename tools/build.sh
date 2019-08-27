@@ -202,7 +202,6 @@ if [ \( -d "$ANDROID_NDK" \) -a \( "$BUILD" = "--ndk" \) ]; then
             export ANDROID_VERSION="19"
         fi
 
-        export PATH=$NDK_TOOLSDIR/bin:$PATH_BASE
         mkdir -p build-clang-$1-$2
 
         if [ ! -f "build-clang-$1-$2/build.ninja" ]; then

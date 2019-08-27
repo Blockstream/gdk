@@ -15,6 +15,9 @@
 #if __GNUC__ >= 9
 #pragma GCC diagnostic ignored "-Wdeprecated-copy"
 #endif
+#if __FreeBSD__
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 #endif
 
 #if __clang_major__ >= 7

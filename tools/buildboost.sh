@@ -5,7 +5,7 @@ function compile_flags() {
     echo "`python -c "import sys; print('<compile_flags>'.join([''] + map(lambda x: x + '\n', sys.argv[1:])))" $@`"
 }
 
-BOOST_NAME="boost_1_70_0"
+BOOST_NAME="boost_1_71_0"
 
 if [ "x${NUM_JOBS}" = "x" ]; then
     NUM_JOBS=4
@@ -33,6 +33,7 @@ boost_src_home="${MESON_BUILD_ROOT}/boost"
 boost_bld_home="${MESON_BUILD_ROOT}/boost/build"
 cd $boost_src_home
 if [ \( "$BUILD" = "--ndk" \) ]; then
+    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
@@ -53,13 +54,13 @@ $EXTRA_LINK_FLAGS
 <target-os>android
 ;
 EOF
-    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     ./b2 --clean
     ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang target-os=android link=static release install
     if [ "$(uname)" = "Darwin" ]; then
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
 elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
+    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $BUILD
 
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
@@ -82,7 +83,6 @@ $EXTRA_LINK_FLAGS
 <target-os>iphone
 ;
 EOF
-    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     ./b2 --clean
     ./b2 -j$NUM_JOBS --with-chrono --with-log --with-thread --with-system toolset=darwin-arm target-os=iphone link=static release install
 elif [ \( "$BUILD" = "--windows" \) ]; then

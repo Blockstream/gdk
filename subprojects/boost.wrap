@@ -1,10 +1,10 @@
 [wrap-file]
-directory = boost_1_70_0
+directory = boost_1_71_0
 
-source_url = https://sourceforge.net/projects/boost/files/boost/1.70.0/boost_1_70_0.tar.gz/download
-source_filename = boost-boost_1_70_0.tar.gz
-source_hash = 882b48708d211a5f48e60b0124cf5863c1534cd544ecd0664bb534a4b5d506e9
+source_url = https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz
+source_filename = boost-boost_1_71_0.tar.gz
+source_hash = 96b34f7468f26a141f6020efb813f1a2f3dfb9797ecf76a7d7cbd843cc95f5bd
 
-patch_url = file:./subprojects/boost-meson/boost-meson-882b48708d211a5f48e60b0124cf5863c1534cd544ecd0664bb534a4b5d506e9.tar
-patch_filename = boost-meson-882b48708d211a5f48e60b0124cf5863c1534cd544ecd0664bb534a4b5d506e9.tar
-patch_hash = 9a38fd7f1635d13f2d39c3a8388d805c184d0d3b784fc88f13e24d602cfbf8fa
+patch_url = file:./subprojects/boost-meson/boost-meson-96b34f7468f26a141f6020efb813f1a2f3dfb9797ecf76a7d7cbd843cc95f5bd.tar
+patch_filename = boost-meson-96b34f7468f26a141f6020efb813f1a2f3dfb9797ecf76a7d7cbd843cc95f5bd.tar
+patch_hash = fc9f440c2e19ff4dc3dcfde657b2030dccbb49b0e12869e2a0cdae306402b6d0
