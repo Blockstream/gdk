@@ -1,10 +1,10 @@
 [wrap-file]
-directory = tor-tor-0.4.0.5
+directory = tor-tor-0.4.1.5
 
-source_url = https://github.com/torproject/tor/archive/tor-0.4.0.5.tar.gz
-source_filename = tor-tor-0.4.0.5.tar.gz
-source_hash = f0c5bcb86e0552d00eb8f477f9a2d6c1e33be99ae0f4518f28db1e84dc4e1a20
+source_url = https://github.com/torproject/tor/archive/tor-0.4.1.5.tar.gz
+source_filename = tor-tor-0.4.1.5.tar.gz
+source_hash = 6ab3b72d368b27645b5658312d98ffa87bfcb534cac9fed743c7a89e483645c6
 
-patch_url = file:./subprojects/tor-meson/tor-meson-f0c5bcb86e0552d00eb8f477f9a2d6c1e33be99ae0f4518f28db1e84dc4e1a20.tar
-patch_filename = tor-meson-f0c5bcb86e0552d00eb8f477f9a2d6c1e33be99ae0f4518f28db1e84dc4e1a20.tar
-patch_hash = 9d191a79fa1b9c893e23ed402d0058a772c92bd7d1e5f8a3f3c7a5c6341c898c
+patch_url = file:./subprojects/tor-meson/tor-meson-6ab3b72d368b27645b5658312d98ffa87bfcb534cac9fed743c7a89e483645c6.tar
+patch_filename = tor-meson-6ab3b72d368b27645b5658312d98ffa87bfcb534cac9fed743c7a89e483645c6.tar
+patch_hash = b19fc2fc31df9981e707ac4815e64c0b967da54ab534c0fbdcd7eeb11d66fe8e
