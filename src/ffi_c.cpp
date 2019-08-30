@@ -186,6 +186,9 @@ GDK_DEFINE_C_FUNCTION_2(GA_reconnect_hint, struct GA_session*, session, const GA
 GDK_DEFINE_C_FUNCTION_1(GA_check_proxy_connectivity, const GA_json*, params,
     { ga::sdk::session::check_proxy_connectivity(*json_cast(params)); });
 
+GDK_DEFINE_C_FUNCTION_2(GA_get_tor_socks5, struct GA_session*, session, char**, socks5,
+    { *socks5 = to_c_string(session->get_tor_socks5()); })
+
 GDK_DEFINE_C_FUNCTION_3(GA_http_get, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->http_get(*json_cast((params)))); });
 

@@ -491,6 +491,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_void__(GA_destroy_json)
 %returns_void__(GA_disconnect)
 %returns_void__(GA_reconnect_hint)
+%returns_string(GA_get_tor_socks5)
 %returns_struct(GA_http_get, GA_json)
 %returns_struct(GA_refresh_assets, GA_json)
 %returns_struct(GA_validate_asset_domain_name, GA_json)

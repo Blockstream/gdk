@@ -203,6 +203,15 @@ public class Session {
         try callWrapper(fun: GA_reconnect_hint(session, hintJson))
     }
 
+    public func getTorSocks5() throws -> String {
+        var buff: UnsafeMutablePointer<Int8>? = nil
+        try callWrapper(fun: GA_get_tor_socks5(session, &buff))
+        defer {
+            GA_destroy_string(buff)
+        }
+        return String(cString: buff!)
+    }
+
     public func registerUser(mnemonic: String, hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
         var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)

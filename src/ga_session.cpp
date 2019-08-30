@@ -418,6 +418,13 @@ namespace sdk {
         return is_connected() && socksify(proxy) == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
     }
 
+    std::string ga_session::get_tor_socks5()
+    {
+        locker_t locker{ s_tor_mutex };
+
+        return s_tor_ctrl ? s_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, nullptr) : std::string{};
+    }
+
     void ga_session::unsubscribe()
     {
         for (const auto& sub : m_subscriptions) {
@@ -504,6 +511,7 @@ namespace sdk {
         set_tls_init_handler<T>(websocketpp::uri(m_net_params.gait_wamp_url()).get_host());
     }
 
+    std::mutex ga_session::s_tor_mutex;
     std::unique_ptr<tor_controller> ga_session::s_tor_ctrl;
     template <typename T> void ga_session::make_transport()
     {
@@ -511,6 +519,8 @@ namespace sdk {
             = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
 
         if (m_use_tor && m_proxy.empty()) {
+            locker_t locker{ s_tor_mutex };
+
             // start Tor only the first time
             if (!s_tor_ctrl) {
                 GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());

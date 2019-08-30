@@ -104,6 +104,15 @@ GDK_API int GA_disconnect(struct GA_session* session);
 GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 
 /**
+ * Get the current SOCKS5 url for the embedded Tor daemon, if any.
+ *
+ * :param session: The session to use.
+ * :param socks5: Destination for the SOCKS5 url (host:port). Empty string if not set.
+ *|     Returned string should be freed using `GA_destroy_string`.
+ */
+
+GDK_API int GA_get_tor_socks5(struct GA_session* session, char** socks5);
+/**
  * Check if server can be reached via the proxy.
  *
  * :param params: the :ref:`params-proxy` of the server to connect to.

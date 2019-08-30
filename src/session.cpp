@@ -381,6 +381,12 @@ namespace sdk {
         __builtin_unreachable();
     }
 
+    std::string session::get_tor_socks5()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->get_tor_socks5(); });
+    }
+
     nlohmann::json session::http_get(const nlohmann::json& params)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
