@@ -2410,26 +2410,43 @@ namespace sdk {
     nlohmann::json ga_session::get_blinded_scripts(const nlohmann::json& details)
     {
         const uint32_t subaccount = details.at("subaccount");
-        const uint32_t num_confs = details.at("num_confs");
 
         GDK_RUNTIME_ASSERT(m_net_params.liquid());
 
-        nlohmann::json utxos;
-        wamp_call(
-            [&utxos](wamp_call_result result) {
-                const auto r = result.get();
-                if (r.number_of_arguments() != 0) {
-                    utxos = get_json_result(r);
-                }
-            },
-            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
-
         // TODO: handle unconfidential transactions
         nlohmann::json answer = nlohmann::json::array();
-        for (const auto& utxo : utxos) {
-            // don't ask for the same nonces multiple times
-            if (!has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
-                answer.push_back({ { "script", utxo.at("script") }, { "pubkey", utxo.at("nonce_commitment") } });
+        std::set<std::array<unsigned char, 32>> no_dups;
+
+        for (size_t page_id = 0; page_id < 30; page_id++) {
+            nlohmann::json txs;
+            wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
+                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
+
+            for (const auto& tx : txs.at("list")) {
+                for (const auto& ep : tx.at("eps")) {
+                    if (!json_get_value(ep, "is_output", true)
+                        || !ep.contains("nonce_commitment") || !ep.contains("script")
+                        || ep.at("nonce_commitment").type() != nlohmann::json::value_t::string
+                        || ep.at("script").type() != nlohmann::json::value_t::string
+                        || ep.at("nonce_commitment").get<std::string>().empty()
+                        || ep.at("script").get<std::string>().empty()) {
+                        continue;
+                    }
+
+                    const std::string& pubkey = ep.at("nonce_commitment");
+                    const std::string& script = ep.at("script");
+
+                    // don't ask for the same nonces multiple times
+                    if (no_dups.find(calc_blinding_nonce_map_key(pubkey, script)) == no_dups.end()
+                        && !has_blinding_nonce(pubkey, script)) {
+                        answer.push_back({ { "script", script }, { "pubkey", pubkey } });
+                    }
+                }
+            }
+
+            // last page
+            if (txs.size() < 30) {
+                break;
             }
         }
 

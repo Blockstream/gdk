@@ -525,31 +525,24 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty() || !m_session.is_liquid()) {
-            // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
-            m_state = state_type::make_call;
-        } else {
-            try {
-                // Compute the data we need for the hardware to sign the transaction
-                m_state = state_type::resolve_code;
-
-                nlohmann::json address = m_session.get_receive_address(details);
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", address } };
-            } catch (const std::exception& e) {
-                set_error(e.what());
-            }
+        try {
+            nlohmann::json address = m_session.get_receive_address(details);
+            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", address } };
+        } catch (const std::exception& e) {
+            set_error(e.what());
+            return;
         }
+
+        // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
+        m_state = (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type get_receive_address_call::call_impl()
     {
-        if (m_hw_device.empty() || !m_session.is_liquid()) {
-            m_result = m_session.get_receive_address(m_details);
-        } else {
-            // Use the one we generated earlier
-            m_result = m_twofactor_data["address"];
-        }
+        // initially our result is what we generated earlier
+        m_result = m_twofactor_data["address"];
 
+        // if we are on liquid blind the address
         if (m_session.is_liquid()) {
             std::string pub_blinding_key;
 
@@ -588,12 +581,8 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty() || !m_session.is_liquid()) {
-            // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
-            m_state = state_type::make_call;
-        } else {
-            m_state = state_type::resolve_code;
-        }
+        // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
+        m_state = (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type create_transaction_call::call_impl()
@@ -642,7 +631,7 @@ namespace sdk {
         return state_type::done;
     }
 
-    bool parse_set_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
+    static bool parse_set_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
     {
         if (blinded_scripts.size() != nonces.size()) {
             return false; // TODO: raise an exception?
