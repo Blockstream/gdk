@@ -2413,7 +2413,6 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(m_net_params.liquid());
 
-        // TODO: handle unconfidential transactions
         nlohmann::json answer = nlohmann::json::array();
         std::set<std::array<unsigned char, 32>> no_dups;
 
@@ -2424,7 +2423,9 @@ namespace sdk {
 
             for (const auto& tx : txs.at("list")) {
                 for (const auto& ep : tx.at("eps")) {
-                    if (!json_get_value(ep, "is_output", true)
+                    const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
+                    if (asset_tag.empty() || h2b(asset_tag)[0] == 0x01 // unblinded output
+                        || !json_get_value(ep, "is_output", true) // input, we don't care about them
                         || !ep.contains("nonce_commitment") || !ep.contains("script")
                         || ep.at("nonce_commitment").type() != nlohmann::json::value_t::string
                         || ep.at("script").type() != nlohmann::json::value_t::string
