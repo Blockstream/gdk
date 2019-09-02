@@ -84,34 +84,36 @@ namespace sdk {
         nlohmann::json m_tx;
     };
 
-    class get_balance_call : public auth_handler {
+    class needs_unblind_call : public auth_handler {
+    protected:
+        needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
+        void set_nonces();
+
+        nlohmann::json m_details;
+    };
+
+    class get_balance_call : public needs_unblind_call {
     public:
         get_balance_call(session& session, const nlohmann::json& details);
 
     private:
         state_type call_impl() override;
-
-        nlohmann::json m_details;
     };
 
-    class get_transactions_call : public auth_handler {
+    class get_transactions_call : public needs_unblind_call {
     public:
         get_transactions_call(session& session, const nlohmann::json& details);
 
     private:
         state_type call_impl() override;
-
-        nlohmann::json m_details;
     };
 
-    class get_unspent_outputs_call : public auth_handler {
+    class get_unspent_outputs_call : public needs_unblind_call {
     public:
         get_unspent_outputs_call(session& session, const nlohmann::json& details);
 
     private:
         state_type call_impl() override;
-
-        nlohmann::json m_details;
     };
 
     class change_settings_call : public auth_handler {

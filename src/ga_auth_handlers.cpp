@@ -664,11 +664,9 @@ namespace sdk {
         return true;
     }
 
-    //
-    // Get balance
-    //
-    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "get_balance")
+    // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
+    needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
+        : auth_handler(session, name)
         , m_details(details)
     {
         if (m_state == state_type::error) {
@@ -690,12 +688,25 @@ namespace sdk {
         }
     }
 
-    auth_handler::state_type get_balance_call::call_impl()
+    void needs_unblind_call::set_nonces()
     {
         if (!m_hw_device.empty() && m_session.is_liquid()) {
             const nlohmann::json args = nlohmann::json::parse(m_code);
             GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
         }
+    }
+
+    //
+    // Get balance
+    //
+    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_balance", session, details)
+    {
+    }
+
+    auth_handler::state_type get_balance_call::call_impl()
+    {
+        needs_unblind_call::set_nonces();
 
         m_result = m_session.get_balance(m_details);
         return state_type::done;
@@ -705,34 +716,13 @@ namespace sdk {
     // Get transactions
     //
     get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "get_transactions")
-        , m_details(details)
+        : needs_unblind_call("get_transactions", session, details)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        if (m_hw_device.empty() || !m_session.is_liquid()) {
-            m_state = state_type::make_call;
-        } else {
-            try {
-                m_state = state_type::resolve_code;
-
-                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data
-                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
-            } catch (const std::exception& e) {
-                set_error(e.what());
-            }
-        }
     }
 
     auth_handler::state_type get_transactions_call::call_impl()
     {
-        if (!m_hw_device.empty() && m_session.is_liquid()) {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
-        }
+        needs_unblind_call::set_nonces();
 
         m_result = { { "transactions", m_session.get_transactions(m_details) } };
         return state_type::done;
@@ -742,34 +732,13 @@ namespace sdk {
     // Get unspent outputs
     //
     get_unspent_outputs_call::get_unspent_outputs_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "get_unspent_outputs")
-        , m_details(details)
+        : needs_unblind_call("get_unspent_outputs", session, details)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        if (m_hw_device.empty() || !m_session.is_liquid()) {
-            m_state = state_type::make_call;
-        } else {
-            try {
-                m_state = state_type::resolve_code;
-
-                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data
-                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
-            } catch (const std::exception& e) {
-                set_error(e.what());
-            }
-        }
     }
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
     {
-        if (!m_hw_device.empty() && m_session.is_liquid()) {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
-        }
+        needs_unblind_call::set_nonces();
 
         m_result = { { "unspent_outputs", m_session.get_unspent_outputs(m_details) } };
         return state_type::done;
