@@ -8,6 +8,7 @@
 #include "ga_tx.hpp"
 #include "ga_wally.hpp"
 #include "logging.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "xpub_hdkey.hpp"
 
@@ -662,9 +663,9 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty() || !m_session.is_liquid()) {
+        if (!m_session.is_liquid() || m_session.get_signer().supports_liquid() == liquid_support_level::full) {
             m_state = state_type::make_call;
-        } else {
+        } else if (m_session.get_signer().supports_liquid() == liquid_support_level::lite) {
             try {
                 m_state = state_type::resolve_code;
 
@@ -674,15 +675,23 @@ namespace sdk {
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
+        } else if (m_session.get_signer().supports_liquid() == liquid_support_level::none) {
+            set_error("id_liquid_unsupported"); // TODO: missing string
+        } else {
+            // should be unreachable
+            GDK_RUNTIME_ASSERT(false);
         }
     }
 
     void needs_unblind_call::set_nonces()
     {
-        if (!m_hw_device.empty() && m_session.is_liquid()) {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
+        // Bitcoin or HW with full support
+        if (!m_session.is_liquid() || m_session.get_signer().supports_liquid() == liquid_support_level::full) {
+            return;
         }
+
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
     }
 
     //

@@ -30,9 +30,9 @@ namespace sdk {
         return false; // assume not unless overridden
     }
 
-    int32_t signer::supports_liquid() const
+    liquid_support_level signer::supports_liquid() const
     {
-        return 0; // assume not unless overridden
+        return liquid_support_level::none; // assume none unless overridden
     }
 
     nlohmann::json signer::get_hw_device() const
@@ -64,7 +64,7 @@ namespace sdk {
     // Watch-only can only sign sweep txs, which are low r
     bool watch_only_signer::supports_low_r() const { return true; }
     bool watch_only_signer::supports_arbitrary_scripts() const { return true; };
-    int32_t watch_only_signer::supports_liquid() const { return 0; }; // we don't support Liquid in watch-only
+    liquid_support_level watch_only_signer::supports_liquid() const { return liquid_support_level::none; }; // we don't support Liquid in watch-only
 
     std::string watch_only_signer::get_challenge()
     {
@@ -139,7 +139,7 @@ namespace sdk {
 
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; };
-    int32_t software_signer::supports_liquid() const { return 2; };
+    liquid_support_level software_signer::supports_liquid() const { return liquid_support_level::full; };
 
     std::string software_signer::get_challenge()
     {
@@ -199,7 +199,7 @@ namespace sdk {
     {
         return json_get_value(m_hw_device, "supports_arbitrary_scripts", false);
     }
-    int32_t hardware_signer::supports_liquid() const { return json_get_value(m_hw_device, "supports_liquid", 0); }
+    liquid_support_level hardware_signer::supports_liquid() const { return json_get_value(m_hw_device, "supports_liquid", liquid_support_level::none); }
 
     nlohmann::json hardware_signer::get_hw_device() const { return m_hw_device; }
 
