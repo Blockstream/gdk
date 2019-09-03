@@ -2424,13 +2424,11 @@ namespace sdk {
             for (const auto& tx : txs.at("list")) {
                 for (const auto& ep : tx.at("eps")) {
                     const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
-                    if (asset_tag.empty() || h2b(asset_tag)[0] == 0x01 // unblinded output
-                        || !json_get_value(ep, "is_output", true) // input, we don't care about them
-                        || !ep.contains("nonce_commitment") || !ep.contains("script")
-                        || ep.at("nonce_commitment").type() != nlohmann::json::value_t::string
-                        || ep.at("script").type() != nlohmann::json::value_t::string
-                        || ep.at("nonce_commitment").get<std::string>().empty()
-                        || ep.at("script").get<std::string>().empty()) {
+                    if (asset_tag.empty() || h2b(asset_tag)[0] == 0x01 // unblinded
+                        || !json_get_value(ep, "is_output", false) // not an output
+                        || !json_get_value(ep, "is_relevant", false) // not relevant
+                        || json_get_value(ep, "nonce_commitment", std::string{}).empty()
+                        || json_get_value(ep, "script", std::string{}).empty()) {
                         continue;
                     }
 
@@ -2445,7 +2443,7 @@ namespace sdk {
                 }
             }
 
-            // last page
+            // last page since there are less than 30 elements
             if (txs.size() < 30) {
                 break;
             }
@@ -2469,6 +2467,8 @@ namespace sdk {
 
     std::array<unsigned char, 32> ga_session::get_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
+        locker_t locker(m_mutex);
+
         const auto key = calc_blinding_nonce_map_key(pubkey, script);
         const auto data = h2b(m_blinding_nonces.at(key));
 
@@ -2479,12 +2479,16 @@ namespace sdk {
 
     bool ga_session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
+        locker_t locker(m_mutex);
+
         const auto key = calc_blinding_nonce_map_key(pubkey, script);
         return m_blinding_nonces.find(key) != m_blinding_nonces.end();
     }
 
     void ga_session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
     {
+        locker_t locker(m_mutex);
+
         const auto key = calc_blinding_nonce_map_key(pubkey, script);
 
         m_blinding_nonces.emplace(key, nonce);

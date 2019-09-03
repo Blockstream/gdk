@@ -1044,9 +1044,6 @@ namespace sdk {
 
         tx_elements_output_commitment_set(
             tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
-
-        // TODO
-        // wally_bzero(ephemeral_keypair.first.data(), ephemeral_keypair.first.size());
     }
 
 } // namespace sdk
