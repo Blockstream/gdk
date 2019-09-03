@@ -192,8 +192,8 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_tor_socks5, struct GA_session*, session, char**, 
 GDK_DEFINE_C_FUNCTION_3(GA_http_get, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->http_get(*json_cast((params)))); });
 
-GDK_DEFINE_C_FUNCTION_2(GA_refresh_assets, struct GA_session*, session, GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->refresh_assets()); });
+GDK_DEFINE_C_FUNCTION_3(GA_refresh_assets, struct GA_session*, session, const GA_json*, params, GA_json**, output,
+    { *json_cast(output) = new nlohmann::json(session->refresh_assets(*json_cast(params))); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_validate_asset_domain_name, struct GA_session*, session, const GA_json*, params, GA_json**,
     output, { *json_cast(output) = new nlohmann::json(session->validate_asset_domain_name(*json_cast((params)))); });

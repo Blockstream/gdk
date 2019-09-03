@@ -393,10 +393,10 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->http_get(params); });
     }
 
-    nlohmann::json session::refresh_assets()
+    nlohmann::json session::refresh_assets(const nlohmann::json& params)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return exception_wrapper([&] { return m_impl->refresh_assets(); });
+        return exception_wrapper([&] { return m_impl->refresh_assets(params); });
     }
 
     nlohmann::json session::validate_asset_domain_name(const nlohmann::json& params)

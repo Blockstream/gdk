@@ -250,8 +250,8 @@ class Session(object):
     def http_get(self, params):
         return json.loads(http_get(self.session_obj, self._to_json(params)))
 
-    def refresh_assets(self):
-        return json.loads(refresh_assets(self.session_obj))
+    def refresh_assets(self, params):
+        return json.loads(refresh_assets(self.session_obj, self._to_json(params)))
 
     def validate_asset_domain_name(self, params):
         return json.loads(validate_asset_domain_name(self.session_obj, self._to_json(params)))
@@ -273,4 +273,12 @@ def get_random_bytes(n):
 
 _old_init = init
 def init(config):
+    import os, os.path
+    if not config.get('datadir', None):
+        try:
+            datadir = os.path.join(os.path.expanduser('~'), '.blockstream', 'gdk')
+            os.makedirs(os.path.join(datadir, 'assets'), exist_ok = True);
+            config['datadir'] = datadir
+        except:
+          pass
     return _old_init(json.dumps(config))

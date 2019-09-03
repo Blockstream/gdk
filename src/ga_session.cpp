@@ -1,4 +1,6 @@
 #include <array>
+#include <cstdio>
+#include <fstream>
 #include <map>
 #include <string>
 #include <thread>
@@ -487,7 +489,7 @@ namespace sdk {
         m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
 
         if (m_net_params.liquid()) {
-            refresh_assets();
+            refresh_assets({ { "icons", true }, { "assets", true } });
         }
     }
 
@@ -722,8 +724,12 @@ namespace sdk {
             auto&& get = [&] {
                 client = make_http_client(m_io, is_secure ? ssl_ctx.get() : nullptr);
                 GDK_RUNTIME_ASSERT(client != nullptr);
-                const nlohmann::json get_params = { { "uri", host_port.first }, { "port", host_port.second },
+
+                nlohmann::json get_params = { { "uri", host_port.first }, { "port", host_port.second },
                     { "target", curr_params.at("target") }, { "proxy", curr_params.at("proxy") } };
+                if (!curr_params.value("headers", nlohmann::json{}).empty()) {
+                    get_params.update({ { "headers", curr_params.at("headers") } });
+                }
                 return client->get(get_params).get();
             };
 
@@ -743,25 +749,90 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json ga_session::refresh_assets()
+    nlohmann::json ga_session::refresh_http_data(const std::string& type)
     {
-        locker_t locker{ m_mutex };
-        return refresh_assets(locker);
-    }
-
-    nlohmann::json ga_session::refresh_assets(locker_t& locker)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-
         nlohmann::json result;
         try {
-            result = http_get(
-                { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/index.json" } });
-            GDK_RUNTIME_ASSERT_MSG(result.find("body") == result.end(), "expected JSON");
-            m_assets.update(result);
-            result = m_assets;
+            nlohmann::json get_params = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) },
+                { "target", "/" + type + ".json" } };
+
+            const std::string datadir = gdk_config().value("datadir", std::string{});
+            const bool datadir_exists = !datadir.empty();
+
+            const auto data_path = datadir + std::string("/assets/" + type + ".json");
+
+            nlohmann::json cached_data;
+            if (datadir_exists) {
+                std::fstream f(data_path, f.in);
+                if (f.is_open()) {
+                    try {
+                        f >> cached_data;
+                        get_params.update({ { "headers",
+                            { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
+                                cached_data.at("last_modified") } } } });
+                    } catch (std::exception& ex) {
+                        GDK_LOG_SEV(log_level::info) << "corrupted file:" << data_path;
+                        // either we can't open the file or json parsing failed. remove so next try can regenerate
+                        // the data.
+                        unlink(data_path.c_str());
+                    }
+                }
+            }
+
+            auto write_to_file = [](const std::string& path, const nlohmann::json& data) {
+                try {
+                    std::fstream f(path, f.out);
+                    f << data;
+                } catch (const std::exception& ex) {
+                    GDK_LOG_SEV(log_level::info) << "failed to write file:" << path;
+                }
+            };
+
+            nlohmann::json data;
+            try {
+                data = http_get(get_params);
+            } catch (const std::exception& ex) {
+                if (cached_data.empty()) {
+                    throw ex;
+                }
+            }
+
+            if (!data.empty() && !data.value("not_modified", false)) {
+                GDK_RUNTIME_ASSERT_MSG(data.find("body") == data.end(), "expected JSON");
+                if (datadir_exists) {
+                    write_to_file(data_path, data);
+                }
+            } else if (datadir_exists) {
+                // headers were passed in so file must have been read and has enough metadata for us to think is valid.
+                GDK_RUNTIME_ASSERT(!cached_data.empty());
+                data = cached_data;
+            }
+            result = data;
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
+        }
+
+        return result;
+    }
+
+    nlohmann::json ga_session::refresh_assets(const nlohmann::json& params)
+    {
+        GDK_RUNTIME_ASSERT(params.value("assets", false) || params.value("icons", false));
+
+        nlohmann::json result;
+
+        if (params.value("assets", false)) {
+            const auto assets = refresh_http_data("index");
+            locker_t locker{ m_mutex };
+            if (assets.find("error") == assets.end()) {
+                m_assets = assets;
+                m_assets.update({ { "btc", { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } });
+            }
+            result["assets"] = m_assets;
+        }
+
+        if (params.value("icons", false)) {
+            result["icons"] = refresh_http_data("icons");
         }
 
         return result;

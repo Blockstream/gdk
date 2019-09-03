@@ -894,6 +894,7 @@ HTTP params JSON
       "uri":"https://assets.blockstream.info"
       "target":"/index.json"
       "proxy":"localhost:9150"
+      "headers":{"If-Modified-Since":"Mon, 02 Sep 2019 22:39:39 GMT"}
    }
 
 
@@ -933,3 +934,16 @@ Deposit Details JSON
 
   {"subaccount":3,"num_confs":0, "expires_at_block":65535}
 
+
+
+.. _assets-params-data:
+
+Assets params JSON
+------------------
+
+.. code-block:: json
+
+   {
+      "assets":True
+      "icons":True
+   }

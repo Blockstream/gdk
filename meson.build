@@ -6,6 +6,7 @@ compiler = meson.get_compiler('cpp')
 cross_win_build = meson.get_cross_property('target_os', '') == 'windows'
 cross_iphone_build =  meson.get_cross_property('target_os', '').contains('iphone')
 cross_android_build = host_machine.system() == 'android'
+is_32bit_android_build = cross_android_build and (host_machine.cpu() == 'armv7' or host_machine.cpu() == 'i686')
 is_freebsd = host_machine.system().startswith('freebsd')
 is_clang = compiler.get_id() == 'clang'
 freebsd_requires_gold = is_freebsd and is_clang
@@ -104,6 +105,10 @@ if meson.is_cross_build()
     if archs != []
         add_project_arguments(meson.get_cross_property('archs'), language : ['c', 'cpp'])
     endif
+endif
+
+if is_32bit_android_build
+    add_project_arguments('-U_FILE_OFFSET_BITS', language : ['c', 'cpp'])
 endif
 
 swift = add_languages('swift', required : false)

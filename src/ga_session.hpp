@@ -70,7 +70,7 @@ namespace sdk {
         void set_ping_fail_handler(ping_fail_t handler);
 
         nlohmann::json http_get(const nlohmann::json& params);
-        nlohmann::json refresh_assets();
+        nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
         void register_user(const std::string& mnemonic, bool supports_csv);
@@ -242,7 +242,7 @@ namespace sdk {
 
         nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
-        nlohmann::json refresh_assets(locker_t& locker);
+        nlohmann::json refresh_http_data(const std::string& type);
 
         nlocktime_t get_upcoming_nlocktime() const;
 

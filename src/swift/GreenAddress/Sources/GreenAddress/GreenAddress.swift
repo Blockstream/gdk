@@ -487,10 +487,8 @@ public class Session {
         return try jsonFuncToJsonWrapper(input: params, fun: GA_http_get)
     }
 
-    public func refreshAssets() throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_refresh_assets(session, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func refreshAssets(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_refresh_assets)
     }
 
     public func validateAssetDomainName(params: [String: Any]) throws -> [String: Any]? {

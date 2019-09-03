@@ -45,6 +45,13 @@ namespace sdk {
         m_request.set(beast::http::field::host, m_host);
         m_request.set(beast::http::field::user_agent, "GreenAddress SDK");
 
+        const auto headers = params.value("headers", nlohmann::json{});
+        if (!headers.empty()) {
+            for (const auto& header : headers.items()) {
+                m_request.set(beast::http::string_to_field(header.key()), header.value());
+            }
+        }
+
         if (!proxy_uri.empty()) {
             get_lowest_layer().expires_after(HTTP_TIMEOUT);
             auto proxy = std::make_shared<socks_client>(m_io, get_next_layer());
@@ -103,6 +110,14 @@ namespace sdk {
     void http_client::set_result()
     {
         const auto result = m_response.result();
+
+        if (result == beast::http::status::not_modified) {
+            const nlohmann::json body = { { "not_modified", true } };
+            GDK_LOG_SEV(log_level::debug) << "using cached resource";
+            m_promise.set_value(body);
+            return;
+        }
+
         if (beast::http::to_status_class(result) == beast::http::status_class::redirection) {
             const nlohmann::json body = { { "location", m_response[beast::http::field::location] } };
             m_promise.set_value(body);
@@ -124,6 +139,7 @@ namespace sdk {
             } else {
                 body = { { "body", m_response.body() } };
             }
+            body.update({ { "last_modified", m_response[beast::http::field::last_modified] } });
             m_promise.set_value(body);
         } catch (const std::exception& ex) {
             m_promise.set_exception(std::make_exception_ptr(ex));

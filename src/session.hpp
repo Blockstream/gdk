@@ -46,7 +46,7 @@ namespace sdk {
 
         static bool check_proxy_connectivity(const nlohmann::json& params);
         nlohmann::json http_get(const nlohmann::json& params);
-        nlohmann::json refresh_assets();
+        nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
         void register_user(const std::string& mnemonic, bool supports_csv);

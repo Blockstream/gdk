@@ -134,10 +134,11 @@ GDK_API int GA_http_get(struct GA_session* session, const GA_json* params, GA_js
  * Refresh the internal cache asset information.
  *
  * :param session: The session to use.
+ * :param params: the :ref:`assets-params-data` of the server to connect to.
  * :param output: Destination for the assets JSON.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
-GDK_API int GA_refresh_assets(struct GA_session* session, GA_json** output);
+GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
  * Validate asset domain name.
