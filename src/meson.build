@@ -125,11 +125,11 @@ libga = both_libraries('greenaddress',
                         install : true,
                         install_dir : libga_installdir)
 
-if cross_iphone_build
+if not cross_android_build
     output = 'allsym_libgreenaddress.a'
     archiver = custom_target('archiver',
                              output : output,
-                             command : [join_paths(meson.source_root(), 'tools', 'archiver.sh'), meson.build_root()],
+                             command : [join_paths(meson.source_root(), 'tools', 'archiver.sh'), meson.build_root(), find_program('ar')],
                              build_always_stale : true,
                              build_by_default : true,
                              depends : libga)
