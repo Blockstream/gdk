@@ -402,7 +402,7 @@ namespace sdk {
         nlohmann::json m_assets;
 
         // key = sha256(nonce_commitment || script)
-        std::map<std::array<unsigned char, 32>, std::string> m_blinding_nonces GDK_PT_GUARDED_BY(m_mutex);
+        std::map<std::array<unsigned char, 32>, std::string> m_blinding_nonces GDK_GUARDED_BY(m_mutex);
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);

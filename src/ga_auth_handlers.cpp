@@ -676,11 +676,17 @@ namespace sdk {
                 set_error(e.what());
             }
         } else if (m_session.get_signer().supports_liquid() == liquid_support_level::none) {
-            set_error("id_liquid_unsupported"); // TODO: missing string
+            set_error("id_the_hardware_wallet_you_are");
         } else {
             // should be unreachable
             GDK_RUNTIME_ASSERT(false);
         }
+    }
+
+    auth_handler::state_type needs_unblind_call::call_impl()
+    {
+        set_nonces(); // parse and set the nonces we got back
+        return wrapped_call_impl(); // run the actual wrapped call
     }
 
     void needs_unblind_call::set_nonces()
@@ -702,10 +708,8 @@ namespace sdk {
     {
     }
 
-    auth_handler::state_type get_balance_call::call_impl()
+    auth_handler::state_type get_balance_call::wrapped_call_impl()
     {
-        needs_unblind_call::set_nonces();
-
         m_result = m_session.get_balance(m_details);
         return state_type::done;
     }
@@ -718,10 +722,8 @@ namespace sdk {
     {
     }
 
-    auth_handler::state_type get_transactions_call::call_impl()
+    auth_handler::state_type get_transactions_call::wrapped_call_impl()
     {
-        needs_unblind_call::set_nonces();
-
         m_result = { { "transactions", m_session.get_transactions(m_details) } };
         return state_type::done;
     }
@@ -734,10 +736,8 @@ namespace sdk {
     {
     }
 
-    auth_handler::state_type get_unspent_outputs_call::call_impl()
+    auth_handler::state_type get_unspent_outputs_call::wrapped_call_impl()
     {
-        needs_unblind_call::set_nonces();
-
         m_result = { { "unspent_outputs", m_session.get_unspent_outputs(m_details) } };
         return state_type::done;
     }

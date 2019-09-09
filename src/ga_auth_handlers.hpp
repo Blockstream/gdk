@@ -89,7 +89,12 @@ namespace sdk {
         needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
         void set_nonces();
 
+        virtual state_type wrapped_call_impl() = 0;
+
         nlohmann::json m_details;
+
+    private:
+        state_type call_impl() override;
     };
 
     class get_balance_call : public needs_unblind_call {
@@ -97,7 +102,7 @@ namespace sdk {
         get_balance_call(session& session, const nlohmann::json& details);
 
     private:
-        state_type call_impl() override;
+        state_type wrapped_call_impl() override;
     };
 
     class get_transactions_call : public needs_unblind_call {
@@ -105,7 +110,7 @@ namespace sdk {
         get_transactions_call(session& session, const nlohmann::json& details);
 
     private:
-        state_type call_impl() override;
+        state_type wrapped_call_impl() override;
     };
 
     class get_unspent_outputs_call : public needs_unblind_call {
@@ -113,7 +118,7 @@ namespace sdk {
         get_unspent_outputs_call(session& session, const nlohmann::json& details);
 
     private:
-        state_type call_impl() override;
+        state_type wrapped_call_impl() override;
     };
 
     class change_settings_call : public auth_handler {

@@ -64,7 +64,10 @@ namespace sdk {
     // Watch-only can only sign sweep txs, which are low r
     bool watch_only_signer::supports_low_r() const { return true; }
     bool watch_only_signer::supports_arbitrary_scripts() const { return true; };
-    liquid_support_level watch_only_signer::supports_liquid() const { return liquid_support_level::none; }; // we don't support Liquid in watch-only
+    liquid_support_level watch_only_signer::supports_liquid() const
+    {
+        return liquid_support_level::none;
+    }; // we don't support Liquid in watch-only
 
     std::string watch_only_signer::get_challenge()
     {
@@ -199,7 +202,10 @@ namespace sdk {
     {
         return json_get_value(m_hw_device, "supports_arbitrary_scripts", false);
     }
-    liquid_support_level hardware_signer::supports_liquid() const { return json_get_value(m_hw_device, "supports_liquid", liquid_support_level::none); }
+    liquid_support_level hardware_signer::supports_liquid() const
+    {
+        return json_get_value(m_hw_device, "supports_liquid", liquid_support_level::none);
+    }
 
     nlohmann::json hardware_signer::get_hw_device() const { return m_hw_device; }
 
