@@ -1851,7 +1851,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         GDK_RUNTIME_ASSERT(m_subaccounts.find(subaccount) == m_subaccounts.end());
-        GDK_RUNTIME_ASSERT(type == "2of2" || type == "2of3");
+        GDK_RUNTIME_ASSERT(type == "2of2" || type == "2of3" || type == "2of2_no_recovery");
 
         // FIXME: replace "pointer" with "subaccount"; pointer should only be used
         // for the final path element in a derivation
