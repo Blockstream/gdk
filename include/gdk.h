@@ -61,7 +61,7 @@ typedef void (*GA_notification_handler)(void* context, const GA_json* details);
  * multi-threaded context this function should be called before starting any other
  * threads that call other gdk functions.
  *
- * :param config: Configuration object
+ * :param config: The :ref:`init-config-arg`.
  */
 GDK_API int GA_init(const GA_json* config);
 

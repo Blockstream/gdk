@@ -3,6 +3,19 @@ Gdk JSON
 
 In this section there are some example JSON used by the lib
 
+.. _init-config-arg:
+
+Initialization config JSON
+--------------------------
+
+GDK uses the optional `datadir` to store assets and other data.
+
+.. code-block:: json
+
+    {
+        "datadir": "/path/to/datadir"
+    }
+
 .. _net-params:
 
 Connection parameter JSON
