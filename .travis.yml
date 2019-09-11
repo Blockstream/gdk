@@ -6,13 +6,14 @@ services:
 env:
   global:
     - DOCKERBUILDER=greenaddress/ci
-    - DOCKERHASH=bcf7f422c79b40127cf56f93184c7f8350aafe5de2ca2cfe7977c9b23c46f15c
+    - DOCKERHASH=8e5e60d4be4736718a9392cea0f2d9ded2b81a339fc41f9c2bfa1e34496ffae7
     - COMPILER=gcc
   matrix:
     - UNUSED=true
     - COMPILER=clang
-    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850
-    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=79537c560edf1753bff728c5b19ad35057452e275e879c23e1cc150362bac850 COMPILER=clang
+    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=51894754af5c061933e3550fdd582eb3ff9145dd7c72f4a376e6cb77ec7a1420
+    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=51894754af5c061933e3550fdd582eb3ff9145dd7c72f4a376e6cb77ec7a1420 COMPILER=clang
+    - DOCKERHASH=670c5f45be29ac727231b6580f57225ec6b82adf6a8dc19074cb5dfc1b644c6f
 
 
 script:

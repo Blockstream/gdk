@@ -1,12 +1,12 @@
 cache:
-  key: "9"
+  key: "10"
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:bcf7f422c79b40127cf56f93184c7f8350aafe5de2ca2cfe7977c9b23c46f15c
+image: greenaddress/ci@sha256:8e5e60d4be4736718a9392cea0f2d9ded2b81a339fc41f9c2bfa1e34496ffae7
 
 .fedora_images:
-  image: greenaddress/fedora_ci@sha256:0eb9c1ba511b75e4ab901ab1df023ed270b4d0e082ed44a87458489514f10a75
+  image: greenaddress/fedora_ci@sha256:51894754af5c061933e3550fdd582eb3ff9145dd7c72f4a376e6cb77ec7a1420
   tags:
     - ga
 
@@ -59,7 +59,7 @@ release_py3m_buster_debug:
     - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ci@sha256:5b65c5766f5291b67902d9789923a99afcae669a00ef74412093a473699dae45
+  image: greenaddress/ci@sha256:670c5f45be29ac727231b6580f57225ec6b82adf6a8dc19074cb5dfc1b644c6f
   extends: .py_release
   script:
     - cd $CI_PROJECT_DIR

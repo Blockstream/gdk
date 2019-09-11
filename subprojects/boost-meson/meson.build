@@ -1,4 +1,4 @@
-project('boost', ['cpp'], meson_version : '>= 0.50')
+project('boost', ['cpp'], meson_version : '>= 0.51.2')
 
 compiler = meson.get_compiler('cpp')
 

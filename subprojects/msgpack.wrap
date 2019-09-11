@@ -7,4 +7,4 @@ source_hash = fbaa28c363a316fd7523f31d1745cf03eab0d1e1ea5a1c60aa0dffd4ce551afe
 
 patch_url = file:./subprojects/msgpack-meson/msgpack-meson-fbaa28c363a316fd7523f31d1745cf03eab0d1e1ea5a1c60aa0dffd4ce551afe.tar
 patch_filename = msgpack-meson-fbaa28c363a316fd7523f31d1745cf03eab0d1e1ea5a1c60aa0dffd4ce551afe.tar
-patch_hash = 0fd1a14468df0da531ad25428c71d0a3401951e27f7eb527bf3d78f8300c01a4
+patch_hash = 5230b4962795cf7403460af3f613c51087675625af9cc8ef235b6d7e14843996

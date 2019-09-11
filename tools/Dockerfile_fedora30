@@ -1,4 +1,4 @@
-FROM fedora:30@sha256:0fed6e62cc914f574f0d221cbce4ce58c8105a0be942f221a14f38aaa75fac6f
+FROM fedora:30@sha256:d8d53450cae00985f9dad54a3520944c59e64aa8f01d3be61988404e11c15973
 COPY fedora30_deps.sh /deps.sh
 COPY requirements.txt /requirements.txt
 RUN /deps.sh && rm /deps.sh

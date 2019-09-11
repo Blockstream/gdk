@@ -4,9 +4,13 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install wget autoconf pkg-config build-essential libtool virtualenv python3-{pip,yaml} ninja-build clang llvm-dev git swig -yqq
+apt install wget curl autoconf pkg-config build-essential libtool virtualenv python3-{pip,yaml} ninja-build clang llvm-dev git swig -yqq
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
+
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.37.0
+source /root/.cargo/env
+rustup component add rustfmt clippy
 
 if [ -f /.dockerenv ]; then
     apt -yqq autoremove
