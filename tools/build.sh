@@ -41,6 +41,10 @@ elif [ "$(uname)" = "FreeBSD" ]; then
     GETOPT='/usr/local/bin/getopt'
 fi
 
+if [ -f /.dockerenv ]; then
+    source /root/.cargo/env
+fi
+
 if have_cmd gtar; then
     TAR=$(command -v gtar)
 elif have_cmd tar; then

@@ -10,6 +10,7 @@ cpp_headers = [
            'ga_cache.hpp',
            'ga_wally.hpp',
            'ga_session.hpp',
+           'ga_rpc.hpp',
            'ga_strings.hpp',
            'ga_tor.hpp',
            'ga_tx.hpp',
@@ -38,6 +39,7 @@ cpp_sources = [
            'ga_cache.cpp',
            'ga_wally.cpp',
            'ga_session.cpp',
+           'ga_rpc.cpp',
            'ga_strings.cpp',
            'ga_tor.cpp',
            'ga_tx.cpp',
@@ -148,10 +150,12 @@ else
     libga_installdir = 'lib'
 endif
 
+gdk_rpc_target = subproject('gdk_rpc').get_variable('gdk_rpc_target')
 libga = both_libraries('greenaddress',
                         sources,
                         include_directories : incdir,
                         link_whole : link_whole,
+                        link_with : gdk_rpc_target,
                         link_args : local_link_args,
                         dependencies : dependencies,
                         install : true,
@@ -164,7 +168,7 @@ if not cross_android_build
                              build_by_default : true,
                              install : true,
                              install_dir : libga_installdir,
-                             depends : libga)
+                             depends : [libga.get_static_lib(), gdk_rpc_target])
 endif
 
 if objcopy.found() and not is_darwin

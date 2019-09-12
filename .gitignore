@@ -3,10 +3,15 @@
 #
 
 !.gitignore
+/result*
+/build
+target/release
+target/debug
 /build-gcc*/
 /build-clang*/
 /*/*/*/.build/
 /subprojects/*
+!subprojects/gdk_rpc*
 !subprojects/*meson*
 !subprojects/*wrap*
 *.swp
@@ -22,3 +27,5 @@ docs/build
 .pytest_cache/
 *.pyc
 *PVS-Studio*
+/TAGS
+/tor

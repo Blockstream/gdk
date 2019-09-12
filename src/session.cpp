@@ -10,6 +10,7 @@
 
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
+#include "ga_rpc.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -121,7 +122,14 @@ namespace sdk {
             auto impl = get_impl();
             GDK_RUNTIME_ASSERT_MSG(!impl, "session already connected");
 
-            auto session = boost::make_shared<ga_session>(net_params);
+            boost::shared_ptr<session_common> session;
+
+            if (net_params.contains("rpc_url") && net_params.contains("name")) {
+                session = boost::make_shared<ga_rpc>(net_params);
+            } else {
+                session = boost::make_shared<ga_session>(net_params);
+            }
+
             GDK_RUNTIME_ASSERT(session != nullptr);
             session->set_ping_fail_handler([this] {
                 GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";

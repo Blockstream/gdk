@@ -56,10 +56,6 @@ elif cross_android_build
         add_project_link_arguments(['-fuse-ld=lld', '-ldl', '-Wl,--threads'], language : 'cpp')
     endif
 endif
-if cross_iphone_build
-    add_project_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
-    add_project_link_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
-endif
 
 common_compile_options = [
     '-Wextra',
@@ -88,6 +84,14 @@ common_link_args = [
     '-Wl,-z,relro',
     '-Wl,-z,noexecstack'
 ]
+
+if cross_iphone_build
+  add_project_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
+  add_project_link_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
+
+  # to generate keys in gdk_rpc
+  add_project_link_arguments(['-Wl,-framework,Security'], language : 'cpp')
+endif
 
 if is_freebsd
     if freebsd_requires_gold
@@ -160,6 +164,7 @@ if cross_win_build
 endif
 
 sed = find_program('gsed', 'sed')
+cargo = find_program('cargo')
 swig = find_program('swig', required : false)
 if swig.found()
     pymodule = import('python3')
@@ -251,7 +256,9 @@ library_deps += compiler.find_library('execinfo', required : is_freebsd)
 
 subproject_deps = []
 
+gdkrpc = subproject('gdk_rpc')
 wallycore = subproject('libwally-core')
+subproject_deps += gdkrpc.get_variable('gdk_rpc_dep')
 subproject_deps += wallycore.get_variable('wallycore_dep')
 subproject_deps += dependency('external_autobahn-cpp', fallback : ['autobahn-cpp', 'autobahn_dep'])
 subproject_deps += dependency('external_boost', fallback : ['boost', 'boost_dep'])
@@ -263,9 +270,9 @@ subproject_deps += dependency('external_websocketpp', fallback : ['websocketpp',
 subproject_deps += dependency('external_tor', fallback : ['tor', 'tor_dep'])
 
 # includes
-sdk_inc_dir = '.'
+incdirs = ['.', 'subprojects/gdk_rpc']
 
-incdir = include_directories([sdk_inc_dir])
+incdir = include_directories(incdirs)
 
 # builds
 subdirs = ['src']
@@ -280,4 +287,11 @@ if get_option('enable-tests')
                   link_with: libga.get_static_lib(),
                   dependencies: dependencies
                 ))
+
+
+  test('test rpc',
+       executable('test_rpc', 'tests/test_rpc.cpp',
+                  link_with: libga.get_static_lib(),
+                  dependencies: dependencies
+       ))
 endif

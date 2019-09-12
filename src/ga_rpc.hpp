@@ -1,52 +1,69 @@
-#ifndef GDK_SESSION_HPP
-#define GDK_SESSION_HPP
 #pragma once
 
-#include <memory>
 #include <nlohmann/json.hpp>
+#include <string>
 
-#include "include/gdk.h"
-
-#include "amount.hpp"
-#include "boost_wrapper.hpp"
-#include "ga_wally.hpp"
+#include "../subprojects/gdk_rpc/gdk_rpc.h"
 #include "session_common.hpp"
-#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
-    class network_parameters;
-    class ga_session;
-    class ga_pubkeys;
-    class ga_user_pubkeys;
-    class signer;
 
-    enum class logging_levels : uint32_t {
-        none = 0,
-        info = 1,
-        debug = 2,
+    class gdkrpc_json {
+    public:
+        explicit gdkrpc_json(const nlohmann::json& val)
+            : gdkrpc_json(val.dump())
+        {
+        }
+
+        explicit gdkrpc_json(GDKRPC_json* json) { m_json = json; }
+
+        explicit gdkrpc_json(const std::string& str) { GDKRPC_convert_string_to_json(str.c_str(), &m_json); }
+
+        static inline nlohmann::json from_serde(GDKRPC_json* json)
+        {
+            char* output;
+            GDKRPC_convert_json_to_string(json, &output);
+
+            auto cppjson = nlohmann::json::parse(output);
+
+            GDKRPC_destroy_json(json);
+            GDKRPC_destroy_string(output);
+
+            return cppjson;
+        }
+
+        GDKRPC_json* get() { return m_json; }
+
+        ~gdkrpc_json() { GDKRPC_destroy_json(m_json); }
+
+    private:
+        GDKRPC_json* m_json;
     };
 
-    int init(const nlohmann::json& config);
-    const nlohmann::json& gdk_config();
-
-    class session {
+    class ga_rpc final : public session_common {
     public:
-        session();
-        ~session();
+        ~ga_rpc();
 
-        session(const session&) = delete;
-        session(session&&) = delete;
+        explicit ga_rpc(const nlohmann::json& net_params);
 
-        session& operator=(const session&) = delete;
-        session& operator=(session&&) = delete;
+        void on_failed_login();
 
-        void connect(const nlohmann::json& net_params);
-        void disconnect();
-        void reconnect_hint(const nlohmann::json& hint);
+        bool is_connected(const nlohmann::json& net_params);
+        void set_ping_fail_handler(ping_fail_t handler);
+        void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler);
+        void emit_notification(std::string event, nlohmann::json details);
+        bool reconnect();
+        void try_reconnect();
+        void reconnect_hint(bool, bool);
+
+        // TODO: remove me when tor MR extract lands
+        void tor_sleep_hint(const std::string& hint);
         std::string get_tor_socks5();
 
-        static bool check_proxy_connectivity(const nlohmann::json& params);
+        void connect();
+        void disconnect();
+
         nlohmann::json http_get(const nlohmann::json& params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
@@ -71,33 +88,21 @@ namespace sdk {
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
 
         void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data);
-
         nlohmann::json get_transactions(const nlohmann::json& details);
 
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
-        std::string get_blinding_key_for_script(const std::string& script_hex);
-        void set_local_encryption_key(byte_span_t key);
-        std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
-        std::string extract_confidential_address(const std::string& blinded_address);
-
         nlohmann::json get_subaccounts();
-
         nlohmann::json get_subaccount(uint32_t subaccount);
-
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
 
         nlohmann::json get_balance(const nlohmann::json& details);
+        nlohmann::json get_available_currencies() const;
+        nlohmann::json get_hw_device() const;
 
-        nlohmann::json get_available_currencies();
-
-        nlohmann::json get_hw_device();
-
-        bool is_rbf_enabled();
-        bool is_watch_only();
-        bool is_liquid();
-        liquid_support_level hw_liquid_support();
+        bool is_rbf_enabled() const;
+        bool is_watch_only() const;
         nlohmann::json get_settings();
         void change_settings(const nlohmann::json& settings);
 
@@ -118,18 +123,12 @@ namespace sdk {
         nlohmann::json confirm_twofactor_reset(
             const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data);
         nlohmann::json cancel_twofactor_reset(const nlohmann::json& twofactor_data);
-
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
-        void disable_all_pin_logins();
 
-        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
-        nlohmann::json get_transaction_details(const std::string& txhash_hex);
-
-        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
-        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
+        nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
 
         nlohmann::json create_transaction(const nlohmann::json& details);
         nlohmann::json sign_transaction(const nlohmann::json& details);
@@ -137,9 +136,6 @@ namespace sdk {
         std::string broadcast_transaction(const std::string& tx_hex);
 
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
-        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-            const std::string& abf, const std::string& vbf);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
@@ -147,8 +143,6 @@ namespace sdk {
         void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
-
-        void upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses);
 
         nlohmann::json get_fee_estimates();
 
@@ -159,7 +153,19 @@ namespace sdk {
         void ack_system_message(const std::string& system_message);
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
-        nlohmann::json convert_amount(const nlohmann::json& amount_json);
+        nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
+
+        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
+            const std::string& abf, const std::string& vbf);
+        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
+        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
+        liquid_support_level hw_liquid_support() const;
+        std::string get_blinding_key_for_script(const std::string& script_hex);
+        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
+        std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
+        std::string extract_confidential_address(const std::string& blinded_address);
+        void upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
@@ -170,38 +176,18 @@ namespace sdk {
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
 
         const network_parameters& get_network_parameters() const;
+        signer& get_signer();
+        ga_pubkeys& get_ga_pubkeys();
+        ga_user_pubkeys& get_user_pubkeys();
+        ga_user_pubkeys& get_recovery_pubkeys();
+
+        void set_local_encryption_key(byte_span_t key);
+        void disable_all_pin_logins();
 
     private:
-        template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
-
-        void reconnect();
-
-        auto get_impl() { return m_impl.load(); }
-        auto get_impl() const { return m_impl.load(); }
-
-        auto get_nonnull_impl()
-        {
-            auto p = m_impl.load();
-            GDK_RUNTIME_ASSERT(p != nullptr);
-            return p;
-        }
-
-        auto get_nonnull_impl() const
-        {
-            auto p = m_impl.load();
-            GDK_RUNTIME_ASSERT(p != nullptr);
-            return p;
-        }
-
-        using session_ptr = boost::shared_ptr<session_common>;
-        using session_atomic_ptr = boost::atomic_shared_ptr<session_common>;
-
-        session_atomic_ptr m_impl;
-
-        GA_notification_handler m_notification_handler{ nullptr };
-        void* m_notification_context{ nullptr };
+        gdkrpc_json m_netparams;
+        GDKRPC_session* m_session;
     };
+
 } // namespace sdk
 } // namespace ga
-
-#endif
