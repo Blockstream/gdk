@@ -92,7 +92,12 @@ namespace sdk {
             satoshi = (btc_type(btc_decimal) * COIN_VALUE_DECIMAL).convert_to<value_type>();
         }
         GDK_RUNTIME_ASSERT_MSG(satoshi >= 0, "amount cannot be negative");
-        GDK_RUNTIME_ASSERT_MSG(satoshi <= SATOSHI_MAX, "amount cannot exceed maximum number of bitcoins");
+
+        // Check upper limit for btc type (ie. non-asset) inputs
+        // Note: an asset_info block indicating btc denomination would have failed key_count check above
+        if (asset_p == end_p) {
+            GDK_RUNTIME_ASSERT_MSG(satoshi <= SATOSHI_MAX, "amount cannot exceed maximum number of bitcoins");
+        }
 
         // Then compute the other denominations and fiat amount
         const conversion_type satoshi_conv = conversion_type(satoshi);
