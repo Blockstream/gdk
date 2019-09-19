@@ -522,6 +522,14 @@ namespace sdk {
         return { private_key, ec_public_key_from_private_key(private_key) };
     }
 
+    std::vector<unsigned char> ecdh(byte_span_t public_key, byte_span_t private_key)
+    {
+        std::vector<unsigned char> ret(SHA256_LEN);
+        GDK_VERIFY(wally_ecdh(
+            public_key.data(), public_key.size(), private_key.data(), private_key.size(), ret.data(), ret.size()));
+        return ret;
+    }
+
     //
     // Elements
     //

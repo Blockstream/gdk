@@ -200,6 +200,8 @@ namespace sdk {
 
     std::pair<priv_key_t, std::vector<unsigned char>> get_ephemeral_keypair();
 
+    std::vector<unsigned char> ecdh(byte_span_t public_key, byte_span_t private_key);
+
     //
     // Elements
     //

@@ -2873,6 +2873,11 @@ namespace sdk {
         }
         // FIXME: social_destination/social_destination_type/payreq if BIP70
 
+        const auto blinding_nonces_p = result.find("blinding_nonces");
+        if (blinding_nonces_p != result.end()) {
+            private_data["blinding_nonces"] = *blinding_nonces_p;
+        }
+
         constexpr bool return_tx = true;
         nlohmann::json tx_details;
         wamp_call([&tx_details](wamp_call_result result) { tx_details = get_json_result(result.get()); },

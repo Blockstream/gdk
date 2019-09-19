@@ -325,6 +325,7 @@ namespace sdk {
             const auto p_subaccount = result.find("subaccount");
             GDK_RUNTIME_ASSERT(p_subaccount != result.end());
             const uint32_t subaccount = *p_subaccount;
+            result["subaccount_type"] = session.get_cached_subaccount(subaccount)["type"];
 
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
@@ -973,8 +974,16 @@ namespace sdk {
             generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
 
         size_t i = 0;
+        const std::string subaccount_type = details["subaccount_type"];
+        const bool authorized_assets = subaccount_type == "2of2_no_recovery";
+
+        std::vector<std::string> blinding_nonces;
+
         for (const auto& output : transaction_outputs) {
             if (output.at("is_fee")) {
+                if (authorized_assets) {
+                    blinding_nonces.emplace_back(std::string{});
+                }
                 continue;
             }
 
@@ -995,6 +1004,11 @@ namespace sdk {
             const auto surjectionproof = asset_surjectionproof(
                 asset_id, output_abfs[i], generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
 
+            if (authorized_assets) {
+                const auto blinding_nonce = sha256(ecdh(pub_key, ephemeral_keypair.first));
+                blinding_nonces.emplace_back(b2h(blinding_nonce));
+            }
+
             tx_elements_output_commitment_set(
                 tx, i, generator, value_commitment, ephemeral_keypair.second, surjectionproof, rangeproof);
 
@@ -1005,6 +1019,9 @@ namespace sdk {
 
         nlohmann::json result(details);
         result["blinded"] = true;
+        if (authorized_assets) {
+            result["blinding_nonces"] = blinding_nonces;
+        }
         update_tx_info(tx, result);
         return result;
     }
