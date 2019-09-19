@@ -103,6 +103,7 @@ namespace sdk {
 
         nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
+        nlohmann::json get_cached_subaccount(uint32_t subaccount) const;
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         uint32_t get_next_subaccount();
         nlohmann::json create_subaccount(const nlohmann::json& details);
@@ -211,7 +212,8 @@ namespace sdk {
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json get_appearance() const;
-        const std::string& get_default_address_type() const;
+        bool subaccount_allows_csv(uint32_t subaccount) const;
+        const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const;
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
         void update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only);

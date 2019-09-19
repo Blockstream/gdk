@@ -1815,6 +1815,14 @@ namespace sdk {
         return balance;
     }
 
+    nlohmann::json ga_session::get_cached_subaccount(uint32_t subaccount) const
+    {
+        locker_t locker(m_mutex);
+        const auto p = m_subaccounts.find(subaccount);
+        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        return p->second;
+    }
+
     nlohmann::json ga_session::get_subaccount(ga_session::locker_t& locker, uint32_t subaccount)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -2405,7 +2413,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
     {
-        const std::string addr_type = addr_type_.empty() ? get_default_address_type() : addr_type_;
+        std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
         const bool is_known
             = addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv;
 
@@ -2517,10 +2525,18 @@ namespace sdk {
         return m_login_data.at("appearance");
     }
 
-    const std::string& ga_session::get_default_address_type() const
+    bool ga_session::subaccount_allows_csv(uint32_t subaccount) const
+    {
+        // subaccounts of type '2of2_no_recovery' do not allow csv addresses (because they have
+        // 'recovery' built in).
+        // short-circuit subaccount 0 as it has a known fixed type
+        return subaccount == 0 || get_cached_subaccount(subaccount)["type"] != "2of2_no_recovery";
+    }
+
+    const std::string& ga_session::get_default_address_type(uint32_t subaccount) const
     {
         const auto appearance = get_appearance();
-        if (json_get_value(appearance, "use_csv", false)) {
+        if (json_get_value(appearance, "use_csv", false) && subaccount_allows_csv(subaccount)) {
             return address_type::csv;
         }
         if (json_get_value(appearance, "use_segwit", false)) {
