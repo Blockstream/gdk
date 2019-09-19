@@ -995,19 +995,6 @@ namespace sdk {
             const auto surjectionproof = asset_surjectionproof(
                 asset_id, output_abfs[i], generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
 
-#if 0
-            // keep for debugging
-            auto& signer = session.get_signer();
-            const auto blinding_key = signer.get_blinding_key();
-
-            const auto unblinded = asset_unblind(
-                blinding_key, rangeproof, value_commitment, ephemeral_keypair.second, script, generator);
-
-            GDK_RUNTIME_ASSERT(value == std::get<3>(unblinded));
-            GDK_RUNTIME_ASSERT(output_abfs[i] == std::get<2>(unblinded));
-            GDK_RUNTIME_ASSERT(output_vbfs[i] == std::get<1>(unblinded));
-            GDK_RUNTIME_ASSERT(asset_id == std::get<0>(unblinded));
-#endif
             tx_elements_output_commitment_set(
                 tx, i, generator, value_commitment, ephemeral_keypair.second, surjectionproof, rangeproof);
 
