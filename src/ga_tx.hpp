@@ -3,7 +3,6 @@
 #pragma once
 
 #include "containers.hpp"
-#include "ga_session.hpp"
 
 namespace ga {
 namespace sdk {

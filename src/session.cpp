@@ -12,6 +12,7 @@
 #include "exception.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
+#include "network_parameters.hpp"
 #include "socks_client.hpp"
 #include "utils.hpp"
 

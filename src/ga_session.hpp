@@ -12,17 +12,18 @@
 #include <vector>
 
 #include "amount.hpp"
-#include "autobahn_wrapper.hpp"
-#include "boost_wrapper.hpp"
-#include "logging.hpp"
-#include "signer.hpp"
+#include "ga_wally.hpp"
+#include "network_parameters.hpp"
 #include "tx_list_cache.hpp"
 #include "utils.hpp"
-#include "xpub_hdkey.hpp"
 
 namespace ga {
 namespace sdk {
     enum class logging_levels : uint32_t;
+
+    class ga_pubkeys;
+    class ga_user_pubkeys;
+    class signer;
 
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;

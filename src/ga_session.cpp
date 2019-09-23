@@ -10,6 +10,7 @@
 #include "session.hpp"
 
 #include "autobahn_wrapper.hpp"
+#include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
@@ -18,8 +19,10 @@
 #include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "tx_list_cache.hpp"
+#include "xpub_hdkey.hpp"
 
 namespace asio = boost::asio;
 

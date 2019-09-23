@@ -6,10 +6,11 @@
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
-#include "network_parameters.hpp"
+#include <nlohmann/json.hpp>
 
 namespace ga {
 namespace sdk {
+    class network_parameters;
 
     //
     // Interface to signing and deriving privately derived xpub keys

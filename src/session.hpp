@@ -9,10 +9,10 @@
 
 #include "amount.hpp"
 #include "ga_wally.hpp"
-#include "network_parameters.hpp"
 
 namespace ga {
 namespace sdk {
+    class network_parameters;
     class ga_session;
     class ga_pubkeys;
     class ga_user_pubkeys;
