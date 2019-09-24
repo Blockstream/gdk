@@ -66,6 +66,7 @@ namespace sdk {
         bool reconnect();
         bool is_connected(const nlohmann::json& net_params);
         std::string get_tor_socks5();
+        void tor_sleep_hint(const std::string& hint);
 
         void set_heartbeat_timeout_handler(heartbeat_t handler);
         void set_ping_fail_handler(ping_fail_t handler);
@@ -393,8 +394,12 @@ namespace sdk {
         tx_list_caches m_tx_list_caches;
 
         std::vector<nlohmann::json> get_transactions(uint32_t subaccount, uint32_t page_id);
-        static std::unique_ptr<tor_controller> s_tor_ctrl;
-        static std::mutex s_tor_mutex;
+
+        static std::weak_ptr<tor_controller> s_tor_ctrl;
+        static std::mutex s_tor_ctrl_mutex;
+
+        std::shared_ptr<tor_controller> m_tor_ctrl;
+        std::string m_last_tor_socks5;
     };
 
 } // namespace sdk

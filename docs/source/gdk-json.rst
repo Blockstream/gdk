@@ -979,6 +979,13 @@ Reconnect hint JSON
 
    { "hint" : "disable" }
 
+.. code-block:: json
+
+   { "tor_sleep_hint" : "wakeup", "hint": "start" }
+
+.. code-block:: json
+
+   { "tor_sleep_hint" : "sleep" }
 
 
 .. _convert:

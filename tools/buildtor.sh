@@ -8,6 +8,20 @@ TOR_NAME="tor-tor-0.4.1.6"
 cp -r "${MESON_SOURCE_ROOT}/subprojects/${TOR_NAME}" "${MESON_BUILD_ROOT}/tor"
 
 cd "${MESON_BUILD_ROOT}/tor"
+
+cat <<EOF | patch -p0
+--- src/core/mainloop/periodic.c	2019-09-23 16:07:43.000000000 +0200
++++ src/core/mainloop/periodic.c	2019-09-23 16:07:24.000000000 +0200
+@@ -155,6 +155,7 @@
+     return;
+   mainloop_event_free(event->ev);
+   event->last_action_time = 0;
++  event->enabled = 0;
+ }
+ 
+ /** Enable the given event by setting its "enabled" flag and scheduling it to
+EOF
+
 #FIXME: enable zstd for tor compression
 CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/tor/build --disable-system-torrc --disable-asciidoc --enable-pic --enable-static-openssl \
                 --enable-static-libevent --enable-static-zlib --with-openssl-dir=${MESON_BUILD_ROOT}/openssl/build \

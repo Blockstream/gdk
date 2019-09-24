@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace ga {
@@ -29,11 +30,17 @@ namespace sdk {
         tor_controller();
         ~tor_controller();
 
+        void sleep();
+        void wakeup();
+
         std::string wait_for_socks5(
             uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb);
 
     private:
         std::unique_ptr<tor_controller_impl> m_ctrl;
+        std::mutex m_ctrl_mutex;
+
+        std::string m_socks5_port;
     };
 
 } // namespace sdk

@@ -14,7 +14,6 @@
 
 #include <condition_variable>
 #include <cstdio>
-#include <mutex>
 #include <stdlib.h>
 #include <string>
 #include <vector>
@@ -177,6 +176,7 @@ namespace sdk {
     static const std::string TOR_SAFE_SERVERKEY = "Tor safe cookie authentication server-to-controller hash";
     static const std::string TOR_SAFE_CLIENTKEY = "Tor safe cookie authentication controller-to-server hash";
     static const std::string TOR_CONTROL_PORT_TAG("PORT=");
+    static const std::string LOCALHOST_SOCKS5_UNTIL_PORT("socks5://127.0.0.1:");
 
     struct tor_control_reply {
         tor_control_reply();
@@ -218,7 +218,7 @@ namespace sdk {
     };
 
     struct tor_controller_impl {
-        tor_controller_impl();
+        tor_controller_impl(const std::string& socks5_port);
         ~tor_controller_impl();
 
         std::string wait_for_socks5(
@@ -470,13 +470,15 @@ namespace sdk {
         return tor_control_file;
     }
 
-    tor_controller_impl::tor_controller_impl()
+    tor_controller_impl::tor_controller_impl(const std::string& socks5_port)
         : m_base(init_eb())
         , m_tor_datadir(std::string(gdk_config().at("datadir")) + "/tor")
         , m_tor_control_file(get_tor_control_file(m_tor_datadir))
         , m_stopping(false)
     {
         GDK_LOG_SEV(log_level::info) << "Starting up internal Tor";
+
+        const std::string conf_socks_port = socks5_port.empty() ? "auto" : socks5_port;
 
         m_tor_run_thread = std::thread([&] {
             tor_main_configuration_t* tor_conf = tor_main_configuration_new();
@@ -489,7 +491,7 @@ namespace sdk {
             argv_conf.push_back("SafeSocks");
             argv_conf.push_back("1");
             argv_conf.push_back("SocksPort");
-            argv_conf.push_back("auto");
+            argv_conf.push_back(conf_socks_port.c_str());
             argv_conf.push_back("NoExec");
             argv_conf.push_back("1");
             argv_conf.push_back("ControlPortWriteToFile");
@@ -514,15 +516,13 @@ namespace sdk {
 
             tor_main_configuration_free(tor_conf);
 
-            event_base_loopbreak(m_base);
-
             m_base = nullptr;
         });
 
         GDK_LOG_SEV(log_level::info) << "Tor thread started";
 
         m_tor_control_port = get_tor_control_port(m_tor_control_file);
-        m_conn.reset(new tor_control_connection(m_base, m_tor_control_port));
+        m_conn = std::make_unique<tor_control_connection>(m_base, m_tor_control_port);
 
         m_bootstrap_phase = std::make_shared<tor_bootstrap_phase>();
 
@@ -543,13 +543,20 @@ namespace sdk {
 
         m_stopping = true;
 
+        m_bootstrap_phase->progress = 0;
+        m_bootstrap_phase->tag = "";
+        m_bootstrap_phase->summary = "Stopping Tor...";
+
         no_std_exception_escape([this] {
             if (!m_conn->command("SIGNAL HALT", std::bind(&tor_controller_impl::stopped_cb, this))) {
                 GDK_LOG_SEV(log_level::info) << "tor: could not send the HALT signal, is Tor already stopped?";
             }
 
-            m_tor_control_thread.detach();
-            m_tor_run_thread.detach();
+            // This is blocking because if we return immediately the caller could try to start tor while the
+            // background thread is still running, triggering an assert inside Tor's codebase
+
+            m_tor_control_thread.join();
+            m_tor_run_thread.join();
         });
     }
 
@@ -646,13 +653,13 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!m.empty());
 
         // Locking here to avoid race conditions on m_bootstrap_phase
-        // Since we used std::bind instead of directly calling socks_cb there should
-        // be no need to manually release this lock
-        std::lock_guard<std::mutex> _(m_init_mutex);
+        {
+            std::lock_guard<std::mutex> _(m_init_mutex);
 
-        m_bootstrap_phase->tag = m["TAG"];
-        m_bootstrap_phase->summary = m["SUMMARY"];
-        m_bootstrap_phase->progress = std::stoi(m["PROGRESS"]);
+            m_bootstrap_phase->tag = m["TAG"];
+            m_bootstrap_phase->summary = m["SUMMARY"];
+            m_bootstrap_phase->progress = std::stoi(m["PROGRESS"]);
+        }
 
         // Notify that we updated it, so that ga_session can emit a new notification
         m_init_cv.notify_all();
@@ -694,8 +701,8 @@ namespace sdk {
             return;
         }
 
-        // This is bad, Tor has probably crashed. At the moment there's no way to notify the session, so we just assert
-        // raise an exception here
+        // This is bad, Tor has probably crashed. We can't restart it because its internal state is compromised,
+        // so throw an exception to crash
         throw reconnect_error();
     }
 
@@ -729,16 +736,45 @@ namespace sdk {
     }
 
     tor_controller::tor_controller()
-        : m_ctrl(new tor_controller_impl())
+        : m_ctrl(new tor_controller_impl(""))
     {
     }
 
     tor_controller::~tor_controller() = default;
 
+    void tor_controller::sleep()
+    {
+        std::lock_guard<std::mutex> _(m_ctrl_mutex);
+
+        if (!m_ctrl) {
+            return;
+        }
+
+        const std::string socks5_str = m_ctrl->wait_for_socks5(0, nullptr);
+        m_socks5_port = socks5_str.empty() ? std::string{} : socks5_str.substr(LOCALHOST_SOCKS5_UNTIL_PORT.size());
+
+        m_ctrl.reset();
+    }
+
+    void tor_controller::wakeup()
+    {
+        std::lock_guard<std::mutex> _(m_ctrl_mutex);
+
+        if (m_ctrl) {
+            return;
+        }
+
+        m_ctrl = std::make_unique<tor_controller_impl>(m_socks5_port);
+    }
+
     std::string tor_controller::wait_for_socks5(
         uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb)
     {
-        return m_ctrl->wait_for_socks5(timeout, phase_cb);
+        // TODO: call phase_cb when sleeping (m_ctrl == null) to report it?
+
+        std::lock_guard<std::mutex> _(m_ctrl_mutex);
+
+        return !static_cast<bool>(m_ctrl) ? std::string{} : m_ctrl->wait_for_socks5(timeout, phase_cb);
     }
 
 } // namespace sdk

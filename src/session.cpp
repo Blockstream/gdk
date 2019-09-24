@@ -334,16 +334,33 @@ namespace sdk {
     {
         exception_wrapper([&] {
             {
+                // we have an hint for Tor
+                if (hint.contains("tor_sleep_hint")) {
+                    std::lock_guard<std::mutex> l{ session_impl_mutex };
+
+                    if (m_impl != nullptr) {
+                        m_impl->tor_sleep_hint(hint["tor_sleep_hint"]);
+                    }
+                }
+
+                // no connection-level hint, exit here
+                if (!hint.contains("hint")) {
+                    return;
+                }
+
                 std::unique_lock<std::mutex> l{ network_control_context_mutex };
                 if (!m_network_control_context) {
                     return;
                 }
-                if (!m_network_control_context->reconnecting()) {
+
+                const std::string option = hint["hint"];
+                GDK_RUNTIME_ASSERT(option == "now" || option == "disable" || option == "start");
+
+                if (option != "start" && !m_network_control_context->reconnecting()) {
                     GDK_LOG_SEV(log_level::info) << "no reconnect in progress. ignoring.";
                     return;
                 }
-                const std::string option = hint["hint"];
-                GDK_RUNTIME_ASSERT(option == "now" || option == "disable");
+
                 m_network_control_context->stop_reconnect();
                 m_network_control_context->set_enabled(option != "disable");
                 m_network_control_context->set_reconnect();
