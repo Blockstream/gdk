@@ -217,6 +217,7 @@ namespace sdk {
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const;
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
+        void upload_confidential_addresses(locker_t& locker, uint32_t subaccount, uint32_t num_addr);
         void update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);

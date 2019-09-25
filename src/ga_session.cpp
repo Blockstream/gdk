@@ -89,6 +89,8 @@ namespace sdk {
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
         static const uint32_t NUM_FEE_ESTIMATES = 25; // Min fee followed by blocks 1-24
 
+        constexpr uint32_t INITIAL_UPLOAD_CA = 5; // addresses uploaded after creation of 2of2_no_recovery subaccounts
+
         // networking defaults
         static const uint32_t DEFAULT_PING = 20; // ping message interval in seconds
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
@@ -1006,6 +1008,25 @@ namespace sdk {
         return challenge;
     }
 
+    void ga_session::upload_confidential_addresses(locker_t& locker, uint32_t subaccount, uint32_t num_addr)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        unique_unlock unlocker(locker);
+        GDK_RUNTIME_ASSERT(num_addr > 0);
+
+        std::vector<std::string> confidential_addresses;
+        for (size_t i = 0; i < num_addr; ++i) {
+            confidential_addresses.emplace_back(get_receive_address(subaccount, {}).at("address"));
+        }
+        bool r{ false };
+        {
+            wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
+                "com.greenaddress.txs.upload_authorized_assets_confidential_address", subaccount,
+                confidential_addresses);
+        }
+        GDK_RUNTIME_ASSERT(r);
+    }
+
     void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1049,6 +1070,12 @@ namespace sdk {
 
             insert_subaccount(locker, subaccount, sa["name"], sa["receiving_id"], recovery_pub_key, recovery_chain_code,
                 type, satoshi, json_get_value(sa, "has_txs", false));
+
+            const uint32_t required_ca = sa.value("required_ca", 0);
+            if (required_ca > 0) {
+                upload_confidential_addresses(locker, subaccount, required_ca);
+            }
+
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
             }
@@ -1952,6 +1979,9 @@ namespace sdk {
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
         nlohmann::json subaccount_details = insert_subaccount(
             locker, subaccount, name, receiving_id, recovery_pub_key, recovery_chain_code, type, amount(), has_txs);
+        if (type == "2of2_no_recovery") {
+            upload_confidential_addresses(locker, subaccount, INITIAL_UPLOAD_CA);
+        }
         if (type == "2of3") {
             subaccount_details["recovery_mnemonic"] = recovery_mnemonic;
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
