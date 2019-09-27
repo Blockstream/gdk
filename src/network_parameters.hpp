@@ -52,10 +52,7 @@ namespace sdk {
         int ct_bits() const { return m_details.at("ct_bits"); }
         bool main_net() const { return m_details.at("mainnet"); }
         bool liquid() const { return m_details.at("liquid"); }
-        std::string get_connection_string(bool use_tor) const
-        {
-            return use_tor ? gait_onion() : gait_wamp_url();
-        }
+        std::string get_connection_string(bool use_tor) const { return use_tor ? gait_onion() : gait_wamp_url(); }
         std::string get_registry_connection_string(bool use_tor) const
         {
             return use_tor ? asset_registry_onion_url() : asset_registry_url();

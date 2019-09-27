@@ -5,6 +5,12 @@ cache:
 
 image: greenaddress/ci@sha256:8e5e60d4be4736718a9392cea0f2d9ded2b81a339fc41f9c2bfa1e34496ffae7
 
+stages:
+  - format
+  - build
+  - test
+  - deploy
+
 .fedora_images:
   image: greenaddress/fedora_ci@sha256:51894754af5c061933e3550fdd582eb3ff9145dd7c72f4a376e6cb77ec7a1420
   tags:
@@ -37,6 +43,14 @@ image: greenaddress/ci@sha256:8e5e60d4be4736718a9392cea0f2d9ded2b81a339fc41f9c2b
     when: on_success
     paths:
     - gdk-python
+
+test_format:
+  tags:
+    - ga
+  stage: format
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/format.sh && git diff --exit-code
 
 test_gcc:
   tags:
@@ -97,7 +111,6 @@ test_clang:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/build.sh --clang-tidy-version=7 --clang
-    - ./tools/format.sh && git diff --exit-code
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
