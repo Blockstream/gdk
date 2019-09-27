@@ -291,7 +291,7 @@ namespace sdk {
                 { "sound", true },
                 { "altimeout", 5u },
                 { "required_num_blocks", 12u },
-                { "notifications_settings", nlohmann::json({}) },
+                { "notifications_settings", nlohmann::json::object() },
             });
             clean.update(appearance);
 

@@ -50,7 +50,7 @@ namespace sdk {
         const auto sats_p = amount_json.find("sats");
         const auto fiat_p = amount_json.find("fiat");
         const auto asset_info_p = amount_json.find("asset_info");
-        const nlohmann::json asset_json = amount_json.value("asset_info", nlohmann::json({}));
+        const auto asset_json = amount_json.value("asset_info", nlohmann::json::object());
         const auto precision = asset_json.value("precision", 0);
         const auto asset_id = asset_json.value("asset_id", "");
         const auto asset_p = amount_json.find(asset_id);
