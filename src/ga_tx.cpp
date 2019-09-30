@@ -654,7 +654,7 @@ namespace sdk {
                     bool change_address = result.find("change_address") != result.end();
                     if (change_address) {
                         const auto asset_change_address
-                            = result.at("change_address").value(asset_tag, nlohmann::json());
+                            = result.at("change_address").value(asset_tag, nlohmann::json::object());
                         change_address = !asset_change_address.empty();
                     }
                     if (!change_address) {

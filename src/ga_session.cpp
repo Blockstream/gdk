@@ -1098,7 +1098,7 @@ namespace sdk {
         m_is_locked = json_get_value(login_data, "reset_2fa_active", false);
 
         const auto p = m_login_data.find("limits");
-        update_spending_limits(locker, p == m_login_data.end() ? nlohmann::json() : *p);
+        update_spending_limits(locker, p == m_login_data.end() ? nlohmann::json::object() : *p);
 
         auto& appearance = m_login_data["appearance"];
         cleanup_appearance_settings(locker, appearance);
@@ -1475,7 +1475,7 @@ namespace sdk {
         const auto hexder_path = sign_challenge(locker, challenge);
         m_mnemonic = mnemonic;
 
-        authenticate(locker, hexder_path.first, hexder_path.second, std::string(), nlohmann::json());
+        authenticate(locker, hexder_path.first, hexder_path.second, std::string(), nlohmann::json::object());
     }
 
     nlohmann::json ga_session::get_settings()

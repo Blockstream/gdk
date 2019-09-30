@@ -32,7 +32,7 @@ namespace sdk {
 
     nlohmann::json signer::get_hw_device() const
     {
-        return nlohmann::json(); // No HW device unless we are a HW signer
+        return nlohmann::json::object(); // No HW device unless we are a HW signer
     }
 
     priv_key_t signer::get_blinding_key_from_script(__attribute__((unused)) byte_span_t script)

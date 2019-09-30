@@ -572,7 +572,7 @@ namespace sdk {
         m_methods = { { m_method_to_update } };
         // Move to prompt the user for the code for the method they are enabling
         m_gauth_data = m_twofactor_data;
-        m_twofactor_data = nlohmann::json();
+        m_twofactor_data = nlohmann::json::object();
         return state_type::resolve_code;
     }
 
@@ -784,7 +784,7 @@ namespace sdk {
     void send_transaction_call::create_twofactor_data()
     {
         const bool is_liquid = m_session.get_network_parameters().liquid();
-        m_twofactor_data = nlohmann::json();
+        m_twofactor_data = nlohmann::json::object();
         if (m_twofactor_required && !is_liquid) {
             if (m_bump_amount != 0u) {
                 m_action = "bump_fee";

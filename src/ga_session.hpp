@@ -80,7 +80,7 @@ namespace sdk {
 
         std::string get_challenge(const std::string& address);
         void authenticate(const std::string& sig_der_hex, const std::string& path_hex, const std::string& device_id,
-            const nlohmann::json& hw_device = nlohmann::json());
+            const nlohmann::json& hw_device = nlohmann::json::object());
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
         void login(const std::string& mnemonic);
