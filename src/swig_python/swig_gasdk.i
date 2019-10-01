@@ -1,4 +1,30 @@
-%module greenaddress
+/*
+  The automatic module importing varies between Swig3 and Swig4.
+  Make explicit so should work for both versions.
+  (Basically the swig3 version).
+
+  NOTE:
+  The behaviour of pybuffer_binary varies wrt a Py_None argument between Swig3
+  (raises TypeError) and Swig4 (passes through as NULL) - we don't seem to use
+  it here so shouldn't be a problem, but if we need it in future there are
+  explicit implementations of 'nullable' and 'non-null' macros in libwally-core
+  providing consistent behaviour across swig versions - copy those if required.
+*/
+%define MODULEIMPORT
+"
+def swig_import_helper():
+    import importlib
+    pkg = __name__.rpartition('.')[0]
+    mname = '.'.join((pkg, '$module')).lstrip('.')
+    try:
+        return importlib.import_module(mname)
+    except ImportError:
+        return importlib.import_module('$module')
+$module = swig_import_helper()
+del swig_import_helper
+"
+%enddef
+%module(moduleimport=MODULEIMPORT) greenaddress
 %{
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #define SWIG_FILE_WITH_INIT
@@ -142,23 +168,6 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
     Py_IncRef(Py_None);
     $result = Py_None;
 %}
-
-%define %pybuffer_nullable_binary(TYPEMAP, SIZE)
-%typemap(in) (TYPEMAP, SIZE)
-  (int res, Py_ssize_t size = 0, const void *buf = 0) {
-  if ($input == Py_None)
-    $2 = 0;
-  else {
-    res = PyObject_AsReadBuffer($input, &buf, &size);
-    if (res<0) {
-      PyErr_Clear();
-      %argument_fail(res, "(TYPEMAP, SIZE)", $symname, $argnum);
-    }
-    $1 = ($1_ltype) buf;
-    $2 = ($2_ltype) (size / sizeof($*1_type));
-  }
-}
-%enddef
 
 /* Output strings are converted to native python strings and returned */
 %typemap(in, numinputs=0) char** (char* txt) {
