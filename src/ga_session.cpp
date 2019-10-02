@@ -492,10 +492,6 @@ namespace sdk {
 
         m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
         m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
-
-        if (m_net_params.liquid()) {
-            refresh_assets({ { "icons", true }, { "assets", true } });
-        }
     }
 
     template <typename T>
