@@ -26,7 +26,8 @@ EOF
 CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/tor/build --disable-system-torrc --disable-asciidoc --enable-pic --enable-static-openssl \
                 --enable-static-libevent --enable-static-zlib --with-openssl-dir=${MESON_BUILD_ROOT}/openssl/build \
                 --with-libevent-dir=${MESON_BUILD_ROOT}/libevent/build --with-zlib-dir=${MESON_BUILD_ROOT}/zlib/build \
-                --disable-system-torrc --disable-systemd --disable-zstd --disable-lzma --disable-largefile ac_cv_c_bigendian=no --disable-unittests --disable-tool-name-check --disable-rust"
+                --disable-system-torrc --disable-systemd --disable-zstd --disable-lzma --disable-largefile \
+                ac_cv_c_bigendian=no --disable-unittests --disable-tool-name-check --disable-module-dirauth --disable-rust"
 
 if [ $LTO = "true" ]; then
     EXTRA_FLAGS="-flto"
