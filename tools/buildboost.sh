@@ -60,6 +60,10 @@ EOF
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
 elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
+    gsed -i "s!B2_CXXFLAGS_RELEASE=.*!B2_CXXFLAGS_RELEASE=\"-O3 -s -isysroot $(xcrun --show-sdk-path)\"!" \
+          ${MESON_BUILD_ROOT}/boost/tools/build/src/engine/build.sh
+    gsed -i "s!B2_CXXFLAGS_DEBUG=.*!B2_CXXFLAGS_DEBUG=\"-O0 -g -p -isysroot $(xcrun --show-sdk-path)\"!" \
+          ${MESON_BUILD_ROOT}/boost/tools/build/src/engine/build.sh
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,log,system,thread
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $BUILD
 
