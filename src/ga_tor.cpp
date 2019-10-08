@@ -37,7 +37,6 @@ using namespace std::chrono_literals;
 
 namespace ga {
 namespace sdk {
-
     static std::string read_file(std::string fname)
     {
         std::FILE* fp = std::fopen(fname.c_str(), "rb");
@@ -765,6 +764,19 @@ namespace sdk {
         }
 
         m_ctrl = std::make_unique<tor_controller_impl>(m_socks5_port);
+    }
+
+    std::shared_ptr<tor_controller> tor_controller::get_shared_ref()
+    {
+        std::unique_lock<std::mutex> _{ s_inst_mutex };
+        std::shared_ptr<tor_controller> shared = s_inst.lock();
+
+        if (!shared) {
+            GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
+            s_inst = shared = std::make_shared<tor_controller>();
+        }
+
+        return shared;
     }
 
     std::string tor_controller::wait_for_socks5(

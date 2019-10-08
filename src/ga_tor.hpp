@@ -33,10 +33,14 @@ namespace sdk {
         void sleep();
         void wakeup();
 
+        static std::shared_ptr<tor_controller> get_shared_ref();
+
         std::string wait_for_socks5(
             uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb);
 
     private:
+        static inline std::mutex s_inst_mutex;
+        static inline std::weak_ptr<tor_controller> s_inst;
         std::unique_ptr<tor_controller_impl> m_ctrl;
         std::mutex m_ctrl_mutex;
 

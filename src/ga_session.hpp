@@ -398,9 +398,6 @@ namespace sdk {
 
         std::vector<nlohmann::json> get_transactions(uint32_t subaccount, uint32_t page_id);
 
-        static std::weak_ptr<tor_controller> s_tor_ctrl;
-        static std::mutex s_tor_ctrl_mutex;
-
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
     };
