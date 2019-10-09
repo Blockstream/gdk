@@ -55,7 +55,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,ccache,python-version: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,ccache,python-version: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -63,6 +63,7 @@ while true; do
         -b | --buildtype ) BUILDTYPE=$2; shift 2 ;;
         --install ) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; NINJA_TARGET="install"; shift 2 ;;
         --sanitizer ) MESON_OPTIONS="$MESON_OPTIONS -Db_sanitize=$2"; shift 2 ;;
+        --enable-tests ) MESON_OPTIONS="$MESON_OPTIONS -Denable-tests=true"; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
         --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;

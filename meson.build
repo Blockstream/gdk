@@ -253,3 +253,12 @@ subdirs = ['src']
 foreach n : subdirs
     subdir(n)
 endforeach
+
+
+if get_option('enable-tests')
+  test('test multisession',
+      executable('test_multi_session', 'tests/test_multi_session.cpp',
+                  link_with: libga.get_static_lib(),
+                  dependencies: dependencies
+                ))
+endif
