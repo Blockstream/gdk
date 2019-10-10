@@ -17,7 +17,9 @@ else
     exit 1
 fi
 
-cp -r "${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}" "${MESON_BUILD_ROOT}/libwally-core"
+if [ ! -d "${MESON_BUILD_ROOT}/libwally-core" ]; then
+    cp -r "${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}" "${MESON_BUILD_ROOT}/libwally-core"
+fi
 
 ENABLE_SWIG_JAVA=disable-swig-java
 if [ "x$JAVA_HOME" != "x" ]; then

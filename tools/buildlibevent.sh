@@ -3,7 +3,9 @@ set -e
 
 LIBEVENT_NAME="libevent-release-2.1.11-stable"
 
-cp -r "${MESON_SOURCE_ROOT}/subprojects/${LIBEVENT_NAME}" "${MESON_BUILD_ROOT}/libevent"
+if [ ! -d "${MESON_BUILD_ROOT}/libevent" ]; then
+    cp -r "${MESON_SOURCE_ROOT}/subprojects/${LIBEVENT_NAME}" "${MESON_BUILD_ROOT}/libevent"
+fi
 
 cd "${MESON_BUILD_ROOT}/libevent"
 

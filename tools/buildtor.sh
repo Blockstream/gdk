@@ -5,7 +5,9 @@ trap "cat config.log" ERR
 
 TOR_NAME="tor-tor-0.4.1.6"
 
-cp -r "${MESON_SOURCE_ROOT}/subprojects/${TOR_NAME}" "${MESON_BUILD_ROOT}/tor"
+if [ ! -d "${MESON_BUILD_ROOT}/tor" ]; then
+    cp -r "${MESON_SOURCE_ROOT}/subprojects/${TOR_NAME}" "${MESON_BUILD_ROOT}/tor"
+fi
 
 cd "${MESON_BUILD_ROOT}/tor"
 

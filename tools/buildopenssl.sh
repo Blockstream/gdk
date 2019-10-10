@@ -23,7 +23,10 @@ if [ $LTO = "true" ]; then
     OPENSSL_OPTIONS="$OPENSSL_OPTIONS -flto"
 fi
 
-cp -r "${MESON_SOURCE_ROOT}/subprojects/${OPENSSL_NAME}" "${MESON_BUILD_ROOT}/openssl"
+if [ ! -d "${MESON_BUILD_ROOT}/openssl" ]; then
+    cp -r "${MESON_SOURCE_ROOT}/subprojects/${OPENSSL_NAME}" "${MESON_BUILD_ROOT}/openssl"
+fi
+
 cd "${MESON_BUILD_ROOT}/openssl"
 openssl_prefix="${MESON_BUILD_ROOT}/openssl/build"
 if [ \( "$1" = "--ndk" \) ]; then

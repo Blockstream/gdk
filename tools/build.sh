@@ -21,6 +21,7 @@ BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
 LTO="false"
+CCACHE=""
 
 GETOPT='getopt'
 if [ -z "$ANDROID_NDK" ]; then
@@ -54,7 +55,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,unity:,python-version: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,ccache,python-version: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -69,7 +70,7 @@ while true; do
         --lto) MESON_OPTIONS="$MESON_OPTIONS -Db_lto=$2"; LTO="$2"; shift 2 ;;
         --clang-tidy-version) MESON_OPTIONS="$MESON_OPTIONS -Dclang-tidy-version=-$2"; NINJA_TARGET="src/clang-tidy"; shift 2 ;;
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
-        --unity) MESON_OPTIONS="$MESON_OPTIONS --unity=$2"; shift 2 ;;
+        --ccache) CCACHE="ccache" ; shift ;;
         --python-version) MESON_OPTIONS="$MESON_OPTIONS -Dpython-version=$2"; shift 2 ;;
         -- ) shift; break ;;
         *) break ;;
@@ -77,6 +78,7 @@ while true; do
 done
 
 export LTO
+export CCACHE
 
 if have_cmd ninja-build; then
     NINJA=$(command -v ninja-build)
@@ -123,11 +125,10 @@ function compress_patch() {
 function build() {
     CXX_COMPILER="$2$COMPILER_VERSION"
     C_COMPILER="$1$COMPILER_VERSION"
-    export CXX="$CXX_COMPILER"
-    export CCC_CXX="$CXX_COMPILER"
-    export CC="$C_COMPILER"
-    export CCC_CC="$C_COMPILER"
-    export CC="$C_COMPILER"
+    export CXX="$CCACHE $CXX_COMPILER"
+    export CCC_CXX="$CCACHE $CXX_COMPILER"
+    export CC="$CCACHE $C_COMPILER"
+    export CCC_CC="$CCACHE $C_COMPILER"
 
     SCAN_BUILD=""
     if [ $ANALYZE = true ] ; then

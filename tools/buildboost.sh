@@ -28,7 +28,10 @@ if [ $LTO = "true" ]; then
     EXTRA_LINK_FLAGS="<linkflags>-flto"
 fi
 
-cp -r "${MESON_SOURCE_ROOT}/subprojects/${BOOST_NAME}" "${MESON_BUILD_ROOT}/boost"
+if [ ! -d "${MESON_BUILD_ROOT}/boost" ]; then
+    cp -r "${MESON_SOURCE_ROOT}/subprojects/${BOOST_NAME}" "${MESON_BUILD_ROOT}/boost"
+fi
+
 boost_src_home="${MESON_BUILD_ROOT}/boost"
 boost_bld_home="${MESON_BUILD_ROOT}/boost/build"
 cd $boost_src_home

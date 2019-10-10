@@ -3,7 +3,9 @@ set -e
 
 ZLIB_NAME="zlib-1.2.11"
 
-cp -r "${MESON_SOURCE_ROOT}/subprojects/${ZLIB_NAME}" "${MESON_BUILD_ROOT}/zlib"
+if [ ! -d "${MESON_BUILD_ROOT}/zlib" ]; then
+    cp -r "${MESON_SOURCE_ROOT}/subprojects/${ZLIB_NAME}" "${MESON_BUILD_ROOT}/zlib"
+fi
 
 cd "${MESON_BUILD_ROOT}/zlib"
 
