@@ -84,7 +84,7 @@ namespace sdk {
             const nlohmann::json& hw_device = nlohmann::json::object());
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
-        void login(const std::string& mnemonic);
+        void login(locker_t& locker, const std::string& mnemonic);
         void login(const std::string& mnemonic, const std::string& password);
         bool login_from_cached(const std::string& mnemonic);
         void login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
@@ -189,6 +189,7 @@ namespace sdk {
         void emit_notification(std::string event, nlohmann::json details);
 
         signer& get_signer();
+        const signer& get_signer() const;
         ga_pubkeys& get_ga_pubkeys();
         ga_user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
@@ -229,6 +230,8 @@ namespace sdk {
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker);
+        void unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
+        nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
