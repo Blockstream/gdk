@@ -779,6 +779,17 @@ namespace sdk {
         return shared;
     }
 
+    void tor_controller::tor_sleep_hint(const std::string& hint)
+    {
+        if (hint == "sleep") {
+            // internally checks the state, no-op if already sleeping
+            sleep();
+        } else if (hint == "wakeup") {
+            // internally checks the state, no-op if already awake
+            wakeup();
+        }
+    }
+
     std::string tor_controller::wait_for_socks5(
         uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb)
     {

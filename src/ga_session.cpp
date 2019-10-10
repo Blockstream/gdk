@@ -336,20 +336,7 @@ namespace sdk {
         return m_tor_ctrl ? m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, nullptr) : std::string{};
     }
 
-    void ga_session::tor_sleep_hint(const std::string& hint)
-    {
-        if (!m_tor_ctrl) {
-            return;
-        }
-
-        if (hint == "sleep") {
-            // internally checks the state, no-op if already sleeping
-            m_tor_ctrl->sleep();
-        } else if (hint == "wakeup") {
-            // internally checks the state, no-op if already awake
-            m_tor_ctrl->wakeup();
-        }
-    }
+    void ga_session::tor_sleep_hint(const std::string& hint) { m_tor_ctrl->tor_sleep_hint(hint); }
 
     void ga_session::unsubscribe()
     {

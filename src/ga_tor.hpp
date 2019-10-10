@@ -34,6 +34,7 @@ namespace sdk {
         void wakeup();
 
         static std::shared_ptr<tor_controller> get_shared_ref();
+        void tor_sleep_hint(const std::string& hint);
 
         std::string wait_for_socks5(
             uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb);
