@@ -97,7 +97,7 @@ test_fedora_debug_gcc:
   extends: .fedora_images
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --buildtype=debug --gcc
+    - ./tools/build.sh --buildtype=debugoptimized --gcc
 
 test_fedora_clang:
   extends: .fedora_images
@@ -110,7 +110,7 @@ test_clang:
     - ga
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --clang-tidy-version=7 --clang
+    - ./tools/build.sh --clang
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release

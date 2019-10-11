@@ -8,10 +8,12 @@ cross_iphone_build =  meson.get_cross_property('target_os', '').contains('iphone
 cross_android_build = host_machine.system() == 'android'
 is_32bit_android_build = cross_android_build and (host_machine.cpu() == 'armv7' or host_machine.cpu() == 'i686')
 is_freebsd = host_machine.system().startswith('freebsd')
+is_darwin = build_machine.system() == 'darwin'
 is_clang = compiler.get_id() == 'clang'
 freebsd_requires_gold = is_freebsd and is_clang
 use_gold = (build_machine.system() == 'linux' or freebsd_requires_gold) and not cross_win_build and not cross_android_build
-debug = get_option('buildtype') == 'debug'
+debug_optimized = get_option('buildtype') == 'debugoptimized'
+debug = debug_optimized or get_option('buildtype') == 'debug'
 lto = get_option('lto')
 
 # header checks (must be architecture independent)
@@ -43,7 +45,7 @@ endif
 if use_gold
     add_project_link_arguments(['-fuse-ld=gold', '-ldl'], language : 'cpp')
 elif cross_android_build
-    if build_machine.system() == 'darwin' and not lto
+    if is_darwin and not lto
         add_project_link_arguments(['-fuse-ld=bfd', '-ldl'], language : 'cpp')
     else
         add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')
@@ -85,7 +87,7 @@ if is_freebsd
     endif
 endif
 
-if (build_machine.system() != 'darwin' and not cross_win_build) or cross_android_build
+if (not is_darwin and not cross_win_build) or cross_android_build
     add_project_link_arguments(common_link_args, language : ['c', 'cpp'])
 endif
 
@@ -95,7 +97,10 @@ if get_option('b_sanitize') == 'address' and is_clang
 endif
 
 if debug
-    add_project_arguments(['-g', '-Og', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC'], language : ['c', 'cpp'])
+    add_project_arguments(['-ggdb3', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC'], language : ['c', 'cpp'])
+    if debug_optimized
+        add_project_arguments(['-Og'], language : ['c', 'cpp'])
+    endif
 else
     add_project_arguments(['-DNDEBUG'], language : ['c', 'cpp'])
 endif

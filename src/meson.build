@@ -16,6 +16,7 @@ cpp_headers = [
            'http_client.hpp',
            'logging.hpp',
            'memory.hpp',
+           'network_parameters.hpp',
            'session.hpp',
            'signer.hpp',
            'socks_client.hpp',
@@ -98,10 +99,10 @@ endif
 wallycore_libdir = wallycore.get_variable('libdir')
 if host_machine.system() == 'linux' or cross_android_build
     local_link_args += ['-Wl,--whole-archive', join_paths(wallycore_libdir, 'libwallycore.a'), '-Wl,--no-whole-archive']
-    if build_jni and build_machine.system() == 'darwin'
+    if build_jni and is_darwin
         local_link_args += ['-Wl,--whole-archive', join_paths(wallycore_libdir, '..', '..', 'src', '.libs', 'libswig_java.a'), '-Wl,--no-whole-archive']
     endif
-elif build_machine.system() == 'darwin'
+elif is_darwin
     local_link_args += ['-Wl,-force_load', join_paths(wallycore_libdir, 'libwallycore.a')]
 endif
 
@@ -126,26 +127,23 @@ libga = both_libraries('greenaddress',
                         install_dir : libga_installdir)
 
 if not cross_android_build
-    output = 'allsym_libgreenaddress.a'
     archiver = custom_target('archiver',
-                             output : output,
+                             output : 'libgreenaddress_full.a',
                              command : [join_paths(meson.source_root(), 'tools', 'archiver.sh'), meson.build_root(), find_program('ar')],
-                             build_always_stale : true,
                              build_by_default : true,
                              depends : libga)
 endif
 
-# TODO: macOS doesn't have an "official" version of objcopy, maybe brew has something for us.. android works though, because NDK has its own objcopy in the toolchain
-if build_machine.system() != 'darwin' or cross_android_build
-	# Extract the debug symbols from the un-stripped version in build-**
-	custom_target('external debug symbols',
-		      output : 'libgreenaddress.syms',
-		      command : [find_program('objcopy'), '--only-keep-debug', libga.full_path(), join_paths(meson.build_root(), 'src', 'libgreenaddress.syms')],
-		      build_by_default : true,
-		      build_always_stale : true,
-		      install : true,
-		      install_dir : libga_installdir,
-		      depends : libga)
+objcopy = find_program('objcopy', required : false)
+if objcopy.found() and not is_darwin
+    # Extract the debug symbols from the un-stripped version in build-**
+    custom_target('external debug symbols',
+                  output : 'libgreenaddress.syms',
+                  command : [objcopy, '--only-keep-debug', libga.full_path(), join_paths(meson.build_root(), 'src', 'libgreenaddress.syms')],
+                  build_by_default : true,
+                  install : true,
+                  install_dir : libga_installdir,
+                  depends : libga)
 endif
 
 # tests

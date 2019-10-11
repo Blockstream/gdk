@@ -100,6 +100,12 @@ By default the build type is release. A debug build can specified as
 
 `tools/build.sh --buildtype=debug --clang`
 
+or
+
+`tools/build.sh --buildtype=debugoptimized --clang`
+
+for a debug optimized build.
+
 #### Clang Analyzer
 
 To build using clang-analyzer use
