@@ -63,11 +63,11 @@ pub fn fmt_time(unix_ts: u64) -> String {
 }
 
 // nuclear option, if we need to convert an error without From or Display
-pub fn into_err<A, E>(err: E) -> Result<A, Error>
+pub fn into_err<E>(err: E) -> Error
 where
     E: std::fmt::Debug,
 {
-    Err(Error::Other(From::from(format!("{:?}", err))))
+    Error::Other(From::from(format!("{:?}", err)))
 }
 
 pub fn parse_outs(details: &Value) -> Result<HashMap<String, Amount>, Error> {
@@ -79,7 +79,7 @@ pub fn parse_outs(details: &Value) -> Result<HashMap<String, Amount>, Error> {
         .iter()
         .map(|desc| {
             let mut address = desc["address"].as_str().req()?;
-            let raw_sats = desc["satoshi"].as_u64().or_err("id_no_amount_specified")?;
+            let raw_sats = desc.get("satoshi").and_then(|s| s.as_u64()).unwrap_or(0);
             let amount = Amount::from_sat(raw_sats);
 
             if address.to_lowercase().starts_with("bitcoin:") {

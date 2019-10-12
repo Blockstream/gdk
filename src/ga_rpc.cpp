@@ -1,16 +1,47 @@
-
+#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__) || defined(__GNUG__)
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#else
+// ??
+#endif
 
 #include "ga_rpc.hpp"
+#include "exception.hpp"
+#include "logging.hpp"
 
 namespace ga {
 namespace sdk {
 
-    ga_rpc::ga_rpc(const nlohmann::json& net_params)
-        : m_netparams(gdkrpc_json(net_params))
+    static const std::string TOR_SOCKS5_PREFIX("socks5://");
+
+    static inline void check_code(const int32_t return_code)
     {
-        GDKRPC_create_session(&m_session);
+        switch (return_code) {
+        case GA_OK:
+            return;
+
+        case GA_RECONNECT:
+        case GA_SESSION_LOST:
+            throw reconnect_error();
+
+        case GA_TIMEOUT:
+            throw timeout_error();
+
+        case GA_NOT_AUTHORIZED:
+            throw login_error(""); // TODO: msg from rust
+
+        case GA_ERROR:
+        default:
+            throw std::runtime_error("call failed with: " + std::to_string(return_code));
+            break;
+        }
+    }
+
+    ga_rpc::ga_rpc(const nlohmann::json& net_params, const nlohmann::json& networks)
+        : m_netparams(ga::sdk::network_parameters(net_params))
+    {
+        GDKRPC_create_session(&m_session, gdkrpc_json(networks).get());
     }
 
     ga_rpc::~ga_rpc()
@@ -61,17 +92,35 @@ namespace sdk {
         }
     }
 
-    std::string ga_rpc::get_tor_socks5() { throw std::runtime_error("get_tor_socks5 not implemented"); }
-    void ga_rpc::emit_notification(std::string event, nlohmann::json details)
+    std::string ga_rpc::get_tor_socks5()
     {
-        throw std::runtime_error("emit_notification not implemented");
+        return m_tor_ctrl ? m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, nullptr) : std::string{};
     }
 
-    // TODO: remove me when tor MR extract lands
-    void ga_rpc::tor_sleep_hint(const std::string& hint) {}
-    std::string ga_rpc::get_tor_socks5() { throw std::runtime_error("get_tor_socks5 not implemented"); }
+    void ga_rpc::connect()
+    {
+        if (m_netparams.use_tor() && m_netparams.socks5().empty()) {
+            m_tor_ctrl = tor_controller::get_shared_ref();
+            std::string full_socks5
+                = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
+                      emit_notification("tor",
+                          { { "tag", phase->tag }, { "summary", phase->summary }, { "progress", phase->progress } });
+                  });
 
-    void ga_rpc::connect() { GDKRPC_connect(m_session, m_netparams.get()); }
+            if (full_socks5.empty()) {
+                throw timeout_error();
+            }
+
+            GDK_RUNTIME_ASSERT(full_socks5.size() > TOR_SOCKS5_PREFIX.size());
+            full_socks5.erase(0, TOR_SOCKS5_PREFIX.size());
+
+            m_netparams.get_json_mut()["socks5"] = full_socks5;
+
+            GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_netparams.socks5();
+        }
+
+        check_code(GDKRPC_connect(m_session, gdkrpc_json(m_netparams.get_json()).get()));
+    }
 
     void ga_rpc::disconnect() { GDKRPC_disconnect(m_session); }
 
@@ -100,7 +149,7 @@ namespace sdk {
     }
     void ga_rpc::login(const std::string& mnemonic, const std::string& password)
     {
-        throw std::runtime_error("login not implemented");
+        check_code(GDKRPC_login(m_session, nullptr, mnemonic.c_str(), password.c_str()));
     }
     void ga_rpc::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
@@ -116,7 +165,8 @@ namespace sdk {
     }
     std::string ga_rpc::get_watch_only_username()
     {
-        throw std::runtime_error("get_watch_only_username not implemented");
+        // TODO
+        return std::string{};
     }
     bool ga_rpc::remove_account(const nlohmann::json& twofactor_data)
     {
@@ -141,27 +191,76 @@ namespace sdk {
     nlohmann::json ga_rpc::get_transactions(const nlohmann::json& details)
     {
         GDKRPC_json* ret;
+        nlohmann::json actual_details;
 
-        auto converted_details = gdkrpc_json(details);
+        if (details.is_null()) {
+            actual_details["page_id"] = 0;
+        } else {
+            actual_details = details;
+        }
 
-        std::cout << "converted_details:\n" << details.dump() << "\n";
+        auto converted_details = gdkrpc_json(actual_details);
 
-        GDKRPC_get_transactions(m_session, converted_details.get(), &ret);
+        int ok = GDKRPC_get_transactions(m_session, converted_details.get(), &ret);
+
+        if (ok != GA_OK) {
+            return nlohmann::json{};
+        }
 
         return gdkrpc_json::from_serde(ret);
     }
 
-    void ga_rpc::set_notification_handler(GA_notification_handler handler, void* context) { }
+    void ga_rpc::gdkrpc_notif_handler(void* self_context, GDKRPC_json* json)
+    {
+        // "new" needed because we want that to be on the heap. the notif handler will free it
+        nlohmann::json* converted_heap = new nlohmann::json(gdkrpc_json::from_serde(json));
+        const GA_json* as_ptr = reinterpret_cast<const GA_json*>(converted_heap);
+
+        ga_rpc* self = static_cast<ga_rpc*>(self_context);
+        if (self->m_ga_notif_handler) {
+            self->m_ga_notif_handler(self->m_ga_notif_context, as_ptr);
+        }
+    }
+
+    void ga_rpc::emit_notification(std::string event, nlohmann::json details)
+    {
+        const nlohmann::json* heap_json = new nlohmann::json({ { "event", event }, { event, details } });
+        const GA_json* as_ptr = reinterpret_cast<const GA_json*>(heap_json);
+
+        if (m_ga_notif_handler) {
+            m_ga_notif_handler(m_ga_notif_context, as_ptr);
+        }
+    }
+
+    void ga_rpc::set_notification_handler(GA_notification_handler handler, void* context)
+    {
+        m_ga_notif_handler = handler;
+        m_ga_notif_context = context;
+
+        GDKRPC_set_notification_handler(m_session, ga::sdk::ga_rpc::gdkrpc_notif_handler, this);
+    }
 
     nlohmann::json ga_rpc::get_receive_address(const nlohmann::json& details)
     {
-        throw std::runtime_error("get_receive_address not implemented");
+        GDKRPC_json* output;
+        GDKRPC_get_receive_address(m_session, gdkrpc_json(details).get(), &output);
+        return gdkrpc_json::from_serde(output);
     }
-    nlohmann::json ga_rpc::get_subaccounts() { throw std::runtime_error("get_subaccounts not implemented"); }
+
+    nlohmann::json ga_rpc::get_subaccounts()
+    {
+        GDKRPC_json* output;
+        GDKRPC_get_subaccounts(m_session, &output);
+        return gdkrpc_json::from_serde(output);
+    }
+
     nlohmann::json ga_rpc::get_subaccount(uint32_t subaccount)
     {
-        throw std::runtime_error("get_subaccount not implemented");
+        GDKRPC_json* output;
+        GDKRPC_get_subaccount(m_session, subaccount, &output);
+        return gdkrpc_json::from_serde(output);
     }
+
     void ga_rpc::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         throw std::runtime_error("rename_subaccount not implemented");
@@ -169,17 +268,31 @@ namespace sdk {
 
     nlohmann::json ga_rpc::get_balance(const nlohmann::json& details)
     {
-        throw std::runtime_error("get_balance not implemented");
+        GDKRPC_json* output;
+        GDKRPC_get_balance(m_session, gdkrpc_json(details).get(), &output);
+        return gdkrpc_json::from_serde(output);
     }
+
     nlohmann::json ga_rpc::get_available_currencies() const
     {
-        throw std::runtime_error("get_available_currencies not implemented");
+
+        GDKRPC_json* output;
+        GDKRPC_get_available_currencies(m_session, &output);
+        return gdkrpc_json::from_serde(output);
     }
-    nlohmann::json ga_rpc::get_hw_device() const { throw std::runtime_error("get_hw_device not implemented"); }
+
+    nlohmann::json ga_rpc::get_hw_device() const { return nlohmann::json{}; }
 
     bool ga_rpc::is_rbf_enabled() const { throw std::runtime_error("is_rbf_enabled not implemented"); }
-    bool ga_rpc::is_watch_only() const { throw std::runtime_error("is_watch_only not implemented"); }
-    nlohmann::json ga_rpc::get_settings() { throw std::runtime_error("get_settings not implemented"); }
+    bool ga_rpc::is_watch_only() const { return false; }
+
+    nlohmann::json ga_rpc::get_settings()
+    {
+        GDKRPC_json* output;
+        GDKRPC_get_settings(m_session, &output);
+        return gdkrpc_json::from_serde(output);
+    }
+
     void ga_rpc::change_settings(const nlohmann::json& settings)
     {
         throw std::runtime_error("change_settings not implemented");
@@ -187,16 +300,16 @@ namespace sdk {
 
     nlohmann::json ga_rpc::get_twofactor_config(bool reset_cached)
     {
-        throw std::runtime_error("get_twofactor_config not implemented");
+        GDKRPC_json* output;
+        GDKRPC_get_twofactor_config(m_session, &output);
+        return gdkrpc_json::from_serde(output);
     }
+
     std::vector<std::string> ga_rpc::get_all_twofactor_methods()
     {
         throw std::runtime_error("get_all_twofactor_methods not implemented");
     }
-    std::vector<std::string> ga_rpc::get_enabled_twofactor_methods()
-    {
-        throw std::runtime_error("get_enabled_twofactor_methods not implemented");
-    }
+    std::vector<std::string> ga_rpc::get_enabled_twofactor_methods() { return {}; }
 
     void ga_rpc::set_email(const std::string& email, const nlohmann::json& twofactor_data)
     {
@@ -255,21 +368,37 @@ namespace sdk {
     {
         throw std::runtime_error("get_transaction_details not implemented");
     }
+
     nlohmann::json ga_rpc::create_transaction(const nlohmann::json& details)
     {
-        throw std::runtime_error("create_transaction not implemented");
+        GDKRPC_json* transaction;
+        GDKRPC_create_transaction(m_session, gdkrpc_json(details).get(), &transaction);
+        return gdkrpc_json::from_serde(transaction);
     }
+
     nlohmann::json ga_rpc::sign_transaction(const nlohmann::json& details)
     {
-        throw std::runtime_error("sign_transaction not implemented");
+        GDKRPC_json* signed_tx;
+        GDKRPC_sign_transaction(m_session, gdkrpc_json(details).get(), &signed_tx);
+        return gdkrpc_json::from_serde(signed_tx);
     }
+
     nlohmann::json ga_rpc::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        throw std::runtime_error("send_transaction not implemented");
+        GDKRPC_json* res;
+        GDK_LOG_SEV(log_level::info) << "what";
+        GDKRPC_send_transaction(m_session, gdkrpc_json(details).get(), &res);
+        GDK_LOG_SEV(log_level::info) << "what2";
+        return gdkrpc_json::from_serde(res);
     }
+
     std::string ga_rpc::broadcast_transaction(const std::string& tx_hex)
     {
-        throw std::runtime_error("broadcast_transaction not implemented");
+        char* tx_hash;
+        GDKRPC_broadcast_transaction(m_session, tx_hex.c_str(), &tx_hash);
+        auto res = std::string(tx_hash);
+        GA_destroy_string(tx_hash);
+        return res;
     }
 
     void ga_rpc::sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
@@ -297,14 +426,30 @@ namespace sdk {
         throw std::runtime_error("set_transaction_memo not implemented");
     }
 
-    nlohmann::json ga_rpc::get_fee_estimates() { throw std::runtime_error("get_fee_estimates not implemented"); }
+    nlohmann::json ga_rpc::get_fee_estimates()
+    {
+        GDKRPC_json* output;
+        GDKRPC_get_fee_estimates(m_session, &output);
+        return gdkrpc_json::from_serde(output);
+    }
 
     std::string ga_rpc::get_mnemonic_passphrase(const std::string& password)
     {
-        throw std::runtime_error("get_mnemonic_passphrase not implemented");
+        char* mnemonic = NULL;
+        check_code(GDKRPC_get_mnemonic_passphrase(m_session, password.c_str(), &mnemonic));
+
+        const auto result = std::string(mnemonic, strlen(mnemonic));
+        GA_destroy_string(mnemonic);
+
+        return result;
     }
 
-    std::string ga_rpc::get_system_message() { throw std::runtime_error("get_system_message not implemented"); }
+    std::string ga_rpc::get_system_message()
+    {
+        // TODO
+        return std::string{};
+    }
+
     std::pair<std::string, std::vector<uint32_t>> ga_rpc::get_system_message_info(const std::string& system_message)
     {
         throw std::runtime_error("get_system_message_info not implemented");
@@ -320,7 +465,9 @@ namespace sdk {
 
     nlohmann::json ga_rpc::convert_amount(const nlohmann::json& amount_json) const
     {
-        throw std::runtime_error("convert_amount not implemented");
+        GDKRPC_json* output;
+        GDKRPC_convert_amount(m_session, gdkrpc_json(amount_json).get(), &output);
+        return gdkrpc_json::from_serde(output);
     }
 
     amount ga_rpc::get_min_fee_rate() const { throw std::runtime_error("get_min_fee_rate not implemented"); }
@@ -337,10 +484,8 @@ namespace sdk {
         throw std::runtime_error("is_spending_limits_decrease not implemented");
     }
 
-    const network_parameters& ga_rpc::get_network_parameters() const
-    {
-        throw std::runtime_error("get_network_parameters not implemented");
-    }
+    const network_parameters& ga_rpc::get_network_parameters() const { return m_netparams; }
+
     signer& ga_rpc::get_signer() { throw std::runtime_error("get_signer not implemented"); }
     ga_pubkeys& ga_rpc::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rpc::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }

@@ -1,5 +1,9 @@
 pub const GA_OK: i32 = 0;
 pub const GA_ERROR: i32 = -1;
+pub const GA_RECONNECT: i32 = -2;
+pub const GA_SESSION_LOST: i32 = -3;
+pub const GA_TIMEOUT: i32 = -4;
+pub const GA_NOT_AUTHORIZED: i32 = -5;
 
 pub const GA_TRUE: u32 = 1;
 pub const GA_FALSE: u32 = 0;

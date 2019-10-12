@@ -104,7 +104,6 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
-        static const uint32_t DEFAULT_TOR_SOCKS_WAIT = 15; // maximum timeout for the tor socks to get ready
 
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)

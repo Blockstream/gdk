@@ -3,26 +3,30 @@ use std::mem::transmute;
 use serde_json::Value;
 
 use crate::errors::Error;
-use crate::network::Network;
+use crate::network::{Network, RpcConfig};
 use crate::settings::Settings;
 use crate::wallet::Wallet;
 use crate::GDKRPC_json;
+
+use std::collections::HashMap;
 
 #[derive(Debug)]
 #[repr(C)]
 pub struct GDKRPC_session {
     pub settings: Settings,
-    pub network: Option<Network>,
+    pub rpc_cfg: Option<RpcConfig>,
+    pub networks: HashMap<String, Network>,
     pub wallet: Option<Wallet>,
     pub notify:
         Option<(extern "C" fn(*const libc::c_void, *const GDKRPC_json), *const libc::c_void)>,
 }
 
 impl GDKRPC_session {
-    pub fn new() -> *mut GDKRPC_session {
+    pub fn new(networks: HashMap<String, Network>) -> *mut GDKRPC_session {
         let sess = GDKRPC_session {
             settings: Settings::default(),
-            network: None,
+            rpc_cfg: None,
+            networks: networks,
             wallet: None,
             notify: None,
         };
@@ -54,8 +58,8 @@ impl GDKRPC_session {
 
     pub fn notify(&self, data: Value) {
         debug!("push notification: {:?}", data);
-        if let Some((handler, context)) = self.notify {
-            handler(context, GDKRPC_json::new(data));
+        if let Some((handler, self_context)) = self.notify {
+            handler(self_context, GDKRPC_json::new(data));
         } else {
             warn!("no registered handler to receive notification");
         }

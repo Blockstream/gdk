@@ -1,5 +1,5 @@
-#ifndef GDK_GDK_H
-#define GDK_GDK_H
+#ifndef GDK_GDK_RPC_H
+#define GDK_GDK_RPC_H
 #pragma once
 
 #include <stddef.h>
@@ -22,38 +22,14 @@ extern "C" {
 #define GDK_API
 #endif
 
-/** Error codes for API calls */
-#define GA_OK 0
-#define GA_ERROR (-1)
-#define GA_RECONNECT (-2)
-#define GA_SESSION_LOST (-3)
-#define GA_TIMEOUT (-4)
-#define GA_NOT_AUTHORIZED (-5)
-
-/** Logging levels */
-#define GA_NONE 0
-#define GA_INFO 1
-#define GA_DEBUG 2
-
-/** Boolean values */
-#define GA_TRUE 1
-#define GA_FALSE 0
-
 /** A server session */
 typedef struct GDKRPC_session GDKRPC_session;
 
 /** A Parsed JSON object */
 typedef struct GDKRPC_json GDKRPC_json;
 
-/** An api method call that potentially requires two factor authentication to complete */
-struct GA_auth_handler;
-
 /** A notification handler */
-typedef void (*GA_notification_handler)(void* context, const GDKRPC_json* details);
-
-/** Values for transaction memo type */
-#define GA_MEMO_USER 0
-#define GA_MEMO_BIP70 1
+typedef void (*GDKRPC_notification_handler)(void *self_context, GDKRPC_json* details);
 
 /**
  * Create a new session.
@@ -61,7 +37,7 @@ typedef void (*GA_notification_handler)(void* context, const GDKRPC_json* detail
  * :param session: Destination for the resulting session.
  *|     Returned session should be freed using `GA_destroy_session`.
  */
-GDK_API int GDKRPC_create_session(struct GDKRPC_session** session);
+GDK_API int GDKRPC_create_session(struct GDKRPC_session** session, GDKRPC_json *networks);
 
 /**
  * Free a session allocated by `GA_create_session`.
@@ -114,8 +90,7 @@ GDK_API int GDKRPC_register_user(
  * :param call: Destination for the resulting GA_auth_handler to perform the login.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GDKRPC_login(struct GDKRPC_session* session, const GDKRPC_json* hw_device, const char* mnemonic, const char* password,
-    struct GA_auth_handler** call);
+GDK_API int GDKRPC_login(struct GDKRPC_session* session, const GDKRPC_json* hw_device, const char* mnemonic, const char* password);
 
 /**
  * Authenticate a user.
@@ -245,7 +220,7 @@ GDK_API int GDKRPC_create_transaction(
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GDKRPC_sign_transaction(
-    struct GDKRPC_session* session, const GDKRPC_json* transaction_details, struct GA_auth_handler** call);
+    struct GDKRPC_session* session, const GDKRPC_json* transaction_details, GDKRPC_json** signed_tx);
 
 /**
  * Broadcast a non-Green signed transaction to the P2P network.
@@ -266,7 +241,7 @@ GDK_API int GDKRPC_broadcast_transaction(struct GDKRPC_session* session, const c
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GDKRPC_send_transaction(
-    struct GDKRPC_session* session, const GDKRPC_json* transaction_details, struct GA_auth_handler** call);
+    struct GDKRPC_session* session, const GDKRPC_json* transaction_details, GDKRPC_json** res);
 
 /**
  * Request an email containing the user's nLockTime transactions.
@@ -359,7 +334,8 @@ GDK_API int GDKRPC_get_settings(struct GDKRPC_session* session, GDKRPC_json** se
  * the handler with a :ref:`session-event` notification.
  *
  */
-GDK_API int GDKRPC_set_notification_handler(struct GDKRPC_session* session, GA_notification_handler handler, void* context);
+
+GDK_API int GDKRPC_set_notification_handler(struct GDKRPC_session* session, GDKRPC_notification_handler handler, void *self_context);
 
 GDK_API int GDKRPC_convert_json_to_string(const GDKRPC_json* json, char** output);
 
@@ -374,6 +350,10 @@ GDK_API int GDKRPC_convert_json_value_to_uint64(const GDKRPC_json* json, const c
 GDK_API int GDKRPC_convert_json_value_to_bool(const GDKRPC_json* json, const char* path, uint32_t* output);
 
 GDK_API int GDKRPC_convert_json_value_to_json(const GDKRPC_json* json, const char* path, GDKRPC_json** output);
+
+GDK_API int GDKRPC_get_subaccounts(struct GDKRPC_session* session, GDKRPC_json** balance);
+
+GDK_API int GDKRPC_get_subaccount(struct GDKRPC_session* session, uint32_t index, GDKRPC_json** balance);
 
 /**
  * Free a GDKRPC_json object.
@@ -409,10 +389,10 @@ GDK_API int GDKRPC_register_network(const char* name, const GDKRPC_json* network
  * :param output: Destination for the :ref:`networks-list`
  *|     Returned GDKRPC_json should be freed using `GA_destroy_json`.
  */
-GDK_API int GDKRPC_get_networks(GDKRPC_json** output);
+GDK_API int GDKRPC_get_networks(struct GDKRPC_session* session, GDKRPC_json** output);
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
 
-#endif /* GDK_GDK_H */
+#endif /* GDK_GDK_RPC_H */

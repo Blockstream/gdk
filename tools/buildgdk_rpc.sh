@@ -34,10 +34,13 @@ export CC_aarch64_linux_android=aarch64-linux-android21-clang
 
 OUT_LIB_FILE="libgdk_rpc.a"
 LD_ARCH="-arch x86_64 -platform_version macos 10.8 10.8"
+CARGO_FEATURES=()
+CARGO_ARGS=()
 
 cd "$BUILD_ROOT/subprojects/gdk_rpc"
 
 if [ \( "$1" = "--ndk" \) ]; then
+    CARGO_FEATURES+=("android_log")
     if [ "$(uname)" = "Darwin" ]; then
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin
     else
@@ -66,13 +69,17 @@ elif [ \( "$1" = "--iphonesim" \) ]; then
     LD_ARCH="-arch x86_64 -platform_version ios-simulator 11.0 11.0"
 fi
 
-CARGO_ARGS=()
 if [ "$BUILDTYPE" == "release" ]; then
     CARGO_ARGS+=("--release")
 fi
 
 if [ -n "$RUSTTARGET" ]; then
     CARGO_ARGS+=("--target=$RUSTTARGET")
+fi
+
+if [ -n "${CARGO_FEATURES[*]}" ]; then
+    CARGO_ARGS+=("--features")
+    CARGO_ARGS+=("${CARGO_FEATURES[*]}")
 fi
 
 printf "cargo args: ${CARGO_ARGS[*]}\n"

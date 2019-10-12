@@ -74,7 +74,7 @@ where
             //TODO(stevenroose) make this check better after https://github.com/rust-bitcoin/rust-bitcoin/pull/255
             let is_p2wpkh = match details.address.payload {
                 bitcoin::util::address::Payload::WitnessProgram {
-                    ref version,
+                    version: ref _version,
                     ref program,
                 } => program.len() == 20,
                 _ => false,

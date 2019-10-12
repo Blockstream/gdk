@@ -125,7 +125,7 @@ namespace sdk {
             boost::shared_ptr<session_common> session;
 
             if (net_params.contains("rpc_url") && net_params.contains("name")) {
-                session = boost::make_shared<ga_rpc>(net_params);
+                session = boost::make_shared<ga_rpc>(net_params, ga::sdk::network_parameters::get_all());
             } else {
                 session = boost::make_shared<ga_session>(net_params);
             }

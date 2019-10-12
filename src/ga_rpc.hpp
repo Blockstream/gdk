@@ -4,6 +4,8 @@
 #include <string>
 
 #include "../subprojects/gdk_rpc/gdk_rpc.h"
+#include "ga_tor.hpp"
+#include "network_parameters.hpp"
 #include "session_common.hpp"
 
 namespace ga {
@@ -45,7 +47,7 @@ namespace sdk {
     public:
         ~ga_rpc();
 
-        explicit ga_rpc(const nlohmann::json& net_params);
+        explicit ga_rpc(const nlohmann::json& net_params, const nlohmann::json& networks);
 
         void on_failed_login();
 
@@ -185,8 +187,14 @@ namespace sdk {
         void disable_all_pin_logins();
 
     private:
-        gdkrpc_json m_netparams;
+        static void gdkrpc_notif_handler(void* self_context, GDKRPC_json* json);
+
+        network_parameters m_netparams;
+        std::shared_ptr<tor_controller> m_tor_ctrl;
+
         GDKRPC_session* m_session;
+        GA_notification_handler m_ga_notif_handler;
+        void* m_ga_notif_context;
     };
 
 } // namespace sdk

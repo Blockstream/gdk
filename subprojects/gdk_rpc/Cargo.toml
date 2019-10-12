@@ -10,7 +10,7 @@ crate-type = ["staticlib"]
 
 [features]
 liquid = ["elements"]
-android_logger = ["android_log"]
+android_log = ["android_logger"]
 stderr_logger = ["stderrlog"]
 
 [dependencies]
@@ -30,7 +30,7 @@ log = "0.4"
 hyper = "0.10"
 hyper-socks = "0.4"
 stderrlog = { version = "0.4", optional = true }
-android_log = { version = "0.1", optional = true }
+android_logger = { version = "0.8.6", optional = true }
 url = "1.7.2"
 backtrace = "0.3"
 

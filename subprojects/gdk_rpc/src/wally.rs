@@ -24,7 +24,7 @@ mod ffi {
     pub const WALLY_ENOMEM: c_int = -3;
 
     /// Encode witness data if present.
-    pub const WALLY_TX_FLAG_USE_WITNESS: u32 = 0x1;
+    //pub const WALLY_TX_FLAG_USE_WITNESS: u32 = 0x1;
     /// Encode/Decode as an elements transaction.
     #[allow(unused)]
     pub const WALLY_TX_FLAG_USE_ELEMENTS: u32 = 0x2;
