@@ -42,13 +42,18 @@ if lto
     add_project_arguments(['-flto'], language : 'cpp')
     add_project_link_arguments(['-flto'], language : 'cpp')
 endif
+
 if use_gold
-    add_project_link_arguments(['-fuse-ld=gold', '-ldl'], language : 'cpp')
+    if is_clang and not is_freebsd and compiler.has_link_argument('-fuse-ld=lld')
+        add_project_link_arguments(['-fuse-ld=lld', '-ldl', '-Wl,--threads'], language : 'cpp')
+    else
+        add_project_link_arguments(['-fuse-ld=gold', '-ldl', '-Wl,--threads'], language : 'cpp')
+    endif
 elif cross_android_build
     if is_darwin and not lto
         add_project_link_arguments(['-fuse-ld=bfd', '-ldl'], language : 'cpp')
     else
-        add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')
+        add_project_link_arguments(['-fuse-ld=lld', '-ldl', '-Wl,--threads'], language : 'cpp')
     endif
 endif
 if cross_iphone_build
@@ -91,9 +96,15 @@ if (not is_darwin and not cross_win_build) or cross_android_build
     add_project_link_arguments(common_link_args, language : ['c', 'cpp'])
 endif
 
-if get_option('b_sanitize') == 'address' and is_clang
-    add_project_arguments(['-shared-libasan'], language : ['c', 'cpp'])
-    add_project_link_arguments(['-shared-libasan'], language : ['c', 'cpp'])
+# https://developer.android.com/ndk/guides/asan
+# https://github.com/android/ndk/issues/988 
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64234
+if get_option('b_sanitize') == 'address'
+    if is_clang
+        add_project_link_arguments(['-static-libsan'], language : ['c', 'cpp'])
+    else
+        add_project_link_arguments(['-shared-libasan'], language : ['c', 'cpp'])
+    endif
 endif
 
 if debug
@@ -225,7 +236,7 @@ library_deps += compiler.find_library('iphlpapi', required : cross_win_build)
 library_deps += compiler.find_library('ssp', required : cross_win_build)
 library_deps += compiler.find_library('log', required : cross_android_build)
 if debug and build_machine.system() == 'linux'
-    backtrace_dep = compiler.find_library('backtrace', required : false)
+    backtrace_dep = compiler.find_library('backtrace', has_headers : ['backtrace.h'], required : false)
     if backtrace_dep.found()
         library_deps += backtrace_dep
         add_project_arguments(['-DHAVE_BACKTRACE'], language : ['c', 'cpp'])

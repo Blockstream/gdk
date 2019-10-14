@@ -10,7 +10,7 @@ have_cmd()
 
 if have_cmd gsed; then
     SED=$(command -v gsed)
-elif have_cmd tar; then
+elif have_cmd sed; then
     SED=$(command -v sed)
 else
     echo "Could not find sed or gsed. Please install sed and try again."
@@ -41,6 +41,10 @@ CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --enable-ecmu
 
 if [ $LTO = "true" ]; then
     EXTRA_FLAGS="-flto"
+fi
+
+if [ "$2" = "--asan" ]; then
+    EXTRA_FLAGS="$EXTRA_FLAGS -fsanitize=address"
 fi
 
 if [ \( "$1" = "--ndk" \) ]; then

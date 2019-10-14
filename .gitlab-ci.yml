@@ -170,7 +170,7 @@ release_osx_ios:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone
+    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone --sanitizer=address
 
 release_osx_ios_sim:
   extends: .ios_release

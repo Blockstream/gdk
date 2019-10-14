@@ -9,6 +9,12 @@ run_cmd_args = []
 target_os = meson.get_cross_property('target_os', '')
 if target_os != ''
     run_cmd_args += ['--' + target_os]
+else
+    run_cmd_args += ['--linux']
+endif
+
+if get_option('b_sanitize') == 'address'
+    run_cmd_args += ['--asan']
 endif
 
 res = run_command(join_paths(meson.source_root(), 'tools', 'buildlibwally-core.sh'), run_cmd_args)

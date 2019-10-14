@@ -62,7 +62,7 @@ while true; do
         -x | --analyze ) ANALYZE=true; shift ;;
         -b | --buildtype ) BUILDTYPE=$2; shift 2 ;;
         --install ) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; NINJA_TARGET="install"; shift 2 ;;
-        --sanitizer ) MESON_OPTIONS="$MESON_OPTIONS -Db_sanitize=$2"; shift 2 ;;
+        --sanitizer ) MESON_OPTIONS="$MESON_OPTIONS -Db_sanitize=$2 -Db_lundef=false"; shift 2 ;;
         --enable-tests ) MESON_OPTIONS="$MESON_OPTIONS -Denable-tests=true"; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
         --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
