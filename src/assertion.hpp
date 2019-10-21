@@ -4,8 +4,6 @@
 
 #include <string>
 
-#include "wally_wrapper.h"
-
 namespace ga {
 namespace sdk {
     void runtime_assert_message(

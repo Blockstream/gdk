@@ -23,8 +23,7 @@ cpp_headers = [
            'transaction_utils.hpp',
            'tx_list_cache.hpp',
            'utils.hpp',
-           'xpub_hdkey.hpp',
-           'wally_wrapper.h']
+           'xpub_hdkey.hpp']
 
 cpp_sources = [
            'amount.cpp',
@@ -48,7 +47,8 @@ cpp_sources = [
            'utils.cpp',
            'xpub_hdkey.cpp']
 
-headers = ['../include/gdk.h']
+headers = ['../include/gdk.h',
+           '../include/wally_wrapper.h']
 
 sources = cpp_headers + cpp_sources + headers
 
@@ -96,6 +96,7 @@ else
     message('Disabled Python bindings')
 endif
 
+wallycore_incdir = join_paths(meson.build_root(), wallycore.get_variable('wallycore_dir_name'), 'build', 'include')
 wallycore_libdir = wallycore.get_variable('libdir')
 if host_machine.system() == 'linux' or cross_android_build
     local_link_args += ['-Wl,--whole-archive', join_paths(wallycore_libdir, 'libwallycore.a'), '-Wl,--no-whole-archive']
@@ -108,10 +109,31 @@ endif
 
 install_headers(
     headers,
-    subdir : 'gdk'
-)
+    subdir : 'gdk')
 
-if cross_android_build
+wally_headers = [
+    join_paths(wallycore_incdir, 'wally_address.h'),
+    join_paths(wallycore_incdir, 'wally_bip32.h'),
+    join_paths(wallycore_incdir, 'wally_bip38.h'),
+    join_paths(wallycore_incdir, 'wally_bip39.h'),
+    join_paths(wallycore_incdir, 'wally_core.h'),
+    join_paths(wallycore_incdir, 'wally_crypto.h'),
+    join_paths(wallycore_incdir, 'wally_elements.h'),
+    join_paths(wallycore_incdir, 'wally_script.h'),
+    join_paths(wallycore_incdir, 'wally_transaction.h'),
+]
+install_headers(
+    wally_headers,
+    subdir : 'gdk/libwally-core')
+
+install_data(
+    '../include/module.modulemap',
+    install_dir : 'include/gdk')
+
+install_data(
+    join_paths(meson.source_root(), 'src', 'swift', 'GreenAddress', 'Sources', 'GreenAddress', 'GreenAddress.swift'))
+
+if cross_android_build or cross_iphone_build
     libga_installdir = join_paths('lib', meson.get_cross_property('ndk_lib_dir'))
 else
     libga_installdir = 'lib'
@@ -129,12 +151,13 @@ libga = both_libraries('greenaddress',
 if not cross_android_build
     archiver = custom_target('archiver',
                              output : 'libgreenaddress_full.a',
-                             command : [join_paths(meson.source_root(), 'tools', 'archiver.sh'), meson.build_root(), find_program('ar')],
+                             command : [join_paths(meson.source_root(), 'tools', 'archiver.sh'), meson.build_root(), ar],
                              build_by_default : true,
+                             install : true,
+                             install_dir : libga_installdir,
                              depends : libga)
 endif
 
-objcopy = find_program('objcopy', required : false)
 if objcopy.found() and not is_darwin
     # Extract the debug symbols from the un-stripped version in build-**
     custom_target('external debug symbols',

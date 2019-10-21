@@ -259,7 +259,7 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
         if [ ! -f "build-clang-$1-$2/build.ninja" ]; then
             rm -rf build-clang-$1-$2/meson-private
             mkdir -p build-clang-$1-$2
-            ./tools/make_txt.sh $bld_root $bld_root/$1_$2_ios.txt $2 $2
+            ./tools/make_txt.sh $bld_root $bld_root/$1_$2_ios.txt $2 $2 $2
             compress_patch
             meson $bld_root --cross-file $bld_root/$1_$2_ios.txt --default-library=${LIBTYPE} ${MESON_OPTIONS}
         fi

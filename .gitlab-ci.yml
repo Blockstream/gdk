@@ -44,6 +44,16 @@ stages:
     paths:
     - gdk-python
 
+.ios_release:
+  extends: .osx_test
+  before_script:
+    - mkdir $CI_PROJECT_DIR/gdk-iphone
+  artifacts:
+    expire_in: 1 day
+    when: on_success
+    paths:
+    - gdk-iphone
+
 test_format:
   tags:
     - ga
@@ -155,19 +165,19 @@ test_osx_clang:
     - ./tools/clean.sh dirs
     - ./tools/build.sh --clang --lto=true
 
-test_osx_ios:
-  extends: .osx_test
+release_osx_ios:
+  extends: .ios_release
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --iphone static --lto=true
+    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone
 
-test_osx_ios_sim:
-  extends: .osx_test
+release_osx_ios_sim:
+  extends: .ios_release
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --iphonesim static --lto=true
+    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone
 
 test_osx_clang_ndk_armeabi-v7a:
   extends: .osx_test
@@ -262,6 +272,7 @@ package_release:
     - find gdk-android-jni -name "*.a" -type f -delete
     - find gdk-android-jni -name "*.syms" -type f -delete
     - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
+    - tar -czf gdk_dist/gdk-iphone.tar.gz gdk-iphone --remove-files
     - mv gdk-python/*whl gdk_dist/
     - cd gdk_dist
     - /opt/process_release
@@ -273,4 +284,6 @@ package_release:
   - release_py3m_buster
   - release_py3m_ubuntu_18.04
   - release_py3m_osx
+  - release_osx_ios
+  - release_osx_ios_sim
   - apidocs

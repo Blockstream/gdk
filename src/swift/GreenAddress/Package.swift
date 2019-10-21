@@ -3,8 +3,11 @@ import PackageDescription
 
 let package = Package(
     name: "GreenAddress",
+    products: [
+        .library(name: "GreenAddress", targets: ["GreenAddress"]),
+    ],
     dependencies: [
-        .package(url: "https://github.com/mxcl/PromiseKit", .exact("6.8.3"))
+        .package(url: "https://github.com/mxcl/PromiseKit", .exact("6.10.0")),
     ],
     targets: [
         .target(

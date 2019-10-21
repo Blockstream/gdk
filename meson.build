@@ -191,6 +191,9 @@ jni_disabled = cross_win_build or cross_iphone_build or not jni_deps
 build_jni = (jni_deps or cross_android_build) and not jni_disabled
 build_swig_python = swig.found() and python_dep.found() and not cross_iphone_build and not cross_android_build
 
+ar = find_program('ar', required : not cross_android_build)
+objcopy = find_program('objcopy', required : false)
+
 clang_format = find_program('clang-format', required : false)
 
 clang_tidy_name = 'clang-tidy' + get_option('clang-tidy-version')
