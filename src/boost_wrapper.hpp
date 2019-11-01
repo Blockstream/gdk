@@ -25,6 +25,7 @@
 #define BOOST_ASIO_HAS_STD_STRING_VIEW
 #endif
 #define BOOST_ASIO_DISABLE_IOCP
+#define BOOST_ASIO_DISABLE_VISIBILITY
 
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
 #define WIN32_LEAN_AND_MEAN
