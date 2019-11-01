@@ -154,10 +154,6 @@ namespace sdk {
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
 
         const network_parameters& get_network_parameters() const;
-        signer& get_signer();
-        ga_pubkeys& get_ga_pubkeys();
-        ga_user_pubkeys& get_user_pubkeys();
-        ga_user_pubkeys& get_recovery_pubkeys();
 
     private:
         template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);

@@ -345,7 +345,14 @@ namespace sdk {
 
     void ga_session::unsubscribe()
     {
-        for (const auto& sub : m_subscriptions) {
+        const auto subscriptions = [this] {
+            locker_t locker{ m_mutex };
+            const auto subscriptions = m_subscriptions;
+            m_subscriptions.clear();
+            return subscriptions;
+        }();
+
+        for (const auto& sub : subscriptions) {
             no_std_exception_escape([this, &sub] {
                 const auto status
                     = m_session->unsubscribe(sub).wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
@@ -354,8 +361,6 @@ namespace sdk {
                 }
             });
         }
-        locker_t locker(m_mutex);
-        m_subscriptions.clear();
     }
 
     bool ga_session::connect_with_tls() const
@@ -548,8 +553,8 @@ namespace sdk {
     void ga_session::emit_notification(std::string event, nlohmann::json details)
     {
         auto t = std::thread([this, event, details] {
+            locker_t locker{ m_mutex };
             if (m_notification_handler != nullptr) {
-                locker_t locker{ m_mutex };
                 call_notification_handler(locker, new nlohmann::json({ { "event", event }, { event, details } }));
             }
         });
@@ -1077,7 +1082,7 @@ namespace sdk {
         return get_spending_limits(locker);
     }
 
-    nlohmann::json ga_session::get_spending_limits(ga_session::locker_t& locker) const
+    nlohmann::json ga_session::get_spending_limits(locker_t& locker) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1115,7 +1120,7 @@ namespace sdk {
 
     void ga_session::on_new_transaction(locker_t& locker, nlohmann::json details)
     {
-        no_std_exception_escape([&] {
+        no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
             using namespace std::chrono_literals;
 
             GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1203,7 +1208,7 @@ namespace sdk {
 
     void ga_session::on_new_block(locker_t& locker, nlohmann::json details)
     {
-        no_std_exception_escape([&] {
+        no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             json_rename_key(details, "count", "block_height");
             details["initial_timestamp"] = m_earliest_block_time;
@@ -1225,7 +1230,7 @@ namespace sdk {
 
     void ga_session::on_new_fees(locker_t& locker, const nlohmann::json& details)
     {
-        no_std_exception_escape([&] {
+        no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             auto new_estimates = set_fee_estimates(locker, details);
 
@@ -2476,8 +2481,7 @@ namespace sdk {
 
         if (!m_watch_only) {
             // Compute the address locally to verify the servers data
-            const auto script
-                = output_script_from_utxo(m_net_params, *m_ga_pubkeys, *m_user_pubkeys, *m_recovery_pubkeys, address);
+            const auto script = output_script_from_utxo(address);
             const auto user_address = get_address_from_script(m_net_params, script, addr_type);
             GDK_RUNTIME_ASSERT(server_address == user_address);
         }
@@ -2864,7 +2868,6 @@ namespace sdk {
     ga_user_pubkeys& ga_session::get_user_pubkeys()
     {
         GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
-        GDK_RUNTIME_ASSERT(m_user_pubkeys != nullptr);
         return *m_user_pubkeys;
     }
 
@@ -2872,8 +2875,44 @@ namespace sdk {
     ga_user_pubkeys& ga_session::get_recovery_pubkeys()
     {
         GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
-        GDK_RUNTIME_ASSERT(m_recovery_pubkeys != nullptr);
         return *m_recovery_pubkeys;
+    }
+
+    bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)
+    {
+        locker_t locker{ m_mutex };
+        return get_recovery_pubkeys().have_subaccount(subaccount);
+    }
+
+    std::string ga_session::get_service_xpub(uint32_t subaccount)
+    {
+        locker_t locker{ m_mutex };
+        return get_ga_pubkeys().get_subaccount(subaccount).to_base58();
+    }
+
+    std::string ga_session::get_recovery_xpub(uint32_t subaccount)
+    {
+        locker_t locker{ m_mutex };
+        return get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
+    }
+
+    bool ga_session::supports_low_r() const
+    {
+        locker_t locker{ m_mutex };
+        return get_signer().supports_low_r();
+    }
+
+    std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
+    {
+        locker_t locker{ m_mutex };
+        return ::ga::sdk::output_script_from_utxo(
+            m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
+    }
+
+    ecdsa_sig_t ga_session::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
+    {
+        locker_t locker{ m_mutex };
+        return get_signer().sign_hash(path, hash);
     }
 
     nlohmann::json ga_session::create_transaction(const nlohmann::json& details)

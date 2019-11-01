@@ -20,6 +20,7 @@ cpp_headers = [
            'session.hpp',
            'signer.hpp',
            'socks_client.hpp',
+           'threading.hpp',
            'transaction_utils.hpp',
            'tx_list_cache.hpp',
            'utils.hpp',

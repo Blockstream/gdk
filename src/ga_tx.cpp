@@ -43,13 +43,12 @@ namespace sdk {
 
             if (utxo.find("service_xpub") == utxo.end()) {
                 // Populate the service xpub for h/w signing
-                utxo["service_xpub"] = session.get_ga_pubkeys().get_subaccount(subaccount).to_base58();
+                utxo["service_xpub"] = session.get_service_xpub(subaccount);
             }
 
-            if (utxo.find("recovery_xpub") == utxo.end()
-                && session.get_recovery_pubkeys().have_subaccount(subaccount)) {
+            if (utxo.find("recovery_xpub") == utxo.end() && session.has_recovery_pubkeys_subaccount(subaccount)) {
                 // Populate the recovery xpub for h/w signing
-                utxo["recovery_xpub"] = session.get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
+                utxo["recovery_xpub"] = session.get_recovery_xpub(subaccount);
             }
         }
 
@@ -60,7 +59,7 @@ namespace sdk {
             const auto txid = h2b_rev(txhash);
             const uint32_t index = utxo.at("pt_idx");
             const auto type = script_type(utxo.at("script_type"));
-            const bool low_r = session.get_signer().supports_low_r();
+            const bool low_r = session.supports_low_r();
             const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
             const bool external = !json_get_value(utxo, "private_key").empty();
             const uint32_t sequence = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
@@ -68,14 +67,12 @@ namespace sdk {
             utxo["sequence"] = sequence;
 
             if (external) {
-                tx_add_raw_input(tx, txid, index, sequence,
-                    dummy_external_input_script(session.get_signer(), h2b(utxo.at("public_key"))));
+                tx_add_raw_input(
+                    tx, txid, index, sequence, dummy_external_input_script(low_r, h2b(utxo.at("public_key"))));
             } else {
                 // Populate the prevout script if missing so signing can use it later
                 if (utxo.find("prevout_script") == utxo.end()) {
-                    const auto& net_params = session.get_network_parameters();
-                    const auto script = output_script_from_utxo(net_params, session.get_ga_pubkeys(),
-                        session.get_user_pubkeys(), session.get_recovery_pubkeys(), utxo);
+                    const auto script = session.output_script_from_utxo(utxo);
                     utxo["prevout_script"] = b2h(script);
                 }
                 const auto script = h2b(utxo["prevout_script"]);
@@ -96,7 +93,7 @@ namespace sdk {
                 if (wit) {
                     tx_add_raw_input(tx, txid, index, sequence, DUMMY_WITNESS_SCRIPT, wit);
                 } else {
-                    tx_add_raw_input(tx, txid, index, sequence, dummy_input_script(session.get_signer(), script));
+                    tx_add_raw_input(tx, txid, index, sequence, dummy_input_script(low_r, script));
                 }
             }
 
@@ -798,7 +795,7 @@ namespace sdk {
                     tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), ec_sig_to_der(user_sig, true)));
             } else {
                 const auto path = ga_user_pubkeys::get_full_path(subaccount, pointer);
-                const auto user_sig = session.get_signer().sign_hash(path, tx_hash);
+                const auto user_sig = session.sign_hash(path, tx_hash);
 
                 if (is_segwit_script_type(type)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
@@ -808,7 +805,7 @@ namespace sdk {
                     tx_set_input_witness(tx, index, wit);
                     tx_set_input_script(tx, index, witness_script(script));
                 } else {
-                    tx_set_input_script(tx, index, input_script(session.get_signer(), script, user_sig));
+                    tx_set_input_script(tx, index, input_script(session.supports_low_r(), script, user_sig));
                 }
             }
         }
@@ -848,7 +845,7 @@ namespace sdk {
         } else {
             constexpr bool has_sighash = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash);
-            tx_set_input_script(tx, index, input_script(session.get_signer(), script, user_sig));
+            tx_set_input_script(tx, index, input_script(session.supports_low_r(), script, user_sig));
         }
     }
 

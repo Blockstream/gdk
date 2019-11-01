@@ -71,6 +71,10 @@ common_compile_options = [
     '-DGDK_BUILD',
 ]
 
+if not is_freebsd and compiler.has_argument('-Wthread-safety')
+    common_compile_options += ['-Wthread-safety']
+endif
+
 if get_option('time-report') and compiler.has_argument('-ftime-report')
       common_compile_options += ['-ftime-report']
 endif

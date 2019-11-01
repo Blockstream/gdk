@@ -4,13 +4,13 @@
 
 #include <cstddef>
 #include <map>
-#include <mutex>
 #include <string>
 
 #include "containers.hpp"
 #include "ga_wally.hpp"
 #include "include/gdk.h"
 #include "logging.hpp"
+#include "threading.hpp"
 
 namespace ga {
 namespace sdk {
@@ -53,7 +53,7 @@ namespace sdk {
         }
     }
 
-    template <typename F> void no_std_exception_escape(F&& fn)
+    template <typename F> void no_std_exception_escape(F&& fn) noexcept GDK_NO_THREAD_SAFETY_ANALYSIS
     {
         try {
             fn();
@@ -82,47 +82,6 @@ namespace sdk {
     std::string aes_cbc_encrypt(
         const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& plaintext);
 
-    // Scoped unlocker
-    struct unique_unlock {
-        explicit unique_unlock(std::unique_lock<std::mutex>& locker)
-            : m_locker(locker)
-            , m_owns_lock(true)
-        {
-            unlock();
-        }
-
-        unique_unlock(const unique_unlock&) = delete;
-        unique_unlock(unique_unlock&&) = delete;
-        unique_unlock& operator=(const unique_unlock&) = delete;
-        unique_unlock& operator=(unique_unlock&&) = delete;
-
-        void lock()
-        {
-            GDK_RUNTIME_ASSERT(!m_locker.owns_lock());
-            GDK_RUNTIME_ASSERT(!m_owns_lock);
-            m_locker.lock();
-            m_owns_lock = true;
-        }
-
-        void unlock()
-        {
-            GDK_RUNTIME_ASSERT(m_locker.owns_lock());
-            GDK_RUNTIME_ASSERT(m_owns_lock);
-            m_locker.unlock();
-            m_owns_lock = false;
-        }
-
-        ~unique_unlock()
-        {
-            if (!m_owns_lock) {
-                lock();
-            }
-        }
-
-    private:
-        std::unique_lock<std::mutex>& m_locker;
-        bool m_owns_lock;
-    };
 } // namespace sdk
 } // namespace ga
 

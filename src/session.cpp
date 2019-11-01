@@ -870,29 +870,5 @@ namespace sdk {
         return m_impl->get_network_parameters(); // Note no exception_wrapper
     }
 
-    signer& session::get_signer()
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return m_impl->get_signer(); // Note no exception_wrapper
-    }
-
-    ga_pubkeys& session::get_ga_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return m_impl->get_ga_pubkeys(); // Note no exception_wrapper
-    }
-
-    ga_user_pubkeys& session::get_user_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return m_impl->get_user_pubkeys(); // Note no exception_wrapper
-    }
-
-    ga_user_pubkeys& session::get_recovery_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT(m_impl != nullptr);
-        return m_impl->get_recovery_pubkeys(); // Note no exception_wrapper
-    }
-
 } // namespace sdk
 } // namespace ga
