@@ -6,6 +6,13 @@
 #include <thread>
 #include <vector>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
 #include "boost_wrapper.hpp"
 #include "session.hpp"
 
@@ -281,7 +288,6 @@ namespace sdk {
         , m_notification_context(nullptr)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
-        , m_assets({ { "btc", { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } })
         , m_next_subaccount(0)
         , m_block_height(0)
         , m_system_message_id(0)
@@ -657,70 +663,68 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json ga_session::refresh_http_data(const std::string& type)
+    nlohmann::json ga_session::refresh_http_data(const std::string& type, bool refresh)
     {
-        nlohmann::json result;
-        try {
-            nlohmann::json get_params = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) },
-                { "target", "/" + type + ".json" } };
+        nlohmann::json get_params
+            = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/" + type + ".json" } };
 
-            const std::string datadir = gdk_config().value("datadir", std::string{});
-            const bool datadir_exists = !datadir.empty();
+        const std::string datadir = gdk_config().value("datadir", std::string{});
+        const bool datadir_exists = !datadir.empty();
+        const auto data_path = datadir + std::string("/assets/" + type + ".json");
 
-            const auto data_path = datadir + std::string("/assets/" + type + ".json");
-
-            nlohmann::json cached_data;
-            if (datadir_exists) {
-                std::fstream f(data_path, f.in);
-                if (f.is_open()) {
-                    try {
-                        f >> cached_data;
-                        get_params.update({ { "headers",
-                            { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
-                                cached_data.at("last_modified") } } } });
-                    } catch (std::exception& ex) {
-                        GDK_LOG_SEV(log_level::info) << "corrupted file:" << data_path;
-                        // either we can't open the file or json parsing failed. remove so next try can regenerate
-                        // the data.
-                        unlink(data_path.c_str());
-                    }
-                }
-            }
-
-            auto write_to_file = [](const std::string& path, const nlohmann::json& data) {
+        nlohmann::json cached_data;
+        if (datadir_exists) {
+            std::fstream f(data_path, f.in);
+            if (f.is_open()) {
                 try {
-                    std::fstream f(path, f.out);
-                    f << data;
-                } catch (const std::exception& ex) {
-                    GDK_LOG_SEV(log_level::info) << "failed to write file:" << path;
-                }
-            };
-
-            nlohmann::json data;
-            try {
-                data = http_get(get_params);
-            } catch (const std::exception& ex) {
-                if (cached_data.empty()) {
-                    throw ex;
+                    f >> cached_data;
+                    get_params.update({ { "headers",
+                        { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
+                            cached_data.at("last_modified") } } } });
+                } catch (std::exception& ex) {
+                    GDK_LOG_SEV(log_level::info) << "corrupted file:" << data_path;
+                    // either we can't open the file or json parsing failed. remove so next try can regenerate
+                    // the data.
+                    unlink(data_path.c_str());
                 }
             }
-
-            if (!data.empty() && !data.value("not_modified", false)) {
-                GDK_RUNTIME_ASSERT_MSG(data.find("body") == data.end(), "expected JSON");
-                if (datadir_exists) {
-                    write_to_file(data_path, data);
-                }
-            } else if (datadir_exists) {
-                // headers were passed in so file must have been read and has enough metadata for us to think is valid.
-                GDK_RUNTIME_ASSERT(!cached_data.empty());
-                data = cached_data;
-            }
-            result = data;
-        } catch (const std::exception& ex) {
-            result["error"] = ex.what();
         }
 
-        return result;
+        if (!refresh) {
+            return cached_data;
+        }
+
+        auto write_to_file = [](const std::string& path, const nlohmann::json& data) {
+            const std::string datadir = gdk_config().value("datadir", std::string{});
+            const auto assets_path = datadir + std::string("/assets");
+#ifdef WIN32
+            mkdir(assets_path.c_str());
+#else
+            mkdir(assets_path.c_str(), 0777);
+#endif
+            try {
+                std::fstream f(path, f.out);
+                if (f.is_open()) {
+                    f << data;
+                }
+            } catch (const std::exception& ex) {
+                GDK_LOG_SEV(log_level::info) << "failed to write file:" << path;
+            }
+        };
+
+        const nlohmann::json data = http_get(get_params);
+
+        GDK_RUNTIME_ASSERT_MSG(!data.contains("error"), "error during refresh");
+        if (data.value("not_modified", false)) {
+            return cached_data;
+        }
+
+        GDK_RUNTIME_ASSERT_MSG(data.find("body") == data.end(), "expected JSON");
+        if (datadir_exists) {
+            write_to_file(data_path, data);
+        }
+
+        return data;
     }
 
     nlohmann::json ga_session::refresh_assets(const nlohmann::json& params)
@@ -729,18 +733,21 @@ namespace sdk {
 
         nlohmann::json result;
 
+        const bool refresh = params.value("refresh", true);
+
         if (params.value("assets", false)) {
-            const auto assets = refresh_http_data("index");
-            locker_t locker{ m_mutex };
+            const auto assets = refresh_http_data("index", refresh);
+            nlohmann::json json_assets;
             if (assets.find("error") == assets.end()) {
-                m_assets = assets;
-                m_assets.update({ { "btc", { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } });
+                json_assets = assets;
+                json_assets.update({ { m_net_params.policy_asset(),
+                    { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } });
             }
-            result["assets"] = m_assets;
+            result["assets"] = json_assets;
         }
 
         if (params.value("icons", false)) {
-            result["icons"] = refresh_http_data("icons");
+            result["icons"] = refresh_http_data("icons", refresh);
         }
 
         return result;
@@ -1177,7 +1184,7 @@ namespace sdk {
 
                 // Mark the balances of each affected subaccount dirty
                 p->second["has_transactions"] = true;
-                p->second.erase("balance");
+                p->second.erase("satoshi");
 
                 // Mark cached tx lists as dirty
                 m_tx_list_caches.purge(subaccount);
@@ -1449,21 +1456,6 @@ namespace sdk {
             const std::string currency = pricing_p->value("currency", m_fiat_currency);
             const std::string exchange = pricing_p->value("exchange", m_fiat_source);
             change_settings_pricing_source(locker, currency, exchange);
-
-            // For non-liquid wallets the balances including the fiat values are cached
-            // in m_subaccounts. Update them here with the new pricing settings.
-            // TODO: Implement a notification for updated settings and use that to update
-            // the cached balances, this update will only work for local changes.
-            if (!m_net_params.liquid()) {
-                for (auto& subaccount : m_subaccounts) {
-                    nlohmann::json& subaccount_json = subaccount.second;
-                    const auto p_balance = subaccount_json.find("balance");
-                    if (p_balance != subaccount_json.end()) {
-                        const amount::value_type satoshi = (*p_balance)["btc"]["satoshi"];
-                        subaccount_json["balance"]["btc"] = { convert_amount(locker, { { "satoshi", satoshi } }) };
-                    }
-                }
-            }
         }
     }
 
@@ -1709,7 +1701,7 @@ namespace sdk {
             update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
             const std::string satoshi_str = json_get_value(balance, "satoshi");
             const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
-            return { { "btc", convert_amount(locker, { { "satoshi", satoshi } }) } };
+            return { { "btc", satoshi } };
         }
         nlohmann::json utxos;
         {
@@ -1729,24 +1721,13 @@ namespace sdk {
                 });
         };
 
-        nlohmann::json balance({ { "btc", convert_amount(locker, { { "satoshi", 0 } }) } });
+        nlohmann::json balance({ { "btc", 0 } });
         for (const auto& item : utxos.items()) {
             const auto& key = item.key();
             const auto& item_utxos = item.value();
             const int64_t satoshi
                 = accumulate_if(item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end(); });
-            const int64_t unconfidential_satoshi = accumulate_if(
-                item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end() && !utxo.at("confidential"); });
-
-            if (m_assets.find(key) != m_assets.end()) {
-                balance[key] = convert_amount(locker, { { "satoshi", satoshi }, { "asset_info", m_assets[key] } });
-                balance[key]["unconfidential"] = convert_amount(
-                    locker, { { "satoshi", unconfidential_satoshi }, { "asset_info", m_assets[key] } });
-                balance[key]["asset_info"] = m_assets[key];
-            } else {
-                balance[key] = convert_amount(locker, { { "satoshi", satoshi } });
-                balance[key]["unconfidential"] = convert_amount(locker, { { "satoshi", unconfidential_satoshi } });
-            }
+            balance[key] = satoshi;
         }
 
         return balance;
@@ -1768,9 +1749,9 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
 
         auto& details = p->second;
-        const auto p_balance = details.find("balance");
-        if (p_balance == details.end() || m_net_params.liquid()) {
-            details["balance"] = get_subaccount_balance_from_server(locker, subaccount, 0);
+        const auto p_satoshi = details.find("satoshi");
+        if (p_satoshi == details.end() || m_net_params.liquid()) {
+            details["satoshi"] = get_subaccount_balance_from_server(locker, subaccount, 0);
         }
 
         return details;
@@ -1802,8 +1783,7 @@ namespace sdk {
         // for the final path element in a derivation
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "balance", { { "btc", convert_amount(locker, { { "satoshi", satoshi.value() } }) } } },
-            { "has_transactions", has_txs } };
+            { "satoshi", { { "btc", satoshi.value() } } }, { "has_transactions", has_txs } };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
@@ -2052,7 +2032,6 @@ namespace sdk {
 
     std::vector<nlohmann::json> ga_session::get_transactions(uint32_t subaccount, uint32_t page_id)
     {
-        nlohmann::json assets;
         nlohmann::json txs;
         wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
             "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
@@ -2071,8 +2050,6 @@ namespace sdk {
                 const double fiat_rate = txs["fiat_value"];
                 update_fiat_rate(locker, std::to_string(fiat_rate));
             }
-
-            assets = m_assets;
         }
         // Postprocess the returned API data
         // TODO: confidential transactions, social payments/BIP70
@@ -2204,10 +2181,6 @@ namespace sdk {
                 }
                 const amount total = net_positive ? net_received - net_spent : net_spent - net_received;
                 tx_details["satoshi"][asset_id] = total.value();
-
-                if (assets.find(asset_id) != assets.end()) {
-                    tx_details["asset_info"][asset_id] = assets[asset_id];
-                }
             }
 
             const bool is_confirmed = tx_block_height != 0;
@@ -2515,7 +2488,7 @@ namespace sdk {
 
         if (num_confs == 0 && !m_net_params.liquid()) {
             // The subaccount details contains the confs=0 balance
-            return get_subaccount(subaccount)["balance"];
+            return get_subaccount(subaccount)["satoshi"];
         }
         // Anything other than confs=0 needs to be fetched from the server
         locker_t locker(m_mutex);

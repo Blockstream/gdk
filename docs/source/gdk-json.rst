@@ -78,16 +78,8 @@ Subaccount JSON
 .. code-block:: json
 
    {
-     "balance": {
-       "bits": "20344.69",
-       "btc": "0.02034469",
-       "fiat": "0.02",
-       "fiat_currency": "EUR",
-       "fiat_rate": "1.10000000",
-       "mbtc": "20.34469",
-       "satoshi": 2034469,
-       "sats": "2034469",
-       "ubtc": "20344.69"
+     "satoshi": {
+       "btc": 2034469
        },
      "has_transactions": true,
      "name": "",
@@ -109,16 +101,8 @@ Subaccounts list JSON
 
    [
      {
-       "balance": {
-         "bits": "20344.69",
-         "btc": "0.02034469",
-         "fiat": "0.02",
-         "fiat_currency": "EUR",
-         "fiat_rate": "1.10000000",
-         "mbtc": "20.34469",
-         "satoshi": 2034469,
-         "sats": "2034469",
-         "ubtc": "20344.69"
+       "satoshi": {
+         "btc": 2034469
          },
        "has_transactions": true,
        "name": "",
@@ -129,16 +113,8 @@ Subaccounts list JSON
        "type": "2of2"
      },
      {
-       "balance": {
-         "bits": "9779.07",
-         "btc": "0.00977907",
-         "fiat": "0.01",
-         "fiat_currency": "EUR",
-         "fiat_rate": "1.10000000",
-         "mbtc": "9.77907",
-         "satoshi": 977907,
-         "sats": "977907",
-         "ubtc": "9779.07"
+       "satoshi": {
+         "btc": 977907
          },
        "has_transactions": true,
        "name": "Nuovo",
@@ -1112,6 +1088,7 @@ Assets params JSON
 .. code-block:: json
 
    {
-      "assets":True
-      "icons":True
+      "assets":True,
+      "icons":True,
+      "refresh":True
    }

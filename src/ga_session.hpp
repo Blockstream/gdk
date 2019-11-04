@@ -265,7 +265,7 @@ namespace sdk {
 
         nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates) GDK_REQUIRES(m_mutex);
 
-        nlohmann::json refresh_http_data(const std::string& type);
+        nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
         nlocktime_t get_upcoming_nlocktime() const;
 
@@ -387,8 +387,6 @@ namespace sdk {
         std::string m_fiat_rate GDK_GUARDED_BY(m_mutex);
         std::string m_fiat_currency GDK_GUARDED_BY(m_mutex);
         uint64_t m_earliest_block_time GDK_GUARDED_BY(m_mutex);
-
-        nlohmann::json m_assets;
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);
