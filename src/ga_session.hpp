@@ -305,7 +305,7 @@ namespace sdk {
             autobahn::wamp_call_options call_options;
             call_options.set_timeout(std::chrono::seconds(timeout));
             auto fn = m_session->call(method_name, std::make_tuple(std::forward<Args>(args)...), call_options)
-                          .then(std::forward<F>(body));
+                          .then(boost::launch::deferred, std::forward<F>(body));
             for (;;) {
                 const auto status = fn.wait_for(boost::chrono::seconds(timeout));
                 if (status == boost::future_status::timeout && !is_connected()) {
