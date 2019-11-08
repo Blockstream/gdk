@@ -1,4 +1,4 @@
-FROM ubuntu:18.04@sha256:d1d454df0f579c6be4d8161d227462d69e163a8ff9d20a847533989cf0c94d90
+FROM ubuntu:18.04@sha256:6e9f67fa63b0323e9a1e587fd71c561ba48a034504fb804fd26fd8800039835d
 COPY ubuntu_18.04_deps.sh /deps.sh
 COPY requirements.txt /requirements.txt
 RUN /deps.sh && rm /deps.sh

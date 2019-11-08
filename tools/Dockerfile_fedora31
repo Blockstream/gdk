@@ -1,0 +1,6 @@
+FROM fedora:31@sha256:d4f7df6b691d61af6cee7328f82f1d8afdef63bc38f58516858ae3045083924a
+COPY fedora31_deps.sh /deps.sh
+COPY requirements.txt /requirements.txt
+RUN /deps.sh && rm /deps.sh
+CMD cd /sdk && ./tools/build.sh --clang
+

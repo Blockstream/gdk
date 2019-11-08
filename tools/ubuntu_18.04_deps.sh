@@ -8,7 +8,7 @@ apt install wget curl autoconf pkg-config build-essential libtool virtualenv pyt
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.38.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.39.0
 source /root/.cargo/env
 rustup component add rustfmt clippy
 
