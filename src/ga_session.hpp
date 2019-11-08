@@ -13,6 +13,7 @@
 #include "amount.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
+#include "signer.hpp"
 #include "threading.hpp"
 #include "tx_list_cache.hpp"
 #include "utils.hpp"
@@ -208,6 +209,7 @@ namespace sdk {
         std::string get_service_xpub(uint32_t subaccount);
         std::string get_recovery_xpub(uint32_t subaccount);
         bool supports_low_r() const;
+        liquid_support_level hw_liquid_support() const;
 
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
 
@@ -253,7 +255,8 @@ namespace sdk {
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const GDK_REQUIRES(m_mutex);
         nlohmann::json get_settings(locker_t& locker) GDK_REQUIRES(m_mutex);
         void unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
-        nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
+        nlohmann::json cleanup_utxos(
+            nlohmann::json& utxos, const std::string& policy_asset, signer& signer, ga_session& session);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);

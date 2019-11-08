@@ -663,9 +663,9 @@ namespace sdk {
             return;
         }
 
-        if (!m_session.is_liquid() || m_session.get_signer().supports_liquid() == liquid_support_level::full) {
+        if (!m_session.is_liquid() || m_session.hw_liquid_support() == liquid_support_level::full) {
             m_state = state_type::make_call;
-        } else if (m_session.get_signer().supports_liquid() == liquid_support_level::lite) {
+        } else if (m_session.hw_liquid_support() == liquid_support_level::lite) {
             try {
                 m_state = state_type::resolve_code;
 
@@ -675,7 +675,7 @@ namespace sdk {
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
-        } else if (m_session.get_signer().supports_liquid() == liquid_support_level::none) {
+        } else if (m_session.hw_liquid_support() == liquid_support_level::none) {
             set_error("id_the_hardware_wallet_you_are");
         } else {
             // should be unreachable
@@ -692,7 +692,7 @@ namespace sdk {
     void needs_unblind_call::set_nonces()
     {
         // Bitcoin or HW with full support
-        if (!m_session.is_liquid() || m_session.get_signer().supports_liquid() == liquid_support_level::full) {
+        if (!m_session.is_liquid() || m_session.hw_liquid_support() == liquid_support_level::full) {
             return;
         }
 

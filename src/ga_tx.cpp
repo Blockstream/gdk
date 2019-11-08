@@ -979,14 +979,10 @@ namespace sdk {
             blind_output(session, details, tx, i, output, generator, value_commitment, output_abfs[i], output_vbfs[i]);
 
             if (authorized_assets) {
-                const auto blinding_nonce = sha256(ecdh(pub_key, ephemeral_keypair.first));
+                const auto eph_keypair_sec = h2b(output.at("eph_keypair_sec"));
+                const auto blinding_nonce = sha256(ecdh(pub_key, eph_keypair_sec));
                 blinding_nonces.emplace_back(b2h(blinding_nonce));
             }
-
-            tx_elements_output_commitment_set(
-                tx, i, generator, value_commitment, ephemeral_keypair.second, surjectionproof, rangeproof);
-
-            wally_bzero(ephemeral_keypair.first.data(), ephemeral_keypair.first.size());
 
             ++i;
         }

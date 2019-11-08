@@ -207,7 +207,7 @@ namespace sdk {
             }
         }
 
-        static nlohmann::json cleanup_utxos(
+        nlohmann::json cleanup_utxos(
             nlohmann::json& utxos, const std::string& policy_asset, signer& signer, ga_session& session)
         {
             for (auto& utxo : utxos) {
@@ -2167,7 +2167,10 @@ namespace sdk {
             std::set<std::string> unique_asset_ids;
 
             // Clean up and categorize the endpoints
-            cleanup_utxos(tx_details["eps"], m_net_params.policy_asset(), get_signer(), *this);
+            [this, &tx_details] {
+                locker_t locker{ m_mutex };
+                ga::sdk::cleanup_utxos(tx_details["eps"], m_net_params.policy_asset(), get_signer(), *this);
+            }();
 
             for (auto& ep : tx_details["eps"]) {
                 ep.erase("id");
@@ -2467,7 +2470,10 @@ namespace sdk {
             });
         }
 
-        cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer(), *this);
+        [this, &utxos] {
+            locker_t locker{ m_mutex };
+            ga::sdk::cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer(), *this);
+        }();
 
         nlohmann::json asset_utxos({});
         std::for_each(
@@ -2544,7 +2550,10 @@ namespace sdk {
             utxo["script_type"] = script_type::pubkey_hash_out;
         }
 
-        return cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer(), *this);
+        return [this, &utxos] {
+            locker_t locker{ m_mutex };
+            return ga::sdk::cleanup_utxos(utxos, m_net_params.policy_asset(), get_signer(), *this);
+        }();
     }
 
     // Idempotent
@@ -2631,6 +2640,7 @@ namespace sdk {
 
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
     {
+        locker_t locker{ m_mutex };
         const auto public_key = m_signer->get_public_key_from_blinding_key(h2b(script_hex));
         return b2h(public_key);
     }
@@ -3027,6 +3037,12 @@ namespace sdk {
     {
         locker_t locker{ m_mutex };
         return get_signer().supports_low_r();
+    }
+
+    liquid_support_level ga_session::hw_liquid_support() const
+    {
+        locker_t locker{ m_mutex };
+        return get_signer().supports_liquid();
     }
 
     std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)

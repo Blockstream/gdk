@@ -9,6 +9,7 @@
 
 #include "amount.hpp"
 #include "ga_wally.hpp"
+#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
@@ -93,6 +94,7 @@ namespace sdk {
         bool is_rbf_enabled();
         bool is_watch_only();
         bool is_liquid();
+        liquid_support_level hw_liquid_support();
         nlohmann::json get_settings();
         void change_settings(const nlohmann::json& settings);
 

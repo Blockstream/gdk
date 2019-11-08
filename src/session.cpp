@@ -618,6 +618,12 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->get_network_parameters().liquid(); });
     }
 
+    liquid_support_level session::hw_liquid_support()
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->hw_liquid_support(); });
+    }
+
     nlohmann::json session::get_twofactor_config(bool reset_cached)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);
