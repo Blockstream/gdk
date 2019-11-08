@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-WALLYCORE_NAME="libwally-core-50042b527cc0ee6ef27c8620d2d2550157a0958b"
+WALLYCORE_NAME="libwally-core-0041b04644687e0aac7c1611fe31c810babac66d"
 
 have_cmd()
 {
