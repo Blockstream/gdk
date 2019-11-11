@@ -126,8 +126,6 @@ namespace sdk {
         static std::array<unsigned char, 32> curr_state = { { 0 } };
         static uint64_t nonce = 0;
 
-        GDK_RUNTIME_ASSERT(nonce || Random_SanityCheck());
-
         // We only allow fetching up to 32 bytes of random data as bits beyond
         // this expose the final bytes of the sha512 we use to update curr_state.
         GDK_RUNTIME_ASSERT(num_bytes <= 32 && num_bytes <= siz);
@@ -146,6 +144,8 @@ namespace sdk {
         std::array<unsigned char, SHA512_LEN> hashed;
         {
             std::unique_lock<std::mutex> l{ curr_state_mutex };
+
+            GDK_RUNTIME_ASSERT(nonce || Random_SanityCheck());
 
             std::copy(curr_state.begin(), curr_state.end(), buf.data() + 64);
             std::copy(reinterpret_cast<unsigned char*>(&nonce), reinterpret_cast<unsigned char*>(&nonce) + 8,

@@ -103,7 +103,7 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
-        static const uint32_t DEFAULT_DISCONNECT_WAIT = 5; // maximum wait time on disconnect in seconds
+        static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
         static const uint32_t DEFAULT_TOR_SOCKS_WAIT = 15; // maximum timeout for the tor socks to get ready
 
         static const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
@@ -265,16 +265,18 @@ namespace sdk {
         return b;
     }
 
-    event_loop_controller::event_loop_controller(boost::asio::io_service& io)
-        : m_work_guard(std::make_unique<boost::asio::io_service::work>(io))
+    event_loop_controller::event_loop_controller(boost::asio::io_context& io)
+        : m_work_guard(boost::asio::make_work_guard(io))
     {
         m_run_thread = std::thread([&] { io.run(); });
     }
 
     void event_loop_controller::reset()
     {
-        m_work_guard.reset();
-        m_run_thread.join();
+        no_std_exception_escape([this] {
+            m_work_guard.reset();
+            m_run_thread.join();
+        });
     }
 
     ga_session::ga_session(const nlohmann::json& net_params)
@@ -315,9 +317,7 @@ namespace sdk {
     {
         no_std_exception_escape([this] {
             reset();
-            m_io.stop();
             m_controller.reset();
-            m_io.reset();
         });
     }
 
@@ -411,9 +411,7 @@ namespace sdk {
             : connect_to_endpoint<transport>(m_session, m_transport);
 
         set_socket_options();
-
-        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
-        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
+        start_ping_timer();
     }
 
     template <typename T>
@@ -558,25 +556,90 @@ namespace sdk {
 
     void ga_session::emit_notification(std::string event, nlohmann::json details)
     {
-        auto t = std::thread([this, event, details] {
+        asio::post(m_pool, [this, event, details] {
             locker_t locker{ m_mutex };
             if (m_notification_handler != nullptr) {
                 call_notification_handler(locker, new nlohmann::json({ { "event", event }, { event, details } }));
             }
         });
-        t.detach();
+    }
+
+    void ga_session::try_reconnect()
+    {
+        GDK_LOG_NAMED_SCOPE("try_reconnect");
+
+        if (!m_network_control.is_enabled()) {
+            GDK_LOG_SEV(log_level::info) << "reconnect is disabled. backing off...";
+            return;
+        }
+
+        if (is_connected()) {
+            GDK_LOG_SEV(log_level::info) << "attempting to reconnect but transport still connected. backing off...";
+            emit_notification(
+                "network", { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
+            return;
+        }
+
+        if (!m_network_control.set_reconnect(true)) {
+            GDK_LOG_SEV(log_level::info) << "reconnect in progress. backing off...";
+            return;
+        }
+
+        m_ping_timer.cancel();
+        m_network_control.reset();
+
+        boost::asio::post(m_pool, [this] {
+            const auto thread_id = std::this_thread::get_id();
+
+            GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::hex << thread_id << " started.";
+
+            exponential_backoff bo;
+            uint32_t n = 0;
+            for (;;) {
+                const auto backoff_time = bo.backoff(n++);
+                nlohmann::json network_status = { { "connected", false }, { "elapsed", bo.elapsed().count() },
+                    { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } };
+                emit_notification("network", network_status);
+
+                if (!m_network_control.retrying(backoff_time)) {
+                    GDK_LOG_SEV(log_level::info)
+                        << "reconnect thread " << std::hex << thread_id << " exiting on request.";
+                    break;
+                }
+
+                if (reconnect()) {
+                    GDK_LOG_SEV(log_level::info)
+                        << "reconnect thread " << std::hex << thread_id << " exiting on reconnect.";
+                    break;
+                }
+            }
+
+            m_network_control.set_reconnect(false);
+
+            if (!is_connected()) {
+                start_ping_timer();
+            }
+        });
+    }
+
+    void ga_session::stop_reconnect()
+    {
+        if (m_network_control.reconnecting()) {
+            m_network_control.set_exit();
+        }
+    }
+
+    void ga_session::reconnect_hint(bool enable, bool restart)
+    {
+        m_network_control.set_enabled(enable);
+        if (restart) {
+            stop_reconnect();
+        }
     }
 
     bool ga_session::reconnect()
     {
         try {
-            if (is_connected()) {
-                GDK_LOG_SEV(log_level::info) << "attempting to reconnect but transport still connected. backing off...";
-                emit_notification(
-                    "network", { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
-                return true;
-            }
-
             disconnect();
             connect();
 
@@ -588,6 +651,13 @@ namespace sdk {
         } catch (const std::exception&) {
             return false;
         }
+    }
+
+    void ga_session::start_ping_timer()
+    {
+        GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
+        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
+        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, ::_1));
     }
 
     void ga_session::disconnect()
@@ -796,6 +866,8 @@ namespace sdk {
 
     void ga_session::reset()
     {
+        stop_reconnect();
+        m_pool.join();
         on_failed_login();
         unsubscribe();
         disconnect();

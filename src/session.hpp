@@ -8,6 +8,7 @@
 #include "include/gdk.h"
 
 #include "amount.hpp"
+#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 #include "signer.hpp"
 
@@ -17,7 +18,6 @@ namespace sdk {
     class ga_session;
     class ga_pubkeys;
     class ga_user_pubkeys;
-    class network_control_context;
     class signer;
 
     enum class logging_levels : uint32_t {
@@ -173,8 +173,27 @@ namespace sdk {
 
         void reconnect();
 
-        std::unique_ptr<ga_session> m_impl;
-        std::unique_ptr<network_control_context> m_network_control_context;
+        auto get_impl() { return m_impl.load(); }
+        auto get_impl() const { return m_impl.load(); }
+
+        auto get_nonnull_impl()
+        {
+            auto p = m_impl.load();
+            GDK_RUNTIME_ASSERT(p != nullptr);
+            return p;
+        }
+
+        auto get_nonnull_impl() const
+        {
+            auto p = m_impl.load();
+            GDK_RUNTIME_ASSERT(p != nullptr);
+            return p;
+        }
+
+        using session_ptr = boost::shared_ptr<ga_session>;
+        using session_atomic_ptr = boost::atomic_shared_ptr<ga_session>;
+
+        session_atomic_ptr m_impl;
 
         GA_notification_handler m_notification_handler{ nullptr };
         void* m_notification_context{ nullptr };

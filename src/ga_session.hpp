@@ -18,6 +18,8 @@
 #include "tx_list_cache.hpp"
 #include "utils.hpp"
 
+using namespace std::literals;
+
 namespace ga {
 namespace sdk {
     enum class logging_levels : uint32_t;
@@ -38,13 +40,97 @@ namespace sdk {
     using wamp_call_result = boost::future<autobahn::wamp_call_result>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
 
+    class exponential_backoff {
+    public:
+        explicit exponential_backoff(std::chrono::seconds limit = 300s)
+            : m_limit(limit)
+        {
+        }
+
+        std::chrono::seconds backoff(uint32_t n)
+        {
+            m_elapsed += m_waiting;
+            const auto v
+                = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(n, uint32_t{ 31 }));
+            std::random_device rd;
+            std::uniform_int_distribution<uint32_t> d(v / 2, v);
+            m_waiting = std::chrono::seconds(d(rd));
+            return m_waiting;
+        }
+
+        bool limit_reached() const { return m_elapsed >= m_limit; }
+        std::chrono::seconds elapsed() const { return m_elapsed; }
+        std::chrono::seconds waiting() const { return m_waiting; }
+
+    private:
+        const std::chrono::seconds m_limit;
+        std::chrono::seconds m_elapsed{ 0s };
+        std::chrono::seconds m_waiting{ 0s };
+    };
+
+    template <class T> struct flag_type {
+
+        flag_type() { flag.second = flag.first.get_future(); }
+
+        template <bool is_void = std::is_void<T>::value> std::enable_if_t<is_void> set() { flag.first.set_value(); }
+
+        template <bool is_void = std::is_void<T>::value> void set(std::enable_if_t<!is_void, T> v)
+        {
+            flag.first.set_value(v);
+        }
+
+        T get() { return flag.second.get(); }
+
+        std::future_status wait(std::chrono::seconds secs = 0s) const { return flag.second.wait_for(secs); }
+
+        std::pair<std::promise<T>, std::future<T>> flag;
+    };
+
+    class network_control_context final {
+    public:
+        using flag_t = flag_type<void>;
+
+        network_control_context() = default;
+        ~network_control_context() = default;
+
+        network_control_context(const network_control_context& context) = delete;
+        network_control_context& operator=(const network_control_context& context) = delete;
+        network_control_context(network_control_context&& context) = delete;
+        network_control_context& operator=(network_control_context&& context) = delete;
+
+        bool set_reconnect(bool reconnect)
+        {
+            bool r = m_reconnect_flag;
+            if (r && reconnect) {
+                return false;
+            }
+            return m_reconnect_flag.compare_exchange_strong(r, reconnect);
+        }
+
+        bool reconnecting() const { return m_reconnect_flag; }
+
+        void reset_exit() { m_exit_flag = flag_t{}; }
+        void set_exit() { m_exit_flag.set(); }
+        bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
+
+        void set_enabled(bool v) { m_enabled = v; }
+        bool is_enabled() const { return m_enabled; }
+
+        void reset() { reset_exit(); }
+
+    private:
+        flag_t m_exit_flag;
+        std::atomic_bool m_reconnect_flag{ false };
+        std::atomic_bool m_enabled{ true };
+    };
+
     struct event_loop_controller {
         explicit event_loop_controller(boost::asio::io_service& io);
 
         void reset();
 
         std::thread m_run_thread;
-        std::unique_ptr<boost::asio::io_service::work> m_work_guard;
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
     };
 
     struct BlindingNoncesHash {
@@ -71,6 +157,9 @@ namespace sdk {
         ~ga_session();
 
         void connect();
+        void try_reconnect();
+        void stop_reconnect();
+        void reconnect_hint(bool enabled, bool restarted);
         bool reconnect();
         bool is_connected(const nlohmann::json& net_params);
         std::string get_tor_socks5();
@@ -314,6 +403,7 @@ namespace sdk {
             no_std_exception_escape([this, &expect_pong] {
                 if (is_transport_connected<T>()) {
                     const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
+                    GDK_RUNTIME_ASSERT(transport != nullptr);
                     expect_pong = transport->ping(std::string{});
                 }
             });
@@ -329,7 +419,7 @@ namespace sdk {
         }
 
         void set_socket_options();
-
+        void start_ping_timer();
         void disconnect();
         void unsubscribe();
 
@@ -392,6 +482,9 @@ namespace sdk {
 
         event_loop_controller m_controller;
         boost::asio::deadline_timer m_ping_timer;
+
+        network_control_context m_network_control;
+        boost::asio::thread_pool m_pool{ 4 };
 
         GA_notification_handler m_notification_handler GDK_GUARDED_BY(m_mutex);
         void* m_notification_context GDK_PT_GUARDED_BY(m_mutex);
