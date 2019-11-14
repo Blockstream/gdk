@@ -14,11 +14,13 @@ stages:
 .fedora_images:
   image: greenaddress/fedora_ci@sha256:120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41
   tags:
-    - ga
+    - docker
+    - k8s
 
 .ndk_release:
   tags:
-    - ga
+    - docker
+    - k8s
   artifacts:
     expire_in: 1 day
     when: on_success
@@ -35,7 +37,8 @@ stages:
 
 .py_release:
   tags:
-    - ga
+    - docker
+    - k8s
   before_script:
     - mkdir $CI_PROJECT_DIR/gdk-python
   artifacts:
@@ -56,37 +59,34 @@ stages:
 
 test_format:
   tags:
-    - ga
+    - docker
+    - k8s
   stage: format
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/format.sh && git diff --exit-code
 
 test_gcc:
   tags:
-    - ga
+    - docker
+    - k8s
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --gcc
 
 release_py3m_buster:
   extends: .py_release
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7
 
 release_py3m_buster_debug:
   extends: .py_release
   when: manual
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7
 
 release_py3m_ubuntu_18.04:
   image: greenaddress/ci@sha256:44fa1f93af039bf04de8f556579798256fd9c0073f1361589ac809681a45e4c0
   extends: .py_release
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6
 
 release_py3m_osx:
@@ -100,39 +100,34 @@ release_py3m_osx:
 test_fedora_gcc:
   extends: .fedora_images
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --gcc
 
 test_fedora_debug_gcc:
   extends: .fedora_images
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --buildtype=debugoptimized --gcc
 
 test_fedora_clang:
   extends: .fedora_images
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --clang
 
 test_clang:
   tags:
-    - ga
+    - docker
+    - k8s
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --clang
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
-    - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
     - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
-    - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
     - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
@@ -140,21 +135,18 @@ gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
-    - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
     - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
-    - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
     - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
-    - cd $CI_PROJECT_DIR
     - mkdir gdk-android-jni
     - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true
 
@@ -225,26 +217,26 @@ test_freebsd_clang:
 
 test_windows_mingw_w64_cross:
   tags:
-    - ga
+    - docker
+    - k8s
   artifacts:
     expire_in: 1 hour
     when: on_success
     paths:
     - build-windows-mingw-w64/src/libgreenaddress*
   script:
-    - cd $CI_PROJECT_DIR
     - ./tools/build.sh --mingw-w64
 
 apidocs:
   tags:
-    - ga
+    - docker
+    - k8s
   artifacts:
     expire_in: 14 days
     when: on_success
     paths:
     - apidocs.tar.gz
   script:
-    - cd $CI_PROJECT_DIR
     - tools/clean.sh
     - virtualenv -p python3 .venv
     - source .venv/bin/activate
