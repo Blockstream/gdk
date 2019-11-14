@@ -252,14 +252,12 @@ apidocs:
     paths:
     - apidocs.tar.gz
   script:
-    - tools/clean.sh
     - virtualenv -p python3 .venv
     - source .venv/bin/activate
     - pip3 install sphinx sphinx_rtd_theme
     - sphinx-build -b html -a -c docs/source docs/source docs/build/html
     - cd docs/build && tar czf ../../apidocs.tar.gz html/ && cd ../..
     - deactivate
-    - tools/clean.sh
 
 package_release:
   tags:
