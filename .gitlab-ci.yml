@@ -14,13 +14,11 @@ stages:
 .fedora_images:
   image: greenaddress/fedora_ci@sha256:120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41
   tags:
-    - docker
-    - k8s
+    - ga
 
 .ndk_release:
   tags:
-    - docker
-    - k8s
+    - ga
   artifacts:
     expire_in: 1 day
     when: on_success
@@ -37,8 +35,7 @@ stages:
 
 .py_release:
   tags:
-    - docker
-    - k8s
+    - ga
   before_script:
     - mkdir $CI_PROJECT_DIR/gdk-python
   artifacts:
@@ -59,16 +56,14 @@ stages:
 
 test_format:
   tags:
-    - docker
-    - k8s
+    - ga
   stage: format
   script:
     - ./tools/format.sh && git diff --exit-code
 
 test_gcc:
   tags:
-    - docker
-    - k8s
+    - ga
   script:
     - ./tools/build.sh --gcc
 
@@ -117,8 +112,7 @@ test_fedora_clang:
 
 test_clang:
   tags:
-    - docker
-    - k8s
+    - ga
   script:
     - ./tools/build.sh --clang
 
@@ -232,8 +226,7 @@ test_freebsd_clang:
 
 test_windows_mingw_w64_cross:
   tags:
-    - docker
-    - k8s
+    - ga
   artifacts:
     expire_in: 1 hour
     when: on_success
@@ -244,8 +237,7 @@ test_windows_mingw_w64_cross:
 
 apidocs:
   tags:
-    - docker
-    - k8s
+    - ga
   artifacts:
     expire_in: 14 days
     when: on_success
