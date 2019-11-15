@@ -255,8 +255,7 @@ namespace sdk {
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const GDK_REQUIRES(m_mutex);
         nlohmann::json get_settings(locker_t& locker) GDK_REQUIRES(m_mutex);
         void unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
-        nlohmann::json cleanup_utxos(
-            nlohmann::json& utxos, const std::string& policy_asset, signer& signer, ga_session& session);
+        nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
