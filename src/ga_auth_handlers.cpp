@@ -71,7 +71,8 @@ namespace sdk {
     {
         if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx"
             || m_action == "get_receive_address" || m_action == "create_transaction" || m_action == "get_balance"
-            || m_action == "get_transactions" || m_action == "get_unspent_outputs") {
+            || m_action == "get_subaccounts" || m_action == "get_subaccount" || m_action == "get_transactions"
+            || m_action == "get_unspent_outputs" || m_action == "get_expired_deposits") {
             // Hardware action, so provide the caller with the device information
             m_hw_device = hw_device;
         }
@@ -715,6 +716,34 @@ namespace sdk {
     }
 
     //
+    // Get subaccounts
+    //
+    get_subaccounts_call::get_subaccounts_call(session& session)
+        : needs_unblind_call("get_subaccounts", session, nlohmann::json{})
+    {
+    }
+
+    auth_handler::state_type get_subaccounts_call::wrapped_call_impl()
+    {
+        m_result = m_session.get_subaccounts();
+        return state_type::done;
+    }
+
+    //
+    // Get subaccount
+    //
+    get_subaccount_call::get_subaccount_call(session& session, uint32_t subaccount)
+        : needs_unblind_call("get_subaccount", session, nlohmann::json({ { "index", subaccount } }))
+    {
+    }
+
+    auth_handler::state_type get_subaccount_call::wrapped_call_impl()
+    {
+        m_result = m_session.get_subaccount(m_details["index"]);
+        return state_type::done;
+    }
+
+    //
     // Get transactions
     //
     get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
@@ -742,6 +771,23 @@ namespace sdk {
         return state_type::done;
     }
 
+    //
+    // Get expired deposits
+    //
+    get_expired_deposits_call::get_expired_deposits_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_expired_deposits", session, details)
+    {
+    }
+
+    auth_handler::state_type get_expired_deposits_call::wrapped_call_impl()
+    {
+        m_result = m_session.get_expired_deposits(m_details);
+        return state_type::done;
+    }
+
+    //
+    // Change settings
+    //
     change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
         : auth_handler(session, std::string()) // TODO: action empty string because 2FA not yet implemented
         , m_settings(settings)

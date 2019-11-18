@@ -245,8 +245,8 @@ GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const 
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_expired_deposits, struct GA_session*, session, const GA_json*, deposit_details,
-    GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->get_expired_deposits(*json_cast(deposit_details))); })
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::get_expired_deposits_call(*session, *json_cast(deposit_details))); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_set_csvtime, struct GA_session*, session, const GA_json*, locktime_details,
     struct GA_auth_handler**, call,
@@ -276,11 +276,11 @@ GDK_DEFINE_C_FUNCTION_3(GA_create_subaccount, struct GA_session*, session, const
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::create_subaccount_call(*session, *json_cast(details))); })
 
-GDK_DEFINE_C_FUNCTION_2(GA_get_subaccounts, struct GA_session*, session, GA_json**, subaccounts,
-    { *json_cast(subaccounts) = new nlohmann::json(session->get_subaccounts()); })
+GDK_DEFINE_C_FUNCTION_2(GA_get_subaccounts, struct GA_session*, session, struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::get_subaccounts_call(*session)); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_subaccount, struct GA_session*, session, uint32_t, subaccount, GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->get_subaccount(subaccount)); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_subaccount, struct GA_session*, session, uint32_t, subaccount, struct GA_auth_handler**,
+    call, { *call = auth_cast(new ga::sdk::get_subaccount_call(*session, subaccount)); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_rename_subaccount, struct GA_session*, session, uint32_t, subaccount, const char*, new_name,
     { session->rename_subaccount(subaccount, new_name); })

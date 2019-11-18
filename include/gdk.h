@@ -240,20 +240,20 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
  * Get the user's subaccount details.
  *
  * :param session: The session to use.
- * :param subaccounts: Destination for the user's :ref:`subaccount-list`.
- *|      Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_subaccounts(struct GA_session* session, GA_json** subaccounts);
+GDK_API int GA_get_subaccounts(struct GA_session* session, struct GA_auth_handler** call);
 
 /**
  * Get subaccount details.
  *
  * :param session: The session to use.
  * :param subaccount: The value of "pointer" from :ref:`subaccount-list` for the subaccount.
- * :param output: Destination for the :ref:`subaccount-detail`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, GA_json** output);
+GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, struct GA_auth_handler** call);
 
 /**
  * Rename a subaccount.
@@ -419,10 +419,11 @@ GDK_API int GA_send_nlocktimes(struct GA_session* session);
  *
  * :param session: The session to use.
  * :param deposit_details: The :ref:`set-deposit-details` for sending.
- * :param output: Destination for the returned utxos (same format as :ref:`tx-list`).
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param call: Destination for the resulting GA_auth_handler to change the locktime.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_expired_deposits(struct GA_session* session, const GA_json* deposit_details, GA_json** output);
+GDK_API int GA_get_expired_deposits(
+    struct GA_session* session, const GA_json* deposit_details, struct GA_auth_handler** call);
 
 /**
  * Set the number of blocks after which CSV transactions become spendable without two factor authentication.

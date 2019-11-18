@@ -150,19 +150,19 @@ class Session(object):
         return rename_subaccount(self.session_obj, subaccount, new_name)
 
     def get_subaccounts(self):
-        return json.loads(get_subaccounts(self.session_obj))
+        return Call(get_subaccounts(self.session_obj))
 
     def get_subaccount(self, subaccount):
-        return json.loads(get_subaccount(self.session_obj, subaccount))
+        return Call(get_subaccount(self.session_obj, subaccount))
 
     def get_transactions(self, details={'subaccount': 0, 'first': 0, 'count': 30}):
-        return json.loads(get_transactions(self.session_obj, self._to_json(details)))
+        return Call(get_transactions(self.session_obj, self._to_json(details)))
 
     def get_receive_address(self, details={}):
-        return json.loads(get_receive_address(self.session_obj, self._to_json(details)))
+        return Call(get_receive_address(self.session_obj, self._to_json(details)))
 
     def get_unspent_outputs(self, details={'subaccount': 0, 'num_confs': 1}):
-        return json.loads(get_unspent_outputs(self.session_obj, self._to_json(details)))
+        return Call(get_unspent_outputs(self.session_obj, self._to_json(details)))
 
     def get_unspent_outputs_for_private_key(self, private_key, password, unused):
         return json.loads(
@@ -176,13 +176,13 @@ class Session(object):
         return json.loads(convert_amount(self.session_obj, self._to_json(details)))
 
     def get_balance(self, details={'subaccount': 0, 'num_confs': 0}):
-        return json.loads(get_balance(self.session_obj, self._to_json(details)))
+        return Call(get_balance(self.session_obj, self._to_json(details)))
 
     def get_available_currencies(self):
         return json.loads(get_available_currencies(self.session_obj))
 
     def create_transaction(self, transaction_details):
-        return json.loads(create_transaction(self.session_obj, self._to_json(transaction_details)))
+        return Call(create_transaction(self.session_obj, self._to_json(transaction_details)))
 
     def sign_transaction(self, transaction_details):
         return Call(sign_transaction(self.session_obj, self._to_json(transaction_details)))
@@ -197,7 +197,7 @@ class Session(object):
         return send_nlocktimes(self.session_obj)
 
     def get_expired_deposits(self, deposit_details={'subaccount': 0, 'num_confs': 1}):
-        return json.loads(get_expired_deposits(self.session_obj, self._to_json(deposit_details)))
+        return Call(get_expired_deposits(self.session_obj, self._to_json(deposit_details)))
 
     def set_csvtime(self, locktime_details):
         return Call(set_csvtime(self.session_obj, self._to_json(locktime_details)))
