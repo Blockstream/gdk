@@ -1943,9 +1943,9 @@ namespace sdk {
 
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
-            const auto is_software_signer = [this] {
+            const bool is_software_signer = [this] {
                 locker_t locker{ m_mutex };
-                return get_signer().get_hw_device().is_null();
+                return get_signer().get_hw_device().empty();
             }();
 
             try {

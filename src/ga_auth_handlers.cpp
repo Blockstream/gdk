@@ -725,7 +725,7 @@ namespace sdk {
 
     auth_handler::state_type get_subaccounts_call::wrapped_call_impl()
     {
-        m_result = m_session.get_subaccounts();
+        m_result = nlohmann::json({ { "subaccounts", m_session.get_subaccounts() } });
         return state_type::done;
     }
 
