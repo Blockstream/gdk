@@ -2319,8 +2319,6 @@ namespace sdk {
 
     nlohmann::json ga_session::get_blinded_scripts(const nlohmann::json& details)
     {
-        const uint32_t subaccount = details.at("subaccount");
-
         GDK_RUNTIME_ASSERT(m_net_params.liquid());
 
         nlohmann::json answer = nlohmann::json::array();
@@ -2328,8 +2326,16 @@ namespace sdk {
 
         for (size_t page_id = 0; page_id < 30; page_id++) {
             nlohmann::json txs;
-            wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
+
+            if (details.contains("subaccount") && details.at("subaccount").is_number()) {
+                wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
+                    "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(),
+                    details.at("subaccount").get<uint32_t>());
+            } else {
+                wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
+                    "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(),
+                    std::string("all"));
+            }
 
             for (const auto& tx : txs.at("list")) {
                 for (const auto& ep : tx.at("eps")) {
@@ -2348,6 +2354,7 @@ namespace sdk {
                     // don't ask for the same nonces multiple times
                     if (no_dups.find(calc_blinding_nonce_map_key(pubkey, script)) == no_dups.end()
                         && !has_blinding_nonce(pubkey, script)) {
+                        no_dups.insert(calc_blinding_nonce_map_key(pubkey, script));
                         answer.push_back({ { "script", script }, { "pubkey", pubkey } });
                     }
                 }

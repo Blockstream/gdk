@@ -579,6 +579,7 @@ namespace sdk {
             m_tx = m_session.create_transaction(details);
             m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", m_tx } };
         } catch (const std::exception& e) {
+            GDK_LOG_SEV(log_level::info) << "exception in create_transaction_call::create_transaction_call()";
             set_error(e.what());
             return;
         }
@@ -628,18 +629,7 @@ namespace sdk {
         }
 
         // Update the transaction
-        m_tx = m_session.create_transaction(m_tx);
-
-        // make sure all the change addresses are blinded
-        for (const auto it : m_tx.at("change_address").items()) {
-            if (!it.value().value("is_blinded", false)) {
-                // if not, ask for them
-                return state_type::resolve_code;
-            }
-        }
-
-        // tx is ready, set as result
-        m_result = m_tx;
+        m_result = m_session.create_transaction(m_tx);
 
         return state_type::done;
     }
@@ -685,7 +675,7 @@ namespace sdk {
                 m_twofactor_data
                     = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
             } catch (const std::exception& e) {
-                set_error(e.what());
+                set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
             }
         } else if (m_session.hw_liquid_support() == liquid_support_level::none) {
             set_error("id_the_hardware_wallet_you_are");
@@ -730,7 +720,7 @@ namespace sdk {
     // Get subaccounts
     //
     get_subaccounts_call::get_subaccounts_call(session& session)
-        : needs_unblind_call("get_subaccounts", session, nlohmann::json{})
+        : needs_unblind_call("get_subaccounts", session, nlohmann::json::object())
     {
     }
 

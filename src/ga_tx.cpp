@@ -318,8 +318,6 @@ namespace sdk {
             result["server_signed"] = false;
             result["liquid"] = net_params.liquid();
 
-            std::map<uint32_t, std::string> our_unblinded_scripts;
-
             // Must specify subaccount to use
             const auto p_subaccount = result.find("subaccount");
             GDK_RUNTIME_ASSERT(p_subaccount != result.end());
@@ -755,7 +753,7 @@ namespace sdk {
                 randomise_inputs(tx, used_utxos);
             }
 
-            if (is_liquid && json_get_value(result, "error").empty() && session.get_hw_device().is_null()) {
+            if (is_liquid && json_get_value(result, "error").empty() && session.get_hw_device().empty()) {
                 result = blind_ga_transaction(session, result); // TODO: if we don't try to blind the tx we won't know
                                                                 // if all the output addresses are blinded
             }

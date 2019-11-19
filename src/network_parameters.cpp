@@ -101,7 +101,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
 
     { "localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Localtest Liquid" },
-            { "network", "localtest-liquid" }, { "wamp_url", "ws://192.168.2.251:8020/v2/ws" },
+            { "network", "localtest-liquid" }, { "wamp_url", "ws://192.168.2.251:8080/v2/ws" },
             { "wamp_onion_url", std::string() }, { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, LEX1 } }, { "address_explorer_url", std::string() },
             { "tx_explorer_url", std::string() }, { "asset_registry_url", "https://assets.blockstream.info" },
