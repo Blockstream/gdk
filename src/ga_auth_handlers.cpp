@@ -628,7 +628,18 @@ namespace sdk {
         }
 
         // Update the transaction
-        m_result = m_session.create_transaction(m_tx);
+        m_tx = m_session.create_transaction(m_tx);
+
+        // make sure all the change addresses are blinded
+        for (const auto it : m_tx.at("change_address").items()) {
+            if (!it.value().value("is_blinded", false)) {
+                // if not, ask for them
+                return state_type::resolve_code;
+            }
+        }
+
+        // tx is ready, set as result
+        m_result = m_tx;
 
         return state_type::done;
     }
