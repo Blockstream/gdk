@@ -514,7 +514,6 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_get_unspent_outputs, GA_json)
 %returns_struct(GA_get_unspent_outputs_for_private_key, GA_json)
 %returns_struct(GA_get_receive_address, GA_json)
-%returns_void__(GA_login)
 %returns_void__(GA_login_watch_only)
 %returns_void__(GA_login_with_pin)
 %returns_struct(GA_login, GA_auth_handler)
@@ -545,12 +544,10 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 
 /* TODO
 GA_convert_json_value_to_bool
-GA_convert_json_value_to_string
 GA_convert_json_value_to_uint32
 GA_convert_json_value_to_uint64
 GA_destroy_string
 GA_subscribe_to_topic_as_json
-GA_validate_mnemonic
 */
 
 %include "../include/gdk.h"
