@@ -6,10 +6,10 @@ have_cmd()
     command -v "$1" >/dev/null 2>&1
 }
 
-export NUM_JOBS=4
 if [ -f /proc/cpuinfo ]; then
-    export NUM_JOBS=$(cat /proc/cpuinfo | grep ^processor | wc -l)
+    export NUM_JOBS=${NUM_JOBS:-$(cat /proc/cpuinfo | grep ^processor | wc -l)}
 fi
+export NUM_JOBS=${NUM_JOBS:-4}
 
 ANALYZE=false
 LIBTYPE="shared"
