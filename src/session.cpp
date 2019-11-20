@@ -582,6 +582,12 @@ namespace sdk {
         return exception_wrapper([&] { return m_impl->blind_address(unblinded_addr, blinding_key_hex); });
     }
 
+    std::string session::extract_confidential_address(const std::string& blinded_address)
+    {
+        GDK_RUNTIME_ASSERT(m_impl != nullptr);
+        return exception_wrapper([&] { return m_impl->extract_confidential_address(blinded_address); });
+    }
+
     nlohmann::json session::get_balance(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_impl != nullptr);

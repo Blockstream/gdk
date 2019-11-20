@@ -332,9 +332,6 @@ namespace sdk {
     void update_tx_info(const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
-
-        const bool is_liquid = tx_is_elements(tx);
-        result["liquid"] = is_liquid;
         result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
         const auto weight = tx_get_weight(tx);
         result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
@@ -343,6 +340,8 @@ namespace sdk {
         result["transaction_vsize"] = tx_vsize;
         result["transaction_version"] = tx->version;
         result["transaction_locktime"] = tx->locktime;
+        const bool is_liquid = tx_is_elements(tx);
+        result["liquid"] = is_liquid;
         if (result.find("fee") != result.end()) {
             if (is_liquid) {
                 result["calculated_fee_rate"] = result["fee"];

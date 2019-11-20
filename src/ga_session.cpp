@@ -2603,6 +2603,11 @@ namespace sdk {
         return confidential_addr_from_addr(unblinded_addr, m_net_params.blinded_prefix(), public_key);
     }
 
+    std::string ga_session::extract_confidential_address(const std::string& blinded_address)
+    {
+        return confidential_addr_to_addr(blinded_address, m_net_params.blinded_prefix());
+    }
+
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
     {
         locker_t locker{ m_mutex };

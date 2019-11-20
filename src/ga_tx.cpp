@@ -660,6 +660,14 @@ namespace sdk {
                         const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
                         result["change_subaccount"] = change_subaccount;
                         auto change_address = session.get_receive_address(change_subaccount, {});
+                        if (is_liquid) {
+                            // set a temporary blinding key, will be changed later through the resolvers
+                            const auto temp_pk = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+
+                            change_address["address"] = session.blind_address(change_address.at("address"), temp_pk);
+                            change_address["is_blinded"] = false;
+                        }
+
                         add_paths(session, change_address);
                         result["change_address"][asset_tag] = change_address;
                     }
@@ -753,9 +761,8 @@ namespace sdk {
                 randomise_inputs(tx, used_utxos);
             }
 
-            if (is_liquid && json_get_value(result, "error").empty() && session.get_hw_device().empty()) {
-                result = blind_ga_transaction(session, result); // TODO: if we don't try to blind the tx we won't know
-                                                                // if all the output addresses are blinded
+            if (is_liquid && json_get_value(result, "error").empty()) {
+                result = blind_ga_transaction(session, result);
             }
         }
 

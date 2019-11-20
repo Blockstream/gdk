@@ -78,6 +78,7 @@ namespace sdk {
         nlohmann::json get_receive_address(const nlohmann::json& details);
         std::string get_blinding_key_for_script(const std::string& script_hex);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
+        std::string extract_confidential_address(const std::string& blinded_address);
 
         nlohmann::json get_subaccounts();
 

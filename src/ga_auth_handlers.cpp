@@ -612,7 +612,7 @@ namespace sdk {
                 continue;
             }
 
-            std::string asset_tag = it.key();
+            const std::string asset_tag = it.key();
 
             std::string pub_blinding_key;
             if (m_hw_device.empty()) {
@@ -623,8 +623,8 @@ namespace sdk {
                 pub_blinding_key = args.at("blinding_keys").at(it.key());
             }
 
-            m_tx["change_address"][asset_tag]["address"]
-                = m_session.blind_address(it.value().at("address"), pub_blinding_key);
+            const std::string unconf_addr = m_session.extract_confidential_address(it.value().at("address"));
+            m_tx["change_address"][asset_tag]["address"] = m_session.blind_address(unconf_addr, pub_blinding_key);
             m_tx["change_address"][asset_tag]["is_blinded"] = true;
         }
 
