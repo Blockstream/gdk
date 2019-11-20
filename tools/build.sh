@@ -188,7 +188,16 @@ if [ \( "$BUILD" = "--clang" \) ]; then
 fi
 
 
-if [ \( -d "$ANDROID_NDK" \) -a \( "$BUILD" = "--ndk" \) ]; then
+if [ \( "$BUILD" = "--ndk" \) ]; then
+    if [ -z "$ANDROID_NDK" ]; then
+        printf "expected \$ANDROID_NDK for --ndk build, but it is not defined\n"
+        exit 1
+    fi
+
+    if [ ! -d "$ANDROID_NDK" ]; then
+        printf "expected \$ANDROID_NDK($ANDROID_NDK) to be a directory\n"
+        exit 1
+    fi
 
     echo ${ANDROID_NDK:?}
     function build() {
