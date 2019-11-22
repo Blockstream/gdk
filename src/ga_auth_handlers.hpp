@@ -70,7 +70,7 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
-        nlohmann::json m_details;
+        const nlohmann::json m_details;
     };
 
     class create_transaction_call : public auth_handler {
@@ -80,7 +80,7 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
-        nlohmann::json m_details;
+        const nlohmann::json m_details;
         nlohmann::json m_tx;
     };
 
@@ -91,7 +91,7 @@ namespace sdk {
 
         virtual state_type wrapped_call_impl() = 0;
 
-        nlohmann::json m_details;
+        const nlohmann::json m_details;
 
     private:
         state_type call_impl() override;

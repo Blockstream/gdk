@@ -2324,6 +2324,7 @@ namespace sdk {
         nlohmann::json answer = nlohmann::json::array();
         std::set<std::array<unsigned char, 32>> no_dups;
 
+        // there's an hard-limit of 30 pages from the backend, see https://api.greenaddress.it/txs.html#get_list_v2
         for (size_t page_id = 0; page_id < 30; page_id++) {
             nlohmann::json txs;
 
@@ -2332,35 +2333,44 @@ namespace sdk {
                     "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(),
                     details.at("subaccount").get<uint32_t>());
             } else {
+                // make sure it wasn't set OR it's "all" (the only other value supported)
+                GDK_RUNTIME_ASSERT(!details.contains("subaccount") || details.at("subaccount") == "all");
+
                 wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
                     "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(),
                     std::string("all"));
             }
 
+            // lock to guard m_blinding_nonces
+            locker_t locker(m_mutex);
+
             for (const auto& tx : txs.at("list")) {
                 for (const auto& ep : tx.at("eps")) {
                     const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
-                    if (asset_tag.empty() || h2b(asset_tag)[0] == 0x01 // unblinded
+                    const std::string& nonce_commitment = json_get_value(ep, "nonce_commitment", std::string{});
+                    const std::string& script = json_get_value(ep, "script", std::string{});
+
+                    if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01") // unblinded
                         || !json_get_value(ep, "is_output", false) // not an output
                         || !json_get_value(ep, "is_relevant", false) // not relevant
-                        || json_get_value(ep, "nonce_commitment", std::string{}).empty()
-                        || json_get_value(ep, "script", std::string{}).empty()) {
+                        || nonce_commitment.empty() || script.empty()) {
                         continue;
                     }
 
-                    const std::string& pubkey = ep.at("nonce_commitment");
-                    const std::string& script = ep.at("script");
+                    const auto blinding_nonce_map_key = calc_blinding_nonce_map_key(nonce_commitment, script);
 
                     // don't ask for the same nonces multiple times
-                    if (no_dups.find(calc_blinding_nonce_map_key(pubkey, script)) == no_dups.end()
-                        && !has_blinding_nonce(pubkey, script)) {
-                        no_dups.insert(calc_blinding_nonce_map_key(pubkey, script));
-                        answer.push_back({ { "script", script }, { "pubkey", pubkey } });
+                    if (no_dups.find(blinding_nonce_map_key) != no_dups.end()
+                        || m_blinding_nonces.find(blinding_nonce_map_key) != m_blinding_nonces.end()) {
+                        continue;
                     }
+
+                    no_dups.insert(blinding_nonce_map_key);
+                    answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
                 }
             }
 
-            // last page since there are less than 30 elements
+            // last page since there are less than 30 elements, backends defaults to that number
             if (txs.size() < 30) {
                 break;
             }
