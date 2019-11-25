@@ -20,6 +20,7 @@ stages:
   tags:
     - ga
   artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 1 day
     when: on_success
     paths:
@@ -39,6 +40,7 @@ stages:
   before_script:
     - mkdir $CI_PROJECT_DIR/gdk-python
   artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 1 day
     when: on_success
     paths:
@@ -49,6 +51,7 @@ stages:
   before_script:
     - mkdir $CI_PROJECT_DIR/gdk-iphone
   artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 1 day
     when: on_success
     paths:
@@ -256,6 +259,7 @@ package_release:
     - garelease
   stage: deploy
   artifacts:
+    name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 14 days
     paths:
     - $CI_PROJECT_DIR/gdk_dist
