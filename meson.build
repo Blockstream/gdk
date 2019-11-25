@@ -69,6 +69,7 @@ common_compile_options = [
     '-fstack-protector-strong',
     '-fvisibility=hidden',
     '-DGDK_BUILD',
+    '-D_HAVE_SQLITE_CONFIG_H'
 ]
 
 if not is_freebsd and compiler.has_argument('-Wthread-safety')
