@@ -472,7 +472,7 @@ namespace sdk {
             const auto& signatures = args.at("signatures");
             const auto& inputs = m_twofactor_data["signing_inputs"];
             const auto& outputs = m_twofactor_data["transaction_outputs"];
-            uint32_t flags = m_session.get_network_parameters().liquid()
+            const uint32_t flags = m_session.get_network_parameters().liquid()
                 ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS)
                 : 0;
             const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"), flags);
@@ -606,7 +606,7 @@ namespace sdk {
             args = nlohmann::json::parse(m_code);
         }
 
-        for (const auto it : m_tx.at("change_address").items()) {
+        for (const auto& it : m_tx.at("change_address").items()) {
             // already done, skip it
             if (it.value().value("is_blinded", false)) {
                 continue;
@@ -620,10 +620,10 @@ namespace sdk {
                 pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("blinding_script_hash"));
             } else {
                 // Use the response from the HW
-                pub_blinding_key = args.at("blinding_keys").at(it.key());
+                pub_blinding_key = args.at("blinding_keys").at(asset_tag);
             }
 
-            const std::string unconf_addr = m_session.extract_confidential_address(it.value().at("address"));
+            const std::string& unconf_addr = m_session.extract_confidential_address(it.value().at("address"));
             m_tx["change_address"][asset_tag]["address"] = m_session.blind_address(unconf_addr, pub_blinding_key);
             m_tx["change_address"][asset_tag]["is_blinded"] = true;
         }
@@ -634,11 +634,9 @@ namespace sdk {
         return state_type::done;
     }
 
-    static bool parse_set_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
+    static void cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
     {
-        if (blinded_scripts.size() != nonces.size()) {
-            return false; // TODO: raise an exception?
-        }
+        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
 
         size_t i = 0;
 
@@ -652,8 +650,6 @@ namespace sdk {
 
             i++;
         }
-
-        return true;
     }
 
     // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
@@ -699,7 +695,7 @@ namespace sdk {
         }
 
         const nlohmann::json args = nlohmann::json::parse(m_code);
-        GDK_RUNTIME_ASSERT(parse_set_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]));
+        cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
     }
 
     //

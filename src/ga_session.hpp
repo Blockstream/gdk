@@ -47,6 +47,13 @@ namespace sdk {
         std::unique_ptr<boost::asio::io_service::work> m_work_guard;
     };
 
+    struct BlindingNoncesHash {
+        std::size_t operator()(const std::pair<std::string, std::string>& k) const
+        {
+            return std::hash<std::string>()(k.first) ^ (std::hash<std::string>()(k.second) << 1);
+        }
+    };
+
     class ga_session final {
     public:
         using transport_t = boost::variant<std::shared_ptr<transport>, std::shared_ptr<transport_tls>>;
@@ -160,8 +167,8 @@ namespace sdk {
 
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
         void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-            const std::string& abf, const std::string& vbf);
+            const nlohmann::json& output, const std::string& asset_commitment_hex,
+            const std::string& value_commitment_hex, const std::string& abf, const std::string& vbf);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
@@ -281,7 +288,6 @@ namespace sdk {
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
         nlocktime_t get_upcoming_nlocktime() const;
-        std::array<unsigned char, 32> calc_blinding_nonce_map_key(const std::string& pubkey, const std::string& script);
 
         bool connect_with_tls() const;
 
@@ -404,8 +410,8 @@ namespace sdk {
 
         nlohmann::json m_assets;
 
-        // key = sha256(nonce_commitment || script)
-        std::map<std::array<unsigned char, 32>, std::string> m_blinding_nonces GDK_GUARDED_BY(m_mutex);
+        std::unordered_map<std::pair<std::string, std::string>, std::string, BlindingNoncesHash>
+            m_blinding_nonces GDK_GUARDED_BY(m_mutex);
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);

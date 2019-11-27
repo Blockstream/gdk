@@ -1943,21 +1943,23 @@ namespace sdk {
 
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
-            const bool is_software_signer = [this] {
+            const auto blinding_key = [this, &extra_commitment] {
                 locker_t locker{ m_mutex };
-                return get_signer().get_hw_device().empty();
+
+                if (!get_signer().get_hw_device().empty()) {
+                    return boost::optional<std::array<unsigned char, 32>>();
+                }
+
+                // if it's software signer, fetch the blinding key immediately
+                return boost::optional<std::array<unsigned char, 32>>(
+                    get_signer().get_blinding_key_from_script(extra_commitment));
             }();
 
             try {
                 unblind_t unblinded;
-                if (is_software_signer) {
-                    const auto blinding_key = [this, &extra_commitment] {
-                        locker_t locker{ m_mutex };
-                        return get_signer().get_blinding_key_from_script(extra_commitment);
-                    }();
-
+                if (blinding_key) {
                     unblinded = asset_unblind(
-                        blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
+                        *blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
                 } else if (has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
                     const auto blinding_nonce = get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
                     unblinded
@@ -2322,7 +2324,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_net_params.liquid());
 
         nlohmann::json answer = nlohmann::json::array();
-        std::set<std::array<unsigned char, 32>> no_dups;
+        std::unordered_set<std::pair<std::string, std::string>, BlindingNoncesHash> no_dups;
 
         // there's an hard-limit of 30 pages from the backend, see https://api.greenaddress.it/txs.html#get_list_v2
         for (size_t page_id = 0; page_id < 30; page_id++) {
@@ -2357,15 +2359,15 @@ namespace sdk {
                         continue;
                     }
 
-                    const auto blinding_nonce_map_key = calc_blinding_nonce_map_key(nonce_commitment, script);
+                    const auto map_key = std::make_pair(nonce_commitment, script);
 
                     // don't ask for the same nonces multiple times
-                    if (no_dups.find(blinding_nonce_map_key) != no_dups.end()
-                        || m_blinding_nonces.find(blinding_nonce_map_key) != m_blinding_nonces.end()) {
+                    if (no_dups.find(map_key) != no_dups.end()
+                        || m_blinding_nonces.find(map_key) != m_blinding_nonces.end()) {
                         continue;
                     }
 
-                    no_dups.insert(blinding_nonce_map_key);
+                    no_dups.insert(map_key);
                     answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
                 }
             }
@@ -2379,28 +2381,17 @@ namespace sdk {
         return answer;
     }
 
-    std::array<unsigned char, 32> ga_session::calc_blinding_nonce_map_key(
-        const std::string& pubkey, const std::string& script)
-    {
-        auto pubkey_bytes = h2b(pubkey);
-        auto script_bytes = h2b(script);
-
-        std::vector<unsigned char> data;
-        std::copy(pubkey_bytes.begin(), pubkey_bytes.end(), std::back_inserter(data));
-        std::copy(script_bytes.begin(), script_bytes.end(), std::back_inserter(data));
-
-        return sha256(data);
-    }
-
     std::array<unsigned char, 32> ga_session::get_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
         locker_t locker(m_mutex);
 
-        const auto key = calc_blinding_nonce_map_key(pubkey, script);
-        const auto data = h2b(m_blinding_nonces.at(key));
+        const auto data = h2b(m_blinding_nonces.at(std::make_pair(pubkey, script)));
 
         std::array<unsigned char, 32> answer;
+
+        GDK_RUNTIME_ASSERT(data.size() == 32);
         std::copy(data.begin(), data.end(), answer.begin());
+
         return answer;
     }
 
@@ -2408,17 +2399,14 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        const auto key = calc_blinding_nonce_map_key(pubkey, script);
-        return m_blinding_nonces.find(key) != m_blinding_nonces.end();
+        return m_blinding_nonces.find(std::make_pair(pubkey, script)) != m_blinding_nonces.end();
     }
 
     void ga_session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
     {
         locker_t locker(m_mutex);
 
-        const auto key = calc_blinding_nonce_map_key(pubkey, script);
-
-        m_blinding_nonces.emplace(key, nonce);
+        m_blinding_nonces.emplace(std::make_pair(pubkey, script), nonce);
     }
 
     // Idempotent
@@ -2580,7 +2568,7 @@ namespace sdk {
 
             const auto script_sha = sha256(server_script);
             std::vector<unsigned char> witness_program = { 0x00, 0x20 };
-            std::copy(script_sha.begin(), script_sha.end(), std::back_inserter(witness_program));
+            witness_program.insert(witness_program.end(), script_sha.begin(), script_sha.end());
 
             const auto script_hash = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
             address["blinding_script_hash"] = b2h(script_hash);
@@ -2621,7 +2609,7 @@ namespace sdk {
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
     {
         locker_t locker{ m_mutex };
-        const auto public_key = m_signer->get_public_key_from_blinding_key(h2b(script_hex));
+        const auto public_key = get_signer().get_public_key_from_blinding_key(h2b(script_hex));
         return b2h(public_key);
     }
 
@@ -3119,10 +3107,10 @@ namespace sdk {
     }
 
     void ga_session::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
+        const nlohmann::json& output, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
         const std::string& abf, const std::string& vbf)
     {
-        ::ga::sdk::blind_output(*this, details, tx, index, o, h2b<33>(asset_commitment_hex),
+        ::ga::sdk::blind_output(*this, details, tx, index, output, h2b<33>(asset_commitment_hex),
             h2b<33>(value_commitment_hex), h2b<32>(abf), h2b<32>(vbf));
     }
 

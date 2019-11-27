@@ -661,7 +661,9 @@ namespace sdk {
                         result["change_subaccount"] = change_subaccount;
                         auto change_address = session.get_receive_address(change_subaccount, {});
                         if (is_liquid) {
-                            // set a temporary blinding key, will be changed later through the resolvers
+                            // set a temporary blinding key, will be changed later through the resolvers. we need
+                            // to have one because all our create_transaction logic relies on being able to blind
+                            // the tx for a few things (fee estimation for instance).
                             const auto temp_pk = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 
                             change_address["address"] = session.blind_address(change_address.at("address"), temp_pk);
@@ -1002,13 +1004,13 @@ namespace sdk {
     }
 
     void blind_output(ga_session& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& o, const std::array<unsigned char, 33>& generator,
+        const nlohmann::json& output, const std::array<unsigned char, 33>& generator,
         const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
         const std::array<unsigned char, 32>& vbf)
     {
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.liquid());
-        GDK_RUNTIME_ASSERT(!o.at("is_fee"));
+        GDK_RUNTIME_ASSERT(!output.at("is_fee"));
 
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
@@ -1028,13 +1030,13 @@ namespace sdk {
             input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
         }
 
-        const auto asset_id = h2b_rev(o.at("asset_id"));
-        const auto script = h2b(o.at("script"));
-        const auto pub_key = h2b(o.at("public_key"));
-        const uint64_t value = o.at("satoshi");
+        const auto asset_id = h2b_rev(output.at("asset_id"));
+        const auto script = h2b(output.at("script"));
+        const auto pub_key = h2b(output.at("public_key"));
+        const uint64_t value = output.at("satoshi");
 
-        const auto eph_keypair_sec = h2b(o.at("eph_keypair_sec"));
-        const auto eph_keypair_pub = h2b(o.at("eph_keypair_pub"));
+        const auto eph_keypair_sec = h2b(output.at("eph_keypair_sec"));
+        const auto eph_keypair_pub = h2b(output.at("eph_keypair_pub"));
 
         const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf, vbf, value_commitment,
             script, generator, 1, std::min(std::max(net_params.ct_exponent(), -1), 18),
