@@ -75,8 +75,8 @@ namespace sdk {
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
 
     // Encryption
-    nlohmann::json encrypt_data(const nlohmann::json& input, const std::vector<unsigned char>& default_password);
-    nlohmann::json decrypt_data(const nlohmann::json& input, const std::vector<unsigned char>& default_password);
+    nlohmann::json encrypt_data(const nlohmann::json& input, byte_span_t default_password);
+    nlohmann::json decrypt_data(const nlohmann::json& input, byte_span_t default_password);
     std::string aes_cbc_decrypt(
         const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& ciphertext);
     std::string aes_cbc_encrypt(

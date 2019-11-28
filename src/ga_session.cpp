@@ -88,6 +88,7 @@ namespace sdk {
         static const std::string SOCKS5("socks5://");
         static const std::string USER_AGENT("[v2,sw,csv]");
         static const std::string USER_AGENT_NO_CSV("[v2,sw]");
+        static const std::string CACHE_UPCOMING_NLOCKTIME("upcomingnlocktime");
         // TODO: The server should return these
         static const std::vector<std::string> ALL_2FA_METHODS = { { "email" }, { "sms" }, { "phone" }, { "gauth" } };
 
@@ -106,11 +107,6 @@ namespace sdk {
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
         static const uint32_t DEFAULT_TOR_SOCKS_WAIT = 15; // maximum timeout for the tor socks to get ready
 
-        static const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
-        static const std::array<unsigned char, 8> PASSWORD_SALT = {
-            { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'
-        };
-
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
         {
@@ -127,7 +123,7 @@ namespace sdk {
 
         template <typename T> static nlohmann::json get_json_result(const T& result)
         {
-            auto obj = result.template argument<msgpack::object>(0);
+            const auto obj = result.template argument<msgpack::object>(0);
             std::stringstream ss;
             ss << obj;
             return nlohmann::json::parse(ss.str());
@@ -135,7 +131,7 @@ namespace sdk {
 
         static nlohmann::json get_fees_as_json(const autobahn::wamp_event& event)
         {
-            auto obj = event.argument<msgpack::object>(0);
+            const auto obj = event.argument<msgpack::object>(0);
             std::stringstream ss;
             ss << obj;
             std::string fee_json = ss.str();
@@ -256,6 +252,12 @@ namespace sdk {
             }
             return trimmed;
         }
+        struct BlindingNoncesHash {
+            std::size_t operator()(const std::pair<std::string, std::string>& k) const
+            {
+                return std::hash<std::string>()(k.first) ^ (std::hash<std::string>()(k.second) << 1);
+            }
+        };
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -298,6 +300,7 @@ namespace sdk {
         , m_is_locked(false)
         , m_cert_pin_validated(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
+        , m_cache(net_params.at("name"))
     {
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"
@@ -735,52 +738,25 @@ namespace sdk {
 
     nlohmann::json ga_session::refresh_http_data(const std::string& type, bool refresh)
     {
+        const auto value = [this, &type] {
+            locker_t locker(m_mutex);
+            return m_cache.get(type);
+        }();
+
+        if (!refresh) {
+            return value ? nlohmann::json::from_msgpack(value->begin(), value->end()) : nlohmann::json::object();
+        }
+
+        nlohmann::json cached_data;
         nlohmann::json get_params
             = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/" + type + ".json" } };
 
-        const std::string datadir = gdk_config().value("datadir", std::string{});
-        const bool datadir_exists = !datadir.empty();
-        const auto data_path = datadir + std::string("/assets/" + type + ".json");
-
-        nlohmann::json cached_data;
-        if (datadir_exists) {
-            std::fstream f(data_path, f.in);
-            if (f.is_open()) {
-                try {
-                    f >> cached_data;
-                    get_params.update({ { "headers",
-                        { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
-                            cached_data.at("last_modified") } } } });
-                } catch (std::exception& ex) {
-                    GDK_LOG_SEV(log_level::info) << "corrupted file:" << data_path;
-                    // either we can't open the file or json parsing failed. remove so next try can regenerate
-                    // the data.
-                    unlink(data_path.c_str());
-                }
-            }
+        if (value) {
+            cached_data = nlohmann::json::from_msgpack(value->begin(), value->end());
+            get_params.update({ { "headers",
+                { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
+                    cached_data.at("last_modified") } } } });
         }
-
-        if (!refresh) {
-            return cached_data;
-        }
-
-        auto write_to_file = [](const std::string& path, const nlohmann::json& data) {
-            const std::string datadir = gdk_config().value("datadir", std::string{});
-            const auto assets_path = datadir + std::string("/assets");
-#ifdef WIN32
-            mkdir(assets_path.c_str());
-#else
-            mkdir(assets_path.c_str(), 0777);
-#endif
-            try {
-                std::fstream f(path, f.out);
-                if (f.is_open()) {
-                    f << data;
-                }
-            } catch (const std::exception& ex) {
-                GDK_LOG_SEV(log_level::info) << "failed to write file:" << path;
-            }
-        };
 
         const nlohmann::json data = http_get(get_params);
 
@@ -790,10 +766,11 @@ namespace sdk {
         }
 
         GDK_RUNTIME_ASSERT_MSG(data.find("body") == data.end(), "expected JSON");
-        if (datadir_exists) {
-            write_to_file(data_path, data);
+        locker_t locker(m_mutex);
+        m_cache.upsert_keyvalue(type, nlohmann::json::to_msgpack(data));
+        if (m_local_encryption_password) {
+            m_cache.save_db(m_local_encryption_password.get());
         }
-
         return data;
     }
 
@@ -823,13 +800,26 @@ namespace sdk {
         return result;
     }
 
-    ga_session::nlocktime_t ga_session::get_upcoming_nlocktime() const
+    ga_session::nlocktime_t ga_session::get_upcoming_nlocktime()
     {
-        nlohmann::json upcoming;
-        wamp_call([&upcoming](wamp_call_result result) { upcoming = get_json_result(result.get()); },
-            "com.greenaddress.txs.upcoming_nlocktime");
+        auto upcoming = [this]() -> boost::optional<nlohmann::json> {
+            locker_t locker(m_mutex);
+            const auto value = m_cache.get(CACHE_UPCOMING_NLOCKTIME);
+            if (value) {
+                return nlohmann::json::from_msgpack(value->begin(), value->end());
+            } else {
+                return boost::none;
+            }
+        }();
 
-        const auto upcoming_l = upcoming.at("list");
+        if (!upcoming) {
+            wamp_call([&upcoming](wamp_call_result result) { upcoming = get_json_result(result.get()); },
+                "com.greenaddress.txs.upcoming_nlocktime");
+            locker_t locker(m_mutex);
+            m_cache.upsert_keyvalue(CACHE_UPCOMING_NLOCKTIME, nlohmann::json::to_msgpack(upcoming.get()));
+        }
+
+        const auto upcoming_l = upcoming.get().at("list");
 
         std::map<std::pair<std::string, uint32_t>, nlohmann::json> upcoming_nlocktime;
         std::for_each(std::cbegin(upcoming_l), std::cend(upcoming_l), [&upcoming_nlocktime](const auto& v) {
@@ -1261,6 +1251,7 @@ namespace sdk {
                 // Mark cached tx lists as dirty
                 m_tx_list_caches.purge(subaccount);
             }
+            m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
 
             if (m_notification_handler == nullptr) {
                 return;
@@ -1410,6 +1401,18 @@ namespace sdk {
         //#endif
     }
 
+    void ga_session::set_local_encryption_password(byte_span_t password)
+    {
+        locker_t locker{ m_mutex };
+        GDK_RUNTIME_ASSERT(password.size() == PBKDF2_HMAC_SHA512_LEN);
+        GDK_RUNTIME_ASSERT(m_local_encryption_password == boost::none);
+        auto tmp = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>();
+        std::copy(password.begin(), password.end(), tmp.begin());
+        m_local_encryption_password = tmp;
+        m_cache.load_db(m_local_encryption_password.get(), /*hw*/ 1);
+        m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
+    }
+
     void ga_session::on_failed_login()
     {
         try {
@@ -1417,7 +1420,7 @@ namespace sdk {
             m_signer.reset();
             m_user_pubkeys.reset();
             m_mnemonic.clear();
-            m_local_encryption_password.clear();
+            m_local_encryption_password = boost::none;
         } catch (const std::exception& ex) {
         }
     }
@@ -1446,8 +1449,15 @@ namespace sdk {
 
         // Cache local encryption password
         const auto pwd_xpub = get_signer().get_xpub(PASSWORD_PATH);
-        const auto local_password = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
-        m_local_encryption_password.assign(std::begin(local_password), std::end(local_password));
+
+        m_local_encryption_password = [&pwd_xpub] {
+            const auto local_password = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
+            std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> tmp;
+            std::copy(local_password.begin(), local_password.end(), tmp.begin());
+            return boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>>(tmp);
+        }();
+        m_cache.load_db(m_local_encryption_password.get(), /*sw*/ 0);
+        m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
 
         // TODO: Unify normal and trezor logins
         std::string challenge;
@@ -1695,20 +1705,22 @@ namespace sdk {
 
     nlohmann::json ga_session::encrypt(const nlohmann::json& input_json) const
     {
-        std::vector<unsigned char> local_encryption_password;
+        std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> local_encryption_password;
         {
             locker_t locker(m_mutex);
-            local_encryption_password = m_local_encryption_password;
+            GDK_RUNTIME_ASSERT(m_local_encryption_password != boost::none);
+            local_encryption_password = m_local_encryption_password.get();
         }
         return encrypt_data(input_json, local_encryption_password);
     }
 
     nlohmann::json ga_session::decrypt(const nlohmann::json& input_json) const
     {
-        std::vector<unsigned char> local_encryption_password;
+        std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> local_encryption_password;
         {
             locker_t locker(m_mutex);
-            local_encryption_password = m_local_encryption_password;
+            GDK_RUNTIME_ASSERT(m_local_encryption_password != boost::none);
+            local_encryption_password = m_local_encryption_password.get();
         }
         return decrypt_data(input_json, local_encryption_password);
     }
@@ -1775,14 +1787,12 @@ namespace sdk {
             const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", satoshi } };
         }
-        nlohmann::json utxos;
-        {
-            // TODO: consider passing the lock here as well
+        const auto utxos = [this, &locker, &subaccount, &num_confs] {
             unique_unlock unlocker{ locker };
-            utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
-        }
+            return get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
+        }();
 
-        auto accumulate_if = [](const auto& utxos, auto pred) {
+        const auto accumulate_if = [](const auto& utxos, auto pred) {
             return std::accumulate(
                 std::begin(utxos), std::end(utxos), int64_t{ 0 }, [pred](int64_t init, const nlohmann::json& utxo) {
                     amount::value_type satoshi{ 0 };
@@ -1998,6 +2008,7 @@ namespace sdk {
     void ga_session::unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset)
     {
         amount::value_type value;
+
         if (boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value)) {
             utxo["satoshi"] = value;
             utxo["abf"] = b2h(abf_t{ { 0 } });
@@ -2006,50 +2017,66 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag.data() + 1, asset_tag.size() - 1));
             utxo["confidential"] = false;
-        } else {
-            const auto rangeproof = h2b(utxo.at("range_proof"));
-            const auto commitment = h2b(utxo.at("commitment"));
-            const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
-            const auto asset_tag = h2b(utxo.at("asset_tag"));
-            const auto extra_commitment = h2b(utxo.at("script"));
-
-            GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
-
-            const auto blinding_key = [this, &extra_commitment] {
-                locker_t locker{ m_mutex };
-
-                if (!get_signer().get_hw_device().empty()) {
-                    return boost::optional<std::array<unsigned char, 32>>();
-                }
-
-                // if it's software signer, fetch the blinding key immediately
-                return boost::optional<std::array<unsigned char, 32>>(
-                    get_signer().get_blinding_key_from_script(extra_commitment));
-            }();
-
-            try {
-                unblind_t unblinded;
-                if (blinding_key) {
-                    unblinded = asset_unblind(
-                        *blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
-                } else if (has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
-                    const auto blinding_nonce = get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
-                    unblinded
-                        = asset_unblind_with_nonce(blinding_nonce, rangeproof, commitment, extra_commitment, asset_tag);
-                } else {
-                    // hw and missing nonce in the map
-                    utxo["error"] = "missing blinding nonce";
-                    return;
-                }
-
-                utxo["satoshi"] = std::get<3>(unblinded);
-                utxo["abf"] = b2h(std::get<2>(unblinded));
-                utxo["vbf"] = b2h(std::get<1>(unblinded));
-                utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
+            return;
+        }
+        if (utxo.contains("txhash")) {
+            const auto txhash = h2b(utxo.at("txhash"));
+            const auto vout = utxo["pt_idx"];
+            locker_t locker(m_mutex);
+            const auto value = m_cache.get_liquidoutput(txhash, vout);
+            if (value) {
+                utxo.insert(value->begin(), value->end());
                 utxo["confidential"] = true;
-            } catch (const std::exception& ex) {
-                utxo["error"] = "failed to unblind utxo";
+                return;
             }
+        }
+        const auto rangeproof = h2b(utxo.at("range_proof"));
+        const auto commitment = h2b(utxo.at("commitment"));
+        const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
+        const auto asset_tag = h2b(utxo.at("asset_tag"));
+        const auto extra_commitment = h2b(utxo.at("script"));
+
+        GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
+
+        const auto blinding_key = [this, &extra_commitment]() -> boost::optional<std::array<unsigned char, 32>> {
+            locker_t locker{ m_mutex };
+
+            if (!get_signer().get_hw_device().empty()) {
+                return boost::none;
+            }
+
+            // if it's software signer, fetch the blinding key immediately
+            return get_signer().get_blinding_key_from_script(extra_commitment);
+        }();
+
+        try {
+            unblind_t unblinded;
+            if (blinding_key) {
+                unblinded = asset_unblind(
+                    *blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
+            } else if (has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
+                const auto blinding_nonce = get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
+                unblinded
+                    = asset_unblind_with_nonce(blinding_nonce, rangeproof, commitment, extra_commitment, asset_tag);
+            } else {
+                // hw and missing nonce in the map
+                utxo["error"] = "missing blinding nonce";
+                return;
+            }
+
+            utxo["satoshi"] = std::get<3>(unblinded);
+            utxo["abf"] = b2h(std::get<2>(unblinded));
+            utxo["vbf"] = b2h(std::get<1>(unblinded));
+            utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
+            utxo["confidential"] = true;
+            if (utxo.contains("txhash")) {
+                const auto txhash = h2b(utxo.at("txhash"));
+                const auto vout = utxo["pt_idx"];
+                locker_t locker(m_mutex);
+                m_cache.insert_liquidoutput(txhash, vout, utxo);
+            }
+        } catch (const std::exception& ex) {
+            utxo["error"] = "failed to unblind utxo";
         }
     }
 
@@ -2106,6 +2133,11 @@ namespace sdk {
                 utxo["block_height"] = 0;
             }
             json_add_if_missing(utxo, "subtype", 0u);
+        }
+
+        locker_t locker(m_mutex);
+        if (m_local_encryption_password) {
+            m_cache.save_db(m_local_encryption_password.get());
         }
         return utxos;
     }
@@ -2399,7 +2431,7 @@ namespace sdk {
         std::unordered_set<std::pair<std::string, std::string>, BlindingNoncesHash> no_dups;
 
         // there's an hard-limit of 30 pages from the backend, see https://api.greenaddress.it/txs.html#get_list_v2
-        for (size_t page_id = 0; page_id < 30; page_id++) {
+        for (size_t page_id = 0; page_id < 30; ++page_id) {
             nlohmann::json txs;
 
             if (details.contains("subaccount") && details.at("subaccount").is_number()) {
@@ -2415,11 +2447,17 @@ namespace sdk {
                     std::string("all"));
             }
 
-            // lock to guard m_blinding_nonces
+            // lock to guard m_cache
             locker_t locker(m_mutex);
 
             for (const auto& tx : txs.at("list")) {
                 for (const auto& ep : tx.at("eps")) {
+                    const auto txhash = h2b(tx.at("txhash"));
+                    const auto vout = ep["pt_idx"];
+                    if (m_cache.has_liquidoutput(txhash, vout)) {
+                        continue;
+                    }
+
                     const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
                     const std::string& nonce_commitment = json_get_value(ep, "nonce_commitment", std::string{});
                     const std::string& script = json_get_value(ep, "script", std::string{});
@@ -2435,7 +2473,7 @@ namespace sdk {
 
                     // don't ask for the same nonces multiple times
                     if (no_dups.find(map_key) != no_dups.end()
-                        || m_blinding_nonces.find(map_key) != m_blinding_nonces.end()) {
+                        || m_cache.has_liquidblindingnonce(h2b(nonce_commitment), h2b(script))) {
                         continue;
                     }
 
@@ -2455,14 +2493,16 @@ namespace sdk {
 
     std::array<unsigned char, 32> ga_session::get_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
+        GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         locker_t locker(m_mutex);
 
-        const auto data = h2b(m_blinding_nonces.at(std::make_pair(pubkey, script)));
+        const auto data = m_cache.get_liquidblindingnonce(h2b(pubkey), h2b(script));
+        GDK_RUNTIME_ASSERT(data != boost::none);
 
         std::array<unsigned char, 32> answer;
 
-        GDK_RUNTIME_ASSERT(data.size() == 32);
-        std::copy(data.begin(), data.end(), answer.begin());
+        GDK_RUNTIME_ASSERT(data->size() == 32);
+        std::copy(data->begin(), data->end(), answer.begin());
 
         return answer;
     }
@@ -2470,15 +2510,13 @@ namespace sdk {
     bool ga_session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
         locker_t locker(m_mutex);
-
-        return m_blinding_nonces.find(std::make_pair(pubkey, script)) != m_blinding_nonces.end();
+        return m_cache.has_liquidblindingnonce(h2b(pubkey), h2b(script));
     }
 
     void ga_session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
     {
         locker_t locker(m_mutex);
-
-        m_blinding_nonces.emplace(std::make_pair(pubkey, script), nonce);
+        m_cache.insert_liquidblindingnonce(h2b(pubkey), h2b(script), h2b(nonce));
     }
 
     // Idempotent
@@ -2515,7 +2553,7 @@ namespace sdk {
 
         nlohmann::json asset_utxos({});
         std::for_each(
-            std::begin(utxos), std::end(utxos), [&asset_utxos, confidential_only, this](const nlohmann::json& utxo) {
+            std::begin(utxos), std::end(utxos), [&asset_utxos, &confidential_only, this](const nlohmann::json& utxo) {
                 const auto has_error = utxo.find("error") != utxo.end();
                 if (has_error) {
                     asset_utxos["error"].emplace_back(utxo);

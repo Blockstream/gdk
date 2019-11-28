@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "amount.hpp"
+#include "ga_cache.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
 #include "signer.hpp"
@@ -133,13 +134,6 @@ namespace sdk {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
     };
 
-    struct BlindingNoncesHash {
-        std::size_t operator()(const std::pair<std::string, std::string>& k) const
-        {
-            return std::hash<std::string>()(k.first) ^ (std::hash<std::string>()(k.second) << 1);
-        }
-    };
-
     class ga_session final {
     public:
         using transport_t = boost::variant<std::shared_ptr<transport>, std::shared_ptr<transport_tls>>;
@@ -210,6 +204,7 @@ namespace sdk {
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         std::string get_blinding_key_for_script(const std::string& script_hex);
+        void set_local_encryption_password(byte_span_t password);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
         std::string extract_confidential_address(const std::string& blinded_address);
         nlohmann::json get_balance(const nlohmann::json& details);
@@ -376,7 +371,7 @@ namespace sdk {
 
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
-        nlocktime_t get_upcoming_nlocktime() const;
+        nlocktime_t get_upcoming_nlocktime();
 
         bool connect_with_tls() const;
 
@@ -490,7 +485,8 @@ namespace sdk {
         void* m_notification_context GDK_PT_GUARDED_BY(m_mutex);
 
         nlohmann::json m_login_data GDK_GUARDED_BY(m_mutex);
-        std::vector<unsigned char> m_local_encryption_password GDK_GUARDED_BY(m_mutex);
+        boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>> m_local_encryption_password GDK_GUARDED_BY(
+            m_mutex);
         std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_twofactor_config GDK_GUARDED_BY(m_mutex);
@@ -502,9 +498,6 @@ namespace sdk {
         uint64_t m_earliest_block_time GDK_GUARDED_BY(m_mutex);
 
         nlohmann::json m_assets;
-
-        std::unordered_map<std::pair<std::string, std::string>, std::string, BlindingNoncesHash>
-            m_blinding_nonces GDK_GUARDED_BY(m_mutex);
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);
@@ -529,6 +522,7 @@ namespace sdk {
 
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
+        cache m_cache GDK_GUARDED_BY(m_mutex);
     };
 
 } // namespace sdk

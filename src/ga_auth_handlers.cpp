@@ -270,7 +270,9 @@ namespace sdk {
             // We first need the challenge, so ask the caller for the master pubkey.
             m_state = state_type::resolve_code;
             set_data("get_xpubs");
-            m_twofactor_data["paths"] = get_paths_json();
+            auto paths = get_paths_json();
+            paths.emplace_back(PASSWORD_PATH);
+            m_twofactor_data["paths"] = paths;
         }
     }
 
@@ -289,6 +291,9 @@ namespace sdk {
                     const auto master_xpub = get_xpub(xpubs.at(0));
                     const auto btc_version = m_session.get_network_parameters().btc_version();
                     m_challenge = m_session.get_challenge(address_from_xpub(btc_version, master_xpub));
+
+                    const auto local_password = pbkdf2_hmac_sha512(get_xpub(xpubs.at(1)).second, PASSWORD_SALT);
+                    m_session.set_local_encryption_password(local_password);
 
                     // Ask the caller to sign the challenge
                     set_data("sign_message");
@@ -648,7 +653,7 @@ namespace sdk {
                 session.set_blinding_nonce(pubkey, script, nonce);
             }
 
-            i++;
+            ++i;
         }
     }
 
@@ -667,7 +672,7 @@ namespace sdk {
             try {
                 m_state = state_type::resolve_code;
 
-                nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
+                const nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
                 m_twofactor_data
                     = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
             } catch (const std::exception& e) {

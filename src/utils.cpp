@@ -282,15 +282,15 @@ namespace sdk {
         return p == json.end() ? f() : h2b(p->get<std::string>());
     }
 
-    static std::vector<unsigned char> get_encryption_password(
-        const nlohmann::json& input, const std::vector<unsigned char>& default_)
+    static std::vector<unsigned char> get_encryption_password(const nlohmann::json& input, byte_span_t default_)
     {
-        return json_default_hex(input, "password", [&default_]() { return default_; });
+        return json_default_hex(
+            input, "password", [&default_]() { return std::vector<unsigned char>(default_.begin(), default_.end()); });
     }
 
     static auto get_encryption_salt(const nlohmann::json& input)
     {
-        auto salt = json_default_hex(input, "salt", []() {
+        const auto salt = json_default_hex(input, "salt", [] {
             std::vector<unsigned char> salt(16);
             get_random_bytes(salt.size(), salt.data(), salt.size());
             return salt;
@@ -323,7 +323,7 @@ namespace sdk {
         return b2h(encrypted);
     }
 
-    nlohmann::json encrypt_data(const nlohmann::json& input, const std::vector<unsigned char>& default_password)
+    nlohmann::json encrypt_data(const nlohmann::json& input, byte_span_t default_password)
     {
         const auto password = get_encryption_password(input, default_password);
         GDK_RUNTIME_ASSERT_MSG(!password.empty(), "A password must be provided to encrypt/decrypt");
@@ -334,7 +334,7 @@ namespace sdk {
         return { { "ciphertext", ciphertext }, { "salt", b2h(salt) } };
     }
 
-    nlohmann::json decrypt_data(const nlohmann::json& input, const std::vector<unsigned char>& default_password)
+    nlohmann::json decrypt_data(const nlohmann::json& input, byte_span_t default_password)
     {
         const auto password = get_encryption_password(input, default_password);
         GDK_RUNTIME_ASSERT_MSG(!password.empty(), "A password must be provided to encrypt/decrypt");

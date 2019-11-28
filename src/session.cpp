@@ -443,6 +443,14 @@ namespace sdk {
         });
     }
 
+    void session::set_local_encryption_password(byte_span_t password)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->set_local_encryption_password(password);
+        });
+    }
+
     std::string session::blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex)
     {
         return exception_wrapper([&] {
