@@ -3050,6 +3050,14 @@ namespace sdk {
             { "encrypted_data", aes_cbc_encrypt(key, json) } };
     }
 
+    void ga_session::disable_all_pin_logins()
+    {
+        bool r{ false };
+        wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
+            "com.greenaddress.pin.remove_all_pin_logins");
+        GDK_RUNTIME_ASSERT(r);
+    }
+
     // Idempotent
     std::vector<unsigned char> ga_session::get_pin_password(const std::string& pin, const std::string& pin_identifier)
     {

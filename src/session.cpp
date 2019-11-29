@@ -638,6 +638,14 @@ namespace sdk {
         });
     }
 
+    void session::disable_all_pin_logins()
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->disable_all_pin_logins();
+        });
+    }
+
     nlohmann::json session::get_unspent_outputs(const nlohmann::json& details)
     {
         return exception_wrapper([&] {

@@ -349,6 +349,10 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
+    public func disableAllPinLogins() throws -> Void {
+        try callWrapper(fun: GA_disable_all_pin_logins(session))
+    }
+
     public func getTwoFactorConfig() throws -> [String: Any]? {
         var result: OpaquePointer? = nil
         try callWrapper(fun: GA_get_twofactor_config(session, &result))

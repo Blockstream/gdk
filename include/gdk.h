@@ -365,6 +365,12 @@ GDK_API int GA_set_pin(
     struct GA_session* session, const char* mnemonic, const char* pin, const char* device_id, GA_json** pin_data);
 
 /**
+ * Disable all PIN logins previously set. After calling this method, user will not be able to
+ *|    login with PIN from any device he previously paired.
+ */
+GDK_API int GA_disable_all_pin_logins(struct GA_session* session);
+
+/**
  * Construct a transaction.
  *
  * :param session: The session to use.
