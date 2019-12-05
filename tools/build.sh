@@ -193,6 +193,10 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
         printf "expected \$ANDROID_NDK for --ndk build, but it is not defined\n"
         exit 1
     fi
+    if [ -z "$JAVA_HOME" ]; then
+        printf "expected \$JAVA_HOME for --ndk build, but it is not defined\n"
+        exit 1
+    fi
 
     if [ ! -d "$ANDROID_NDK" ]; then
         printf "expected \$ANDROID_NDK($ANDROID_NDK) to be a directory\n"
