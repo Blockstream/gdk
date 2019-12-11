@@ -3,26 +3,13 @@ set -e
 
 trap "cat config.log" ERR
 
-TOR_NAME="tor-tor-0.4.1.6"
+TOR_NAME="tor-tor-0.4.2.5"
 
 if [ ! -d "${MESON_BUILD_ROOT}/tor" ]; then
     cp -r "${MESON_SOURCE_ROOT}/subprojects/${TOR_NAME}" "${MESON_BUILD_ROOT}/tor"
 fi
 
 cd "${MESON_BUILD_ROOT}/tor"
-
-cat <<EOF | patch -p0
---- src/core/mainloop/periodic.c	2019-09-23 16:07:43.000000000 +0200
-+++ src/core/mainloop/periodic.c	2019-09-23 16:07:24.000000000 +0200
-@@ -155,6 +155,7 @@
-     return;
-   mainloop_event_free(event->ev);
-   event->last_action_time = 0;
-+  event->enabled = 0;
- }
- 
- /** Enable the given event by setting its "enabled" flag and scheduling it to
-EOF
 
 #FIXME: enable zstd for tor compression
 CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/tor/build --disable-system-torrc --disable-asciidoc --enable-pic --enable-static-openssl \
@@ -57,14 +44,14 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     make -o configure -j$NUM_JOBS
     make -o configure install
 elif [ \( "$1" = "--windows" \) ]; then
-     export CC=x86_64-w64-mingw32-gcc-posix
-     export CXX=x86_64-w64-mingw32-g++-posix
-    $SED -i "734a TOR_LIB_CRYPT32=-lcrypt32" configure.ac
-    $SED -i "735s!^TOR_LIB.*!  TOR_LIB_CRYPT32=-lcrypt32!" configure.ac
-    $SED -i "743a AC_SUBST(TOR_LIB_CRYPT32)" configure.ac
-    $SED -i "892s!^TOR_SEARCH.*!TOR_SEARCH_LIBRARY(openssl, \$tryssldir, \[-lssl -lcrypto \$TOR_LIB_GDI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\],!" configure.ac
-    $SED -i "924s!^LIBS=.*!LIBS=\"\$TOR_OPENSSL_LIBS \$LIBS \$TOR_LIB_IPHLPAPI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\"!" configure.ac
-    $SED -i "1135s!^all_libs_for_check=.*!all_libs_for_check=\"\$TOR_ZLIB_LIBS \$TOR_LIB_MATH \$TOR_LIBEVENT_LIBS \$TOR_OPENSSL_LIBS \$TOR_SYSTEMD_LIBS \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32 \$TOR_LIB_GDI \$TOR_LIB_USERENV \$TOR_CAP_LIBS\"!" configure.ac
+    export CC=x86_64-w64-mingw32-gcc-posix
+    export CXX=x86_64-w64-mingw32-g++-posix
+    $SED -i "754a TOR_LIB_CRYPT32=-lcrypt32" configure.ac
+    $SED -i "755s!^TOR_LIB.*!  TOR_LIB_CRYPT32=-lcrypt32!" configure.ac
+    $SED -i "763a AC_SUBST(TOR_LIB_CRYPT32)" configure.ac
+    $SED -i "912s!^TOR_SEARCH.*!TOR_SEARCH_LIBRARY(openssl, \$tryssldir, \[-lssl -lcrypto \$TOR_LIB_GDI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\],!" configure.ac
+    $SED -i "944s!^LIBS=.*!LIBS=\"\$TOR_OPENSSL_LIBS \$LIBS \$TOR_LIB_IPHLPAPI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\"!" configure.ac
+    $SED -i "1155s!^all_libs_for_check=.*!all_libs_for_check=\"\$TOR_ZLIB_LIBS \$TOR_LIB_MATH \$TOR_LIBEVENT_LIBS \$TOR_OPENSSL_LIBS \$TOR_SYSTEMD_LIBS \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32 \$TOR_LIB_GDI \$TOR_LIB_USERENV \$TOR_CAP_LIBS\"!" configure.ac
     sh autogen.sh
     ./configure ${CONFIGURE_ARGS} --host=x86_64-w64-mingw32 --build=${HOST_OS}
     $SED -ie "s!^include src/app.*!!" "src/include.am"
@@ -75,10 +62,10 @@ elif [ \( "$1" = "--windows" \) ]; then
 else
     export CFLAGS="$SDK_CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
     export LDFLAGS="$SDK_LDFLAGS $EXTRA_FLAGS"
-    $SED -i "739a TOR_LIB_PTHREAD=-lpthread" configure.ac
-    $SED -i "740s!^TOR_LIB.*!  TOR_LIB_PTHREAD=-lpthread!" configure.ac
-    $SED -i "743a AC_SUBST(TOR_LIB_PTHREAD)" configure.ac
-    $SED -i "892s!^TOR_SEARCH.*!TOR_SEARCH_LIBRARY(openssl, \$tryssldir, \[-lssl -lcrypto \$TOR_LIB_GDI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\ -ldl \$TOR_LIB_PTHREAD\],!" configure.ac
+    $SED -i "740a TOR_LIB_PTHREAD=-lpthread" configure.ac
+    $SED -i "741s!^TOR_LIB.*!  TOR_LIB_PTHREAD=-lpthread!" configure.ac
+    $SED -i "764a AC_SUBST(TOR_LIB_PTHREAD)" configure.ac
+    $SED -i "912s!^TOR_SEARCH.*!TOR_SEARCH_LIBRARY(openssl, \$tryssldir, \[-lssl -lcrypto \$TOR_LIB_GDI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\ -ldl \$TOR_LIB_PTHREAD\],!" configure.ac
     sh autogen.sh
     ./configure ${CONFIGURE_ARGS} --host=${HOST_OS}
     sed -ie "s!^include src/app.*!!" "src/include.am"
