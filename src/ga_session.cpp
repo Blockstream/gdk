@@ -29,6 +29,7 @@
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "tx_list_cache.hpp"
+#include "version.h"
 #include "xpub_hdkey.hpp"
 
 namespace asio = boost::asio;
@@ -459,7 +460,7 @@ namespace sdk {
         if (!m_proxy.empty()) {
             proxy_details = std::string(" through proxy ") + m_proxy;
         }
-        GDK_LOG_SEV(log_level::info) << "Connecting to " << server << proxy_details;
+        GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
         boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
         m_transport = std::make_shared<T>(
             *boost::get<client_type>(m_client), server, m_proxy, m_log_level == logging_levels::debug);

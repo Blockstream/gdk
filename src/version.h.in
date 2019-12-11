@@ -1,0 +1,1 @@
+#define GDK_COMMIT "@VCS_TAG@"

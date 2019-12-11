@@ -217,6 +217,7 @@ clang_tidy = find_program(clang_tidy_name, required : false)
 
 pvs_studio_analyzer = find_program('pvs-studio-analyzer', required : false)
 infer = find_program('infer', required : false)
+git = find_program('git', required : true)
 
 sphinx_build = find_program('sphinx-build', required : false)
 if sphinx_build.found()
