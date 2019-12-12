@@ -19,6 +19,8 @@ namespace sdk {
         void resolve_code(const std::string& code);
 
         virtual nlohmann::json get_status() const;
+        void set_data(const std::string& action);
+
         virtual void operator()();
 
     protected:

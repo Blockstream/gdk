@@ -262,6 +262,8 @@ namespace sdk {
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
+        void upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses);
+
         void change_settings_pricing_source(const std::string& currency, const std::string& exchange);
 
         nlohmann::json get_fee_estimates();
@@ -332,8 +334,6 @@ namespace sdk {
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const GDK_REQUIRES(m_mutex);
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config) GDK_REQUIRES(m_mutex);
-        void upload_confidential_addresses(locker_t& locker, uint32_t subaccount, uint32_t num_addr)
-            GDK_REQUIRES(m_mutex);
         void update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only) GDK_REQUIRES(m_mutex);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str) GDK_REQUIRES(m_mutex);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits) GDK_REQUIRES(m_mutex);
@@ -359,8 +359,11 @@ namespace sdk {
 
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
-            const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs)
-            GDK_REQUIRES(m_mutex);
+            const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs,
+            uint32_t required_ca) GDK_REQUIRES(m_mutex);
+
+        void upload_confidential_addresses(locker_t& locker, uint32_t subaccount,
+            std::vector<std::string> confidential_addresses) GDK_REQUIRES(m_mutex);
 
         std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge)
             GDK_REQUIRES(m_mutex);

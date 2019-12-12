@@ -779,6 +779,14 @@ namespace sdk {
         });
     }
 
+    void session::upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses)
+    {
+        exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            p->upload_confidential_addresses(subaccount, confidential_addresses);
+        });
+    }
+
     nlohmann::json session::get_transaction_details(const std::string& txhash_hex)
     {
         return exception_wrapper([&] {

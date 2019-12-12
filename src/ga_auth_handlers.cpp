@@ -18,6 +18,8 @@ namespace sdk {
         // Server gives 3 attempts to get the twofactor code right before it's invalidated
         static const uint32_t TWO_FACTOR_ATTEMPTS = 3;
         static const std::string CHALLENGE_PREFIX("greenaddress.it      login ");
+        // Addresses uploaded after creation of 2of2_no_recovery subaccounts
+        static const uint32_t INITIAL_UPLOAD_CA = 5;
 
         static bool is_twofactor_invalid_code_error(const std::string& msg)
         {
@@ -113,6 +115,12 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_state == state_type::resolve_code);
         m_code = code;
         m_state = state_type::make_call;
+    }
+
+    void auth_handler::set_data(const std::string& action)
+    {
+        m_action = action;
+        m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
     }
 
     void auth_handler::operator()()
@@ -279,11 +287,39 @@ namespace sdk {
     auth_handler::state_type login_call::call_impl()
     {
         if (m_hw_device.empty()) {
-            m_session.login(m_mnemonic, m_password);
+            if (m_action == "get_receive_address") {
+                for (const uint32_t subaccount : m_ca_reqs) {
+                    const auto address = m_session.get_receive_address({ { "subaccount", subaccount } });
+                    const auto blinding_key = m_session.get_blinding_key_for_script(address["blinding_script_hash"]);
+
+                    const std::string blinded_addr = m_session.blind_address(address["address"], blinding_key);
+                    m_ca_addrs[subaccount].emplace_back(blinded_addr);
+                }
+            } else {
+                m_session.login(m_mnemonic, m_password);
+            }
+
+            // fall-through down to check for/upload confidential addresses requests
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
 
-            if (m_action == "get_xpubs") {
+            if (m_action == "get_receive_address") {
+                // Blind the address
+                const std::string blinded_addr
+                    = m_session.blind_address(m_twofactor_data["address"]["address"], args["blinding_key"]);
+
+                // save it and pop the request
+                m_ca_addrs[m_ca_reqs.back()].emplace_back(blinded_addr);
+                m_ca_reqs.pop_back();
+
+                // prepare the next one
+                if (!m_ca_reqs.empty()) {
+                    m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
+                    return state_type::resolve_code;
+                }
+
+                // fall-through down to upload them
+            } else if (m_action == "get_xpubs") {
                 const std::vector<std::string> xpubs = args.at("xpubs");
 
                 if (m_challenge.empty()) {
@@ -303,7 +339,8 @@ namespace sdk {
                 }
                 // Register the xpub for each of our subaccounts
                 m_session.register_subaccount_xpubs(xpubs);
-                return state_type::done;
+
+                // fall through to the required_ca check down there...
             } else if (m_action == "sign_message") {
                 // Log in and set up the session
                 m_session.authenticate(args.at("signature"), "GA", std::string(), m_hw_device);
@@ -318,13 +355,34 @@ namespace sdk {
                 return state_type::resolve_code;
             }
         }
-        return state_type::done;
-    }
 
-    void login_call::set_data(const std::string& action)
-    {
-        m_action = action;
-        m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+        if (!m_ca_addrs.empty()) {
+            // done, upload and exit
+            for (auto const& entry : m_ca_addrs) {
+                m_session.upload_confidential_addresses(entry.first, entry.second);
+            }
+
+            return state_type::done;
+        }
+
+        // Check whether the backend asked for some conf addrs (only 2of2_no_recovery) on some subaccount
+        for (const auto& sa : m_session.get_subaccounts()) {
+            if (sa["required_ca"] > 0) {
+                // add the subaccount number (`pointer`) repeated `required_ca` times. we will pop them one at a time
+                // and then resolve their blinding keys
+                m_ca_reqs.insert(m_ca_reqs.end(), sa["required_ca"], sa["pointer"]);
+            }
+        }
+
+        if (m_ca_reqs.size() > 0) {
+            // prepare the first request
+            set_data("get_receive_address");
+            m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
+
+            return state_type::resolve_code;
+        }
+
+        return state_type::done;
     }
 
     //
@@ -334,9 +392,15 @@ namespace sdk {
         : auth_handler(session, "get_xpubs")
         , m_details(details)
         , m_subaccount(0)
+        , m_remaining_ca_addrs(0)
     {
         if (m_state == state_type::error) {
             return;
+        }
+
+        // also check if we need to upload a few confidential addrs
+        if (m_session.is_liquid() && details.at("type") == "2of2_no_recovery") {
+            m_remaining_ca_addrs = INITIAL_UPLOAD_CA;
         }
 
         if (m_hw_device.empty()) {
@@ -346,6 +410,7 @@ namespace sdk {
                 m_state = state_type::resolve_code;
                 m_subaccount = session.get_next_subaccount();
                 m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+
                 std::vector<nlohmann::json> paths;
                 paths.emplace_back(ga_user_pubkeys::get_subaccount_path(m_subaccount));
                 m_twofactor_data["paths"] = paths;
@@ -359,10 +424,43 @@ namespace sdk {
     {
         if (m_hw_device.empty()) {
             m_result = m_session.create_subaccount(m_details);
+
+            // generate the conf addrs if required
+            while (m_remaining_ca_addrs > 0) {
+                const auto address = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
+                const auto blinding_key = m_session.get_blinding_key_for_script(address["blinding_script_hash"]);
+
+                m_ca_addrs.emplace_back(m_session.blind_address(address["address"], blinding_key));
+
+                m_remaining_ca_addrs--;
+            }
         } else {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            m_result = m_session.create_subaccount(m_details, m_subaccount, args.at("xpubs").at(0));
+            if (m_action == "get_xpubs") {
+                const nlohmann::json args = nlohmann::json::parse(m_code);
+                m_result = m_session.create_subaccount(m_details, m_subaccount, args.at("xpubs").at(0));
+            } else if (m_action == "get_receive_address") {
+                const nlohmann::json args = nlohmann::json::parse(m_code);
+                const auto pub_blinding_key = args["blinding_key"];
+
+                m_ca_addrs.emplace_back(
+                    m_session.blind_address(m_twofactor_data["address"]["address"], pub_blinding_key));
+
+                m_remaining_ca_addrs--;
+            }
+
+            if (m_remaining_ca_addrs > 0) {
+                set_data("get_receive_address");
+                m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
+
+                return state_type::resolve_code;
+            }
         }
+
+        // we prepared a few addresses, upload them to the backend
+        if (m_ca_addrs.size() > 0) {
+            m_session.upload_confidential_addresses(m_result["pointer"], m_ca_addrs);
+        }
+
         return state_type::done;
     }
 

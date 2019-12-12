@@ -22,13 +22,15 @@ namespace sdk {
             const std::string& password);
 
     private:
-        void set_data(const std::string& action);
-
         state_type call_impl() override;
 
         std::string m_challenge;
         std::string m_mnemonic;
         std::string m_password;
+
+        // used for 2of2_no_recovery
+        std::unordered_map<uint32_t, std::vector<std::string>> m_ca_addrs;
+        std::vector<uint32_t> m_ca_reqs;
     };
 
     class create_subaccount_call : public auth_handler {
@@ -40,6 +42,10 @@ namespace sdk {
 
         nlohmann::json m_details;
         uint32_t m_subaccount;
+
+        // used when a new authorized-assets-enabled subaccount is created
+        std::vector<std::string> m_ca_addrs;
+        uint32_t m_remaining_ca_addrs;
     };
 
     class ack_system_message_call : public auth_handler {

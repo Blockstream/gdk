@@ -98,8 +98,6 @@ namespace sdk {
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
         static const uint32_t NUM_FEE_ESTIMATES = 25; // Min fee followed by blocks 1-24
 
-        constexpr uint32_t INITIAL_UPLOAD_CA = 5; // addresses uploaded after creation of 2of2_no_recovery subaccounts
-
         // networking defaults
         static const uint32_t DEFAULT_PING = 20; // ping message interval in seconds
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
@@ -981,16 +979,13 @@ namespace sdk {
         return challenge;
     }
 
-    void ga_session::upload_confidential_addresses(locker_t& locker, uint32_t subaccount, uint32_t num_addr)
+    void ga_session::upload_confidential_addresses(
+        locker_t& locker, uint32_t subaccount, std::vector<std::string> confidential_addresses)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
-        GDK_RUNTIME_ASSERT(num_addr > 0);
+        GDK_RUNTIME_ASSERT(confidential_addresses.size() > 0);
 
-        std::vector<std::string> confidential_addresses;
-        for (size_t i = 0; i < num_addr; ++i) {
-            confidential_addresses.emplace_back(get_receive_address(subaccount, {}).at("address"));
-        }
         bool r{ false };
         {
             wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
@@ -998,6 +993,20 @@ namespace sdk {
                 confidential_addresses);
         }
         GDK_RUNTIME_ASSERT(r);
+
+        // subtract from the required_ca
+        uint32_t original = m_subaccounts[subaccount]["required_ca"];
+        if (original > 0) {
+            m_subaccounts[subaccount]["required_ca"]
+                = confidential_addresses.size() > original ? 0 : original - confidential_addresses.size();
+        }
+    }
+
+    void ga_session::upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses)
+    {
+        locker_t locker(m_mutex);
+
+        upload_confidential_addresses(locker, subaccount, confidential_addresses);
     }
 
     void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only)
@@ -1042,12 +1051,7 @@ namespace sdk {
             const std::string recovery_pub_key = json_get_value(sa, "2of3_backup_pubkey");
 
             insert_subaccount(locker, subaccount, sa["name"], sa["receiving_id"], recovery_pub_key, recovery_chain_code,
-                type, satoshi, json_get_value(sa, "has_txs", false));
-
-            const uint32_t required_ca = sa.value("required_ca", 0);
-            if (required_ca > 0) {
-                upload_confidential_addresses(locker, subaccount, required_ca);
-            }
+                type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0));
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -1060,7 +1064,7 @@ namespace sdk {
         const amount satoshi{ strtoul(satoshi_str.c_str(), nullptr, 10) };
         const bool has_txs = json_get_value(m_login_data, "has_txs", false);
         insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(), "2of2",
-            satoshi, has_txs);
+            satoshi, has_txs, 0);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -1833,7 +1837,8 @@ namespace sdk {
 
     nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,
         const std::string& name, const std::string& receiving_id, const std::string& recovery_pub_key,
-        const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs)
+        const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs,
+        uint32_t required_ca)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1844,7 +1849,8 @@ namespace sdk {
         // for the final path element in a derivation
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "satoshi", { { "btc", satoshi.value() } } }, { "has_transactions", has_txs } };
+            { "satoshi", { { "btc", satoshi.value() } } }, { "has_transactions", has_txs },
+            { "required_ca", required_ca } };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
@@ -1930,10 +1936,8 @@ namespace sdk {
         constexpr bool has_txs = false;
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
         nlohmann::json subaccount_details = insert_subaccount(
-            locker, subaccount, name, receiving_id, recovery_pub_key, recovery_chain_code, type, amount(), has_txs);
-        if (type == "2of2_no_recovery") {
-            upload_confidential_addresses(locker, subaccount, INITIAL_UPLOAD_CA);
-        }
+            locker, subaccount, name, receiving_id, recovery_pub_key, recovery_chain_code, type, amount(), has_txs, 0);
+
         if (type == "2of3") {
             subaccount_details["recovery_mnemonic"] = recovery_mnemonic;
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
