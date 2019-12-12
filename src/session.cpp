@@ -443,11 +443,11 @@ namespace sdk {
         });
     }
 
-    void session::set_local_encryption_password(byte_span_t password)
+    void session::set_local_encryption_key(byte_span_t key)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->set_local_encryption_password(password);
+            return p->set_local_encryption_key(key);
         });
     }
 
@@ -838,22 +838,6 @@ namespace sdk {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
             return p->convert_amount(amount_json);
-        });
-    }
-
-    nlohmann::json session::encrypt(const nlohmann::json& input_json)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->encrypt(input_json);
-        });
-    }
-
-    nlohmann::json session::decrypt(const nlohmann::json& input_json)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->decrypt(input_json);
         });
     }
 

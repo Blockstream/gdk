@@ -204,7 +204,7 @@ namespace sdk {
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         std::string get_blinding_key_for_script(const std::string& script_hex);
-        void set_local_encryption_password(byte_span_t password);
+        void set_local_encryption_key(byte_span_t key);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
         std::string extract_confidential_address(const std::string& blinded_address);
         nlohmann::json get_balance(const nlohmann::json& details);
@@ -274,9 +274,6 @@ namespace sdk {
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
-
-        nlohmann::json encrypt(const nlohmann::json& input_json) const;
-        nlohmann::json decrypt(const nlohmann::json& input_json) const;
 
         bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
         void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
@@ -486,7 +483,7 @@ namespace sdk {
         void* m_notification_context GDK_PT_GUARDED_BY(m_mutex);
 
         nlohmann::json m_login_data GDK_GUARDED_BY(m_mutex);
-        boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>> m_local_encryption_password GDK_GUARDED_BY(
+        boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>> m_local_encryption_key GDK_GUARDED_BY(
             m_mutex);
         std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);

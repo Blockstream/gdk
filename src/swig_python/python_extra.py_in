@@ -244,12 +244,6 @@ class Session(object):
     def twofactor_change_limits(self, details):
         return Call(twofactor_change_limits(self.session_obj, self._to_json(details)))
 
-    def encrypt(self, plaintext):
-        return json.loads(encrypt(self.session_obj, self._to_json(plaintext)))
-
-    def decrypt(self, ciphertext):
-        return json.loads(decrypt(self.session_obj, self._to_json(ciphertext)))
-
     def http_get(self, params):
         return json.loads(http_get(self.session_obj, self._to_json(params)))
 

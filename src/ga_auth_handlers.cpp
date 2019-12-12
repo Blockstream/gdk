@@ -292,8 +292,8 @@ namespace sdk {
                     const auto btc_version = m_session.get_network_parameters().btc_version();
                     m_challenge = m_session.get_challenge(address_from_xpub(btc_version, master_xpub));
 
-                    const auto local_password = pbkdf2_hmac_sha512(get_xpub(xpubs.at(1)).second, PASSWORD_SALT);
-                    m_session.set_local_encryption_password(local_password);
+                    const auto local_key = pbkdf2_hmac_sha512(get_xpub(xpubs.at(1)).second, PASSWORD_SALT);
+                    m_session.set_local_encryption_key(local_key);
 
                     // Ask the caller to sign the challenge
                     set_data("sign_message");

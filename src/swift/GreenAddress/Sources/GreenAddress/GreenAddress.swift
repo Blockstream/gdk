@@ -373,14 +373,6 @@ public class Session {
         return try jsonFuncToJsonWrapper(input: input, fun: GA_convert_amount)
     }
 
-    public func encrypt(input: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: input, fun: GA_encrypt)
-    }
-
-    public func decrypt(input: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: input, fun: GA_decrypt)
-    }
-
     public func createTransaction(details: [String: Any]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil
         var details_json: OpaquePointer = try convertDictToJSON(dict: details)

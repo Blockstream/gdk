@@ -282,23 +282,6 @@ namespace sdk {
         return p == json.end() ? f() : h2b(p->get<std::string>());
     }
 
-    static std::vector<unsigned char> get_encryption_password(const nlohmann::json& input, byte_span_t default_)
-    {
-        return json_default_hex(
-            input, "password", [&default_]() { return std::vector<unsigned char>(default_.begin(), default_.end()); });
-    }
-
-    static auto get_encryption_salt(const nlohmann::json& input)
-    {
-        const auto salt = json_default_hex(input, "salt", [] {
-            std::vector<unsigned char> salt(16);
-            get_random_bytes(salt.size(), salt.data(), salt.size());
-            return salt;
-        });
-        GDK_RUNTIME_ASSERT_MSG(salt.size() == 16, "Invalid salt length");
-        return salt;
-    }
-
     std::string aes_cbc_decrypt(
         const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& ciphertext)
     {
@@ -321,28 +304,6 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(encrypted.size() == plaintext_padded_size);
         encrypted.insert(std::begin(encrypted), iv.begin(), iv.end());
         return b2h(encrypted);
-    }
-
-    nlohmann::json encrypt_data(const nlohmann::json& input, byte_span_t default_password)
-    {
-        const auto password = get_encryption_password(input, default_password);
-        GDK_RUNTIME_ASSERT_MSG(!password.empty(), "A password must be provided to encrypt/decrypt");
-        const auto salt = get_encryption_salt(input);
-        const auto key = pbkdf2_hmac_sha512_256(password, salt);
-        const auto plaintext = input.at("plaintext");
-        const auto ciphertext = aes_cbc_encrypt(key, plaintext);
-        return { { "ciphertext", ciphertext }, { "salt", b2h(salt) } };
-    }
-
-    nlohmann::json decrypt_data(const nlohmann::json& input, byte_span_t default_password)
-    {
-        const auto password = get_encryption_password(input, default_password);
-        GDK_RUNTIME_ASSERT_MSG(!password.empty(), "A password must be provided to encrypt/decrypt");
-        const auto salt = get_encryption_salt(input);
-        const auto key = pbkdf2_hmac_sha512_256(password, salt);
-        const auto ciphertext = input.at("ciphertext");
-        const auto plaintext = aes_cbc_decrypt(key, ciphertext);
-        return { { "plaintext", plaintext } };
     }
 
     // TODO: URI parsing

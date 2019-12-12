@@ -769,8 +769,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(data.find("body") == data.end(), "expected JSON");
         locker_t locker(m_mutex);
         m_cache.upsert_keyvalue(type, nlohmann::json::to_msgpack(data));
-        if (m_local_encryption_password) {
-            m_cache.save_db(m_local_encryption_password.get());
+        if (m_local_encryption_key) {
+            m_cache.save_db(m_local_encryption_key.get());
         }
         return data;
     }
@@ -1402,15 +1402,15 @@ namespace sdk {
         //#endif
     }
 
-    void ga_session::set_local_encryption_password(byte_span_t password)
+    void ga_session::set_local_encryption_key(byte_span_t key)
     {
         locker_t locker{ m_mutex };
-        GDK_RUNTIME_ASSERT(password.size() == PBKDF2_HMAC_SHA512_LEN);
-        GDK_RUNTIME_ASSERT(m_local_encryption_password == boost::none);
+        GDK_RUNTIME_ASSERT(key.size() == PBKDF2_HMAC_SHA512_LEN);
+        GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
         auto tmp = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>();
-        std::copy(password.begin(), password.end(), tmp.begin());
-        m_local_encryption_password = tmp;
-        m_cache.load_db(m_local_encryption_password.get(), /*hw*/ 1);
+        std::copy(key.begin(), key.end(), tmp.begin());
+        m_local_encryption_key = tmp;
+        m_cache.load_db(m_local_encryption_key.get(), /*hw*/ 1);
         m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
     }
 
@@ -1421,7 +1421,7 @@ namespace sdk {
             m_signer.reset();
             m_user_pubkeys.reset();
             m_mnemonic.clear();
-            m_local_encryption_password = boost::none;
+            m_local_encryption_key = boost::none;
         } catch (const std::exception& ex) {
         }
     }
@@ -1451,13 +1451,13 @@ namespace sdk {
         // Cache local encryption password
         const auto pwd_xpub = get_signer().get_xpub(PASSWORD_PATH);
 
-        m_local_encryption_password = [&pwd_xpub] {
+        m_local_encryption_key = [&pwd_xpub] {
             const auto local_password = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
             std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> tmp;
             std::copy(local_password.begin(), local_password.end(), tmp.begin());
             return boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>>(tmp);
         }();
-        m_cache.load_db(m_local_encryption_password.get(), /*sw*/ 0);
+        m_cache.load_db(m_local_encryption_key.get(), /*sw*/ 0);
         m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
 
         // TODO: Unify normal and trezor logins
@@ -1702,28 +1702,6 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         return amount::convert_fiat_cents(fiat_cents, m_fiat_currency, m_fiat_rate);
-    }
-
-    nlohmann::json ga_session::encrypt(const nlohmann::json& input_json) const
-    {
-        std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> local_encryption_password;
-        {
-            locker_t locker(m_mutex);
-            GDK_RUNTIME_ASSERT(m_local_encryption_password != boost::none);
-            local_encryption_password = m_local_encryption_password.get();
-        }
-        return encrypt_data(input_json, local_encryption_password);
-    }
-
-    nlohmann::json ga_session::decrypt(const nlohmann::json& input_json) const
-    {
-        std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> local_encryption_password;
-        {
-            locker_t locker(m_mutex);
-            GDK_RUNTIME_ASSERT(m_local_encryption_password != boost::none);
-            local_encryption_password = m_local_encryption_password.get();
-        }
-        return decrypt_data(input_json, local_encryption_password);
     }
 
     // Idempotent
@@ -2137,8 +2115,8 @@ namespace sdk {
         }
 
         locker_t locker(m_mutex);
-        if (m_local_encryption_password) {
-            m_cache.save_db(m_local_encryption_password.get());
+        if (m_local_encryption_key) {
+            m_cache.save_db(m_local_encryption_key.get());
         }
         return utxos;
     }

@@ -77,7 +77,7 @@ namespace sdk {
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
         std::string get_blinding_key_for_script(const std::string& script_hex);
-        void set_local_encryption_password(byte_span_t password);
+        void set_local_encryption_key(byte_span_t key);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
         std::string extract_confidential_address(const std::string& blinded_address);
 
@@ -157,8 +157,6 @@ namespace sdk {
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json);
-        nlohmann::json encrypt(const nlohmann::json& input_json);
-        nlohmann::json decrypt(const nlohmann::json& input_json);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;

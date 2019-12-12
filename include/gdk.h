@@ -528,34 +528,6 @@ GDK_API int GA_ack_system_message(struct GA_session* session, const char* messag
 GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config);
 
 /**
- * Encrypt data.
- *
- * :param session: The session to use.
- * :param input: The data to encrypt.
- * :param output: Destination for the encrypted data.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
- *
- * If no key is given, the data is encrypted using a key derived from the user's mnemonics.
- * This will fail to decrypt the data correctly if the user is logged in in watch-only
- * mode. For watch only users a key must be provided by the caller.
- *
- */
-GDK_API int GA_encrypt(struct GA_session* session, const GA_json* input, GA_json** output);
-
-/**
- * Decrypt data.
- *
- * :param session: The session to use.
- * :param input: The data to decrypt.
- * :param output: Destination for the decrypted data.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
- *
- * See GA_encrypt.
- *
- */
-GDK_API int GA_decrypt(struct GA_session* session, const GA_json* input, GA_json** output);
-
-/**
  * Change settings
  *
  * :param session: The session to use.
