@@ -257,6 +257,12 @@ namespace sdk {
                 return std::hash<std::string>()(k.first) ^ (std::hash<std::string>()(k.second) << 1);
             }
         };
+
+        std::string get_user_agent(bool supports_csv, const std::string& version)
+        {
+            const auto& user_agent = supports_csv ? USER_AGENT : USER_AGENT_NO_CSV;
+            return user_agent + version;
+        }
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -300,6 +306,7 @@ namespace sdk {
         , m_cert_pin_validated(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_cache(net_params.at("name"))
+        , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
     {
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"
@@ -964,7 +971,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
-        const auto& user_agent = supports_csv ? USER_AGENT : USER_AGENT_NO_CSV;
+        const auto user_agent = get_user_agent(supports_csv, m_user_agent);
         wamp_call([](wamp_call_result result) { GDK_RUNTIME_ASSERT(result.get().argument<bool>(0)); },
             "com.greenaddress.login.register", master_pub_key_hex, master_chain_code_hex, user_agent, gait_path_hex);
     }
@@ -1360,7 +1367,7 @@ namespace sdk {
         std::string id = device_id.empty() ? "fake_dev_id" : device_id;
         nlohmann::json login_data;
         {
-            const auto& user_agent = get_signer().supports_arbitrary_scripts() ? USER_AGENT : USER_AGENT_NO_CSV;
+            const auto user_agent = get_user_agent(get_signer().supports_arbitrary_scripts(), m_user_agent);
 
             unique_unlock unlocker(locker);
             wamp_call([&login_data](wamp_call_result result) { login_data = get_json_result(result.get()); },
@@ -1563,8 +1570,9 @@ namespace sdk {
     {
         const std::map<std::string, std::string> args = { { "username", username }, { "password", password } };
         nlohmann::json login_data;
+        const auto user_agent = get_user_agent(true, m_user_agent);
         wamp_call([&login_data](wamp_call_result result) { login_data = get_json_result(result.get()); },
-            "com.greenaddress.login.watch_only_v2", "custom", args, USER_AGENT);
+            "com.greenaddress.login.watch_only_v2", "custom", args, user_agent);
 
         if (login_data.is_boolean()) {
             throw login_error(res::id_login_failed);

@@ -524,6 +524,7 @@ namespace sdk {
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
         cache m_cache GDK_GUARDED_BY(m_mutex);
+        const std::string m_user_agent;
     };
 
 } // namespace sdk

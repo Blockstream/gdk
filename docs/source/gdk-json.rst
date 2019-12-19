@@ -27,7 +27,8 @@ Connection parameter JSON
       "name": "testnet",
       "log_level": "info",
       "proxy": "localhost:9150",
-      "use_tor": true
+      "use_tor": true,
+      "user_agent": "green_android v2.33"
    }
 
 .. _hw-device:
