@@ -61,15 +61,16 @@ namespace sdk {
         {
             sqlite3_stmt* tmpstmt = nullptr;
             const int rc = sqlite3_prepare_v3(db, statement, -1, SQLITE_PREPARE_PERSISTENT, &tmpstmt, NULL);
-            GDK_RUNTIME_ASSERT(rc == SQLITE_OK);
+            GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(db));
             return tmpstmt;
         }
 
         static void stmt_check_clean(sqlite3_stmt* stmt)
         {
             const int rc = sqlite3_clear_bindings(stmt);
+            GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt)));
             const int rc2 = sqlite3_reset(stmt);
-            GDK_RUNTIME_ASSERT(rc == SQLITE_OK && rc2 == SQLITE_OK);
+            GDK_RUNTIME_ASSERT_MSG(rc2 == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt)));
         }
 
         static void openssl_encrypt(byte_span_t key, byte_span_t data, const std::string& path)

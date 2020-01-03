@@ -2063,8 +2063,12 @@ namespace sdk {
             if (utxo.contains("txhash")) {
                 const auto txhash = h2b(utxo.at("txhash"));
                 const auto vout = utxo["pt_idx"];
+
                 locker_t locker(m_mutex);
-                m_cache.insert_liquidoutput(txhash, vout, utxo);
+                // check again, we released the lock earlier, so some other thread could have started to unblind too
+                if (!m_cache.get_liquidoutput(txhash, vout)) {
+                    m_cache.insert_liquidoutput(txhash, vout, utxo);
+                }
             }
         } catch (const std::exception& ex) {
             utxo["error"] = "failed to unblind utxo";
