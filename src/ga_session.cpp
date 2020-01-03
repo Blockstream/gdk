@@ -2454,7 +2454,6 @@ namespace sdk {
                     const std::string& script = json_get_value(ep, "script", std::string{});
 
                     if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01") // unblinded
-                        || !json_get_value(ep, "is_output", false) // not an output
                         || !json_get_value(ep, "is_relevant", false) // not relevant
                         || nonce_commitment.empty() || script.empty()) {
                         continue;
