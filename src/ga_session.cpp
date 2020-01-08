@@ -2282,7 +2282,8 @@ namespace sdk {
             tx_details["outputs"] = outputs;
             tx_details.erase("eps");
 
-            GDK_RUNTIME_ASSERT(is_liquid || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
+            GDK_RUNTIME_ASSERT((is_liquid && unique_asset_ids.size() > 0)
+                || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
 
             // TODO: improve the detection of tx type.
             bool net_positive{ false };
@@ -2477,7 +2478,7 @@ namespace sdk {
             }
 
             // last page since there are less than 30 elements, backends defaults to that number
-            if (txs.size() < 30) {
+            if (txs.at("list").size() < 30) {
                 break;
             }
         }
