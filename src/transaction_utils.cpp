@@ -283,13 +283,19 @@ namespace sdk {
     {
         std::string address = addressee.at("address"); // Assume its a standard address
 
-        nlohmann::json uri_params = parse_bitcoin_uri(address);
+        nlohmann::json uri_params = parse_bitcoin_uri(address, net_params.bip21_prefix());
         if (!uri_params.is_null()) {
-            // Address is a BIP21 style payment URI
+            // Address is a BIP21 style payment URI. Validation is done in `ga_tx.cpp`, assume everything is good here
             address = uri_params.at("address");
             addressee["address"] = address;
             const auto& bip21_params = uri_params["bip21-params"];
             addressee["bip21-params"] = bip21_params;
+
+            const std::string asset_id = addressee.value("asset_tag", "btc");
+
+            // In Liquid amounts should be encoded in the "consensus form"
+            // For instance, assuming an invoice for qty 1 of an asset with precision `2`, the amount in the URI
+            // should be 0.00000100
             const auto uri_amount_p = bip21_params.find("amount");
             if (uri_amount_p != bip21_params.end()) {
                 // Use the amount specified in the URI

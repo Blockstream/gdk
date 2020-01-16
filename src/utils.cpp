@@ -235,7 +235,7 @@ namespace sdk {
 
     // Parse a bitcoin uri as described in bip21/72 and return the components
     // If the uri passed is not a bitcoin uri return a null json object.
-    nlohmann::json parse_bitcoin_uri(const std::string& uri)
+    nlohmann::json parse_bitcoin_uri(const std::string& uri, const std::string& expected_scheme)
     {
         // Split a string into a head and tail around the first (leftmost) occurrence
         // of delimiter and return the tuple (head, tail). If delimiter does not occur
@@ -249,10 +249,16 @@ namespace sdk {
         // TODO: Take either the label or message and set the tx memo field with it if not set
         // FIXME: URL unescape the arguments before returning
         //
+        std::string uri_copy = uri;
+        boost::trim(uri_copy);
         nlohmann::json parsed;
         std::string scheme, tail;
-        std::tie(scheme, tail) = split(uri, ':');
-        if (scheme == "bitcoin") {
+        std::tie(scheme, tail) = split(uri_copy, ':');
+
+        boost::algorithm::to_lower(scheme);
+        if (scheme == expected_scheme) {
+            parsed["scheme"] = scheme;
+
             std::string address;
             std::tie(address, tail) = split(tail, '?');
             if (!address.empty()) {
@@ -269,7 +275,14 @@ namespace sdk {
                 params.emplace(key, value);
             }
             parsed["bip21-params"] = params;
+
+            // always treat the asset_id as lowercase
+            if (parsed["bip21-params"].contains("assetid")) {
+                parsed["bip21-params"]["assetid"]
+                    = boost::algorithm::to_lower_copy(parsed["bip21-params"]["assetid"].get<std::string>());
+            }
         }
+
         return parsed;
     }
 

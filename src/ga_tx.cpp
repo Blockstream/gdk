@@ -445,12 +445,31 @@ namespace sdk {
             used_utxos.reserve(utxos.size());
 
             std::set<std::string> asset_tags;
+            bool addressees_have_assets = json_get_value(result, "addressees_have_assets", false);
             if (num_addressees) {
-                std::transform(std::begin(*addressees_p), std::end(*addressees_p),
-                    std::inserter(asset_tags, asset_tags.end()), [&](const auto& addressee) {
-                        return session.asset_id_from_string(addressee.value("asset_tag", "btc"));
-                    });
+                for (auto& addressee : *addressees_p) {
+                    nlohmann::json uri_params
+                        = parse_bitcoin_uri(addressee.value("address", ""), net_params.bip21_prefix());
+                    if (net_params.liquid() && uri_params.is_object()) {
+                        if (uri_params["bip21-params"].contains("amount")
+                            && !uri_params["bip21-params"].contains("assetid")) {
+                            result["error"] = res::id_invalid_payment_request_assetid;
+                            break;
+                        } else if (uri_params["bip21-params"].contains("assetid")) {
+                            addressees_have_assets = true;
+
+                            if (uri_params["bip21-params"]["assetid"] == net_params.policy_asset()) {
+                                addressee["asset_tag"] = "btc";
+                            } else {
+                                addressee["asset_tag"] = uri_params["bip21-params"]["assetid"];
+                            }
+                        }
+                    }
+
+                    asset_tags.insert(session.asset_id_from_string(addressee.value("asset_tag", "btc")));
+                }
             }
+            result["addressees_have_assets"] = addressees_have_assets;
 
             auto create_tx_outputs = [&](const std::string& asset_tag) {
                 const bool include_fee = asset_tag == "btc";
