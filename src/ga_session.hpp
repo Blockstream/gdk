@@ -339,8 +339,7 @@ namespace sdk {
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits) GDK_REQUIRES(m_mutex);
         nlohmann::json get_spending_limits(locker_t& locker) const GDK_REQUIRES(m_mutex);
         nlohmann::json get_subaccount(locker_t& locker, uint32_t subaccount) GDK_REQUIRES(m_mutex);
-        nlohmann::json get_subaccount_balance_from_server(
-            ga_session::locker_t& locker, uint32_t subaccount, uint32_t num_confs) GDK_REQUIRES(m_mutex);
+        nlohmann::json get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs);
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const GDK_REQUIRES(m_mutex);
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const GDK_REQUIRES(m_mutex);
         nlohmann::json get_settings(locker_t& locker) GDK_REQUIRES(m_mutex);

@@ -1761,27 +1761,22 @@ namespace sdk {
         return get_subaccount(locker, subaccount);
     }
 
-    nlohmann::json ga_session::get_subaccount_balance_from_server(
-        ga_session::locker_t& locker, uint32_t subaccount, uint32_t num_confs)
+    nlohmann::json ga_session::get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
         if (!m_net_params.liquid()) {
             nlohmann::json balance;
-            {
-                unique_unlock unlocker(locker);
-                wamp_call([&balance](wamp_call_result result) { balance = get_json_result(result.get()); },
-                    "com.greenaddress.txs.get_balance", subaccount, num_confs);
-            }
+            wamp_call([&balance](wamp_call_result result) { balance = get_json_result(result.get()); },
+                "com.greenaddress.txs.get_balance", subaccount, num_confs);
             // TODO: Make sure another session didn't change fiat currency
-            update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
+            {
+                locker_t locker{ m_mutex };
+                update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
+            }
             const std::string satoshi_str = json_get_value(balance, "satoshi");
             const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", satoshi } };
         }
-        const auto utxos = [this, &locker, &subaccount, &num_confs] {
-            unique_unlock unlocker{ locker };
-            return get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
-        }();
+        const auto utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
 
         const auto accumulate_if = [](const auto& utxos, auto pred) {
             return std::accumulate(
@@ -1820,11 +1815,25 @@ namespace sdk {
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-
         auto& details = p->second;
+
         const auto p_satoshi = details.find("satoshi");
         if (p_satoshi == details.end() || m_net_params.liquid()) {
-            details["satoshi"] = get_subaccount_balance_from_server(locker, subaccount, 0);
+            const auto satoshi = [this, &locker, subaccount] {
+                unique_unlock unlocker{ locker };
+                return get_subaccount_balance_from_server(subaccount, 0);
+            }();
+
+            // m_subaccounts is no longer guaranteed to be valid after the call above.
+            // e.g. when running concurrently with a reconnection trigger.
+            const auto p = m_subaccounts.find(subaccount);
+            GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+            details = p->second;
+
+            const auto p_satoshi = details.find("satoshi");
+            if (p_satoshi == details.end() || m_net_params.liquid()) {
+                details["satoshi"] = satoshi;
+            }
         }
 
         return details;
@@ -2728,8 +2737,7 @@ namespace sdk {
             return get_subaccount(subaccount)["satoshi"];
         }
         // Anything other than confs=0 needs to be fetched from the server
-        locker_t locker(m_mutex);
-        return get_subaccount_balance_from_server(locker, subaccount, num_confs);
+        return get_subaccount_balance_from_server(subaccount, num_confs);
     }
 
     // Idempotent
