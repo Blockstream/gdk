@@ -1,8 +1,6 @@
 import Dispatch
 import Foundation
 
-import PromiseKit
-
 import ga.sdk
 import ga.wally
 
@@ -110,26 +108,23 @@ public class TwoFactorCall {
     }
 
     // Request that the backend sends a 2fa code
-    public func requestCode(method: String?) throws -> Promise<Void> {
+    public func requestCode(method: String?) throws {
         if method != nil {
             try callWrapper(fun: GA_auth_handler_request_code(self.optr, method))
         }
-        return Promise<Void> { seal in seal.fulfill(()) }
     }
 
     // Provide the 2fa code sent by the server
-    public func resolveCode(code: String?) throws -> Promise<Void> {
+    public func resolveCode(code: String?) throws {
         if code != nil {
             try callWrapper(fun: GA_auth_handler_resolve_code(self.optr, code))
         }
-        return Promise<Void> { seal in seal.fulfill(()) }
     }
 
     // Call the 2fa operation
     // Returns the next 2fa operation in the chain
-    public func call() throws -> Promise<Void> {
+    public func call() throws {
         try callWrapper(fun: GA_auth_handler_call(self.optr))
-        return Promise<Void> { seal in seal.fulfill(()) }
     }
 }
 

@@ -20,9 +20,3 @@ ga_swift = custom_target('GreenAddress',
               output : ['GreenAddress.swiftmodule'],
               depends : libga,
               build_by_default : true)
-
-ga_swift_tests = custom_target('GreenAddressTests',
-              command : target_cmd_line[1],
-              input : swift_sources,
-              output : ['GreenAddressTests.swiftmodule'],
-              depends : libga)

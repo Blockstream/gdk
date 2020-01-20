@@ -140,7 +140,6 @@ if swift
     add_project_link_arguments(['-L' + join_paths(meson.build_root(), 'src')], language : 'swift')
     add_project_link_arguments(['-L' + join_paths(meson.source_root(), 'src', 'swift', 'GreenAddress')], language : 'swift')
     add_project_link_arguments(['-lGreenAddress'], language : 'swift')
-    add_project_link_arguments(['-lPromiseKit'], language : 'swift')
 endif
 
 executable_c_cpp_args = ['-fPIE']
