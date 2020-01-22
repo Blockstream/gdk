@@ -155,7 +155,6 @@ namespace sdk {
         void stop_reconnect();
         void reconnect_hint(bool enabled, bool restarted);
         bool reconnect();
-        bool is_connected(const nlohmann::json& net_params);
         std::string get_tor_socks5();
         void tor_sleep_hint(const std::string& hint);
 
@@ -466,6 +465,7 @@ namespace sdk {
         const network_parameters m_net_params;
         std::string m_proxy;
         const bool m_use_tor;
+        const bool m_has_network_proxy;
 
         boost::asio::io_context m_io;
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;

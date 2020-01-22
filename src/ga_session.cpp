@@ -290,6 +290,7 @@ namespace sdk {
         : m_net_params(network_parameters{ network_parameters::get(net_params.at("name")) })
         , m_proxy(socksify(net_params.value("proxy", std::string{})))
         , m_use_tor(net_params.value("use_tor", false))
+        , m_has_network_proxy(!m_proxy.empty())
         , m_io()
         , m_controller(m_io)
         , m_ping_timer(m_io)
@@ -334,16 +335,6 @@ namespace sdk {
     {
         const bool tls = connect_with_tls();
         return tls ? is_transport_connected<transport_tls>() : is_transport_connected<transport>();
-    }
-
-    bool ga_session::is_connected(const nlohmann::json& net_params)
-    {
-        const auto name = net_params.at("name");
-        const auto proxy = net_params.value("proxy", std::string{});
-        const auto use_tor = net_params.value("use_tor", false);
-
-        locker_t locker(m_mutex);
-        return is_connected() && socksify(proxy) == m_proxy && use_tor == m_use_tor && name == m_net_params.network();
     }
 
     std::string ga_session::get_tor_socks5()
@@ -448,14 +439,16 @@ namespace sdk {
         using client_type
             = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
 
-        if (m_use_tor && m_proxy.empty()) {
+        if (m_use_tor && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
             m_proxy
                 = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
                       emit_notification("tor",
                           { { "tag", phase->tag }, { "summary", phase->summary }, { "progress", phase->progress } });
                   });
-
+            if (m_proxy.empty()) {
+                m_tor_ctrl->tor_sleep_hint("wakeup");
+            }
             GDK_RUNTIME_ASSERT(!m_proxy.empty());
             GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_proxy;
         }
