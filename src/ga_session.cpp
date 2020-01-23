@@ -646,6 +646,9 @@ namespace sdk {
             connect();
 
             const bool logged_in = !m_mnemonic.empty() && login_from_cached(m_mnemonic);
+            if (!logged_in) {
+                on_failed_login();
+            }
             emit_notification(
                 "network", { { "connected", true }, { "login_required", !logged_in }, { "heartbeat_timeout", false } });
 
