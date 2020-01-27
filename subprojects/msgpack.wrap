@@ -1,10 +1,10 @@
 [wrap-file]
-directory = msgpack-3.2.0
+directory = msgpack-3.2.1
 
-source_url = https://github.com/msgpack/msgpack-c/releases/download/cpp-3.2.0/msgpack-3.2.0.tar.gz
-source_filename = msgpack-3.2.0.tar.gz
-source_hash = fbaa28c363a316fd7523f31d1745cf03eab0d1e1ea5a1c60aa0dffd4ce551afe
+source_url = https://github.com/msgpack/msgpack-c/releases/download/cpp-3.2.1/msgpack-3.2.1.tar.gz
+source_filename = msgpack-3.2.1.tar.gz
+source_hash = 433cbcd741e1813db9ae4b2e192b83ac7b1d2dd7968a3e11470eacc6f4ab58d2
 
-patch_url = file:./subprojects/msgpack-meson/msgpack-meson-fbaa28c363a316fd7523f31d1745cf03eab0d1e1ea5a1c60aa0dffd4ce551afe.tar
-patch_filename = msgpack-meson-fbaa28c363a316fd7523f31d1745cf03eab0d1e1ea5a1c60aa0dffd4ce551afe.tar
-patch_hash = 5230b4962795cf7403460af3f613c51087675625af9cc8ef235b6d7e14843996
+patch_url = file:./subprojects/msgpack-meson/msgpack-meson-433cbcd741e1813db9ae4b2e192b83ac7b1d2dd7968a3e11470eacc6f4ab58d2.tar
+patch_filename = msgpack-meson-433cbcd741e1813db9ae4b2e192b83ac7b1d2dd7968a3e11470eacc6f4ab58d2.tar
+patch_hash = 4e3e85e2338f7dac491c7ca561c7ab2b20ebf8b1d3af89664aed4e30f8bed5e0
