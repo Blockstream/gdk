@@ -40,7 +40,17 @@ rust_sources = [
   'src/util.rs',
   'src/errors.rs',
   'src/coins.rs',
-  'src/constants.rs']
+  'src/constants.rs',
+
+  'gdk_electrum/cli/src/main.rs',
+  'gdk_electrum/src/client.rs',
+  'gdk_electrum/src/db.rs',
+  'gdk_electrum/src/error.rs',
+  'gdk_electrum/src/interface.rs',
+  'gdk_electrum/src/lib.rs',
+  'gdk_electrum/src/model.rs',
+  'gdk_electrum/src/tools.rs'
+]
 
 gdk_rpc_target = custom_target('libgdk_rpc',
                                input : rust_sources,

@@ -7,6 +7,7 @@ extern crate bitcoin_hashes;
 extern crate bitcoincore_rpc;
 extern crate chrono;
 extern crate dirs;
+extern crate gdk_electrum;
 extern crate hyper;
 extern crate hyper_socks;
 extern crate jsonrpc;

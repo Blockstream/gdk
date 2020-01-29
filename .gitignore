@@ -12,6 +12,7 @@ target/debug
 /*/*/*/.build/
 /subprojects/*
 !subprojects/gdk_rpc*
+/subprojects/gdk_rpc/gdk_electrum/target
 !subprojects/*meson*
 !subprojects/*wrap*
 *.swp
