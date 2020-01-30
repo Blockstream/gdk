@@ -17,7 +17,7 @@ namespace ga {
 namespace sdk {
     class network_parameters;
     class ga_session;
-    class ga_rpc;
+    class ga_rust;
     class ga_pubkeys;
     class ga_user_pubkeys;
     class network_control_context;
@@ -30,7 +30,7 @@ namespace sdk {
         virtual ~session_common() {}
 
         virtual void on_failed_login() = 0;
-        virtual bool is_connected(const nlohmann::json& net_params) = 0;
+        virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
         virtual void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler) = 0;
         virtual void emit_notification(std::string event, nlohmann::json details) = 0;

@@ -78,7 +78,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false }, { "development", true },
                 { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } }, { "bip21_prefix", "bitcoin" },
-                { "server_type" : "green" } })) },
+                { "server_type", "green" } })) },
 
     { "liquid",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -115,7 +115,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
             { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 25920, 51840, 65535 } },
-            { "bip21_prefix", "liquidnetwork" }, { "server_type" : "green" } })) },
+            { "bip21_prefix", "liquidnetwork" }, { "server_type", "green" } })) },
 
     { "mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -132,7 +132,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
                 { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false },
                 { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "bip21_prefix", "bitcoin" },
-                { "server_type" : "green" } })) },
+                { "server_type", "green" } })) },
 
     { "testnet",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -149,7 +149,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false }, { "development", false },
                 { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } }, { "bip21_prefix", "bitcoin" },
-                { "server_type" : "green" } })) },
+                { "server_type", "green" } })) },
 
     { "regtest",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Regtest" }, { "network", "regtest" },

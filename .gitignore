@@ -11,8 +11,9 @@ target/debug
 /build-clang*/
 /*/*/*/.build/
 /subprojects/*
-!subprojects/gdk_rpc*
-/subprojects/gdk_rpc/gdk_electrum/target
+!subprojects/gdk_rust*
+/subprojects/gdk_rust/gdk_electrum/target
+/subprojects/gdk_rust/gdk_rpc/target
 !subprojects/*meson*
 !subprojects/*wrap*
 *.swp
@@ -30,3 +31,4 @@ docs/build
 *PVS-Studio*
 /TAGS
 /tor
+*~

@@ -2,10 +2,10 @@
 set -e
 
 clean_meson() {
-  find subprojects/ -mindepth 2 -maxdepth 2 -not -path '*-meson*' -name '*meson*' -not -path '*gdk_rpc*' | xargs rm -rf --
+  find subprojects/ -mindepth 2 -maxdepth 2 -not -path '*-meson*' -name '*meson*' -not -path '*gdk_rust*' | xargs rm -rf --
 }
 
-SHARED_CLEAN=(-mindepth 1 -maxdepth 1 -not -name '*gdk_rpc*' -not -path '*-meson*' -not -name '*wrap*')
+SHARED_CLEAN=(-mindepth 1 -maxdepth 1 -not -name '*gdk_rust*' -not -path '*-meson*' -not -name '*wrap*')
 
 if [ "$1" = "meson" ]; then
   clean_meson

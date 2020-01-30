@@ -1,0 +1,20 @@
+[package]
+name = "gdk-electrum"
+version = "0.1.0"
+authors = ["Riccardo Casatta <riccardo@casatta.it>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4.8"
+rand = "0.7.2"
+hex = "0.4.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bitcoin_hashes = "0.7.1"
+sled = "0.29.2"
+sha2 = "0.8.0"
+gdk-common = { path = "../gdk_common" }
+
+[dependencies.bitcoin]
+version = "0.23"
+features = ["use-serde"]

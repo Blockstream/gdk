@@ -2,7 +2,7 @@
 set -e
 
 if [ $(command -v cargo) ]; then
-    pushd subprojects/gdk_rpc
+    pushd subprojects/gdk_rust
 	  cargo clippy --all
     popd
 fi

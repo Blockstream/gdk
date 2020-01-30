@@ -10,7 +10,7 @@
 
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
-#include "ga_rpc.hpp"
+#include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -123,11 +123,19 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(!impl, "session already connected");
 
             boost::shared_ptr<session_common> session;
+            const auto list = ga::sdk::network_parameters::get_all();
+            auto network = list.at(net_params.value("name", "")); // TODO: handle when this is missing
 
-            if (net_params.contains("rpc_url") && net_params.contains("name")) {
-                session = boost::make_shared<ga_rpc>(net_params, ga::sdk::network_parameters::get_all());
-            } else {
+            // merge with net_params
+            network.insert(net_params.begin(), net_params.end());
+
+            GDK_RUNTIME_ASSERT_MSG(net_params.contains("server_type"), "server_type field missing");
+            if (net_params["server_type"] == "green") {
                 session = boost::make_shared<ga_session>(net_params);
+            } else if (net_params["server_type"] == "rpc" || net_params["server_type"] == "electrum") {
+                session = boost::make_shared<ga_rust>(network);
+            } else {
+                GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
             }
 
             GDK_RUNTIME_ASSERT(session != nullptr);

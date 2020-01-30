@@ -89,7 +89,7 @@ if cross_iphone_build
   add_project_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
   add_project_link_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
 
-  # to generate keys in gdk_rpc
+  # to generate keys in gdk_rust
   add_project_link_arguments(['-Wl,-framework,Security'], language : 'cpp')
 endif
 
@@ -256,9 +256,9 @@ library_deps += compiler.find_library('execinfo', required : is_freebsd)
 
 subproject_deps = []
 
-gdkrpc = subproject('gdk_rpc')
+gdkrust = subproject('gdk_rust')
 wallycore = subproject('libwally-core')
-subproject_deps += gdkrpc.get_variable('gdk_rpc_dep')
+subproject_deps += gdkrust.get_variable('gdk_rust_dep')
 subproject_deps += wallycore.get_variable('wallycore_dep')
 subproject_deps += dependency('external_autobahn-cpp', fallback : ['autobahn-cpp', 'autobahn_dep'])
 subproject_deps += dependency('external_boost', fallback : ['boost', 'boost_dep'])
@@ -270,7 +270,7 @@ subproject_deps += dependency('external_websocketpp', fallback : ['websocketpp',
 subproject_deps += dependency('external_tor', fallback : ['tor', 'tor_dep'])
 
 # includes
-incdirs = ['.', 'subprojects/gdk_rpc']
+incdirs = ['.', 'subprojects/gdk_rust']
 
 incdir = include_directories(incdirs)
 
@@ -289,8 +289,8 @@ if get_option('enable-tests')
                 ))
 
 
-  test('test rpc',
-       executable('test_rpc', 'tests/test_rpc.cpp',
+  test('test rust',
+       executable('test_rust', 'tests/test_rust.cpp',
                   link_with: libga.get_static_lib(),
                   dependencies: dependencies
        ))
