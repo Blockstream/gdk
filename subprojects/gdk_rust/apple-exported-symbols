@@ -1,0 +1,7 @@
+_GDKRUST_create_session
+_GDKRUST_call_session
+_GDKRUST_destroy_json
+_GDKRUST_destroy_string
+_GDKRUST_set_notification_handler
+_GDKRUST_convert_json_to_string
+_GDKRUST_convert_string_to_json

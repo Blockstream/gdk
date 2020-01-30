@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -eE
+
+if [ -z "$1" ]; then
+    usage
+fi
+
+trap cleanup ERR
+
+export DATADIR=${DATADIR:-/tmp/test_gdk_rust}
+EXEC_NODE=${EXEC_NODE:-bitcoind}
+EXEC_NODE_BN=$(basename "$EXEC_NODE")
+EXEC_CLI=${EXEC_CLI:-bitcoin-cli}
+ELECTRUM_PORT=${ELECTRUM_PORT:-60401}
+ELECTRS=${ELECTRS:-electrs}
+ELECTRS_PID=0
+TEST_RUST="$1"/test_rust
+
+mkdir -p "$DATADIR"
+
+cleanup() {
+    printf "removing %s...\n" "$DATADIR"
+    kill $(< "$DATADIR"/testpid) $ELECTRS_PID
+    rm -rf "$DATADIR"
+    printf "killing electrs and %s...\n" "$EXEC_NODE_BN"
+}
+
+cli_cmd() {
+    $EXEC_CLI -regtest -rpcwait -datadir="$DATADIR" "$@"
+}
+
+usage() {
+    printf "usage: test-runner <build-dir>\n"
+    exit 1
+}
+
+missing_program() {
+    printf 'ERROR: missing "%s", please set export %s="path/to/%s"\n' \
+           "$1" "$2" "$1"
+    exit 2
+}
+
+
+start() {
+    [[ "$(command -v "$ELECTRS")" ]] || missing_program "electrs" "ELECTRS"
+    [[ "$(command -v "$EXEC_NODE")" ]] || missing_program "$EXEC_NODE_BN" "EXEC_NODE"
+
+    printf "starting regtest node...\n"
+    $EXEC_NODE -pid="$DATADIR"/testpid -server=1 -daemon -regtest -datadir="$DATADIR"
+}
+
+start_electrs() {
+    printf "starting electrs...\n"
+    $ELECTRS -vvv --db-dir="$DATADIR"/electrs-db \
+             --daemon-dir="$DATADIR" \
+             --network regtest &
+    ELECTRS_PID=$!
+}
+
+start
+sleep 1
+
+printf "Mining blocks...\n"
+ADDR=$(cli_cmd getnewaddress)
+NBLOCKS=101
+printf "Mining %d blocks to %s...\n" "$NBLOCKS" "$ADDR"
+cli_cmd generatetoaddress $NBLOCKS "$ADDR" >/dev/null
+sleep 1
+start_electrs
+sleep 2
+
+# regtest
+export GDK_NETWORK=electrum-regtest
+export GDK_NETWORK_URL=localhost:$ELECTRUM_PORT
+export GDK_TLS=false
+$TEST_RUST

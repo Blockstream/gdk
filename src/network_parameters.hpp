@@ -30,6 +30,7 @@ namespace sdk {
         network_parameters& operator=(network_parameters&&) = default;
 
         const nlohmann::json& get_json() const { return m_details; }
+        nlohmann::json& get_json_mut() { return m_details; }
 
         std::string network() const { return m_details.at("network"); }
         std::string gait_wamp_url() const { return m_details.at("wamp_url"); }
@@ -53,7 +54,9 @@ namespace sdk {
         int ct_exponent() const { return m_details.at("ct_exponent"); }
         int ct_bits() const { return m_details.at("ct_bits"); }
         bool main_net() const { return m_details.at("mainnet"); }
-        bool liquid() const { return m_details.at("liquid"); }
+        bool liquid() const { return m_details.value("liquid", false); }
+        bool use_tor() const { return m_details.value("use_tor", false); }
+        std::string socks5() const { return m_details.value("socks5", ""); }
         std::string get_connection_string(bool use_tor) const { return use_tor ? gait_onion() : gait_wamp_url(); }
         std::string get_registry_connection_string(bool use_tor) const
         {
