@@ -210,7 +210,7 @@ pub extern "C" fn GDKRPC_create_session(
     }
 
     for (k, network) in networks.as_object().unwrap().iter() {
-        if network.get("rpc").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if network.get("server_type").map(|v| v.as_str() == Some("rpc")).unwrap_or(false) {
             let parsed_network = serde_json::from_value(network.clone());
             if let Err(msg) = parsed_network {
                 println!("Error parsing network '{}': {}", k, msg);

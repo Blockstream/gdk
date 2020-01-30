@@ -78,7 +78,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false }, { "development", true },
                 { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } }, { "bip21_prefix", "bitcoin" },
-                { "rpc" : false } })) },
+                { "server_type" : "green" } })) },
 
     { "liquid",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -99,7 +99,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
                 { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
                 { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "bip21_prefix", "liquidnetwork" },
-                { "rpc", false } })) },
+                { "server_type", "green" } })) },
 
     { "localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Localtest Liquid" },
@@ -115,7 +115,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
             { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 25920, 51840, 65535 } },
-            { "bip21_prefix", "liquidnetwork" }, { "rpc" : false } })) },
+            { "bip21_prefix", "liquidnetwork" }, { "server_type" : "green" } })) },
 
     { "mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -132,7 +132,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
                 { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false },
                 { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "bip21_prefix", "bitcoin" },
-                { "rpc" : false } })) },
+                { "server_type" : "green" } })) },
 
     { "testnet",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -149,7 +149,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false }, { "development", false },
                 { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } }, { "bip21_prefix", "bitcoin" },
-                { "rpc" : false } })) },
+                { "server_type" : "green" } })) },
 
     { "regtest",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Regtest" }, { "network", "regtest" },
@@ -162,7 +162,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "default_peers", std::vector<std::string>{ { "192.168.56.1:19000" } } }, { "p2pkh_version", 111u },
             { "p2sh_version", 196u }, { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false },
             { "development", true }, { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
-            { "bip21_prefix", "bitcoin" }, { "rpc", false } })) },
+            { "bip21_prefix", "bitcoin" }, { "server_type", "green" } })) },
 
     { "liquid-rpc-mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "RPC Liquid" }, { "network", "liquid-rpc-mainnet" },
@@ -174,14 +174,14 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true }, { "development", false },
             { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
             { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
-            { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "rpc", true } })) },
+            { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "server_type", "rpc" } })) },
 
     { "rpc-mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "RPC Mainnet" }, { "network", "rpc-mainnet" },
             { "address_explorer_url", "https://blockstream.info/address/" },
             { "tx_explorer_url", "https://blockstream.info/tx/" }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
             { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false },
-            { "rpc", true } })) },
+            { "server_type", "rpc" } })) },
 
     { "rpc-testnet",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "RPC Testnet" }, { "network", "rpc-testnet" },
@@ -189,14 +189,49 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" }, { "p2pkh_version", 111u },
             { "p2sh_version", 196u }, { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false },
-            { "development", false }, { "rpc", true } })) },
+            { "development", false }, { "server_type", "rpc" } })) },
 
     { "rpc-regtest",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "RPC Regtest" }, { "network", "rpc-regtest" },
             { "address_explorer_url", "http://192.168.56.1:8080/address/" },
             { "tx_explorer_url", "http://192.168.56.1:8080/tx/" }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
             { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false }, { "development", true },
-            { "rpc", true } })) },
+            { "server_type", "rpc" } })) },
+
+    { "liquid-electrum-mainnet",
+        std::make_shared<nlohmann::json>(
+            nlohmann::json({ { "name", "Electrum Liquid" }, { "network", "liquid-electrum-mainnet" },
+                { "address_explorer_url", "https://blockstream.info/liquid/address/" },
+                { "asset_registry_url", "https://assets.blockstream.info" },
+                { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
+                { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
+                { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 57u }, { "p2sh_version", 39u },
+                { "bech32_prefix", "lq" }, { "mainnet", true }, { "liquid", true }, { "development", false },
+                { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
+                { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
+                { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "server_type", "electrum" } })) },
+
+    { "electrum-mainnet",
+        std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Mainnet" },
+            { "network", "electrum-mainnet" }, { "address_explorer_url", "https://blockstream.info/address/" },
+            { "tx_explorer_url", "https://blockstream.info/tx/" }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
+            { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false },
+            { "server_type", "electrum" } })) },
+
+    { "electrum-testnet",
+        std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Testnet" },
+            { "network", "electrum-testnet" }, { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" },
+            { "address_explorer_url", "https://blockstream.info/testnet/address/" },
+            { "tx_explorer_url", "https://blockstream.info/testnet/tx/" }, { "p2pkh_version", 111u },
+            { "p2sh_version", 196u }, { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false },
+            { "development", false }, { "server_type", "electrum" } })) },
+
+    { "electrum-regtest",
+        std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Regtest" },
+            { "network", "electrum-regtest" }, { "address_explorer_url", "http://192.168.56.1:8080/address/" },
+            { "tx_explorer_url", "http://192.168.56.1:8080/tx/" }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
+            { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false }, { "development", true },
+            { "server_type", "electrum" } })) },
 
 };
 
