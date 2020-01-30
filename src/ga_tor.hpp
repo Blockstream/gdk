@@ -9,6 +9,7 @@
 
 namespace ga {
 namespace sdk {
+    static const uint32_t DEFAULT_TOR_SOCKS_WAIT = 15; // maximum timeout for the tor socks to get ready
 
     struct tor_bootstrap_phase {
         tor_bootstrap_phase();

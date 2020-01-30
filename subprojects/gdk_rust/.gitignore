@@ -1,0 +1,5 @@
+/target
+test
+/bld
+/tests/c-test
+Cargo.lock

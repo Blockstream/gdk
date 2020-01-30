@@ -1,0 +1,29 @@
+[package]
+name = "gdk-electrum"
+version = "0.1.0"
+authors = ["Riccardo Casatta <riccardo@casatta.it>"]
+edition = "2018"
+
+[features]
+android_log = ["android_logger"]
+
+[dependencies]
+log = "0.4.8"
+rand = "0.7.2"
+hex = "0.4.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sled = "0.31.0"
+sha2 = "0.8.0"
+gdk-common = { path = "../gdk_common" }
+libc = "0.2"
+android_logger = { version = "0.8.6", optional = true }
+electrum-client = "0.1.0-beta.6"
+chrono = "0.4.11"
+
+[dependencies.bitcoin]
+version = "0.23"
+features = ["use-serde"]
+
+[dependencies.elements]
+version = "0.12"

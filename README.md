@@ -27,6 +27,14 @@ pip3 install --user meson
 xcode-select --install
 ```
 
+Install rust dependencies:
+
+  1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
+  2. Install default rust toolchain: `rustup install 1.39.0`
+
+  3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu`
+
 You may also need to change your PATH environment variable to add $HOME/Library/Python/3.6/bin
 
 If you want to target Android you will need to download the NDK and set the ANDROID_NDK env variable to the directory you uncompress it to, for example
