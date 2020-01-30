@@ -1,0 +1,18 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors = ["Alekos Filini <alekos.filini@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = "2.33.0"
+wgdsau = { path = "../" }
+hex = "0.4.0"
+
+[dependencies.bitcoin]
+version = "0.21"
+features = ["use-serde"]
