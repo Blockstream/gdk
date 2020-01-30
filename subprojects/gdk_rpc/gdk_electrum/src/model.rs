@@ -1,8 +1,8 @@
 use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxOut};
-use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath};
 use bitcoin::util::address::Address;
+use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGEmpty {}
@@ -22,11 +22,19 @@ pub struct WGTransaction {
     pub sent: u64,
     pub height: Option<u32>,
     pub is_mine: Vec<bool>,
-    pub derivation_paths: Vec<Option<DerivationPath>>
+    pub derivation_paths: Vec<Option<DerivationPath>>,
 }
 
 impl WGTransaction {
-    pub fn new (transaction: Transaction, timestamp: u64, received: u64, sent: u64, height: Option<u32>, is_mine: Vec<bool>, derivation_paths: Vec<Option<DerivationPath>>) -> Self {
+    pub fn new(
+        transaction: Transaction,
+        timestamp: u64,
+        received: u64,
+        sent: u64,
+        height: Option<u32>,
+        is_mine: Vec<bool>,
+        derivation_paths: Vec<Option<DerivationPath>>,
+    ) -> Self {
         let txid = transaction.txid().to_string();
 
         WGTransaction {
@@ -48,7 +56,7 @@ pub struct WGUTXO {
     pub txout: TxOut,
     pub height: Option<u32>,
     pub is_change: bool,
-    pub derivation_path: DerivationPath
+    pub derivation_path: DerivationPath,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -112,5 +120,5 @@ pub struct WGExtendedPubKey {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGInit {
-    pub path: String
+    pub path: String,
 }

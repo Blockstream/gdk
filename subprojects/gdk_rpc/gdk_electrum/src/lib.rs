@@ -1,29 +1,28 @@
-use std::os::raw::{c_char};
+use log::{error, info};
 use std::ffi::CStr;
-use log::{info, error};
+use std::os::raw::c_char;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 use android_logger::Config;
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 use log::Level;
 
-pub mod model;
-pub mod interface;
-pub mod error;
 pub mod client;
-pub mod tools;
 pub mod db;
+pub mod error;
+pub mod interface;
+pub mod model;
+pub mod tools;
 
-use crate::model::*;
-use crate::interface::{lib_init, WalletCtx};
 use crate::error::WGError;
+use crate::interface::{lib_init, WalletCtx};
+use crate::model::*;
 
 fn native_activity_create() {
-    #[cfg(target_os="android")]
-    android_logger::init_once(
-        Config::default().with_min_level(Level::Info));
+    #[cfg(target_os = "android")]
+    android_logger::init_once(Config::default().with_min_level(Level::Info));
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -46,9 +45,15 @@ enum IncomingRequest {
     GenerateXprv(WGEmpty),
 }
 
-fn call_interface(wallet_name: String, url: Option<String>, req: IncomingRequest) -> Result<String, WGError> {
+fn call_interface(
+    wallet_name: String,
+    url: Option<String>,
+    req: IncomingRequest,
+) -> Result<String, WGError> {
     if let IncomingRequest::Init(data) = req {
-        unsafe { lib_init(data); };
+        unsafe {
+            lib_init(data);
+        };
 
         return Ok("{}".to_string());
     }
@@ -63,14 +68,18 @@ fn call_interface(wallet_name: String, url: Option<String>, req: IncomingRequest
         IncomingRequest::CreateTx(req) => Ok(serde_json::to_string(&(wallet.create_tx(req)?))?),
         IncomingRequest::Sign(req) => Ok(serde_json::to_string(&(wallet.sign(req)?))?),
         IncomingRequest::Broadcast(req) => Ok(serde_json::to_string(&(wallet.broadcast(req)?))?),
-        IncomingRequest::ValidateAddress(req) => Ok(serde_json::to_string(&(wallet.validate_address(req)?))?),
+        IncomingRequest::ValidateAddress(req) => {
+            Ok(serde_json::to_string(&(wallet.validate_address(req)?))?)
+        }
         IncomingRequest::Poll(req) => Ok(serde_json::to_string(&(wallet.poll(req)?))?),
         IncomingRequest::GetAddress(req) => Ok(serde_json::to_string(&(wallet.get_address(req)?))?),
         IncomingRequest::Fee(req) => Ok(serde_json::to_string(&(wallet.fee(req)?))?),
-        IncomingRequest::XpubFromXprv(req) => Ok(serde_json::to_string(&(wallet.xpub_from_xprv(req)?))?),
+        IncomingRequest::XpubFromXprv(req) => {
+            Ok(serde_json::to_string(&(wallet.xpub_from_xprv(req)?))?)
+        }
         IncomingRequest::GenerateXprv(_) => Ok(serde_json::to_string(&(wallet.generate_xprv()?))?),
 
-        IncomingRequest::Init(_) => unreachable!()
+        IncomingRequest::Init(_) => unreachable!(),
     }
 }
 
@@ -101,7 +110,7 @@ fn make_error(code: i32, message: String) -> String {
 }
 
 #[no_mangle]
-pub extern fn call(to: *const c_char) -> String {
+pub extern "C" fn call(to: *const c_char) -> String {
     native_activity_create();
     let c_str = unsafe { CStr::from_ptr(to) };
     info!("<-- {:?}", c_str);
@@ -117,7 +126,10 @@ pub extern fn call(to: *const c_char) -> String {
     }
     let json = json.unwrap();
 
-    if !json.is_object() || json.get("wallet_name").is_none() || !json.get("wallet_name").unwrap().is_string() {
+    if !json.is_object()
+        || json.get("wallet_name").is_none()
+        || !json.get("wallet_name").unwrap().is_string()
+    {
         return make_error(-3, "Missing or invalid `wallet_name`".to_string());
     }
 
@@ -134,7 +146,7 @@ pub extern fn call(to: *const c_char) -> String {
 
     let ser_resp = match call_interface(wallet_name, url, obj.unwrap()) {
         Ok(s) => "{\"result\": ".to_owned() + &s + "}",
-        Err(e) => make_error(-1, format!("{:?}", e).to_string())
+        Err(e) => make_error(-1, format!("{:?}", e).to_string()),
     };
 
     info!("--> {:?}", ser_resp);
@@ -143,24 +155,29 @@ pub extern fn call(to: *const c_char) -> String {
 }
 
 /// Expose the JNI interface for android below
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 pub mod android {
     extern crate jni;
 
-    use super::*;
-    use self::jni::JNIEnv;
     use self::jni::objects::{JClass, JString};
-    use self::jni::sys::{jstring};
+    use self::jni::sys::jstring;
+    use self::jni::JNIEnv;
+    use super::*;
     use std::ffi::CString;
 
     #[no_mangle]
-    pub unsafe extern fn Java_com_blockstream_wgdsau_Rust_call(env: JNIEnv, _: JClass, java_pattern: JString) -> jstring {
+    pub unsafe extern "C" fn Java_com_blockstream_wgdsau_Rust_call(
+        env: JNIEnv,
+        _: JClass,
+        java_pattern: JString,
+    ) -> jstring {
         // Our Java companion code might pass-in "world" as a string, hence the name.
         let world = call(env.get_string(java_pattern).expect("invalid pattern string").as_ptr());
         // Retake pointer so that we can use it below and allow memory to be freed when it goes out of scope.
         let world_ptr = CString::new(world.as_str()).unwrap();
-        let output = env.new_string(world_ptr.to_str().unwrap()).expect("Couldn't create java string!");
+        let output =
+            env.new_string(world_ptr.to_str().unwrap()).expect("Couldn't create java string!");
 
         output.into_inner()
     }
@@ -168,28 +185,30 @@ pub mod android {
 
 #[cfg(test)]
 mod test {
+    use crate::model::{
+        WGAddress, WGAddressAmount, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes,
+        WGExtendedPrivKey, WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
+    };
+    use bitcoin::blockdata::transaction::Transaction;
+    use bitcoin::consensus::deserialize;
+    use bitcoin::util::address::Address;
+    use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+    use bitcoin::util::misc::hex_bytes;
     use serde_json;
     use std::str::FromStr;
-    use bitcoin::consensus::deserialize;
-    use bitcoin::blockdata::transaction::Transaction;
-    use bitcoin::util::misc::hex_bytes;
-    use bitcoin::util::address::Address;
-    use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey};
-    use crate::model::{WGInit, WGSyncReq, WGTransaction, WGUTXO, WGBalance, WGAddress, WGAddressAmount, WGEstimateFeeReq, WGEstimateFeeRes, WGCreateTxReq, WGSignReq, WGExtendedPrivKey, WGExtendedPubKey};
 
     #[test]
     fn test_defaults() {
         let init = WGInit {
-            path: "/tmp/".to_string()
+            path: "/tmp/".to_string(),
         };
         let json = serde_json::to_string_pretty(&init).unwrap();
         println!("WGInit {}", json);
 
         let xpub = ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4Wc77iw2W3C5EfGsHkR6TXGoVwBSoUZjVj3hdZ4bNF8eskirtD98DKcNoT3gjKcmiBxpsZX1yV3aaN6rUaM7UhoRZ85kHqwY").unwrap();
-        let wgsync_req = WGSyncReq{
+        let wgsync_req = WGSyncReq {
             xpub,
             url: Some("scamcoinbot.com:1880".to_string()),
-
         };
         let json = serde_json::to_string_pretty(&wgsync_req).unwrap();
         println!("WGSyncReq {}", json);
@@ -197,7 +216,7 @@ mod test {
         let hex_tx = hex_bytes("0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000").unwrap();
         let tx: Result<Transaction, _> = deserialize(&hex_tx);
         let transaction = tx.unwrap();
-        let wgtransaction = WGTransaction{
+        let wgtransaction = WGTransaction {
             transaction: transaction.clone(),
             txid: "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
             timestamp: 0u64,
@@ -218,14 +237,14 @@ mod test {
         println!("WGBalance {}", json);
 
         let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
-        let wgaddress = WGAddress{
+        let wgaddress = WGAddress {
             address,
         };
         let json = serde_json::to_string_pretty(&wgaddress).unwrap();
         println!("WGAddress {}", json);
 
         let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
-        let wgaddressamount = WGAddressAmount{
+        let wgaddressamount = WGAddressAmount {
             address,
             satoshi: 0u64,
         };
@@ -244,12 +263,11 @@ mod test {
         wgutxo_vec.push(wgutxo);
         let mut wgaddressamount_vec = vec![];
         wgaddressamount_vec.push(wgaddressamount);
-        let wgcreate_tx_req = WGCreateTxReq{
+        let wgcreate_tx_req = WGCreateTxReq {
             utxo: Some(wgutxo_vec),
             addresses_amounts: wgaddressamount_vec,
             fee_perkb: 0.0001f32,
             xpub: xpub,
-
         };
         let json = serde_json::to_string_pretty(&wgcreate_tx_req).unwrap();
         println!("WGCreateTxReq {}", json);
@@ -259,7 +277,7 @@ mod test {
         derivationpath_vec.push(derivation_path.unwrap());
 
         let xprv = ExtendedPrivKey::from_str("tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK").unwrap();
-        let wgsign_req = WGSignReq{
+        let wgsign_req = WGSignReq {
             xprv,
             transaction,
             derivation_paths: derivationpath_vec,
@@ -268,17 +286,15 @@ mod test {
         println!("WGSignReq {}", json);
 
         let wgxprv = WGExtendedPrivKey {
-            xprv
+            xprv,
         };
         let json = serde_json::to_string_pretty(&wgxprv).unwrap();
         println!("WGExtendedPrivKey {}", json);
 
         let wgxpub = WGExtendedPubKey {
-            xpub
+            xpub,
         };
         let json = serde_json::to_string_pretty(&wgxpub).unwrap();
         println!("WGExtendedPubKey {}", json);
     }
-
 }
-

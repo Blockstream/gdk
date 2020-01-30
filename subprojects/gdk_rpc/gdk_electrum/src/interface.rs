@@ -1,28 +1,31 @@
 use rand::Rng;
 
+use std::collections::{HashMap, HashSet};
 use std::net::ToSocketAddrs;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::{HashSet, HashMap};
 
 use hex;
 
-use bitcoin::secp256k1::{Secp256k1, All, Message};
-use bitcoin::util::address::Address;
-use bitcoin::util::bip32::{DerivationPath, ChildNumber, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::util::bip143::SighashComponents;
-use bitcoin::network::constants::Network;
-use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxOut, TxIn};
 use bitcoin::blockdata::script::Script;
-use bitcoin_hashes::Hash;
-use bitcoin_hashes::sha256d;
+use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+use bitcoin::network::constants::Network;
+use bitcoin::secp256k1::{All, Message, Secp256k1};
+use bitcoin::util::address::Address;
+use bitcoin::util::bip143::SighashComponents;
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::sha256d;
+use bitcoin_hashes::Hash;
 
-use sled::{Db, Batch};
+use sled::{Batch, Db};
 
-use crate::error::WGError;
-use crate::model::{WGInit, WGTransaction, WGUTXO, WGBalance, WGEstimateFeeReq, WGEstimateFeeRes, WGSyncReq, WGAddress, WGSignReq, WGCreateTxReq, WGExtendedPrivKey, WGExtendedPubKey};
 use crate::client::ElectrumxClient;
 use crate::db::{GetTree, WalletDB};
+use crate::error::WGError;
+use crate::model::{
+    WGAddress, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
+    WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
+};
 
 static mut DB: Option<Db> = None;
 
@@ -36,19 +39,17 @@ pub struct WalletCtx<A: ToSocketAddrs> {
     secp: Secp256k1<All>,
     network: Network,
     client: Option<ElectrumxClient<A>>,
-    db: WalletDB
+    db: WalletDB,
 }
 
 impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
-   pub fn new(wallet_name: String, url: Option<A>) -> Result<Self, WGError> {
+    pub fn new(wallet_name: String, url: Option<A>) -> Result<Self, WGError> {
         let client = match url {
             Some(u) => Some(ElectrumxClient::new(u)?),
-            None => None
+            None => None,
         };
 
-        let db = unsafe {
-            DB.as_ref().unwrap().get_tree(&wallet_name)?
-        };
+        let db = unsafe { DB.as_ref().unwrap().get_tree(&wallet_name)? };
 
         Ok(WalletCtx {
             wallet_name,
@@ -60,7 +61,12 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
     }
 
     fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<Address, WGError> {
-        let path: Vec<ChildNumber> = path.iter().map(|x| ChildNumber::Normal{index: *x}).collect();
+        let path: Vec<ChildNumber> = path
+            .iter()
+            .map(|x| ChildNumber::Normal {
+                index: *x,
+            })
+            .collect();
         let derived = xpub.derive_pub(&self.secp, &path)?;
 
         Ok(Address::p2wpkh(&derived.public_key, self.network))
@@ -79,7 +85,14 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         // TODO: more addrs if necessary
         let change_pool: HashMap<_, _> = (0..20)
             .map(|x| {
-                let path = DerivationPath::from(vec![ChildNumber::Normal{index: 1}, ChildNumber::Normal{index: x}]);
+                let path = DerivationPath::from(vec![
+                    ChildNumber::Normal {
+                        index: 1,
+                    },
+                    ChildNumber::Normal {
+                        index: x,
+                    },
+                ]);
                 (self.derive_address(&request.xpub, &[1, x]).unwrap().script_pubkey(), path)
             })
             .collect();
@@ -106,7 +119,8 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             }
 
             for tx in history {
-                let tx_str = self.client.as_mut().unwrap().get_transaction(tx.tx_hash.clone(), false)?;
+                let tx_str =
+                    self.client.as_mut().unwrap().get_transaction(tx.tx_hash.clone(), false)?;
                 let unserialized: Transaction = deserialize(hex::decode(tx_str)?.as_slice())?;
 
                 let mut incoming: u64 = 0;
@@ -121,7 +135,10 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
 
                         if unspent_set.get(&(tx.tx_hash.clone(), vout)).is_none() {
                             println!("... is_spent");
-                            let op = OutPoint { txid: sha256d::Hash::from_hex(&tx.tx_hash).unwrap(), vout: (vout as u32) };
+                            let op = OutPoint {
+                                txid: sha256d::Hash::from_hex(&tx.tx_hash).unwrap(),
+                                vout: (vout as u32),
+                            };
                             self.db.save_spent(&op, &mut batch)?;
                         } else {
                             println!("... unspent");
@@ -130,12 +147,24 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
                         incoming += out.value;
 
                         is_mine.push(true);
-                        derivation_path.push(Some(DerivationPath::from(vec![ChildNumber::Normal{index: 0}, ChildNumber::Normal{index: i}])));
+                        derivation_path.push(Some(DerivationPath::from(vec![
+                            ChildNumber::Normal {
+                                index: 0,
+                            },
+                            ChildNumber::Normal {
+                                index: i,
+                            },
+                        ])));
                     } else if let Some(path) = change_pool.get(&out.script_pubkey) {
                         println!("found change at {:?}", path);
 
                         let mut found = false;
-                        for elem in self.client.as_mut().unwrap().list_unspent(Address::from_script(&out.script_pubkey, Network::Testnet).unwrap().to_string().as_str())? {
+                        for elem in self.client.as_mut().unwrap().list_unspent(
+                            Address::from_script(&out.script_pubkey, Network::Testnet)
+                                .unwrap()
+                                .to_string()
+                                .as_str(),
+                        )? {
                             if (&elem.tx_hash, elem.tx_pos) == (&tx.tx_hash, vout) {
                                 println!("... unspent");
 
@@ -145,20 +174,26 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
                         }
 
                         if !found {
-                            let op = OutPoint { txid: sha256d::Hash::from_hex(&tx.tx_hash.clone()).unwrap(), vout: (vout as u32) };
+                            let op = OutPoint {
+                                txid: sha256d::Hash::from_hex(&tx.tx_hash.clone()).unwrap(),
+                                vout: (vout as u32),
+                            };
                             self.db.save_spent(&op, &mut batch)?;
                         }
 
                         is_mine.push(true);
                         derivation_path.push(Some(path.clone()));
-                    } else { // TODO: potentially look for more outputs
+                    } else {
+                        // TODO: potentially look for more outputs
                         is_mine.push(false);
                         derivation_path.push(None);
                     }
                 }
 
                 for input in &unserialized.input {
-                    if let Some(spending_tx) = self.db.get_tx(&input.previous_output.txid.to_string())? {
+                    if let Some(spending_tx) =
+                        self.db.get_tx(&input.previous_output.txid.to_string())?
+                    {
                         for out in spending_tx.transaction.output {
                             if out.script_pubkey == this_scriptpubkey {
                                 outgoing += out.value;
@@ -169,11 +204,19 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
 
                 let height = match tx.height {
                     -1 | 0 => None,
-                    x => Some(x as u32)
+                    x => Some(x as u32),
                 };
 
                 // TODO: unconfirmed tx should have None height instead of 0
-                let tx = WGTransaction::new(unserialized, now, incoming, outgoing, height, is_mine, derivation_path);
+                let tx = WGTransaction::new(
+                    unserialized,
+                    now,
+                    incoming,
+                    outgoing,
+                    height,
+                    is_mine,
+                    derivation_path,
+                );
 
                 self.db.save_tx(tx, &mut batch)?;
             }
@@ -182,7 +225,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         }
 
         self.db.apply_batch(batch)?;
-                
+
         Ok(())
     }
 
@@ -193,19 +236,27 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         let mut unspent = Vec::new();
 
         for tx in txs {
-            for (vout, (mine, path)) in tx.is_mine.iter().zip(tx.derivation_paths.iter()).enumerate() {
+            for (vout, (mine, path)) in
+                tx.is_mine.iter().zip(tx.derivation_paths.iter()).enumerate()
+            {
                 if !mine || path.is_none() {
                     continue;
                 }
 
-                let op = OutPoint { txid: sha256d::Hash::from_hex(&tx.txid).unwrap(), vout: (vout as u32) };
+                let op = OutPoint {
+                    txid: sha256d::Hash::from_hex(&tx.txid).unwrap(),
+                    vout: (vout as u32),
+                };
                 if spent.get(&op).is_none() {
                     unspent.push(WGUTXO {
                         outpoint: op,
                         txout: tx.transaction.output[vout].clone(),
-                        is_change: path.as_ref().unwrap().as_ref()[0] == ChildNumber::Normal{index: 1}, // TODO
+                        is_change: path.as_ref().unwrap().as_ref()[0]
+                            == ChildNumber::Normal {
+                                index: 1,
+                            }, // TODO
                         height: tx.height,
-                        derivation_path: path.clone().unwrap()
+                        derivation_path: path.clone().unwrap(),
                     });
                 }
             }
@@ -215,10 +266,8 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
     }
 
     pub fn balance(&self) -> Result<WGBalance, WGError> {
-        Ok(WGBalance{
-            satoshi: self.utxos()?
-                            .iter()
-                            .fold(0, |sum, i| sum + i.txout.value)
+        Ok(WGBalance {
+            satoshi: self.utxos()?.iter().fold(0, |sum, i| sum + i.txout.value),
         })
     }
 
@@ -240,15 +289,13 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         let mut is_mine = vec![];
         let mut derivation_path = vec![]; // used for the inputs this time
 
-        let calc_fee_bytes = |bytes| {
-            ((bytes as f32) * fee_rate) as u64
-        };
+        let calc_fee_bytes = |bytes| ((bytes as f32) * fee_rate) as u64;
         fee_val += calc_fee_bytes(tx.get_weight() / 4);
 
         for out in request.addresses_amounts {
             let new_out = TxOut {
                 script_pubkey: out.address.script_pubkey(),
-                value: out.satoshi
+                value: out.satoshi,
             };
             fee_val += calc_fee_bytes(serialize(&new_out).len());
 
@@ -273,7 +320,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
                 previous_output: utxo.outpoint,
                 script_sig: Script::default(),
                 sequence: 0,
-                witness: vec![]
+                witness: vec![],
             };
             fee_val += calc_fee_bytes(serialize(&new_in).len() + 50); // TODO: adjust 50 based on the signature size
 
@@ -291,7 +338,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             // TODO: we are not accounting for this output
             tx.output.push(TxOut {
                 script_pubkey: change_address.script_pubkey(),
-                value: change_val
+                value: change_val,
             });
 
             is_mine.push(true);
@@ -311,10 +358,11 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         input_index: usize,
         path: &DerivationPath,
         xpriv: &ExtendedPrivKey,
-        value: u64
+        value: u64,
     ) -> (Vec<u8>, Vec<u8>) {
         let privkey = xpriv.derive_priv(&self.secp, &path).unwrap();
-        let pubkey = bitcoin::secp256k1::PublicKey::from_secret_key(&self.secp, &privkey.private_key.key);
+        let pubkey =
+            bitcoin::secp256k1::PublicKey::from_secret_key(&self.secp, &privkey.private_key.key);
 
         let mut script_code = vec![0x76, 0xa9, 0x14];
         script_code.append(&mut script[2..].to_vec());
@@ -323,13 +371,12 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         let hash = SighashComponents::new(tx).sighash_all(
             &tx.input[input_index],
             &Script::from(script_code),
-            value
+            value,
         );
 
-        let signature = self.secp.sign(
-            &Message::from_slice(&hash.into_inner()[..]).unwrap(),
-            &privkey.private_key.key,
-        );
+        let signature = self
+            .secp
+            .sign(&Message::from_slice(&hash.into_inner()[..]).unwrap(), &privkey.private_key.key);
 
         //let mut signature = signature.serialize_der().to_vec();
         let mut signature = hex::decode(&format!("{:?}", signature)).unwrap();
@@ -347,7 +394,14 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             let prev_output = request.transaction.input[i].previous_output.clone();
             let tx = self.db.get_tx(&prev_output.txid.to_string())?.unwrap();
 
-            let (pk, sig) = self.internal_sign(&request.transaction, &tx.transaction.output[prev_output.vout as usize].script_pubkey, i, &request.derivation_paths[i], &request.xprv, tx.transaction.output[prev_output.vout as usize].value);
+            let (pk, sig) = self.internal_sign(
+                &request.transaction,
+                &tx.transaction.output[prev_output.vout as usize].script_pubkey,
+                i,
+                &request.derivation_paths[i],
+                &request.xprv,
+                tx.transaction.output[prev_output.vout as usize].value,
+            );
             let witness = vec![sig, pk];
 
             out_tx.input[i].witness = witness;
@@ -383,20 +437,21 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         let index = self.db.increment_external_index()?;
 
         Ok(WGAddress {
-            address: self.derive_address(&xpub.xpub, &[0, index])?
+            address: self.derive_address(&xpub.xpub, &[0, index])?,
         })
     }
 
     pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, WGError> {
         let estimate = WGEstimateFeeRes {
-            fee_perkb : self.client.as_mut().unwrap().estimate_fee(request.nblocks as usize).unwrap() as f32
+            fee_perkb: self.client.as_mut().unwrap().estimate_fee(request.nblocks as usize).unwrap()
+                as f32,
         };
         Ok(estimate)
     }
 
     pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, WGError> {
         Ok(WGExtendedPubKey {
-            xpub: ExtendedPubKey::from_private(&self.secp, &xprv.xprv)
+            xpub: ExtendedPubKey::from_private(&self.secp, &xprv.xprv),
         })
     }
 
@@ -404,7 +459,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
 
         Ok(WGExtendedPrivKey {
-            xprv: ExtendedPrivKey::new_master(self.network, &random_bytes)?
+            xprv: ExtendedPrivKey::new_master(self.network, &random_bytes)?,
         })
     }
 

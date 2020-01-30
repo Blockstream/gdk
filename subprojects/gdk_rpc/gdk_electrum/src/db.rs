@@ -5,7 +5,7 @@ use bitcoin::blockdata::transaction::OutPoint;
 
 use serde_json::json;
 
-use sled::{Db, Tree, Batch};
+use sled::{Batch, Db, Tree};
 
 use crate::error::WGError;
 use crate::model::*;
@@ -22,12 +22,14 @@ impl GetTree for Db {
 }
 
 pub struct WalletDB {
-    tree: Tree
+    tree: Tree,
 }
 
 impl From<Tree> for WalletDB {
     fn from(tree: Tree) -> Self {
-        WalletDB { tree }
+        WalletDB {
+            tree,
+        }
     }
 }
 
@@ -56,9 +58,7 @@ impl WalletDB {
         let mut key = vec!['t' as u8];
         key.append(&mut hex::decode(txid)?);
 
-       Ok(self.tree
-           .get(key)?
-           .and_then(|data| serde_json::from_slice(&data).unwrap()))
+        Ok(self.tree.get(key)?.and_then(|data| serde_json::from_slice(&data).unwrap()))
     }
 
     pub fn save_spent(&self, outpoint: &OutPoint, batch: &mut Batch) -> Result<(), WGError> {
@@ -76,19 +76,13 @@ impl WalletDB {
 
         let r = self.tree.scan_prefix(b"s");
 
-        Ok(r
-            .keys()
-            .map(|e| deserialize(&e.unwrap()[1..]).unwrap())
-            .collect())
+        Ok(r.keys().map(|e| deserialize(&e.unwrap()[1..]).unwrap()).collect())
     }
 
     pub fn list_tx(&self) -> Result<Vec<WGTransaction>, WGError> {
         let r = self.tree.scan_prefix(b"t");
 
-        Ok(r
-            .values()
-            .map(|e| serde_json::from_slice(&e.unwrap()).unwrap())
-            .collect())
+        Ok(r.values().map(|e| serde_json::from_slice(&e.unwrap()).unwrap()).collect())
     }
 
     fn get_index(&self, key: &[u8]) -> Result<u32, WGError> {
@@ -96,7 +90,7 @@ impl WalletDB {
 
         match data {
             Some(bytes) => Ok(serde_json::from_slice(&bytes).unwrap()),
-            None => Ok(0)
+            None => Ok(0),
         }
     }
 
@@ -114,8 +108,8 @@ impl WalletDB {
                 Some(bytes) => {
                     let val: u32 = serde_json::from_slice(bytes).unwrap();
                     val + 1
-                },
-                None => 0
+                }
+                None => 0,
             };
 
             Some(serde_json::to_vec(&json!(num)).unwrap())

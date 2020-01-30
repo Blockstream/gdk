@@ -1,12 +1,12 @@
 use serde_json;
 
+use crate::error::WGError;
+use crate::tools;
+use serde::{Deserialize, Serialize};
 use std::{
-    io::{self, Write, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Write},
     net::{TcpStream, ToSocketAddrs},
 };
-use serde::{Deserialize, Serialize};
-use crate::tools;
-use crate::error::WGError;
 
 pub struct ElectrumxClient<A: ToSocketAddrs> {
     #[allow(dead_code)]
@@ -16,15 +16,15 @@ pub struct ElectrumxClient<A: ToSocketAddrs> {
 
 #[derive(Debug, Deserialize)]
 pub struct GetHistoryRes {
-    pub height:  i32,
+    pub height: i32,
     pub tx_hash: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ListUnspentRes {
-    pub height:  usize,
-    pub tx_pos:  usize,
-    pub value:  u64,
+    pub height: usize,
+    pub tx_pos: usize,
+    pub value: u64,
     pub tx_hash: String,
 }
 
@@ -98,10 +98,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
     }
 
     pub fn get_transaction(&mut self, tx_hash: String, verbose: bool) -> Result<String, WGError> {
-        let params = vec![
-            Param::String(tx_hash),
-            Param::Bool(verbose),
-        ];
+        let params = vec![Param::String(tx_hash), Param::Bool(verbose)];
         let req = Request::new(0, "blockchain.transaction.get", params);
         self.call(req)?;
         let raw = self.recv()?;

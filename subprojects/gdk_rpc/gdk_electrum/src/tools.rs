@@ -1,5 +1,5 @@
-use bitcoin::{Address};
-use sha2::{Sha256, Digest};
+use bitcoin::Address;
+use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 pub fn decode_address_helper(addr: &str) -> String {
