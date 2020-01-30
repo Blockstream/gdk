@@ -10,6 +10,7 @@
 
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
+#include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -121,7 +122,38 @@ namespace sdk {
             auto impl = get_impl();
             GDK_RUNTIME_ASSERT_MSG(!impl, "session already connected");
 
-            auto session = boost::make_shared<ga_session>(net_params);
+            boost::shared_ptr<session_common> session;
+            const auto list = ga::sdk::network_parameters::get_all();
+            const auto network_name = net_params.value("name", "");
+
+            if (network_name == "") {
+                GDK_LOG_SEV(log_level::error) << "network name not provided";
+                throw new std::runtime_error("network name not provided");
+            }
+
+            auto network = list.at(network_name);
+
+            if (network == nullptr) {
+                GDK_LOG_SEV(log_level::error) << "network not found: " << network_name;
+                throw new std::runtime_error("network not found");
+            }
+
+            // merge with net_params
+            network.update(net_params.begin(), net_params.end());
+
+            GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
+            if (network.value("server_type", "") == "green") {
+                session = boost::make_shared<ga_session>(network);
+            } else if (network.value("server_type", "") == "rpc") {
+                session = boost::make_shared<ga_rust>(network);
+            } else if (network.value("server_type", "") == "electrum") {
+                GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
+                network["state_dir"] = std::string(gdk_config().at("datadir")) + "/state";
+                session = boost::make_shared<ga_rust>(network);
+            } else {
+                GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
+            }
+
             GDK_RUNTIME_ASSERT(session != nullptr);
             session->set_ping_fail_handler([this] {
                 GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";

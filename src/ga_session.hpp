@@ -14,6 +14,7 @@
 #include "ga_cache.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
+#include "session_common.hpp"
 #include "signer.hpp"
 #include "threading.hpp"
 #include "tx_list_cache.hpp"
@@ -134,7 +135,7 @@ namespace sdk {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
     };
 
-    class ga_session final {
+    class ga_session final : public session_common {
     public:
         using transport_t = boost::variant<std::shared_ptr<transport>, std::shared_ptr<transport_tls>>;
         using locker_t = annotated_unique_lock<annotated_mutex>;

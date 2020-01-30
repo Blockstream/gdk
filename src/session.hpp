@@ -10,6 +10,7 @@
 #include "amount.hpp"
 #include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
+#include "session_common.hpp"
 #include "signer.hpp"
 
 namespace ga {
@@ -192,8 +193,8 @@ namespace sdk {
             return p;
         }
 
-        using session_ptr = boost::shared_ptr<ga_session>;
-        using session_atomic_ptr = boost::atomic_shared_ptr<ga_session>;
+        using session_ptr = boost::shared_ptr<session_common>;
+        using session_atomic_ptr = boost::atomic_shared_ptr<session_common>;
 
         session_atomic_ptr m_impl;
 
