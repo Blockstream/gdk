@@ -464,6 +464,7 @@ dependencies = [
 name = "gdk-electrum"
 version = "0.1.0"
 dependencies = [
+ "android_logger 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_hashes 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk-common 0.1.0",
