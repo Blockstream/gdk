@@ -17,7 +17,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct GDKRPC_session {
+pub struct RpcSession {
     pub settings: Settings,
     pub rpc_cfg: Option<RpcConfig>,
     pub network: Network,
@@ -26,9 +26,9 @@ pub struct GDKRPC_session {
         Option<(extern "C" fn(*const libc::c_void, *const GDKRUST_json), *const libc::c_void)>,
 }
 
-impl Session<Error> for GDKRPC_session {
-    fn create_session(network: Network) -> Result<Self, Error> {
-        let sess = GDKRPC_session {
+impl RpcSession {
+    fn new(network: Network) -> Result<Self, Error> {
+        let sess = RpcSession {
             settings: Settings::default(),
             rpc_cfg: None,
             network,
@@ -37,6 +37,9 @@ impl Session<Error> for GDKRPC_session {
         };
         Ok(sess)
     }
+}
+
+impl Session<Error> for RpcSession {
 
     fn destroy_session(mut self) -> Result<(), Error> {
         if let Some(wallet) = self.wallet.take() {
@@ -260,7 +263,7 @@ impl Session<Error> for GDKRPC_session {
     }
 }
 
-impl GDKRPC_session {
+impl RpcSession {
 
 
     pub fn wallet(&self) -> Option<&Wallet> {

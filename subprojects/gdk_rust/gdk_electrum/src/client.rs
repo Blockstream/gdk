@@ -1,6 +1,6 @@
 use serde_json;
 
-use crate::error::WGError;
+use crate::error::Error;
 use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -37,7 +37,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         })
     }
 
-    fn call(&mut self, req: Request) -> Result<(), WGError> {
+    fn call(&mut self, req: Request) -> Result<(), Error> {
         let raw = serde_json::to_vec(&req)?;
         self.stream.write_all(&raw)?;
         self.stream.write_all(&[10])?;
@@ -52,7 +52,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         Ok(resp)
     }
 
-    pub fn estimate_fee(&mut self, number: usize) -> Result<f64, WGError> {
+    pub fn estimate_fee(&mut self, number: usize) -> Result<f64, Error> {
         let req = Request::new(0, "blockchain.estimatefee", vec![Param::Usize(number)]);
         self.call(req)?;
         let raw = self.recv()?;
@@ -60,7 +60,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         Ok(resp["result"].as_f64().unwrap())
     }
 
-    pub fn blockchain_headers(&mut self) -> Result<serde_json::Value, WGError> {
+    pub fn blockchain_headers(&mut self) -> Result<serde_json::Value, Error> {
         let req = Request::new(0, "blockchain.headers.subscribe", vec![]);
         self.call(req)?;
         let raw = self.recv()?;
@@ -68,7 +68,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         Ok(value)
     }
 
-    pub fn list_unspent(&mut self, addr: &str) -> Result<Vec<ListUnspentRes>, WGError> {
+    pub fn list_unspent(&mut self, addr: &str) -> Result<Vec<ListUnspentRes>, Error> {
         let reversed = tools::decode_address_helper(&addr);
         let params = vec![Param::String(reversed)];
         let req = Request::new(0, "blockchain.scripthash.listunspent", params);
@@ -78,7 +78,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         Ok(serde_json::from_value(resp["result"].clone())?)
     }
 
-    pub fn get_history(&mut self, addr: &str) -> Result<Vec<GetHistoryRes>, WGError> {
+    pub fn get_history(&mut self, addr: &str) -> Result<Vec<GetHistoryRes>, Error> {
         let reversed = tools::decode_address_helper(&addr);
         let params = vec![Param::String(reversed)];
         let req = Request::new(0, "blockchain.scripthash.get_history", params);
@@ -88,7 +88,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         Ok(serde_json::from_value(resp["result"].clone())?)
     }
 
-    pub fn broadcast_transaction(&mut self, raw_tx: String) -> Result<String, WGError> {
+    pub fn broadcast_transaction(&mut self, raw_tx: String) -> Result<String, Error> {
         let params = vec![Param::String(raw_tx)];
         let req = Request::new(0, "blockchain.transaction.broadcast", params);
         self.call(req)?;
@@ -97,7 +97,7 @@ impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
         Ok(resp["result"].as_str().unwrap().to_string())
     }
 
-    pub fn get_transaction(&mut self, tx_hash: String, verbose: bool) -> Result<String, WGError> {
+    pub fn get_transaction(&mut self, tx_hash: String, verbose: bool) -> Result<String, Error> {
         let params = vec![Param::String(tx_hash), Param::Bool(verbose)];
         let req = Request::new(0, "blockchain.transaction.get", params);
         self.call(req)?;

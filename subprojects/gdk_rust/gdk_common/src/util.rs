@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
+use log::debug;
+
 use backtrace::Backtrace;
 use bitcoin::Amount;
 use chrono::NaiveDateTime;

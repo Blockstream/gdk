@@ -5,6 +5,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[cfg(target_os = "android")]
 use android_logger::Config;
@@ -18,12 +19,112 @@ pub mod interface;
 pub mod model;
 pub mod tools;
 
-use crate::error::WGError;
+use crate::error::Error;
 use crate::interface::{lib_init, WalletCtx};
 use crate::model::*;
 
+use gdk_common::network::Network;
+use gdk_common::Session;
+
 #[derive(Debug)]
-pub struct GDKELECTRUM_session {}
+#[repr(C)]
+pub struct ElectrumSession {
+    // pub networks: HashMap<String, Network>
+}
+
+impl ElectrumSession {
+    pub fn create_session(_network: Network) -> Result<ElectrumSession, Error> {
+        Err(Error::Generic("implementme: ElectrumSession create_session".into()))
+    }
+}
+
+impl Session<Error> for ElectrumSession {
+    // type Value = ElectrumSession;
+
+    fn destroy_session(&self) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession destroy_session".into()))
+    }
+
+    fn poll_session(&self) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
+    }
+
+    fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession connect".into()))
+    }
+
+    fn disconnect(&mut self) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession connect".into()))
+    }
+
+    fn login(&mut self, _mnemonic: String, _password: Option<String>) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession login".into()))
+    }
+
+    fn get_subaccounts(&self) -> Result<Vec<Value>, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_subaccounts".into()))
+    }
+
+    fn get_subaccount(&self, _index: u32) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_subaccount".into()))
+    }
+
+    fn get_transactions(&self, _details: &Value) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_transactions".into()))
+    }
+
+    fn get_transaction_details(&self, _txid: &str) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
+    }
+
+    fn get_balance(&self, _details: &Value) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_balance".into()))
+    }
+
+    fn set_transaction_memo(&self, _txid: &str, _memo: &str, _memo_type: u32) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession set_transaction_memo".into()))
+    }
+
+    fn create_transaction(&self, _details: &Value) -> Result<String, Error> {
+        Err(Error::Generic("implementme: ElectrumSession create_transaction".into()))
+    }
+
+    fn sign_transaction(&self, _tx_detail_unsigned: &Value) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession sign_transaction".into()))
+    }
+
+    fn send_transaction(&self, _tx_detail_signed: &Value) -> Result<String, Error> {
+        Err(Error::Generic("implementme: ElectrumSession send_transaction".into()))
+    }
+
+    fn broadcast_transaction(&self, _tx_hex: &str) -> Result<String, Error> {
+        Err(Error::Generic("implementme: ElectrumSession broadcast_transaction".into()))
+    }
+
+    fn get_receive_address(&self, _addr_details: &Value) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_receive_address".into()))
+    }
+
+    fn get_fee_estimates(&self) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address".into()))
+    }
+
+    fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_mnemonic_passphrase".into()))
+    }
+
+    fn get_settings(&self) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_settings".into()))
+    }
+
+    fn change_settings(&mut self, _settings: &Value) -> Result<(), Error> {
+        Err(Error::Generic("implementme: ElectrumSession change_settings".into()))
+    }
+
+    // fn register_user(&mut self, mnemonic: String) -> Result<(), Error> {
+    //     Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address"))
+    // }
+}
 
 fn native_activity_create() {
     #[cfg(target_os = "android")]
@@ -54,7 +155,7 @@ fn call_interface(
     wallet_name: String,
     url: Option<String>,
     req: IncomingRequest,
-) -> Result<String, WGError> {
+) -> Result<String, Error> {
     if let IncomingRequest::Init(data) = req {
         unsafe {
             lib_init(data);
@@ -157,35 +258,6 @@ pub extern "C" fn call(to: *const c_char) -> String {
     info!("--> {:?}", ser_resp);
 
     return ser_resp;
-}
-
-/// Expose the JNI interface for android below
-#[cfg(target_os = "android")]
-#[allow(non_snake_case)]
-pub mod android {
-    extern crate jni;
-
-    use self::jni::objects::{JClass, JString};
-    use self::jni::sys::jstring;
-    use self::jni::JNIEnv;
-    use super::*;
-    use std::ffi::CString;
-
-    #[no_mangle]
-    pub unsafe extern "C" fn Java_com_blockstream_wgdsau_Rust_call(
-        env: JNIEnv,
-        _: JClass,
-        java_pattern: JString,
-    ) -> jstring {
-        // Our Java companion code might pass-in "world" as a string, hence the name.
-        let world = call(env.get_string(java_pattern).expect("invalid pattern string").as_ptr());
-        // Retake pointer so that we can use it below and allow memory to be freed when it goes out of scope.
-        let world_ptr = CString::new(world.as_str()).unwrap();
-        let output =
-            env.new_string(world_ptr.to_str().unwrap()).expect("Couldn't create java string!");
-
-        output.into_inner()
-    }
 }
 
 #[cfg(test)]

@@ -20,7 +20,7 @@ use sled::{Batch, Db};
 
 use crate::client::ElectrumxClient;
 use crate::db::{GetTree, WalletDB};
-use crate::error::WGError;
+use crate::error::Error;
 use crate::model::{
     WGAddress, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
     WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
@@ -42,7 +42,7 @@ pub struct WalletCtx<A: ToSocketAddrs> {
 }
 
 impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
-    pub fn new(wallet_name: String, url: Option<A>) -> Result<Self, WGError> {
+    pub fn new(wallet_name: String, url: Option<A>) -> Result<Self, Error> {
         let client = match url {
             Some(u) => Some(ElectrumxClient::new(u)?),
             None => None,
@@ -59,7 +59,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         })
     }
 
-    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<Address, WGError> {
+    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<Address, Error> {
         let path: Vec<ChildNumber> = path
             .iter()
             .map(|x| ChildNumber::Normal {
@@ -71,11 +71,11 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(Address::p2wpkh(&derived.public_key, self.network))
     }
 
-    pub fn list_tx(&self) -> Result<Vec<WGTransaction>, WGError> {
+    pub fn list_tx(&self) -> Result<Vec<WGTransaction>, Error> {
         self.db.list_tx()
     }
 
-    pub fn sync(&mut self, request: WGSyncReq) -> Result<(), WGError> {
+    pub fn sync(&mut self, request: WGSyncReq) -> Result<(), Error> {
         use bitcoin::consensus::deserialize;
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -228,7 +228,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(())
     }
 
-    pub fn utxos(&self) -> Result<Vec<WGUTXO>, WGError> {
+    pub fn utxos(&self) -> Result<Vec<WGUTXO>, Error> {
         let txs = self.db.list_tx()?;
         let spent = self.db.get_spent()?;
 
@@ -264,14 +264,14 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(unspent)
     }
 
-    pub fn balance(&self) -> Result<WGBalance, WGError> {
+    pub fn balance(&self) -> Result<WGBalance, Error> {
         Ok(WGBalance {
             satoshi: self.utxos()?.iter().fold(0, |sum, i| sum + i.txout.value),
         })
     }
 
     // If request.utxo is None, we do the coin selection
-    pub fn create_tx(&self, request: WGCreateTxReq) -> Result<WGTransaction, WGError> {
+    pub fn create_tx(&self, request: WGCreateTxReq) -> Result<WGTransaction, Error> {
         use bitcoin::consensus::serialize;
 
         let mut tx = Transaction {
@@ -348,7 +348,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
     }
 
     // TODO when we can serialize psbt
-    //pub fn sign(&self, psbt: PartiallySignedTransaction) -> Result<PartiallySignedTransaction, WGError> { Err(WGError::Generic("NotImplemented".to_string())) }
+    //pub fn sign(&self, psbt: PartiallySignedTransaction) -> Result<PartiallySignedTransaction, Error> { Err(Error::Generic("NotImplemented".to_string())) }
 
     fn internal_sign(
         &self,
@@ -386,7 +386,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         (pubkey, signature)
     }
 
-    pub fn sign(&mut self, request: WGSignReq) -> Result<WGTransaction, WGError> {
+    pub fn sign(&mut self, request: WGSignReq) -> Result<WGTransaction, Error> {
         let mut out_tx = request.transaction.clone();
 
         for i in 0..request.transaction.input.len() {
@@ -412,7 +412,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(WGTransaction::new(out_tx, 0, 0, 0, None, vec![], vec![]))
     }
 
-    pub fn broadcast(&mut self, tx: WGTransaction) -> Result<(), WGError> {
+    pub fn broadcast(&mut self, tx: WGTransaction) -> Result<(), Error> {
         use bitcoin::consensus::serialize;
 
         let txstr: String = hex::encode(serialize(&tx.transaction));
@@ -421,18 +421,18 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(())
     }
 
-    pub fn validate_address(&self, address: WGAddress) -> Result<bool, WGError> {
+    pub fn validate_address(&self, address: WGAddress) -> Result<bool, Error> {
         // if we managed to get here it means that the address is already valid.
         // only other thing we can check is if it the network is right.
 
         Ok(address.address.network == self.network)
     }
 
-    pub fn poll(&self, _xpub: WGExtendedPubKey) -> Result<(), WGError> {
+    pub fn poll(&self, _xpub: WGExtendedPubKey) -> Result<(), Error> {
         Ok(())
     }
 
-    pub fn get_address(&self, xpub: WGExtendedPubKey) -> Result<WGAddress, WGError> {
+    pub fn get_address(&self, xpub: WGExtendedPubKey) -> Result<WGAddress, Error> {
         let index = self.db.increment_external_index()?;
 
         Ok(WGAddress {
@@ -440,7 +440,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         })
     }
 
-    pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, WGError> {
+    pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, Error> {
         let estimate = WGEstimateFeeRes {
             fee_perkb: self.client.as_mut().unwrap().estimate_fee(request.nblocks as usize).unwrap()
                 as f32,
@@ -448,13 +448,13 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(estimate)
     }
 
-    pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, WGError> {
+    pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, Error> {
         Ok(WGExtendedPubKey {
             xpub: ExtendedPubKey::from_private(&self.secp, &xprv.xprv),
         })
     }
 
-    pub fn generate_xprv(&self) -> Result<WGExtendedPrivKey, WGError> {
+    pub fn generate_xprv(&self) -> Result<WGExtendedPrivKey, Error> {
         let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
 
         Ok(WGExtendedPrivKey {
@@ -463,7 +463,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
     }
 
     // TODO: only debug
-    pub fn dump_db(&self) -> Result<(), WGError> {
+    pub fn dump_db(&self) -> Result<(), Error> {
         self.db.dump()
     }
 }

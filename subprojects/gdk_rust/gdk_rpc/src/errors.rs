@@ -1,5 +1,4 @@
 use core::fmt;
-use std::borrow::Cow;
 use std::io;
 
 use backtrace::Backtrace;

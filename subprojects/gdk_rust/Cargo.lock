@@ -180,19 +180,6 @@ dependencies = [
 [[package]]
 name = "bitcoincore-rpc"
 version = "0.8.0-rc1"
-source = "git+https://github.com/jb55/rust-bitcoincore-rpc?rev=06c9e44d526b285c2218075ebb4bf539957f21f1#06c9e44d526b285c2218075ebb4bf539957f21f1"
-dependencies = [
- "bitcoincore-rpc-json 0.8.0-rc1 (git+https://github.com/jb55/rust-bitcoincore-rpc?rev=06c9e44d526b285c2218075ebb4bf539957f21f1)",
- "jsonrpc 0.11.0 (git+https://github.com/jb55/rust-jsonrpc?rev=5e4dd4817641aa2f5b9981b4ea7f3bca52e0b3d9)",
- "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-bigint 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "bitcoincore-rpc"
-version = "0.8.0-rc1"
 source = "git+https://github.com/jb55/rust-bitcoincore-rpc?rev=f9eea91f82b3812d0c82810f74edba4259ec6939#f9eea91f82b3812d0c82810f74edba4259ec6939"
 dependencies = [
  "bitcoin 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -200,18 +187,6 @@ dependencies = [
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc 0.11.0 (git+https://github.com/jb55/rust-jsonrpc?rev=5e4dd4817641aa2f5b9981b4ea7f3bca52e0b3d9)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-bigint 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "bitcoincore-rpc-json"
-version = "0.8.0-rc1"
-source = "git+https://github.com/jb55/rust-bitcoincore-rpc?rev=06c9e44d526b285c2218075ebb4bf539957f21f1#06c9e44d526b285c2218075ebb4bf539957f21f1"
-dependencies = [
- "bitcoin 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-bigint 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -457,6 +432,7 @@ dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -478,32 +454,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdk-rpc"
-version = "0.1.0"
-dependencies = [
- "backtrace 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_hashes 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoincore-rpc 0.8.0-rc1 (git+https://github.com/jb55/rust-bitcoincore-rpc?rev=06c9e44d526b285c2218075ebb4bf539957f21f1)",
- "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "dirs 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "gdk-common 0.1.0",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper-socks 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jsonrpc 0.11.0 (git+https://github.com/jb55/rust-jsonrpc?rev=5e4dd4817641aa2f5b9981b4ea7f3bca52e0b3d9)",
- "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
- "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "gdk-rust"
 version = "0.1.0"
 dependencies = [
@@ -518,7 +468,6 @@ dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk-common 0.1.0",
  "gdk-electrum 0.1.0",
- "gdk-rpc 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-socks 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1409,9 +1358,7 @@ dependencies = [
 "checksum bitcoin-bech32 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4e67e8ccfc663811145e6cabdb9a2a6978877f72b048516e83eb95622e9b2554"
 "checksum bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2b7a2e9773ee7ae7f2560f0426c938f57902dcb9e39321b0cbd608f47ed579a4"
 "checksum bitcoin_hashes 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)" = "aff017f894e94c11c7fab19c14d4cc5653b107ef9220fed69a7a84afc037342b"
-"checksum bitcoincore-rpc 0.8.0-rc1 (git+https://github.com/jb55/rust-bitcoincore-rpc?rev=06c9e44d526b285c2218075ebb4bf539957f21f1)" = "<none>"
 "checksum bitcoincore-rpc 0.8.0-rc1 (git+https://github.com/jb55/rust-bitcoincore-rpc?rev=f9eea91f82b3812d0c82810f74edba4259ec6939)" = "<none>"
-"checksum bitcoincore-rpc-json 0.8.0-rc1 (git+https://github.com/jb55/rust-bitcoincore-rpc?rev=06c9e44d526b285c2218075ebb4bf539957f21f1)" = "<none>"
 "checksum bitcoincore-rpc-json 0.8.0-rc1 (git+https://github.com/jb55/rust-bitcoincore-rpc?rev=f9eea91f82b3812d0c82810f74edba4259ec6939)" = "<none>"
 "checksum bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 "checksum blake2b_simd 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)" = "d8fb2d74254a3a0b5cac33ac9f8ed0e44aa50378d9dbb2e5d83bd21ed1dc2c8a"

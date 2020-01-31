@@ -49,6 +49,8 @@ namespace sdk {
 
         explicit ga_rust(const nlohmann::json& net_params);
 
+        nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
+
         void on_failed_login();
 
         bool is_connected() const;
