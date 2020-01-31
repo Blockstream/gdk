@@ -47,6 +47,7 @@ use gdk_electrum::GDKELECTRUM_session;
 use gdk_rpc::session::GDKRPC_session;
 
 pub mod session;
+pub mod network;
 
 #[derive(Debug)]
 pub enum GDKRUST_session {
