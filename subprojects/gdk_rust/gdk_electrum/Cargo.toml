@@ -18,6 +18,8 @@ sled = "0.29.2"
 sha2 = "0.8.0"
 gdk-common = { path = "../gdk_common" }
 android_logger = { version = "0.8.6", optional = true }
+rust-crypto = "0.2"
+secp256k1 = "0.17.2"
 
 [dependencies.bitcoin]
 version = "0.23"

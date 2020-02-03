@@ -222,6 +222,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Testnet" },
             { "network", "electrum-testnet" }, { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" },
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
+            { "electrum_url", "tn.not.fyi:55001" },  // TODO for testing purpose, use non-ssl connection
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" }, { "p2pkh_version", 111u },
             { "p2sh_version", 196u }, { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false },
             { "development", false }, { "server_type", "electrum" } })) },

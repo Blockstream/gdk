@@ -1,5 +1,8 @@
 #![allow(dead_code)] // TODO remove
 
+#[macro_use]
+extern crate serde_json;
+
 use log::{error, info};
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -16,6 +19,7 @@ pub mod client;
 pub mod db;
 pub mod error;
 pub mod interface;
+pub mod mnemonic;
 pub mod model;
 pub mod tools;
 
@@ -23,18 +27,40 @@ use crate::error::Error;
 use crate::interface::{lib_init, WalletCtx};
 use crate::model::*;
 
+use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath};
+use bitcoin_hashes::sha256;
+use bitcoin_hashes::Hash;
 use gdk_common::network::Network;
 use gdk_common::Session;
+use secp256k1::Secp256k1;
+use std::net::ToSocketAddrs;
+use std::str::FromStr;
 
 #[derive(Debug)]
 #[repr(C)]
 pub struct ElectrumSession {
-    // pub networks: HashMap<String, Network>
+    pub network: Network,
+    pub mnemonic: Option<String>,
 }
 
 impl ElectrumSession {
-    pub fn create_session(_network: Network) -> Result<ElectrumSession, Error> {
-        Err(Error::Generic("implementme: ElectrumSession create_session".into()))
+    pub fn create_session(network: Network) -> Result<ElectrumSession, Error> {
+        match network.electrum_url {
+            Some(_) => {
+                let init = WGInit {
+                    path: "/tmp/gdk_rust".to_string(), // TODO should be passed through GDK.init
+                };
+                unsafe { lib_init(init) };
+                println!("returning session");
+                Ok(ElectrumSession {
+                    network,
+                    mnemonic: None,
+                })
+            }
+            None => Err(Error::Generic(
+                "ElectrumSession create_session without electrum server url".into(),
+            )),
+        }
     }
 }
 
@@ -50,19 +76,69 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
-        Err(Error::Generic("implementme: ElectrumSession connect".into()))
+        Ok(())
     }
 
     fn disconnect(&mut self) -> Result<(), Error> {
         Err(Error::Generic("implementme: ElectrumSession connect".into()))
     }
 
-    fn login(&mut self, _mnemonic: String, _password: Option<String>) -> Result<(), Error> {
-        Err(Error::Generic("implementme: ElectrumSession login".into()))
+    fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
+        println!("login");
+
+        // println!("login {:?}", self);  // TODO accessing to self from gdk build and python bindings launch segmentation fault
+
+        //let url = self.network.electrum_url.unwrap(); //should be safe, since Some is checked in create_session
+        let url = "tn.not.fyi:55001";
+        let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
+        let mut wallet = WalletCtx::new(wallet_name, Some(url)).unwrap();
+        //println!("WalletCtx {:?}", wallet);
+
+        //bip39 using bitcoin-wallet, conflict on network, should upgrade repo to rust-bitcoin 0.23, imported only mnemonic.rs
+        let mnemonic = mnemonic::Mnemonic::from_str(&mnemonic).unwrap();
+        let seed = mnemonic.to_seed(password.as_deref());
+        let secp = Secp256k1::new();
+        let xprv = ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
+
+        // m / purpose' / coin_type' / account' / change / address_index
+        // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin
+        let path = DerivationPath::from_str("m/44'/0'/0'/").unwrap();
+        let xprv = xprv.derive_priv(&secp, &path).unwrap();
+
+        let xpub = ExtendedPubKey::from_private(&secp, &xprv);
+
+
+        let req = WGSyncReq {
+            xpub: xpub.clone(),
+        };
+
+        wallet.sync(req);
+
+        // TODO just here for test
+        let a1 = wallet.get_address(WGExtendedPubKey {
+            xpub,
+        });
+        println!("a1: {:?} ", a1);
+        let a2 = wallet.get_address(WGExtendedPubKey {
+            xpub,
+        });
+        println!("a2: {:?} ", a2);
+
+        Ok(())
     }
 
-    fn get_subaccounts(&self) -> Result<Vec<Value>, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_subaccounts".into()))
+    fn get_subaccounts(&self) -> Result<Value, Error> {
+        // Err(Error::Generic("implementme: ElectrumSession get_subaccounts".into()))
+        let subaccounts_fake = json!({
+        "type": "core",
+        "pointer": 0,
+        "required_ca": 0,
+        "receiving_id": "",
+        "name": "fake account",
+        "has_transactions": true,
+        "satoshi": 1000 });
+
+        Ok(subaccounts_fake)
     }
 
     fn get_subaccount(&self, _index: u32) -> Result<Value, Error> {
@@ -102,6 +178,7 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<Value, Error> {
+
         Err(Error::Generic("implementme: ElectrumSession get_receive_address".into()))
     }
 
@@ -213,51 +290,6 @@ fn make_error(code: i32, message: String) -> String {
     };
 
     serde_json::to_string(&error_ext).unwrap()
-}
-
-#[no_mangle]
-pub extern "C" fn call(to: *const c_char) -> String {
-    native_activity_create();
-    let c_str = unsafe { CStr::from_ptr(to) };
-    info!("<-- {:?}", c_str);
-
-    let as_str = c_str.to_str();
-    if let Err(e) = as_str {
-        return make_error(-1, format!("{:?}", e).to_string());
-    }
-
-    let json: Result<serde_json::Value, _> = serde_json::from_str(as_str.unwrap());
-    if let Err(e) = json {
-        return make_error(-2, format!("{:?}", e).to_string());
-    }
-    let json = json.unwrap();
-
-    if !json.is_object()
-        || json.get("wallet_name").is_none()
-        || !json.get("wallet_name").unwrap().is_string()
-    {
-        return make_error(-3, "Missing or invalid `wallet_name`".to_string());
-    }
-
-    let wallet_name: String = json.get("wallet_name").take().unwrap().to_string();
-    info!("Using wallet: {}", wallet_name);
-
-    let url: Option<String> = json.get("url").map(|v| v.as_str().unwrap().to_string());
-    info!("Using url: {:?}", url);
-
-    let obj: Result<IncomingRequest, _> = serde_json::from_value(json);
-    if let Err(e) = obj {
-        return make_error(-4, format!("{:?}", e).to_string());
-    }
-
-    let ser_resp = match call_interface(wallet_name, url, obj.unwrap()) {
-        Ok(s) => "{\"result\": ".to_owned() + &s + "}",
-        Err(e) => make_error(-1, format!("{:?}", e).to_string()),
-    };
-
-    info!("--> {:?}", ser_resp);
-
-    return ser_resp;
 }
 
 #[cfg(test)]

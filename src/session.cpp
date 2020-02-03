@@ -129,12 +129,12 @@ namespace sdk {
             // merge with net_params
             network.insert(net_params.begin(), net_params.end());
 
-            GDK_RUNTIME_ASSERT_MSG(net_params.contains("server_type"), "server_type field missing");
-            if (net_params.value("server_type", "") == "green") {
-                session = boost::make_shared<ga_session>(net_params);
-            } else if (net_params.value("server_type", "") == "rpc"
-                || net_params.value("server_type", "") == "electrum") {
-                session = boost::make_shared<ga_rust>(net_params);
+            GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
+            if (network.value("server_type", "") == "green") {
+                session = boost::make_shared<ga_session>(network);
+            } else if (network.value("server_type", "") == "rpc"
+                || network.value("server_type", "") == "electrum") {
+                session = boost::make_shared<ga_rust>(network);
             } else {
                 GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
             }

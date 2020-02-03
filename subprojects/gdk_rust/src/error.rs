@@ -1,7 +1,7 @@
 use gdk_electrum as electrum;
 // use gdk_rpc as rpc;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub enum Error {
     Other(String),
     Electrum(electrum::error::Error),

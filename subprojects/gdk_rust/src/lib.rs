@@ -143,7 +143,7 @@ pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const GdkSession,
     network: *const GDKRUST_json,
 ) -> i32 {
-    debug!("GA_create_session()");
+
 
     #[cfg(feature = "android_log")]
     INIT_LOGGER.call_once(|| {
@@ -155,6 +155,7 @@ pub extern "C" fn GDKRUST_create_session(
     });
 
     let network = &safe_ref!(network).0;
+    println!("GA_create_session({:?})", network);
     let sess = create_session(network);
     let sess = unsafe { transmute(Box::new(sess)) };
 
@@ -166,8 +167,6 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
         println!("Expected network to be an object with a server_type key");
         return Err(GA_ERROR.into());
     }
-
-    println!("Error parsing network {:?}", network);
 
     let parsed_network = serde_json::from_value(network.clone());
     if let Err(msg) = parsed_network {
@@ -204,6 +203,9 @@ pub extern "C" fn GDKRUST_call_session(
         GdkSession::Electrum(ref mut s) => handle_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
+
+    println!("GDKRUST_call_session {} {:?}", method, res );
+
 
     ok_json!(output, res)
 }

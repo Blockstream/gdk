@@ -32,7 +32,7 @@ pub trait Session<E> {
     fn disconnect(&mut self) -> Result<(), E>;
     // fn register_user(&mut self, mnemonic: String) -> Result<(), E>;
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), E>;
-    fn get_subaccounts(&self) -> Result<Vec<Value>, E>;
+    fn get_subaccounts(&self) -> Result<Value, E>;
     fn get_subaccount(&self, index: u32) -> Result<Value, E>;
     fn get_transactions(&self, details: &Value) -> Result<Value, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;

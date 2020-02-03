@@ -10,7 +10,6 @@ pub struct WGEmpty {}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGSyncReq {
     pub xpub: ExtendedPubKey,
-    pub url: Option<String>, // TODO: unused
 }
 
 #[derive(Serialize, Deserialize, Debug)]

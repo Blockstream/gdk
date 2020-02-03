@@ -15,6 +15,8 @@ pub struct Network {
 
     tx_explorer_url: String,
     address_explorer_url: String,
+
+    pub electrum_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
