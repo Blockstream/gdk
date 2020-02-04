@@ -23,15 +23,10 @@ use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
 use crate::model::{
     WGAddress, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
-    WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
+    WGExtendedPubKey, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
 };
 
 static mut DB: Option<Db> = None;
-
-pub unsafe fn lib_init(init: WGInit) {
-    println!("opening db path: {}", init.path);
-    DB = Some(Db::open(init.path).unwrap())
-}
 
 pub struct WalletCtx<A: ToSocketAddrs> {
     wallet_name: String,
@@ -42,13 +37,15 @@ pub struct WalletCtx<A: ToSocketAddrs> {
 }
 
 impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
-    pub fn new(wallet_name: String, url: Option<A>) -> Result<Self, Error> {
+    pub fn new(db_root: &str, wallet_name: String, url: Option<A>) -> Result<Self, Error> {
         let client = match url {
             Some(u) => Some(ElectrumxClient::new(u)?),
             None => None,
         };
 
-        let db = unsafe { DB.as_ref().unwrap().get_tree(&wallet_name)? };
+        println!("opening sled db root path: {}", db_root);
+        let db_ctx = Db::open(db_root)?;
+        let db = db_ctx.get_tree(&wallet_name)?;
 
         Ok(WalletCtx {
             wallet_name,

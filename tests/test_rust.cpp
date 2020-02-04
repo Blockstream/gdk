@@ -20,6 +20,9 @@ int main()
     nlohmann::json net_params;
     net_params["log_level"] = "debug";
     net_params["use_tor"] = false;
+    net_params["state_dir"] = "/tmp/gdk";
+    net_params["url"] = "tn.not.fyi:55001";
+
     // net_params["proxy"] = "localhost:9050";
     net_params["name"] = "electrum-testnet";
 

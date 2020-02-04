@@ -3,9 +3,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::{error, info};
-use std::ffi::CStr;
-use std::os::raw::c_char;
+use log::error;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,7 +22,7 @@ pub mod model;
 pub mod tools;
 
 use crate::error::Error;
-use crate::interface::{lib_init, WalletCtx};
+use crate::interface::WalletCtx;
 use crate::model::*;
 
 use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath};
@@ -33,12 +31,12 @@ use bitcoin_hashes::Hash;
 use gdk_common::network::Network;
 use gdk_common::Session;
 use secp256k1::Secp256k1;
-use std::net::ToSocketAddrs;
 use std::str::FromStr;
 
 #[derive(Debug)]
-#[repr(C)]
 pub struct ElectrumSession {
+    pub url: String,
+    pub db_root: Option<String>,
     pub network: Network,
     pub mnemonic: Option<String>,
 }
@@ -47,12 +45,9 @@ impl ElectrumSession {
     pub fn create_session(network: Network) -> Result<ElectrumSession, Error> {
         match network.electrum_url {
             Some(_) => {
-                let init = WGInit {
-                    path: "/tmp/gdk_rust".to_string(), // TODO should be passed through GDK.init
-                };
-                unsafe { lib_init(init) };
-                println!("returning session");
                 Ok(ElectrumSession {
+                    db_root: None,
+                    url: network.electrum_url.clone().unwrap_or("".to_string()),
                     network,
                     mnemonic: None,
                 })
@@ -75,7 +70,24 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
     }
 
-    fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
+    fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
+        if let None = self.db_root.as_ref() {
+            self.db_root = net_params["state_dir"].as_str().map(|x| x.to_string());
+            println!("setting db_root to {:?}", self.db_root);
+        }
+
+        // url param on connect can override network electrum_url
+        let url = net_params["url"].as_str().map(|x| x.to_string());
+        if let Some(v) = url.as_ref() {
+            self.url = v.to_string();
+        }
+
+        if self.url == "" {
+            return Err(Error::Generic("connect: no url set".into()));
+        }
+
+        println!("connect {:?}", self);
+
         Ok(())
     }
 
@@ -84,26 +96,25 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
-        println!("login");
-
-        // println!("login {:?}", self);  // TODO accessing to self from gdk build and python bindings launch segmentation fault
+        println!("login {:#?}", self);  // TODO accessing to self from gdk build and python bindings launch segmentation fault
 
         //let url = self.network.electrum_url.unwrap(); //should be safe, since Some is checked in create_session
-        let url = "tn.not.fyi:55001";
+        let db_root = self.db_root.as_ref().ok_or(Error::Generic("login: db_root not set".into()))?;
+
         let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
-        let mut wallet = WalletCtx::new(wallet_name, Some(url)).unwrap();
-        //println!("WalletCtx {:?}", wallet);
+        let mut wallet = WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()))?;
+        // println!("WalletCtx {:?}", wallet);
 
         //bip39 using bitcoin-wallet, conflict on network, should upgrade repo to rust-bitcoin 0.23, imported only mnemonic.rs
-        let mnemonic = mnemonic::Mnemonic::from_str(&mnemonic).unwrap();
-        let seed = mnemonic.to_seed(password.as_deref());
+        let mnemonic = mnemonic::Mnemonic::from_str(&mnemonic)?;
+        let seed = mnemonic.to_seed(password.as_ref().map(|v| &**v));
         let secp = Secp256k1::new();
         let xprv = ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
 
         // m / purpose' / coin_type' / account' / change / address_index
         // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin
-        let path = DerivationPath::from_str("m/44'/0'/0'/").unwrap();
-        let xprv = xprv.derive_priv(&secp, &path).unwrap();
+        let path = DerivationPath::from_str("m/44'/0'/0'")?;
+        let xprv = xprv.derive_priv(&secp, &path)?;
 
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
@@ -112,7 +123,7 @@ impl Session<Error> for ElectrumSession {
             xpub: xpub.clone(),
         };
 
-        wallet.sync(req);
+        wallet.sync(req)?;
 
         // TODO just here for test
         let a1 = wallet.get_address(WGExtendedPubKey {
@@ -212,7 +223,6 @@ fn native_activity_create() {
 #[serde(tag = "method", content = "params")]
 #[serde(rename_all = "snake_case")]
 enum IncomingRequest {
-    Init(WGInit),
     Sync(WGSyncReq),
     ListTx(WGEmpty),
     Utxos(WGEmpty),
@@ -229,19 +239,12 @@ enum IncomingRequest {
 }
 
 fn call_interface(
+    db_root: String,
     wallet_name: String,
     url: Option<String>,
     req: IncomingRequest,
 ) -> Result<String, Error> {
-    if let IncomingRequest::Init(data) = req {
-        unsafe {
-            lib_init(data);
-        };
-
-        return Ok("{}".to_string());
-    }
-
-    let mut wallet = WalletCtx::new(wallet_name, url)?;
+    let mut wallet = WalletCtx::new(&db_root, wallet_name, url)?;
 
     match req {
         IncomingRequest::Sync(req) => Ok(serde_json::to_string(&(wallet.sync(req)?))?),
@@ -261,8 +264,6 @@ fn call_interface(
             Ok(serde_json::to_string(&(wallet.xpub_from_xprv(req)?))?)
         }
         IncomingRequest::GenerateXprv(_) => Ok(serde_json::to_string(&(wallet.generate_xprv()?))?),
-
-        IncomingRequest::Init(_) => unreachable!(),
     }
 }
 

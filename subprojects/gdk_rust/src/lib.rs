@@ -25,7 +25,6 @@ use serde_json::Value;
 use android_logger::{Config, FilterBuilder};
 #[cfg(feature = "android_log")]
 use log::Level;
-use serde_json::value;
 use std::ffi::CString;
 use std::mem::transmute;
 use std::os::raw::c_char;
@@ -34,7 +33,7 @@ use std::os::raw::c_char;
 use std::sync::{Once, ONCE_INIT};
 
 use gdk_common::constants::{GA_ERROR, GA_OK};
-use gdk_common::util::{make_str, read_str, OptionExt};
+use gdk_common::util::{make_str, read_str};
 use gdk_common::{GDKRUST_json, Session};
 
 use gdk_electrum::ElectrumSession;
