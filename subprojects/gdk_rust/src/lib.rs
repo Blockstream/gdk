@@ -154,9 +154,14 @@ pub extern "C" fn GDKRUST_create_session(
     });
 
     let network = &safe_ref!(network).0;
-    println!("GA_create_session({:?})", network);
-    let sess = create_session(network);
-    let sess = unsafe { transmute(Box::new(sess)) };
+    let sess = create_session(&network);
+
+    if let Err(err) = sess {
+        println!("create_session error: {}", err);
+        return GA_ERROR;
+    }
+
+    let sess = unsafe { transmute(Box::new(sess.unwrap())) };
 
     ok!(ret, sess)
 }
@@ -175,17 +180,15 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let parsed_network = parsed_network.unwrap();
 
-    let sess = match network.get("server_type").unwrap().as_str() {
+    match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
         Some("electrum") => {
             let esess = ElectrumSession::create_session(parsed_network)
-                .map_err(|err| value::to_value(err).unwrap())?;
+                .map_err(|err| json!(err))?;
             Ok(GdkSession::Electrum(esess))
         }
-        _ => Err(value::to_value("server_type invalid").unwrap()),
-    };
-
-    sess
+        _ => Err(json!("server_type invalid")),
+    }
 }
 
 #[no_mangle]
