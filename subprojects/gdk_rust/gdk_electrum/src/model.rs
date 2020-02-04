@@ -8,11 +8,6 @@ use serde::{Deserialize, Serialize};
 pub struct WGEmpty {}
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct WGSyncReq {
-    pub xpub: ExtendedPubKey,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct WGTransaction {
     pub transaction: Transaction,
     pub txid: String,

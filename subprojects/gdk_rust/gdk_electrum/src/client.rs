@@ -8,6 +8,7 @@ use std::{
     net::{TcpStream, ToSocketAddrs},
 };
 
+#[derive(Debug)]
 pub struct ElectrumxClient<A: ToSocketAddrs> {
     #[allow(dead_code)]
     socket_addr: A,

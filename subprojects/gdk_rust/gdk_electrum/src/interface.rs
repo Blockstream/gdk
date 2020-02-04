@@ -21,23 +21,20 @@ use sled::{Batch, Db};
 use crate::client::ElectrumxClient;
 use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
-use crate::model::{
-    WGAddress, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
-    WGExtendedPubKey, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
-};
+use crate::model::{WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey, WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO, WGAddress};
 
-static mut DB: Option<Db> = None;
-
+#[derive(Debug)]
 pub struct WalletCtx<A: ToSocketAddrs> {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
     client: Option<ElectrumxClient<A>>,
     db: WalletDB,
+    xpub: ExtendedPubKey,
 }
 
 impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
-    pub fn new(db_root: &str, wallet_name: String, url: Option<A>) -> Result<Self, Error> {
+    pub fn new(db_root: &str, wallet_name: String, url: Option<A>, xpub: ExtendedPubKey) -> Result<Self, Error> {
         let client = match url {
             Some(u) => Some(ElectrumxClient::new(u)?),
             None => None,
@@ -53,6 +50,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             db,
             network: Network::Testnet, // TODO: from db
             secp: Secp256k1::gen_new(),
+            xpub,
         })
     }
 
@@ -65,18 +63,19 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             .collect();
         let derived = xpub.derive_pub(&self.secp, &path)?;
 
-        Ok(Address::p2wpkh(&derived.public_key, self.network))
+        Ok(Address::p2shwpkh(&derived.public_key, self.network))
     }
 
     pub fn list_tx(&self) -> Result<Vec<WGTransaction>, Error> {
         self.db.list_tx()
     }
 
-    pub fn sync(&mut self, request: WGSyncReq) -> Result<(), Error> {
+    pub fn sync(&mut self) -> Result<(), Error> {
         use bitcoin::consensus::deserialize;
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let mut batch = Batch::default();
+        let xpub = &self.xpub;
 
         // TODO: more addrs if necessary
         let change_pool: HashMap<_, _> = (0..20)
@@ -89,14 +88,14 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
                         index: x,
                     },
                 ]);
-                (self.derive_address(&request.xpub, &[1, x]).unwrap().script_pubkey(), path)
+                (self.derive_address(xpub, &[1, x]).unwrap().script_pubkey(), path)
             })
             .collect();
 
         let mut last_found = 0;
         let mut i = 0;
         while i - last_found < 20 {
-            let addr = self.derive_address(&request.xpub, &[0, i])?;
+            let addr = self.derive_address(xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
             let history = self.client.as_mut().unwrap().get_history(addr.to_string().as_str())?;
 
@@ -221,6 +220,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         }
 
         self.db.apply_batch(batch)?;
+        self.db.flush();
 
         Ok(())
     }
@@ -418,23 +418,24 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(())
     }
 
-    pub fn validate_address(&self, address: WGAddress) -> Result<bool, Error> {
+    pub fn validate_address(&self, address: Address) -> Result<bool, Error> {
         // if we managed to get here it means that the address is already valid.
         // only other thing we can check is if it the network is right.
 
-        Ok(address.address.network == self.network)
+        Ok(address.network == self.network)
     }
 
     pub fn poll(&self, _xpub: WGExtendedPubKey) -> Result<(), Error> {
         Ok(())
     }
 
-    pub fn get_address(&self, xpub: WGExtendedPubKey) -> Result<WGAddress, Error> {
+    pub fn get_address(&self) -> Result<WGAddress, Error> {
         let index = self.db.increment_external_index()?;
-
+        self.db.flush();
+        let address = self.derive_address(&self.xpub, &[0, index])?;
         Ok(WGAddress {
-            address: self.derive_address(&xpub.xpub, &[0, index])?,
-        })
+            address,
+            })
     }
 
     pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, Error> {

@@ -39,6 +39,7 @@ pub struct ElectrumSession {
     pub db_root: Option<String>,
     pub network: Network,
     pub mnemonic: Option<String>,
+    pub wallet: Option<WalletCtx<String>>,
 }
 
 impl ElectrumSession {
@@ -49,6 +50,7 @@ impl ElectrumSession {
                 url: network.electrum_url.clone().unwrap_or("".to_string()),
                 network,
                 mnemonic: None,
+                wallet: None,
             }),
             None => Err(Error::Generic(
                 "ElectrumSession create_session without electrum server url".into(),
@@ -90,21 +92,17 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn disconnect(&mut self) -> Result<(), Error> {
+        //TODO call db flush
         Err(Error::Generic("implementme: ElectrumSession connect".into()))
     }
 
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
-        println!("login {:#?}", self); // TODO accessing to self from gdk build and python bindings launch segmentation fault
+        println!("login {:#?}", self);
 
         //let url = self.network.electrum_url.unwrap(); //should be safe, since Some is checked in create_session
         let db_root =
             self.db_root.as_ref().ok_or(Error::Generic("login: db_root not set".into()))?;
 
-        let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
-        let mut wallet = WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()))?;
-        // println!("WalletCtx {:?}", wallet);
-
-        //bip39 using bitcoin-wallet, conflict on network, should upgrade repo to rust-bitcoin 0.23, imported only mnemonic.rs
         // TODO: passphrase?
         let seed = wally::bip39_mnemonic_to_seed(&mnemonic, &password.unwrap_or_default())
             .ok_or(Error::InvalidMnemonic)?;
@@ -116,26 +114,20 @@ impl Session<Error> for ElectrumSession {
         // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin
         let path = DerivationPath::from_str("m/44'/0'/0'")?;
         let xprv = xprv.derive_priv(&secp, &path)?;
-
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
-        let req = WGSyncReq {
-            xpub: xpub.clone(),
-        };
-
-        wallet.sync(req)?;
-
-        // TODO just here for test
-        let a1 = wallet.get_address(WGExtendedPubKey {
-            xpub,
-        });
-        println!("a1: {:?} ", a1);
-        let a2 = wallet.get_address(WGExtendedPubKey {
-            xpub,
-        });
-        println!("a2: {:?} ", a2);
+        let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
+        let mut wallet: WalletCtx<String> = WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()), xpub)?;
+        wallet.sync()?;
+        self.wallet = Some(wallet);
 
         Ok(())
+    }
+
+    fn get_receive_address(&self, _addr_details: &Value) -> Result<Value, Error> {
+        let a1 = self.wallet.as_ref().unwrap().get_address()?;
+        println!("a1: {:?} ", a1);
+        Ok(json!(a1))
     }
 
     fn get_subaccounts(&self) -> Result<Value, Error> {
@@ -188,9 +180,6 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession broadcast_transaction".into()))
     }
 
-    fn get_receive_address(&self, _addr_details: &Value) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_receive_address".into()))
-    }
 
     fn get_fee_estimates(&self) -> Result<Value, Error> {
         Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address".into()))
@@ -222,48 +211,17 @@ fn native_activity_create() {
 #[serde(tag = "method", content = "params")]
 #[serde(rename_all = "snake_case")]
 enum IncomingRequest {
-    Sync(WGSyncReq),
     ListTx(WGEmpty),
     Utxos(WGEmpty),
     Balance(WGEmpty),
     CreateTx(WGCreateTxReq),
     Sign(WGSignReq),
     Broadcast(WGTransaction),
-    ValidateAddress(WGAddress),
     Poll(WGExtendedPubKey),
     GetAddress(WGExtendedPubKey),
     Fee(WGEstimateFeeReq),
     XpubFromXprv(WGExtendedPrivKey),
     GenerateXprv(WGEmpty),
-}
-
-fn call_interface(
-    db_root: String,
-    wallet_name: String,
-    url: Option<String>,
-    req: IncomingRequest,
-) -> Result<String, Error> {
-    let mut wallet = WalletCtx::new(&db_root, wallet_name, url)?;
-
-    match req {
-        IncomingRequest::Sync(req) => Ok(serde_json::to_string(&(wallet.sync(req)?))?),
-        IncomingRequest::ListTx(_) => Ok(serde_json::to_string(&(wallet.list_tx()?))?),
-        IncomingRequest::Utxos(_) => Ok(serde_json::to_string(&(wallet.utxos()?))?),
-        IncomingRequest::Balance(_) => Ok(serde_json::to_string(&(wallet.balance()?))?),
-        IncomingRequest::CreateTx(req) => Ok(serde_json::to_string(&(wallet.create_tx(req)?))?),
-        IncomingRequest::Sign(req) => Ok(serde_json::to_string(&(wallet.sign(req)?))?),
-        IncomingRequest::Broadcast(req) => Ok(serde_json::to_string(&(wallet.broadcast(req)?))?),
-        IncomingRequest::ValidateAddress(req) => {
-            Ok(serde_json::to_string(&(wallet.validate_address(req)?))?)
-        }
-        IncomingRequest::Poll(req) => Ok(serde_json::to_string(&(wallet.poll(req)?))?),
-        IncomingRequest::GetAddress(req) => Ok(serde_json::to_string(&(wallet.get_address(req)?))?),
-        IncomingRequest::Fee(req) => Ok(serde_json::to_string(&(wallet.fee(req)?))?),
-        IncomingRequest::XpubFromXprv(req) => {
-            Ok(serde_json::to_string(&(wallet.xpub_from_xprv(req)?))?)
-        }
-        IncomingRequest::GenerateXprv(_) => Ok(serde_json::to_string(&(wallet.generate_xprv()?))?),
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

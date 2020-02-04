@@ -21,6 +21,7 @@ impl GetTree for Db {
     }
 }
 
+#[derive(Debug)]
 pub struct WalletDB {
     tree: Tree,
 }
@@ -44,6 +45,10 @@ impl WalletDB {
     pub fn apply_batch(&self, batch: Batch) -> Result<(), Error> {
         self.tree.apply_batch(batch)?;
         Ok(())
+    }
+
+    pub fn flush(&self) {
+        self.tree.flush();
     }
 
     pub fn save_tx(&self, tx: WGTransaction, batch: &mut Batch) -> Result<(), Error> {
@@ -107,6 +112,7 @@ impl WalletDB {
             let num = match old {
                 Some(bytes) => {
                     let val: u32 = serde_json::from_slice(bytes).unwrap();
+                    println!("val is {}", val);
                     val + 1
                 }
                 None => 0,
