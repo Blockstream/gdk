@@ -17,7 +17,6 @@ pub mod client;
 pub mod db;
 pub mod error;
 pub mod interface;
-pub mod mnemonic;
 pub mod model;
 pub mod tools;
 
@@ -25,12 +24,13 @@ use crate::error::Error;
 use crate::interface::WalletCtx;
 use crate::model::*;
 
-use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath};
+use bitcoin::secp256k1::Secp256k1;
+use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin_hashes::sha256;
 use bitcoin_hashes::Hash;
 use gdk_common::network::Network;
+use gdk_common::wally;
 use gdk_common::Session;
-use secp256k1::Secp256k1;
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -44,14 +44,12 @@ pub struct ElectrumSession {
 impl ElectrumSession {
     pub fn create_session(network: Network) -> Result<ElectrumSession, Error> {
         match network.electrum_url {
-            Some(_) => {
-                Ok(ElectrumSession {
-                    db_root: None,
-                    url: network.electrum_url.clone().unwrap_or("".to_string()),
-                    network,
-                    mnemonic: None,
-                })
-            }
+            Some(_) => Ok(ElectrumSession {
+                db_root: None,
+                url: network.electrum_url.clone().unwrap_or("".to_string()),
+                network,
+                mnemonic: None,
+            }),
             None => Err(Error::Generic(
                 "ElectrumSession create_session without electrum server url".into(),
             )),
@@ -96,20 +94,23 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
-        println!("login {:#?}", self);  // TODO accessing to self from gdk build and python bindings launch segmentation fault
+        println!("login {:#?}", self); // TODO accessing to self from gdk build and python bindings launch segmentation fault
 
         //let url = self.network.electrum_url.unwrap(); //should be safe, since Some is checked in create_session
-        let db_root = self.db_root.as_ref().ok_or(Error::Generic("login: db_root not set".into()))?;
+        let db_root =
+            self.db_root.as_ref().ok_or(Error::Generic("login: db_root not set".into()))?;
 
         let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
         let mut wallet = WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()))?;
         // println!("WalletCtx {:?}", wallet);
 
         //bip39 using bitcoin-wallet, conflict on network, should upgrade repo to rust-bitcoin 0.23, imported only mnemonic.rs
-        let mnemonic = mnemonic::Mnemonic::from_str(&mnemonic)?;
-        let seed = mnemonic.to_seed(password.as_ref().map(|v| &**v));
+        // TODO: passphrase?
+        let seed = wally::bip39_mnemonic_to_seed(&mnemonic, &password.unwrap_or_default())
+            .ok_or(Error::InvalidMnemonic)?;
         let secp = Secp256k1::new();
-        let xprv = ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
+        let xprv =
+            ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
 
         // m / purpose' / coin_type' / account' / change / address_index
         // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin
@@ -117,7 +118,6 @@ impl Session<Error> for ElectrumSession {
         let xprv = xprv.derive_priv(&secp, &path)?;
 
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
-
 
         let req = WGSyncReq {
             xpub: xpub.clone(),
@@ -189,7 +189,6 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<Value, Error> {
-
         Err(Error::Generic("implementme: ElectrumSession get_receive_address".into()))
     }
 

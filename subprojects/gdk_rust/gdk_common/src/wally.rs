@@ -6,8 +6,7 @@ use std::ptr;
 
 use bitcoin::secp256k1;
 
-use crate::errors::Error;
-use gdk_common::util::{make_str, read_str};
+use crate::util::{make_str, read_str};
 
 mod ffi {
     use libc::{c_char, c_int, c_uchar, c_void};
@@ -159,18 +158,20 @@ pub fn bip39_mnemonic_from_bytes(entropy: &[u8]) -> String {
 }
 
 /// Validate the validity of a BIP-39 mnemonic.
-pub fn bip39_mnemonic_validate(mnemonic: &str) -> Result<(), Error> {
+pub fn bip39_mnemonic_validate(mnemonic: &str) -> bool {
     let ret = unsafe { ffi::bip39_mnemonic_validate(ptr::null(), make_str(mnemonic)) };
     if ret == ffi::WALLY_OK {
-        Ok(())
+        true
     } else {
-        Err(Error::InvalidMnemonic)
+        false
     }
 }
 
 /// Convert the mnemonic back into the entropy bytes.
-pub fn bip39_mnemonic_to_bytes(mnemonic: &str) -> Result<Vec<u8>, Error> {
-    bip39_mnemonic_validate(mnemonic)?;
+pub fn bip39_mnemonic_to_bytes(mnemonic: &str) -> Option<Vec<u8>> {
+    if !bip39_mnemonic_validate(mnemonic) {
+        return None;
+    }
 
     let c_mnemonic = make_str(mnemonic);
     let mut out = Vec::with_capacity(BIP39_MAX_ENTROPY_BYTES);
@@ -189,15 +190,14 @@ pub fn bip39_mnemonic_to_bytes(mnemonic: &str) -> Result<Vec<u8>, Error> {
     unsafe {
         out.set_len(written);
     }
-    Ok(out)
+    Some(out)
 }
 
 /// Convert the mnemonic phrase and passphrase to a binary seed.
-pub fn bip39_mnemonic_to_seed(
-    mnemonic: &str,
-    passphrase: &str,
-) -> Result<[u8; BIP39_SEED_BYTES], Error> {
-    bip39_mnemonic_validate(mnemonic)?;
+pub fn bip39_mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Option<[u8; BIP39_SEED_BYTES]> {
+    if !bip39_mnemonic_validate(mnemonic) {
+        return None;
+    }
 
     let c_mnemonic = make_str(mnemonic);
     let c_passphrase = make_str(passphrase);
@@ -214,7 +214,7 @@ pub fn bip39_mnemonic_to_seed(
     };
     assert_eq!(ret, ffi::WALLY_OK);
     assert_eq!(written, BIP39_SEED_BYTES);
-    Ok(out)
+    Some(out)
 }
 
 /// Calculate the signature hash for a specific index of

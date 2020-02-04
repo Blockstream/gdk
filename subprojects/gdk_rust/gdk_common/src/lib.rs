@@ -13,6 +13,7 @@ use serde_json::Value;
 pub mod constants;
 pub mod network;
 pub mod util;
+pub mod wally;
 
 #[derive(Debug)]
 #[repr(C)]

@@ -4,6 +4,7 @@ use serde::ser::{Serialize, SerializeStruct};
 pub enum Error {
     Generic(String),
     UnknownCall,
+    InvalidMnemonic,
     DB(sled::Error),
     Bitcoin(bitcoin::util::Error),
     BitcoinBIP32Error(bitcoin::util::bip32::Error),
@@ -25,6 +26,7 @@ impl Serialize for Error {
             }
             // TODO: implement serialization of these errors
             Error::UnknownCall => {}
+            Error::InvalidMnemonic => s.serialize_field("error", "invalid mnemonic")?,
             Error::DB(ref _dberr) => {}
             Error::Bitcoin(ref _btcerr) => {}
             Error::BitcoinBIP32Error(ref _bip32err) => {}
