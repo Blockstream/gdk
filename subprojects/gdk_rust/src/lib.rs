@@ -142,8 +142,6 @@ pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const GdkSession,
     network: *const GDKRUST_json,
 ) -> i32 {
-
-
     #[cfg(feature = "android_log")]
     INIT_LOGGER.call_once(|| {
         android_logger::init_once(
@@ -183,8 +181,8 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
         Some("electrum") => {
-            let esess = ElectrumSession::create_session(parsed_network)
-                .map_err(|err| json!(err))?;
+            let esess =
+                ElectrumSession::create_session(parsed_network).map_err(|err| json!(err))?;
             Ok(GdkSession::Electrum(esess))
         }
         _ => Err(json!("server_type invalid")),
@@ -206,8 +204,7 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    println!("GDKRUST_call_session {} {:?}", method, res );
-
+    println!("GDKRUST_call_session {} {:?}", method, res);
 
     ok_json!(output, res)
 }
