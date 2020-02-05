@@ -34,7 +34,10 @@ use std::sync::{Once, ONCE_INIT};
 
 use gdk_common::constants::{GA_ERROR, GA_OK};
 use gdk_common::util::{make_str, read_str};
+use gdk_common::*;
 use gdk_common::{GDKRUST_json, Session};
+
+use bitcoin::util::address::AddressType;
 
 use gdk_electrum::ElectrumSession;
 // use gdk_rpc::session::RpcSession;
@@ -94,21 +97,21 @@ macro_rules! tryit {
 }
 
 macro_rules! ok {
-    ($t:expr, $x:expr) => {
+    ($t:expr, $x:expr, $ret:expr) => {
         unsafe {
             let x = $x;
             debug!("ok!() {:?}", x);
             *$t = x;
-            GA_OK
+            $ret
         }
     };
 }
 
-macro_rules! ok_json {
-    ($t:expr, $x:expr) => {{
+macro_rules! json_res {
+    ($t:expr, $x:expr, $ret:expr) => {{
         let x = json!($x);
         debug!("ok_json!() {:?}", x);
-        ok!($t, GDKRUST_json::new(x))
+        ok!($t, GDKRUST_json::new(x), $ret)
     }};
 }
 
@@ -161,7 +164,78 @@ pub extern "C" fn GDKRUST_create_session(
 
     let sess = unsafe { transmute(Box::new(sess.unwrap())) };
 
-    ok!(ret, sess)
+    ok!(ret, sess, GA_OK)
+}
+
+fn address_result_value(addr: &AddressResult) -> Value {
+    json!({"address": addr.0})
+}
+
+fn balance_result_value(bal: &BalanceResult) -> Value {
+    json!({"btc": bal.0})
+}
+
+fn address_type_str(addr_type: &AddressType) -> &'static str {
+    match addr_type {
+        P2pkh => "p2pkh",
+        P2sh => "p2sh",
+        P2wpkh => "p2wpkh",
+        P2wsh => "p2wsh",
+    }
+}
+
+fn address_io_value(addr: &AddressIO) -> Value {
+    json!({
+        "address": addr.address,
+        "address_type": address_type_str(&addr.address_type),
+        "addressee": addr.addressee,
+        "is_output": addr.is_output,
+        "is_relevant": addr.is_relevant,
+        "is_spent": addr.is_spent,
+        "pointer": addr.pointer,
+        "pt_idx": addr.pt_idx,
+        "satoshi": addr.satoshi,
+        "script_type": addr.script_type,
+        "subaccount": addr.subaccount,
+        "subtype": addr.subtype,
+    })
+}
+
+fn txitem_value(tx: &TxListItem) -> Value {
+    let inputs = Value::Array(tx.inputs.iter().map(address_io_value).collect());
+    let outputs = Value::Array(tx.inputs.iter().map(address_io_value).collect());
+
+    json!({
+        "block_height": 1,
+        "created_at": tx.created_at, // TODO: is this a unix timestmap?
+
+        "type": tx.type_,
+        "memo": tx.memo,
+
+        "txhash": tx.txhash,
+        "transaction": bitcoin::hashes::hex::ToHex::to_hex(tx.transaction.as_slice()),
+
+        "satoshi": balance_result_value(&tx.satoshi),
+
+        "rbf_optin": tx.rbf_optin,
+        "cap_cpfp": tx.cap_cpfp, // TODO
+        "can_rbf": tx.can_rbf, // TODO
+        "has_payment_request": tx.has_payment_request, // TODO
+        "server_signed": tx.server_signed,
+        "user_signed": tx.user_signed,
+        "instant": tx.instant,
+
+        "fee": tx.fee,
+        "fee_rate": tx.fee_rate,
+
+        "addressees": tx.addressees, // notice the extra "e" -- its intentional
+        "inputs": inputs, // tx.input.iter().map(format_gdk_input).collect(),
+        "outputs": outputs, //tx.output.iter().map(format_gdk_output).collect(),
+    })
+}
+
+fn txs_result_value(txs: &TxsResult) -> Value {
+    Value::Array(txs.0.iter().map(txitem_value).collect())
 }
 
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
@@ -206,7 +280,12 @@ pub extern "C" fn GDKRUST_call_session(
 
     println!("GDKRUST_call_session {} {:?}", method, res);
 
-    ok_json!(output, res)
+    match res {
+        Ok(ref val) => json_res!(output, val, GA_OK),
+
+        // TODO: should we return GA_ERROR here?
+        Err(ref e) => json_res!(output, json!({ "error": e }), GA_ERROR),
+    }
 }
 
 #[no_mangle]
@@ -231,7 +310,7 @@ where
     let mnemonic = input["mnemonic"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or(Error::Other("login: missing mnemonic argument".into()))?;
+        .ok_or_else(|| Error::Other("login: missing mnemonic argument".into()))?;
 
     let pass = input["password"].as_str().map(|x| x.to_string());
 
@@ -245,7 +324,7 @@ where
 {
     let index = input["index"]
         .as_u64()
-        .ok_or(Error::Other("get_subaccount: index argument not found".into()))?;
+        .ok_or_else(|| Error::Other("get_subaccount: index argument not found".into()))?;
 
     session.get_subaccount(index as u32).map_err(Into::into)
 }
@@ -258,7 +337,7 @@ where
     // TODO: parse txid?
     let txid = input
         .as_str()
-        .ok_or(Error::Other("get_transaction_details: input is not a string".into()))?;
+        .ok_or_else(|| Error::Other("get_transaction_details: input is not a string".into()))?;
 
     session.get_transaction_details(txid).map_err(Into::into)
 }
@@ -271,15 +350,15 @@ where
     // TODO: parse txid?.
     let txid = input["txid"]
         .as_str()
-        .ok_or(Error::Other("get_transaction_details: missing txid".into()))?;
+        .ok_or_else(|| Error::Other("get_transaction_details: missing txid".into()))?;
 
     let memo = input["memo"]
         .as_str()
-        .ok_or(Error::Other("get_transaction_details: missing memo".into()))?;
+        .ok_or_else(|| Error::Other("get_transaction_details: missing memo".into()))?;
 
     let memo_type = input["memo_type"]
         .as_u64()
-        .ok_or(Error::Other("get_transaction_details: missing memo_type".into()))?;
+        .ok_or_else(|| Error::Other("get_transaction_details: missing memo_type".into()))?;
 
     session.set_transaction_memo(txid, memo, memo_type as u32).map(|v| json!(v)).map_err(Into::into)
 }
@@ -313,31 +392,39 @@ where
         "get_subaccounts" => session.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
 
         "get_subaccount" => get_subaccount(session, input),
-        "get_transactions" => session.get_transactions(input).map_err(Into::into),
+
+        "get_transactions" => {
+            session.get_transactions(input).map(|x| txs_result_value(&x)).map_err(Into::into)
+        }
+
         "get_transaction_details" => get_transaction_details(session, input),
-        "get_balance" => session.get_balance(input).map_err(Into::into),
+        "get_balance" => session
+            .get_balance(input)
+            .map(|x| balance_result_value(&BalanceResult(x)))
+            .map_err(Into::into),
         "set_transaction_memo" => set_transaction_memo(session, input),
         "create_transaction" => {
             session.create_transaction(input).map(|v| json!(v)).map_err(Into::into)
         }
         "sign_transaction" => session.sign_transaction(input).map_err(Into::into),
         "send_transaction" => send_transaction(session, input),
-        "broadcast_transaction" => session
-            .broadcast_transaction(
-                input
-                    .as_str()
-                    .ok_or(Error::Other("broadcast_transaction: input not a string".into()))?,
-            )
-            .map(|v| json!(v))
-            .map_err(Into::into),
+        "broadcast_transaction" => {
+            session
+                .broadcast_transaction(input.as_str().ok_or_else(|| {
+                    Error::Other("broadcast_transaction: input not a string".into())
+                })?)
+                .map(|v| json!(v))
+                .map_err(Into::into)
+        }
 
-        "get_receive_address" => session.get_receive_address(input).map_err(Into::into),
+        "get_receive_address" => {
+            session.get_receive_address(input).map(|x| address_result_value(&x)).map_err(Into::into)
+        }
+
         "get_mnemonic_passphrase" => session
-            .get_mnemonic_passphrase(
-                input
-                    .as_str()
-                    .ok_or(Error::Other("get_mnemonic_passphrase: input not a string".into()))?,
-            )
+            .get_mnemonic_passphrase(input.as_str().ok_or_else(|| {
+                Error::Other("get_mnemonic_passphrase: input not a string".into())
+            })?)
             .map(|v| json!(v))
             .map_err(Into::into),
 
@@ -357,7 +444,7 @@ pub extern "C" fn GDKRUST_convert_json_to_string(
 ) -> i32 {
     let json = &unsafe { &*json }.0;
     let res = json.to_string();
-    ok!(ret, make_str(res))
+    ok!(ret, make_str(res), GA_OK)
 }
 
 #[no_mangle]
@@ -367,7 +454,7 @@ pub extern "C" fn GDKRUST_convert_string_to_json(
 ) -> i32 {
     let jstr = read_str(jstr);
     let json: Value = tryit!(serde_json::from_str(&jstr));
-    ok_json!(ret, json)
+    json_res!(ret, json, GA_OK)
 }
 
 #[no_mangle]

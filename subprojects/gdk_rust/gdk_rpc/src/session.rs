@@ -159,7 +159,7 @@ impl Session<Error> for RpcSession {
         Ok(tx)
     }
 
-    fn get_balance(&self, details: Value) -> Result<Value, Error> {
+    fn get_balance(&self, details: Value) -> Result<i64, Error> {
         let wallet = self.wallet().or_err("no loaded wallet")?;
         let balance = wallet.get_balance(&details)?;
 

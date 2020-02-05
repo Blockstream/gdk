@@ -30,7 +30,7 @@ use bitcoin_hashes::sha256;
 use bitcoin_hashes::Hash;
 use gdk_common::network::Network;
 use gdk_common::wally;
-use gdk_common::Session;
+use gdk_common::*;
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -57,13 +57,43 @@ impl ElectrumSession {
             )),
         }
     }
+
+    pub fn get_wallet(&self) -> Result<&WalletCtx<String>, Error> {
+        self.wallet.as_ref().ok_or(Error::Generic("wallet not initialized".into()))
+    }
+}
+
+fn make_txlist_item(tx: &WGTransaction) -> TxListItem {
+    TxListItem {
+        block_height: tx.height.unwrap_or_default(),
+        created_at: tx.timestamp,
+        type_: "type".into(), // TODO: WGTransaction -> TxListItem type
+        memo: "memo".into(),  // TODO: WGTransaction -> TxListItem memo
+        txhash: tx.txid.clone(),
+        transaction: bitcoin::consensus::encode::serialize(&tx.transaction),
+        satoshi: BalanceResult((tx.received as i64) - (tx.sent as i64)),
+        rbf_optin: false,           // TODO: WGTransaction -> TxListItem rbf_optin
+        cap_cpfp: false,            // TODO: WGTransaction -> TxListItem cap_cpfp
+        can_rbf: false,             // TODO: WGTransaction -> TxListItem can_rbf
+        has_payment_request: false, // TODO: WGTransaction -> TxListItem has_payment_request
+        server_signed: false,       // TODO: WGTransaction -> TxListItem server_signed
+        user_signed: true,
+        instant: false,
+        fee: 0,        // TODO: WGTransaction -> TxListItem fee
+        fee_rate: 0.0, // TODO: WGTransaction -> TxListItem fee_rate
+        addresses: vec![],
+        addressees: vec![], // notice the extra "e" -- its intentional
+        inputs: vec![],     // tx.input.iter().map(format_gdk_input).collect(),
+        outputs: vec![],    //tx.output.iter().map(format_gdk_output).collect(),
+    }
 }
 
 impl Session<Error> for ElectrumSession {
     // type Value = ElectrumSession;
 
-    fn destroy_session(&self) -> Result<(), Error> {
-        Err(Error::Generic("implementme: ElectrumSession destroy_session".into()))
+    fn destroy_session(&mut self) -> Result<(), Error> {
+        self.wallet = None;
+        Ok(())
     }
 
     fn poll_session(&self) -> Result<(), Error> {
@@ -117,17 +147,18 @@ impl Session<Error> for ElectrumSession {
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
         let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
-        let mut wallet: WalletCtx<String> = WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()), xpub)?;
+        let mut wallet: WalletCtx<String> =
+            WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()), xpub)?;
         wallet.sync()?;
         self.wallet = Some(wallet);
 
         Ok(())
     }
 
-    fn get_receive_address(&self, _addr_details: &Value) -> Result<Value, Error> {
+    fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
         let a1 = self.wallet.as_ref().unwrap().get_address()?;
         println!("a1: {:?} ", a1);
-        Ok(json!(a1))
+        Ok(AddressResult(a1.address.to_string()))
     }
 
     fn get_subaccounts(&self) -> Result<Value, Error> {
@@ -148,16 +179,18 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession get_subaccount".into()))
     }
 
-    fn get_transactions(&self, _details: &Value) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_transactions".into()))
+    fn get_transactions(&self, _details: &Value) -> Result<TxsResult, Error> {
+        let txs = self.get_wallet()?.list_tx()?.iter().map(make_txlist_item).collect();
+
+        Ok(TxsResult(txs))
     }
 
     fn get_transaction_details(&self, _txid: &str) -> Result<Value, Error> {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, _details: &Value) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_balance".into()))
+    fn get_balance(&self, _details: &Value) -> Result<i64, Error> {
+        self.get_wallet()?.balance()
     }
 
     fn set_transaction_memo(&self, _txid: &str, _memo: &str, _memo_type: u32) -> Result<(), Error> {
@@ -179,7 +212,6 @@ impl Session<Error> for ElectrumSession {
     fn broadcast_transaction(&self, _tx_hex: &str) -> Result<String, Error> {
         Err(Error::Generic("implementme: ElectrumSession broadcast_transaction".into()))
     }
-
 
     fn get_fee_estimates(&self) -> Result<Value, Error> {
         Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address".into()))

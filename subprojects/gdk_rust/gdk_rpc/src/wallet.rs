@@ -428,12 +428,12 @@ impl Wallet {
         }))
     }
 
-    pub fn get_balance(&self, details: &Value) -> Result<Value, Error> {
+    pub fn get_balance(&self, details: &Value) -> Result<i64, Error> {
         let min_conf = details["num_confs"]
             .as_u64()
             .req()
             .map_err(|_err| Error::Other("missing num_confs option".into()))?
-            as u32;
+            as i64;
         self._get_balance(min_conf)
     }
 
@@ -448,7 +448,7 @@ impl Wallet {
         }
 
         let balance: f64 = self.rpc.call("getbalance", &args)?;
-        Ok(json!({ "btc": btc_to_usat(balance) }))
+        Ok(btc_to_usat(balance))
     }
 
     pub fn get_transactions(&self, details: &Value) -> Result<Value, Error> {

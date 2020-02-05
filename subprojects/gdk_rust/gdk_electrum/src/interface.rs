@@ -21,7 +21,10 @@ use sled::{Batch, Db};
 use crate::client::ElectrumxClient;
 use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
-use crate::model::{WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey, WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO, WGAddress};
+use crate::model::{
+    WGAddress, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
+    WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
+};
 
 #[derive(Debug)]
 pub struct WalletCtx<A: ToSocketAddrs> {
@@ -34,7 +37,12 @@ pub struct WalletCtx<A: ToSocketAddrs> {
 }
 
 impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
-    pub fn new(db_root: &str, wallet_name: String, url: Option<A>, xpub: ExtendedPubKey) -> Result<Self, Error> {
+    pub fn new(
+        db_root: &str,
+        wallet_name: String,
+        url: Option<A>,
+        xpub: ExtendedPubKey,
+    ) -> Result<Self, Error> {
         let client = match url {
             Some(u) => Some(ElectrumxClient::new(u)?),
             None => None,
@@ -261,10 +269,8 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         Ok(unspent)
     }
 
-    pub fn balance(&self) -> Result<WGBalance, Error> {
-        Ok(WGBalance {
-            satoshi: self.utxos()?.iter().fold(0, |sum, i| sum + i.txout.value),
-        })
+    pub fn balance(&self) -> Result<i64, Error> {
+        Ok(self.utxos()?.iter().fold(0, |sum, i| sum + (i.txout.value as i64)))
     }
 
     // If request.utxo is None, we do the coin selection
@@ -435,7 +441,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
         let address = self.derive_address(&self.xpub, &[0, index])?;
         Ok(WGAddress {
             address,
-            })
+        })
     }
 
     pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, Error> {
