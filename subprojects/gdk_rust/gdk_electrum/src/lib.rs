@@ -163,14 +163,14 @@ impl Session<Error> for ElectrumSession {
 
     fn get_subaccounts(&self) -> Result<Value, Error> {
         // Err(Error::Generic("implementme: ElectrumSession get_subaccounts".into()))
-        let subaccounts_fake = json!({
+        let subaccounts_fake = json!([{
         "type": "core",
         "pointer": 0,
         "required_ca": 0,
         "receiving_id": "",
         "name": "fake account",
         "has_transactions": true,
-        "satoshi": 1000 });
+        "satoshi": 1000 }]);
 
         Ok(subaccounts_fake)
     }
