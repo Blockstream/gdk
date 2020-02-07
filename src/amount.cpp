@@ -65,8 +65,6 @@ namespace sdk {
 
         const conversion_type COIN_VALUE_WITH_PRECISION(std::pow(10, precision));
 
-        const std::string fr_str = fiat_rate.empty() ? "0" : fiat_rate;
-        const conversion_type fr(fr_str);
         int64_t satoshi;
 
         // Compute satoshi from our input
@@ -88,8 +86,9 @@ namespace sdk {
             const std::string asset_str = *asset_p;
             satoshi = (conversion_type(asset_str) * COIN_VALUE_WITH_PRECISION).convert_to<value_type>();
         } else {
+            GDK_RUNTIME_ASSERT_MSG(!fiat_rate.empty(), "Cannot convert fiat, no rate available");
             const std::string fiat_str = *fiat_p;
-            const conversion_type btc_decimal = conversion_type(fiat_str) / fr;
+            const conversion_type btc_decimal = conversion_type(fiat_str) / conversion_type(fiat_rate);
             satoshi = (btc_type(btc_decimal) * COIN_VALUE_DECIMAL).convert_to<value_type>();
         }
         GDK_RUNTIME_ASSERT_MSG(satoshi >= 0, "amount cannot be negative");
@@ -107,12 +106,16 @@ namespace sdk {
         const std::string ubtc = fmt(btc_type(satoshi_conv / COIN_VALUE_DECIMAL_UBTC), 2);
         const std::string sats = std::to_string(satoshi);
 
-        const conversion_type fiat_decimal = fr * conversion_type(satoshi) / COIN_VALUE_DECIMAL;
-
         // TODO: If the server returned the ISO country code, the caller could do locale aware formatting
-        nlohmann::json result = { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc },
-            { "bits", ubtc }, { "sats", sats }, { "fiat", fmt(fiat_type(fiat_decimal)) },
-            { "fiat_currency", fiat_currency }, { "fiat_rate", fr_str } };
+        nlohmann::json result
+            = { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc }, { "bits", ubtc },
+                  { "sats", sats }, { "fiat", nullptr }, { "fiat_currency", fiat_currency }, { "fiat_rate", nullptr } };
+
+        if (!fiat_rate.empty()) {
+            result["fiat_rate"] = fiat_rate;
+            result["fiat"] = fmt(fiat_type(conversion_type(fiat_rate) * conversion_type(satoshi) / COIN_VALUE_DECIMAL));
+        }
+
         if (asset_info_p != end_p) {
             result.emplace(
                 asset_id, precision == 0 ? sats : fmt(btc_type(satoshi_conv / COIN_VALUE_WITH_PRECISION), precision));
