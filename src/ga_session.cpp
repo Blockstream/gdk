@@ -1113,7 +1113,13 @@ namespace sdk {
     void ga_session::update_fiat_rate(ga_session::locker_t& locker, const std::string& rate_str)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        m_fiat_rate = amount::format_amount(rate_str, 8);
+        try {
+            m_fiat_rate = amount::format_amount(rate_str, 8);
+        } catch (const std::exception& e) {
+            m_fiat_rate.clear();
+            GDK_LOG_SEV(log_level::error)
+                << "failed to update fiat rate from string '" << rate_str << "': " << e.what();
+        }
     }
 
     void ga_session::update_spending_limits(ga_session::locker_t& locker, const nlohmann::json& limits)
