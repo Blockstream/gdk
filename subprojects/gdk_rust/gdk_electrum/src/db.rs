@@ -47,8 +47,8 @@ impl WalletDB {
         Ok(())
     }
 
-    pub fn flush(&self) {
-        self.tree.flush();
+    pub fn flush(&self) -> Result<usize, Error> {
+        self.tree.flush().map_err(Into::into)
     }
 
     pub fn save_tx(&self, tx: WGTransaction, batch: &mut Batch) -> Result<(), Error> {

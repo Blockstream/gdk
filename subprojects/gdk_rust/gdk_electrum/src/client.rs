@@ -5,7 +5,7 @@ use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{self, BufRead, BufReader, Write},
-    net::{TcpStream, SocketAddr},
+    net::{SocketAddr, TcpStream},
 };
 
 #[derive(Debug)]

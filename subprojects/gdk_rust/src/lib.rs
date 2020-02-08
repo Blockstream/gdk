@@ -59,16 +59,16 @@ pub enum GA_auth_handler {
 }
 
 impl GA_auth_handler {
-    fn done(res: Value) -> *const GA_auth_handler {
+    fn _done(res: Value) -> *const GA_auth_handler {
         debug!("GA_auth_handler::done() {:?}", res);
         let handler = GA_auth_handler::Done(res);
         unsafe { transmute(Box::new(handler)) }
     }
-    fn success() -> *const GA_auth_handler {
-        GA_auth_handler::done(Value::Null)
+    fn _success() -> *const GA_auth_handler {
+        GA_auth_handler::_done(Value::Null)
     }
 
-    fn to_json(&self) -> Value {
+    fn _to_json(&self) -> Value {
         match self {
             GA_auth_handler::Error(err) => json!({ "status": "error", "error": err }),
             GA_auth_handler::Done(res) => json!({ "status": "done", "result": res }),
@@ -177,10 +177,10 @@ fn balance_result_value(bal: &BalanceResult) -> Value {
 
 fn address_type_str(addr_type: &AddressType) -> &'static str {
     match addr_type {
-        P2pkh => "p2pkh",
-        P2sh => "p2sh",
-        P2wpkh => "p2wpkh",
-        P2wsh => "p2wsh",
+        AddressType::P2pkh => "p2pkh",
+        AddressType::P2sh => "p2sh",
+        AddressType::P2wpkh => "p2wpkh",
+        AddressType::P2wsh => "p2wsh",
     }
 }
 
@@ -290,7 +290,7 @@ pub extern "C" fn GDKRUST_call_session(
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_set_notification_handler(
-    sess: *mut GdkSession,
+    _sess: *mut GdkSession,
     _handler: extern "C" fn(*const libc::c_void, *const GDKRUST_json),
     _self_context: *const libc::c_void,
 ) -> i32 {

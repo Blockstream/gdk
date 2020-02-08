@@ -236,7 +236,7 @@ impl WalletCtx {
         }
 
         self.db.apply_batch(batch)?;
-        self.db.flush();
+        self.db.flush()?;
 
         Ok(())
     }
@@ -445,7 +445,7 @@ impl WalletCtx {
 
     pub fn get_address(&self) -> Result<WGAddress, Error> {
         let index = self.db.increment_external_index()?;
-        self.db.flush();
+        self.db.flush()?;
         let address = self.derive_address(&self.xpub, &[0, index])?;
         Ok(WGAddress {
             address,
