@@ -1,4 +1,5 @@
 use serde::ser::{Serialize, SerializeStruct};
+use std::convert::From;
 
 #[derive(Debug)]
 pub enum Error {
@@ -6,6 +7,7 @@ pub enum Error {
     UnknownCall,
     InvalidMnemonic,
     DB(sled::Error),
+    AddrParse(String),
     Bitcoin(bitcoin::util::Error),
     BitcoinBIP32Error(bitcoin::util::bip32::Error),
     BitcoinConsensus(bitcoin::consensus::encode::Error),
@@ -26,6 +28,9 @@ impl Serialize for Error {
             }
             // TODO: implement serialization of these errors
             Error::UnknownCall => {}
+            Error::AddrParse(ref addr) => {
+                s.serialize_field("error", &format!("could not parse SocketAddr `{}`", addr))?
+            }
             Error::InvalidMnemonic => s.serialize_field("error", "invalid mnemonic")?,
             Error::DB(ref _dberr) => {}
             Error::Bitcoin(ref _btcerr) => {}
@@ -40,7 +45,13 @@ impl Serialize for Error {
     }
 }
 
-impl std::convert::From<serde_json::error::Error> for Error {
+impl From<std::net::AddrParseError> for Error {
+    fn from(_err: std::net::AddrParseError) -> Self {
+        Error::AddrParse("SocketAddr parse failure with no additional info".into())
+    }
+}
+
+impl From<serde_json::error::Error> for Error {
     fn from(err: serde_json::error::Error) -> Self {
         Error::JSON(err)
     }

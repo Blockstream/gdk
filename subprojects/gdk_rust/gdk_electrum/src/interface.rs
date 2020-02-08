@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use std::collections::{HashMap, HashSet};
-use std::net::ToSocketAddrs;
+use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hex;
@@ -13,7 +13,7 @@ use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::Hash;
 
 use sled::{Batch, Db};
@@ -27,20 +27,20 @@ use crate::model::{
 };
 
 #[derive(Debug)]
-pub struct WalletCtx<A: ToSocketAddrs> {
+pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
-    client: Option<ElectrumxClient<A>>,
+    client: Option<ElectrumxClient>,
     db: WalletDB,
     xpub: ExtendedPubKey,
 }
 
-impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
+impl WalletCtx {
     pub fn new(
         db_root: &str,
         wallet_name: String,
-        url: Option<A>,
+        url: Option<SocketAddr>,
         xpub: ExtendedPubKey,
     ) -> Result<Self, Error> {
         let client = match url {
@@ -60,6 +60,14 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             secp: Secp256k1::gen_new(),
             xpub,
         })
+    }
+
+    pub fn get_client(&self) -> Result<&ElectrumxClient, Error> {
+        self.client.as_ref().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
+    }
+
+    pub fn get_client_mut(&mut self) -> Result<&mut ElectrumxClient, Error> {
+        self.client.as_mut().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
     }
 
     fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<Address, Error> {
@@ -83,7 +91,6 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let mut batch = Batch::default();
-        let xpub = &self.xpub;
 
         // TODO: more addrs if necessary
         let change_pool: HashMap<_, _> = (0..20)
@@ -96,16 +103,16 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
                         index: x,
                     },
                 ]);
-                (self.derive_address(xpub, &[1, x]).unwrap().script_pubkey(), path)
+                (self.derive_address(&self.xpub, &[1, x]).unwrap().script_pubkey(), path)
             })
             .collect();
 
         let mut last_found = 0;
         let mut i = 0;
         while i - last_found < 20 {
-            let addr = self.derive_address(xpub, &[0, i])?;
+            let addr = self.derive_address(&self.xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
-            let history = self.client.as_mut().unwrap().get_history(addr.to_string().as_str())?;
+            let history = self.get_client_mut()?.get_history(addr.to_string().as_str())?;
 
             if history.len() == 0 {
                 i += 1;
@@ -114,7 +121,8 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
                 last_found = i;
             }
 
-            let unspent = self.client.as_mut().unwrap().list_unspent(addr.to_string().as_str())?;
+            let unspent = self.get_client_mut()?.list_unspent(addr.to_string().as_str())?;
+
             let mut unspent_set = HashSet::new();
 
             for elem in unspent {
@@ -122,8 +130,8 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
             }
 
             for tx in history {
-                let tx_str =
-                    self.client.as_mut().unwrap().get_transaction(tx.tx_hash.clone(), false)?;
+                let tx_str = self.get_client_mut()?.get_transaction(tx.tx_hash.clone(), false)?;
+
                 let unserialized: Transaction = deserialize(hex::decode(tx_str)?.as_slice())?;
 
                 let mut incoming: u64 = 0;
@@ -418,8 +426,8 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
     pub fn broadcast(&mut self, tx: WGTransaction) -> Result<(), Error> {
         use bitcoin::consensus::serialize;
 
-        let txstr: String = hex::encode(serialize(&tx.transaction));
-        self.client.as_mut().unwrap().broadcast_transaction(txstr)?;
+        let txstr: String = ToHex::to_hex(&serialize(&tx.transaction)[..]);
+        self.get_client_mut()?.broadcast_transaction(txstr)?;
 
         Ok(())
     }
@@ -446,8 +454,7 @@ impl<A: ToSocketAddrs + Clone> WalletCtx<A> {
 
     pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, Error> {
         let estimate = WGEstimateFeeRes {
-            fee_perkb: self.client.as_mut().unwrap().estimate_fee(request.nblocks as usize).unwrap()
-                as f32,
+            fee_perkb: self.get_client_mut()?.estimate_fee(request.nblocks as usize)? as f32,
         };
         Ok(estimate)
     }

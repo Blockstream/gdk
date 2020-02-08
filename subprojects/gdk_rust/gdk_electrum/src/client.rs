@@ -5,13 +5,13 @@ use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{self, BufRead, BufReader, Write},
-    net::{TcpStream, ToSocketAddrs},
+    net::{TcpStream, SocketAddr},
 };
 
 #[derive(Debug)]
-pub struct ElectrumxClient<A: ToSocketAddrs> {
+pub struct ElectrumxClient {
     #[allow(dead_code)]
-    socket_addr: A,
+    socket_addr: SocketAddr,
     stream: TcpStream,
 }
 
@@ -29,8 +29,8 @@ pub struct ListUnspentRes {
     pub tx_hash: String,
 }
 
-impl<A: ToSocketAddrs + Clone> ElectrumxClient<A> {
-    pub fn new(socket_addr: A) -> io::Result<Self> {
+impl ElectrumxClient {
+    pub fn new(socket_addr: SocketAddr) -> io::Result<Self> {
         let stream = TcpStream::connect(socket_addr.clone())?;
         Ok(Self {
             socket_addr,

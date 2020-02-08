@@ -39,7 +39,7 @@ pub struct ElectrumSession {
     pub db_root: Option<String>,
     pub network: Network,
     pub mnemonic: Option<String>,
-    pub wallet: Option<WalletCtx<String>>,
+    pub wallet: Option<WalletCtx>,
 }
 
 impl ElectrumSession {
@@ -58,8 +58,8 @@ impl ElectrumSession {
         }
     }
 
-    pub fn get_wallet(&self) -> Result<&WalletCtx<String>, Error> {
-        self.wallet.as_ref().ok_or(Error::Generic("wallet not initialized".into()))
+    pub fn get_wallet(&self) -> Result<&WalletCtx, Error> {
+        self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))
     }
 }
 
@@ -147,8 +147,13 @@ impl Session<Error> for ElectrumSession {
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
         let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
-        let mut wallet: WalletCtx<String> =
-            WalletCtx::new(&db_root, wallet_name, Some(self.url.clone()), xpub)?;
+
+        use std::net::ToSocketAddrs;
+
+        let addr =
+            self.url.to_socket_addrs()?.nth(0).ok_or_else(|| Error::AddrParse(self.url.clone()))?;
+
+        let mut wallet: WalletCtx = WalletCtx::new(&db_root, wallet_name, Some(addr), xpub)?;
         wallet.sync()?;
         self.wallet = Some(wallet);
 
