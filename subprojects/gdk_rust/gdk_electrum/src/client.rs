@@ -58,7 +58,9 @@ impl ElectrumxClient {
         self.call(req)?;
         let raw = self.recv()?;
         let resp: serde_json::Value = serde_json::from_slice(&raw)?;
-        Ok(resp["result"].as_f64().unwrap())
+        resp["result"].as_f64().ok_or_else(|| {
+            Error::Generic("failure parsing result from blockchain.estimatefee".into())
+        })
     }
 
     pub fn blockchain_headers(&mut self) -> Result<serde_json::Value, Error> {

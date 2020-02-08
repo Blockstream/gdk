@@ -7,7 +7,9 @@ extern crate serde_json;
 extern crate log;
 
 use core::mem::transmute;
+use serde_derive::Serialize;
 use serde_json::Value;
+
 // use crate::network::Network;
 
 pub mod constants;
@@ -65,6 +67,11 @@ pub struct TxListItem {
     pub outputs: Vec<AddressIO>, //tx.output.iter().map(format_gdk_output).collect(),
 }
 
+// This one is simple enough to derive a serializer
+#[serde(transparent)] // serialize as f64
+#[derive(Serialize, Debug)]
+pub struct FeeEstimate(pub f64);
+
 pub struct AddressResult(pub String);
 pub struct TxsResult(pub Vec<TxListItem>);
 
@@ -90,7 +97,7 @@ pub trait Session<E> {
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, E>;
     // fn get_available_currencies(&self) -> Result<Value, E>;
     // fn convert_amount(&self, value_details: &Value) -> Result<Value, E>;
-    fn get_fee_estimates(&self) -> Result<Value, E>;
+    fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Value, E>;
     fn change_settings(&mut self, settings: &Value) -> Result<(), E>;
 }

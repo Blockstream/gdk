@@ -61,6 +61,10 @@ impl ElectrumSession {
     pub fn get_wallet(&self) -> Result<&WalletCtx, Error> {
         self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))
     }
+
+    pub fn get_wallet_mut(&mut self) -> Result<&mut WalletCtx, Error> {
+        self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
+    }
 }
 
 fn make_txlist_item(tx: &WGTransaction) -> TxListItem {
@@ -218,8 +222,13 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession broadcast_transaction".into()))
     }
 
-    fn get_fee_estimates(&self) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address".into()))
+    fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
+        // TODO: can batch request many estimates like rpc?
+        let wg_estimate = self.get_wallet_mut()?.fee(WGEstimateFeeReq {
+            nblocks: 1,
+        })?;
+        let fee_estimate = wg_estimate.into();
+        Ok(vec![fee_estimate])
     }
 
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {

@@ -372,6 +372,15 @@ where
     Ok(json!({"error": "", "txid": txid}))
 }
 
+fn fee_estimate_values(estimates: &Vec<FeeEstimate>) -> Result<Value, Error> {
+    if estimates.len() == 0 {
+        // Current apps depend on this length
+        return Err(Error::Other("Expected at least one feerate".into()));
+    }
+
+    Ok(json!({ "fees": estimates }))
+}
+
 // dynamic dispatch shenanigans
 fn handle_call<S, E>(session: &mut S, method: &str, input: &Value) -> Result<Value, Error>
 where
@@ -428,7 +437,10 @@ where
             .map(|v| json!(v))
             .map_err(Into::into),
 
-        "get_fee_estimates" => session.get_fee_estimates().map_err(Into::into),
+        "get_fee_estimates" => {
+            session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
+        }
+
         "get_settings" => session.get_settings().map_err(Into::into),
         "change_settings" => session.change_settings(input).map(|v| json!(v)).map_err(Into::into),
 
