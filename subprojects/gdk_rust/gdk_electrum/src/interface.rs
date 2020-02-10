@@ -3,6 +3,7 @@ use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::net::TcpStream;
 
 use hex;
 
@@ -12,7 +13,7 @@ use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin_hashes::hex::{FromHex, ToHex};
+use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::Hash;
 use elements::{self, AddressParams};
 
@@ -22,7 +23,7 @@ use gdk_common::wally::*;
 use gdk_common::network::{Network, NetworkId, ElementsNetwork};
 use gdk_common::util::p2shwpkh_script;
 
-use crate::client::ElectrumxClient;
+use electrum_client::Client;
 use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
 use crate::model::{
@@ -30,12 +31,11 @@ use crate::model::{
     WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
 };
 
-#[derive(Debug)]
 pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
-    client: Option<ElectrumxClient>,
+    client: Option<Client<TcpStream>>,
     db: WalletDB,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
@@ -75,7 +75,7 @@ impl WalletCtx {
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         let client = match url {
-            Some(u) => Some(ElectrumxClient::new(u)?),
+            Some(u) => Some(Client::new(u)?),
             None => None,
         };
 
@@ -94,11 +94,11 @@ impl WalletCtx {
         })
     }
 
-    pub fn get_client(&self) -> Result<&ElectrumxClient, Error> {
+    pub fn get_client(&self) -> Result<&Client<TcpStream>, Error> {
         self.client.as_ref().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
     }
 
-    pub fn get_client_mut(&mut self) -> Result<&mut ElectrumxClient, Error> {
+    pub fn get_client_mut(&mut self) -> Result<&mut Client<TcpStream>, Error> {
         self.client.as_mut().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
     }
 
@@ -137,8 +137,6 @@ impl WalletCtx {
     }
 
     pub fn sync(&mut self) -> Result<(), Error> {
-        use bitcoin::consensus::deserialize;
-
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let mut batch = Batch::default();
 
@@ -162,7 +160,7 @@ impl WalletCtx {
         while i - last_found < 20 {
             let addr = self.derive_address(&self.xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
-            let history = self.get_client_mut()?.get_history(addr.to_string().as_str())?;
+            let history = self.get_client_mut()?.script_get_history(&this_scriptpubkey)?;
 
             if history.len() == 0 {
                 i += 1;
@@ -171,7 +169,7 @@ impl WalletCtx {
                 last_found = i;
             }
 
-            let unspent = self.get_client_mut()?.list_unspent(addr.to_string().as_str())?;
+            let unspent = self.get_client_mut()?.script_list_unspent(&this_scriptpubkey)?;
 
             let mut unspent_set = HashSet::new();
 
@@ -180,9 +178,7 @@ impl WalletCtx {
             }
 
             for tx in history {
-                let tx_str = self.get_client_mut()?.get_transaction(tx.tx_hash.clone(), false)?;
-
-                let unserialized: Transaction = deserialize(hex::decode(tx_str)?.as_slice())?;
+                let unserialized = self.get_client_mut()?.transaction_get(&tx.tx_hash)?;
 
                 let mut incoming: u64 = 0;
                 let mut outgoing: u64 = 0;
@@ -197,7 +193,7 @@ impl WalletCtx {
                         if unspent_set.get(&(tx.tx_hash.clone(), vout)).is_none() {
                             println!("... is_spent");
                             let op = OutPoint {
-                                txid: bitcoin::Txid::from_hex(&tx.tx_hash).unwrap(),
+                                txid: tx.tx_hash.clone(),
                                 vout: (vout as u32),
                             };
                             self.db.save_spent(&op, &mut batch)?;
@@ -220,13 +216,7 @@ impl WalletCtx {
                         println!("found change at {:?}", path);
 
                         let mut found = false;
-                        //TODO
-                        for elem in self.client.as_mut().unwrap().list_unspent(
-                            Address::from_script(&out.script_pubkey, self.network.id().get_bitcoin_network().unwrap())  //TODO support liquid
-                                .unwrap()
-                                .to_string()
-                                .as_str(),
-                        )? {
+                        for elem in self.client.as_mut().unwrap().script_list_unspent(&out.script_pubkey)? {
                             if (&elem.tx_hash, elem.tx_pos) == (&tx.tx_hash, vout) {
                                 println!("... unspent");
 
@@ -237,7 +227,7 @@ impl WalletCtx {
 
                         if !found {
                             let op = OutPoint {
-                                txid: bitcoin::Txid::from_hex(&tx.tx_hash.clone()).unwrap(),
+                                txid: tx.tx_hash.clone(),
                                 vout: (vout as u32),
                             };
                             self.db.save_spent(&op, &mut batch)?;
@@ -475,10 +465,7 @@ impl WalletCtx {
     }
 
     pub fn broadcast(&mut self, tx: WGTransaction) -> Result<(), Error> {
-        use bitcoin::consensus::serialize;
-
-        let txstr: String = ToHex::to_hex(&serialize(&tx.transaction)[..]);
-        self.get_client_mut()?.broadcast_transaction(txstr)?;
+        self.get_client_mut()?.transaction_broadcast(&tx.transaction)?;
 
         Ok(())
     }

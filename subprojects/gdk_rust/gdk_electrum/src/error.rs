@@ -14,6 +14,7 @@ pub enum Error {
     JSON(serde_json::error::Error),
     StdIOError(std::io::Error),
     Hex(hex::FromHexError),
+    ClientError(electrum_client::types::Error)
 }
 
 impl Serialize for Error {
@@ -39,6 +40,7 @@ impl Serialize for Error {
             Error::JSON(ref _json_err) => {}
             Error::StdIOError(ref _io_err) => {}
             Error::Hex(ref _hex_err) => {}
+            Error::ClientError(ref _client_err) => {}
         }
 
         s.end()
@@ -90,5 +92,11 @@ impl std::convert::From<bitcoin::consensus::encode::Error> for Error {
 impl std::convert::From<hex::FromHexError> for Error {
     fn from(err: hex::FromHexError) -> Self {
         Error::Hex(err)
+    }
+}
+
+impl std::convert::From<electrum_client::types::Error> for Error {
+    fn from(err: electrum_client::types::Error) -> Self {
+        Error::ClientError(err)
     }
 }

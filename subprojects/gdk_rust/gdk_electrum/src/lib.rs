@@ -13,7 +13,6 @@ use android_logger::Config;
 #[cfg(target_os = "android")]
 use log::Level;
 
-pub mod client;
 pub mod db;
 pub mod error;
 pub mod interface;
@@ -34,7 +33,6 @@ use gdk_common::*;
 
 use std::str::FromStr;
 
-#[derive(Debug)]
 pub struct ElectrumSession {
     pub url: String,
     pub db_root: Option<String>,
@@ -121,7 +119,7 @@ impl Session<Error> for ElectrumSession {
             return Err(Error::Generic("connect: no url set".into()));
         }
 
-        println!("connect {:?}", self);
+        println!("connect {:?}", self.network);
 
         Ok(())
     }
@@ -132,7 +130,7 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
-        println!("login {:#?}", self);
+        println!("login {:#?}", self.network);
 
         //let url = self.network.electrum_url.unwrap(); //should be safe, since Some is checked in create_session
         let db_root =

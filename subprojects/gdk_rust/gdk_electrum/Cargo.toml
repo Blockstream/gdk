@@ -18,6 +18,7 @@ sled = "0.29.2"
 sha2 = "0.8.0"
 gdk-common = { path = "../gdk_common" }
 android_logger = { version = "0.8.6", optional = true }
+electrum-client = "0.1.0-beta.1"
 
 [dependencies.bitcoin]
 version = "0.23"

@@ -13,7 +13,7 @@ pub mod ffi;
 
 pub struct MasterBlindingKey(pub [u8; 64]);
 
-// need to manually implement cause it's not supported for array>32
+// need to manually implement Debug cause it's not supported for array>32
 impl fmt::Debug for MasterBlindingKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MasterBlindingKey ({})", hex::encode(&self.0[..]))

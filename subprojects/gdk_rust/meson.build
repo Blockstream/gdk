@@ -38,7 +38,6 @@ rust_sources = [
   'gdk_common/src/wally/mod.rs',
   'gdk_common/src/wally/ffi.rs',
 
-  'gdk_electrum/src/client.rs',
   'gdk_electrum/src/db.rs',
   'gdk_electrum/src/error.rs',
   'gdk_electrum/src/interface.rs',
