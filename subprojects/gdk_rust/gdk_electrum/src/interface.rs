@@ -8,15 +8,19 @@ use hex;
 
 use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
-use bitcoin::network::constants::Network;
 use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::Hash;
+use elements::{self, AddressParams};
 
 use sled::{Batch, Db};
+
+use gdk_common::wally::*;
+use gdk_common::network::{Network, NetworkId, ElementsNetwork};
+use gdk_common::util::p2shwpkh_script;
 
 use crate::client::ElectrumxClient;
 use crate::db::{GetTree, WalletDB};
@@ -34,6 +38,31 @@ pub struct WalletCtx {
     client: Option<ElectrumxClient>,
     db: WalletDB,
     xpub: ExtendedPubKey,
+    master_blinding: Option<MasterBlindingKey>,
+}
+
+#[derive(Debug)]
+pub enum LiqOrBitAddress {
+    Liquid(elements::Address),
+    Bitcoin(bitcoin::Address),
+}
+
+impl LiqOrBitAddress {
+    pub fn script_pubkey(&self) -> Script {
+        match self {
+            LiqOrBitAddress::Liquid(addr) => addr.script_pubkey(),
+            LiqOrBitAddress::Bitcoin(addr) => addr.script_pubkey(),
+        }
+    }
+}
+
+impl ToString for LiqOrBitAddress {
+    fn to_string(&self) -> String {
+        match self {
+            LiqOrBitAddress::Liquid(addr) => addr.to_string(),
+            LiqOrBitAddress::Bitcoin(addr) => addr.to_string(),
+        }
+    }
 }
 
 impl WalletCtx {
@@ -41,7 +70,9 @@ impl WalletCtx {
         db_root: &str,
         wallet_name: String,
         url: Option<SocketAddr>,
+        network: Network,
         xpub: ExtendedPubKey,
+        master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         let client = match url {
             Some(u) => Some(ElectrumxClient::new(u)?),
@@ -56,9 +87,10 @@ impl WalletCtx {
             wallet_name,
             client,
             db,
-            network: Network::Testnet, // TODO: from db
+            network, // TODO: from db
             secp: Secp256k1::gen_new(),
             xpub,
+            master_blinding,
         })
     }
 
@@ -70,7 +102,7 @@ impl WalletCtx {
         self.client.as_mut().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
     }
 
-    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<Address, Error> {
+    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<LiqOrBitAddress, Error> {
         let path: Vec<ChildNumber> = path
             .iter()
             .map(|x| ChildNumber::Normal {
@@ -78,8 +110,26 @@ impl WalletCtx {
             })
             .collect();
         let derived = xpub.derive_pub(&self.secp, &path)?;
+        if self.network.liquid {
 
-        Ok(Address::p2shwpkh(&derived.public_key, self.network))
+        }
+        match self.network.id() {
+            NetworkId::Bitcoin(network) => {
+                Ok(LiqOrBitAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network)))
+            },
+            NetworkId::Elements(network) => {
+                let master_blinding_key = self.master_blinding.as_ref().expect("we are in elements but master blinding is None");
+                let script = p2shwpkh_script(&derived.public_key);
+                let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
+                let public_key = ec_public_key_from_private_key(blinding_key);
+                let blinder = Some(public_key);
+                let addr = match network {
+                    ElementsNetwork::Liquid => elements::Address::p2shwpkh(&derived.public_key, blinder,&AddressParams::LIQUID),
+                    ElementsNetwork::ElementsRegtest => elements::Address::p2shwpkh(&derived.public_key, blinder,&AddressParams::ELEMENTS),
+                };
+                Ok(LiqOrBitAddress::Liquid(addr))
+            },
+        }
     }
 
     pub fn list_tx(&self) -> Result<Vec<WGTransaction>, Error> {
@@ -170,8 +220,9 @@ impl WalletCtx {
                         println!("found change at {:?}", path);
 
                         let mut found = false;
+                        //TODO
                         for elem in self.client.as_mut().unwrap().list_unspent(
-                            Address::from_script(&out.script_pubkey, Network::Testnet)
+                            Address::from_script(&out.script_pubkey, self.network.id().get_bitcoin_network().unwrap())  //TODO support liquid
                                 .unwrap()
                                 .to_string()
                                 .as_str(),
@@ -432,11 +483,13 @@ impl WalletCtx {
         Ok(())
     }
 
-    pub fn validate_address(&self, address: Address) -> Result<bool, Error> {
+    pub fn validate_address(&self, _address: Address) -> Result<bool, Error> {
         // if we managed to get here it means that the address is already valid.
         // only other thing we can check is if it the network is right.
 
-        Ok(address.network == self.network)
+        // TODO implement for both Liquid and Bitcoin address
+        //Ok(address.network == self.network)
+        unimplemented!("validate not implemented");
     }
 
     pub fn poll(&self, _xpub: WGExtendedPubKey) -> Result<(), Error> {
@@ -446,7 +499,7 @@ impl WalletCtx {
     pub fn get_address(&self) -> Result<WGAddress, Error> {
         let index = self.db.increment_external_index()?;
         self.db.flush()?;
-        let address = self.derive_address(&self.xpub, &[0, index])?;
+        let address = self.derive_address(&self.xpub, &[0, index])?.to_string();
         Ok(WGAddress {
             address,
         })
@@ -469,7 +522,7 @@ impl WalletCtx {
         let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
 
         Ok(WGExtendedPrivKey {
-            xprv: ExtendedPrivKey::new_master(self.network, &random_bytes)?,
+            xprv: ExtendedPrivKey::new_master(self.network.id().get_bitcoin_network().unwrap(), &random_bytes)?,  // TODO support LIQUID
         })
     }
 

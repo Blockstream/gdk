@@ -29,8 +29,9 @@ use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin_hashes::sha256;
 use bitcoin_hashes::Hash;
 use gdk_common::network::Network;
-use gdk_common::wally;
+use gdk_common::wally::{self, asset_blinding_key_from_seed};
 use gdk_common::*;
+
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -157,7 +158,13 @@ impl Session<Error> for ElectrumSession {
         let addr =
             self.url.to_socket_addrs()?.nth(0).ok_or_else(|| Error::AddrParse(self.url.clone()))?;
 
-        let mut wallet: WalletCtx = WalletCtx::new(&db_root, wallet_name, Some(addr), xpub)?;
+        let master_blinding = if self.network.liquid {
+            Some(asset_blinding_key_from_seed(&seed))
+        } else {
+            None
+        };
+
+        let mut wallet: WalletCtx = WalletCtx::new(&db_root, wallet_name, Some(addr), self.network.clone(), xpub, master_blinding)?;
         wallet.sync()?;
         self.wallet = Some(wallet);
 

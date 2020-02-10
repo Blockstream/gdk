@@ -22,3 +22,6 @@ android_logger = { version = "0.8.6", optional = true }
 [dependencies.bitcoin]
 version = "0.23"
 features = ["use-serde"]
+
+[dependencies.elements]
+version = "0.12"

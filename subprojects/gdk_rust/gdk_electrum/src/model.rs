@@ -68,7 +68,7 @@ pub struct WGPSBT {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGAddress {
-    pub address: Address,
+    pub address: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
