@@ -31,6 +31,7 @@ use crate::model::{
     WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
 };
 
+#[derive(Debug)]
 pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
