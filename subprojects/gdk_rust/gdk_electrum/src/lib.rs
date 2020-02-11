@@ -35,6 +35,7 @@ use std::str::FromStr;
 
 pub struct ElectrumSession {
     pub url: String,
+    pub validate_domain: bool,
     pub db_root: Option<String>,
     pub network: Network,
     pub mnemonic: Option<String>,
@@ -47,6 +48,7 @@ impl ElectrumSession {
             Some(_) => Ok(ElectrumSession {
                 db_root: None,
                 url: network.electrum_url.clone().unwrap_or("".to_string()),
+                validate_domain: network.validate_electrum_domain.unwrap_or(true),
                 network,
                 mnemonic: None,
                 wallet: None,
@@ -151,18 +153,13 @@ impl Session<Error> for ElectrumSession {
 
         let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
 
-        use std::net::ToSocketAddrs;
-
-        let addr =
-            self.url.to_socket_addrs()?.nth(0).ok_or_else(|| Error::AddrParse(self.url.clone()))?;
-
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
         } else {
             None
         };
 
-        let mut wallet: WalletCtx = WalletCtx::new(&db_root, wallet_name, Some(addr), self.network.clone(), xpub, master_blinding)?;
+        let mut wallet: WalletCtx = WalletCtx::new(&db_root, wallet_name, &self.url, self.network.clone(), xpub, master_blinding)?;
         wallet.sync()?;
         self.wallet = Some(wallet);
 
@@ -303,7 +300,7 @@ fn make_error(code: i32, message: String) -> String {
 
 #[cfg(test)]
 mod test {
-    use crate::model::{
+    /*use crate::model::{
         WGAddress, WGAddressAmount, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes,
         WGExtendedPrivKey, WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
     };
@@ -414,5 +411,5 @@ mod test {
         };
         let json = serde_json::to_string_pretty(&wgxpub).unwrap();
         println!("WGExtendedPubKey {}", json);
-    }
+    }*/
 }

@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
+use std::net::ToSocketAddrs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hex;
@@ -15,6 +15,8 @@ use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, Extende
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::Hash;
 use elements::{self, AddressParams};
+
+use url::Url;
 
 use sled::{Batch, Db};
 
@@ -35,7 +37,7 @@ pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
-    client: Option<Client<ElectrumSslStream>>,
+    client: Client<ElectrumSslStream>,
     db: WalletDB,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
@@ -69,15 +71,26 @@ impl WalletCtx {
     pub fn new(
         db_root: &str,
         wallet_name: String,
-        url: Option<SocketAddr>,
+        url: &str,
         network: Network,
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
-        let client = match url {
-            Some(u) => Some(Client::new_ssl(u, None)?), // TODO fix domain check
-            None => None,
+        let url: Url = url.parse().map_err(|_| Error::AddrParse(url.to_string()))?;
+        if url.host_str().is_none() || url.port().is_none() {
+            return Err(Error::AddrParse("host and port are mandatory in the ecltrum server url".to_string()));
+        }
+        let host = url.host_str().unwrap();
+        let port = url.port().unwrap();
+        let socket_addr = format!("{}:{}", host, port);
+        let addr = socket_addr.to_socket_addrs()?.nth(0).ok_or_else(|| Error::AddrParse(url.to_string()))?;
+        let domain = if network.validate_electrum_domain.unwrap_or(true) {
+            Some(host)
+        } else {
+            None
         };
+
+        let client= Client::new_ssl(addr, domain)?;
 
         println!("opening sled db root path: {}", db_root);
         let db_ctx = Db::open(db_root)?;
@@ -94,12 +107,12 @@ impl WalletCtx {
         })
     }
 
-    pub fn get_client(&self) -> Result<&Client<ElectrumSslStream>, Error> {
-        self.client.as_ref().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
+    pub fn get_client(&self) -> &Client<ElectrumSslStream> {
+        &self.client
     }
 
-    pub fn get_client_mut(&mut self) -> Result<&mut Client<ElectrumSslStream>, Error> {
-        self.client.as_mut().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
+    pub fn get_client_mut(&mut self) -> &mut Client<ElectrumSslStream> {
+        &mut self.client
     }
 
     fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<LiqOrBitAddress, Error> {
@@ -160,7 +173,7 @@ impl WalletCtx {
         while i - last_found < 20 {
             let addr = self.derive_address(&self.xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
-            let history = self.get_client_mut()?.script_get_history(&this_scriptpubkey)?;
+            let history = self.get_client_mut().script_get_history(&this_scriptpubkey)?;
 
             if history.len() == 0 {
                 i += 1;
@@ -169,7 +182,7 @@ impl WalletCtx {
                 last_found = i;
             }
 
-            let unspent = self.get_client_mut()?.script_list_unspent(&this_scriptpubkey)?;
+            let unspent = self.get_client_mut().script_list_unspent(&this_scriptpubkey)?;
 
             let mut unspent_set = HashSet::new();
 
@@ -178,7 +191,7 @@ impl WalletCtx {
             }
 
             for tx in history {
-                let unserialized = self.get_client_mut()?.transaction_get(&tx.tx_hash)?;
+                let unserialized = self.get_client_mut().transaction_get(&tx.tx_hash)?;
 
                 let mut incoming: u64 = 0;
                 let mut outgoing: u64 = 0;
@@ -216,7 +229,7 @@ impl WalletCtx {
                         println!("found change at {:?}", path);
 
                         let mut found = false;
-                        for elem in self.client.as_mut().unwrap().script_list_unspent(&out.script_pubkey)? {
+                        for elem in self.client.script_list_unspent(&out.script_pubkey)? {
                             if (&elem.tx_hash, elem.tx_pos) == (&tx.tx_hash, vout) {
                                 println!("... unspent");
 
@@ -465,7 +478,7 @@ impl WalletCtx {
     }
 
     pub fn broadcast(&mut self, tx: WGTransaction) -> Result<(), Error> {
-        self.get_client_mut()?.transaction_broadcast(&tx.transaction)?;
+        self.client.transaction_broadcast(&tx.transaction)?;
 
         Ok(())
     }
@@ -494,7 +507,7 @@ impl WalletCtx {
 
     pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, Error> {
         let estimate = WGEstimateFeeRes {
-            fee_perkb: self.get_client_mut()?.estimate_fee(request.nblocks as usize)? as f32,
+            fee_perkb: self.client.estimate_fee(request.nblocks as usize)? as f32,
         };
         Ok(estimate)
     }
@@ -516,5 +529,20 @@ impl WalletCtx {
     // TODO: only debug
     pub fn dump_db(&self) -> Result<(), Error> {
         self.db.dump()
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use url::Url;
+
+    #[test]
+    fn test_url() {
+        let url = "tcp+ssl://electrum2.hodlister.co:50002";
+        let url: Url = url.parse().unwrap();
+        assert_eq!(Some("electrum2.hodlister.co"), url.host_str());
+        assert_eq!(Some(50002), url.port());
+
     }
 }

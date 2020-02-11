@@ -17,6 +17,7 @@ pub struct Network {
     address_explorer_url: String,
 
     pub electrum_url: Option<String>,
+    pub validate_electrum_domain: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
