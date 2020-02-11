@@ -3,7 +3,6 @@ use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::net::TcpStream;
 
 use hex;
 
@@ -23,7 +22,8 @@ use gdk_common::wally::*;
 use gdk_common::network::{Network, NetworkId, ElementsNetwork};
 use gdk_common::util::p2shwpkh_script;
 
-use electrum_client::Client;
+use electrum_client::{Client, self};
+use electrum_client::client::ElectrumSslStream;
 use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
 use crate::model::{
@@ -31,12 +31,11 @@ use crate::model::{
     WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
 };
 
-#[derive(Debug)]
 pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
-    client: Option<Client<TcpStream>>,
+    client: Option<Client<ElectrumSslStream>>,
     db: WalletDB,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
@@ -76,7 +75,7 @@ impl WalletCtx {
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         let client = match url {
-            Some(u) => Some(Client::new(u)?),
+            Some(u) => Some(Client::new_ssl(u, None)?), // TODO fix domain check
             None => None,
         };
 
@@ -95,11 +94,11 @@ impl WalletCtx {
         })
     }
 
-    pub fn get_client(&self) -> Result<&Client<TcpStream>, Error> {
+    pub fn get_client(&self) -> Result<&Client<ElectrumSslStream>, Error> {
         self.client.as_ref().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
     }
 
-    pub fn get_client_mut(&mut self) -> Result<&mut Client<TcpStream>, Error> {
+    pub fn get_client_mut(&mut self) -> Result<&mut Client<ElectrumSslStream>, Error> {
         self.client.as_mut().ok_or_else(|| Error::Generic("electrum client not initialized".into()))
     }
 

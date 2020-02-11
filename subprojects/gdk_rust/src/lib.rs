@@ -45,7 +45,6 @@ use error::Error;
 
 pub mod error;
 
-#[derive(Debug)]
 pub enum GdkSession {
     // Rpc(RpcSession),
     Electrum(ElectrumSession),
