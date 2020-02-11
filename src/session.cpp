@@ -127,7 +127,7 @@ namespace sdk {
             auto network = list.at(net_params.value("name", "")); // TODO: handle when this is missing
 
             // merge with net_params
-            network.insert(net_params.begin(), net_params.end());
+            network.update(net_params.begin(), net_params.end());
 
             GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
             if (network.value("server_type", "") == "green") {

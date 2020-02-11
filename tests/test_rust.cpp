@@ -58,9 +58,10 @@ int main()
     net_params["log_level"] = "debug";
     net_params["use_tor"] = false;
     net_params["state_dir"] = "/tmp/gdk";
-    net_params["url"] = "tn.not.fyi:55001";
+    net_params["electrum_url"] = "electrum2.hodlister.co:50002";
 
     // net_params["proxy"] = "localhost:9050";
+    // net_params["name"] = "liquid-electrum-mainnet";
     net_params["name"] = "electrum-testnet";
 
     ga::sdk::init(init_config);
