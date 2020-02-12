@@ -1,7 +1,6 @@
 use rand::Rng;
 
 use std::collections::{HashMap, HashSet};
-use std::net::ToSocketAddrs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hex;
@@ -15,8 +14,6 @@ use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, Extende
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::Hash;
 use elements::{self, AddressParams};
-
-use url::Url;
 
 use sled::{Batch, Db};
 
@@ -76,26 +73,9 @@ impl WalletCtx {
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
-        let url: Url = url.parse().map_err(|_| Error::AddrParse(url.to_string()))?;
-        if url.host_str().is_none() || url.port().is_none() {
-            return Err(Error::AddrParse(
-                "host and port are mandatory in the ecltrum server url".to_string(),
-            ));
-        }
-        let host = url.host_str().unwrap();
-        let port = url.port().unwrap();
-        let socket_addr = format!("{}:{}", host, port);
-        let addr = socket_addr
-            .to_socket_addrs()?
-            .nth(0)
-            .ok_or_else(|| Error::AddrParse(url.to_string()))?;
-        let domain = if network.validate_electrum_domain.unwrap_or(true) {
-            Some(host)
-        } else {
-            None
-        };
 
-        let client = Client::new_ssl(addr, domain)?;
+        let validate_domain = network.validate_electrum_domain.unwrap_or(true);
+        let client= Client::new_ssl(url, validate_domain)?;
 
         println!("opening sled db root path: {}", db_root);
         let db_ctx = Db::open(db_root)?;
@@ -556,13 +536,4 @@ impl WalletCtx {
 
 #[cfg(test)]
 mod test {
-    use url::Url;
-
-    #[test]
-    fn test_url() {
-        let url = "tcp+ssl://electrum2.hodlister.co:50002";
-        let url: Url = url.parse().unwrap();
-        assert_eq!(Some("electrum2.hodlister.co"), url.host_str());
-        assert_eq!(Some(50002), url.port());
-    }
 }
