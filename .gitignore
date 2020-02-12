@@ -32,3 +32,4 @@ docs/build
 /TAGS
 /tor
 *~
+target/

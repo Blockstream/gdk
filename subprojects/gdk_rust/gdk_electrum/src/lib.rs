@@ -44,10 +44,10 @@ pub struct ElectrumSession {
 
 impl ElectrumSession {
     pub fn create_session(network: Network) -> Result<ElectrumSession, Error> {
-        match network.electrum_url {
+        match network.url {
             Some(_) => Ok(ElectrumSession {
                 db_root: None,
-                url: network.electrum_url.clone().unwrap_or("".to_string()),
+                url: network.url.clone().unwrap_or("".to_string()),
                 validate_domain: network.validate_electrum_domain.unwrap_or(true),
                 network,
                 mnemonic: None,
@@ -112,7 +112,7 @@ impl Session<Error> for ElectrumSession {
         }
 
         // url param on connect can override network electrum_url
-        let url = net_params["url"].as_str().map(|x| x.to_string());
+        let url = net_params["url"].as_str();
         if let Some(v) = url.as_ref() {
             self.url = v.to_string();
         }

@@ -16,7 +16,7 @@ pub struct Network {
     tx_explorer_url: String,
     address_explorer_url: String,
 
-    pub electrum_url: Option<String>,
+    pub url: Option<String>,
     pub validate_electrum_domain: Option<bool>,
 }
 

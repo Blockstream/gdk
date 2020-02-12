@@ -124,7 +124,19 @@ namespace sdk {
 
             boost::shared_ptr<session_common> session;
             const auto list = ga::sdk::network_parameters::get_all();
-            auto network = list.at(net_params.value("name", "")); // TODO: handle when this is missing
+            const auto network_name = net_params.value("name", "");
+
+            if (network_name == "") {
+                GDK_LOG_SEV(log_level::error) << "network name not provided";
+                throw new std::runtime_error("network name not provided");
+            }
+
+            auto network = list.at(network_name);
+
+            if (network == nullptr) {
+                GDK_LOG_SEV(log_level::error) << "network not found: " << network_name;
+                throw new std::runtime_error("network not found");
+            }
 
             // merge with net_params
             network.update(net_params.begin(), net_params.end());

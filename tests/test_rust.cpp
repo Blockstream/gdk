@@ -29,7 +29,7 @@ void test_get_balance(ga::sdk::session& session) {
     balance_details["num_confs"] = 0;
     auto res = session.get_balance(balance_details);
 
-    printf("balance %s\n", res.dump().c_str());
+    assert(res["btc"] >= 0);
 }
 
 
@@ -50,19 +50,30 @@ int main()
     init_config["datadir"] = ".";
 
     const char *mnemonic = getenv("BITCOIN_MNEMONIC");
+    const char *network = getenv("GDK_NETWORK");
+    const char *url = getenv("GDK_NETWORK_URL");
 
     if (mnemonic == nullptr)
         mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
+    if (network == nullptr)
+        network = "electrum-testnet";
+
+    if (url == nullptr)
+        url = "electrum2.hodlister.co:50002";
+
+    std::string state_dir = "/tmp/gdk-" + std::string(network);
+
     nlohmann::json net_params;
     net_params["log_level"] = "debug";
     net_params["use_tor"] = false;
-    net_params["state_dir"] = "/tmp/gdk";
-    net_params["electrum_url"] = "electrum2.hodlister.co:50002";
+    net_params["state_dir"] = state_dir;
+    net_params["url"] = url;
+    net_params["name"] = network;
+    net_params["validate_electrum_domain"] = false;
 
-    // net_params["proxy"] = "localhost:9050";
-    // net_params["name"] = "liquid-electrum-mainnet";
-    net_params["name"] = "electrum-testnet";
+    printf("testing with network(%s) url(%s) state_dir(%s)\n",
+           network, url, state_dir.c_str());
 
     ga::sdk::init(init_config);
     {
