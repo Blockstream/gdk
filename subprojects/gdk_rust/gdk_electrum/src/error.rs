@@ -14,7 +14,7 @@ pub enum Error {
     JSON(serde_json::error::Error),
     StdIOError(std::io::Error),
     Hex(hex::FromHexError),
-    ClientError(electrum_client::types::Error)
+    ClientError(electrum_client::types::Error),
 }
 
 impl Serialize for Error {

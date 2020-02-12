@@ -159,7 +159,14 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
-        let mut wallet: WalletCtx = WalletCtx::new(&db_root, wallet_name, &self.url, self.network.clone(), xpub, master_blinding)?;
+        let mut wallet: WalletCtx = WalletCtx::new(
+            &db_root,
+            wallet_name,
+            &self.url,
+            self.network.clone(),
+            xpub,
+            master_blinding,
+        )?;
         wallet.sync()?;
         self.wallet = Some(wallet);
 

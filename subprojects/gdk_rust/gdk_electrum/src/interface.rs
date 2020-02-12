@@ -20,18 +20,18 @@ use url::Url;
 
 use sled::{Batch, Db};
 
-use gdk_common::wally::*;
-use gdk_common::network::{Network, NetworkId, ElementsNetwork};
+use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
+use gdk_common::wally::*;
 
-use electrum_client::{Client, self};
-use electrum_client::client::ElectrumSslStream;
 use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
 use crate::model::{
     WGAddress, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
     WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
 };
+use electrum_client::client::ElectrumSslStream;
+use electrum_client::{self, Client};
 
 pub struct WalletCtx {
     wallet_name: String,
@@ -78,19 +78,24 @@ impl WalletCtx {
     ) -> Result<Self, Error> {
         let url: Url = url.parse().map_err(|_| Error::AddrParse(url.to_string()))?;
         if url.host_str().is_none() || url.port().is_none() {
-            return Err(Error::AddrParse("host and port are mandatory in the ecltrum server url".to_string()));
+            return Err(Error::AddrParse(
+                "host and port are mandatory in the ecltrum server url".to_string(),
+            ));
         }
         let host = url.host_str().unwrap();
         let port = url.port().unwrap();
         let socket_addr = format!("{}:{}", host, port);
-        let addr = socket_addr.to_socket_addrs()?.nth(0).ok_or_else(|| Error::AddrParse(url.to_string()))?;
+        let addr = socket_addr
+            .to_socket_addrs()?
+            .nth(0)
+            .ok_or_else(|| Error::AddrParse(url.to_string()))?;
         let domain = if network.validate_electrum_domain.unwrap_or(true) {
             Some(host)
         } else {
             None
         };
 
-        let client= Client::new_ssl(addr, domain)?;
+        let client = Client::new_ssl(addr, domain)?;
 
         println!("opening sled db root path: {}", db_root);
         let db_ctx = Db::open(db_root)?;
@@ -115,7 +120,11 @@ impl WalletCtx {
         &mut self.client
     }
 
-    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<LiqOrBitAddress, Error> {
+    fn derive_address(
+        &self,
+        xpub: &ExtendedPubKey,
+        path: &[u32; 2],
+    ) -> Result<LiqOrBitAddress, Error> {
         let path: Vec<ChildNumber> = path
             .iter()
             .map(|x| ChildNumber::Normal {
@@ -123,25 +132,35 @@ impl WalletCtx {
             })
             .collect();
         let derived = xpub.derive_pub(&self.secp, &path)?;
-        if self.network.liquid {
-
-        }
+        if self.network.liquid {}
         match self.network.id() {
             NetworkId::Bitcoin(network) => {
                 Ok(LiqOrBitAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network)))
-            },
+            }
             NetworkId::Elements(network) => {
-                let master_blinding_key = self.master_blinding.as_ref().expect("we are in elements but master blinding is None");
+                let master_blinding_key = self
+                    .master_blinding
+                    .as_ref()
+                    .expect("we are in elements but master blinding is None");
                 let script = p2shwpkh_script(&derived.public_key);
-                let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
+                let blinding_key =
+                    asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
                 let public_key = ec_public_key_from_private_key(blinding_key);
                 let blinder = Some(public_key);
                 let addr = match network {
-                    ElementsNetwork::Liquid => elements::Address::p2shwpkh(&derived.public_key, blinder,&AddressParams::LIQUID),
-                    ElementsNetwork::ElementsRegtest => elements::Address::p2shwpkh(&derived.public_key, blinder,&AddressParams::ELEMENTS),
+                    ElementsNetwork::Liquid => elements::Address::p2shwpkh(
+                        &derived.public_key,
+                        blinder,
+                        &AddressParams::LIQUID,
+                    ),
+                    ElementsNetwork::ElementsRegtest => elements::Address::p2shwpkh(
+                        &derived.public_key,
+                        blinder,
+                        &AddressParams::ELEMENTS,
+                    ),
                 };
                 Ok(LiqOrBitAddress::Liquid(addr))
-            },
+            }
         }
     }
 
@@ -522,7 +541,10 @@ impl WalletCtx {
         let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
 
         Ok(WGExtendedPrivKey {
-            xprv: ExtendedPrivKey::new_master(self.network.id().get_bitcoin_network().unwrap(), &random_bytes)?,  // TODO support LIQUID
+            xprv: ExtendedPrivKey::new_master(
+                self.network.id().get_bitcoin_network().unwrap(),
+                &random_bytes,
+            )?, // TODO support LIQUID
         })
     }
 
@@ -531,7 +553,6 @@ impl WalletCtx {
         self.db.dump()
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -543,6 +564,5 @@ mod test {
         let url: Url = url.parse().unwrap();
         assert_eq!(Some("electrum2.hodlister.co"), url.host_str());
         assert_eq!(Some(50002), url.port());
-
     }
 }
