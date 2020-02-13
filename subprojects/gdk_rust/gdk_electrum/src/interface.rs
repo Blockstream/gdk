@@ -24,17 +24,15 @@ use gdk_common::wally::*;
 use crate::db::{GetTree, WalletDB};
 use crate::error::Error;
 use crate::model::{
-    WGAddress, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes, WGExtendedPrivKey,
-    WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
+    WGAddress, WGCreateTxReq, WGExtendedPrivKey, WGExtendedPubKey, WGSignReq, WGTransaction, WGUTXO,
 };
-use electrum_client::client::ElectrumSslStream;
-use electrum_client::{self, Client};
+use electrum_client::Client;
+use std::io::{Read, Write};
 
 pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
-    client: Client<ElectrumSslStream>,
     db: WalletDB,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
@@ -64,40 +62,31 @@ impl ToString for LiqOrBitAddress {
     }
 }
 
+pub enum ElectrumUrl {
+    Tls(String),
+    Plaintext(String),
+}
+
 impl WalletCtx {
     pub fn new(
         db_root: &str,
         wallet_name: String,
-        url: &str,
         network: Network,
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
-
-        let validate_domain = network.validate_electrum_domain.unwrap_or(true);
-        let client= Client::new_ssl(url, validate_domain)?;
-
         println!("opening sled db root path: {}", db_root);
         let db_ctx = Db::open(db_root)?;
         let db = db_ctx.get_tree(&wallet_name)?;
 
         Ok(WalletCtx {
             wallet_name,
-            client,
             db,
             network, // TODO: from db
             secp: Secp256k1::gen_new(),
             xpub,
             master_blinding,
         })
-    }
-
-    pub fn get_client(&self) -> &Client<ElectrumSslStream> {
-        &self.client
-    }
-
-    pub fn get_client_mut(&mut self) -> &mut Client<ElectrumSslStream> {
-        &mut self.client
     }
 
     fn derive_address(
@@ -148,7 +137,7 @@ impl WalletCtx {
         self.db.list_tx()
     }
 
-    pub fn sync(&mut self) -> Result<(), Error> {
+    pub fn sync<S: Read + Write>(&mut self, client: &mut Client<S>) -> Result<(), Error> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let mut batch = Batch::default();
 
@@ -172,7 +161,7 @@ impl WalletCtx {
         while i - last_found < 20 {
             let addr = self.derive_address(&self.xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
-            let history = self.get_client_mut().script_get_history(&this_scriptpubkey)?;
+            let history = client.script_get_history(&this_scriptpubkey)?;
 
             if history.len() == 0 {
                 i += 1;
@@ -181,7 +170,7 @@ impl WalletCtx {
                 last_found = i;
             }
 
-            let unspent = self.get_client_mut().script_list_unspent(&this_scriptpubkey)?;
+            let unspent = client.script_list_unspent(&this_scriptpubkey)?;
 
             let mut unspent_set = HashSet::new();
 
@@ -190,7 +179,7 @@ impl WalletCtx {
             }
 
             for tx in history {
-                let unserialized = self.get_client_mut().transaction_get(&tx.tx_hash)?;
+                let unserialized = client.transaction_get(&tx.tx_hash)?;
 
                 let mut incoming: u64 = 0;
                 let mut outgoing: u64 = 0;
@@ -228,7 +217,7 @@ impl WalletCtx {
                         println!("found change at {:?}", path);
 
                         let mut found = false;
-                        for elem in self.client.script_list_unspent(&out.script_pubkey)? {
+                        for elem in client.script_list_unspent(&out.script_pubkey)? {
                             if (&elem.tx_hash, elem.tx_pos) == (&tx.tx_hash, vout) {
                                 println!("... unspent");
 
@@ -450,7 +439,11 @@ impl WalletCtx {
         (pubkey, signature)
     }
 
-    pub fn sign(&mut self, request: WGSignReq) -> Result<WGTransaction, Error> {
+    pub fn sign<S: Read + Write>(
+        &self,
+        client: &mut Client<S>,
+        request: WGSignReq,
+    ) -> Result<WGTransaction, Error> {
         let mut out_tx = request.transaction.clone();
 
         for i in 0..request.transaction.input.len() {
@@ -471,13 +464,17 @@ impl WalletCtx {
         }
 
         let wgtx = WGTransaction::new(out_tx.clone(), 0, 0, 0, None, vec![], vec![]);
-        self.broadcast(wgtx)?;
+        self.broadcast(client, wgtx)?;
 
         Ok(WGTransaction::new(out_tx, 0, 0, 0, None, vec![], vec![]))
     }
 
-    pub fn broadcast(&mut self, tx: WGTransaction) -> Result<(), Error> {
-        self.client.transaction_broadcast(&tx.transaction)?;
+    pub fn broadcast<S: Read + Write>(
+        &self,
+        client: &mut Client<S>,
+        tx: WGTransaction,
+    ) -> Result<(), Error> {
+        client.transaction_broadcast(&tx.transaction)?;
 
         Ok(())
     }
@@ -503,14 +500,6 @@ impl WalletCtx {
             address,
         })
     }
-
-    pub fn fee(&mut self, request: WGEstimateFeeReq) -> Result<WGEstimateFeeRes, Error> {
-        let estimate = WGEstimateFeeRes {
-            fee_perkb: self.client.estimate_fee(request.nblocks as usize)? as f32,
-        };
-        Ok(estimate)
-    }
-
     pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, Error> {
         Ok(WGExtendedPubKey {
             xpub: ExtendedPubKey::from_private(&self.secp, &xprv.xprv),
@@ -535,5 +524,4 @@ impl WalletCtx {
 }
 
 #[cfg(test)]
-mod test {
-}
+mod test {}

@@ -16,8 +16,9 @@ pub struct Network {
     tx_explorer_url: String,
     address_explorer_url: String,
 
+    pub tls: Option<bool>,
     pub url: Option<String>,
-    pub validate_electrum_domain: Option<bool>,
+    pub validate_domain: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

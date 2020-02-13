@@ -38,8 +38,10 @@ use gdk_common::*;
 use gdk_common::{GDKRUST_json, Session};
 
 use bitcoin::util::address::AddressType;
-
-use gdk_electrum::ElectrumSession;
+use gdk_electrum::interface::ElectrumUrl;
+use gdk_electrum::{
+    determine_electrum_url_from_net, ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream,
+};
 // use gdk_rpc::session::RpcSession;
 use error::Error;
 
@@ -47,7 +49,8 @@ pub mod error;
 
 pub enum GdkSession {
     // Rpc(RpcSession),
-    Electrum(ElectrumSession),
+    Electrum(ElectrumSession<ElectrumPlaintextStream>),
+    ElectrumTls(ElectrumSession<ElectrumSslStream>),
 }
 
 #[derive(Debug)]
@@ -250,13 +253,32 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     }
 
     let parsed_network = parsed_network.unwrap();
+    let db_root = network["db_root"].as_str().unwrap_or("");
 
     match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
         Some("electrum") => {
-            let esess =
-                ElectrumSession::create_session(parsed_network).map_err(|err| json!(err))?;
-            Ok(GdkSession::Electrum(esess))
+            let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
+                .map_err(|x| json!(x))?;
+
+            let gdk_sess = match url {
+                ElectrumUrl::Tls(url) => {
+                    let elec_tls_sess =
+                        ElectrumSession::new_tls_session(parsed_network.clone(), db_root)
+                            .map_err(|x| json!(x))?;
+                    GdkSession::ElectrumTls(elec_tls_sess)
+                }
+
+                ElectrumUrl::Plaintext(url) => {
+                    let elec_sess =
+                        ElectrumSession::new_plaintext_session(parsed_network.clone(), db_root)
+                            .map_err(|x| json!(x))?;
+
+                    GdkSession::Electrum(elec_sess)
+                }
+            };
+
+            Ok(gdk_sess)
         }
         _ => Err(json!("server_type invalid")),
     }
@@ -274,6 +296,7 @@ pub extern "C" fn GDKRUST_call_session(
 
     let res = match safe_mut_ref!(sess) {
         GdkSession::Electrum(ref mut s) => handle_call(s, &method, &input),
+        GdkSession::ElectrumTls(ref mut s) => handle_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 

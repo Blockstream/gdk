@@ -20,42 +20,87 @@ pub mod model;
 pub mod tools;
 
 use crate::error::Error;
-use crate::interface::WalletCtx;
+use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::model::*;
 
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin_hashes::sha256;
 use bitcoin_hashes::Hash;
+pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
+
 use gdk_common::network::Network;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
 use gdk_common::*;
 
+use std::io::{Read, Write};
 use std::str::FromStr;
 
-pub struct ElectrumSession {
-    pub url: String,
-    pub validate_domain: bool,
-    pub db_root: Option<String>,
+pub struct ElectrumSession<S: Read + Write> {
+    pub db_root: String,
     pub network: Network,
-    pub mnemonic: Option<String>,
+    pub client: electrum_client::Client<S>,
     pub wallet: Option<WalletCtx>,
 }
 
-impl ElectrumSession {
-    pub fn create_session(network: Network) -> Result<ElectrumSession, Error> {
-        match network.url {
-            Some(_) => Ok(ElectrumSession {
-                db_root: None,
-                url: network.url.clone().unwrap_or("".to_string()),
-                validate_domain: network.validate_electrum_domain.unwrap_or(true),
-                network,
-                mnemonic: None,
-                wallet: None,
-            }),
-            None => Err(Error::Generic(
-                "ElectrumSession create_session without electrum server url".into(),
-            )),
+fn determine_electrum_url(url: &Option<String>, tls: &Option<bool>) -> Result<ElectrumUrl, Error> {
+    let url = url.as_ref().ok_or_else(|| Error::Generic("network url is missing".into()))?;
+    if url == "" {
+        return Err(Error::Generic("network url is empty".into()))?;
+    }
+
+    if tls.unwrap_or(false) {
+        Ok(ElectrumUrl::Tls(url.into()))
+    } else {
+        Ok(ElectrumUrl::Plaintext(url.into()))
+    }
+}
+
+fn determine_electrum_url_from_val(value: &Value) -> Result<ElectrumUrl, Error> {
+    let url = value["url"].as_str().map(|x| x.to_string());
+    let tls = value["tls"].as_bool();
+
+    determine_electrum_url(&url, &tls)
+}
+
+pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl, Error> {
+    determine_electrum_url(&network.url, &network.tls)
+}
+
+impl ElectrumSession<ElectrumSslStream> {
+    pub fn new_tls_session(network: Network, db_root: &str) -> Result<Self, Error> {
+        let url: &str = network
+            .url
+            .as_ref()
+            .ok_or_else(|| Error::Generic("network url missing in new_tls_session".into()))?;
+        let validate = network.validate_domain.unwrap_or(true);
+        let client = electrum_client::Client::new_ssl(url, validate)?;
+        Ok(Self::create_session(network, db_root, client))
+    }
+}
+
+impl ElectrumSession<ElectrumPlaintextStream> {
+    pub fn new_plaintext_session(network: Network, db_root: &str) -> Result<Self, Error> {
+        let url: &str = network
+            .url
+            .as_ref()
+            .ok_or_else(|| Error::Generic("network url missing in new_plaintext_session".into()))?;
+        let client = electrum_client::Client::new(url)?;
+        Ok(Self::create_session(network, db_root, client))
+    }
+}
+
+impl<S: Read + Write> ElectrumSession<S> {
+    pub fn create_session(
+        network: Network,
+        db_root: &str,
+        client: electrum_client::Client<S>,
+    ) -> Self {
+        Self {
+            db_root: db_root.to_string(),
+            client,
+            network,
+            wallet: None,
         }
     }
 
@@ -93,7 +138,7 @@ fn make_txlist_item(tx: &WGTransaction) -> TxListItem {
     }
 }
 
-impl Session<Error> for ElectrumSession {
+impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     // type Value = ElectrumSession;
 
     fn destroy_session(&mut self) -> Result<(), Error> {
@@ -106,19 +151,10 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
-        if let None = self.db_root.as_ref() {
-            self.db_root = net_params["state_dir"].as_str().map(|x| x.to_string());
+        if self.db_root == "" {
+            self.db_root =
+                net_params["state_dir"].as_str().map(|x| x.to_string()).unwrap_or("".into());
             println!("setting db_root to {:?}", self.db_root);
-        }
-
-        // url param on connect can override network electrum_url
-        let url = net_params["url"].as_str();
-        if let Some(v) = url.as_ref() {
-            self.url = v.to_string();
-        }
-
-        if self.url == "" {
-            return Err(Error::Generic("connect: no url set".into()));
         }
 
         println!("connect {:?}", self.network);
@@ -133,10 +169,6 @@ impl Session<Error> for ElectrumSession {
 
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
         println!("login {:#?}", self.network);
-
-        //let url = self.network.electrum_url.unwrap(); //should be safe, since Some is checked in create_session
-        let db_root =
-            self.db_root.as_ref().ok_or(Error::Generic("login: db_root not set".into()))?;
 
         // TODO: passphrase?
         let seed = wally::bip39_mnemonic_to_seed(&mnemonic, &password.unwrap_or_default())
@@ -159,15 +191,15 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
-        let mut wallet: WalletCtx = WalletCtx::new(
-            &db_root,
+        let mut wallet = WalletCtx::new(
+            &self.db_root,
             wallet_name,
-            &self.url,
             self.network.clone(),
             xpub,
             master_blinding,
         )?;
-        wallet.sync()?;
+
+        wallet.sync(&mut self.client)?;
         self.wallet = Some(wallet);
 
         Ok(())
@@ -232,12 +264,7 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        // TODO: can batch request many estimates like rpc?
-        let wg_estimate = self.get_wallet_mut()?.fee(WGEstimateFeeReq {
-            nblocks: 1,
-        })?;
-        let fee_estimate = wg_estimate.into();
-        Ok(vec![fee_estimate])
+        Ok(vec![FeeEstimate(self.client.estimate_fee(1)?)])
     }
 
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {
