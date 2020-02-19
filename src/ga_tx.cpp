@@ -456,12 +456,24 @@ namespace sdk {
                             result["error"] = res::id_invalid_payment_request_assetid;
                             break;
                         } else if (uri_params["bip21-params"].contains("assetid")) {
+                            const std::string assetid = uri_params["bip21-params"]["assetid"];
+                            if (assetid.length() != 64) {
+                                result["error"] = res::id_invalid_payment_request_assetid;
+                                break;
+                            }
+                            unsigned char buff[32];
+                            size_t written;
+                            int ret = wally_hex_to_bytes(assetid.data(), buff, 32, &written);
+                            if (ret != WALLY_OK) {
+                                result["error"] = res::id_invalid_payment_request_assetid;
+                                break;
+                            }
                             addressees_have_assets = true;
 
-                            if (uri_params["bip21-params"]["assetid"] == net_params.policy_asset()) {
+                            if (assetid == net_params.policy_asset()) {
                                 addressee["asset_tag"] = "btc";
                             } else {
-                                addressee["asset_tag"] = uri_params["bip21-params"]["assetid"];
+                                addressee["asset_tag"] = assetid;
                             }
                         }
                     }
