@@ -52,6 +52,7 @@ int main()
     const char *mnemonic = getenv("BITCOIN_MNEMONIC");
     const char *network = getenv("GDK_NETWORK");
     const char *url = getenv("GDK_NETWORK_URL");
+    const char *tls = getenv("GDK_TLS");
 
     if (mnemonic == nullptr)
         mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -59,21 +60,24 @@ int main()
     if (network == nullptr)
         network = "electrum-testnet";
 
-    if (url == nullptr)
-        url = "electrum2.hodlister.co:50002";
-
     std::string state_dir = "/tmp/gdk-" + std::string(network);
 
     nlohmann::json net_params;
     net_params["log_level"] = "debug";
     net_params["use_tor"] = false;
     net_params["state_dir"] = state_dir;
-    net_params["url"] = url;
+    // TODO: test defaults
+    if (url != nullptr)
+        net_params["url"] = url;
     net_params["name"] = network;
     net_params["validate_electrum_domain"] = false;
+    if (tls != nullptr)
+        net_params["tls"] = std::string(tls) == "true" ? true : false;
 
+    printf("====================================\n");
     printf("testing with network(%s) url(%s) state_dir(%s)\n",
            network, url, state_dir.c_str());
+    printf("====================================\n");
 
     ga::sdk::init(init_config);
     {
