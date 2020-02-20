@@ -270,10 +270,14 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
         let blocks: Vec<usize> = (1..25).collect();
-        let mut estimates: Vec<FeeEstimate> =
-            self.client.batch_estimate_fee(blocks)?.iter().map(|e| FeeEstimate( (*e * 100_000_000.0) as u64 )).collect();
+        let mut estimates: Vec<FeeEstimate> = self
+            .client
+            .batch_estimate_fee(blocks)?
+            .iter()
+            .map(|e| FeeEstimate((*e * 100_000_000.0) as u64))
+            .collect();
         let relay_fee = self.client.relay_fee()?;
-        estimates.insert(0, FeeEstimate( (relay_fee * 100_000_000.0) as u64 ));
+        estimates.insert(0, FeeEstimate((relay_fee * 100_000_000.0) as u64));
         Ok(estimates)
     }
 

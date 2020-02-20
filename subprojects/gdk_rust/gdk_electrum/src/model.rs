@@ -86,7 +86,6 @@ pub struct WGEstimateFeeRes {
     pub fee_perkb: f32,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGCreateTxReq {
     pub utxo: Option<Vec<WGUTXO>>,
