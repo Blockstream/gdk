@@ -263,8 +263,18 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession broadcast_transaction".into()))
     }
 
+    /// The estimates are returned as an array of 25 elements. Each element is
+    /// an integer representing the fee estimate expressed as satoshi per 1000
+    /// bytes. The first element is the minimum relay fee as returned by the
+    /// network, while the remaining elements are the current estimates to use
+    /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        Ok(vec![FeeEstimate(self.client.estimate_fee(1)?)])
+        let blocks: Vec<usize> = (1..25).collect();
+        let mut estimates: Vec<FeeEstimate> =
+            self.client.batch_estimate_fee(blocks)?.iter().map(|e| FeeEstimate( (*e * 100_000_000.0) as u64 )).collect();
+        let relay_fee = self.client.relay_fee()?;
+        estimates.insert(0, FeeEstimate( (relay_fee * 100_000_000.0) as u64 ));
+        Ok(estimates)
     }
 
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {

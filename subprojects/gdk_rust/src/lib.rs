@@ -39,9 +39,7 @@ use gdk_common::{GDKRUST_json, Session};
 
 use bitcoin::util::address::AddressType;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{
-    determine_electrum_url_from_net, ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream,
-};
+use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
 // use gdk_rpc::session::RpcSession;
 use error::Error;
 
@@ -262,14 +260,14 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
                 .map_err(|x| json!(x))?;
 
             let gdk_sess = match url {
-                ElectrumUrl::Tls(url) => {
+                ElectrumUrl::Tls(_url) => {
                     let elec_tls_sess =
                         ElectrumSession::new_tls_session(parsed_network.clone(), db_root)
                             .map_err(|x| json!(x))?;
                     GdkSession::ElectrumTls(elec_tls_sess)
                 }
 
-                ElectrumUrl::Plaintext(url) => {
+                ElectrumUrl::Plaintext(_url) => {
                     let elec_sess =
                         ElectrumSession::new_plaintext_session(parsed_network.clone(), db_root)
                             .map_err(|x| json!(x))?;

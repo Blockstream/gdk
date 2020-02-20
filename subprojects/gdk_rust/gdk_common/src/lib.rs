@@ -68,9 +68,8 @@ pub struct TxListItem {
 }
 
 // This one is simple enough to derive a serializer
-#[serde(transparent)] // serialize as f64
 #[derive(Serialize, Debug)]
-pub struct FeeEstimate(pub f64);
+pub struct FeeEstimate(pub u64);
 
 pub struct AddressResult(pub String);
 pub struct TxsResult(pub Vec<TxListItem>);

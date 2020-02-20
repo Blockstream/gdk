@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "electrum-client"
 version = "0.1.0-beta.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/RCasatta/rust-electrum-client/?rev=5e1d23a6750a98f557cb8164bb502de2e581696a#5e1d23a6750a98f557cb8164bb502de2e581696a"
 dependencies = [
  "bitcoin 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -488,7 +488,7 @@ dependencies = [
  "android_logger 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_hashes 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "electrum-client 0.1.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "electrum-client 0.1.0-beta.4 (git+https://github.com/RCasatta/rust-electrum-client/?rev=5e1d23a6750a98f557cb8164bb502de2e581696a)",
  "elements 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk-common 0.1.0",
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1610,7 +1610,7 @@ dependencies = [
 "checksum crossbeam-utils 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ce446db02cdc3165b94ae73111e570793400d0794e46125cc4056c81cbb039f4"
 "checksum digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 "checksum dirs 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3fd78930633bd1c6e35c4b42b1df7b0cbc6bc191146e512bb3bedf243fcc3901"
-"checksum electrum-client 0.1.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)" = "e92039bd10eb95b62202afa524eb8bdd04efcc35c491d4d949e233bc0b83fdbd"
+"checksum electrum-client 0.1.0-beta.4 (git+https://github.com/RCasatta/rust-electrum-client/?rev=5e1d23a6750a98f557cb8164bb502de2e581696a)" = "<none>"
 "checksum elements 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "87869b696bf46a7c20d4551b23cb9e4ca2359c38ce87d5bdf316f299f1bcaea6"
 "checksum elements 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08c55621a99337afa57691636fbb8505a4f00b3dbefcefcac04c0dfb95535b07"
 "checksum env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"

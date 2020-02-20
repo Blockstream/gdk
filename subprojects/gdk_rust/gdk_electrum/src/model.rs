@@ -1,7 +1,6 @@
 use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxOut};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use std::convert::From;
 
 use serde::{Deserialize, Serialize};
 
@@ -87,11 +86,6 @@ pub struct WGEstimateFeeRes {
     pub fee_perkb: f32,
 }
 
-impl From<WGEstimateFeeRes> for gdk_common::FeeEstimate {
-    fn from(fee_res: WGEstimateFeeRes) -> Self {
-        gdk_common::FeeEstimate(fee_res.fee_perkb as f64)
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGCreateTxReq {

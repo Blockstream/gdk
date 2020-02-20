@@ -112,7 +112,6 @@ impl WalletDB {
             let num = match old {
                 Some(bytes) => {
                     let val: u32 = serde_json::from_slice(bytes).unwrap();
-                    println!("val is {}", val);
                     val + 1
                 }
                 None => 0,
