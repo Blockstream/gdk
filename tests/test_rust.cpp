@@ -43,6 +43,18 @@ void test_get_fee_estimates(ga::sdk::session& session) {
     // printf("estimates %s\n", res.dump().c_str());
 }
 
+void test_create_transaction(ga::sdk::session& session) {
+    nlohmann::json addressees = {{{ "address", "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b"}, { "satoshi", 100000} }};
+    nlohmann::json create_tx = {
+      { "addressees",  addressees},
+      { "subaccount", 0 },
+      { "fee_rate", 1000 }
+    };
+
+    printf("create_tx %s\n", create_tx.dump().c_str());
+    auto tx_created = session.create_transaction(create_tx);
+    printf("tx_created %s\n", tx_created.dump().c_str());
+}
 
 int main()
 {
@@ -90,9 +102,10 @@ int main()
         test_get_transactions(session);
         test_get_balance(session);
         test_get_fee_estimates(session);
+        test_create_transaction(session);
+        // auto net = session.get_network_parameters().get(network);
+        // auto is_regtest = net["development"].get<bool>();
     }
 
     return 0;
 }
-
-
