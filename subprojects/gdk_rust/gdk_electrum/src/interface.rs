@@ -381,11 +381,7 @@ impl WalletCtx {
 
         let mut selected_amount: u64 = 0;
         while selected_amount < outgoing + fee_val {
-            let utxo = utxos.pop();
-            if let None = utxo {
-                // TODO: unsufficient funds
-            }
-            let utxo = utxo.unwrap();
+            let utxo = utxos.pop().ok_or(Error::InsufficientFunds)?;
 
             let new_in = TxIn {
                 previous_output: utxo.outpoint,

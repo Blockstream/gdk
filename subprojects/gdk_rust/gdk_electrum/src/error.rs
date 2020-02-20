@@ -6,6 +6,7 @@ pub enum Error {
     Generic(String),
     UnknownCall,
     InvalidMnemonic,
+    InsufficientFunds,
     DB(sled::Error),
     AddrParse(String),
     Bitcoin(bitcoin::util::Error),
@@ -33,6 +34,7 @@ impl Serialize for Error {
                 s.serialize_field("error", &format!("could not parse SocketAddr `{}`", addr))?
             }
             Error::InvalidMnemonic => s.serialize_field("error", "invalid mnemonic")?,
+            Error::InsufficientFunds => s.serialize_field("error", "insufficient funds")?,
             Error::DB(ref _dberr) => {}
             Error::Bitcoin(ref _btcerr) => {}
             Error::BitcoinBIP32Error(ref _bip32err) => {}
