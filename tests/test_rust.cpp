@@ -40,19 +40,22 @@ void test_get_fee_estimates(ga::sdk::session& session) {
     assert(fees.size() > 0);
     assert(fees[0].get<double>() >= 0);
 
-    printf("estimates %s\n", res.dump().c_str());
+    // printf("estimates %s\n", res.dump().c_str());
 }
 
 
 int main()
 {
     nlohmann::json init_config;
-    init_config["datadir"] = ".";
 
     const char *mnemonic = getenv("BITCOIN_MNEMONIC");
+    const char *datadir = getenv("DATADIR");
     const char *network = getenv("GDK_NETWORK");
     const char *url = getenv("GDK_NETWORK_URL");
     const char *tls = getenv("GDK_TLS");
+
+    datadir = datadir ? datadir : ".";
+    init_config["datadir"] = datadir;
 
     if (mnemonic == nullptr)
         mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -60,7 +63,7 @@ int main()
     if (network == nullptr)
         network = "electrum-testnet";
 
-    std::string state_dir = "/tmp/gdk-" + std::string(network);
+    std::string state_dir = datadir? datadir : "/tmp/gdk-" + std::string(network);
 
     nlohmann::json net_params;
     net_params["log_level"] = "debug";
