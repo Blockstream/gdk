@@ -284,11 +284,15 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_mnemonic_passphrase".into()))
+        Ok("".to_string())  // TODO implement
     }
 
     fn get_settings(&self) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_settings".into()))
+        Ok(json!({ "unit": "BTC", "altimeout": 600 })) // TODO implement
+    }
+
+    fn get_available_currencies(&self) -> Result<Value, Error> {
+        Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITSTAMP": [ "USD" ] } }))  // TODO implement
     }
 
     fn change_settings(&mut self, _settings: &Value) -> Result<(), Error> {

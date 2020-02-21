@@ -94,7 +94,7 @@ pub trait Session<E> {
     fn broadcast_transaction(&self, tx_hex: &str) -> Result<String, E>;
     fn get_receive_address(&self, addr_details: &Value) -> Result<AddressResult, E>;
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, E>;
-    // fn get_available_currencies(&self) -> Result<Value, E>;
+    fn get_available_currencies(&self) -> Result<Value, E>;
     // fn convert_amount(&self, value_details: &Value) -> Result<Value, E>;
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Value, E>;
