@@ -84,7 +84,7 @@ macro_rules! tryit {
     ($x:expr) => {
         match $x {
             Err(err) => {
-                println!("error: {:?}", err);
+                error!("error: {:?}", err);
                 return GA_ERROR;
             }
             Ok(x) => {
@@ -158,7 +158,7 @@ pub extern "C" fn GDKRUST_create_session(
     let sess = create_session(&network);
 
     if let Err(err) = sess {
-        println!("create_session error: {}", err);
+        error!("create_session error: {}", err);
         return GA_ERROR;
     }
 
@@ -240,13 +240,13 @@ fn txs_result_value(txs: &TxsResult) -> Value {
 
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
     if !network.is_object() || !network.as_object().unwrap().contains_key("server_type") {
-        println!("Expected network to be an object with a server_type key");
+        error!("Expected network to be an object with a server_type key");
         return Err(GA_ERROR.into());
     }
 
     let parsed_network = serde_json::from_value(network.clone());
     if let Err(msg) = parsed_network {
-        println!("Error parsing network {}", msg);
+        error!("Error parsing network {}", msg);
         return Err(GA_ERROR.into());
     }
 
@@ -298,7 +298,7 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    println!("GDKRUST_call_session {} {:?}", method, res);
+    debug!("GDKRUST_call_session {} {:?}", method, res);
 
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
@@ -317,7 +317,7 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     // let sess = safe_mut_ref!(sess);
     //sess.notify = Some((handler, self_context));  //TODO handle notify
 
-    println!("set notification handler");
+    debug!("set notification handler");
 
     GA_OK
 }

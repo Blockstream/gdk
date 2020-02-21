@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::error;
+use log::{error, info, debug};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -154,10 +154,10 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         if self.db_root == "" {
             self.db_root =
                 net_params["state_dir"].as_str().map(|x| x.to_string()).unwrap_or("".into());
-            println!("setting db_root to {:?}", self.db_root);
+            debug!("setting db_root to {:?}", self.db_root);
         }
 
-        println!("connect {:?}", self.network);
+        info!("connect {:?}", self.network);
 
         Ok(())
     }
@@ -168,7 +168,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
-        println!("login {:#?}", self.network);
+        info!("login {:#?}", self.network);
 
         // TODO: passphrase?
         let seed = wally::bip39_mnemonic_to_seed(&mnemonic, &password.unwrap_or_default())
@@ -207,7 +207,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
         let a1 = self.wallet.as_ref().unwrap().get_address()?;
-        println!("a1: {:?} ", a1);
+        debug!("get_receive_address: {:?} ", a1);
         Ok(AddressResult(a1.address.to_string()))
     }
 

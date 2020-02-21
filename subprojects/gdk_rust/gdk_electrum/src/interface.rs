@@ -1,7 +1,7 @@
 use rand::Rng;
-
+use log::debug;
 use std::collections::{HashMap, HashSet};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH, Instant};
 
 use hex;
 
@@ -75,7 +75,7 @@ impl WalletCtx {
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
-        println!("opening sled db root path: {}", db_root);
+        debug!("opening sled db root path: {}", db_root);
         let db_ctx = Db::open(db_root)?;
         let db = db_ctx.get_tree(&wallet_name)?;
 
@@ -138,6 +138,8 @@ impl WalletCtx {
     }
 
     pub fn sync<S: Read + Write>(&mut self, client: &mut Client<S>) -> Result<(), Error> {
+        debug!("starting sync");
+        let start = Instant::now();
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let mut batch = Batch::default();
 
@@ -189,17 +191,17 @@ impl WalletCtx {
 
                 for (vout, out) in unserialized.output.iter().enumerate() {
                     if out.script_pubkey == this_scriptpubkey {
-                        println!("{:?}", out);
+                        debug!("{:?}", out);
 
                         if unspent_set.get(&(tx.tx_hash.clone(), vout)).is_none() {
-                            println!("... is_spent");
+                            debug!("... is_spent");
                             let op = OutPoint {
                                 txid: tx.tx_hash.clone(),
                                 vout: (vout as u32),
                             };
                             self.db.save_spent(&op, &mut batch)?;
                         } else {
-                            println!("... unspent");
+                            debug!("... unspent");
                         }
 
                         incoming += out.value;
@@ -214,12 +216,12 @@ impl WalletCtx {
                             },
                         ])));
                     } else if let Some(path) = change_pool.get(&out.script_pubkey) {
-                        println!("found change at {:?}", path);
+                        debug!("found change at {:?}", path);
 
                         let mut found = false;
                         for elem in client.script_list_unspent(&out.script_pubkey)? {
                             if (&elem.tx_hash, elem.tx_pos) == (&tx.tx_hash, vout) {
-                                println!("... unspent");
+                                debug!("... unspent");
 
                                 found = true;
                                 break;
@@ -279,6 +281,7 @@ impl WalletCtx {
 
         self.db.apply_batch(batch)?;
         self.db.flush()?;
+        debug!("ending sync, it took: {:?}", Instant::now() - start );
 
         Ok(())
     }

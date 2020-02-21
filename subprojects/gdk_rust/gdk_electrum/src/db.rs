@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::ops::Drop;
-
+use log::debug;
 use bitcoin::blockdata::transaction::OutPoint;
 
 use serde_json::json;
@@ -16,7 +16,7 @@ pub trait GetTree {
 
 impl GetTree for Db {
     fn get_tree(&self, wallet_name: &str) -> Result<WalletDB, Error> {
-        println!("opening tree {}", wallet_name);
+        debug!("opening tree {}", wallet_name);
         Ok(WalletDB::from(self.open_tree(wallet_name)?))
     }
 }
@@ -116,6 +116,7 @@ impl WalletDB {
                 }
                 None => 0,
             };
+            debug!("increment_index, returning {}", num);
 
             Some(serde_json::to_vec(&json!(num)).unwrap())
         });
@@ -136,7 +137,7 @@ impl WalletDB {
         let r = self.tree.scan_prefix(&[]);
         for e in r {
             let e = e.unwrap();
-            println!("{:?} {:?}", hex::encode(&e.0), std::str::from_utf8(&e.1));
+            debug!("{:?} {:?}", hex::encode(&e.0), std::str::from_utf8(&e.1));
         }
 
         Ok(())
