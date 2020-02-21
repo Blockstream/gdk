@@ -1,7 +1,7 @@
-use rand::Rng;
 use log::debug;
+use rand::Rng;
 use std::collections::{HashMap, HashSet};
-use std::time::{SystemTime, UNIX_EPOCH, Instant};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use hex;
 
@@ -281,7 +281,7 @@ impl WalletCtx {
 
         self.db.apply_batch(batch)?;
         self.db.flush()?;
-        debug!("ending sync, it took: {:?}", Instant::now() - start );
+        debug!("ending sync, it took: {:?}", Instant::now() - start);
 
         Ok(())
     }

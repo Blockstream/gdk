@@ -1,7 +1,7 @@
+use bitcoin::blockdata::transaction::OutPoint;
+use log::debug;
 use std::collections::HashSet;
 use std::ops::Drop;
-use log::debug;
-use bitcoin::blockdata::transaction::OutPoint;
 
 use serde_json::json;
 

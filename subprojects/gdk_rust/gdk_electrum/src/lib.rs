@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::{error, info, debug};
+use log::{debug, error, info};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -213,14 +213,16 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
     fn get_subaccounts(&self) -> Result<Value, Error> {
         // Err(Error::Generic("implementme: ElectrumSession get_subaccounts".into()))
+        let balance = self.get_balance(&json!({"subaccount":0,"num_confs":0}))?;
+        let txs = self.get_transactions(&json!({}))?;
         let subaccounts_fake = json!([{
         "type": "core",
         "pointer": 0,
         "required_ca": 0,
         "receiving_id": "",
         "name": "fake account",
-        "has_transactions": true,
-        "satoshi": 1000 }]);
+        "has_transactions": !txs.0.is_empty(),
+        "satoshi": { "btc": balance} }]);
 
         Ok(subaccounts_fake)
     }
