@@ -30,7 +30,7 @@ use std::mem::transmute;
 use std::os::raw::c_char;
 
 #[cfg(feature = "android_log")]
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
 use gdk_common::constants::{GA_ERROR, GA_OK};
 use gdk_common::util::{make_str, read_str};
@@ -138,7 +138,7 @@ macro_rules! safe_mut_ref {
 //
 
 #[cfg(feature = "android_log")]
-static INIT_LOGGER: Once = ONCE_INIT;
+static INIT_LOGGER: Once = Once::new();
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_create_session(
