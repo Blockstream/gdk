@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,12 +35,15 @@ use gdk_common::*;
 
 use std::io::{Read, Write};
 use std::str::FromStr;
+use bitcoin::BitcoinHash;
 
 pub struct ElectrumSession<S: Read + Write> {
     pub db_root: String,
     pub network: Network,
     pub client: electrum_client::Client<S>,
     pub wallet: Option<WalletCtx>,
+    pub notify:
+        Option<(extern "C" fn(*const libc::c_void, *const GDKRUST_json), *const libc::c_void)>,
 }
 
 fn determine_electrum_url(url: &Option<String>, tls: &Option<bool>) -> Result<ElectrumUrl, Error> {
@@ -101,6 +104,7 @@ impl<S: Read + Write> ElectrumSession<S> {
             client,
             network,
             wallet: None,
+            notify: None,
         }
     }
 
@@ -110,6 +114,15 @@ impl<S: Read + Write> ElectrumSession<S> {
 
     pub fn get_wallet_mut(&mut self) -> Result<&mut WalletCtx, Error> {
         self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
+    }
+
+    fn notify(&self, data: Value) {
+        debug!("push notification: {:?}", data);
+        if let Some((handler, self_context)) = self.notify {
+            handler(self_context, GDKRUST_json::new(data));
+        } else {
+            warn!("no registered handler to receive notification");
+        }
     }
 }
 
@@ -201,6 +214,8 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
         wallet.sync(&mut self.client)?;
         self.wallet = Some(wallet);
+        let block = self.client.block_headers_subscribe()?;
+        self.notify(json!({"block":{"block_hash":block.header.bitcoin_hash(),"block_height": block.height },"event":"block"}));
 
         Ok(())
     }
@@ -300,6 +315,10 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
     fn change_settings(&mut self, _settings: &Value) -> Result<(), Error> {
         Err(Error::Generic("implementme: ElectrumSession change_settings".into()))
+    }
+
+    fn convert_amount(&mut self, amount: &Value) -> Result<Value, Error> {
+        Ok(amount.clone())
     }
 
     // fn register_user(&mut self, mnemonic: String) -> Result<(), Error> {

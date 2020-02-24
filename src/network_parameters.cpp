@@ -214,6 +214,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Mainnet" },
             { "network", "electrum-mainnet" }, { "address_explorer_url", "https://blockstream.info/address/" },
+            { "url", "electrum2.hodlister.co:50002" }, // TODO for testing purpose
+            { "tls", true }, // TODO for testing purpose
             { "tx_explorer_url", "https://blockstream.info/tx/" }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
             { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false },
             { "server_type", "electrum" } })) },
@@ -222,8 +224,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Testnet" },
             { "network", "electrum-testnet" }, { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" },
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
-            { "url", "electrum2.hodlister.co:50002" }, // TODO for testing purpose
-            { "tls", true }, // TODO for testing purpose
+            { "url", "tn.not.fyi:55001" }, // TODO for testing purpose
+            { "tls", false }, // TODO for testing purpose
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" }, { "p2pkh_version", 111u },
             { "p2sh_version", 196u }, { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false },
             { "development", false }, { "server_type", "electrum" } })) },

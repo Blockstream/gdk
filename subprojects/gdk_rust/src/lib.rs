@@ -238,12 +238,16 @@ pub extern "C" fn GDKRUST_call_session(
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_set_notification_handler(
-    _sess: *mut GdkSession,
-    _handler: extern "C" fn(*const libc::c_void, *const GDKRUST_json),
-    _self_context: *const libc::c_void,
+    sess: *mut GdkSession,
+    handler: extern "C" fn(*const libc::c_void, *const GDKRUST_json),
+    self_context: *const libc::c_void,
 ) -> i32 {
-    // let sess = safe_mut_ref!(sess);
-    //sess.notify = Some((handler, self_context));  //TODO handle notify
+    let sess = safe_mut_ref!(sess);
+
+    match sess {
+        GdkSession::Electrum(ref mut s) => s.notify = Some((handler, self_context)),
+        GdkSession::ElectrumTls(ref mut s) => s.notify = Some((handler, self_context)),
+    };
 
     debug!("set notification handler");
 
@@ -312,6 +316,7 @@ where
         "get_settings" => session.get_settings().map_err(Into::into),
         "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
         "change_settings" => session.change_settings(input).map(|v| json!(v)).map_err(Into::into),
+        "convert_amount" => session.convert_amount(input).map(|v| json!(v)).map_err(Into::into),
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),

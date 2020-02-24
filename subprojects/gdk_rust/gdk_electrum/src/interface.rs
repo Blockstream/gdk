@@ -134,6 +134,7 @@ impl WalletCtx {
     }
 
     pub fn list_tx(&self) -> Result<Vec<WGTransaction>, Error> {
+        debug!("list_tx");
         self.db.list_tx()
     }
 
@@ -163,12 +164,15 @@ impl WalletCtx {
         while i - last_found < 20 {
             let addr = self.derive_address(&self.xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
+            debug!("addr: {:?} this_scriptpubkey: {}", addr, hex::encode(&this_scriptpubkey.as_bytes()));
             let history = client.script_get_history(&this_scriptpubkey)?;
+            debug!("addr: {:?} this_scriptpubkey: {}", addr, hex::encode(&this_scriptpubkey.as_bytes()));
 
             if history.len() == 0 {
                 i += 1;
                 continue;
             } else {
+                debug!("found history for addr {:?}", addr);
                 last_found = i;
             }
 
@@ -177,6 +181,7 @@ impl WalletCtx {
             let mut unspent_set = HashSet::new();
 
             for elem in unspent {
+                debug!("found unspent for addr {:?}", addr);
                 unspent_set.insert((elem.tx_hash.clone(), elem.tx_pos));
             }
 
@@ -287,6 +292,7 @@ impl WalletCtx {
     }
 
     pub fn utxos(&self) -> Result<Vec<WGUTXO>, Error> {
+        debug!("utxos");
         let txs = self.db.list_tx()?;
         let spent = self.db.get_spent()?;
 
@@ -323,11 +329,13 @@ impl WalletCtx {
     }
 
     pub fn balance(&self) -> Result<i64, Error> {
+        debug!("balance");
         Ok(self.utxos()?.iter().fold(0, |sum, i| sum + (i.txout.value as i64)))
     }
 
     // If request.utxo is None, we do the coin selection
     pub fn create_tx(&self, request: WGCreateTxReq) -> Result<WGTransaction, Error> {
+        debug!("create_tx");
         use bitcoin::consensus::serialize;
 
         let mut tx = Transaction {
@@ -496,6 +504,7 @@ impl WalletCtx {
     }
 
     pub fn get_address(&self) -> Result<WGAddress, Error> {
+        debug!("get_address");
         let index = self.db.increment_external_index()?;
         self.db.flush()?;
         let address = self.derive_address(&self.xpub, &[0, index])?.to_string();
