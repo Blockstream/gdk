@@ -23,7 +23,7 @@ android_logger = { version = "0.8.6", optional = true }
 
 [dependencies.electrum-client]
 git = "https://github.com/RCasatta/rust-electrum-client/"
-rev = "5e1d23a6750a98f557cb8164bb502de2e581696a"
+rev = "e08d4e169da348f65c198b2ef5f8cb77259786b7"
 
 [dependencies.bitcoin]
 version = "0.23"
