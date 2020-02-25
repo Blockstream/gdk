@@ -34,10 +34,12 @@ rust_sources = [
 
   'gdk_common/src/constants.rs',
   'gdk_common/src/lib.rs',
+  'gdk_common/src/model.rs',
   'gdk_common/src/network.rs',
+  'gdk_common/src/session.rs',
   'gdk_common/src/util.rs',
-  'gdk_common/src/wally/mod.rs',
   'gdk_common/src/wally/ffi.rs',
+  'gdk_common/src/wally/mod.rs',
 
   'gdk_electrum/src/db.rs',
   'gdk_electrum/src/error.rs',

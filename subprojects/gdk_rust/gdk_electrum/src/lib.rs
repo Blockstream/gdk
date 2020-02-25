@@ -31,7 +31,8 @@ pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
 use gdk_common::network::Network;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
-use gdk_common::*;
+use gdk_common::model::*;
+use gdk_common::session::Session;
 
 use bitcoin::BitcoinHash;
 use std::io::{Read, Write};

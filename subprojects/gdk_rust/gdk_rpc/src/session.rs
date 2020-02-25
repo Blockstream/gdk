@@ -1,4 +1,3 @@
-use std::mem::transmute;
 
 use serde_json::Value;
 
@@ -10,10 +9,9 @@ use bitcoincore_rpc::RpcApi;
 use gdk_common::constants::*;
 use gdk_common::network::Network;
 use gdk_common::util::OptionExt;
-use gdk_common::GDKRUST_json;
-use gdk_common::Session;
+use gdk_common::model::GDKRUST_json;
+use gdk_common::session::Session;
 use serde_json::from_value;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 #[repr(C)]
