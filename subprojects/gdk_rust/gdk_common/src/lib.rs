@@ -9,6 +9,7 @@ extern crate log;
 use core::mem::transmute;
 use serde_derive::Serialize;
 use serde_json::Value;
+use std::collections::HashMap;
 
 // use crate::network::Network;
 
@@ -27,7 +28,15 @@ impl GDKRUST_json {
     }
 }
 
-pub struct BalanceResult(pub i64);
+pub struct BalanceResult(pub HashMap<String,i64>);
+
+impl BalanceResult {
+    pub fn new_btc(satoshi: i64) -> Self {
+        let mut map = HashMap::new();
+        map.insert("btc".to_string(), satoshi );
+        BalanceResult(map)
+    }
+}
 
 pub struct AddressIO {
     pub address: String,
@@ -106,5 +115,7 @@ pub trait Session<E> {
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Value, E>;
     fn change_settings(&mut self, settings: &Value) -> Result<(), E>;
-    fn convert_amount(&mut self, settings: &Value) -> Result<Value, E>;
+
+    fn exchange_rate(&self, currency: &str) -> Result<f64, E>;
+    fn convert_amount(&self, details: &Value) -> Result<Value, E>;
 }

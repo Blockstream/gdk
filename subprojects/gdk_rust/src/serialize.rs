@@ -9,7 +9,7 @@ pub fn address_result_value(addr: &AddressResult) -> Value {
 }
 
 pub fn balance_result_value(bal: &BalanceResult) -> Value {
-    json!({"btc": bal.0})
+    json!(bal.0)
 }
 
 pub fn address_type_str(addr_type: &AddressType) -> &'static str {
@@ -168,7 +168,7 @@ where
 
     let bal = session.get_balance(num_confs as u32, subaccount).map_err(Into::into)?;
 
-    Ok(balance_result_value(&BalanceResult(bal)))
+    Ok(balance_result_value(&BalanceResult::new_btc(bal)))
 }
 
 pub fn send_transaction<S, E>(session: &S, input: &Value) -> Result<Value, Error>

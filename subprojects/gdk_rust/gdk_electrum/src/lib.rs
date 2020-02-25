@@ -5,6 +5,7 @@ extern crate serde_json;
 
 use log::{debug, error, info, warn};
 
+use gdk_common::constants::{SAT_PER_BIT, SAT_PER_BTC, SAT_PER_MBTC};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -33,9 +34,9 @@ use gdk_common::network::Network;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
 use gdk_common::*;
 
+use bitcoin::BitcoinHash;
 use std::io::{Read, Write};
 use std::str::FromStr;
-use bitcoin::BitcoinHash;
 
 pub struct ElectrumSession<S: Read + Write> {
     pub db_root: String,
@@ -124,6 +125,29 @@ impl<S: Read + Write> ElectrumSession<S> {
             warn!("no registered handler to receive notification");
         }
     }
+
+    fn _fiat_to_sat(&self, amount: f64) -> i64 {
+        btc_to_isat(amount / self.exchange_rate("USD").unwrap()) // FIXME
+    }
+
+    fn _convert_satoshi(&self, amount: i64) -> Value {
+        let currency = "USD"; // TODO
+        let exchange_rate = self.exchange_rate(currency).unwrap(); // FIXME
+        let amount_f = amount as f64;
+
+        json!({
+            "satoshi": amount,
+            "sats": amount.to_string(),
+            "bits": format!("{:.2}", (amount_f / SAT_PER_BIT)),
+            "ubtc": format!("{:.2}", (amount_f / SAT_PER_BIT)), // XXX why twice? same as bits
+            "mbtc": format!("{:.5}", (amount_f / SAT_PER_MBTC)),
+            "btc": format!("{:.8}", (amount_f / SAT_PER_BTC)),
+
+            "fiat_rate": format!("{:.8}", exchange_rate),
+            "fiat_currency": currency,
+            "fiat": format!("{:.2}", (amount_f / SAT_PER_BTC * exchange_rate)),
+        })
+    }
 }
 
 fn make_txlist_item(tx: &WGTransaction) -> TxListItem {
@@ -134,7 +158,7 @@ fn make_txlist_item(tx: &WGTransaction) -> TxListItem {
         memo: "memo".into(),  // TODO: WGTransaction -> TxListItem memo
         txhash: tx.txid.clone(),
         transaction: bitcoin::consensus::encode::serialize(&tx.transaction),
-        satoshi: BalanceResult((tx.received as i64) - (tx.sent as i64)),
+        satoshi: BalanceResult::new_btc((tx.received as i64) - (tx.sent as i64)),
         rbf_optin: false,           // TODO: WGTransaction -> TxListItem rbf_optin
         cap_cpfp: false,            // TODO: WGTransaction -> TxListItem cap_cpfp
         can_rbf: false,             // TODO: WGTransaction -> TxListItem can_rbf
@@ -238,12 +262,13 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, Error> {
         let balance = self.get_balance(num_confs, Some(index))?;
         let txs = self.get_transactions(&json!({}))?;
+        let value = BalanceResult::new_btc(balance);
 
         let subaccounts_fake = Subaccount {
-            type_: "core".into(),
-            name: "fake account".into(),
+            type_: "electrum".into(),
+            name: "Single sig wallet".into(),
             has_transactions: !txs.0.is_empty(),
-            satoshi: BalanceResult(balance),
+            satoshi: value,
         };
 
         Ok(subaccounts_fake)
@@ -302,28 +327,43 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {
-        Ok("".to_string())  // TODO implement
+        Ok("".to_string()) // TODO implement
     }
 
     fn get_settings(&self) -> Result<Value, Error> {
-        Ok(json!({ "unit": "BTC", "altimeout": 600 })) // TODO implement
+        Ok(
+            json!({ "unit": "BTC", "altimeout": 600, "pricing": {"currency": "USD", "exchange": "BITFINEX"} }),
+        ) // TODO implement
     }
 
     fn get_available_currencies(&self) -> Result<Value, Error> {
-        Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITSTAMP": [ "USD" ] } }))  // TODO implement
+        Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITFINEX": [ "USD" ] } }))
+        // TODO implement
     }
 
     fn change_settings(&mut self, _settings: &Value) -> Result<(), Error> {
         Err(Error::Generic("implementme: ElectrumSession change_settings".into()))
     }
 
-    fn convert_amount(&mut self, amount: &Value) -> Result<Value, Error> {
-        Ok(amount.clone())
+    fn exchange_rate(&self, _currency: &str) -> Result<f64, Error> {
+        Ok(1.2) // TODO
     }
 
     // fn register_user(&mut self, mnemonic: String) -> Result<(), Error> {
     //     Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address"))
     // }
+
+    fn convert_amount(&self, details: &Value) -> Result<Value, Error> {
+        // this method
+        let satoshi = details["satoshi"]
+            .as_i64()
+            .or_else(|| f64_from_val(&details["btc"]).map(btc_to_isat))
+            .or_else(|| f64_from_val(&details["fiat"]).map(|x| self._fiat_to_sat(x)));
+        match satoshi {
+            Some(satoshi) => Ok(self._convert_satoshi(satoshi)),
+            None => Err(Error::Generic("convert_amount with invalid json".to_string())),
+        }
+    }
 }
 
 fn native_activity_create() {
@@ -488,4 +528,20 @@ mod test {
         let json = serde_json::to_string_pretty(&wgxpub).unwrap();
         println!("WGExtendedPubKey {}", json);
     }*/
+}
+
+pub fn f64_from_val(val: &Value) -> Option<f64> {
+    val.as_f64().or_else(|| val.as_str().and_then(|x| x.parse().ok()))
+}
+
+pub fn btc_to_usat(amount: f64) -> u64 {
+    (amount * SAT_PER_BTC) as u64
+}
+
+pub fn btc_to_isat(amount: f64) -> i64 {
+    (amount * SAT_PER_BTC) as i64
+}
+
+pub fn usat_to_fbtc(sat: u64) -> f64 {
+    (sat as f64) / SAT_PER_BTC
 }
