@@ -45,8 +45,6 @@ use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
 // use gdk_rpc::session::RpcSession;
 use crate::error::Error;
 
-
-
 pub enum GdkSession {
     // Rpc(RpcSession),
     Electrum(ElectrumSession<ElectrumPlaintextStream>),
@@ -169,7 +167,6 @@ pub extern "C" fn GDKRUST_create_session(
     ok!(ret, sess, GA_OK)
 }
 
-
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
     if !network.is_object() || !network.as_object().unwrap().contains_key("server_type") {
         error!("Expected network to be an object with a server_type key");
@@ -271,7 +268,9 @@ where
 
         "login" => login(session, input).map(|v| json!(v)),
 
-        "get_subaccounts" => session.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
+        "get_subaccounts" => {
+            session.get_subaccounts().map(|x| serialize::subaccounts_value(&x)).map_err(Into::into)
+        }
 
         "get_subaccount" => get_subaccount(session, input),
 
@@ -280,10 +279,7 @@ where
         }
 
         "get_transaction_details" => get_transaction_details(session, input),
-        "get_balance" => session
-            .get_balance(input)
-            .map(|x| balance_result_value(&BalanceResult(x)))
-            .map_err(Into::into),
+        "get_balance" => serialize::get_balance(session, input),
         "set_transaction_memo" => set_transaction_memo(session, input),
         "create_transaction" => {
             session.create_transaction(input).map(|v| json!(v)).map_err(Into::into)

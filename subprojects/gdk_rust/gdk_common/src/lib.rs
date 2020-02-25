@@ -67,6 +67,13 @@ pub struct TxListItem {
     pub outputs: Vec<AddressIO>, //tx.output.iter().map(format_gdk_output).collect(),
 }
 
+pub struct Subaccount {
+    pub type_: String,
+    pub name: String,
+    pub has_transactions: bool,
+    pub satoshi: BalanceResult,
+}
+
 // This one is simple enough to derive a serializer
 #[derive(Serialize, Debug)]
 pub struct FeeEstimate(pub u64);
@@ -82,11 +89,11 @@ pub trait Session<E> {
     fn disconnect(&mut self) -> Result<(), E>;
     // fn register_user(&mut self, mnemonic: String) -> Result<(), E>;
     fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), E>;
-    fn get_subaccounts(&self) -> Result<Value, E>;
-    fn get_subaccount(&self, index: u32) -> Result<Value, E>;
+    fn get_subaccounts(&self) -> Result<Vec<Subaccount>, E>;
+    fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, E>;
     fn get_transactions(&self, details: &Value) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
-    fn get_balance(&self, details: &Value) -> Result<i64, E>;
+    fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<i64, E>;
     fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), E>;
     fn create_transaction(&self, details: &Value) -> Result<String, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &Value) -> Result<Value, E>;
