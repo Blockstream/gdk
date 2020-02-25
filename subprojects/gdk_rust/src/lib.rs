@@ -110,7 +110,6 @@ macro_rules! ok {
 macro_rules! json_res {
     ($t:expr, $x:expr, $ret:expr) => {{
         let x = json!($x);
-        debug!("ok_json!() {:?}", x);
         ok!($t, GDKRUST_json::new(x), $ret)
     }};
 }
