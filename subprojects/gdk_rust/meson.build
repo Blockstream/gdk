@@ -30,6 +30,7 @@ endif
 
 rust_sources = [
   'src/lib.rs',
+  'src/serialize.rs',
 
   'gdk_common/src/constants.rs',
   'gdk_common/src/lib.rs',
