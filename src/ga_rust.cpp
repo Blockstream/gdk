@@ -9,6 +9,7 @@
 #include "ga_rust.hpp"
 #include "exception.hpp"
 #include "logging.hpp"
+#include "utils.hpp"
 
 namespace ga {
 namespace sdk {
@@ -337,7 +338,29 @@ namespace sdk {
 
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
     {
-        return call_session("create_transaction", details);
+        nlohmann::json result(details);
+
+        auto addressees_p = result.find("addressees");
+        for (auto& addressee : *addressees_p) {
+            nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_netparams.bip21_prefix());
+            if (!uri_params.is_object())
+                continue;
+            addressee["address"] = uri_params["address"];
+            addressee["satoshi"] = addressee.value("satoshi", 0);
+            if (m_netparams.liquid()) {
+                if (uri_params["bip21-params"].contains("amount") && !uri_params["bip21-params"].contains("assetid")) {
+                    throw std::runtime_error("amount without assetid is not valid"); // fixme return error
+                } else if (uri_params["bip21-params"].contains("assetid")) {
+                    if (uri_params["bip21-params"]["assetid"] == m_netparams.policy_asset()) {
+                        addressee["asset_tag"] = "btc";
+                    } else {
+                        addressee["asset_tag"] = uri_params["bip21-params"]["assetid"];
+                    }
+                }
+            }
+        }
+
+        return call_session("create_transaction", result);
     }
 
     nlohmann::json ga_rust::sign_transaction(const nlohmann::json& details)
