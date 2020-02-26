@@ -28,8 +28,10 @@ use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
+use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::network::Network;
+use gdk_common::password::Password;
 use gdk_common::session::Session;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
 
@@ -182,12 +184,17 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession connect".into()))
     }
 
-    fn login(&mut self, mnemonic: String, password: Option<String>) -> Result<(), Error> {
+    fn login(&mut self, mnemonic: &Mnemonic, password: Option<Password>) -> Result<(), Error> {
         info!("login {:#?}", self.network);
 
         // TODO: passphrase?
-        let seed = wally::bip39_mnemonic_to_seed(&mnemonic, &password.unwrap_or_default())
-            .ok_or(Error::InvalidMnemonic)?;
+
+        let mnem_str = mnemonic.clone().get_mnemonic_str();
+        let seed = wally::bip39_mnemonic_to_seed(
+            &mnem_str,
+            &password.map(|p| p.get_password_str()).unwrap_or_default(),
+        )
+        .ok_or(Error::InvalidMnemonic)?;
         let secp = Secp256k1::new();
         let xprv =
             ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
@@ -198,7 +205,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
-        let wallet_name = hex::encode(sha256::Hash::hash(mnemonic.as_bytes()));
+        let wallet_name = hex::encode(sha256::Hash::hash(mnem_str.as_bytes()));
 
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
@@ -209,6 +216,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         let mut wallet = WalletCtx::new(
             &self.db_root,
             wallet_name,
+            mnemonic.clone(),
             self.network.clone(),
             xpub,
             master_blinding,
@@ -223,7 +231,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
-        let a1 = self.wallet.as_ref().unwrap().get_address()?;
+        let a1 = self.get_wallet()?.get_address()?;
         debug!("get_receive_address: {:?} ", a1);
         Ok(AddressResult(a1.address.to_string()))
     }
@@ -315,8 +323,8 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Ok(estimates)
     }
 
-    fn get_mnemonic_passphrase(&self, _password: &str) -> Result<String, Error> {
-        Ok("".to_string()) // TODO implement
+    fn get_mnemonic(&self) -> Result<&Mnemonic, Error> {
+        self.get_wallet().map(|wallet| wallet.get_mnemonic())
     }
 
     fn get_settings(&self) -> Result<Value, Error> {

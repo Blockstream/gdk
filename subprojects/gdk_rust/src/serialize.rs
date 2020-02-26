@@ -164,14 +164,14 @@ where
     E: Into<Error>,
     S: Session<E>,
 {
-    let mnemonic = input["mnemonic"]
+    let mnemonic_str = input["mnemonic"]
         .as_str()
         .map(|s| s.to_string())
         .ok_or_else(|| Error::Other("login: missing mnemonic argument".into()))?;
 
-    let pass = input["password"].as_str().map(|x| x.to_string());
+    let pass_str = input["password"].as_str().map(|x| x.to_string());
 
-    session.login(mnemonic, pass).map_err(Into::into)
+    session.login(&mnemonic_str.into(), pass_str.map(Into::into)).map_err(Into::into)
 }
 
 pub fn get_subaccount<S, E>(session: &S, input: &Value) -> Result<Value, Error>

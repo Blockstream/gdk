@@ -415,7 +415,8 @@ namespace sdk {
 
     std::string ga_rust::get_mnemonic_passphrase(const std::string& password)
     {
-        return call_session("get_mnemonic_passphrase", nlohmann::json(password)).get<std::string>();
+        auto mnemonic = call_session("get_mnemonic", nlohmann::json(password)).get<std::string>();
+        return password.empty() ? mnemonic : encrypt_mnemonic(mnemonic, password);
     }
 
     std::string ga_rust::get_system_message()

@@ -313,11 +313,9 @@ where
             session.get_receive_address(input).map(|x| address_result_value(&x)).map_err(Into::into)
         }
 
-        "get_mnemonic_passphrase" => session
-            .get_mnemonic_passphrase(input.as_str().ok_or_else(|| {
-                Error::Other("get_mnemonic_passphrase: input not a string".into())
-            })?)
-            .map(|v| json!(v))
+        "get_mnemonic" => session
+            .get_mnemonic()
+            .map(|m| Value::String(m.clone().get_mnemonic_str()))
             .map_err(Into::into),
 
         "get_fee_estimates" => {

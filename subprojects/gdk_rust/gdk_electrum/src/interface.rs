@@ -16,6 +16,7 @@ use elements::{self, AddressParams};
 use log::{debug, info};
 use sled::{Batch, Db};
 
+use gdk_common::mnemonic::Mnemonic;
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::*;
@@ -30,6 +31,7 @@ pub struct WalletCtx {
     wallet_name: String,
     secp: Secp256k1<All>,
     network: Network,
+    mnemonic: Mnemonic,
     db: WalletDB,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
@@ -69,6 +71,7 @@ impl WalletCtx {
     pub fn new(
         db_root: &str,
         wallet_name: String,
+        mnemonic: Mnemonic,
         network: Network,
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
@@ -79,6 +82,7 @@ impl WalletCtx {
 
         Ok(WalletCtx {
             wallet_name,
+            mnemonic,
             db,
             network, // TODO: from db
             secp: Secp256k1::gen_new(),
@@ -86,6 +90,10 @@ impl WalletCtx {
             master_blinding,
             change_max_deriv: 0,
         })
+    }
+
+    pub fn get_mnemonic(&self) -> &Mnemonic {
+        &self.mnemonic
     }
 
     fn derive_address(
