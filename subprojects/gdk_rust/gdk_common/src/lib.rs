@@ -28,12 +28,12 @@ impl GDKRUST_json {
     }
 }
 
-pub struct BalanceResult(pub HashMap<String,i64>);
+pub struct BalanceResult(pub HashMap<String, i64>);
 
 impl BalanceResult {
     pub fn new_btc(satoshi: i64) -> Self {
         let mut map = HashMap::new();
-        map.insert("btc".to_string(), satoshi );
+        map.insert("btc".to_string(), satoshi);
         BalanceResult(map)
     }
 }
