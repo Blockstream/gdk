@@ -13,7 +13,6 @@ rand = "0.7.2"
 hex = "0.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bitcoin_hashes = "0.7.1"
 sled = "0.29.2"
 sha2 = "0.8.0"
 gdk-common = { path = "../gdk_common" }
@@ -23,7 +22,7 @@ android_logger = { version = "0.8.6", optional = true }
 
 [dependencies.electrum-client]
 git = "https://github.com/RCasatta/rust-electrum-client/"
-rev = "e08d4e169da348f65c198b2ef5f8cb77259786b7"
+rev = "01d9ec70f16cc9215f8bb0339c04569af9bab63b"
 
 [dependencies.bitcoin]
 version = "0.23"

@@ -15,7 +15,6 @@ stderr_logger = ["stderrlog"]
 
 [dependencies]
 bitcoin = { version = "0.23", features = [ "use-serde" ] }
-bitcoin_hashes = { version = "0.7", features = [ "serde" ] }
 rand = "0.7"
 gdk-electrum = { path = "gdk_electrum", features = ["android_log"] }
 # gdk-rpc = { path = "gdk_rpc" }

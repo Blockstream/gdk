@@ -7,12 +7,12 @@ use hex;
 
 use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+use bitcoin::hashes::hex::FromHex;
+use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin_hashes::hex::FromHex;
-use bitcoin_hashes::Hash;
 use elements::{self, AddressParams};
 
 use sled::{Batch, Db};
@@ -164,9 +164,17 @@ impl WalletCtx {
         while i - last_found < 20 {
             let addr = self.derive_address(&self.xpub, &[0, i])?;
             let this_scriptpubkey = addr.script_pubkey();
-            debug!("addr: {:?} this_scriptpubkey: {}", addr, hex::encode(&this_scriptpubkey.as_bytes()));
+            debug!(
+                "addr: {:?} this_scriptpubkey: {}",
+                addr,
+                hex::encode(&this_scriptpubkey.as_bytes())
+            );
             let history = client.script_get_history(&this_scriptpubkey)?;
-            debug!("addr: {:?} this_scriptpubkey: {}", addr, hex::encode(&this_scriptpubkey.as_bytes()));
+            debug!(
+                "addr: {:?} this_scriptpubkey: {}",
+                addr,
+                hex::encode(&this_scriptpubkey.as_bytes())
+            );
 
             if history.len() == 0 {
                 i += 1;

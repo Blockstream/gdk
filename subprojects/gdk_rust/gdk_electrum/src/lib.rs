@@ -24,10 +24,9 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::model::*;
 
+use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin_hashes::sha256;
-use bitcoin_hashes::Hash;
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
 use gdk_common::network::Network;
