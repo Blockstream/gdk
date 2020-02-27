@@ -1,4 +1,5 @@
 use crate::constants::{GA_DEBUG, GA_INFO, GA_NONE, SAT_PER_BTC};
+use crate::model::ExchangeRate;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -16,7 +17,6 @@ lazy_static! {
     pub static ref SECP: bitcoin::secp256k1::Secp256k1<bitcoin::secp256k1::All> =
         bitcoin::secp256k1::Secp256k1::new();
 }
-
 
 pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *const c_char {
     CString::new(data.into().into_owned()).unwrap().into_raw()
@@ -75,6 +75,10 @@ pub fn btc_to_isat(amount: f64) -> i64 {
 
 pub fn usat_to_fbtc(sat: u64) -> f64 {
     (sat as f64) / SAT_PER_BTC
+}
+
+pub fn fiat_to_sat(fiat_amount: f64, exchange_rate: &ExchangeRate) -> i64 {
+    btc_to_isat(fiat_amount / exchange_rate.rate)
 }
 
 #[allow(non_snake_case)]

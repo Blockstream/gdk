@@ -28,7 +28,4 @@ pub trait Session<E> {
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Value, E>;
     fn change_settings(&mut self, settings: &Value) -> Result<(), E>;
-
-    fn exchange_rate(&self, currency: &str) -> Result<f64, E>;
-    fn convert_amount(&self, details: &Value) -> Result<Value, E>;
 }

@@ -234,16 +234,6 @@ impl Session<Error> for RpcSession {
         Ok(currencies)
     }
 
-    fn convert_amount(&self, value_details: Value) -> Result<Value, Error> {
-        debug!("GA_convert_amount() {:?}", value_details);
-
-        let wallet = self.wallet().or_err("no loaded wallet")?;
-        let units = wallet.convert_amount(&value_details)?;
-
-        debug!("GA_convert_amount() result: {:?}", units);
-        Ok(units)
-    }
-
     fn get_fee_estimates(&self) -> Result<Value, Error> {
         let wallet = self.wallet().or_err("no loaded wallet")?;
         let estimates = wallet.get_fee_estimates().or_err("fee estimates unavailable")?;
@@ -258,39 +248,6 @@ impl Session<Error> for RpcSession {
         // XXX should we allow patching just some setting fields instead of replacing it?
         self.settings = from_value(settings.clone())?;
         Ok(())
-    }
-
-    fn convert_amount(&self, details: &Value) -> Result<Value, Error> {
-        let satoshi = details["satoshi"]
-        .as_i64()
-        .or_else(|| f64_from_val(&details["btc"]).map(btc_to_isat))
-        .or_else(|| f64_from_val(&details["fiat"]).map(|x| self._fiat_to_sat(x)))
-        .or_else(|| return Err(Error::Other("convert_amount with invalid json")));
-
-        Ok(self._convert_satoshi(satoshi))
-    }
-
-    fn _fiat_to_sat(&self, amount: f64) -> i64 {
-        btc_to_isat(amount / self.exchange_rate("USD").unwrap()) // FIXME
-    }
-
-    fn _convert_satoshi(&self, amount: i64) -> Value {
-        let currency = "USD"; // TODO
-        let exchange_rate = self.exchange_rate(currency).unwrap();  // FIXME
-        let amount_f = amount as f64;
-
-        json!({
-            "satoshi": amount,
-            "sats": amount.to_string(),
-            "bits": format!("{:.2}", (amount_f / SAT_PER_BIT)),
-            "ubtc": format!("{:.2}", (amount_f / SAT_PER_BIT)), // XXX why twice? same as bits
-            "mbtc": format!("{:.5}", (amount_f / SAT_PER_MBTC)),
-            "btc": format!("{:.8}", (amount_f / SAT_PER_BTC)),
-
-            "fiat_rate": format!("{:.8}", exchange_rate),
-            "fiat_currency": currency,
-            "fiat": format!("{:.2}", (amount_f / SAT_PER_BTC * exchange_rate)),
-        })
     }
 }
 
