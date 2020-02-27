@@ -29,10 +29,10 @@ use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
-use gdk_common::network::Network;
-use gdk_common::wally::{self, asset_blinding_key_from_seed};
 use gdk_common::model::*;
+use gdk_common::network::Network;
 use gdk_common::session::Session;
+use gdk_common::wally::{self, asset_blinding_key_from_seed};
 
 use bitcoin::BitcoinHash;
 use std::io::{Read, Write};

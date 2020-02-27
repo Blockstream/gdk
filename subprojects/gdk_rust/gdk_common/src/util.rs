@@ -17,6 +17,7 @@ lazy_static! {
         bitcoin::secp256k1::Secp256k1::new();
 }
 
+
 pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *const c_char {
     CString::new(data.into().into_owned()).unwrap().into_raw()
 }

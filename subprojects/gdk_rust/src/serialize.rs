@@ -2,6 +2,7 @@ use crate::error::Error;
 
 use bitcoin::util::address::AddressType;
 use gdk_common::*;
+use gdk_common::model::{ExchangeRate, ExchangeRateError, ExchangeRateErrorType, ExchangeRateOk};
 use serde_json::Value;
 
 pub fn address_result_value(addr: &AddressResult) -> Value {

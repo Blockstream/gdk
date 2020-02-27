@@ -23,6 +23,51 @@ impl BalanceResult {
     }
 }
 
+// =========== v exchange rate stuff v ===========
+
+// TODO use these types from bitcoin-exchange-rates lib once it's in there
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExchangeRate {
+    pub currency: String,
+    pub rate: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ExchangeRateError {
+    pub message: String,
+    pub error: ExchangeRateErrorType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExchangeRateOk {
+    NoBackends, // this probably should't be a hard error,
+    // so we label it an Ok result
+    RateOk(ExchangeRate),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub enum ExchangeRateErrorType {
+    FetchError,
+    ParseError,
+}
+
+pub type ExchangeRateRes = Result<ExchangeRateOk, ExchangeRateError>;
+
+impl ExchangeRateOk {
+    pub fn ok(currency: String, rate: f64) -> ExchangeRateOk {
+        ExchangeRateOk::RateOk(ExchangeRate {
+            currency,
+            rate,
+        })
+    }
+
+    pub fn no_backends() -> ExchangeRateOk {
+        ExchangeRateOk::NoBackends
+    }
+}
+
+// =========== ^ exchange rate stuff ^ ===========
 
 pub struct AddressIO {
     pub address: String,
