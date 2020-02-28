@@ -1,5 +1,6 @@
 #include "src/network_parameters.hpp"
 #include "src/session.hpp"
+#include "src/amount.hpp"
 #include <assert.h>
 #include <nlohmann/json.hpp>
 #include <stdio.h>
@@ -13,7 +14,8 @@ void test_receive_addresses(ga::sdk::session& session) {
 
     assert(a1 != a2);
 
-    printf("addr1: %s\naddr2: %s\n", a1.c_str(), a2.c_str());
+    printf("# addr1: %s\naddr2: %s\n", a1.c_str(), a2.c_str());
+    printf("\nok test_receive_addresses\n\n");
 }
 
 void test_get_transactions(ga::sdk::session& session) {
@@ -21,7 +23,8 @@ void test_get_transactions(ga::sdk::session& session) {
     auto ret = session.get_transactions(details);
     auto tx = ret.size() > 0 ? ret[0] : ret;
 
-    printf("transactions (%ld): \n%s", ret.size(), tx.dump().c_str());
+    printf("# transactions (%ld): \n%s", ret.size(), tx.dump().c_str());
+    printf("\nok test_get_transactions\n\n");
 }
 
 void test_get_balance(ga::sdk::session& session) {
@@ -30,6 +33,7 @@ void test_get_balance(ga::sdk::session& session) {
     auto res = session.get_balance(balance_details);
 
     assert(res["btc"] >= 0);
+    printf("\nok test_get_balance\n\n");
 }
 
 
@@ -40,7 +44,8 @@ void test_get_fee_estimates(ga::sdk::session& session) {
     assert(fees.size() > 0);
     assert(fees[0].get<double>() >= 0);
 
-    // printf("estimates %s\n", res.dump().c_str());
+    printf("# estimates %s\n", res.dump().c_str());
+    printf("\nok test_get_fee_estimates\n\n");
 }
 
 void test_create_sign_transaction(ga::sdk::session& session) {
@@ -51,22 +56,48 @@ void test_create_sign_transaction(ga::sdk::session& session) {
       { "fee_rate", 1000 }
     };
 
-    printf("create_tx %s\n", create_tx.dump().c_str());
+    printf("# create_tx %s\n", create_tx.dump().c_str());
     auto tx_created = session.create_transaction(create_tx);
-    printf("tx_created %s\n", tx_created.dump().c_str());
+    printf("# tx_created %s\n", tx_created.dump().c_str());
     auto tx_signed = session.sign_transaction(tx_created);
-    printf("tx_signed %s\n", tx_signed.dump().c_str());
+    printf("# tx_signed %s\n", tx_signed.dump().c_str());
 
-    printf("\nok test_create_sign_transaction\n\n", tx_signed.dump().c_str());
+    printf("\nok test_create_sign_transaction\n\n");
 }
 
 void test_get_mnemonic_passphrase(ga::sdk::session& session) {
     auto mnemonic = session.get_mnemonic_passphrase("");
+    printf("\nok test_get_mnemonic_with_empty_pass\n\n");
     //auto enc_mnemonic = session.get_mnemonic_passphrase("password");
 
     //assert(mnemonic != enc_mnemonic);
     // printf("\nok test_get_mnemonic_passphrase\n\n");
 }
+
+// TODO: switch to amount::convert instead of doing things in rust
+void test_convert_amount(ga::sdk::session& session) {
+    printf("# test_convert_amount\n");
+    auto details = nlohmann::json({{"satoshi", 10000}});
+    auto result = session.convert_amount(details);
+
+    printf("# test_convert_amount #1: {satoshi: 10000} %s\n", result.dump().c_str());
+
+    assert(result["bits"] == "100.00");
+    assert(result["ubtc"] == "100.00");
+    assert(result["btc"] == "0.00010000");
+
+    details = nlohmann::json({{"btc", "0.1284502"}});
+    result = session.convert_amount(details);
+
+    printf("# test_convert_amount #2: {btc: 0.1284502} %s\n", result.dump().c_str());
+
+    assert(result["sats"] == "12845020");
+    assert(result["bits"] == "128450.20");
+    assert(result["btc"] == "0.12845020");
+
+    printf("\nok test_convert_amount\n\n");
+}
+
 
 int main()
 {
@@ -98,10 +129,10 @@ int main()
     if (tls != nullptr)
         net_params["tls"] = std::string(tls) == "true" ? true : false;
 
-    printf("====================================\n");
-    printf("testing with network(%s) url(%s) state_dir(%s)\n",
+    printf("# ====================================\n");
+    printf("# testing with network(%s) url(%s) state_dir(%s)\n",
            network, url, state_dir.c_str());
-    printf("====================================\n");
+    printf("# ====================================\n");
 
     ga::sdk::init(init_config);
     {
@@ -117,8 +148,9 @@ int main()
         test_get_transactions(session);
         test_get_balance(session);
         test_get_fee_estimates(session);
-        test_create_sign_transaction(session);
+        // test_create_sign_transaction(session); // TODO (jb55): Fix w/ empty utxos
         test_get_mnemonic_passphrase(session);
+        test_convert_amount(session);
     }
 
     return 0;
