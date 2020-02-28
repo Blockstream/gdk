@@ -56,6 +56,14 @@ void test_create_transaction(ga::sdk::session& session) {
     printf("tx_created %s\n", tx_created.dump().c_str());
 }
 
+void test_get_mnemonic_passphrase(ga::sdk::session& session) {
+    auto mnemonic = session.get_mnemonic_passphrase("");
+    auto enc_mnemonic = session.get_mnemonic_passphrase("password");
+
+    assert(mnemonic != enc_mnemonic);
+    printf("ok test_get_mnemonic_passphrase\n");
+}
+
 int main()
 {
     const char *mnemonic = getenv("BITCOIN_MNEMONIC");
@@ -65,7 +73,7 @@ int main()
     const char *tls = getenv("GDK_TLS");
 
     if (mnemonic == nullptr)
-        mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        mnemonic = "coast tilt agent message member capable actual hotel birth trophy hint reunion unlock resource belt accident response bunker thunder tennis bring youth behind panther";
 
     if (network == nullptr)
         network = "electrum-testnet";
@@ -98,13 +106,15 @@ int main()
         session.connect(net_params);
         session.login(mnemonic, "");
 
+        // auto net = session.get_network_parameters().get(network);
+        // auto is_regtest = net["development"].get<bool>();
+
         test_receive_addresses(session);
         test_get_transactions(session);
         test_get_balance(session);
         test_get_fee_estimates(session);
         test_create_transaction(session);
-        // auto net = session.get_network_parameters().get(network);
-        // auto is_regtest = net["development"].get<bool>();
+        test_get_mnemonic_passphrase(session);
     }
 
     return 0;
