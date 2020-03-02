@@ -239,7 +239,7 @@ where
     Ok(balance_result_value(&BalanceResult::new_btc(bal)))
 }
 
-pub fn send_transaction<S, E>(session: &S, input: &Value) -> Result<Value, Error>
+pub fn send_transaction<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,

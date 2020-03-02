@@ -43,8 +43,8 @@ void test_get_fee_estimates(ga::sdk::session& session) {
     // printf("estimates %s\n", res.dump().c_str());
 }
 
-void test_create_transaction(ga::sdk::session& session) {
-    nlohmann::json addressees = {{{ "address", "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b"}, { "satoshi", 100000} }};
+void test_create_sign_transaction(ga::sdk::session& session) {
+    nlohmann::json addressees = {{{ "address", "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b"}, { "satoshi", 2000} }};
     nlohmann::json create_tx = {
       { "addressees",  addressees},
       { "subaccount", 0 },
@@ -54,13 +54,15 @@ void test_create_transaction(ga::sdk::session& session) {
     printf("create_tx %s\n", create_tx.dump().c_str());
     auto tx_created = session.create_transaction(create_tx);
     printf("tx_created %s\n", tx_created.dump().c_str());
+    auto tx_signed = session.sign_transaction(tx_created);
+    printf("tx_signed %s\n", tx_signed.dump().c_str());
 }
 
 void test_get_mnemonic_passphrase(ga::sdk::session& session) {
     auto mnemonic = session.get_mnemonic_passphrase("");
-    auto enc_mnemonic = session.get_mnemonic_passphrase("password");
+    //auto enc_mnemonic = session.get_mnemonic_passphrase("password");
 
-    assert(mnemonic != enc_mnemonic);
+    //assert(mnemonic != enc_mnemonic);
     printf("ok test_get_mnemonic_passphrase\n");
 }
 
@@ -73,7 +75,7 @@ int main()
     const char *tls = getenv("GDK_TLS");
 
     if (mnemonic == nullptr)
-        mnemonic = "coast tilt agent message member capable actual hotel birth trophy hint reunion unlock resource belt accident response bunker thunder tennis bring youth behind panther";
+        mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
     if (network == nullptr)
         network = "electrum-testnet";
@@ -113,7 +115,7 @@ int main()
         test_get_transactions(session);
         test_get_balance(session);
         test_get_fee_estimates(session);
-        test_create_transaction(session);
+        test_create_sign_transaction(session);
         test_get_mnemonic_passphrase(session);
     }
 

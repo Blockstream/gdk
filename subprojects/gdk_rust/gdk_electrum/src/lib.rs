@@ -23,9 +23,11 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::model::*;
 
+use bitcoin::consensus::deserialize;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::Transaction;
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
 use gdk_common::mnemonic::Mnemonic;
@@ -129,16 +131,15 @@ impl<S: Read + Write> ElectrumSession<S> {
 }
 
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
+    let (satoshi, type_) = abs_diff(tx.received.unwrap_or(0), tx.sent.unwrap_or(0));
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
         created_at: tx.timestamp.unwrap_or(0),
-        type_: "type".into(), // TODO: TransactionMeta -> TxListItem type
-        memo: "memo".into(),  // TODO: TransactionMeta -> TxListItem memo
+        type_,
+        memo: "memo".into(), // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),
         transaction: bitcoin::consensus::encode::serialize(&tx.transaction), // FIXME
-        satoshi: BalanceResult::new_btc(
-            tx.received.unwrap_or(0).checked_sub(tx.sent.unwrap_or(0)).unwrap_or(0),
-        ),
+        satoshi: BalanceResult::new_btc(satoshi),
         rbf_optin: false,           // TODO: TransactionMeta -> TxListItem rbf_optin
         cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
         can_rbf: false,             // TODO: TransactionMeta -> TxListItem can_rbf
@@ -152,6 +153,14 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         addressees: vec![], // notice the extra "e" -- its intentional
         inputs: vec![],     // tx.input.iter().map(format_gdk_input).collect(),
         outputs: vec![],    //tx.output.iter().map(format_gdk_output).collect(),
+    }
+}
+
+fn abs_diff(a: u64, b: u64) -> (u64, String) {
+    if a > b {
+        (a - b, "incoming".to_string())
+    } else {
+        (b - a, "outgoing".to_string())
     }
 }
 
@@ -218,6 +227,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             wallet_name,
             mnemonic.clone(),
             self.network.clone(),
+            xprv,
             xpub,
             master_blinding,
         )?;
@@ -279,7 +289,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn create_transaction(&self, details: &Value) -> Result<Value, Error> {
-        println!("{:#?}", details);
+        debug!("{:#?}", details);
         let tx_req = serde_json::from_value(details.clone())?;
         let value = match self.get_wallet()?.create_tx(tx_req) {
             Ok(tx) => serde_json::to_value(tx).unwrap(),
@@ -293,16 +303,26 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Ok(value)
     }
 
-    fn sign_transaction(&self, _tx_detail_unsigned: &Value) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession sign_transaction".into()))
+    fn sign_transaction(&self, tx_detail_unsigned: &Value) -> Result<Value, Error> {
+        debug!("sign_transaction  {:#?}", tx_detail_unsigned);
+        let tx_detail_unsigned = serde_json::from_value(tx_detail_unsigned.clone())?;
+        let result = self.get_wallet()?.sign(&tx_detail_unsigned)?;
+        debug!("result {:#?}", result);
+        Ok(serde_json::to_value(result)?)
     }
 
-    fn send_transaction(&self, _tx_detail_signed: &Value) -> Result<String, Error> {
-        Err(Error::Generic("implementme: ElectrumSession send_transaction".into()))
+    fn send_transaction(&mut self, tx_detail_signed: &Value) -> Result<String, Error> {
+        debug!("send_transaction {:#?}", tx_detail_signed);
+        let tx_detail_signed: TransactionMeta = serde_json::from_value(tx_detail_signed.clone())?;
+        self.client.transaction_broadcast(&tx_detail_signed.transaction)?;
+        Ok(format!("{}", tx_detail_signed.txid))
     }
 
-    fn broadcast_transaction(&self, _tx_hex: &str) -> Result<String, Error> {
-        Err(Error::Generic("implementme: ElectrumSession broadcast_transaction".into()))
+    fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
+        debug!("broadcast_transaction {:#?}", tx_hex);
+        let tx: Transaction = deserialize(&hex::decode(tx_hex)?)?;
+        self.client.transaction_broadcast(&tx)?;
+        Ok(format!("{}", tx.txid()))
     }
 
     /// The estimates are returned as an array of 25 elements. Each element is

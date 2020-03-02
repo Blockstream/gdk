@@ -318,7 +318,8 @@ namespace sdk {
         size_t written;
         std::vector<unsigned char> entropy(BIP39_ENTROPY_LEN_288); // FIXME: secure_array
         GDK_VERIFY(::bip39_mnemonic_to_bytes(nullptr, mnemonic.data(), entropy.data(), entropy.size(), &written));
-        GDK_RUNTIME_ASSERT(written == BIP39_ENTROPY_LEN_256 || written == BIP39_ENTROPY_LEN_288);
+        GDK_RUNTIME_ASSERT(
+            written == BIP39_ENTROPY_LEN_128 || written == BIP39_ENTROPY_LEN_256 || written == BIP39_ENTROPY_LEN_288);
         entropy.resize(written);
         return entropy;
     }

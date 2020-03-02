@@ -80,16 +80,6 @@ impl WalletDB {
         Ok(())
     }
 
-    pub fn get_tx(&self, txid: &String) -> Result<Option<TransactionMeta>, Error> {
-        let mut key = vec!['t' as u8];
-        key.append(&mut hex::decode(txid)?);
-
-        Ok(match self.tree.get(key)? {
-            Some(val) => Some(serde_json::from_slice(&val)?),
-            None => None,
-        })
-    }
-
     pub fn save_spent(&self, outpoint: &OutPoint, batch: &mut Batch) -> Result<(), Error> {
         let mut key = vec!['s' as u8];
         key.append(&mut serialize(outpoint));
@@ -115,12 +105,14 @@ impl WalletDB {
         }
         Ok(vec)
     }
+
     fn insert_prefix(&self, prefix: u8, key: Vec<u8>, value: Vec<u8>) -> Result<(), Error> {
         let mut prefix_key = Vec::with_capacity(1 + key.len());
         prefix_key.push(prefix);
         prefix_key.extend(key);
         self.tree.insert(prefix_key, value).map(|_| ()).map_err(|e| e.into())
     }
+
     pub fn set_external_index(&self, num: u32) -> Result<(), Error> {
         self.insert_prefix('e' as u8, vec![], serde_json::to_vec(&json!(num))?)
     }
@@ -128,6 +120,7 @@ impl WalletDB {
     pub fn set_internal_index(&self, num: u32) -> Result<(), Error> {
         self.insert_prefix('i' as u8, vec![], serde_json::to_vec(&json!(num))?)
     }
+
     fn get_index(&self, key: &[u8]) -> Result<u32, Error> {
         self.tree
             .get(key)?

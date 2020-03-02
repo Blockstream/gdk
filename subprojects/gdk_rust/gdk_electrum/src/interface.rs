@@ -3,14 +3,15 @@ use rand::Rng;
 use std::convert::TryFrom;
 use std::time::Instant;
 
-use bitcoin::blockdata::script::Script;
+use bitcoin::blockdata::script::{Builder, Script};
 use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::Txid;
+use bitcoin::{PublicKey, Txid};
 use elements::{self, AddressParams};
 
 use log::{debug, info};
@@ -33,6 +34,7 @@ pub struct WalletCtx {
     network: Network,
     mnemonic: Mnemonic,
     db: WalletDB,
+    xprv: ExtendedPrivKey,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
     change_max_deriv: u32,
@@ -73,6 +75,7 @@ impl WalletCtx {
         wallet_name: String,
         mnemonic: Mnemonic,
         network: Network,
+        xprv: ExtendedPrivKey,
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
@@ -86,6 +89,7 @@ impl WalletCtx {
             db,
             network, // TODO: from db
             secp: Secp256k1::gen_new(),
+            xprv,
             xpub,
             master_blinding,
             change_max_deriv: 0,
@@ -356,7 +360,7 @@ impl WalletCtx {
             output: vec![],
         };
 
-        let fee_rate = request.fee_rate.unwrap_or(1000.0) / 1000.0;
+        let fee_rate = request.fee_rate.unwrap_or(1000.0) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
 
         let mut fee_val = 0;
         let mut outgoing: u64 = 0;
@@ -431,25 +435,17 @@ impl WalletCtx {
     fn internal_sign(
         &self,
         tx: &Transaction,
-        script: &Script,
         input_index: usize,
         path: &DerivationPath,
-        xpriv: &ExtendedPrivKey,
         value: u64,
-    ) -> (Vec<u8>, Vec<u8>) {
-        let privkey = xpriv.derive_priv(&self.secp, &path).unwrap();
-        let pubkey =
-            bitcoin::secp256k1::PublicKey::from_secret_key(&self.secp, &privkey.private_key.key);
+    ) -> (PublicKey, Vec<u8>) {
+        let privkey = self.xprv.derive_priv(&self.secp, &path).unwrap();
+        let pubkey = ExtendedPubKey::from_private(&self.secp, &privkey);
 
-        let mut script_code = vec![0x76, 0xa9, 0x14];
-        script_code.append(&mut script[2..].to_vec());
-        script_code.append(&mut vec![0x88, 0xac]);
+        let witness_script = Address::p2pkh(&pubkey.public_key, pubkey.network).script_pubkey();
 
-        let hash = SighashComponents::new(tx).sighash_all(
-            &tx.input[input_index],
-            &Script::from(script_code),
-            value,
-        );
+        let hash =
+            SighashComponents::new(tx).sighash_all(&tx.input[input_index], &witness_script, value);
 
         let signature = self
             .secp
@@ -459,49 +455,44 @@ impl WalletCtx {
         let mut signature = hex::decode(&format!("{:?}", signature)).unwrap();
         signature.push(0x01 as u8); // TODO how to properly do this?
 
-        let pubkey = hex::decode(&pubkey.to_string()).unwrap();
-
-        (pubkey, signature)
+        (pubkey.public_key, signature)
     }
 
-    pub fn sign<S: Read + Write>(
-        &self,
-        client: &mut Client<S>,
-        request: WGSignReq,
-    ) -> Result<TransactionMeta, Error> {
+    pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
+        debug!("sign");
         let mut out_tx = request.transaction.clone();
 
         for i in 0..request.transaction.input.len() {
             let prev_output = request.transaction.input[i].previous_output.clone();
-            let tx = self.db.get_tx(&prev_output.txid.to_string())?.unwrap();
-
-            let (pk, sig) = self.internal_sign(
-                &request.transaction,
-                &tx.transaction.output[prev_output.vout as usize].script_pubkey,
-                i,
-                &request.derivation_paths[i],
-                &request.xprv,
-                tx.transaction.output[prev_output.vout as usize].value,
+            debug!("input#{} prev_output:{:?}", i, prev_output);
+            let tx = self
+                .db
+                .get_tx_by_hash(&prev_output.txid)?
+                .ok_or_else(|| Error::Generic("cannot find tx in db".into()))?
+                .transaction;
+            let out = tx.output[prev_output.vout as usize].clone();
+            let derivation_path: DerivationPath = self
+                .db
+                .get_path_by_script_pubkey(out.script_pubkey.clone())?
+                .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
+                .into();
+            debug!(
+                "input#{} prev_output:{:?} derivation_path:{:?}",
+                i, prev_output, derivation_path
             );
-            let witness = vec![sig, pk];
 
+            let (pk, sig) =
+                self.internal_sign(&request.transaction, i, &derivation_path, out.value);
+            let script_sig = script_sig(&pk);
+            let witness = vec![sig, pk.to_bytes()];
+
+            out_tx.input[i].script_sig = script_sig;
             out_tx.input[i].witness = witness;
         }
 
         let wgtx: TransactionMeta = out_tx.into();
-        self.broadcast(client, wgtx.clone())?;
 
         Ok(wgtx)
-    }
-
-    pub fn broadcast<S: Read + Write>(
-        &self,
-        client: &mut Client<S>,
-        tx: TransactionMeta,
-    ) -> Result<(), Error> {
-        client.transaction_broadcast(&tx.transaction)?;
-
-        Ok(())
     }
 
     pub fn validate_address(&self, _address: Address) -> Result<bool, Error> {
@@ -549,5 +540,133 @@ impl WalletCtx {
     }
 }
 
+fn script_sig(public_key: &PublicKey) -> Script {
+    let internal = Builder::new()
+        .push_int(0)
+        .push_slice(&PubkeyHash::hash(&public_key.to_bytes())[..])
+        .into_script();
+    Builder::new().push_slice(internal.as_bytes()).into_script()
+}
+
 #[cfg(test)]
-mod test {}
+mod test {
+    use crate::interface::script_sig;
+    use bitcoin::consensus::deserialize;
+    use bitcoin::hashes::hash160;
+    use bitcoin::hashes::Hash;
+    use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
+    use bitcoin::util::bip143::SighashComponents;
+    use bitcoin::util::bip32::{ChildNumber, ExtendedPrivKey, ExtendedPubKey};
+    use bitcoin::util::key::PrivateKey;
+    use bitcoin::util::key::PublicKey;
+    use bitcoin::Script;
+    use bitcoin::{Address, Network, Transaction};
+    use std::str::FromStr;
+
+    fn p2pkh_hex(pk: &str) -> (PublicKey, Script) {
+        let pk = hex::decode(pk).unwrap();
+        let pk = PublicKey::from_slice(pk.as_slice()).unwrap();
+        let witness_script = Address::p2pkh(&pk, Network::Bitcoin).script_pubkey();
+        (pk, witness_script)
+    }
+
+    #[test]
+    fn test_bip() {
+        let secp: Secp256k1<All> = Secp256k1::gen_new();
+
+        // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#p2sh-p2wpkh
+        let tx_bytes = hex::decode("0100000001db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a54770100000000feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac92040000").unwrap();
+        let tx: Transaction = deserialize(&tx_bytes).unwrap();
+
+        let private_key_bytes =
+            hex::decode("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")
+                .unwrap();
+
+        let key = SecretKey::from_slice(&private_key_bytes).unwrap();
+        let private_key = PrivateKey {
+            compressed: true,
+            network: Network::Testnet,
+            key,
+        };
+
+        let (public_key, witness_script) =
+            p2pkh_hex("03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873");
+        assert_eq!(
+            hex::encode(witness_script.to_bytes()),
+            "76a91479091972186c449eb1ded22b78e40d009bdf008988ac"
+        );
+        let value = 1_000_000_000;
+        let comp = SighashComponents::new(&tx);
+        let hash = comp.sighash_all(&tx.input[0], &witness_script, value).into_inner();
+
+        assert_eq!(
+            &hash[..],
+            &hex::decode("64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6")
+                .unwrap()[..],
+        );
+
+        let signature = secp.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
+
+        //let mut signature = signature.serialize_der().to_vec();
+        let signature_hex = format!("{:?}01", signature); // add sighash type at the end
+        assert_eq!(signature_hex, "3044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb01");
+
+        let script_sig = script_sig(&public_key);
+
+        assert_eq!(
+            format!("{}", hex::encode(script_sig.as_bytes())),
+            "16001479091972186c449eb1ded22b78e40d009bdf0089"
+        );
+    }
+
+    #[test]
+    fn test_my_tx() {
+        let secp: Secp256k1<All> = Secp256k1::gen_new();
+        let xprv = ExtendedPrivKey::from_str("tprv8jdzkeuCYeH5hi8k2JuZXJWV8sPNK62ashYyUVD9Euv5CPVr2xUbRFEM4yJBB1yBHZuRKWLeWuzH4ptmvSgjLj81AvPc9JhV4i8wEfZYfPb").unwrap();
+        let xpub = ExtendedPubKey::from_private(&secp, &xprv);
+        let private_key = xprv.private_key;
+        let public_key = xpub.public_key;
+        let public_key_bytes = public_key.to_bytes();
+        let public_key_str = format!("{}", hex::encode(&public_key_bytes));
+
+        let address = Address::p2shwpkh(&public_key, Network::Testnet);
+        assert_eq!(format!("{}", address), "2NCEMwNagVAbbQWNfu7M7DNGxkknVTzhooC");
+
+        assert_eq!(
+            public_key_str,
+            "0386fe0922d694cef4fa197f9040da7e264b0a0ff38aa2e647545e5a6d6eab5bfc"
+        );
+        let tx_hex = "020000000001010e73b361dd0f0320a33fd4c820b0c7ac0cae3b593f9da0f0509cc35de62932eb01000000171600141790ee5e7710a06ce4a9250c8677c1ec2843844f0000000002881300000000000017a914cc07bc6d554c684ea2b4af200d6d988cefed316e87a61300000000000017a914fda7018c5ee5148b71a767524a22ae5d1afad9a9870247304402206675ed5fb86d7665eb1f7950e69828d0aa9b41d866541cedcedf8348563ba69f022077aeabac4bd059148ff41a36d5740d83163f908eb629784841e52e9c79a3dbdb01210386fe0922d694cef4fa197f9040da7e264b0a0ff38aa2e647545e5a6d6eab5bfc00000000";
+
+        let tx_bytes = hex::decode(tx_hex).unwrap();
+        let tx: Transaction = deserialize(&tx_bytes).unwrap();
+
+        let (_, witness_script) = p2pkh_hex(&public_key_str);
+        assert_eq!(
+            hex::encode(witness_script.to_bytes()),
+            "76a9141790ee5e7710a06ce4a9250c8677c1ec2843844f88ac"
+        );
+        let value = 10_202;
+        let comp = SighashComponents::new(&tx);
+        let hash = comp.sighash_all(&tx.input[0], &witness_script, value);
+
+        assert_eq!(
+            &hash.into_inner()[..],
+            &hex::decode("58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995")
+                .unwrap()[..],
+        );
+
+        let signature = secp.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
+
+        //let mut signature = signature.serialize_der().to_vec();
+        let signature_hex = format!("{:?}01", signature); // add sighash type at the end
+        let signature = hex::decode(&signature_hex).unwrap();
+
+        assert_eq!(signature_hex, "304402206675ed5fb86d7665eb1f7950e69828d0aa9b41d866541cedcedf8348563ba69f022077aeabac4bd059148ff41a36d5740d83163f908eb629784841e52e9c79a3dbdb01");
+        assert_eq!(tx.input[0].witness[0], signature);
+        assert_eq!(tx.input[0].witness[1], public_key_bytes);
+
+        let script_sig = script_sig(&public_key);
+        assert_eq!(tx.input[0].script_sig, script_sig);
+    }
+}

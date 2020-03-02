@@ -21,8 +21,8 @@ pub trait Session<E> {
     fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), E>;
     fn create_transaction(&self, details: &Value) -> Result<Value, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &Value) -> Result<Value, E>;
-    fn send_transaction(&self, tx_detail_signed: &Value) -> Result<String, E>;
-    fn broadcast_transaction(&self, tx_hex: &str) -> Result<String, E>;
+    fn send_transaction(&mut self, tx_detail_signed: &Value) -> Result<String, E>;
+    fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, E>;
     fn get_receive_address(&self, addr_details: &Value) -> Result<AddressResult, E>;
     fn get_mnemonic(&self) -> Result<&Mnemonic, E>;
     fn get_available_currencies(&self) -> Result<Value, E>;

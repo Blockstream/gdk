@@ -1,4 +1,5 @@
 use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxOut};
+use bitcoin::consensus::serialize;
 use bitcoin::util::address::Address;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
@@ -6,26 +7,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGEmpty {}
-
-/*
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TransactionMeta {
-    pub transaction: Transaction,
-    pub txid: String,
-    pub timestamp: u64,
-    pub received: u64,
-    pub sent: u64,
-    pub height: Option<u32>,
-    pub is_mine: Vec<bool>,
-    pub derivation_paths: Vec<Option<DerivationPath>>,
-}
-*/
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionMeta {
     #[serde(flatten)]
     pub create_transaction: Option<CreateTransaction>,
+    #[serde(rename = "transaction_object")]
     pub transaction: Transaction,
+    #[serde(rename = "transaction")]
+    pub hex: String,
     pub txid: String,
     pub height: Option<u32>,
     pub timestamp: Option<u64>,
@@ -110,12 +99,14 @@ pub struct WGInit {
 impl From<Transaction> for TransactionMeta {
     fn from(transaction: Transaction) -> Self {
         let txid = transaction.txid().to_string();
+        let hex = hex::encode(&serialize(&transaction));
         TransactionMeta {
             create_transaction: None,
             transaction,
             height: None,
             timestamp: None,
             txid,
+            hex,
             received: None,
             sent: None,
             error: "".to_string(),
