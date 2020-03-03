@@ -15,9 +15,9 @@ pub trait Session<E> {
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, E>;
     fn get_transactions(&self, details: &Value) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
-    fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<i64, E>;
+    fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<u64, E>;
     fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), E>;
-    fn create_transaction(&self, details: &Value) -> Result<String, E>;
+    fn create_transaction(&self, details: &Value) -> Result<Value, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &Value) -> Result<Value, E>;
     fn send_transaction(&self, tx_detail_signed: &Value) -> Result<String, E>;
     fn broadcast_transaction(&self, tx_hex: &str) -> Result<String, E>;

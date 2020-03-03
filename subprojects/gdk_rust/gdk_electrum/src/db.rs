@@ -1,11 +1,13 @@
-use bitcoin::blockdata::transaction::OutPoint;
-use log::debug;
-use std::collections::HashSet;
-use std::ops::Drop;
-
+use bitcoin::blockdata::script::Script;
+use bitcoin::consensus::{deserialize, serialize};
+use bitcoin::util::bip32::ChildNumber;
+use bitcoin::{OutPoint, TxOut, Txid};
+use log::{debug, info};
 use serde_json::json;
-
-use sled::{Batch, Db, Tree};
+use sled::{Batch, Db, IVec, Tree};
+use std::collections::HashSet;
+use std::convert::TryInto;
+use std::ops::Drop;
 
 use crate::error::Error;
 use crate::model::*;
@@ -51,7 +53,20 @@ impl WalletDB {
         self.tree.flush().map_err(Into::into)
     }
 
-    pub fn save_tx(&self, tx: WGTransaction, batch: &mut Batch) -> Result<(), Error> {
+    pub fn iter_script_pubkeys(&self) -> impl DoubleEndedIterator<Item = Script> {
+        let scan_key: &[u8] = b"d";
+        self.tree.range(scan_key..).values().map(|el| Script::from(el.unwrap().as_ref().to_vec()))
+    }
+
+    pub fn iter_utxos(&self) -> impl DoubleEndedIterator<Item = (OutPoint, TxOut)> {
+        let scan_key: &[u8] = b"u";
+        self.tree.range(scan_key..).map(|el| {
+            let (key, value) = el.unwrap();
+            (deserialize(&key[1..]).unwrap(), deserialize(&value).unwrap())
+        })
+    }
+
+    pub fn save_tx(&self, tx: TransactionMeta, batch: &mut Batch) -> Result<(), Error> {
         let mut key = vec!['t' as u8];
         key.append(&mut hex::decode(&tx.txid)?);
 
@@ -59,7 +74,7 @@ impl WalletDB {
         Ok(())
     }
 
-    pub fn get_tx(&self, txid: &String) -> Result<Option<WGTransaction>, Error> {
+    pub fn get_tx(&self, txid: &String) -> Result<Option<TransactionMeta>, Error> {
         let mut key = vec!['t' as u8];
         key.append(&mut hex::decode(txid)?);
 
@@ -67,8 +82,6 @@ impl WalletDB {
     }
 
     pub fn save_spent(&self, outpoint: &OutPoint, batch: &mut Batch) -> Result<(), Error> {
-        use bitcoin::consensus::serialize;
-
         let mut key = vec!['s' as u8];
         key.append(&mut serialize(outpoint));
 
@@ -77,19 +90,29 @@ impl WalletDB {
     }
 
     pub fn get_spent(&self) -> Result<HashSet<OutPoint>, Error> {
-        use bitcoin::consensus::deserialize;
-
         let r = self.tree.scan_prefix(b"s");
 
         Ok(r.keys().map(|e| deserialize(&e.unwrap()[1..]).unwrap()).collect())
     }
 
-    pub fn list_tx(&self) -> Result<Vec<WGTransaction>, Error> {
+    pub fn list_tx(&self) -> Result<Vec<TransactionMeta>, Error> {
         let r = self.tree.scan_prefix(b"t");
 
         Ok(r.values().map(|e| serde_json::from_slice(&e.unwrap()).unwrap()).collect())
     }
+    fn insert_prefix(&self, prefix: u8, key: Vec<u8>, value: Vec<u8>) -> Result<(), Error> {
+        let mut prefix_key = Vec::with_capacity(1 + key.len());
+        prefix_key.push(prefix);
+        prefix_key.extend(key);
+        self.tree.insert(prefix_key, value).map(|_| ()).map_err(|e| e.into())
+    }
+    pub fn set_external_index(&self, num: u32) -> Result<(), Error> {
+        self.insert_prefix('e' as u8, vec![], serde_json::to_vec(&json!(num)).unwrap())
+    }
 
+    pub fn set_internal_index(&self, num: u32) -> Result<(), Error> {
+        self.insert_prefix('i' as u8, vec![], serde_json::to_vec(&json!(num)).unwrap())
+    }
     fn get_index(&self, key: &[u8]) -> Result<u32, Error> {
         let data = self.tree.get(key)?;
 
@@ -105,6 +128,86 @@ impl WalletDB {
 
     fn get_extenral_index(&self) -> Result<u32, Error> {
         self.get_index(b"e")
+    }
+    pub fn set_script_pubkey_by_path(
+        &self,
+        path: Vec<ChildNumber>,
+        script_pubkey: Script,
+        batch: &mut Batch,
+    ) -> Result<(), Error> {
+        let key = path_key(path);
+        batch.insert(key, script_pubkey.into_bytes());
+        Ok(())
+    }
+
+    pub fn get_script_pubkey_by_path(&self, path: Vec<ChildNumber>) -> Result<Option<IVec>, Error> {
+        Ok(self.tree.get(path_key(path))?)
+    }
+    pub fn set_path_by_script_pubkey(
+        &self,
+        script_pubkey: Script,
+        path: Vec<ChildNumber>,
+        batch: &mut Batch,
+    ) -> Result<(), Error> {
+        let key = script_pubkey_key(script_pubkey);
+        let mut value = vec![];
+        path.iter()
+            .map(|cn| u32::from(*cn).to_be_bytes())
+            .for_each(|bytes| value.extend(&bytes[..]));
+
+        batch.insert(key, value);
+        Ok(())
+    }
+
+    pub fn get_path_by_script_pubkey(
+        &self,
+        script_pubkey: Script,
+    ) -> Result<Option<Vec<ChildNumber>>, Error> {
+        Ok(match self.tree.get(script_pubkey_key(script_pubkey))? {
+            Some(path_bytes) => {
+                let path_bytes = &path_bytes[..];
+                let path = path_bytes
+                    .chunks(4)
+                    .map(|e| u32::from_be_bytes(e.try_into().unwrap()))
+                    .map(|u| ChildNumber::from(u))
+                    .collect();
+                Some(path)
+            }
+            None => None,
+        })
+    }
+
+    pub fn del_utxo_by_outpoint(&self, outpoint: OutPoint) -> Result<(), Error> {
+        let mut key = vec!['u' as u8];
+        key.append(&mut serialize(&outpoint));
+        self.tree.remove(key)?;
+        Ok(())
+    }
+
+    pub fn set_utxo_by_outpoint(&self, outpoint: OutPoint, output: TxOut) -> Result<(), Error> {
+        let mut key = vec!['u' as u8];
+        key.append(&mut serialize(&outpoint));
+        self.tree.insert(key, serialize(&output))?;
+        Ok(())
+    }
+
+    pub fn set_tx_by_hash(&self, tx: TransactionMeta) -> Result<(), Error> {
+        let mut key = vec!['t' as u8];
+        key.append(&mut serialize(&tx.transaction.txid()));
+        info!("Saving on {}", hex::encode(&key));
+
+        self.tree.insert(key, serde_json::to_vec(&tx)?)?;
+        Ok(())
+    }
+
+    pub fn get_tx_by_hash(&self, txid: &Txid) -> Result<Option<TransactionMeta>, Error> {
+        let mut key = vec!['t' as u8];
+        key.append(&mut serialize(txid));
+        info!("Getting on {}", hex::encode(&key));
+
+        Ok(self.tree.get(key)?.and_then(|data| {
+            serde_json::from_slice(&data).expect("get_tx_by_hash fail deserialize")
+        }))
     }
 
     fn increment_index(&self, key: &[u8]) -> Result<u32, Error> {
@@ -142,4 +245,16 @@ impl WalletDB {
 
         Ok(())
     }
+}
+
+fn script_pubkey_key(script: Script) -> Vec<u8> {
+    let mut key = vec!['p' as u8];
+    key.extend(script.into_bytes());
+    key
+}
+
+fn path_key(path: Vec<ChildNumber>) -> Vec<u8> {
+    let mut key = vec!['d' as u8];
+    path.iter().map(|cn| u32::from(*cn).to_be_bytes()).for_each(|bytes| key.extend(&bytes[..]));
+    key
 }

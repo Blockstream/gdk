@@ -115,9 +115,9 @@ impl<T> OptionExt<T> for Option<T> {
 
 use bitcoin;
 use bitcoin::blockdata::script;
+use bitcoin::hashes::Hash;
 use bitcoin::util::key::PublicKey;
 use bitcoin::Script;
-use bitcoin::hashes::Hash;
 pub fn p2shwpkh_script(pk: &PublicKey) -> Script {
     let mut hash_engine = bitcoin::ScriptHash::engine();
     pk.write_into(&mut hash_engine);

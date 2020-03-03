@@ -33,9 +33,9 @@ use gdk_common::network::Network;
 use gdk_common::session::Session;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
 
-use bitcoin::BitcoinHash;
 use std::io::{Read, Write};
 use std::str::FromStr;
+use bitcoin::BitcoinHash;
 
 pub struct ElectrumSession<S: Read + Write> {
     pub db_root: String,
@@ -126,24 +126,24 @@ impl<S: Read + Write> ElectrumSession<S> {
     }
 }
 
-fn make_txlist_item(tx: &WGTransaction) -> TxListItem {
+fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
-        created_at: tx.timestamp,
-        type_: "type".into(), // TODO: WGTransaction -> TxListItem type
-        memo: "memo".into(),  // TODO: WGTransaction -> TxListItem memo
+        created_at: tx.timestamp.unwrap_or(0),
+        type_: "type".into(), // TODO: TransactionMeta -> TxListItem type
+        memo: "memo".into(),  // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),
-        transaction: bitcoin::consensus::encode::serialize(&tx.transaction),
-        satoshi: BalanceResult::new_btc((tx.received as i64) - (tx.sent as i64)),
-        rbf_optin: false,           // TODO: WGTransaction -> TxListItem rbf_optin
-        cap_cpfp: false,            // TODO: WGTransaction -> TxListItem cap_cpfp
-        can_rbf: false,             // TODO: WGTransaction -> TxListItem can_rbf
-        has_payment_request: false, // TODO: WGTransaction -> TxListItem has_payment_request
-        server_signed: false,       // TODO: WGTransaction -> TxListItem server_signed
+        transaction: bitcoin::consensus::encode::serialize(&tx.transaction), // FIXME
+        satoshi: BalanceResult::new_btc(tx.received.unwrap_or(0).checked_sub(tx.sent.unwrap_or(0)).unwrap_or(0)),
+        rbf_optin: false,           // TODO: TransactionMeta -> TxListItem rbf_optin
+        cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
+        can_rbf: false,             // TODO: TransactionMeta -> TxListItem can_rbf
+        has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
+        server_signed: false,       // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: true,
         instant: false,
-        fee: 0,        // TODO: WGTransaction -> TxListItem fee
-        fee_rate: 0.0, // TODO: WGTransaction -> TxListItem fee_rate
+        fee: 0,        // TODO: TransactionMeta -> TxListItem fee
+        fee_rate: 0.0, // TODO: TransactionMeta -> TxListItem fee_rate
         addresses: vec![],
         addressees: vec![], // notice the extra "e" -- its intentional
         inputs: vec![],     // tx.input.iter().map(format_gdk_input).collect(),
@@ -260,7 +260,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, _num_confs: u32, _subaccount: Option<u32>) -> Result<i64, Error> {
+    fn get_balance(&self, _num_confs: u32, _subaccount: Option<u32>) -> Result<u64, Error> {
         self.get_wallet()?.balance()
     }
 
@@ -268,8 +268,19 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession set_transaction_memo".into()))
     }
 
-    fn create_transaction(&self, _details: &Value) -> Result<String, Error> {
-        Err(Error::Generic("implementme: ElectrumSession create_transaction".into()))
+    fn create_transaction(&self, details: &Value) -> Result<Value, Error> {
+        println!("{:#?}", details);
+        let tx_req = serde_json::from_value(details.clone())?;
+        let value = match self.get_wallet()?.create_tx(tx_req) {
+            Ok(tx) => serde_json::to_value(tx).unwrap(),
+            Err(_) => {
+                let mut result = details.clone();
+                // TODO map errors
+                result["error"] = "id_insufficient_funds".into();
+                result
+            }
+        };
+        Ok(value)
     }
 
     fn sign_transaction(&self, _tx_detail_unsigned: &Value) -> Result<Value, Error> {
@@ -308,7 +319,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
     fn get_settings(&self) -> Result<Value, Error> {
         Ok(
-            json!({ "unit": "BTC", "altimeout": 600, "pricing": {"currency": "USD", "exchange": "BITFINEX"} }),
+            json!({ "unit": "BTC",  "required_num_blocks": 12, "altimeout": 600, "pricing": {"currency": "USD", "exchange": "BITFINEX"} }),
         ) // TODO implement
     }
 
@@ -338,9 +349,9 @@ enum IncomingRequest {
     ListTx(WGEmpty),
     Utxos(WGEmpty),
     Balance(WGEmpty),
-    CreateTx(WGCreateTxReq),
+    CreateTx(TransactionMeta),
     Sign(WGSignReq),
-    Broadcast(WGTransaction),
+    Broadcast(TransactionMeta),
     Poll(WGExtendedPubKey),
     GetAddress(WGExtendedPubKey),
     Fee(WGEstimateFeeReq),
@@ -378,7 +389,7 @@ fn make_error(code: i32, message: String) -> String {
 mod test {
     /*use crate::model::{
         WGAddress, WGAddressAmount, WGBalance, WGCreateTxReq, WGEstimateFeeReq, WGEstimateFeeRes,
-        WGExtendedPrivKey, WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, WGTransaction, WGUTXO,
+        WGExtendedPrivKey, WGExtendedPubKey, WGInit, WGSignReq, WGSyncReq, TransactionMeta, WGUTXO,
     };
     use bitcoin::blockdata::transaction::Transaction;
     use bitcoin::consensus::deserialize;
@@ -407,7 +418,7 @@ mod test {
         let hex_tx = hex_bytes("0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000").unwrap();
         let tx: Result<Transaction, _> = deserialize(&hex_tx);
         let transaction = tx.unwrap();
-        let wgtransaction = WGTransaction {
+        let wgtransaction = TransactionMeta {
             transaction: transaction.clone(),
             txid: "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
             timestamp: 0u64,
@@ -417,7 +428,7 @@ mod test {
             is_mine: vec![true],
         };
         let json = serde_json::to_string_pretty(&wgtransaction).unwrap();
-        println!("WGTransaction {}", json);
+        println!("TransactionMeta {}", json);
 
         let wgutxo = WGUTXO::default();
         let json = serde_json::to_string_pretty(&wgutxo).unwrap();
