@@ -38,12 +38,11 @@ impl From<Tree> for WalletDB {
 
 impl Drop for WalletDB {
     fn drop(&mut self) {
-        self.tree.flush().unwrap();
+        self.tree.flush().expect("can't flush db");
     }
 }
 
 impl WalletDB {
-    // TODO: we should have an higher-level api maybe
     pub fn apply_batch(&self, batch: Batch) -> Result<(), Error> {
         self.tree.apply_batch(batch)?;
         Ok(())
@@ -53,17 +52,24 @@ impl WalletDB {
         self.tree.flush().map_err(Into::into)
     }
 
-    pub fn iter_script_pubkeys(&self) -> impl DoubleEndedIterator<Item = Script> {
+    pub fn iter_script_pubkeys(&self) -> Result<Vec<Script>, Error> {
         let scan_key: &[u8] = b"d";
-        self.tree.range(scan_key..).values().map(|el| Script::from(el.unwrap().as_ref().to_vec()))
+        let mut vec = vec![];
+        for el in self.tree.range(scan_key..).values() {
+            let script = Script::from(el?.as_ref().to_vec());
+            vec.push(script);
+        }
+        Ok(vec)
     }
 
-    pub fn iter_utxos(&self) -> impl DoubleEndedIterator<Item = (OutPoint, TxOut)> {
+    pub fn iter_utxos(&self) -> Result<Vec<(OutPoint, TxOut)>, Error> {
         let scan_key: &[u8] = b"u";
-        self.tree.range(scan_key..).map(|el| {
-            let (key, value) = el.unwrap();
-            (deserialize(&key[1..]).unwrap(), deserialize(&value).unwrap())
-        })
+        let mut vec = vec![];
+        for tuple in self.tree.range(scan_key..) {
+            let (key, value) = tuple?;
+            vec.push((deserialize(&key[1..])?, deserialize(&value)?));
+        }
+        Ok(vec)
     }
 
     pub fn save_tx(&self, tx: TransactionMeta, batch: &mut Batch) -> Result<(), Error> {
@@ -78,7 +84,10 @@ impl WalletDB {
         let mut key = vec!['t' as u8];
         key.append(&mut hex::decode(txid)?);
 
-        Ok(self.tree.get(key)?.and_then(|data| serde_json::from_slice(&data).unwrap()))
+        Ok(match self.tree.get(key)? {
+            Some(val) => Some(serde_json::from_slice(&val)?),
+            None => None,
+        })
     }
 
     pub fn save_spent(&self, outpoint: &OutPoint, batch: &mut Batch) -> Result<(), Error> {
@@ -91,14 +100,20 @@ impl WalletDB {
 
     pub fn get_spent(&self) -> Result<HashSet<OutPoint>, Error> {
         let r = self.tree.scan_prefix(b"s");
-
-        Ok(r.keys().map(|e| deserialize(&e.unwrap()[1..]).unwrap()).collect())
+        let mut set = HashSet::new();
+        for key in r.keys() {
+            set.insert(deserialize(&key?[1..])?);
+        }
+        Ok(set)
     }
 
     pub fn list_tx(&self) -> Result<Vec<TransactionMeta>, Error> {
         let r = self.tree.scan_prefix(b"t");
-
-        Ok(r.values().map(|e| serde_json::from_slice(&e.unwrap()).unwrap()).collect())
+        let mut vec = vec![];
+        for value in r.values() {
+            vec.push(serde_json::from_slice(&value?)?);
+        }
+        Ok(vec)
     }
     fn insert_prefix(&self, prefix: u8, key: Vec<u8>, value: Vec<u8>) -> Result<(), Error> {
         let mut prefix_key = Vec::with_capacity(1 + key.len());
@@ -107,19 +122,21 @@ impl WalletDB {
         self.tree.insert(prefix_key, value).map(|_| ()).map_err(|e| e.into())
     }
     pub fn set_external_index(&self, num: u32) -> Result<(), Error> {
-        self.insert_prefix('e' as u8, vec![], serde_json::to_vec(&json!(num)).unwrap())
+        self.insert_prefix('e' as u8, vec![], serde_json::to_vec(&json!(num))?)
     }
 
     pub fn set_internal_index(&self, num: u32) -> Result<(), Error> {
-        self.insert_prefix('i' as u8, vec![], serde_json::to_vec(&json!(num)).unwrap())
+        self.insert_prefix('i' as u8, vec![], serde_json::to_vec(&json!(num))?)
     }
     fn get_index(&self, key: &[u8]) -> Result<u32, Error> {
-        let data = self.tree.get(key)?;
-
-        match data {
-            Some(bytes) => Ok(serde_json::from_slice(&bytes).unwrap()),
-            None => Ok(0),
-        }
+        self.tree
+            .get(key)?
+            .map(|b| -> Result<_, Error> {
+                let array: [u8; 4] = b.as_ref().try_into()?;
+                let val = u32::from_be_bytes(array);
+                Ok(val)
+            })
+            .unwrap_or(Ok(0))
     }
 
     fn get_internal_index(&self) -> Result<u32, Error> {
@@ -166,12 +183,12 @@ impl WalletDB {
         Ok(match self.tree.get(script_pubkey_key(script_pubkey))? {
             Some(path_bytes) => {
                 let path_bytes = &path_bytes[..];
-                let path = path_bytes
-                    .chunks(4)
-                    .map(|e| u32::from_be_bytes(e.try_into().unwrap()))
-                    .map(|u| ChildNumber::from(u))
-                    .collect();
-                Some(path)
+                let mut vec = vec![];
+                for chunk in path_bytes.chunks(4) {
+                    let n = u32::from_be_bytes(chunk.try_into()?);
+                    vec.push(ChildNumber::from(n));
+                }
+                Some(vec)
             }
             None => None,
         })
@@ -211,20 +228,13 @@ impl WalletDB {
     }
 
     fn increment_index(&self, key: &[u8]) -> Result<u32, Error> {
-        let data = self.tree.update_and_fetch(key, |old| {
-            let num = match old {
-                Some(bytes) => {
-                    let val: u32 = serde_json::from_slice(bytes).unwrap();
-                    val + 1
-                }
-                None => 0,
-            };
-            debug!("increment_index, returning {}", num);
+        let data = self.tree.update_and_fetch(key, increment)?;
 
-            Some(serde_json::to_vec(&json!(num)).unwrap())
-        });
-
-        Ok(serde_json::from_slice(&data?.unwrap()).unwrap())
+        data.map_or(Ok(0), |b| -> Result<_, Error> {
+            let array: [u8; 4] = b.as_ref().try_into()?;
+            let val = u32::from_be_bytes(array);
+            Ok(val)
+        })
     }
 
     pub fn increment_internal_index(&self) -> Result<u32, Error> {
@@ -239,12 +249,25 @@ impl WalletDB {
     pub fn dump(&self) -> Result<(), Error> {
         let r = self.tree.scan_prefix(&[]);
         for e in r {
-            let e = e.unwrap();
+            let e = e?;
             debug!("{:?} {:?}", hex::encode(&e.0), std::str::from_utf8(&e.1));
         }
 
         Ok(())
     }
+}
+
+fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
+    let number = match old {
+        Some(bytes) => {
+            let array: [u8; 4] = bytes.try_into().unwrap_or([0; 4]);
+            let number = u32::from_be_bytes(array);
+            number + 1
+        }
+        None => 0,
+    };
+
+    Some(number.to_be_bytes().to_vec())
 }
 
 fn script_pubkey_key(script: Script) -> Vec<u8> {

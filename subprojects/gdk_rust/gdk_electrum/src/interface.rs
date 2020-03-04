@@ -138,11 +138,7 @@ impl WalletCtx {
     }
 
     fn is_mine(&self, script: Script) -> bool {
-        self.get_path(script).is_some()
-    }
-
-    fn get_path(&self, script: Script) -> Option<Vec<ChildNumber>> {
-        self.db.get_path_by_script_pubkey(script).unwrap()
+        self.db.get_path_by_script_pubkey(script).ok().is_some()
     }
 
     fn get_previous_output(&mut self, outpoint: OutPoint) -> Option<TxOut> {
@@ -161,7 +157,7 @@ impl WalletCtx {
         &mut self,
         txid: Txid,
         height: Option<u32>,
-        cur_script: Script,
+        cur_script: &Script,
         mut client: &mut Client<S>,
     ) -> Result<(), Error> {
         info!("check_tx_and_descendant of {}, height: {:?}, script: {}", txid, height, cur_script);
@@ -190,11 +186,11 @@ impl WalletCtx {
 
         let mut to_check_later = vec![];
         for (i, output) in tx.output.iter().enumerate() {
-            if let Some(path) = self.get_path(output.script_pubkey.clone()) {
+            if let Some(path) = self.db.get_path_by_script_pubkey(output.script_pubkey.clone())? {
                 info!("{} output #{} is mine, adding utxo", txid, i);
                 self.db.set_utxo_by_outpoint(OutPoint::new(tx.txid(), i as u32), output.clone())?;
                 incoming += output.value;
-                if output.script_pubkey != cur_script {
+                if &output.script_pubkey != cur_script {
                     info!("{} output #{} script {} was not current script, adding script to be checked later", txid, i, output.script_pubkey);
                     to_check_later.push(output.script_pubkey.clone())
                 }
@@ -211,7 +207,7 @@ impl WalletCtx {
         self.db.set_tx_by_hash(tx)?;
 
         for script in to_check_later {
-            self.check_history(script, &mut client)?;
+            self.check_history(&script, &mut client)?;
         }
 
         Ok(())
@@ -219,16 +215,16 @@ impl WalletCtx {
 
     fn check_history<S: Read + Write>(
         &mut self,
-        script_pubkey: Script,
+        script_pubkey: &Script,
         mut client: &mut Client<S>,
     ) -> Result<bool, Error> {
-        let txs = client.script_get_history(&script_pubkey)?;
+        let txs = client.script_get_history(script_pubkey)?;
         info!("history of script {} has {} tx", script_pubkey, txs.len());
         info!("txs {:?}", txs);
         let have_txs = txs.len() > 0;
         for tx in txs {
             let height: Option<u32> = u32::try_from(tx.height).map(|el| Some(el)).unwrap_or(None);
-            self.check_tx_and_descendant(tx.tx_hash, height, script_pubkey.clone(), &mut client)?;
+            self.check_tx_and_descendant(tx.tx_hash, height, script_pubkey, &mut client)?;
         }
         Ok(have_txs)
     }
@@ -246,12 +242,12 @@ impl WalletCtx {
                 let path = [ChildNumber::Normal {
                     index: i,
                 }];
-                let first_deriv = self.xpub.derive_pub(&self.secp, &path).unwrap();
+                let first_deriv = self.xpub.derive_pub(&self.secp, &path)?;
                 for j in 0..=max_address {
                     let path = [ChildNumber::Normal {
                         index: j,
                     }];
-                    let second_deriv = first_deriv.derive_pub(&self.secp, &path).unwrap();
+                    let second_deriv = first_deriv.derive_pub(&self.secp, &path)?;
 
                     let full_path: Vec<ChildNumber> =
                         [i, j].into_iter().map(|e| ChildNumber::from(*e)).collect();
@@ -281,7 +277,7 @@ impl WalletCtx {
         }
 
         let mut last_found = 0;
-        for (i, script) in self.db.iter_script_pubkeys().enumerate() {
+        for (i, script) in self.db.iter_script_pubkeys()?.iter().enumerate() {
             info!("checking {:?}", script);
             let found = self.check_history(script, &mut client)?;
             if found {
@@ -293,7 +289,7 @@ impl WalletCtx {
         }
 
         // check utxo
-        for (outpoint, output) in self.db.iter_utxos() {
+        for (outpoint, output) in self.db.iter_utxos()? {
             let list_unspent = client.script_list_unspent(&output.script_pubkey)?;
             info!("outpoint {:?} is unspent for me, list unspent is {:?}", outpoint, list_unspent);
 
@@ -326,7 +322,7 @@ impl WalletCtx {
 
     pub fn utxos(&self) -> Result<Vec<UTXO>, Error> {
         let mut unspent = Vec::new();
-        for (outpoint, txout) in self.db.iter_utxos() {
+        for (outpoint, txout) in self.db.iter_utxos()? {
             unspent.push(UTXO {
                 outpoint,
                 txout,

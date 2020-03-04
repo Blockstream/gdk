@@ -33,9 +33,9 @@ use gdk_common::network::Network;
 use gdk_common::session::Session;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
 
+use bitcoin::BitcoinHash;
 use std::io::{Read, Write};
 use std::str::FromStr;
-use bitcoin::BitcoinHash;
 
 pub struct ElectrumSession<S: Read + Write> {
     pub db_root: String,
@@ -134,7 +134,9 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         memo: "memo".into(),  // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),
         transaction: bitcoin::consensus::encode::serialize(&tx.transaction), // FIXME
-        satoshi: BalanceResult::new_btc(tx.received.unwrap_or(0).checked_sub(tx.sent.unwrap_or(0)).unwrap_or(0)),
+        satoshi: BalanceResult::new_btc(
+            tx.received.unwrap_or(0).checked_sub(tx.sent.unwrap_or(0)).unwrap_or(0),
+        ),
         rbf_optin: false,           // TODO: TransactionMeta -> TxListItem rbf_optin
         cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
         can_rbf: false,             // TODO: TransactionMeta -> TxListItem can_rbf

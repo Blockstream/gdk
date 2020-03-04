@@ -16,6 +16,7 @@ pub enum Error {
     StdIOError(std::io::Error),
     Hex(hex::FromHexError),
     ClientError(electrum_client::types::Error),
+    SliceConversionError(std::array::TryFromSliceError),
 }
 
 impl Serialize for Error {
@@ -43,9 +44,16 @@ impl Serialize for Error {
             Error::StdIOError(ref _io_err) => {}
             Error::Hex(ref _hex_err) => {}
             Error::ClientError(ref _client_err) => {}
+            Error::SliceConversionError(ref _client_err) => {}
         }
 
         s.end()
+    }
+}
+
+impl From<std::array::TryFromSliceError> for Error {
+    fn from(err: std::array::TryFromSliceError) -> Self {
+        Error::SliceConversionError(err)
     }
 }
 
