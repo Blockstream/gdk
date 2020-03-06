@@ -2,6 +2,9 @@ use core::mem::transmute;
 use serde_derive::Serialize;
 use std::collections::HashMap;
 
+use std::fmt;
+use std::fmt::Display;
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct GDKRUST_json(pub serde_json::Value);
@@ -36,6 +39,18 @@ pub struct ExchangeRate {
 pub struct ExchangeRateError {
     pub message: String,
     pub error: ExchangeRateErrorType,
+}
+
+impl Display for ExchangeRateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+impl Display for ExchangeRateErrorType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,5 +1,6 @@
-use serde::ser::{Serialize, SerializeStruct};
+use serde::ser::Serialize;
 use std::convert::From;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,35 +20,33 @@ pub enum Error {
     SliceConversionError(std::array::TryFromSliceError),
 }
 
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Error::Generic(ref strerr) => write!(f, "{}", strerr),
+            Error::AddrParse(ref addr) => write!(f, "could not parse SocketAddr `{}`", addr),
+            Error::InvalidMnemonic => write!(f, "invalid mnemonic"),
+            Error::InsufficientFunds => write!(f, "insufficient funds"),
+            Error::UnknownCall => write!(f, "unknown call"),
+            Error::DB(ref dberr) => write!(f, "bitcoin: {}", dberr),
+            Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
+            Error::BitcoinBIP32Error(ref bip32err) => write!(f, "bip32: {}", bip32err),
+            Error::BitcoinConsensus(ref consensus_err) => write!(f, "consensus: {}", consensus_err),
+            Error::JSON(ref json_err) => write!(f, "json: {}", json_err),
+            Error::StdIOError(ref io_err) => write!(f, "io: {}", io_err),
+            Error::Hex(ref hex_err) => write!(f, "hex: {}", hex_err),
+            Error::ClientError(ref client_err) => write!(f, "client: {:?}", client_err),
+            Error::SliceConversionError(ref slice_err) => write!(f, "slice: {}", slice_err),
+        }
+    }
+}
+
 impl Serialize for Error {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let mut s = serializer.serialize_struct("Error", 1)?;
-        match &self {
-            Error::Generic(ref strerr) => {
-                s.serialize_field("error", strerr)?;
-            }
-            // TODO: implement serialization of these errors
-            Error::UnknownCall => {}
-            Error::AddrParse(ref addr) => {
-                s.serialize_field("error", &format!("could not parse SocketAddr `{}`", addr))?
-            }
-            Error::InvalidMnemonic => s.serialize_field("error", "invalid mnemonic")?,
-            Error::InsufficientFunds => s.serialize_field("error", "insufficient funds")?,
-            Error::DB(ref _dberr) => {}
-            Error::Bitcoin(ref _btcerr) => {}
-            Error::BitcoinBIP32Error(ref _bip32err) => {}
-            Error::BitcoinConsensus(ref _consensus_err) => {}
-            Error::JSON(ref _json_err) => {}
-            Error::StdIOError(ref _io_err) => {}
-            Error::Hex(ref _hex_err) => {}
-            Error::ClientError(ref _client_err) => {}
-            Error::SliceConversionError(ref _client_err) => {}
-        }
-
-        s.end()
+        serializer.serialize_str(&format!("{}", self))
     }
 }
 
