@@ -1,45 +1,10 @@
-use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxOut};
-use bitcoin::consensus::serialize;
-use bitcoin::util::address::Address;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::{OutPoint, Transaction, TxOut};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGEmpty {}
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TransactionMeta {
-    #[serde(flatten)]
-    pub create_transaction: Option<CreateTransaction>,
-    #[serde(rename = "transaction_object")]
-    pub transaction: Transaction,
-    #[serde(rename = "transaction")]
-    pub hex: String,
-    pub txid: String,
-    pub height: Option<u32>,
-    pub timestamp: Option<u64>,
-    pub received: Option<u64>,
-    pub sent: Option<u64>,
-    pub error: String,
-    pub addressees_have_assets: bool,
-    pub is_sweep: bool,
-    pub satoshi: u64, // TODO it looks a copy of create_transaction.addressees[0].amount
-    pub fee: u64,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CreateTransaction {
-    pub addressees: Vec<AddressAmount>,
-    pub fee_rate: Option<f32>,
-    pub subaccount: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AddressAmount {
-    pub address: Address,
-    pub satoshi: u64,
-    pub asset_tag: Option<String>,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UTXO {
@@ -94,36 +59,4 @@ pub struct WGExtendedPubKey {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGInit {
     pub path: String,
-}
-
-impl From<Transaction> for TransactionMeta {
-    fn from(transaction: Transaction) -> Self {
-        let txid = transaction.txid().to_string();
-        let hex = hex::encode(&serialize(&transaction));
-        TransactionMeta {
-            create_transaction: None,
-            transaction,
-            height: None,
-            timestamp: None,
-            txid,
-            hex,
-            received: None,
-            sent: None,
-            error: "".to_string(),
-            addressees_have_assets: false,
-            is_sweep: false,
-            satoshi: 0,
-            fee: 0,
-        }
-    }
-}
-
-impl TransactionMeta {
-    pub fn new(transaction: Transaction, height: Option<u32>, sent: u64, received: u64) -> Self {
-        let mut wgtx: TransactionMeta = transaction.into();
-        wgtx.height = height;
-        wgtx.sent = Some(sent);
-        wgtx.received = Some(received);
-        wgtx
-    }
 }

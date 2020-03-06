@@ -295,11 +295,18 @@ where
         "get_transaction_details" => get_transaction_details(session, input),
         "get_balance" => serialize::get_balance(session, input),
         "set_transaction_memo" => set_transaction_memo(session, input),
-        "create_transaction" => {
-            session.create_transaction(input).map(|v| json!(v)).map_err(Into::into)
-        }
-        "sign_transaction" => session.sign_transaction(input).map_err(Into::into),
-        "send_transaction" => send_transaction(session, input),
+        "create_transaction" => session
+            .create_transaction(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
+        "sign_transaction" => session
+            .sign_transaction(&serde_json::from_value(input.clone())?)
+            .map_err(Into::into)
+            .map(|v| json!(v)),
+        "send_transaction" => session
+            .send_transaction(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "broadcast_transaction" => {
             session
                 .broadcast_transaction(input.as_str().ok_or_else(|| {

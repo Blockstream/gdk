@@ -19,6 +19,7 @@ use bitcoin::secp256k1;
 use bitcoin::{util::bip32, Address, Network as BNetwork};
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::sha256d;
+use bitcoin::blockdata::script::Script;
 use bitcoincore_rpc::{json as rpcjson, Client as RpcClient, Error as RpcError, RpcApi};
 use jsonrpc::error::Error as JRPCError;
 use serde_json::Value;

@@ -2,6 +2,7 @@ use bitcoin::blockdata::script::Script;
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::util::bip32::ChildNumber;
 use bitcoin::{OutPoint, TxOut, Txid};
+use gdk_common::model::TransactionMeta;
 use log::{debug, info};
 use serde_json::json;
 use sled::{Batch, Db, IVec, Tree};
@@ -10,7 +11,6 @@ use std::convert::TryInto;
 use std::ops::Drop;
 
 use crate::error::Error;
-use crate::model::*;
 
 pub trait GetTree {
     fn get_tree(&self, wallet_name: &str) -> Result<WalletDB, Error>;

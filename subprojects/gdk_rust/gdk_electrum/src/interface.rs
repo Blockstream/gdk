@@ -18,6 +18,7 @@ use log::{debug, info};
 use sled::{Batch, Db};
 
 use gdk_common::mnemonic::Mnemonic;
+use gdk_common::model::{CreateTransaction, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::*;
@@ -349,7 +350,7 @@ impl WalletCtx {
     }
 
     // If request.utxo is None, we do the coin selection
-    pub fn create_tx(&self, request: CreateTransaction) -> Result<TransactionMeta, Error> {
+    pub fn create_tx(&self, request: &CreateTransaction) -> Result<TransactionMeta, Error> {
         debug!("create_tx {:?}", request);
         use bitcoin::consensus::serialize;
 
@@ -419,7 +420,7 @@ impl WalletCtx {
             is_mine.push(true);
         }
         let mut created_tx = TransactionMeta::new(tx, None, 0, outgoing);
-        created_tx.create_transaction = Some(request);
+        created_tx.create_transaction = Some(request.clone());
         created_tx.fee = fee_val;
         created_tx.sent = Some(outgoing);
         created_tx.satoshi = outgoing;

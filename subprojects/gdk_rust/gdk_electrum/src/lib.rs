@@ -288,34 +288,20 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession set_transaction_memo".into()))
     }
 
-    fn create_transaction(&self, details: &Value) -> Result<Value, Error> {
-        debug!("{:#?}", details);
-        let tx_req = serde_json::from_value(details.clone())?;
-        let value = match self.get_wallet()?.create_tx(tx_req) {
-            Ok(tx) => serde_json::to_value(tx).unwrap(),
-            Err(_) => {
-                let mut result = details.clone();
-                // TODO map errors
-                result["error"] = "id_insufficient_funds".into();
-                result
-            }
-        };
-        Ok(value)
+    fn create_transaction(&self, tx_req: &CreateTransaction) -> Result<TransactionMeta, Error> {
+        debug!("electrum create_transaction {:#?}", tx_req);
+        self.get_wallet()?.create_tx(tx_req)
     }
 
-    fn sign_transaction(&self, tx_detail_unsigned: &Value) -> Result<Value, Error> {
-        debug!("sign_transaction  {:#?}", tx_detail_unsigned);
-        let tx_detail_unsigned = serde_json::from_value(tx_detail_unsigned.clone())?;
-        let result = self.get_wallet()?.sign(&tx_detail_unsigned)?;
-        debug!("result {:#?}", result);
-        Ok(serde_json::to_value(result)?)
+    fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
+        debug!("electrum sign_transaction {:#?}", create_tx);
+        self.get_wallet()?.sign(create_tx)
     }
 
-    fn send_transaction(&mut self, tx_detail_signed: &Value) -> Result<String, Error> {
-        debug!("send_transaction {:#?}", tx_detail_signed);
-        let tx_detail_signed: TransactionMeta = serde_json::from_value(tx_detail_signed.clone())?;
-        self.client.transaction_broadcast(&tx_detail_signed.transaction)?;
-        Ok(format!("{}", tx_detail_signed.txid))
+    fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
+        debug!("electrum send_transaction {:#?}", tx);
+        self.client.transaction_broadcast(&tx.transaction)?;
+        Ok(format!("{}", tx.txid))
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {

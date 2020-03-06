@@ -239,15 +239,6 @@ where
     Ok(balance_result_value(&BalanceResult::new_btc(bal)))
 }
 
-pub fn send_transaction<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
-    let txid = session.send_transaction(input).map_err(Into::into)?;
-    Ok(json!({"error": "", "txid": txid}))
-}
-
 pub fn fee_estimate_values(estimates: &Vec<FeeEstimate>) -> Result<Value, Error> {
     if estimates.len() == 0 {
         // Current apps depend on this length
