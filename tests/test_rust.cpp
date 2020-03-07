@@ -56,6 +56,8 @@ void test_create_sign_transaction(ga::sdk::session& session) {
     printf("tx_created %s\n", tx_created.dump().c_str());
     auto tx_signed = session.sign_transaction(tx_created);
     printf("tx_signed %s\n", tx_signed.dump().c_str());
+
+    printf("\nok test_create_sign_transaction\n\n", tx_signed.dump().c_str());
 }
 
 void test_get_mnemonic_passphrase(ga::sdk::session& session) {
@@ -63,7 +65,7 @@ void test_get_mnemonic_passphrase(ga::sdk::session& session) {
     //auto enc_mnemonic = session.get_mnemonic_passphrase("password");
 
     //assert(mnemonic != enc_mnemonic);
-    printf("ok test_get_mnemonic_passphrase\n");
+    // printf("\nok test_get_mnemonic_passphrase\n\n");
 }
 
 int main()

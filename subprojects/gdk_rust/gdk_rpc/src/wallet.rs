@@ -665,17 +665,6 @@ impl Wallet {
         420.00
     }
 
-    pub fn convert_amount(&self, details: &Value) -> Result<Value, Error> {
-        // XXX should convert_amonut support negative numbers?
-        let satoshi = details["satoshi"]
-            .as_i64()
-            .or_else(|| f64_from_val(&details["btc"]).map(btc_to_isat))
-            .or_else(|| f64_from_val(&details["fiat"]).map(|x| self._fiat_to_sat(x)))
-            .or_err("id_no_amount_specified")?;
-
-        Ok(self._convert_satoshi(satoshi))
-    }
-
     pub fn set_tx_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
         // we can't really set a tx memo, so we fake it by setting a memo on the address
         let txid: sha256d::Hash = sha256d::Hash::from_hex(txid).map_err(into_err)?;
@@ -702,28 +691,6 @@ impl Wallet {
         Ok(())
     }
 
-    fn _convert_satoshi(&self, amount: i64) -> Value {
-        let currency = "USD"; // TODO
-        let exchange_rate = self.exchange_rate(currency);
-        let amount_f = amount as f64;
-
-        json!({
-            "satoshi": amount,
-            "sats": amount.to_string(),
-            "bits": format!("{:.2}", (amount_f / SAT_PER_BIT)),
-            "ubtc": format!("{:.2}", (amount_f / SAT_PER_BIT)), // XXX why twice? same as bits
-            "mbtc": format!("{:.5}", (amount_f / SAT_PER_MBTC)),
-            "btc": format!("{:.8}", (amount_f / SAT_PER_BTC)),
-
-            "fiat_rate": format!("{:.8}", exchange_rate),
-            "fiat_currency": currency,
-            "fiat": format!("{:.2}", (amount_f / SAT_PER_BTC * exchange_rate)),
-        })
-    }
-
-    fn _fiat_to_sat(&self, amount: f64) -> i64 {
-        btc_to_isat(amount / self.exchange_rate("USD"))
-    }
 }
 
 impl fmt::Debug for Wallet {

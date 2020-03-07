@@ -37,7 +37,7 @@ use std::os::raw::c_char;
 use std::sync::Once;
 
 use gdk_common::constants::{GA_ERROR, GA_OK};
-use gdk_common::model::{ExchangeRateOk, ExchangeRateRes, GDKRUST_json};
+use gdk_common::model::GDKRUST_json;
 use gdk_common::session::Session;
 use gdk_common::util::{make_str, read_str};
 
@@ -223,12 +223,12 @@ pub extern "C" fn GDKRUST_call_session(
 
     // TODO let's do some kind of cached exchange rate fetching here
     // independent of the backends
-    let exchange_rate_res = Ok(ExchangeRateOk::ok("USD".into(), 1.2));
+    // let exchange_rate_res = Ok(ExchangeRateOk::ok("USD".into(), 1.2));
 
     let res = match safe_mut_ref!(sess) {
-        GdkSession::Electrum(ref mut s) => handle_call(s, &method, &input, &exchange_rate_res),
+        GdkSession::Electrum(ref mut s) => handle_call(s, &method, &input),
 
-        GdkSession::ElectrumTls(ref mut s) => handle_call(s, &method, &input, &exchange_rate_res),
+        GdkSession::ElectrumTls(ref mut s) => handle_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
@@ -261,12 +261,7 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 }
 
 // dynamic dispatch shenanigans
-fn handle_call<S, E>(
-    session: &mut S,
-    method: &str,
-    input: &Value,
-    exchange_rate_res: &ExchangeRateRes,
-) -> Result<Value, Error>
+fn handle_call<S, E>(session: &mut S, method: &str, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,
@@ -328,12 +323,11 @@ where
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
         }
+        "exchange_rates" => Ok(json!({"currencies": {"USD": "1.1", "CAD": "1.1"}})),
 
         "get_settings" => session.get_settings().map_err(Into::into),
         "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
         "change_settings" => session.change_settings(input).map(|v| json!(v)).map_err(Into::into),
-
-        "convert_amount" => serialize::convert_amount(input, exchange_rate_res),
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),
