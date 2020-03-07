@@ -14,8 +14,8 @@ fn handle_fiat(input: &Value, exchange_rate: &ExchangeRate) -> Option<i64> {
 fn handle_fiat_optionally(details: &Value, exchange_rate_result: &ExchangeRateRes) -> Option<i64> {
     let maybe_exchange_rate = match exchange_rate_result {
         Err(ExchangeRateError {
-            error,
-            message,
+            error: _,
+            message: _,
         }) => None,
         Ok(ExchangeRateOk::NoBackends) => None,
         Ok(ExchangeRateOk::RateOk(rate)) => Some(rate),
@@ -94,7 +94,7 @@ fn value_from_convert_satoshi(amount: i64, exchange_rate_res: &ExchangeRateRes) 
             res["fiat_rate"] = format!("{:.8}", exchange_rate.rate).into();
             res["fiat_currency"] = serde_json::Value::String(exchange_rate.currency.clone());
             let fiat = amount_f / SAT_PER_BTC * exchange_rate.rate;
-            res["fiat"] = format!("{:.2}", fiat).into()
+            res["fiat"] = format!("{:.2}", fiat).into();
         }
 
         Err(ExchangeRateError {
