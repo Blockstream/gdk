@@ -103,6 +103,8 @@ impl WalletDB {
         for value in r.values() {
             vec.push(serde_json::from_slice(&value?)?);
         }
+        vec.sort_by(|a: &TransactionMeta,b: &TransactionMeta| b.timestamp.cmp(&a.timestamp));
+
         Ok(vec)
     }
 

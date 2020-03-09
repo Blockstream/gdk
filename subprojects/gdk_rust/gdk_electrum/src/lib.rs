@@ -134,7 +134,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     let (satoshi, type_) = abs_diff(tx.received.unwrap_or(0), tx.sent.unwrap_or(0));
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
-        created_at: tx.timestamp.unwrap_or(0),
+        created_at: tx.created_at.clone().unwrap_or("".to_string()),
         type_,
         memo: "memo".into(), // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),

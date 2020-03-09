@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use std::fmt;
 use std::fmt::Display;
+use chrono::{DateTime, NaiveDateTime, Utc};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -109,7 +110,8 @@ pub struct TransactionMeta {
     pub hex: String,
     pub txid: String,
     pub height: Option<u32>,
-    pub timestamp: Option<u64>,
+    pub timestamp: Option<u32>,
+    pub created_at: Option<String>, // yyyy-MM-dd HH:mm:ss
     pub received: Option<u64>,
     pub sent: Option<u64>,
     pub error: String,
@@ -127,6 +129,7 @@ impl From<Transaction> for TransactionMeta {
             create_transaction: None,
             transaction,
             height: None,
+            created_at: None,
             timestamp: None,
             txid,
             hex,
@@ -142,9 +145,15 @@ impl From<Transaction> for TransactionMeta {
 }
 
 impl TransactionMeta {
-    pub fn new(transaction: Transaction, height: Option<u32>, sent: u64, received: u64) -> Self {
+    pub fn new(transaction: Transaction, height: Option<u32>, timestamp: Option<u32>, received: u64, sent: u64) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
+        let created_at = timestamp.map(|ts| {
+            let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts as i64, 0), Utc);
+            format!("{}", dt.format("%Y-%m-%d %H:%M:%S"))
+        });
         wgtx.height = height;
+        wgtx.timestamp = timestamp;
+        wgtx.created_at = created_at;
         wgtx.sent = Some(sent);
         wgtx.received = Some(received);
         wgtx
@@ -168,7 +177,7 @@ pub struct AddressIO {
 
 pub struct TxListItem {
     pub block_height: u32,
-    pub created_at: u64,
+    pub created_at: String,
     pub type_: String,
     pub memo: String,
     pub txhash: String,

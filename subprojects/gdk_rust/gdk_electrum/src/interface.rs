@@ -215,7 +215,12 @@ impl WalletCtx {
             }
         }
 
-        let tx = TransactionMeta::new(tx, None, incoming, outgoing);
+        let mut timestamp = None;
+        if let Some(height) = height {
+            timestamp = Some(client.block_header(height as usize)?.time);
+        }
+
+        let tx = TransactionMeta::new(tx, None, timestamp, incoming, outgoing);
         info!("Saving tx {}", txid);
         self.db.set_tx_by_hash(tx)?;
 
@@ -419,7 +424,7 @@ impl WalletCtx {
 
             is_mine.push(true);
         }
-        let mut created_tx = TransactionMeta::new(tx, None, 0, outgoing);
+        let mut created_tx = TransactionMeta::new(tx, None, None, 0, outgoing);
         created_tx.create_transaction = Some(request.clone());
         created_tx.fee = fee_val;
         created_tx.sent = Some(outgoing);
