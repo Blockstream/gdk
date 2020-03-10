@@ -27,7 +27,7 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::Transaction;
+use bitcoin::{Address, Transaction};
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
 use gdk_common::mnemonic::Mnemonic;
@@ -132,13 +132,28 @@ impl<S: Read + Write> ElectrumSession<S> {
 
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     let (satoshi, type_) = abs_diff(tx.received.unwrap_or(0), tx.sent.unwrap_or(0));
+    let serialized = bitcoin::consensus::encode::serialize(&tx.transaction);
+    let fee_rate = tx.fee as f64 / serialized.len() as f64;
+    let mut addressees = vec![];
+    if let Some(network) = tx.network {
+        for output in tx.transaction.output.iter() {
+            //TODO if gdk with addresses means only recipient it should probably skip my
+            //change address, however at the moment apps pick first
+            //address as recipient and we create a tx with change as second so it should work ok
+            let address = Address::from_script(&output.script_pubkey, network)
+                .map(|e| e.to_string())
+                .unwrap_or_else(|| "".into());
+            addressees.push(address);
+        }
+    }
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
         created_at: tx.created_at.clone().unwrap_or("".to_string()),
         type_,
-        memo: "memo".into(), // TODO: TransactionMeta -> TxListItem memo
+        memo: "".into(), // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),
-        transaction: bitcoin::consensus::encode::serialize(&tx.transaction), // FIXME
+        transaction_size: serialized.len(),
+        transaction: serialized, // FIXME
         satoshi: BalanceResult::new_btc(satoshi),
         rbf_optin: false,           // TODO: TransactionMeta -> TxListItem rbf_optin
         cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
@@ -147,12 +162,14 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         server_signed: false,       // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: true,
         instant: false,
-        fee: 0,        // TODO: TransactionMeta -> TxListItem fee
-        fee_rate: 0.0, // TODO: TransactionMeta -> TxListItem fee_rate
+        fee: tx.fee,
+        fee_rate,
         addresses: vec![],
-        addressees: vec![], // notice the extra "e" -- its intentional
-        inputs: vec![],     // tx.input.iter().map(format_gdk_input).collect(),
-        outputs: vec![],    //tx.output.iter().map(format_gdk_output).collect(),
+        addressees,      // notice the extra "e" -- its intentional
+        inputs: vec![],  // tx.input.iter().map(format_gdk_input).collect(),
+        outputs: vec![], //tx.output.iter().map(format_gdk_output).collect(),
+        transaction_vsize: tx.transaction.get_weight() / 4,
+        transaction_weight: tx.transaction.get_weight(),
     }
 }
 

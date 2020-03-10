@@ -1,5 +1,6 @@
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::util::address::Address;
+use bitcoin::Network;
 use core::mem::transmute;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -119,6 +120,7 @@ pub struct TransactionMeta {
     pub is_sweep: bool,
     pub satoshi: u64, // TODO it looks a copy of create_transaction.addressees[0].amount
     pub fee: u64,
+    pub network: Option<Network>,
 }
 
 impl From<Transaction> for TransactionMeta {
@@ -140,12 +142,13 @@ impl From<Transaction> for TransactionMeta {
             is_sweep: false,
             satoshi: 0,
             fee: 0,
+            network: None,
         }
     }
 }
 
 impl TransactionMeta {
-    pub fn new(transaction: Transaction, height: Option<u32>, timestamp: Option<u32>, received: u64, sent: u64) -> Self {
+    pub fn new(transaction: Transaction, height: Option<u32>, timestamp: Option<u32>, received: u64, sent: u64, network: Network) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let created_at = timestamp.map(|ts| {
             let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts as i64, 0), Utc);
@@ -156,6 +159,7 @@ impl TransactionMeta {
         wgtx.created_at = created_at;
         wgtx.sent = Some(sent);
         wgtx.received = Some(received);
+        wgtx.network = Some(network);
         wgtx
     }
 }
@@ -190,12 +194,15 @@ pub struct TxListItem {
     pub server_signed: bool,
     pub user_signed: bool,
     pub instant: bool,
-    pub fee: i64,
+    pub fee: u64,
     pub fee_rate: f64,
     pub addresses: Vec<String>,
     pub addressees: Vec<String>, // notice the extra "e" -- its intentional
     pub inputs: Vec<AddressIO>,  // tx.input.iter().map(format_gdk_input).collect(),
     pub outputs: Vec<AddressIO>, //tx.output.iter().map(format_gdk_output).collect(),
+    pub transaction_size: usize,
+    pub transaction_vsize: usize,
+    pub transaction_weight: usize,
 }
 
 pub struct Subaccount {
