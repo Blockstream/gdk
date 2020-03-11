@@ -351,18 +351,17 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn get_settings(&self) -> Result<Value, Error> {
-        Ok(
-            json!({ "unit": "BTC",  "required_num_blocks": 12, "altimeout": 600, "pricing": {"currency": "USD", "exchange": "BITFINEX"} }),
-        ) // TODO implement
+        let settings = self.get_wallet()?.get_settings()?;
+        Ok(serde_json::to_value(settings)?)
+    }
+
+    fn change_settings(&mut self, settings: &Settings) -> Result<(), Error> {
+        self.get_wallet()?.change_settings(settings)
     }
 
     fn get_available_currencies(&self) -> Result<Value, Error> {
         Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITFINEX": [ "USD" ] } }))
         // TODO implement
-    }
-
-    fn change_settings(&mut self, _settings: &Value) -> Result<(), Error> {
-        Err(Error::Generic("implementme: ElectrumSession change_settings".into()))
     }
 
     // fn register_user(&mut self, mnemonic: String) -> Result<(), Error> {

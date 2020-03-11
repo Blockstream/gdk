@@ -2,7 +2,7 @@ use bitcoin::blockdata::script::Script;
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::util::bip32::ChildNumber;
 use bitcoin::{OutPoint, TxOut, Txid};
-use gdk_common::model::TransactionMeta;
+use gdk_common::model::{TransactionMeta, Settings};
 use log::{debug, info};
 use serde_json::json;
 use sled::{Batch, Db, IVec, Tree};
@@ -78,6 +78,17 @@ impl WalletDB {
 
         batch.insert(key, serde_json::to_vec(&tx)?);
         Ok(())
+    }
+
+    pub fn save_settings(&self, settings: &Settings) -> Result<(), Error> {
+        self.insert_prefix('c' as u8, vec![], serde_json::to_vec(settings)?)
+    }
+
+    pub fn get_settings(&self) -> Result<Settings, Error> {
+        Ok(match self.tree.get(b"c")? {
+            Some(ivec) => serde_json::from_slice::<Settings>(&ivec)?,
+            None => Settings::default(),
+        })
     }
 
     pub fn save_spent(&self, outpoint: &OutPoint, batch: &mut Batch) -> Result<(), Error> {

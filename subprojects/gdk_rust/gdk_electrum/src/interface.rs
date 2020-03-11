@@ -18,7 +18,7 @@ use log::{debug, info};
 use sled::{Batch, Db};
 
 use gdk_common::mnemonic::Mnemonic;
-use gdk_common::model::{CreateTransaction, TransactionMeta};
+use gdk_common::model::{CreateTransaction, TransactionMeta, Settings};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::*;
@@ -150,6 +150,14 @@ impl WalletCtx {
         self.db.list_tx()
     }
 
+    pub fn get_settings(&self) -> Result<Settings, Error> {
+        self.db.get_settings()
+    }
+
+    pub fn change_settings(&self, settings: &Settings) -> Result<(), Error> {
+        self.db.save_settings(settings)
+    }
+
     fn is_mine(&self, script: Script) -> bool {
         self.db.get_path_by_script_pubkey(script).ok().is_some()
     }
@@ -257,7 +265,7 @@ impl WalletCtx {
     pub fn sync<S: Read + Write>(&mut self, mut client: &mut Client<S>) -> Result<(), Error> {
         debug!("start sync");
         let max_address = 1000; //TODO make it configurable
-        let path = [0, max_address].into_iter().map(|e| ChildNumber::from(*e)).collect();
+        let path = [0, max_address].iter().map(|e| ChildNumber::from(*e)).collect();
         let first = self.db.get_script_pubkey_by_path(path).expect("db error").is_none();
 
         if first {
@@ -275,7 +283,7 @@ impl WalletCtx {
                     let second_deriv = first_deriv.derive_pub(&self.secp, &path)?;
 
                     let full_path: Vec<ChildNumber> =
-                        [i, j].into_iter().map(|e| ChildNumber::from(*e)).collect();
+                        [i, j].iter().map(|e| ChildNumber::from(*e)).collect();
                     let script_pubkey = Address::p2shwpkh(
                         &second_deriv.public_key,
                         self.network.id().get_bitcoin_network().unwrap(),

@@ -3,9 +3,8 @@
 
 #[macro_use]
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
 extern crate failure;
+extern crate serde_derive;
 #[macro_use]
 extern crate log;
 #[cfg(feature = "android_log")]
@@ -327,7 +326,10 @@ where
 
         "get_settings" => session.get_settings().map_err(Into::into),
         "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
-        "change_settings" => session.change_settings(input).map(|v| json!(v)).map_err(Into::into),
+        "change_settings" => session
+            .change_settings(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),

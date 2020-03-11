@@ -1,7 +1,5 @@
 use crate::mnemonic::Mnemonic;
-use crate::model::{
-    AddressResult, CreateTransaction, FeeEstimate, Subaccount, TransactionMeta, TxsResult,
-};
+use crate::model::{AddressResult, CreateTransaction, FeeEstimate, Subaccount, TransactionMeta, TxsResult, Settings};
 use crate::password::Password;
 
 // TODO: remove all json Values from our Session
@@ -30,5 +28,5 @@ pub trait Session<E> {
     fn get_available_currencies(&self) -> Result<Value, E>;
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Value, E>;
-    fn change_settings(&mut self, settings: &Value) -> Result<(), E>;
+    fn change_settings(&mut self, settings: &Settings) -> Result<(), E>;
 }
