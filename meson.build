@@ -85,12 +85,14 @@ common_link_args = [
     '-Wl,-z,noexecstack'
 ]
 
+if is_darwin or cross_iphone_build
+  # to generate keys in gdk_rust
+  add_project_link_arguments(['-Wl,-framework,Security'], language : 'cpp')
+endif
+
 if cross_iphone_build
   add_project_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
   add_project_link_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
-
-  # to generate keys in gdk_rust
-  add_project_link_arguments(['-Wl,-framework,Security'], language : 'cpp')
 endif
 
 if is_freebsd
