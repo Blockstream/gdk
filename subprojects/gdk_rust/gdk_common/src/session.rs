@@ -1,5 +1,7 @@
 use crate::mnemonic::Mnemonic;
-use crate::model::{AddressResult, CreateTransaction, FeeEstimate, Subaccount, TransactionMeta, TxsResult, Settings};
+use crate::model::{
+    AddressResult, CreateTransaction, FeeEstimate, Settings, Subaccount, TransactionMeta, TxsResult,
+};
 use crate::password::Password;
 
 // TODO: remove all json Values from our Session

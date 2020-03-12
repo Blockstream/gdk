@@ -31,7 +31,7 @@ use log::Level;
 use std::ffi::CString;
 use std::mem::transmute;
 use std::os::raw::c_char;
-use std::time::{SystemTime, Duration};
+use std::time::{Duration, SystemTime};
 
 #[cfg(feature = "android_log")]
 use std::sync::Once;
@@ -41,8 +41,8 @@ use gdk_common::model::GDKRUST_json;
 use gdk_common::session::Session;
 use gdk_common::util::{make_str, read_str};
 
-use bitcoin_exchange_rates::{prepare_requests, make_tls_hyper_client, hyper_fetch_requests};
-use bitcoin_exchange_rates::{Wasabi, Bitfinex, Pair, Currency, Ticker, Source};
+use bitcoin_exchange_rates::{hyper_fetch_requests, make_tls_hyper_client, prepare_requests};
+use bitcoin_exchange_rates::{Bitfinex, Currency, Pair, Source, Ticker, Wasabi};
 
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
@@ -52,7 +52,7 @@ use crate::error::Error;
 pub struct GdkSession {
     pub backend: GdkBackend,
     pub last_xr_fetch: std::time::SystemTime,
-    pub last_xr: Option<Vec<Ticker>>
+    pub last_xr: Option<Vec<Ticker>>,
 }
 
 pub enum GdkBackend {
@@ -216,7 +216,11 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
             // some time in the past
             let last_xr_fetch = SystemTime::now() - Duration::from_secs(1000);
-            let gdk_session = GdkSession { backend, last_xr_fetch, last_xr: None };
+            let gdk_session = GdkSession {
+                backend,
+                last_xr_fetch,
+                last_xr: None,
+            };
             Ok(gdk_session)
         }
         _ => Err(json!("server_type invalid")),
@@ -224,7 +228,9 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 }
 
 fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
-    if sess.last_xr.is_some() && (SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60))) {
+    if sess.last_xr.is_some()
+        && (SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)))
+    {
         debug!("hit exchange rate cache");
     } else {
         debug!("missed exchange rate cache");
@@ -237,7 +243,7 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         }
     }
 
-    return sess.last_xr.clone()
+    return sess.last_xr.clone();
 }
 
 #[no_mangle]
@@ -314,7 +320,7 @@ fn fetch_exchange_rates() -> Vec<Ticker> {
     let wasabi = Wasabi::new("https://wasabiwallet.io");
     let bitfinex = Bitfinex::new();
 
-    let sources : Vec<&dyn Source> = vec![&bitfinex, &wasabi];
+    let sources: Vec<&dyn Source> = vec![&bitfinex, &wasabi];
     // TODO (jb55): shuffle sources?
 
     fetch_exchange_rate_sources(sources)
@@ -328,7 +334,7 @@ fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
         acc
     }));
 
-    json!({"currencies": currency_map})
+    json!({ "currencies": currency_map })
 }
 
 // dynamic dispatch shenanigans
@@ -445,4 +451,3 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
     }
     GA_OK
 }
-

@@ -18,7 +18,7 @@ use log::{debug, info};
 use sled::{Batch, Db};
 
 use gdk_common::mnemonic::Mnemonic;
-use gdk_common::model::{CreateTransaction, TransactionMeta, Settings};
+use gdk_common::model::{CreateTransaction, Settings, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::*;

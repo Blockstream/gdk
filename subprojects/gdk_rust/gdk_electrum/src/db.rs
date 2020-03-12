@@ -2,7 +2,7 @@ use bitcoin::blockdata::script::Script;
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::util::bip32::ChildNumber;
 use bitcoin::{OutPoint, TxOut, Txid};
-use gdk_common::model::{TransactionMeta, Settings};
+use gdk_common::model::{Settings, TransactionMeta};
 use log::{debug, info};
 use serde_json::json;
 use sled::{Batch, Db, IVec, Tree};

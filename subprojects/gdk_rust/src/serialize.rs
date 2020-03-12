@@ -45,7 +45,7 @@ pub fn txitem_value(tx: &TxListItem) -> Value {
 
     json!({
         "block_height": 1,
-        "created_at": tx.created_at, 
+        "created_at": tx.created_at,
 
         "type": tx.type_,
         "memo": tx.memo,
@@ -69,7 +69,7 @@ pub fn txitem_value(tx: &TxListItem) -> Value {
         "addressees": tx.addressees, // notice the extra "e" -- its intentional
         "inputs": inputs, // tx.input.iter().map(format_gdk_input).collect(),
         "outputs": outputs, //tx.output.iter().map(format_gdk_output).collect(),
-        
+
         "transaction_size" : tx.transaction_size,
         "transaction_vsize" : tx.transaction_vsize,
         "transaction_weight" : tx.transaction_weight,

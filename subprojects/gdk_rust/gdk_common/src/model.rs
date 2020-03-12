@@ -5,9 +5,9 @@ use core::mem::transmute;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use chrono::{DateTime, NaiveDateTime, Utc};
 use std::fmt;
 use std::fmt::Display;
-use chrono::{DateTime, NaiveDateTime, Utc};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -148,7 +148,14 @@ impl From<Transaction> for TransactionMeta {
 }
 
 impl TransactionMeta {
-    pub fn new(transaction: Transaction, height: Option<u32>, timestamp: Option<u32>, received: u64, sent: u64, network: Network) -> Self {
+    pub fn new(
+        transaction: Transaction,
+        height: Option<u32>,
+        timestamp: Option<u32>,
+        received: u64,
+        sent: u64,
+        network: Network,
+    ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let created_at = timestamp.map(|ts| {
             let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts as i64, 0), Utc);
