@@ -31,6 +31,7 @@ use log::Level;
 use std::ffi::CString;
 use std::mem::transmute;
 use std::os::raw::c_char;
+use std::time::{SystemTime, Duration};
 
 #[cfg(feature = "android_log")]
 use std::sync::Once;
@@ -48,7 +49,13 @@ use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
 // use gdk_rpc::session::RpcSession;
 use crate::error::Error;
 
-pub enum GdkSession {
+pub struct GdkSession {
+    pub backend: GdkBackend,
+    pub last_xr_fetch: std::time::SystemTime,
+    pub last_xr: Option<Vec<Ticker>>
+}
+
+pub enum GdkBackend {
     // Rpc(RpcSession),
     Electrum(ElectrumSession<ElectrumPlaintextStream>),
     ElectrumTls(ElectrumSession<ElectrumSslStream>),
@@ -190,12 +197,12 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
             let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
                 .map_err(|x| json!(x))?;
 
-            let gdk_sess = match url {
+            let backend = match url {
                 ElectrumUrl::Tls(_url) => {
                     let elec_tls_sess =
                         ElectrumSession::new_tls_session(parsed_network.clone(), db_root)
                             .map_err(|x| json!(x))?;
-                    GdkSession::ElectrumTls(elec_tls_sess)
+                    GdkBackend::ElectrumTls(elec_tls_sess)
                 }
 
                 ElectrumUrl::Plaintext(_url) => {
@@ -203,14 +210,34 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
                         ElectrumSession::new_plaintext_session(parsed_network.clone(), db_root)
                             .map_err(|x| json!(x))?;
 
-                    GdkSession::Electrum(elec_sess)
+                    GdkBackend::Electrum(elec_sess)
                 }
             };
 
-            Ok(gdk_sess)
+            // some time in the past
+            let last_xr_fetch = SystemTime::now() - Duration::from_secs(1000);
+            let gdk_session = GdkSession { backend, last_xr_fetch, last_xr: None };
+            Ok(gdk_session)
         }
         _ => Err(json!("server_type invalid")),
     }
+}
+
+fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
+    if sess.last_xr.is_some() && (SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60))) {
+        debug!("hit exchange rate cache");
+    } else {
+        debug!("missed exchange rate cache");
+        let rates = fetch_exchange_rates();
+        // still record time even if we get no results
+        sess.last_xr_fetch = SystemTime::now();
+        if !rates.is_empty() {
+            // only set last_xr if we got new non-empty rates
+            sess.last_xr = Some(rates);
+        }
+    }
+
+    return sess.last_xr.clone()
 }
 
 #[no_mangle]
@@ -227,10 +254,16 @@ pub extern "C" fn GDKRUST_call_session(
     // independent of the backends
     // let exchange_rate_res = Ok(ExchangeRateOk::ok("USD".into(), 1.2));
 
-    let res = match safe_mut_ref!(sess) {
-        GdkSession::Electrum(ref mut s) => handle_call(s, &method, &input),
+    let sess = safe_mut_ref!(sess);
 
-        GdkSession::ElectrumTls(ref mut s) => handle_call(s, &method, &input),
+    if method == "exchange_rates" {
+        let rates = fetch_cached_exchange_rates(sess).unwrap_or(Vec::new());
+        return json_res!(output, tickers_to_json(rates), GA_OK);
+    }
+
+    let res = match sess.backend {
+        GdkBackend::Electrum(ref mut s) => handle_call(s, &method, &input),
+        GdkBackend::ElectrumTls(ref mut s) => handle_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
@@ -251,10 +284,11 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     self_context: *const libc::c_void,
 ) -> i32 {
     let sess = safe_mut_ref!(sess);
+    let backend = &mut sess.backend;
 
-    match sess {
-        GdkSession::Electrum(ref mut s) => s.notify = Some((handler, self_context)),
-        GdkSession::ElectrumTls(ref mut s) => s.notify = Some((handler, self_context)),
+    match backend {
+        GdkBackend::Electrum(ref mut s) => s.notify = Some((handler, self_context)),
+        GdkBackend::ElectrumTls(ref mut s) => s.notify = Some((handler, self_context)),
     };
 
     debug!("set notification handler");
@@ -286,11 +320,7 @@ fn fetch_exchange_rates() -> Vec<Ticker> {
     fetch_exchange_rate_sources(sources)
 }
 
-fn fetch_exchange_rate_json() -> Value {
-    tickers_to_json(&fetch_exchange_rates())
-}
-
-fn tickers_to_json(tickers: &Vec<Ticker>) -> Value {
+fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
     let empty_map = serde_json::map::Map::new();
     let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
         let currency = ticker.pair.second();
@@ -364,9 +394,6 @@ where
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
         }
-
-        // TODO: cache exchange rates
-        "exchange_rates" => Ok(fetch_exchange_rate_json()),
 
         "get_settings" => session.get_settings().map_err(Into::into),
         "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
