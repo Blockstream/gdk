@@ -40,6 +40,9 @@ use gdk_common::model::GDKRUST_json;
 use gdk_common::session::Session;
 use gdk_common::util::{make_str, read_str};
 
+use bitcoin_exchange_rates::{prepare_requests, make_tls_hyper_client, hyper_fetch_requests};
+use bitcoin_exchange_rates::{Wasabi, Bitfinex, Pair, Currency, Ticker, Source};
+
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
 // use gdk_rpc::session::RpcSession;
@@ -259,6 +262,45 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     GA_OK
 }
 
+fn fetch_exchange_rate_sources(sources: Vec<&dyn Source>) -> Vec<Ticker> {
+    let reqs = prepare_requests(sources, Pair::new_btc(Currency::USD));
+    let client = make_tls_hyper_client();
+    let res = hyper_fetch_requests(&client, &reqs);
+
+    // NOTE: we probably never want to error on empty sources. Just return nothing
+    if res.is_none() {
+        return Vec::new();
+    }
+    let okres = res.unwrap();
+
+    okres.rates.get_vec().clone()
+}
+
+fn fetch_exchange_rates() -> Vec<Ticker> {
+    let wasabi = Wasabi::new("https://wasabiwallet.io");
+    let bitfinex = Bitfinex::new();
+
+    let sources : Vec<&dyn Source> = vec![&bitfinex, &wasabi];
+    // TODO (jb55): shuffle sources?
+
+    fetch_exchange_rate_sources(sources)
+}
+
+fn fetch_exchange_rate_json() -> Value {
+    tickers_to_json(&fetch_exchange_rates())
+}
+
+fn tickers_to_json(tickers: &Vec<Ticker>) -> Value {
+    let empty_map = serde_json::map::Map::new();
+    let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
+        let currency = ticker.pair.second();
+        acc.insert(currency.to_string(), ticker.rate.to_string().into());
+        acc
+    }));
+
+    json!({"currencies": currency_map})
+}
+
 // dynamic dispatch shenanigans
 fn handle_call<S, E>(session: &mut S, method: &str, input: &Value) -> Result<Value, Error>
 where
@@ -322,7 +364,9 @@ where
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
         }
-        "exchange_rates" => Ok(json!({"currencies": {"USD": "1.1", "CAD": "1.1"}})),
+
+        // TODO: cache exchange rates
+        "exchange_rates" => Ok(fetch_exchange_rate_json()),
 
         "get_settings" => session.get_settings().map_err(Into::into),
         "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
@@ -374,3 +418,4 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
     }
     GA_OK
 }
+

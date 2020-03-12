@@ -36,6 +36,11 @@ android_logger = { version = "0.8.6", optional = true }
 url = "1.7.2"
 backtrace = "0.3"
 
+[dependencies.bitcoin-exchange-rates]
+git = "https://github.com/jb55/rust-bitcoin-exchange-rates"
+rev = "f41e076d7d4e6c667b580f59cfb3366bd8576210"
+features = ["hyper-rustls-sync"]
+
 [dependencies.jsonrpc]
 git = "https://github.com/jb55/rust-jsonrpc"
 rev = "5e4dd4817641aa2f5b9981b4ea7f3bca52e0b3d9"

@@ -82,6 +82,11 @@ void test_convert_amount(ga::sdk::session& session) {
 
     printf("# test_convert_amount #1: {satoshi: 10000} %s\n", result.dump().c_str());
 
+    // fiat rate works ok
+    assert(result.value("fiat", "") != "");
+    assert(result.value("fiat_rate", "") != "");
+    assert(result.value("fiat_currency", "") != "");
+
     assert(result["bits"] == "100.00");
     assert(result["ubtc"] == "100.00");
     assert(result["btc"] == "0.00010000");

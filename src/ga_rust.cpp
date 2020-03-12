@@ -441,11 +441,11 @@ namespace sdk {
     nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
     {
         auto currency = amount_json.value("fiat_currency", "USD");
-        auto currency_query = nlohmann::json{ { "currencies", currency } };
         auto rate = amount_json.value("fiat_rate", "");
         if (rate.empty()) {
-            auto xrates = call_session("exchange_rates", currency_query);
-            rate = xrates.value(currency, nullptr) ? xrates[currency].get<std::string>() : "";
+            auto currency_query = nlohmann::json{ { "currencies", currency } };
+            auto xrates = call_session("exchange_rates", currency_query)["currencies"];
+            rate = xrates.value(currency, "");
         }
         return amount::convert(amount_json, currency, rate);
     }
