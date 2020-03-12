@@ -117,7 +117,8 @@ test_clang:
   tags:
     - ga
   script:
-    - ./tools/build.sh --clang
+    - ./tools/build.sh --clang --enable-tests # REVERTME
+    - ninja -C build-clang test_rust && ./build-clang/test_rust # REVERTME
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
