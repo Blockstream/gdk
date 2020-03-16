@@ -309,9 +309,10 @@ impl WalletCtx {
             let tx = all_txs.get(&tx_id).ok_or_else(fn_err("no tx"))?;
             let tx_utxos: Vec<(OutPoint, TxOut)> = tx
                 .output
-                .iter()
+                .clone()
+                .into_iter()
                 .enumerate()
-                .map(|(vout, output)| (OutPoint::new(tx.txid(), vout as u32), output.clone()))
+                .map(|(vout, output)| (OutPoint::new(tx.txid(), vout as u32), output))
                 .filter(|(_, output)| self.db.is_mine(&output.script_pubkey))
                 .filter(|(outpoint, _)| !spent.contains(&outpoint))
                 .collect();
