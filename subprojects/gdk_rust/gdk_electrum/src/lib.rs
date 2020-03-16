@@ -239,7 +239,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             None
         };
 
-        let mut wallet = WalletCtx::new(
+        let wallet = WalletCtx::new(
             &self.db_root,
             wallet_name,
             mnemonic.clone(),

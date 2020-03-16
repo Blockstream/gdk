@@ -154,6 +154,7 @@ impl TransactionMeta {
         timestamp: Option<u32>,
         received: u64,
         sent: u64,
+        fee: u64,
         network: Network,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
@@ -167,6 +168,7 @@ impl TransactionMeta {
         wgtx.sent = Some(sent);
         wgtx.received = Some(received);
         wgtx.network = Some(network);
+        wgtx.fee = fee;
         wgtx
     }
 }

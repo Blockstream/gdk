@@ -11,6 +11,7 @@ pub enum Error {
     DB(sled::Error),
     AddrParse(String),
     Bitcoin(bitcoin::util::Error),
+    BitcoinHashes(bitcoin::hashes::error::Error),
     BitcoinBIP32Error(bitcoin::util::bip32::Error),
     BitcoinConsensus(bitcoin::consensus::encode::Error),
     JSON(serde_json::error::Error),
@@ -30,6 +31,7 @@ impl Display for Error {
             Error::UnknownCall => write!(f, "unknown call"),
             Error::DB(ref dberr) => write!(f, "bitcoin: {}", dberr),
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
+            Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),
             Error::BitcoinBIP32Error(ref bip32err) => write!(f, "bip32: {}", bip32err),
             Error::BitcoinConsensus(ref consensus_err) => write!(f, "consensus: {}", consensus_err),
             Error::JSON(ref json_err) => write!(f, "json: {}", json_err),
@@ -39,6 +41,10 @@ impl Display for Error {
             Error::SliceConversionError(ref slice_err) => write!(f, "slice: {}", slice_err),
         }
     }
+}
+
+pub fn fn_err(str: &str) -> impl Fn() -> Error + '_ {
+    move || Error::Generic(str.into())
 }
 
 impl Serialize for Error {
@@ -107,5 +113,11 @@ impl std::convert::From<hex::FromHexError> for Error {
 impl std::convert::From<electrum_client::types::Error> for Error {
     fn from(err: electrum_client::types::Error) -> Self {
         Error::ClientError(err)
+    }
+}
+
+impl std::convert::From<bitcoin::hashes::error::Error> for Error {
+    fn from(err: bitcoin::hashes::error::Error) -> Self {
+        Error::BitcoinHashes(err)
     }
 }

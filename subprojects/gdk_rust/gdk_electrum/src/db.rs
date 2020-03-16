@@ -1,289 +1,314 @@
-use bitcoin::blockdata::script::Script;
+use crate::error::{fn_err, Error};
 use bitcoin::consensus::{deserialize, serialize};
-use bitcoin::util::bip32::ChildNumber;
-use bitcoin::{OutPoint, TxOut, Txid};
-use gdk_common::model::{Settings, TransactionMeta};
-use log::{debug, info};
-use serde_json::json;
-use sled::{Batch, Db, IVec, Tree};
-use std::collections::HashSet;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::{All, Secp256k1};
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
+use bitcoin::{Address, BlockHeader, Network, OutPoint, Script, Transaction, TxOut, Txid};
+use gdk_common::model::Settings;
+use log::debug;
+use sled::{self, Tree};
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
-use std::ops::Drop;
+use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
-use crate::error::Error;
+const BATCH_SIZE: u32 = 20;
 
-pub trait GetTree {
-    fn get_tree(&self, wallet_name: &str) -> Result<WalletDB, Error>;
+/// DB
+/// Txid, Transaction      contains all my tx and all prevouts
+/// Txid, Height           contains only my tx heights
+/// Height, BlockHeader    contains all headers at the height of my txs
+/// Script, Path           contains all my script up to an empty batch of BATCHSIZE
+/// Path, Script           inverse of the previous
+
+pub struct Forest {
+    txs: Tree,
+    paths: Tree,
+    heights: Tree,
+    headers: Tree,
+    scripts: Tree,
+    singles: Tree,
+    secp: Secp256k1<All>,
+    xpub: ExtendedPubKey,
 }
 
-impl GetTree for Db {
-    fn get_tree(&self, wallet_name: &str) -> Result<WalletDB, Error> {
-        debug!("opening tree {}", wallet_name);
-        Ok(WalletDB::from(self.open_tree(wallet_name)?))
+#[derive(Clone, Copy)]
+pub enum Index {
+    External = 0,
+    Internal = 1,
+}
+
+impl Index {
+    pub fn from(value: i32) -> Result<Self, Error> {
+        Ok(match value {
+            0 => Index::External,
+            1 => Index::Internal,
+            _ => return Err(Error::Generic("only 0 or 1 allowed".into())),
+        })
     }
 }
 
-#[derive(Debug)]
-pub struct WalletDB {
-    tree: Tree,
-}
-
-impl From<Tree> for WalletDB {
-    fn from(tree: Tree) -> Self {
-        WalletDB {
-            tree,
-        }
-    }
-}
-
-impl Drop for WalletDB {
-    fn drop(&mut self) {
-        self.tree.flush().expect("can't flush db");
-    }
-}
-
-impl WalletDB {
-    pub fn apply_batch(&self, batch: Batch) -> Result<(), Error> {
-        self.tree.apply_batch(batch)?;
-        Ok(())
-    }
-
-    pub fn flush(&self) -> Result<usize, Error> {
-        self.tree.flush().map_err(Into::into)
-    }
-
-    pub fn iter_script_pubkeys(&self) -> Result<Vec<Script>, Error> {
-        let scan_key: &[u8] = b"d";
-        let mut vec = vec![];
-        for el in self.tree.range(scan_key..).values() {
-            let script = Script::from(el?.as_ref().to_vec());
-            vec.push(script);
-        }
-        Ok(vec)
-    }
-
-    pub fn iter_utxos(&self) -> Result<Vec<(OutPoint, TxOut)>, Error> {
-        let scan_key: &[u8] = b"u";
-        let mut vec = vec![];
-        for tuple in self.tree.range(scan_key..) {
-            let (key, value) = tuple?;
-            vec.push((deserialize(&key[1..])?, deserialize(&value)?));
-        }
-        Ok(vec)
-    }
-
-    pub fn save_tx(&self, tx: TransactionMeta, batch: &mut Batch) -> Result<(), Error> {
-        let mut key = vec!['t' as u8];
-        key.append(&mut hex::decode(&tx.txid)?);
-
-        batch.insert(key, serde_json::to_vec(&tx)?);
-        Ok(())
-    }
-
-    pub fn save_settings(&self, settings: &Settings) -> Result<(), Error> {
-        self.insert_prefix('c' as u8, vec![], serde_json::to_vec(settings)?)
-    }
-
-    pub fn get_settings(&self) -> Result<Settings, Error> {
-        Ok(match self.tree.get(b"c")? {
-            Some(ivec) => serde_json::from_slice::<Settings>(&ivec)?,
-            None => Settings::default(),
+impl Forest {
+    pub fn new<P: AsRef<std::path::Path>>(path: P, xpub: ExtendedPubKey) -> Result<Self, Error> {
+        let db = sled::open(path)?;
+        Ok(Forest {
+            txs: db.open_tree("txs")?,
+            paths: db.open_tree("paths")?,
+            heights: db.open_tree("heights")?,
+            headers: db.open_tree("headers")?,
+            scripts: db.open_tree("scripts")?,
+            singles: db.open_tree("singles")?,
+            secp: Secp256k1::new(),
+            xpub,
         })
     }
 
-    pub fn save_spent(&self, outpoint: &OutPoint, batch: &mut Batch) -> Result<(), Error> {
-        let mut key = vec!['s' as u8];
-        key.append(&mut serialize(outpoint));
-
-        batch.insert(key, &[]);
-        Ok(())
+    pub fn get_my(&self) -> Result<Vec<(Txid, Option<u32>)>, Error> {
+        let mut heights = vec![];
+        for keyvalue in self.heights.iter() {
+            let (key, value) = keyvalue?;
+            let txid = Txid::from_slice(&key)?;
+            let height = Height::from_slice(&value)?.1;
+            let height = if height == 0 {
+                None
+            } else {
+                Some(height)
+            };
+            heights.push((txid, height));
+        }
+        Ok(heights)
     }
 
-    pub fn get_spent(&self) -> Result<HashSet<OutPoint>, Error> {
-        let r = self.tree.scan_prefix(b"s");
+    pub fn get_only_heights(&self) -> Result<HashSet<u32>, Error> {
+        Ok(self.get_my()?.into_iter().filter_map(|t| t.1).collect())
+    }
+
+    pub fn get_only_txids(&self) -> Result<HashSet<Txid>, Error> {
+        Ok(self.get_my()?.into_iter().map(|t| t.0).collect())
+    }
+
+    pub fn get_all_spent_and_txs(&self) -> Result<(HashSet<OutPoint>, Transactions), Error> {
+        let mut txs = Transactions::default();
+        let mut spent = HashSet::new();
+        for keyvalue in self.txs.iter() {
+            let (key, value) = keyvalue?;
+            let txid = Txid::from_slice(&key)?;
+            let tx: Transaction = deserialize(&value)?;
+            for input in tx.input.iter() {
+                spent.insert(input.previous_output);
+            }
+            txs.insert(txid, tx);
+        }
+        Ok((spent, txs))
+    }
+
+    pub fn get_all_txid(&self) -> Result<HashSet<Txid>, Error> {
         let mut set = HashSet::new();
-        for key in r.keys() {
-            set.insert(deserialize(&key?[1..])?);
+        for keyvalue in self.txs.iter() {
+            let (key, _) = keyvalue?;
+            let txid = Txid::from_slice(&key)?;
+            set.insert(txid);
         }
         Ok(set)
     }
 
-    pub fn list_tx(&self) -> Result<Vec<TransactionMeta>, Error> {
-        let r = self.tree.scan_prefix(b"t");
-        let mut vec = vec![];
-        for value in r.values() {
-            vec.push(serde_json::from_slice(&value?)?);
-        }
-        vec.sort_by(|a: &TransactionMeta, b: &TransactionMeta| b.timestamp.cmp(&a.timestamp));
-
-        Ok(vec)
-    }
-
-    fn insert_prefix(&self, prefix: u8, key: Vec<u8>, value: Vec<u8>) -> Result<(), Error> {
-        let mut prefix_key = Vec::with_capacity(1 + key.len());
-        prefix_key.push(prefix);
-        prefix_key.extend(key);
-        self.tree.insert(prefix_key, value).map(|_| ()).map_err(|e| e.into())
-    }
-
-    pub fn set_external_index(&self, num: u32) -> Result<(), Error> {
-        self.insert_prefix('e' as u8, vec![], serde_json::to_vec(&json!(num))?)
-    }
-
-    pub fn set_internal_index(&self, num: u32) -> Result<(), Error> {
-        self.insert_prefix('i' as u8, vec![], serde_json::to_vec(&json!(num))?)
-    }
-
-    fn get_index(&self, key: &[u8]) -> Result<u32, Error> {
-        self.tree
-            .get(key)?
-            .map(|b| -> Result<_, Error> {
-                let array: [u8; 4] = b.as_ref().try_into()?;
-                let val = u32::from_be_bytes(array);
-                Ok(val)
-            })
-            .unwrap_or(Ok(0))
-    }
-
-    fn get_internal_index(&self) -> Result<u32, Error> {
-        self.get_index(b"i")
-    }
-
-    fn get_extenral_index(&self) -> Result<u32, Error> {
-        self.get_index(b"e")
-    }
-    pub fn set_script_pubkey_by_path(
+    pub fn get_script_batch(
         &self,
-        path: Vec<ChildNumber>,
-        script_pubkey: Script,
-        batch: &mut Batch,
-    ) -> Result<(), Error> {
-        let key = path_key(path);
-        batch.insert(key, script_pubkey.into_bytes());
-        Ok(())
-    }
+        int_or_ext: Index,
+        batch: u32,
+        network: Network,
+    ) -> Result<Vec<Script>, Error> {
+        let mut result = vec![];
+        let first_path = [ChildNumber::from(int_or_ext as u32)];
+        let first_deriv = self.xpub.derive_pub(&self.secp, &first_path)?;
 
-    pub fn get_script_pubkey_by_path(&self, path: Vec<ChildNumber>) -> Result<Option<IVec>, Error> {
-        Ok(self.tree.get(path_key(path))?)
-    }
-    pub fn set_path_by_script_pubkey(
-        &self,
-        script_pubkey: Script,
-        path: Vec<ChildNumber>,
-        batch: &mut Batch,
-    ) -> Result<(), Error> {
-        let key = script_pubkey_key(script_pubkey);
-        let mut value = vec![];
-        path.iter()
-            .map(|cn| u32::from(*cn).to_be_bytes())
-            .for_each(|bytes| value.extend(&bytes[..]));
-
-        batch.insert(key, value);
-        Ok(())
-    }
-
-    pub fn get_path_by_script_pubkey(
-        &self,
-        script_pubkey: Script,
-    ) -> Result<Option<Vec<ChildNumber>>, Error> {
-        Ok(match self.tree.get(script_pubkey_key(script_pubkey))? {
-            Some(path_bytes) => {
-                let path_bytes = &path_bytes[..];
-                let mut vec = vec![];
-                for chunk in path_bytes.chunks(4) {
-                    let n = u32::from_be_bytes(chunk.try_into()?);
-                    vec.push(ChildNumber::from(n));
+        let start = batch * BATCH_SIZE;
+        let end = start + BATCH_SIZE;
+        for j in start..end {
+            let path = Path::new(int_or_ext as u32, j);
+            let opt_script = self.get_script(&path)?;
+            let script = match opt_script {
+                Some(script) => script,
+                None => {
+                    let second_path = [ChildNumber::from(j)];
+                    let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
+                    let address = Address::p2shwpkh(&second_deriv.public_key, network);
+                    debug!("address {}/{} is {}", int_or_ext as u32, j, address);
+                    let script = address.script_pubkey();
+                    self.insert_script(&path, &script)?;
+                    self.insert_path(&script, &path)?;
+                    script
                 }
-                Some(vec)
-            }
-            None => None,
-        })
-    }
-
-    pub fn del_utxo_by_outpoint(&self, outpoint: OutPoint) -> Result<(), Error> {
-        let mut key = vec!['u' as u8];
-        key.append(&mut serialize(&outpoint));
-        self.tree.remove(key)?;
-        Ok(())
-    }
-
-    pub fn set_utxo_by_outpoint(&self, outpoint: OutPoint, output: TxOut) -> Result<(), Error> {
-        let mut key = vec!['u' as u8];
-        key.append(&mut serialize(&outpoint));
-        self.tree.insert(key, serialize(&output))?;
-        Ok(())
-    }
-
-    pub fn set_tx_by_hash(&self, tx: TransactionMeta) -> Result<(), Error> {
-        let mut key = vec!['t' as u8];
-        key.append(&mut serialize(&tx.transaction.txid()));
-        info!("Saving on {}", hex::encode(&key));
-
-        self.tree.insert(key, serde_json::to_vec(&tx)?)?;
-        Ok(())
-    }
-
-    pub fn get_tx_by_hash(&self, txid: &Txid) -> Result<Option<TransactionMeta>, Error> {
-        let mut key = vec!['t' as u8];
-        key.append(&mut serialize(txid));
-        info!("Getting on {}", hex::encode(&key));
-
-        Ok(self.tree.get(key)?.and_then(|data| {
-            serde_json::from_slice(&data).expect("get_tx_by_hash fail deserialize")
-        }))
-    }
-
-    fn increment_index(&self, key: &[u8]) -> Result<u32, Error> {
-        let data = self.tree.update_and_fetch(key, increment)?;
-
-        data.map_or(Ok(0), |b| -> Result<_, Error> {
-            let array: [u8; 4] = b.as_ref().try_into()?;
-            let val = u32::from_be_bytes(array);
-            Ok(val)
-        })
-    }
-
-    pub fn increment_internal_index(&self) -> Result<u32, Error> {
-        self.increment_index(b"i")
-    }
-
-    pub fn increment_external_index(&self) -> Result<u32, Error> {
-        self.increment_index(b"e")
-    }
-
-    // TODO: only in debug
-    pub fn dump(&self) -> Result<(), Error> {
-        let r = self.tree.scan_prefix(&[]);
-        for e in r {
-            let e = e?;
-            debug!("{:?} {:?}", hex::encode(&e.0), std::str::from_utf8(&e.1));
+            };
+            result.push(script);
         }
+        Ok(result)
+    }
 
-        Ok(())
+    pub fn get_tx(&self, txid: &Txid) -> Result<Option<Transaction>, Error> {
+        self.txs.get(txid)?.map(|v| Ok(deserialize(&v)?)).transpose()
+    }
+
+    pub fn insert_tx(&self, txid: &Txid, tx: &Transaction) -> Result<(), Error> {
+        Ok(self.txs.insert(txid, serialize(tx)).map(|_| ())?)
+    }
+
+    pub fn get_header(&self, height: u32) -> Result<Option<BlockHeader>, Error> {
+        self.headers.get(Height::new(height))?.map(|v| Ok(deserialize(&v)?)).transpose()
+    }
+
+    pub fn insert_header(&self, height: u32, header: &BlockHeader) -> Result<(), Error> {
+        Ok(self.headers.insert(Height::new(height), serialize(header)).map(|_| ())?)
+    }
+
+    pub fn remove_height(&self, txid: &Txid) -> Result<(), Error> {
+        Ok(self.heights.remove(txid).map(|_| ())?)
+    }
+
+    pub fn insert_height(&self, txid: &Txid, height: u32) -> Result<(), Error> {
+        Ok(self.heights.insert(txid, Height::new(height).as_ref()).map(|_| ())?)
+    }
+
+    pub fn get_script(&self, path: &Path) -> Result<Option<Script>, Error> {
+        self.scripts.get(path)?.map(|v| Ok(deserialize(&v)?)).transpose()
+    }
+
+    pub fn insert_script(&self, path: &Path, script: &Script) -> Result<(), Error> {
+        Ok(self.scripts.insert(path, serialize(script)).map(|_| ())?)
+    }
+
+    pub fn get_path(&self, script: &Script) -> Result<Option<Path>, Error> {
+        self.paths.get(script.as_bytes())?.map(|v| Ok(Path::from_slice(&v)?)).transpose()
+    }
+
+    pub fn insert_path(&self, script: &Script, path: &Path) -> Result<(), Error> {
+        Ok(self.paths.insert(script.as_bytes(), path.as_ref()).map(|_| ())?)
+    }
+
+    pub fn insert_index(&self, int_or_ext: Index, value: u32) -> Result<(), Error> {
+        Ok(self.singles.insert([int_or_ext as u8], &value.to_be_bytes()).map(|_| ())?)
+    }
+
+    pub fn get_index(&self, int_or_ext: Index) -> Result<u32, Error> {
+        let ivec = self.singles.get([int_or_ext as u8])?.ok_or_else(fn_err("no index"))?;
+        let bytes: [u8; 4] = ivec.as_ref().try_into()?;
+        Ok(u32::from_be_bytes(bytes))
+    }
+
+    pub fn increment_index(&self, int_or_ext: Index) -> Result<u32, Error> {
+        //TODO should be done atomically
+        let new_index = self.get_index(int_or_ext)? + 1;
+        self.insert_index(int_or_ext, new_index)?;
+        Ok(new_index)
+    }
+
+    pub fn insert_settings(&self, settings: &Settings) -> Result<(), Error> {
+        Ok(self.singles.insert(b"s", serde_json::to_vec(settings)?).map(|_| ())?)
+    }
+
+    pub fn get_settings(&self) -> Result<Option<Settings>, Error> {
+        self.singles.get(b"s")?.map(|v| Ok(serde_json::from_slice::<Settings>(&v)?)).transpose()
+    }
+
+    pub fn is_mine(&self, script: &Script) -> bool {
+        match self.get_path(script) {
+            Ok(p) => p.is_some(),
+            Err(_) => false,
+        }
     }
 }
 
-fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
-    let number = match old {
-        Some(bytes) => {
-            let array: [u8; 4] = bytes.try_into().unwrap_or([0; 4]);
-            let number = u32::from_be_bytes(array);
-            number + 1
+pub struct Transactions(HashMap<Txid, Transaction>);
+impl Default for Transactions {
+    fn default() -> Self {
+        Transactions(HashMap::new())
+    }
+}
+impl Deref for Transactions {
+    type Target = HashMap<Txid, Transaction>;
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.0
+    }
+}
+impl DerefMut for Transactions {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl Transactions {
+    pub fn get_previous_output(&self, outpoint: &OutPoint) -> Option<TxOut> {
+        self.0.get(&outpoint.txid).map(|tx| tx.output[outpoint.vout as usize].clone())
+    }
+    pub fn get_previous_value(&self, outpoint: &OutPoint) -> Option<u64> {
+        self.get_previous_output(outpoint).map(|o| o.value)
+    }
+}
+
+struct Height([u8; 4], u32);
+impl AsRef<[u8]> for Height {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl Height {
+    fn new(height: u32) -> Self {
+        Height(height.to_be_bytes(), height)
+    }
+    fn from_slice(slice: &[u8]) -> Result<Self, Error> {
+        let i: [u8; 4] = slice[..].try_into()?;
+        Ok(Height(i, u32::from_be_bytes(i)))
+    }
+}
+
+//DerivationPath hasn't AsRef<[u8]>
+#[derive(Debug, PartialEq)]
+pub struct Path {
+    bytes: [u8; 8],
+    pub i: u32,
+    pub j: u32,
+}
+impl AsRef<[u8]> for Path {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+impl Path {
+    fn new(i: u32, j: u32) -> Self {
+        let value = ((i as u64) << 32) + j as u64;
+        let bytes = value.to_be_bytes();
+        Path {
+            bytes,
+            i,
+            j,
         }
-        None => 0,
-    };
+    }
 
-    Some(number.to_be_bytes().to_vec())
+    fn from_slice(slice: &[u8]) -> Result<Self, Error> {
+        let i: [u8; 4] = slice[..4].try_into()?;
+        let j: [u8; 4] = slice[4..].try_into()?;
+
+        Ok(Path::new(u32::from_be_bytes(i), u32::from_be_bytes(j)))
+    }
+
+    pub fn to_derivation_path(self) -> Result<DerivationPath, Error> {
+        Ok(DerivationPath::from_str(&format!("m/{}/{}", self.i, self.j))?)
+    }
 }
 
-fn script_pubkey_key(script: Script) -> Vec<u8> {
-    let mut key = vec!['p' as u8];
-    key.extend(script.into_bytes());
-    key
-}
+#[cfg(test)]
+mod test {
+    use crate::Path;
 
-fn path_key(path: Vec<ChildNumber>) -> Vec<u8> {
-    let mut key = vec!['d' as u8];
-    path.iter().map(|cn| u32::from(*cn).to_be_bytes()).for_each(|bytes| key.extend(&bytes[..]));
-    key
+    #[test]
+    fn test_path() {
+        let path = Path::new(0, 0);
+        assert_eq!(path, Path::from_slice(path.as_ref()));
+        let path = Path::new(0, 220);
+        assert_eq!(path, Path::from_slice(path.as_ref()));
+        let path = Path::new(1, 220);
+        assert_eq!(path, Path::from_slice(path.as_ref()));
+        let path = Path::new(1, 0);
+        assert_eq!(path, Path::from_slice(path.as_ref()));
+    }
 }
