@@ -12,7 +12,7 @@ use std::convert::TryInto;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-const BATCH_SIZE: u32 = 20;
+pub const BATCH_SIZE: u32 = 20;
 
 /// DB
 /// Txid, Transaction      contains all my tx and all prevouts

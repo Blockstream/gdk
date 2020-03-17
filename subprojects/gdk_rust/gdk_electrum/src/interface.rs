@@ -177,7 +177,7 @@ impl WalletCtx {
                     .map(|(i, _)| i as u32)
                     .max();
                 if let Some(max) = max {
-                    last_used[i as usize] = max
+                    last_used[i as usize] = max + batch_count * BATCH_SIZE;
                 };
 
                 let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
