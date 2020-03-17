@@ -342,11 +342,11 @@ namespace sdk {
 
         auto addressees_p = result.find("addressees");
         for (auto& addressee : *addressees_p) {
+            addressee["satoshi"] = addressee.value("satoshi", 0);
             nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_netparams.bip21_prefix());
             if (!uri_params.is_object())
                 continue;
             addressee["address"] = uri_params["address"];
-            addressee["satoshi"] = addressee.value("satoshi", 0);
             if (m_netparams.liquid()) {
                 if (uri_params["bip21-params"].contains("amount") && !uri_params["bip21-params"].contains("assetid")) {
                     throw std::runtime_error("amount without assetid is not valid"); // fixme return error
