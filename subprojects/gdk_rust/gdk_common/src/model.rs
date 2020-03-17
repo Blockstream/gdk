@@ -123,6 +123,7 @@ pub struct TransactionMeta {
     pub satoshi: u64, // TODO it looks a copy of create_transaction.addressees[0].amount
     pub fee: u64,
     pub network: Option<Network>,
+    pub subaccount: u32,
 }
 
 impl From<Transaction> for TransactionMeta {
@@ -147,6 +148,7 @@ impl From<Transaction> for TransactionMeta {
             satoshi: 0,
             fee: 0,
             network: None,
+            subaccount: 0,
         }
     }
 }
