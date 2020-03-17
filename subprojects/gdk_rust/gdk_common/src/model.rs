@@ -97,7 +97,7 @@ pub struct AddressAmount {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateTransaction {
     pub addressees: Vec<AddressAmount>,
-    pub fee_rate: Option<f32>,
+    pub fee_rate: Option<u64>,
     pub subaccount: Option<u32>,
 }
 
@@ -204,7 +204,7 @@ pub struct TxListItem {
     pub user_signed: bool,
     pub instant: bool,
     pub fee: u64,
-    pub fee_rate: f64,
+    pub fee_rate: u64,
     pub addresses: Vec<String>,
     pub addressees: Vec<String>, // notice the extra "e" -- its intentional
     pub inputs: Vec<AddressIO>,  // tx.input.iter().map(format_gdk_input).collect(),

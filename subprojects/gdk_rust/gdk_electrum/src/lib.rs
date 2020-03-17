@@ -133,7 +133,7 @@ impl<S: Read + Write> ElectrumSession<S> {
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     let (satoshi, type_) = abs_diff(tx.received.unwrap_or(0), tx.sent.unwrap_or(0));
     let serialized = bitcoin::consensus::encode::serialize(&tx.transaction);
-    let fee_rate = tx.fee as f64 / serialized.len() as f64;
+    let fee_rate = (tx.fee as f64 / serialized.len() as f64) as u64;
     let mut addressees = vec![];
     if let Some(network) = tx.network {
         for output in tx.transaction.output.iter() {

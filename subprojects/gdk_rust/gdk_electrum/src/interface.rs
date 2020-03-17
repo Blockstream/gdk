@@ -339,13 +339,13 @@ impl WalletCtx {
             output: vec![],
         };
 
-        let fee_rate = request.fee_rate.unwrap_or(1000.0) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
+        let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
 
         let mut fee_val = 0;
         let mut outgoing: u64 = 0;
         let mut is_mine = vec![];
 
-        let calc_fee_bytes = |bytes| ((bytes as f32) * fee_rate) as u64;
+        let calc_fee_bytes = |bytes| ((bytes as f64) * fee_rate) as u64;
         fee_val += calc_fee_bytes(tx.get_weight() / 4);
 
         for out in request.addressees.iter() {
