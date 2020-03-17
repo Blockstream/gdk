@@ -44,7 +44,7 @@ pub fn txitem_value(tx: &TxListItem) -> Value {
     let outputs = Value::Array(tx.inputs.iter().map(address_io_value).collect());
 
     json!({
-        "block_height": 1,
+        "block_height": tx.block_height,
         "created_at": tx.created_at,
 
         "type": tx.type_,
