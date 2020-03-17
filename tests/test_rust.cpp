@@ -66,12 +66,20 @@ void test_create_sign_transaction(ga::sdk::session& session) {
 }
 
 void test_get_mnemonic_passphrase(ga::sdk::session& session) {
+    bool threw = false;
     auto mnemonic = session.get_mnemonic_passphrase("");
-    printf("\nok test_get_mnemonic_with_empty_pass\n\n");
-    //auto enc_mnemonic = session.get_mnemonic_passphrase("password");
+    printf("ok test_get_mnemonic_with_empty_pass\n");
 
-    //assert(mnemonic != enc_mnemonic);
-    // printf("\nok test_get_mnemonic_passphrase\n\n");
+    try {
+        printf("# ");
+        session.get_mnemonic_passphrase("password");
+    }
+    catch (const std::exception &e) {
+        threw = true;
+        printf("ok test_get_mnemonic_with_pass_throws\n");
+    }
+
+    assert(threw);
 }
 
 // TODO: switch to amount::convert instead of doing things in rust

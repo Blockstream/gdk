@@ -415,8 +415,9 @@ namespace sdk {
 
     std::string ga_rust::get_mnemonic_passphrase(const std::string& password)
     {
-        auto mnemonic = call_session("get_mnemonic", nlohmann::json(password)).get<std::string>();
-        return password.empty() ? mnemonic : encrypt_mnemonic(mnemonic, password);
+        if (!password.empty())
+            throw std::runtime_error("get_mnemonic_phassphrase: encrypted mnemonics not yet supported in electrum/rpc");
+        return call_session("get_mnemonic", nlohmann::json{}).get<std::string>();
     }
 
     std::string ga_rust::get_system_message()
