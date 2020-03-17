@@ -11,6 +11,22 @@ pub enum Error {
 }
 
 impl Error {
+    /// Convert the error to a GDK-compatible code.
+    pub fn to_gdk_code(&self) -> &'static str {
+        // Unhandles error codes:
+        // id_no_amount_specified
+        // id_fee_rate_is_below_minimum
+        // id_invalid_replacement_fee_rate
+        // id_send_all_requires_a_single_output
+
+
+        // TODO rpc
+        match *self {
+            Error::Electrum(electrum::error::Error::InsufficientFunds) => "id_insufficient_funds",
+            _ => "id_unknown",
+        }
+    }
+
     pub fn gdk_display(&self) -> String {
         match self {
             Error::Other(s) => s.clone(),

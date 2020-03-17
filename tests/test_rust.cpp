@@ -161,7 +161,7 @@ int main()
         test_get_transactions(session);
         test_get_balance(session);
         test_get_fee_estimates(session);
-        // test_create_sign_transaction(session); // TODO (jb55): Fix w/ empty utxos
+        test_create_sign_transaction(session);
         test_get_mnemonic_passphrase(session);
         test_convert_amount(session);
     }

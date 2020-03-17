@@ -57,23 +57,6 @@ pub enum Error {
     Other(String),
 }
 
-impl Error {
-    /// Convert the error to a GDK-compatible code.
-    pub fn to_gdk_code(&self) -> &'static str {
-        // Unhandles error codes:
-        // id_no_amount_specified
-        // id_fee_rate_is_below_minimum
-        // id_invalid_replacement_fee_rate
-        // id_send_all_requires_a_single_output
-        match *self {
-            Error::InsufficientFunds => "id_insufficient_funds",
-            Error::NoRecipients => "id_no_recipients",
-            Error::NoUtxosFound => "id_no_utxos_found",
-            _ => GDK_ERROR_ID_UNKNOWN,
-        }
-    }
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)

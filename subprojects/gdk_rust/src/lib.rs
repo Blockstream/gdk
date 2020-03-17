@@ -278,8 +278,13 @@ pub extern "C" fn GDKRUST_call_session(
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
 
-        // TODO: should we return GA_ERROR here?
-        Err(ref e) => json_res!(output, json!({ "error": e.gdk_display() }), GA_ERROR),
+        Err(ref e) => {
+            let code = e.to_gdk_code();
+            let desc = e.gdk_display();
+
+            debug!("rust error {}: {}", code, desc);
+            json_res!(output, json!({ "error": code, "message": desc }), GA_OK)
+        },
     }
 }
 
