@@ -117,6 +117,7 @@ pub struct TransactionMeta {
     pub sent: Option<u64>,
     pub error: String,
     pub addressees_have_assets: bool,
+    pub send_all: bool,
     pub is_sweep: bool,
     pub satoshi: u64, // TODO it looks a copy of create_transaction.addressees[0].amount
     pub fee: u64,
@@ -139,6 +140,7 @@ impl From<Transaction> for TransactionMeta {
             sent: None,
             error: "".to_string(),
             addressees_have_assets: false,
+            send_all: false,
             is_sweep: false,
             satoshi: 0,
             fee: 0,
