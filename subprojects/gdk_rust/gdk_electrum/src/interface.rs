@@ -296,7 +296,7 @@ impl WalletCtx {
             txs.push(tx_meta);
         }
         txs.sort_by(|a, b| {
-            b.timestamp.unwrap_or(std::u32::MAX).cmp(&a.timestamp.unwrap_or(std::u32::MAX))
+            b.height.unwrap_or(std::u32::MAX).cmp(&a.height.unwrap_or(std::u32::MAX))
         });
         Ok(txs)
     }

@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use std::fmt;
 use std::fmt::Display;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -111,8 +112,8 @@ pub struct TransactionMeta {
     pub hex: String,
     pub txid: String,
     pub height: Option<u32>,
-    pub timestamp: Option<u32>,
-    pub created_at: Option<String>, // yyyy-MM-dd HH:mm:ss
+    pub timestamp: u32,  // for confirmed tx is block time for unconfirmed is when created
+    pub created_at: String, // yyyy-MM-dd HH:mm:ss of timestamp
     pub received: Option<u64>,
     pub sent: Option<u64>,
     pub error: String,
@@ -128,12 +129,13 @@ impl From<Transaction> for TransactionMeta {
     fn from(transaction: Transaction) -> Self {
         let txid = transaction.txid().to_string();
         let hex = hex::encode(&bitcoin::consensus::serialize(&transaction));
+        let timestamp = now();
         TransactionMeta {
             create_transaction: None,
             transaction,
             height: None,
-            created_at: None,
-            timestamp: None,
+            created_at: format(timestamp),
+            timestamp,
             txid,
             hex,
             received: None,
@@ -160,10 +162,9 @@ impl TransactionMeta {
         network: Network,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
-        let created_at = timestamp.map(|ts| {
-            let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(ts as i64, 0), Utc);
-            format!("{}", dt.format("%Y-%m-%d %H:%M:%S"))
-        });
+        let timestamp = timestamp.unwrap_or_else(now);
+        let created_at = format(now());
+
         wgtx.height = height;
         wgtx.timestamp = timestamp;
         wgtx.created_at = created_at;
@@ -259,4 +260,15 @@ impl Default for Settings {
             pricing,
         }
     }
+}
+
+fn now() -> u32 {
+    let start = SystemTime::now();
+    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    since_the_epoch.as_secs() as u32
+}
+
+fn format(timestamp: u32) -> String {
+    let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(timestamp as i64, 0), Utc);
+    format!("{}", dt.format("%Y-%m-%d %H:%M:%S"))
 }

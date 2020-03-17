@@ -148,7 +148,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     }
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
-        created_at: tx.created_at.clone().unwrap_or("".to_string()),
+        created_at: tx.created_at.clone(),
         type_,
         memo: "".into(), // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),
