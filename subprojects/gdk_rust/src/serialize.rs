@@ -141,6 +141,26 @@ where
     session.get_transaction_details(txid).map_err(Into::into)
 }
 
+pub fn create_transaction<S, E>(session: &S, input: &Value) -> Result<Value, Error>
+where
+    E: Into<Error>,
+    S: Session<E>,
+{
+    let create_tx: CreateTransaction = serde_json::from_value(input.clone())?;
+
+    let res = session.create_transaction(&create_tx).map(|v| json!(v)).map_err(Into::into);
+
+    Ok(match res {
+        Err(ref err) => {
+            let mut input_cloned = input.clone();
+            input_cloned["error"] = err.to_gdk_code().into();
+            input_cloned
+        }
+
+        Ok(v) => v,
+    })
+}
+
 pub fn set_transaction_memo<S, E>(session: &S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,

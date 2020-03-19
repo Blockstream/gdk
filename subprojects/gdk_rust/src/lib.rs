@@ -372,10 +372,7 @@ where
         "get_transaction_details" => get_transaction_details(session, input),
         "get_balance" => serialize::get_balance(session, input),
         "set_transaction_memo" => set_transaction_memo(session, input),
-        "create_transaction" => session
-            .create_transaction(&serde_json::from_value(input.clone())?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
+        "create_transaction" => serialize::create_transaction(session, input),
         "sign_transaction" => session
             .sign_transaction(&serde_json::from_value(input.clone())?)
             .map_err(Into::into)
