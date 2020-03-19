@@ -112,7 +112,7 @@ pub struct TransactionMeta {
     pub hex: String,
     pub txid: String,
     pub height: Option<u32>,
-    pub timestamp: u32,  // for confirmed tx is block time for unconfirmed is when created
+    pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created
     pub created_at: String, // yyyy-MM-dd HH:mm:ss of timestamp
     pub received: Option<u64>,
     pub sent: Option<u64>,

@@ -284,7 +284,7 @@ pub extern "C" fn GDKRUST_call_session(
 
             debug!("rust error {}: {}", code, desc);
             json_res!(output, json!({ "error": code, "message": desc }), GA_OK)
-        },
+        }
     }
 }
 

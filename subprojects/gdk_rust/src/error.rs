@@ -19,7 +19,6 @@ impl Error {
         // id_invalid_replacement_fee_rate
         // id_send_all_requires_a_single_output
 
-
         // TODO rpc
         match *self {
             Error::Electrum(electrum::error::Error::InsufficientFunds) => "id_insufficient_funds",
