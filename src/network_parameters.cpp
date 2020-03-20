@@ -203,6 +203,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         std::make_shared<nlohmann::json>(
             nlohmann::json({ { "name", "Electrum Liquid" }, { "network", "liquid-electrum-mainnet" },
                 { "address_explorer_url", "https://blockstream.info/liquid/address/" },
+                { "url", "blockstream.info:995" }, { "tls", true },
                 { "asset_registry_url", "https://assets.blockstream.info" },
                 { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
                 { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
@@ -215,8 +216,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Mainnet" },
             { "network", "electrum-mainnet" }, { "address_explorer_url", "https://blockstream.info/address/" },
-            { "url", "electrum2.hodlister.co:50002" }, // TODO for testing purpose
-            { "tls", true }, // TODO for testing purpose
+            { "url", "blockstream.info:700" }, { "tls", true },
             { "tx_explorer_url", "https://blockstream.info/tx/" }, { "p2pkh_version", 0u }, { "p2sh_version", 5u },
             { "bech32_prefix", "bc" }, { "mainnet", true }, { "liquid", false }, { "development", false },
             { "bip21_prefix", "bitcoin" }, { "server_type", "electrum" } })) },
@@ -225,8 +225,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Testnet" },
             { "network", "electrum-testnet" }, { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" },
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
-            { "url", "tn.not.fyi:55001" }, // TODO for testing purpose
-            { "tls", false }, // TODO for testing purpose
+            { "url", "blockstream.info:993" }, { "tls", true },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" }, { "p2pkh_version", 111u },
             { "p2sh_version", 196u }, { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", false },
             { "bip21_prefix", "bitcoin" }, { "development", false }, { "server_type", "electrum" } })) },
