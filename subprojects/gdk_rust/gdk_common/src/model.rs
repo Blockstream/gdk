@@ -227,7 +227,7 @@ pub struct Subaccount {
 }
 
 // This one is simple enough to derive a serializer
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct FeeEstimate(pub u64);
 pub struct AddressResult(pub String);
 pub struct TxsResult(pub Vec<TxListItem>);
