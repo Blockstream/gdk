@@ -231,7 +231,8 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
-        let wallet_name = hex::encode(sha256::Hash::hash(mnem_str.as_bytes()));
+        let wallet_desc = format!("{}{:?}", xpub, self.network);
+        let wallet_id = hex::encode(sha256::Hash::hash(wallet_desc.as_bytes()));
 
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
@@ -241,7 +242,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
         let wallet = WalletCtx::new(
             &self.db_root,
-            wallet_name,
+            wallet_id,
             mnemonic.clone(),
             self.network.clone(),
             xprv,

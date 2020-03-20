@@ -71,7 +71,7 @@ pub enum ElectrumUrl {
 impl WalletCtx {
     pub fn new(
         db_root: &str,
-        wallet_name: String,
+        wallet_id: String,
         mnemonic: Mnemonic,
         network: Network,
         xprv: ExtendedPrivKey,
@@ -79,7 +79,7 @@ impl WalletCtx {
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         let mut path: PathBuf = db_root.into();
-        path.push(wallet_name);
+        path.push(wallet_id);
         debug!("opening sled db root path: {:?}", path);
 
         let db = Forest::new(path, xpub)?;
