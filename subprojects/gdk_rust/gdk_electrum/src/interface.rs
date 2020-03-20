@@ -160,15 +160,13 @@ impl WalletCtx {
         let mut history_txs_id = HashSet::new();
         let mut heights_set = HashSet::new();
         let mut txid_height = HashMap::new();
-        let network =
-            self.network.id().get_bitcoin_network().ok_or_else(fn_err("bitcoin network empty"))?;
 
         let mut last_used = [0u32; 2];
         for i in 0..=1 {
             let int_or_ext = Index::from(i)?;
             let mut batch_count = 0;
             loop {
-                let batch = self.db.get_script_batch(int_or_ext, batch_count, network)?;
+                let batch = self.db.get_script_batch(int_or_ext, batch_count)?;
                 let result: Vec<Vec<GetHistoryRes>> = client.batch_script_get_history(&batch)?;
                 let max = result
                     .iter()
