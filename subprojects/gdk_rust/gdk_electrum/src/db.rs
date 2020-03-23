@@ -112,11 +112,7 @@ impl Forest {
         Ok(set)
     }
 
-    pub fn get_script_batch(
-        &self,
-        int_or_ext: Index,
-        batch: u32,
-    ) -> Result<Vec<Script>, Error> {
+    pub fn get_script_batch(&self, int_or_ext: Index, batch: u32) -> Result<Vec<Script>, Error> {
         let mut result = vec![];
         let first_path = [ChildNumber::from(int_or_ext as u32)];
         let first_deriv = self.xpub.derive_pub(&self.secp, &first_path)?;
@@ -132,7 +128,8 @@ impl Forest {
                     let second_path = [ChildNumber::from(j)];
                     let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
                     // Note we are using regtest here because we are not interested in the address, only in script construction
-                    let script = Address::p2shwpkh(&second_deriv.public_key, Network::Regtest).script_pubkey();
+                    let script = Address::p2shwpkh(&second_deriv.public_key, Network::Regtest)
+                        .script_pubkey();
                     self.insert_script(&path, &script)?;
                     self.insert_path(&script, &path)?;
                     script

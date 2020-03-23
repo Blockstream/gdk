@@ -242,6 +242,42 @@ pub fn asset_unblind(
     (asset_out, abf_out, vbf_out, value_out)
 }
 
+pub fn asset_unblind_with_nonce(
+    nonce: Vec<u8>,
+    proof: Vec<u8>,
+    commitment: Vec<u8>,
+    extra: bitcoin::Script,
+    generator: Vec<u8>,
+) -> ([u8; 32], [u8; 32], [u8; 32], u64) {
+    let mut asset_out = [0; 32];
+    let mut abf_out = [0; 32];
+    let mut vbf_out = [0; 32];
+    let mut value_out = 0u64;
+    let ret = unsafe {
+        ffi::wally_asset_unblind_with_nonce(
+            nonce.as_ptr(),
+            nonce.len(),
+            proof.as_ptr(),
+            proof.len(),
+            commitment.as_ptr(),
+            commitment.len(),
+            extra.as_bytes().as_ptr(),
+            extra.as_bytes().len(),
+            generator.as_ptr(),
+            generator.len(),
+            asset_out.as_mut_ptr(),
+            asset_out.len(),
+            abf_out.as_mut_ptr(),
+            abf_out.len(),
+            vbf_out.as_mut_ptr(),
+            vbf_out.len(),
+            &mut value_out,
+        )
+    };
+    assert_eq!(ret, ffi::WALLY_OK);
+    (asset_out, abf_out, vbf_out, value_out)
+}
+
 pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256k1::PublicKey {
     let mut pub_key = [0; 33];
 
@@ -260,6 +296,7 @@ pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin::secp256k1;
     use bitcoin::Script;
     use hex;
     use std::str::FromStr;
@@ -372,5 +409,71 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(value, 80_000_000);
+    }
+
+    #[test]
+    fn test_elements_asset_unblind_with_nonce() {
+        let tx_hex =
+            include_str!("5cd7f370af84c03f19eec4695c40de923ef1eb5f4952af2fa4907da620b7d16a.hex");
+        assert_eq!(13286, tx_hex.len());
+        let tx_bytes = hex::decode(tx_hex).unwrap();
+        let tx: elements::Transaction = elements::encode::deserialize(&tx_bytes).unwrap();
+        let txid_str = "5cd7f370af84c03f19eec4695c40de923ef1eb5f4952af2fa4907da620b7d16a";
+        assert_eq!(format!("{}", tx.txid()), txid_str);
+
+        // output #1 is my change
+        let change = tx.output[1].clone();
+
+        // from the node recover confidential_key
+        // ./src/elements-cli -chain=liquidv1 getaddressinfo Gt4eUKv82VuFPExmX5mqEDXkKuQ1Euzb6J | jq -r .confidential
+        // VJLAMi52eUDE8SKYc7u1Zryg2MDcoNAMhYLf5BVvtpX8J1h9JrNsc2B9gqPa627SWQLzJqAWbUQceizq
+        // ./src/elements-cli -chain=liquidv1 getaddressinfo $CONF_ADDR | jq -r .confidential_key
+        // 02b19255e05b1f0d063b4b62ccfb2d66c2f8c40cbabafe70292eb4d50759014c64
+        // ./src/elements-cli -chain=liquidv1 dumpblindingkey VJLAMi52eUDE8SKYc7u1Zryg2MDcoNAMhYLf5BVvtpX8J1h9JrNsc2B9gqPa627SWQLzJqAWbUQceizq
+        // REDACTED
+        // let blinding_private_key_hex = "REDACTED";
+        //let blinding_public_key_hex = "02b19255e05b1f0d063b4b62ccfb2d66c2f8c40cbabafe70292eb4d50759014c64";
+
+        //let blinding_private_key =  secp256k1::SecretKey::from_slice(&hex::decode(blinding_private_key_hex).unwrap()).unwrap();
+        //let blinding_public_key = ec_public_key_from_private_key(blinding_private_key.clone());
+        //assert_eq!(blinding_public_key_hex, hex::encode( &blinding_public_key.serialize()[..]));
+
+        //let sender_public_key_bytes = elements::encode::serialize(&change.nonce);
+        //assert_eq!(sender_public_key_bytes.len(), 33);
+        //let sender_public_key = secp256k1::PublicKey::from_slice(&sender_public_key_bytes).unwrap();
+        //let sender_public_key_hex = "027eddd9a667b17f047a548d4c251dcbc7c682c43c161c2875f603045b1acab5c6";
+        //assert_eq!(hex::encode(sender_public_key_bytes), sender_public_key_hex);
+
+        //let blinding_nonce = sha256::Hash::hash( secp256k1::ecdh::SharedSecret::new(&sender_public_key, &blinding_private_key).as_ref());
+        //assert_eq!("d0cc21df08e33340042c17899ee20939cedb71a820bac322591a41265ea14cd2", hex::encode(blinding_nonce.as_ref()));
+
+        let blinding_nonce =
+            hex::decode("d0cc21df08e33340042c17899ee20939cedb71a820bac322591a41265ea14cd2")
+                .unwrap();
+
+        let rangeproof = change.witness.rangeproof.clone();
+        let value_commitment = elements::encode::serialize(&change.value);
+        let asset_commitment = elements::encode::serialize(&change.asset);
+        let script = change.script_pubkey.clone();
+        let (asset, abf, vbf, value) = asset_unblind_with_nonce(
+            blinding_nonce.to_vec(),
+            rangeproof,
+            value_commitment,
+            script,
+            asset_commitment,
+        );
+        assert_eq!(value, 9972);
+        assert_eq!(
+            hex::encode(&asset[..]),
+            "6d521c38ec1ea15734ae22b7c46064412829c0d0579f0a713d1c04ede979026f"
+        );
+        assert_eq!(
+            hex::encode(&abf[..]),
+            "7719338beae503b90f672366cfa32c6791c08f061df419fdcaddb1ff5bf693b8"
+        );
+        assert_eq!(
+            hex::encode(&vbf[..]),
+            "1ace094a11fb12b82d8c1e7d4e1abfebc087a3cf90369d65b54379f40feb3190"
+        );
     }
 }

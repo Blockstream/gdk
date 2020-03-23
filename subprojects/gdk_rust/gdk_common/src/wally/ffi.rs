@@ -173,7 +173,7 @@ extern "C" {
         len: size_t,
     ) -> c_int;
 
-    //WALLY_CORE_APU int wally_confidential_addr_from_addr(
+    //WALLY_CORE_API int wally_confidential_addr_from_addr(
     //    const char *address,
     //    uint32_t prefix,
     //    const unsigned char *pub_key,
@@ -187,4 +187,41 @@ extern "C" {
         output: *mut *const c_char,
     ) -> c_int;
 
+    // WALLY_CORE_API int wally_asset_unblind_with_nonce(
+    //     const unsigned char *nonce_hash,
+    //     size_t nonce_hash_len,
+    //     const unsigned char *proof,
+    //     size_t proof_len,
+    //     const unsigned char *commitment,
+    //     size_t commitment_len,
+    //     const unsigned char *extra,
+    //     size_t extra_len,
+    //     const unsigned char *generator,
+    //     size_t generator_len,
+    //     unsigned char *asset_out,
+    //     size_t asset_out_len,
+    //     unsigned char *abf_out,
+    //     size_t abf_out_len,
+    //     unsigned char *vbf_out,
+    //     size_t vbf_out_len,
+    //     uint64_t *value_out);
+    pub fn wally_asset_unblind_with_nonce(
+        nonce_hash: *const c_uchar,
+        nonce_hash_len: size_t,
+        proof: *const c_uchar,
+        proof_len: size_t,
+        commitment: *const c_uchar,
+        commitment_len: size_t,
+        extra: *const c_uchar,
+        extra_len: size_t,
+        generator: *const c_uchar,
+        generator_len: size_t,
+        asset_out: *mut c_uchar,
+        asset_out_len: size_t,
+        abf_out: *mut c_uchar,
+        abf_out_len: size_t,
+        vbf_out: *mut c_uchar,
+        vbf_out_len: size_t,
+        value_out: *mut u64,
+    ) -> c_int;
 }

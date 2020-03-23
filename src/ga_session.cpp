@@ -315,9 +315,9 @@ namespace sdk {
                                   : log_level == "debug" ? logging_levels::debug : logging_levels::none;
         boost::log::core::get()->set_filter(
             log_level::severity >= (m_log_level == logging_levels::debug
-                                           ? log_level::severity_level::debug
-                                           : m_log_level == logging_levels::info ? log_level::severity_level::info
-                                                                                 : log_level::severity_level::fatal));
+                    ? log_level::severity_level::debug
+                    : m_log_level == logging_levels::info ? log_level::severity_level::info
+                                                          : log_level::severity_level::fatal));
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         connect_with_tls() ? make_client<client_tls>() : make_client<client>();
     }
