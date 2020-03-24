@@ -1070,8 +1070,7 @@ namespace sdk {
         const auto eph_keypair_pub = h2b(output.at("eph_keypair_pub"));
 
         const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf, vbf, value_commitment,
-            script, generator, 1, std::min(std::max(net_params.ct_exponent(), -1), 18),
-            std::min(std::max(net_params.ct_bits(), 1), 51));
+            script, generator, 1, std::min(std::max(net_params.ct_exponent(), -1), 18), net_params.ct_bits());
 
         const auto surjectionproof = asset_surjectionproof(
             asset_id, abf, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);

@@ -740,7 +740,7 @@ Networks list JSON
         51840,
         65535
       ],
-      "ct_bits": 36,
+      "ct_bits": 52,
       "ct_exponent": 0,
       "default_peers": [],
       "development": false,
@@ -805,7 +805,7 @@ Networks list JSON
         51840,
         65535
       ],
-      "ct_bits": 36,
+      "ct_bits": 52,
       "ct_exponent": 0,
       "default_peers": [],
       "development": true,

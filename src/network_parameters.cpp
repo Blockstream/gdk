@@ -96,7 +96,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 57u }, { "p2sh_version", 39u },
             { "bech32_prefix", "lq" }, { "mainnet", true }, { "liquid", true }, { "development", false },
             { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
-            { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
+            { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 52 },
             { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "bip21_prefix", "liquidnetwork" } })) },
 
     { "localtest-liquid",
@@ -111,7 +111,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 235u }, { "p2sh_version", 75u },
             { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", true }, { "development", true },
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
-            { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 36 },
+            { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 52 },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 25920, 51840, 65535 } },
             { "bip21_prefix", "liquidnetwork" } })) },
 
