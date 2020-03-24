@@ -46,10 +46,12 @@ start() {
     [[ "$(command -v "$ELECTRS")" ]] || missing_program "electrs" "ELECTRS"
     [[ "$(command -v "$EXEC_NODE")" ]] || missing_program "$EXEC_NODE_BN" "EXEC_NODE"
 
+    printf "starting regtest node...\n"
     $EXEC_NODE -pid="$DATADIR"/testpid -server=1 -daemon -regtest -datadir="$DATADIR"
 }
 
 start_electrs() {
+    printf "starting electrs...\n"
     $ELECTRS -vvv --db-dir="$DATADIR"/electrs-db \
              --daemon-dir="$DATADIR" \
              --network regtest &
