@@ -19,6 +19,7 @@ pub struct Network {
     pub tls: Option<bool>,
     pub url: Option<String>,
     pub validate_domain: Option<bool>,
+    pub policy_asset: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

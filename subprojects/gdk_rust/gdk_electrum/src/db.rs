@@ -3,9 +3,16 @@ use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
-use bitcoin::{Address, BlockHeader, Network, OutPoint, Script, Transaction, TxOut, Txid};
+use bitcoin::{Address, OutPoint, Script, Transaction, TxOut, Txid};
+use gdk_common::be::*;
 use gdk_common::model::Settings;
-use log::debug;
+use gdk_common::{ElementsNetwork, NetworkId};
+//use log::debug;
+use elements::AddressParams;
+use gdk_common::util::p2shwpkh_script;
+use gdk_common::wally::{
+    asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
+};
 use sled::{self, Tree};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -20,7 +27,9 @@ pub const BATCH_SIZE: u32 = 20;
 /// Height, BlockHeader    contains all headers at the height of my txs
 /// Script, Path           contains all my script up to an empty batch of BATCHSIZE
 /// Path, Script           inverse of the previous
+/// OutPoint, Unblinded    unblinded values (only for liquid)
 
+#[derive(Debug)]
 pub struct Forest {
     txs: Tree,
     paths: Tree,
@@ -28,8 +37,10 @@ pub struct Forest {
     headers: Tree,
     scripts: Tree,
     singles: Tree,
+    unblinded: Tree,
     secp: Secp256k1<All>,
     xpub: ExtendedPubKey,
+    id: NetworkId,
 }
 
 #[derive(Clone, Copy)]
@@ -49,7 +60,11 @@ impl Index {
 }
 
 impl Forest {
-    pub fn new<P: AsRef<std::path::Path>>(path: P, xpub: ExtendedPubKey) -> Result<Self, Error> {
+    pub fn new<P: AsRef<std::path::Path>>(
+        path: P,
+        xpub: ExtendedPubKey,
+        id: NetworkId,
+    ) -> Result<Self, Error> {
         let db = sled::open(path)?;
         Ok(Forest {
             txs: db.open_tree("txs")?,
@@ -58,8 +73,10 @@ impl Forest {
             headers: db.open_tree("headers")?,
             scripts: db.open_tree("scripts")?,
             singles: db.open_tree("singles")?,
+            unblinded: db.open_tree("unblinded")?,
             secp: Secp256k1::new(),
             xpub,
+            id,
         })
     }
 
@@ -87,15 +104,15 @@ impl Forest {
         Ok(self.get_my()?.into_iter().map(|t| t.0).collect())
     }
 
-    pub fn get_all_spent_and_txs(&self) -> Result<(HashSet<OutPoint>, Transactions), Error> {
-        let mut txs = Transactions::default();
+    pub fn get_all_spent_and_txs(&self) -> Result<(HashSet<BEOutPoint>, BETransactions), Error> {
+        let mut txs = BETransactions::default();
         let mut spent = HashSet::new();
         for keyvalue in self.txs.iter() {
             let (key, value) = keyvalue?;
             let txid = Txid::from_slice(&key)?;
-            let tx: Transaction = deserialize(&value)?;
-            for input in tx.input.iter() {
-                spent.insert(input.previous_output);
+            let tx: BETransaction = BETransaction::deserialize(&value, self.id)?;
+            for prevout in tx.previous_outputs() {
+                spent.insert(prevout);
             }
             txs.insert(txid, tx);
         }
@@ -112,7 +129,22 @@ impl Forest {
         Ok(set)
     }
 
-    pub fn get_script_batch(&self, int_or_ext: Index, batch: u32) -> Result<Vec<Script>, Error> {
+    pub fn get_all_scripts(&self) -> Result<HashSet<Script>, Error> {
+        let mut set = HashSet::new();
+        for keyvalue in self.scripts.iter() {
+            let (_, value) = keyvalue?;
+            let script = deserialize(&value)?;
+            set.insert(script);
+        }
+        Ok(set)
+    }
+
+    pub fn get_script_batch(
+        &self,
+        int_or_ext: Index,
+        batch: u32,
+        master_blinding: Option<&MasterBlindingKey>,
+    ) -> Result<Vec<Script>, Error> {
         let mut result = vec![];
         let first_path = [ChildNumber::from(int_or_ext as u32)];
         let first_deriv = self.xpub.derive_pub(&self.secp, &first_path)?;
@@ -128,8 +160,39 @@ impl Forest {
                     let second_path = [ChildNumber::from(j)];
                     let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
                     // Note we are using regtest here because we are not interested in the address, only in script construction
-                    let script = Address::p2shwpkh(&second_deriv.public_key, Network::Regtest)
-                        .script_pubkey();
+                    let script = match self.id {
+                        NetworkId::Bitcoin(network) => {
+                            let address = Address::p2shwpkh(&second_deriv.public_key, network);
+                            println!("{}/{} {}", int_or_ext as u32, j, address);
+                            address.script_pubkey()
+                        }
+                        NetworkId::Elements(network) => {
+                            let params = match network {
+                                ElementsNetwork::Liquid => &AddressParams::LIQUID,
+                                ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
+                            };
+
+                            let script = p2shwpkh_script(&second_deriv.public_key);
+                            let blinding_key = asset_blinding_key_to_ec_private_key(
+                                master_blinding.unwrap(),
+                                &script,
+                            );
+                            let public_key = ec_public_key_from_private_key(blinding_key);
+                            let blinder = Some(public_key);
+
+                            let address = elements::Address::p2shwpkh(
+                                &second_deriv.public_key,
+                                blinder,
+                                params,
+                            );
+                            println!(
+                                "{}/{} blinded address {}  blinder {:?}",
+                                int_or_ext as u32, j, address, blinder
+                            );
+                            assert_eq!(script, address.script_pubkey());
+                            address.script_pubkey()
+                        }
+                    };
                     self.insert_script(&path, &script)?;
                     self.insert_path(&script, &path)?;
                     script
@@ -140,20 +203,58 @@ impl Forest {
         Ok(result)
     }
 
-    pub fn get_tx(&self, txid: &Txid) -> Result<Option<Transaction>, Error> {
-        self.txs.get(txid)?.map(|v| Ok(deserialize(&v)?)).transpose()
+    pub fn get_tx(&self, txid: &Txid) -> Result<Option<BETransaction>, Error> {
+        self.txs.get(txid)?.map(|v| Ok(BETransaction::deserialize(&v, self.id)?)).transpose()
+    }
+    pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Option<Transaction>, Error> {
+        match self.get_tx(txid) {
+            Ok(Some(BETransaction::Bitcoin(tx))) => Ok(Some(tx)),
+            _ => Err(Error::Generic("exptected bitcoin tx".to_string())),
+        }
     }
 
-    pub fn insert_tx(&self, txid: &Txid, tx: &Transaction) -> Result<(), Error> {
-        Ok(self.txs.insert(txid, serialize(tx)).map(|_| ())?)
+    pub fn insert_tx(&self, txid: &Txid, tx: &BETransaction) -> Result<(), Error> {
+        Ok(self.txs.insert(txid, tx.serialize()).map(|_| ())?)
     }
 
-    pub fn get_header(&self, height: u32) -> Result<Option<BlockHeader>, Error> {
-        self.headers.get(Height::new(height))?.map(|v| Ok(deserialize(&v)?)).transpose()
+    pub fn insert_unblinded(
+        &self,
+        outpoint: &elements::OutPoint,
+        asset_value: &Unblinded,
+    ) -> Result<(), Error> {
+        Ok(self
+            .unblinded
+            .insert(elements::encode::serialize(outpoint), asset_value.serialize())
+            .map(|_| ())?)
     }
 
-    pub fn insert_header(&self, height: u32, header: &BlockHeader) -> Result<(), Error> {
-        Ok(self.headers.insert(Height::new(height), serialize(header)).map(|_| ())?)
+    pub fn get_unblinded(&self, outpoint: &elements::OutPoint) -> Result<Option<Unblinded>, Error> {
+        self.unblinded
+            .get(elements::encode::serialize(outpoint))?
+            .map(|v| Ok(Unblinded::deserialize(&v)?))
+            .transpose()
+    }
+
+    pub fn get_all_unblinded(&self) -> Result<HashMap<elements::OutPoint, Unblinded>, Error> {
+        let mut map = HashMap::new();
+        for keyvalue in self.unblinded.iter() {
+            let (key, value) = keyvalue?;
+            let outpoint = elements::encode::deserialize(&key)?;
+            let unblinded = Unblinded::deserialize(&value)?;
+            map.insert(outpoint, unblinded);
+        }
+        Ok(map)
+    }
+
+    pub fn get_header(&self, height: u32) -> Result<Option<BEBlockHeader>, Error> {
+        self.headers
+            .get(Height::new(height))?
+            .map(|v| Ok(BEBlockHeader::deserialize(&v, self.id)?))
+            .transpose()
+    }
+
+    pub fn insert_header(&self, height: u32, header: &BEBlockHeader) -> Result<(), Error> {
+        Ok(self.headers.insert(Height::new(height), header.serialize()).map(|_| ())?)
     }
 
     pub fn remove_height(&self, txid: &Txid) -> Result<(), Error> {

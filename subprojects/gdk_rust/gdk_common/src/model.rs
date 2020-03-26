@@ -1,4 +1,4 @@
-use bitcoin::blockdata::transaction::Transaction;
+use crate::be::BETransaction;
 use bitcoin::util::address::Address;
 use bitcoin::Network;
 use core::mem::transmute;
@@ -20,15 +20,7 @@ impl GDKRUST_json {
     }
 }
 
-pub struct BalanceResult(pub HashMap<String, u64>);
-
-impl BalanceResult {
-    pub fn new_btc(satoshi: u64) -> Self {
-        let mut map = HashMap::new();
-        map.insert("btc".to_string(), satoshi);
-        BalanceResult(map)
-    }
-}
+pub type Balances = HashMap<String, i64>;
 
 // =========== v exchange rate stuff v ===========
 
@@ -107,29 +99,27 @@ pub struct TransactionMeta {
     #[serde(flatten)]
     pub create_transaction: Option<CreateTransaction>,
     #[serde(rename = "transaction_object")]
-    pub transaction: Transaction,
+    pub transaction: BETransaction,
     #[serde(rename = "transaction")]
     pub hex: String,
     pub txid: String,
     pub height: Option<u32>,
     pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created
     pub created_at: String, // yyyy-MM-dd HH:mm:ss of timestamp
-    pub received: Option<u64>,
-    pub sent: Option<u64>,
     pub error: String,
     pub addressees_have_assets: bool,
     pub send_all: bool,
     pub is_sweep: bool,
-    pub satoshi: u64, // TODO it looks a copy of create_transaction.addressees[0].amount
+    pub satoshi: Balances,
     pub fee: u64,
     pub network: Option<Network>,
     pub subaccount: u32,
 }
 
-impl From<Transaction> for TransactionMeta {
-    fn from(transaction: Transaction) -> Self {
+impl From<BETransaction> for TransactionMeta {
+    fn from(transaction: BETransaction) -> Self {
         let txid = transaction.txid().to_string();
-        let hex = hex::encode(&bitcoin::consensus::serialize(&transaction));
+        let hex = hex::encode(&transaction.serialize());
         let timestamp = now();
         TransactionMeta {
             create_transaction: None,
@@ -139,13 +129,11 @@ impl From<Transaction> for TransactionMeta {
             timestamp,
             txid,
             hex,
-            received: None,
-            sent: None,
             error: "".to_string(),
             addressees_have_assets: false,
             send_all: false,
             is_sweep: false,
-            satoshi: 0,
+            satoshi: HashMap::new(),
             fee: 0,
             network: None,
             subaccount: 0,
@@ -155,11 +143,10 @@ impl From<Transaction> for TransactionMeta {
 
 impl TransactionMeta {
     pub fn new(
-        transaction: Transaction,
+        transaction: BETransaction,
         height: Option<u32>,
         timestamp: Option<u32>,
-        received: u64,
-        sent: u64,
+        satoshi: Balances,
         fee: u64,
         network: Network,
     ) -> Self {
@@ -170,8 +157,7 @@ impl TransactionMeta {
         wgtx.height = height;
         wgtx.timestamp = timestamp;
         wgtx.created_at = created_at;
-        wgtx.sent = Some(sent);
-        wgtx.received = Some(received);
+        wgtx.satoshi = satoshi;
         wgtx.network = Some(network);
         wgtx.fee = fee;
         wgtx
@@ -199,8 +185,8 @@ pub struct TxListItem {
     pub type_: String,
     pub memo: String,
     pub txhash: String,
-    pub transaction: Vec<u8>,
-    pub satoshi: BalanceResult,
+    pub transaction: String,
+    pub satoshi: Balances,
     pub rbf_optin: bool,
     pub cap_cpfp: bool,
     pub can_rbf: bool,
@@ -223,7 +209,7 @@ pub struct Subaccount {
     pub type_: String,
     pub name: String,
     pub has_transactions: bool,
-    pub satoshi: BalanceResult,
+    pub satoshi: Balances,
 }
 
 // This one is simple enough to derive a serializer

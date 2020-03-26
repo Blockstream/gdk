@@ -33,6 +33,7 @@ void test_get_balance(ga::sdk::session& session) {
     auto res = session.get_balance(balance_details);
 
     assert(res["btc"] >= 0);
+    printf("# get_balance %s\n", res.dump().c_str());
     printf("\nok test_get_balance\n\n");
 }
 
@@ -41,6 +42,7 @@ void test_get_fee_estimates(ga::sdk::session& session) {
     auto res = session.get_fee_estimates();
     auto fees = res["fees"];
 
+    printf("# fees (%ld): \n%s", fees.size(), fees.dump().c_str());
     assert(fees.size() > 0);
     assert(fees[0].get<double>() >= 0);
 
@@ -160,7 +162,7 @@ int main()
         test_receive_addresses(session);
         test_get_transactions(session);
         test_get_balance(session);
-        test_get_fee_estimates(session);
+        //test_get_fee_estimates(session);
         test_create_sign_transaction(session);
         test_get_mnemonic_passphrase(session);
         test_convert_amount(session);

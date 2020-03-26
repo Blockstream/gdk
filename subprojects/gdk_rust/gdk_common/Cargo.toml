@@ -21,3 +21,4 @@ features = ["use-serde"]
 
 [dependencies.elements]
 version = "0.12"
+features = ["serde"]

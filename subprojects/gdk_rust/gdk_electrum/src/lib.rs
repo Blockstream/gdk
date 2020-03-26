@@ -27,9 +27,10 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{Address, Transaction};
+use bitcoin::Transaction;
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
+use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::network::Network;
@@ -128,33 +129,36 @@ impl<S: Read + Write> ElectrumSession<S> {
             warn!("no registered handler to receive notification");
         }
     }
+
+    fn try_get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
+        let blocks: Vec<usize> = (1..25).collect();
+        let mut estimates: Vec<FeeEstimate> = self
+            .client
+            .batch_estimate_fee(blocks)?
+            .iter()
+            .map(|e| FeeEstimate((*e * 100_000_000.0) as u64))
+            .collect();
+        let relay_fee = self.client.relay_fee()?;
+        estimates.insert(0, FeeEstimate((relay_fee * 100_000_000.0) as u64));
+        Ok(estimates)
+    }
 }
 
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
-    let (satoshi, type_) = abs_diff(tx.received.unwrap_or(0), tx.sent.unwrap_or(0));
-    let serialized = bitcoin::consensus::encode::serialize(&tx.transaction);
-    let fee_rate = (tx.fee as f64 / serialized.len() as f64) as u64;
-    let mut addressees = vec![];
-    if let Some(network) = tx.network {
-        for output in tx.transaction.output.iter() {
-            //TODO if gdk with addresses means only recipient it should probably skip my
-            //change address, however at the moment apps pick first
-            //address as recipient and we create a tx with change as second so it should work ok
-            let address = Address::from_script(&output.script_pubkey, network)
-                .map(|e| e.to_string())
-                .unwrap_or_else(|| "".into());
-            addressees.push(address);
-        }
-    }
+    let type_ = "incoming".to_string(); // TODO, compute
+    let len = tx.hex.len() / 2;
+    let fee_rate = (tx.fee as f64 / len as f64) as u64;
+    let addressees = vec![];
+
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
         created_at: tx.created_at.clone(),
         type_,
         memo: "".into(), // TODO: TransactionMeta -> TxListItem memo
         txhash: tx.txid.clone(),
-        transaction_size: serialized.len(),
-        transaction: serialized, // FIXME
-        satoshi: BalanceResult::new_btc(satoshi),
+        transaction_size: len,
+        transaction: tx.hex.clone(), // FIXME
+        satoshi: tx.satoshi.clone(),
         rbf_optin: false,           // TODO: TransactionMeta -> TxListItem rbf_optin
         cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
         can_rbf: false,             // TODO: TransactionMeta -> TxListItem can_rbf
@@ -165,11 +169,11 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         fee: tx.fee,
         fee_rate,
         addresses: vec![],
-        addressees,      // notice the extra "e" -- its intentional
-        inputs: vec![],  // tx.input.iter().map(format_gdk_input).collect(),
-        outputs: vec![], //tx.output.iter().map(format_gdk_output).collect(),
-        transaction_vsize: tx.transaction.get_weight() / 4,
-        transaction_weight: tx.transaction.get_weight(),
+        addressees,              // notice the extra "e" -- its intentional
+        inputs: vec![],          // tx.input.iter().map(format_gdk_input).collect(),
+        outputs: vec![],         //tx.output.iter().map(format_gdk_output).collect(),
+        transaction_vsize: len,  //TODO
+        transaction_weight: len, //TODO
     }
 }
 
@@ -211,7 +215,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn login(&mut self, mnemonic: &Mnemonic, password: Option<Password>) -> Result<(), Error> {
-        info!("login {:#?}", self.network);
+        debug!("login {:#?}", self.network);
 
         // TODO: passphrase?
 
@@ -239,6 +243,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         } else {
             None
         };
+        println!("master_blinding {:?}", master_blinding);
 
         let wallet = WalletCtx::new(
             &self.db_root,
@@ -259,9 +264,10 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
-        let a1 = self.get_wallet()?.get_address()?;
-        debug!("get_receive_address: {:?} ", a1);
-        Ok(AddressResult(a1.address.to_string()))
+        println!("get_receive_address");
+        let w = self.get_wallet()?;
+        let a = w.get_address()?;
+        Ok(AddressResult(a.address.to_string()))
     }
 
     fn get_subaccounts(&self) -> Result<Vec<Subaccount>, Error> {
@@ -276,13 +282,12 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, Error> {
         let balance = self.get_balance(num_confs, Some(index))?;
         let txs = self.get_transactions(&json!({}))?;
-        let value = BalanceResult::new_btc(balance);
 
         let subaccounts_fake = Subaccount {
             type_: "electrum".into(),
             name: "Single sig wallet".into(),
             has_transactions: !txs.0.is_empty(),
-            satoshi: value,
+            satoshi: balance,
         };
 
         Ok(subaccounts_fake)
@@ -298,7 +303,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, _num_confs: u32, _subaccount: Option<u32>) -> Result<u64, Error> {
+    fn get_balance(&self, _num_confs: u32, _subaccount: Option<u32>) -> Result<Balances, Error> {
         self.get_wallet()?.balance()
     }
 
@@ -318,7 +323,12 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
         debug!("electrum send_transaction {:#?}", tx);
-        self.client.transaction_broadcast(&tx.transaction)?;
+        match &tx.transaction {
+            BETransaction::Bitcoin(tx) => self.client.transaction_broadcast(&tx)?,
+            BETransaction::Elements(_tx) => {
+                return Err(Error::Generic("implementme: send liquid transaction".into()))
+            }
+        };
         Ok(format!("{}", tx.txid))
     }
 
@@ -335,20 +345,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        Ok(if self.network.liquid {
-            vec![FeeEstimate(1000u64); 25]
-        } else {
-            let blocks: Vec<usize> = (1..25).collect();
-            let mut estimates: Vec<FeeEstimate> = self
-                .client
-                .batch_estimate_fee(blocks)?
-                .iter()
-                .map(|e| FeeEstimate((*e * 100_000_000.0) as u64))
-                .collect();
-            let relay_fee = self.client.relay_fee()?;
-            estimates.insert(0, FeeEstimate((relay_fee * 100_000_000.0) as u64));
-            estimates
-        })
+        Ok(self.try_get_fee_estimates().unwrap_or(vec![FeeEstimate(1000u64); 25] )) //TODO better implement default
     }
 
     fn get_mnemonic(&self) -> Result<&Mnemonic, Error> {
@@ -373,6 +370,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     //     Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address"))
     // }
 }
+
 
 fn native_activity_create() {
     #[cfg(target_os = "android")]

@@ -8,7 +8,7 @@ use std::os::raw::c_char;
 use log::debug;
 
 use backtrace::Backtrace;
-use bitcoin::Amount;
+use bitcoin::{Address, Amount, Network, PublicKey, Script};
 use chrono::NaiveDateTime;
 use log::LevelFilter;
 use serde_json::Value;
@@ -113,18 +113,7 @@ impl<T> OptionExt<T> for Option<T> {
     }
 }
 
-use bitcoin;
-use bitcoin::blockdata::script;
-use bitcoin::hashes::Hash;
-use bitcoin::util::key::PublicKey;
-use bitcoin::Script;
 pub fn p2shwpkh_script(pk: &PublicKey) -> Script {
-    let mut hash_engine = bitcoin::ScriptHash::engine();
-    pk.write_into(&mut hash_engine);
-
-    let builder = script::Builder::new()
-        .push_int(0)
-        .push_slice(&bitcoin::ScriptHash::from_engine(hash_engine)[..]);
-
-    builder.into_script()
+    // using regtest is always ok because I am not interested in the address just in the script
+    Address::p2shwpkh(pk, Network::Regtest).script_pubkey()
 }

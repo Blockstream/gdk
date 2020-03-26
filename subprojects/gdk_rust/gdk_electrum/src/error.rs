@@ -19,6 +19,7 @@ pub enum Error {
     Hex(hex::FromHexError),
     ClientError(electrum_client::types::Error),
     SliceConversionError(std::array::TryFromSliceError),
+    ElementsEncode(elements::encode::Error),
 }
 
 impl Display for Error {
@@ -39,6 +40,7 @@ impl Display for Error {
             Error::Hex(ref hex_err) => write!(f, "hex: {}", hex_err),
             Error::ClientError(ref client_err) => write!(f, "client: {:?}", client_err),
             Error::SliceConversionError(ref slice_err) => write!(f, "slice: {}", slice_err),
+            Error::ElementsEncode(ref el_err) => write!(f, "el_err: {}", el_err),
         }
     }
 }
@@ -119,5 +121,16 @@ impl std::convert::From<electrum_client::types::Error> for Error {
 impl std::convert::From<bitcoin::hashes::error::Error> for Error {
     fn from(err: bitcoin::hashes::error::Error) -> Self {
         Error::BitcoinHashes(err)
+    }
+}
+impl std::convert::From<elements::encode::Error> for Error {
+    fn from(err: elements::encode::Error) -> Self {
+        Error::ElementsEncode(err)
+    }
+}
+
+impl std::convert::From<gdk_common::error::Error> for Error {
+    fn from(err: gdk_common::error::Error) -> Self {
+        Error::Generic(err.0)
     }
 }

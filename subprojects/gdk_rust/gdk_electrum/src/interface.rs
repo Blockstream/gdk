@@ -1,14 +1,15 @@
 use bitcoin::blockdata::script::{Builder, Script};
-use bitcoin::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+use bitcoin::blockdata::transaction::{Transaction, TxIn, TxOut};
 use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{All, Message, Secp256k1};
+use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{PublicKey, Txid};
 use electrum_client::GetHistoryRes;
 use elements::{self, AddressParams};
+use gdk_common::model::Balances;
 use hex;
 use log::debug;
 use rand::Rng;
@@ -24,10 +25,13 @@ use crate::db::*;
 use crate::error::*;
 use crate::model::*;
 use electrum_client::Client;
+use elements::confidential::{Asset, Nonce, Value};
+use gdk_common::be::*;
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
+#[derive(Debug)]
 pub struct WalletCtx {
     secp: Secp256k1<All>,
     network: Network,
@@ -37,30 +41,6 @@ pub struct WalletCtx {
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
     change_max_deriv: u32,
-}
-
-#[derive(Debug)]
-pub enum LiqOrBitAddress {
-    Liquid(elements::Address),
-    Bitcoin(bitcoin::Address),
-}
-
-impl LiqOrBitAddress {
-    pub fn script_pubkey(&self) -> Script {
-        match self {
-            LiqOrBitAddress::Liquid(addr) => addr.script_pubkey(),
-            LiqOrBitAddress::Bitcoin(addr) => addr.script_pubkey(),
-        }
-    }
-}
-
-impl ToString for LiqOrBitAddress {
-    fn to_string(&self) -> String {
-        match self {
-            LiqOrBitAddress::Liquid(addr) => addr.to_string(),
-            LiqOrBitAddress::Bitcoin(addr) => addr.to_string(),
-        }
-    }
 }
 
 pub enum ElectrumUrl {
@@ -82,7 +62,7 @@ impl WalletCtx {
         path.push(wallet_id);
         debug!("opening sled db root path: {:?}", path);
 
-        let db = Forest::new(path, xpub)?;
+        let db = Forest::new(path, xpub, network.id())?;
 
         Ok(WalletCtx {
             mnemonic,
@@ -100,22 +80,19 @@ impl WalletCtx {
         &self.mnemonic
     }
 
-    fn derive_address(
-        &self,
-        xpub: &ExtendedPubKey,
-        path: &[u32; 2],
-    ) -> Result<LiqOrBitAddress, Error> {
+    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<BEAddress, Error> {
         let path: Vec<ChildNumber> = path
             .iter()
             .map(|x| ChildNumber::Normal {
                 index: *x,
             })
             .collect();
+        println!("derive_address1");
         let derived = xpub.derive_pub(&self.secp, &path)?;
         if self.network.liquid {}
         match self.network.id() {
             NetworkId::Bitcoin(network) => {
-                Ok(LiqOrBitAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network)))
+                Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network)))
             }
             NetworkId::Elements(network) => {
                 let master_blinding_key = self
@@ -139,7 +116,7 @@ impl WalletCtx {
                         &AddressParams::ELEMENTS,
                     ),
                 };
-                Ok(LiqOrBitAddress::Liquid(addr))
+                Ok(BEAddress::Elements(addr))
             }
         }
     }
@@ -153,7 +130,7 @@ impl WalletCtx {
     }
 
     pub fn sync<S: Read + Write>(&self, client: &mut Client<S>) -> Result<(), Error> {
-        debug!("start sync");
+        println!("start sync {}", self.xpub);
         let start = Instant::now();
 
         //let mut client = Client::new("tn.not.fyi:55001")?;
@@ -166,7 +143,11 @@ impl WalletCtx {
             let int_or_ext = Index::from(i)?;
             let mut batch_count = 0;
             loop {
-                let batch = self.db.get_script_batch(int_or_ext, batch_count)?;
+                let batch = self.db.get_script_batch(
+                    int_or_ext,
+                    batch_count,
+                    self.master_blinding.as_ref(),
+                )?;
                 let result: Vec<Vec<GetHistoryRes>> = client.batch_script_get_history(&batch)?;
                 let max = result
                     .iter()
@@ -179,7 +160,7 @@ impl WalletCtx {
                 };
 
                 let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                debug!("{}/batch({}) {:?}", i, batch_count, flattened.len());
+                println!("{}/batch({}) {:?}", i, batch_count, flattened.len());
 
                 if flattened.is_empty() {
                     break;
@@ -198,26 +179,53 @@ impl WalletCtx {
         }
         self.db.insert_index(Index::External, last_used[Index::External as usize])?;
         self.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
-        debug!("last_used: {:?}", last_used,);
+        println!("last_used: {:?}", last_used,);
 
         let mut txs_in_db = self.db.get_all_txid()?;
         let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
         if !txs_to_download.is_empty() {
-            let txs_downloaded = client.batch_transaction_get(txs_to_download)?;
-            debug!("txs_downloaded {:?}", txs_downloaded.len());
+            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
+            let mut txs_downloaded: Vec<BETransaction> = vec![];
+            for vec in txs_bytes_downloaded {
+                txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
+            }
+            println!("txs_downloaded {:?}", txs_downloaded.len());
             let mut previous_txs_to_download = HashSet::new();
             for tx in txs_downloaded.iter() {
                 self.db.insert_tx(&tx.txid(), &tx)?;
                 txs_in_db.insert(tx.txid());
-                for input in tx.input.iter() {
-                    previous_txs_to_download.insert(input.previous_output.txid);
+                for txid in tx.previous_output_txids() {
+                    previous_txs_to_download.insert(txid);
+                }
+
+                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
+                if let BETransaction::Elements(tx) = tx {
+                    println!("compute OutPoint Unblinded");
+                    for (i, output) in tx.output.iter().enumerate() {
+                        if self.db.is_mine(&output.script_pubkey) {
+                            let txid = tx.txid();
+                            let vout = i as u32;
+                            let outpoint = elements::OutPoint {
+                                txid,
+                                vout,
+                            };
+                            if let Err(_) = self.try_unblind(outpoint, output.clone()) {
+                                println!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
+                            }
+                        }
+                    }
                 }
             }
+
             let txs_to_download: Vec<&Txid> =
                 previous_txs_to_download.difference(&txs_in_db).collect();
             if !txs_to_download.is_empty() {
-                let txs_downloaded = client.batch_transaction_get(txs_to_download)?;
-                debug!("previous txs_downloaded {:?}", txs_downloaded.len());
+                let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
+                let mut txs_downloaded: Vec<BETransaction> = vec![];
+                for vec in txs_bytes_downloaded {
+                    txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
+                }
+                println!("previous txs_downloaded {:?}", txs_downloaded.len());
                 for tx in txs_downloaded.iter() {
                     self.db.insert_tx(&tx.txid(), tx)?;
                 }
@@ -228,11 +236,17 @@ impl WalletCtx {
         let heights_to_download: Vec<u32> =
             heights_set.difference(&heights_in_db).cloned().collect();
         if !heights_to_download.is_empty() {
-            let headers_downloaded = client.batch_block_header(heights_to_download.clone())?;
+            let headers_bytes_downloaded =
+                client.batch_block_header_raw(heights_to_download.clone())?;
+            let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
+            for vec in headers_bytes_downloaded {
+                headers_downloaded.push(BEBlockHeader::deserialize(&vec, self.network.id())?);
+            }
+
             for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
                 self.db.insert_header(*height, header)?;
             }
-            debug!("headers_downloaded {:?}", headers_downloaded.len());
+            println!("headers_downloaded {:?}", headers_downloaded.len());
         }
 
         // sync heights, which are my txs
@@ -245,14 +259,70 @@ impl WalletCtx {
             }
         }
 
-        debug!("elapsed {}", start.elapsed().as_millis());
+        println!("elapsed {}", start.elapsed().as_millis());
 
+        Ok(())
+    }
+
+    fn try_unblind(
+        &self,
+        outpoint: elements::OutPoint,
+        output: elements::TxOut,
+    ) -> Result<(), Error> {
+        match (output.asset, output.value, output.nonce) {
+            (Asset::Confidential(_, _), Value::Confidential(_, _), Nonce::Confidential(_, _)) => {
+                let master_blinding = self.master_blinding.as_ref().unwrap();
+                println!("unblinding {} master_blinding: {:?}", outpoint, master_blinding);
+
+                let script = output.script_pubkey.clone();
+                let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
+                let rangeproof = output.witness.rangeproof.clone();
+                let value_commitment = elements::encode::serialize(&output.value);
+                let asset_commitment = elements::encode::serialize(&output.asset);
+                let nonce_commitment = elements::encode::serialize(&output.nonce);
+                println!(
+                    "commitmnents len {} {} {}",
+                    value_commitment.len(),
+                    asset_commitment.len(),
+                    nonce_commitment.len()
+                );
+                let sender_pk = secp256k1::PublicKey::from_slice(&nonce_commitment).unwrap();
+
+                let (asset, abf, vbf, value) = asset_unblind(
+                    sender_pk,
+                    blinding_key,
+                    rangeproof,
+                    value_commitment,
+                    script,
+                    asset_commitment,
+                )?;
+
+                println!(
+                    "Unblinded outpoint:{} asset:{} value:{}",
+                    outpoint,
+                    hex::encode(&asset),
+                    value
+                );
+
+                let unblinded = Unblinded {
+                    asset,
+                    value,
+                    abf,
+                    vbf,
+                };
+                self.db.insert_unblinded(&outpoint, &unblinded)?;
+            }
+            _ => println!("received unconfidential or null asset/value/nonce"),
+        }
         Ok(())
     }
 
     pub fn list_tx(&self) -> Result<Vec<TransactionMeta>, Error> {
         debug!("start list_tx");
         let (_, all_txs) = self.db.get_all_spent_and_txs()?;
+        let all_scripts = self.db.get_all_scripts()?;
+        let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
+
         let mut txs = vec![];
 
         for (tx_id, height) in self.db.get_my()? {
@@ -260,33 +330,15 @@ impl WalletCtx {
             let header = height
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
-            let total_output: u64 = tx.output.iter().map(|o| o.value).sum();
-            let total_input: u64 = tx
-                .input
-                .iter()
-                .filter_map(|i| all_txs.get_previous_value(&i.previous_output))
-                .sum();
-            let fee = total_input - total_output;
-            let received: u64 = tx
-                .output
-                .iter()
-                .filter(|o| self.db.is_mine(&o.script_pubkey))
-                .map(|o| o.value)
-                .sum();
-            let sent: u64 = tx
-                .input
-                .iter()
-                .filter_map(|i| all_txs.get_previous_output(&i.previous_output))
-                .filter(|o| self.db.is_mine(&o.script_pubkey))
-                .map(|o| o.value)
-                .sum();
+
+            let fee = tx.fee(&all_txs);
+            let satoshi = tx.my_balances(&all_txs, &all_scripts, &all_unblinded);
 
             let tx_meta = TransactionMeta::new(
                 tx.clone(),
                 height,
-                header.map(|h| h.time),
-                received,
-                sent,
+                header.map(|h| h.time()),
+                satoshi,
                 fee,
                 self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
             );
@@ -299,30 +351,65 @@ impl WalletCtx {
         Ok(txs)
     }
 
-    fn utxos(&self) -> Result<Vec<(OutPoint, TxOut)>, Error> {
+    fn utxos(&self) -> Result<Vec<(BEOutPoint, (String, u64))>, Error> {
         debug!("start utxos");
         let (spent, all_txs) = self.db.get_all_spent_and_txs()?;
+        let all_scripts = self.db.get_all_scripts()?;
+        let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
+
         let mut utxos = vec![];
         for tx_id in self.db.get_only_txids()? {
             let tx = all_txs.get(&tx_id).ok_or_else(fn_err("no tx"))?;
-            let tx_utxos: Vec<(OutPoint, TxOut)> = tx
-                .output
-                .clone()
-                .into_iter()
-                .enumerate()
-                .map(|(vout, output)| (OutPoint::new(tx.txid(), vout as u32), output))
-                .filter(|(_, output)| self.db.is_mine(&output.script_pubkey))
-                .filter(|(outpoint, _)| !spent.contains(&outpoint))
-                .collect();
+            let tx_utxos: Vec<(BEOutPoint, (String, u64))> = match tx {
+                BETransaction::Bitcoin(tx) => tx
+                    .output
+                    .clone()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
+                    .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
+                    .filter(|(outpoint, _)| !spent.contains(&outpoint))
+                    .map(|(outpoint, output)| (outpoint, ("btc".to_string(), output.value)))
+                    .collect(),
+                BETransaction::Elements(tx) => tx
+                    .output
+                    .clone()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(vout, output)| {
+                        (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
+                    })
+                    .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
+                    .filter(|(outpoint, _)| !spent.contains(&outpoint))
+                    .filter_map(|(outpoint, _)| {
+                        if let BEOutPoint::Elements(el_outpoint) = outpoint {
+                            if let Some(unblinded) = all_unblinded.get(&el_outpoint) {
+                                return Some((outpoint, (unblinded.asset_hex(self.network.policy_asset.as_ref()), unblinded.value)));
+                            }
+                        }
+                        None
+                    })
+                    .collect(),
+            };
             utxos.extend(tx_utxos);
         }
-        utxos.sort_by(|a, b| b.1.value.cmp(&a.1.value));
+        utxos.sort_by(|a, b| (b.1).1.cmp(&(a.1).1));
+
         Ok(utxos)
     }
 
-    pub fn balance(&self) -> Result<u64, Error> {
+    pub fn balance(&self) -> Result<Balances, Error> {
         debug!("start balance");
-        Ok(self.utxos()?.iter().fold(0, |sum, i| sum + i.1.value))
+        let mut result = HashMap::new();
+        for (_, (asset, value)) in self.utxos()?.iter() {
+            let asset_btc = if Some(asset) == self.network.policy_asset.as_ref() {
+                "btc".to_string()
+            } else {
+                asset.to_string()
+            };
+            *result.entry(asset_btc).or_default() += *value as i64;
+        }
+        Ok(result)
     }
 
     // If request.utxo is None, we do the coin selection
@@ -365,7 +452,11 @@ impl WalletCtx {
         let mut selected_amount: u64 = 0;
         while selected_amount < outgoing + fee_val {
             debug!("selected_amount:{} outgoing:{} fee_val:{}", selected_amount, outgoing, fee_val);
-            let (outpoint, txout) = utxos.pop().ok_or(Error::InsufficientFunds)?;
+            let (outpoint, (_, value)) = utxos.pop().ok_or(Error::InsufficientFunds)?;
+            let outpoint = bitcoin::OutPoint {
+                txid: outpoint.txid(),
+                vout: outpoint.vout(),
+            }; // TODO liquid
 
             let new_in = TxIn {
                 previous_output: outpoint,
@@ -377,7 +468,7 @@ impl WalletCtx {
 
             tx.input.push(new_in);
 
-            selected_amount += txout.value;
+            selected_amount += value;
         }
 
         let change_val = selected_amount - outgoing - fee_val;
@@ -395,17 +486,14 @@ impl WalletCtx {
             is_mine.push(true);
         }
         let mut created_tx = TransactionMeta::new(
-            tx,
+            BETransaction::Bitcoin(tx), //TODO
             None,
             None,
-            0,
-            outgoing,
+            HashMap::new(), //TODO
             fee_val,
             self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
         );
         created_tx.create_transaction = Some(request.clone());
-        created_tx.sent = Some(outgoing);
-        created_tx.satoshi = outgoing;
         debug!("returning: {:?}", created_tx);
 
         Ok(created_tx)
@@ -442,38 +530,43 @@ impl WalletCtx {
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
         debug!("sign");
-        let mut out_tx = request.transaction.clone();
 
-        for i in 0..request.transaction.input.len() {
-            let prev_output = request.transaction.input[i].previous_output.clone();
-            debug!("input#{} prev_output:{:?}", i, prev_output);
-            let tx = self
-                .db
-                .get_tx(&prev_output.txid)?
-                .ok_or_else(|| Error::Generic("cannot find tx in db".into()))?;
-            let out = tx.output[prev_output.vout as usize].clone();
-            let derivation_path = self
-                .db
-                .get_path(&out.script_pubkey)?
-                .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                .to_derivation_path()?;
-            debug!(
-                "input#{} prev_output:{:?} derivation_path:{:?}",
-                i, prev_output, derivation_path
-            );
+        match &request.transaction {
+            BETransaction::Bitcoin(tx) => {
+                let mut out_tx = tx.clone();
 
-            let (pk, sig) =
-                self.internal_sign(&request.transaction, i, &derivation_path, out.value);
-            let script_sig = script_sig(&pk);
-            let witness = vec![sig, pk.to_bytes()];
+                for i in 0..tx.input.len() {
+                    let prev_output = tx.input[i].previous_output.clone();
+                    debug!("input#{} prev_output:{:?}", i, prev_output);
+                    let prev_tx = self
+                        .db
+                        .get_bitcoin_tx(&prev_output.txid)?
+                        .ok_or_else(|| Error::Generic("cannot find tx in db".into()))?;
+                    let out = prev_tx.output[prev_output.vout as usize].clone();
+                    let derivation_path = self
+                        .db
+                        .get_path(&out.script_pubkey)?
+                        .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
+                        .to_derivation_path()?;
+                    debug!(
+                        "input#{} prev_output:{:?} derivation_path:{:?}",
+                        i, prev_output, derivation_path
+                    );
 
-            out_tx.input[i].script_sig = script_sig;
-            out_tx.input[i].witness = witness;
+                    let (pk, sig) = self.internal_sign(&tx, i, &derivation_path, out.value);
+                    let script_sig = script_sig(&pk);
+                    let witness = vec![sig, pk.to_bytes()];
+
+                    out_tx.input[i].script_sig = script_sig;
+                    out_tx.input[i].witness = witness;
+                }
+
+                let wgtx: TransactionMeta = BETransaction::Bitcoin(out_tx).into();
+
+                Ok(wgtx)
+            }
+            BETransaction::Elements(_tx) => Err(Error::Generic("can't sign liquid".into())),
         }
-
-        let wgtx: TransactionMeta = out_tx.into();
-
-        Ok(wgtx)
     }
 
     pub fn validate_address(&self, _address: Address) -> Result<bool, Error> {
@@ -490,7 +583,6 @@ impl WalletCtx {
     }
 
     pub fn get_address(&self) -> Result<WGAddress, Error> {
-        debug!("get_address");
         let index = self.db.increment_index(Index::External)?;
         let address = self.derive_address(&self.xpub, &[0, index])?.to_string();
         Ok(WGAddress {

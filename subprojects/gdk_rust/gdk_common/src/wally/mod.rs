@@ -208,7 +208,7 @@ pub fn asset_unblind(
     commitment: Vec<u8>,
     extra: bitcoin::Script,
     generator: Vec<u8>,
-) -> ([u8; 32], [u8; 32], [u8; 32], u64) {
+) -> Result<([u8; 32], [u8; 32], [u8; 32], u64), crate::error::Error> {
     let pub_key = pub_key.serialize();
 
     let mut asset_out = [0; 32];
@@ -238,8 +238,11 @@ pub fn asset_unblind(
             &mut value_out,
         )
     };
-    assert_eq!(ret, ffi::WALLY_OK);
-    (asset_out, abf_out, vbf_out, value_out)
+    if ret != ffi::WALLY_OK {
+        crate::error::err("asset_unblind not ok")
+    } else {
+        Ok((asset_out, abf_out, vbf_out, value_out))
+    }
 }
 
 pub fn asset_unblind_with_nonce(

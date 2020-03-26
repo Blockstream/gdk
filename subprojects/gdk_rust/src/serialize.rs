@@ -9,8 +9,8 @@ pub fn address_result_value(addr: &AddressResult) -> Value {
     json!({"address": addr.0, "pointer": 0})
 }
 
-pub fn balance_result_value(bal: &BalanceResult) -> Value {
-    json!(bal.0)
+pub fn balance_result_value(bal: &Balances) -> Value {
+    json!(bal)
 }
 
 pub fn address_type_str(addr_type: &AddressType) -> &'static str {
@@ -51,9 +51,9 @@ pub fn txitem_value(tx: &TxListItem) -> Value {
         "memo": tx.memo,
 
         "txhash": tx.txhash,
-        "transaction": bitcoin::hashes::hex::ToHex::to_hex(tx.transaction.as_slice()),
+        "transaction": tx.transaction.clone(),
 
-        "satoshi": balance_result_value(&tx.satoshi),
+        "satoshi": tx.satoshi.clone(),
 
         "rbf_optin": tx.rbf_optin,
         "cap_cpfp": tx.cap_cpfp, // TODO
@@ -193,7 +193,7 @@ where
 
     let bal = session.get_balance(num_confs as u32, subaccount).map_err(Into::into)?;
 
-    Ok(balance_result_value(&BalanceResult::new_btc(bal)))
+    Ok(balance_result_value(&bal))
 }
 
 pub fn fee_estimate_values(estimates: &Vec<FeeEstimate>) -> Result<Value, Error> {

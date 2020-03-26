@@ -24,7 +24,7 @@ chrono = "0.4.11"
 
 [dependencies.electrum-client]
 git = "https://github.com/RCasatta/rust-electrum-client/"
-rev = "a9455cfb4c0c6c6755b53d403f910649fa4293bb"
+rev = "e26ed29ee818b5d4220c2a8b243a38df971f37b6"
 
 [dependencies.bitcoin]
 version = "0.23"
