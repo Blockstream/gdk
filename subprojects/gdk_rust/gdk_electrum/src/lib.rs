@@ -126,6 +126,42 @@ impl<S: Read + Write> ElectrumSession<S> {
         self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
     }
 
+    fn sync_headers(&mut self, heights_set: &HashSet<u32>) -> Result<(), Error> {
+        let heights_in_db = self.get_wallet()?.db.get_only_heights()?;
+        let heights_to_download: Vec<u32> =
+            heights_set.difference(&heights_in_db).cloned().collect();
+        if !heights_to_download.is_empty() {
+            let headers_bytes_downloaded =
+                self.client.batch_block_header_raw(heights_to_download.clone())?;
+            let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
+            for vec in headers_bytes_downloaded {
+                headers_downloaded
+                    .push(BEBlockHeader::deserialize(&vec, self.get_wallet()?.network.id())?);
+            }
+
+            for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
+                self.get_wallet()?.db.insert_header(*height, header)?;
+            }
+            debug!("headers_downloaded {:?}", headers_downloaded.len());
+        }
+
+        Ok(())
+    }
+
+    fn sync_height(&mut self, txid_height: &HashMap<Txid, u32>) -> Result<(), Error> {
+        // sync heights, which are my txs
+        for (txid, height) in txid_height.iter() {
+            self.get_wallet()?.db.insert_height(txid, *height)?; // adding new, but also updating reorged tx
+        }
+        for txid_db in self.get_wallet()?.db.get_only_txids()?.iter() {
+            if txid_height.get(txid_db).is_none() {
+                self.get_wallet()?.db.remove_height(txid_db)?; // something in the db is not in live list (rbf), removing
+            }
+        }
+
+        Ok(())
+    }
+
     fn notify(&self, data: Value) {
         debug!("push notification: {:?}", data);
         if let Some((handler, self_context)) = self.notify {
@@ -331,33 +367,8 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             }
         }
 
-        let heights_in_db = self.get_wallet()?.db.get_only_heights()?;
-        let heights_to_download: Vec<u32> =
-            heights_set.difference(&heights_in_db).cloned().collect();
-        if !heights_to_download.is_empty() {
-            let headers_bytes_downloaded =
-                self.client.batch_block_header_raw(heights_to_download.clone())?;
-            let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
-            for vec in headers_bytes_downloaded {
-                headers_downloaded
-                    .push(BEBlockHeader::deserialize(&vec, self.get_wallet()?.network.id())?);
-            }
-
-            for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
-                self.get_wallet()?.db.insert_header(*height, header)?;
-            }
-            debug!("headers_downloaded {:?}", headers_downloaded.len());
-        }
-
-        // sync heights, which are my txs
-        for (txid, height) in txid_height.iter() {
-            self.get_wallet()?.db.insert_height(txid, *height)?; // adding new, but also updating reorged tx
-        }
-        for txid_db in self.get_wallet()?.db.get_only_txids()?.iter() {
-            if txid_height.get(txid_db).is_none() {
-                self.get_wallet()?.db.remove_height(txid_db)?; // something in the db is not in live list (rbf), removing
-            }
-        }
+        self.sync_headers(&heights_set)?;
+        self.sync_height(&txid_height)?;
 
         debug!("elapsed {}", start.elapsed().as_millis());
 
