@@ -399,6 +399,7 @@ impl WalletCtx {
     pub fn balance(&self) -> Result<Balances, Error> {
         debug!("start balance");
         let mut result = HashMap::new();
+        result.entry("btc".to_string()).or_insert(0);
         for (_, (asset, value)) in self.utxos()?.iter() {
             let asset_btc = if Some(asset) == self.network.policy_asset.as_ref() {
                 "btc".to_string()
