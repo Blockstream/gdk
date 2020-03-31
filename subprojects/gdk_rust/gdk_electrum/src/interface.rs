@@ -6,14 +6,12 @@ use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{PublicKey, Txid};
-use electrum_client::GetHistoryRes;
+use bitcoin::PublicKey;
 use elements::{self, AddressParams};
 use gdk_common::model::Balances;
 use hex;
 use log::{debug, warn};
 use rand::Rng;
-use std::time::Instant;
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{CreateTransaction, Settings, TransactionMeta};
@@ -24,23 +22,22 @@ use gdk_common::wally::*;
 use crate::db::*;
 use crate::error::*;
 use crate::model::*;
-use electrum_client::Client;
+
 use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::*;
-use std::collections::{HashMap, HashSet};
-use std::io::{Read, Write};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct WalletCtx {
-    secp: Secp256k1<All>,
-    network: Network,
-    mnemonic: Mnemonic,
-    db: Forest,
-    xprv: ExtendedPrivKey,
-    xpub: ExtendedPubKey,
-    master_blinding: Option<MasterBlindingKey>,
-    change_max_deriv: u32,
+    pub secp: Secp256k1<All>,
+    pub network: Network,
+    pub mnemonic: Mnemonic,
+    pub db: Forest,
+    pub xprv: ExtendedPrivKey,
+    pub xpub: ExtendedPubKey,
+    pub master_blinding: Option<MasterBlindingKey>,
+    pub change_max_deriv: u32,
 }
 
 pub enum ElectrumUrl {
@@ -128,142 +125,7 @@ impl WalletCtx {
         self.db.insert_settings(settings)
     }
 
-    pub fn sync<S: Read + Write>(&self, client: &mut Client<S>) -> Result<(), Error> {
-        debug!("start sync {}", self.xpub);
-        let start = Instant::now();
-
-        //let mut client = Client::new("tn.not.fyi:55001")?;
-        let mut history_txs_id = HashSet::new();
-        let mut heights_set = HashSet::new();
-        let mut txid_height = HashMap::new();
-
-        let mut last_used = [0u32; 2];
-        for i in 0..=1 {
-            let int_or_ext = Index::from(i)?;
-            let mut batch_count = 0;
-            loop {
-                let batch = self.db.get_script_batch(
-                    int_or_ext,
-                    batch_count,
-                    self.master_blinding.as_ref(),
-                )?;
-                let result: Vec<Vec<GetHistoryRes>> = client.batch_script_get_history(&batch)?;
-                let max = result
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, v)| !v.is_empty())
-                    .map(|(i, _)| i as u32)
-                    .max();
-                if let Some(max) = max {
-                    last_used[i as usize] = max + batch_count * BATCH_SIZE;
-                };
-
-                let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                debug!("{}/batch({}) {:?}", i, batch_count, flattened.len());
-
-                if flattened.is_empty() {
-                    break;
-                }
-
-                for el in flattened {
-                    if el.height >= 0 {
-                        heights_set.insert(el.height as u32);
-                        txid_height.insert(el.tx_hash, el.height as u32);
-                    }
-                    history_txs_id.insert(el.tx_hash);
-                }
-
-                batch_count += 1;
-            }
-        }
-        self.db.insert_index(Index::External, last_used[Index::External as usize])?;
-        self.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
-        debug!("last_used: {:?}", last_used,);
-
-        let mut txs_in_db = self.db.get_all_txid()?;
-        let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
-        if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
-            let mut txs_downloaded: Vec<BETransaction> = vec![];
-            for vec in txs_bytes_downloaded {
-                txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
-            }
-            debug!("txs_downloaded {:?}", txs_downloaded.len());
-            let mut previous_txs_to_download = HashSet::new();
-            for tx in txs_downloaded.iter() {
-                self.db.insert_tx(&tx.txid(), &tx)?;
-                txs_in_db.insert(tx.txid());
-                for txid in tx.previous_output_txids() {
-                    previous_txs_to_download.insert(txid);
-                }
-
-                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
-                if let BETransaction::Elements(tx) = tx {
-                    debug!("compute OutPoint Unblinded");
-                    for (i, output) in tx.output.iter().enumerate() {
-                        if self.db.is_mine(&output.script_pubkey) {
-                            let txid = tx.txid();
-                            let vout = i as u32;
-                            let outpoint = elements::OutPoint {
-                                txid,
-                                vout,
-                            };
-                            if let Err(_) = self.try_unblind(outpoint, output.clone()) {
-                                debug!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
-                            }
-                        }
-                    }
-                }
-            }
-
-            let txs_to_download: Vec<&Txid> =
-                previous_txs_to_download.difference(&txs_in_db).collect();
-            if !txs_to_download.is_empty() {
-                let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
-                let mut txs_downloaded: Vec<BETransaction> = vec![];
-                for vec in txs_bytes_downloaded {
-                    txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
-                }
-                debug!("previous txs_downloaded {:?}", txs_downloaded.len());
-                for tx in txs_downloaded.iter() {
-                    self.db.insert_tx(&tx.txid(), tx)?;
-                }
-            }
-        }
-
-        let heights_in_db = self.db.get_only_heights()?;
-        let heights_to_download: Vec<u32> =
-            heights_set.difference(&heights_in_db).cloned().collect();
-        if !heights_to_download.is_empty() {
-            let headers_bytes_downloaded =
-                client.batch_block_header_raw(heights_to_download.clone())?;
-            let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
-            for vec in headers_bytes_downloaded {
-                headers_downloaded.push(BEBlockHeader::deserialize(&vec, self.network.id())?);
-            }
-
-            for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
-                self.db.insert_header(*height, header)?;
-            }
-            debug!("headers_downloaded {:?}", headers_downloaded.len());
-        }
-
-        // sync heights, which are my txs
-        for (txid, height) in txid_height.iter() {
-            self.db.insert_height(txid, *height)?; // adding new, but also updating reorged tx
-        }
-        for txid_db in self.db.get_only_txids()?.iter() {
-            if txid_height.get(txid_db).is_none() {
-                self.db.remove_height(txid_db)?; // something in the db is not in live list (rbf), removing
-            }
-        }
-
-        debug!("elapsed {}", start.elapsed().as_millis());
-
-        Ok(())
-    }
-
-    fn try_unblind(
+    pub fn try_unblind(
         &self,
         outpoint: elements::OutPoint,
         output: elements::TxOut,
@@ -382,7 +244,13 @@ impl WalletCtx {
                     .filter_map(|(outpoint, _)| {
                         if let BEOutPoint::Elements(el_outpoint) = outpoint {
                             if let Some(unblinded) = all_unblinded.get(&el_outpoint) {
-                                return Some((outpoint, (unblinded.asset_hex(self.network.policy_asset.as_ref()), unblinded.value)));
+                                return Some((
+                                    outpoint,
+                                    (
+                                        unblinded.asset_hex(self.network.policy_asset.as_ref()),
+                                        unblinded.value,
+                                    ),
+                                ));
                             }
                         }
                         None

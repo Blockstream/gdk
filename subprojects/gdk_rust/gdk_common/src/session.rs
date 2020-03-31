@@ -14,6 +14,7 @@ pub trait Session<E> {
     fn poll_session(&self) -> Result<(), E>;
     fn connect(&mut self, net_params: &Value) -> Result<(), E>;
     fn disconnect(&mut self) -> Result<(), E>;
+    fn sync(&mut self) -> Result<(), E>;
     // fn register_user(&mut self, mnemonic: String) -> Result<(), E>;
     fn login(&mut self, mnemonic: &Mnemonic, password: Option<Password>) -> Result<(), E>;
     fn get_subaccounts(&self) -> Result<Vec<Subaccount>, E>;
