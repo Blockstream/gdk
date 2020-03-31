@@ -4,15 +4,15 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, OutPoint, Script, Transaction, TxOut, Txid};
+use elements::AddressParams;
 use gdk_common::be::*;
 use gdk_common::model::Settings;
-use gdk_common::{ElementsNetwork, NetworkId};
-use log::debug;
-use elements::AddressParams;
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
+use gdk_common::{ElementsNetwork, NetworkId};
+use log::debug;
 use sled::{self, Tree};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -174,7 +174,9 @@ impl Forest {
 
                             let script = p2shwpkh_script(&second_deriv.public_key);
                             let blinding_key = asset_blinding_key_to_ec_private_key(
-                                master_blinding.ok_or_else(fn_err("missing master blinding in elements session"))?,
+                                master_blinding.ok_or_else(fn_err(
+                                    "missing master blinding in elements session",
+                                ))?,
                                 &script,
                             );
                             let public_key = ec_public_key_from_private_key(blinding_key);

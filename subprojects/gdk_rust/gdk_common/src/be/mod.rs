@@ -46,6 +46,10 @@ impl Unblinded {
         let mut asset = self.asset.to_vec();
         asset.reverse();
         let hex = hex::encode(asset);
-        if Some(&hex) == policy_asset { "btc".to_string() } else { hex }
+        if Some(&hex) == policy_asset {
+            "btc".to_string()
+        } else {
+            hex
+        }
     }
 }
