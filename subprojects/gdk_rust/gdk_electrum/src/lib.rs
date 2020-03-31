@@ -162,6 +162,65 @@ impl<S: Read + Write> ElectrumSession<S> {
         Ok(())
     }
 
+    fn sync_txs(&mut self, history_txs_id: &HashSet<Txid>) -> Result<(), Error> {
+        let mut txs_in_db = self.get_wallet()?.db.get_all_txid()?;
+        let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
+        if !txs_to_download.is_empty() {
+            let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
+            let mut txs_downloaded: Vec<BETransaction> = vec![];
+            for vec in txs_bytes_downloaded {
+                txs_downloaded
+                    .push(BETransaction::deserialize(&vec, self.get_wallet()?.network.id())?);
+            }
+            debug!("txs_downloaded {:?}", txs_downloaded.len());
+            let mut previous_txs_to_download = HashSet::new();
+            for tx in txs_downloaded.iter() {
+                self.get_wallet()?.db.insert_tx(&tx.txid(), &tx)?;
+                txs_in_db.insert(tx.txid());
+                for txid in tx.previous_output_txids() {
+                    previous_txs_to_download.insert(txid);
+                }
+
+                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
+                if let BETransaction::Elements(tx) = tx {
+                    debug!("compute OutPoint Unblinded");
+                    for (i, output) in tx.output.iter().enumerate() {
+                        if self.get_wallet()?.db.is_mine(&output.script_pubkey) {
+                            let txid = tx.txid();
+                            let vout = i as u32;
+                            let outpoint = elements::OutPoint {
+                                txid,
+                                vout,
+                            };
+                            if let Err(_) = self.get_wallet()?.try_unblind(outpoint, output.clone())
+                            {
+                                debug!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
+                            }
+                        }
+                    }
+                }
+            }
+
+            let txs_to_download: Vec<&Txid> =
+                previous_txs_to_download.difference(&txs_in_db).collect();
+            if !txs_to_download.is_empty() {
+                let txs_bytes_downloaded =
+                    self.client.batch_transaction_get_raw(txs_to_download)?;
+                let mut txs_downloaded: Vec<BETransaction> = vec![];
+                for vec in txs_bytes_downloaded {
+                    txs_downloaded
+                        .push(BETransaction::deserialize(&vec, self.get_wallet()?.network.id())?);
+                }
+                debug!("previous txs_downloaded {:?}", txs_downloaded.len());
+                for tx in txs_downloaded.iter() {
+                    self.get_wallet()?.db.insert_tx(&tx.txid(), tx)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn notify(&self, data: Value) {
         debug!("push notification: {:?}", data);
         if let Some((handler, self_context)) = self.notify {
@@ -304,69 +363,12 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
                 batch_count += 1;
             }
         }
-        self.get_wallet()?
-            .db
-            .insert_index(Index::External, last_used[Index::External as usize])?;
-        self.get_wallet()?
-            .db
-            .insert_index(Index::Internal, last_used[Index::Internal as usize])?;
+
+        self.get_wallet()?.db.insert_index(Index::External, last_used[Index::External as usize])?;
+        self.get_wallet()?.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
         debug!("last_used: {:?}", last_used,);
 
-        let mut txs_in_db = self.get_wallet()?.db.get_all_txid()?;
-        let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
-        if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
-            let mut txs_downloaded: Vec<BETransaction> = vec![];
-            for vec in txs_bytes_downloaded {
-                txs_downloaded
-                    .push(BETransaction::deserialize(&vec, self.get_wallet()?.network.id())?);
-            }
-            debug!("txs_downloaded {:?}", txs_downloaded.len());
-            let mut previous_txs_to_download = HashSet::new();
-            for tx in txs_downloaded.iter() {
-                self.get_wallet()?.db.insert_tx(&tx.txid(), &tx)?;
-                txs_in_db.insert(tx.txid());
-                for txid in tx.previous_output_txids() {
-                    previous_txs_to_download.insert(txid);
-                }
-
-                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
-                if let BETransaction::Elements(tx) = tx {
-                    debug!("compute OutPoint Unblinded");
-                    for (i, output) in tx.output.iter().enumerate() {
-                        if self.get_wallet()?.db.is_mine(&output.script_pubkey) {
-                            let txid = tx.txid();
-                            let vout = i as u32;
-                            let outpoint = elements::OutPoint {
-                                txid,
-                                vout,
-                            };
-                            if let Err(_) = self.get_wallet()?.try_unblind(outpoint, output.clone())
-                            {
-                                debug!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
-                            }
-                        }
-                    }
-                }
-            }
-
-            let txs_to_download: Vec<&Txid> =
-                previous_txs_to_download.difference(&txs_in_db).collect();
-            if !txs_to_download.is_empty() {
-                let txs_bytes_downloaded =
-                    self.client.batch_transaction_get_raw(txs_to_download)?;
-                let mut txs_downloaded: Vec<BETransaction> = vec![];
-                for vec in txs_bytes_downloaded {
-                    txs_downloaded
-                        .push(BETransaction::deserialize(&vec, self.get_wallet()?.network.id())?);
-                }
-                debug!("previous txs_downloaded {:?}", txs_downloaded.len());
-                for tx in txs_downloaded.iter() {
-                    self.get_wallet()?.db.insert_tx(&tx.txid(), tx)?;
-                }
-            }
-        }
-
+        self.sync_txs(&history_txs_id)?;
         self.sync_headers(&heights_set)?;
         self.sync_height(&txid_height)?;
 
