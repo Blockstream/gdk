@@ -41,9 +41,6 @@ namespace sdk {
     std::string get_address_from_script(
         const network_parameters& net_params, byte_span_t script, const std::string& addr_type);
 
-    std::vector<unsigned char> output_script_for_address(
-        const network_parameters& net_params, const std::string& address);
-
     std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
         ga_user_pubkeys& user_pubkeys, ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 

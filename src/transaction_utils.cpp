@@ -16,6 +16,74 @@ bool isupper(const std::string& s)
 {
     return std::all_of(std::begin(s), std::end(s), [](int c) { return std::islower(c) == 0; });
 }
+
+using namespace ga::sdk;
+
+std::vector<unsigned char> output_script_for_address(
+    const network_parameters& net_params, std::string address, std::string& error)
+{
+    // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
+    const bool is_bech32 = boost::starts_with(address, net_params.bech32_prefix());
+    const bool is_blech32 = net_params.liquid() && boost::starts_with(address, net_params.blech32_prefix());
+
+    std::vector<unsigned char> script;
+
+    if (net_params.liquid()) {
+        if (is_bech32) {
+            error = res::id_nonconfidential_addresses_not;
+        } else if (is_blech32) {
+            address
+                = confidential_addr_to_addr_segwit(address, net_params.blech32_prefix(), net_params.bech32_prefix());
+        } else {
+            try {
+                address = confidential_addr_to_addr(address, net_params.blinded_prefix());
+            } catch (const std::exception& e) {
+                error = res::id_nonconfidential_addresses_not;
+            }
+        }
+    }
+
+    if (is_bech32 || is_blech32) {
+        return addr_segwit_v0_to_bytes(address, net_params.bech32_prefix());
+    }
+
+    // Base58 encoded bitcoin address
+    const auto addr_bytes = base58check_to_bytes(address);
+    GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
+    const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
+
+    if (addr_bytes.front() == net_params.btc_p2sh_version()) {
+        return scriptpubkey_p2sh_from_hash160(script_hash);
+    }
+    if (addr_bytes.front() == net_params.btc_version()) {
+        return scriptpubkey_p2pkh_from_hash160(script_hash);
+    }
+
+    return std::vector<unsigned char>();
+}
+
+std::vector<unsigned char> output_script_for_address(
+    const network_parameters& net_params, const std::string& address, nlohmann::json& result)
+{
+    std::vector<unsigned char> script;
+    std::string error;
+    try {
+        script = output_script_for_address(net_params, address, error);
+    } catch (const std::exception& e) {
+        error = res::id_invalid_address;
+    }
+
+    if (!error.empty()) {
+        // Overwite any existing error in the transaction as addressees
+        // are entered and should be corrected first.
+        result["error"] = error;
+        // Create a dummy script so that the caller gets back a reasonable
+        // estimate of the tx size/fee etc when the address is corrected.
+        std::vector<unsigned char>(HASH160_LEN).swap(script);
+    }
+
+    return script;
+}
 } // namespace
 
 namespace ga {
@@ -79,27 +147,6 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT(false);
         __builtin_unreachable();
-    }
-
-    std::vector<unsigned char> output_script_for_address(
-        const network_parameters& net_params, const std::string& address)
-    {
-        if (boost::starts_with(address, net_params.bech32_prefix())) {
-            // Segwit v0 P2WPKH or P2WSH
-            return addr_segwit_v0_to_bytes(address, net_params.bech32_prefix());
-        }
-        // Base58 encoded bitcoin address
-        const auto addr_bytes = base58check_to_bytes(address);
-        GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
-        const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
-
-        if (addr_bytes.front() == net_params.btc_p2sh_version()) {
-            return scriptpubkey_p2sh_from_hash160(script_hash);
-        }
-        if (addr_bytes.front() == net_params.btc_version()) {
-            return scriptpubkey_p2pkh_from_hash160(script_hash);
-        }
-        return std::vector<unsigned char>(); // Unknown address version
     }
 
     static std::vector<unsigned char> output_script(const pub_key_t& ga_pub_key, const pub_key_t& user_pub_key,
@@ -221,34 +268,7 @@ namespace sdk {
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi, const std::string& asset_tag)
     {
-        const auto is_liquid = net_params.liquid();
-
-        auto output_address = address;
-        // TODO: Support OP_RETURN outputs
-        std::vector<unsigned char> script;
-        bool confidential_addr = is_liquid;
-        try {
-            if (is_liquid) {
-                try {
-                    output_address = confidential_addr_to_addr(output_address, net_params.blinded_prefix());
-                } catch (const std::exception& ex) {
-                    confidential_addr = false;
-                }
-            }
-            script = output_script_for_address(net_params, output_address);
-        } catch (const std::exception& e) {
-        }
-
-        const bool is_liquid_unconfidential = is_liquid && !confidential_addr && !script.empty();
-        if (script.empty() || is_liquid_unconfidential) {
-            // Overwite any existing error in the transaction as addressees
-            // are entered and should be corrected first.
-            result["error"]
-                = is_liquid_unconfidential ? res::id_nonconfidential_addresses_not : res::id_invalid_address;
-            // Create a dummy script so that the caller gets back a reasonable
-            // estimate of the tx size/fee etc when the address is corrected.
-            script.resize(HASH160_LEN);
-        }
+        std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
 
         if (net_params.liquid()) {
             const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
@@ -446,6 +466,14 @@ namespace sdk {
                 nlohmann::json output{ { "satoshi", satoshi }, { "script", script_hex },
                     { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", output_asset_id } };
 
+                auto&& blinding_key_from_addr = [&net_params](const std::string& address) {
+                    if (boost::starts_with(address, net_params.blech32_prefix())) {
+                        return b2h(confidential_addr_segwit_to_ec_public_key(address, net_params.blech32_prefix()));
+                    } else {
+                        return b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
+                    }
+                };
+
                 if (is_fee) {
                     // Nothing to do
                 } else if (i == change_index) {
@@ -453,16 +481,14 @@ namespace sdk {
                     const auto& change_address = result.at("change_address").at(asset_id);
                     output.insert(change_address.begin(), change_address.end());
                     if (net_params.liquid()) {
-                        output["public_key"] = b2h(confidential_addr_to_ec_public_key(
-                            change_address.at("address"), net_params.blinded_prefix()));
+                        output["public_key"] = blinding_key_from_addr(change_address.at("address"));
                     }
                 } else {
                     const auto& addressee = result.at("addressees").at(addressee_index);
                     const auto& address = addressee.at("address");
                     output["address"] = address;
                     if (net_params.liquid()) {
-                        output["public_key"]
-                            = b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
+                        output["public_key"] = blinding_key_from_addr(address);
                     }
                     ++addressee_index;
                 }

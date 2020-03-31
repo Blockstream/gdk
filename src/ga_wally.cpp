@@ -632,10 +632,28 @@ namespace sdk {
         return make_string(ret);
     }
 
+    std::string confidential_addr_to_addr_segwit(
+        const std::string& address, const std::string& confidential_prefix, const std::string& prefix)
+    {
+        char* ret;
+        GDK_VERIFY(
+            wally_confidential_addr_to_addr_segwit(address.c_str(), confidential_prefix.c_str(), prefix.c_str(), &ret));
+        return make_string(ret);
+    }
+
     pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix)
     {
         pub_key_t pub_key;
         GDK_VERIFY(wally_confidential_addr_to_ec_public_key(address.c_str(), prefix, pub_key.data(), pub_key.size()));
+        return pub_key;
+    }
+
+    pub_key_t confidential_addr_segwit_to_ec_public_key(
+        const std::string& address, const std::string& confidential_prefix)
+    {
+        pub_key_t pub_key;
+        GDK_VERIFY(wally_confidential_addr_segwit_to_ec_public_key(
+            address.c_str(), confidential_prefix.c_str(), pub_key.data(), pub_key.size()));
         return pub_key;
     }
 

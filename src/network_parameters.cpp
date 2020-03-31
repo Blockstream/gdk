@@ -94,9 +94,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "service_pubkey", "02c408c3bb8a3d526103fb93246f54897bdd997904d3e18295b49a26965cb41b7f" },
             { "service_chain_code", "02721cc509aa0c2f4a90628e9da0391b196abeabc6393ed4789dd6222c43c489" },
             { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 57u }, { "p2sh_version", 39u },
-            { "bech32_prefix", "lq" }, { "mainnet", true }, { "liquid", true }, { "development", false },
+            { "bech32_prefix", "ex" }, { "mainnet", true }, { "liquid", true }, { "development", false },
             { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
-            { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 52 },
+            { "blinded_prefix", 12u }, { "ct_exponent", 0 }, { "ct_bits", 52 }, { "blech32_prefix", "lq" },
             { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } }, { "bip21_prefix", "liquidnetwork" } })) },
 
     { "localtest-liquid",
@@ -109,9 +109,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
             { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
             { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 235u }, { "p2sh_version", 75u },
-            { "bech32_prefix", "tb" }, { "mainnet", false }, { "liquid", true }, { "development", true },
+            { "bech32_prefix", "ert" }, { "mainnet", false }, { "liquid", true }, { "development", true },
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
-            { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 52 },
+            { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 52 }, { "blech32_prefix", "el" },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 25920, 51840, 65535 } },
             { "bip21_prefix", "liquidnetwork" } })) },
 

@@ -241,8 +241,12 @@ namespace sdk {
         byte_span_t extra_commitment, byte_span_t generator);
 
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix);
+    std::string confidential_addr_to_addr_segwit(
+        const std::string& address, const std::string& confidential_prefix, const std::string& prefix);
 
     pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix);
+    pub_key_t confidential_addr_segwit_to_ec_public_key(
+        const std::string& address, const std::string& confidential_prefix);
 
     std::string confidential_addr_from_addr(const std::string& address, uint32_t prefix, byte_span_t public_key);
 

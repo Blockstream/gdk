@@ -46,6 +46,7 @@ namespace sdk {
         std::string bip21_prefix() const { return m_details.at("bip21_prefix"); }
         std::vector<std::string> default_peers() const { return m_details.at("default_peers"); }
         std::string bech32_prefix() const { return m_details.at("bech32_prefix"); }
+        std::string blech32_prefix() const { return m_details.at("blech32_prefix"); }
         unsigned char btc_version() const { return m_details.at("p2pkh_version"); }
         unsigned char btc_p2sh_version() const { return m_details.at("p2sh_version"); }
         uint32_t blinded_prefix() const { return m_details.at("blinded_prefix"); }
