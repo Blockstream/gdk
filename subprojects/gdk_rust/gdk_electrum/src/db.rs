@@ -7,7 +7,7 @@ use bitcoin::{Address, OutPoint, Script, Transaction, TxOut, Txid};
 use gdk_common::be::*;
 use gdk_common::model::Settings;
 use gdk_common::{ElementsNetwork, NetworkId};
-//use log::debug;
+use log::debug;
 use elements::AddressParams;
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::{
@@ -163,7 +163,7 @@ impl Forest {
                     let script = match self.id {
                         NetworkId::Bitcoin(network) => {
                             let address = Address::p2shwpkh(&second_deriv.public_key, network);
-                            println!("{}/{} {}", int_or_ext as u32, j, address);
+                            debug!("{}/{} {}", int_or_ext as u32, j, address);
                             address.script_pubkey()
                         }
                         NetworkId::Elements(network) => {
@@ -174,7 +174,7 @@ impl Forest {
 
                             let script = p2shwpkh_script(&second_deriv.public_key);
                             let blinding_key = asset_blinding_key_to_ec_private_key(
-                                master_blinding.unwrap(),
+                                master_blinding.ok_or_else(fn_err("missing master blinding in elements session"))?,
                                 &script,
                             );
                             let public_key = ec_public_key_from_private_key(blinding_key);
@@ -185,7 +185,7 @@ impl Forest {
                                 blinder,
                                 params,
                             );
-                            println!(
+                            debug!(
                                 "{}/{} blinded address {}  blinder {:?}",
                                 int_or_ext as u32, j, address, blinder
                             );

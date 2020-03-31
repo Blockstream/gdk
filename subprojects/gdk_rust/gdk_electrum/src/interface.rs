@@ -11,7 +11,7 @@ use electrum_client::GetHistoryRes;
 use elements::{self, AddressParams};
 use gdk_common::model::Balances;
 use hex;
-use log::debug;
+use log::{debug, warn};
 use rand::Rng;
 use std::time::Instant;
 
@@ -87,7 +87,6 @@ impl WalletCtx {
                 index: *x,
             })
             .collect();
-        println!("derive_address1");
         let derived = xpub.derive_pub(&self.secp, &path)?;
         if self.network.liquid {}
         match self.network.id() {
@@ -130,7 +129,7 @@ impl WalletCtx {
     }
 
     pub fn sync<S: Read + Write>(&self, client: &mut Client<S>) -> Result<(), Error> {
-        println!("start sync {}", self.xpub);
+        debug!("start sync {}", self.xpub);
         let start = Instant::now();
 
         //let mut client = Client::new("tn.not.fyi:55001")?;
@@ -160,7 +159,7 @@ impl WalletCtx {
                 };
 
                 let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                println!("{}/batch({}) {:?}", i, batch_count, flattened.len());
+                debug!("{}/batch({}) {:?}", i, batch_count, flattened.len());
 
                 if flattened.is_empty() {
                     break;
@@ -179,7 +178,7 @@ impl WalletCtx {
         }
         self.db.insert_index(Index::External, last_used[Index::External as usize])?;
         self.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
-        println!("last_used: {:?}", last_used,);
+        debug!("last_used: {:?}", last_used,);
 
         let mut txs_in_db = self.db.get_all_txid()?;
         let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
@@ -189,7 +188,7 @@ impl WalletCtx {
             for vec in txs_bytes_downloaded {
                 txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
             }
-            println!("txs_downloaded {:?}", txs_downloaded.len());
+            debug!("txs_downloaded {:?}", txs_downloaded.len());
             let mut previous_txs_to_download = HashSet::new();
             for tx in txs_downloaded.iter() {
                 self.db.insert_tx(&tx.txid(), &tx)?;
@@ -200,7 +199,7 @@ impl WalletCtx {
 
                 //TODO compute OutPoint Unblinded if tx is mine and it is liquid
                 if let BETransaction::Elements(tx) = tx {
-                    println!("compute OutPoint Unblinded");
+                    debug!("compute OutPoint Unblinded");
                     for (i, output) in tx.output.iter().enumerate() {
                         if self.db.is_mine(&output.script_pubkey) {
                             let txid = tx.txid();
@@ -210,7 +209,7 @@ impl WalletCtx {
                                 vout,
                             };
                             if let Err(_) = self.try_unblind(outpoint, output.clone()) {
-                                println!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
+                                debug!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
                             }
                         }
                     }
@@ -225,7 +224,7 @@ impl WalletCtx {
                 for vec in txs_bytes_downloaded {
                     txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
                 }
-                println!("previous txs_downloaded {:?}", txs_downloaded.len());
+                debug!("previous txs_downloaded {:?}", txs_downloaded.len());
                 for tx in txs_downloaded.iter() {
                     self.db.insert_tx(&tx.txid(), tx)?;
                 }
@@ -246,7 +245,7 @@ impl WalletCtx {
             for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
                 self.db.insert_header(*height, header)?;
             }
-            println!("headers_downloaded {:?}", headers_downloaded.len());
+            debug!("headers_downloaded {:?}", headers_downloaded.len());
         }
 
         // sync heights, which are my txs
@@ -259,7 +258,7 @@ impl WalletCtx {
             }
         }
 
-        println!("elapsed {}", start.elapsed().as_millis());
+        debug!("elapsed {}", start.elapsed().as_millis());
 
         Ok(())
     }
@@ -272,7 +271,6 @@ impl WalletCtx {
         match (output.asset, output.value, output.nonce) {
             (Asset::Confidential(_, _), Value::Confidential(_, _), Nonce::Confidential(_, _)) => {
                 let master_blinding = self.master_blinding.as_ref().unwrap();
-                println!("unblinding {} master_blinding: {:?}", outpoint, master_blinding);
 
                 let script = output.script_pubkey.clone();
                 let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
@@ -280,7 +278,7 @@ impl WalletCtx {
                 let value_commitment = elements::encode::serialize(&output.value);
                 let asset_commitment = elements::encode::serialize(&output.asset);
                 let nonce_commitment = elements::encode::serialize(&output.nonce);
-                println!(
+                debug!(
                     "commitmnents len {} {} {}",
                     value_commitment.len(),
                     asset_commitment.len(),
@@ -297,7 +295,7 @@ impl WalletCtx {
                     asset_commitment,
                 )?;
 
-                println!(
+                debug!(
                     "Unblinded outpoint:{} asset:{} value:{}",
                     outpoint,
                     hex::encode(&asset),
@@ -312,7 +310,7 @@ impl WalletCtx {
                 };
                 self.db.insert_unblinded(&outpoint, &unblinded)?;
             }
-            _ => println!("received unconfidential or null asset/value/nonce"),
+            _ => warn!("received unconfidential or null asset/value/nonce"),
         }
         Ok(())
     }

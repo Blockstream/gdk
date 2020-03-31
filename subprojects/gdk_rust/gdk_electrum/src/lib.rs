@@ -243,7 +243,6 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         } else {
             None
         };
-        println!("master_blinding {:?}", master_blinding);
 
         let wallet = WalletCtx::new(
             &self.db_root,
@@ -264,7 +263,6 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
-        println!("get_receive_address");
         let w = self.get_wallet()?;
         let a = w.get_address()?;
         Ok(AddressResult(a.address.to_string()))
