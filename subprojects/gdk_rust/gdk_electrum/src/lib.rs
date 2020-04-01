@@ -43,6 +43,7 @@ use gdk_common::wally::{self, asset_blinding_key_from_seed};
 
 use bitcoin::BitcoinHash;
 use std::collections::{HashMap, HashSet};
+use gdk_common::{ElementsNetwork, NetworkId};
 use std::io::{Read, Write};
 use std::str::FromStr;
 use std::time::Instant;
@@ -421,9 +422,23 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         let xprv =
             ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
 
-        // m / purpose' / coin_type' / account' / change / address_index
-        // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin
-        let path = DerivationPath::from_str("m/44'/0'/0'")?;
+        // BIP44: m / purpose' / coin_type' / account' / change / address_index
+        // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin as defined in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+        // slip44 suggest 1 for every testnet, so we are using it also for regtest
+        let coin_type: u32 = match self.network.id() {
+            NetworkId::Bitcoin(bitcoin_network) => match bitcoin_network {
+                bitcoin::Network::Bitcoin => 0,
+                bitcoin::Network::Testnet => 1,
+                bitcoin::Network::Regtest => 1,
+            },
+            NetworkId::Elements(elements_network) => match elements_network {
+                ElementsNetwork::Liquid => 1776,
+                ElementsNetwork::ElementsRegtest => 1
+            },
+        };
+        let path_string = format!("m/44'/{}'/0'", coin_type);
+        debug!("Using derivation path {}/0|1/*", path_string );
+        let path = DerivationPath::from_str(&path_string)?;
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
@@ -531,7 +546,8 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        Ok(self.try_get_fee_estimates().unwrap_or(vec![FeeEstimate(1000u64); 25] )) //TODO better implement default
+        Ok(self.try_get_fee_estimates().unwrap_or(vec![FeeEstimate(1000u64); 25]))
+        //TODO better implement default
     }
 
     fn get_mnemonic(&self) -> Result<&Mnemonic, Error> {
@@ -556,7 +572,6 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     //     Err(Error::Generic("implementme: ElectrumSession get_fee_estimates_address"))
     // }
 }
-
 
 fn native_activity_create() {
     #[cfg(target_os = "android")]
