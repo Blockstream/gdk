@@ -96,7 +96,7 @@ pub fn subaccount_value(subaccount: &Subaccount) -> Value {
     })
 }
 
-pub fn login<S, E>(session: &mut S, input: &Value) -> Result<(), Error>
+pub fn login<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,
@@ -108,7 +108,10 @@ where
 
     let pass_str = input["password"].as_str().map(|x| x.to_string());
 
-    session.login(&mnemonic_str.into(), pass_str.map(Into::into)).map_err(Into::into)
+    session
+        .login(&mnemonic_str.into(), pass_str.map(Into::into))
+        .map(notification_values)
+        .map_err(Into::into)
 }
 
 pub fn get_subaccount<S, E>(session: &S, input: &Value) -> Result<Value, Error>
@@ -159,6 +162,17 @@ where
 
         Ok(v) => v,
     })
+}
+
+pub fn notification_values(notifications: Vec<Notification>) -> Value {
+    Value::Array(notifications.iter().map(|note| notification_value(&note)).collect())
+}
+
+pub fn notification_value(notification: &Notification) -> Value {
+    match notification {
+        Notification::Block(ref header) => json!({ "block": header }),
+        Notification::Transaction(ref tx) => json!({ "transaction": tx }),
+    }
 }
 
 pub fn set_transaction_memo<S, E>(session: &S, input: &Value) -> Result<Value, Error>

@@ -1,6 +1,6 @@
 use crate::NetworkId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BEBlockHeader {
     Bitcoin(bitcoin::BlockHeader),
     Elements(elements::BlockHeader),

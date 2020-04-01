@@ -88,6 +88,22 @@ pub struct AddressAmount {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BlockNotification {
+    pub block_hash: Vec<u8>,
+    pub block_height: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TransactionNotification {
+    pub transaction_hash: Vec<u8>,
+}
+
+pub enum Notification {
+    Block(BlockNotification),
+    Transaction(TransactionNotification),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateTransaction {
     pub addressees: Vec<AddressAmount>,
     pub fee_rate: Option<u64>,

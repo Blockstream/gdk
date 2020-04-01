@@ -118,6 +118,26 @@ impl<S: Read + Write> ElectrumSession<S> {
         }
     }
 
+    pub fn notify_blocks(
+        &mut self,
+        headers: Vec<(BEBlockHeader, u32)>,
+    ) -> Result<Vec<Notification>, Error> {
+        Ok(headers
+            .iter()
+            .map(|(be_header, height)| match be_header {
+                BEBlockHeader::Bitcoin(ref header) => Notification::Block(BlockNotification {
+                    block_hash: header.bitcoin_hash().to_vec(),
+                    block_height: *height,
+                }),
+
+                BEBlockHeader::Elements(ref header) => Notification::Block(BlockNotification {
+                    block_hash: header.bitcoin_hash().to_vec(),
+                    block_height: *height,
+                }),
+            })
+            .collect())
+    }
+
     pub fn get_wallet(&self) -> Result<&WalletCtx, Error> {
         self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))
     }
@@ -126,7 +146,11 @@ impl<S: Read + Write> ElectrumSession<S> {
         self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
     }
 
-    fn sync_headers(&mut self, heights_set: &HashSet<u32>) -> Result<(), Error> {
+    fn sync_headers(
+        &mut self,
+        heights_set: &HashSet<u32>,
+    ) -> Result<Vec<(BEBlockHeader, u32)>, Error> {
+        let mut header_heights: Vec<(BEBlockHeader, u32)> = vec![];
         let heights_in_db = self.get_wallet()?.db.get_only_heights()?;
         let heights_to_download: Vec<u32> =
             heights_set.difference(&heights_in_db).cloned().collect();
@@ -140,12 +164,13 @@ impl<S: Read + Write> ElectrumSession<S> {
             }
 
             for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
+                header_heights.push(((*header).clone(), *height));
                 self.get_wallet()?.db.insert_header(*height, header)?;
             }
             debug!("headers_downloaded {:?}", headers_downloaded.len());
         }
 
-        Ok(())
+        Ok(header_heights)
     }
 
     fn sync_height(&mut self, txid_height: &HashMap<Txid, u32>) -> Result<(), Error> {
@@ -314,7 +339,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession connect".into()))
     }
 
-    fn sync(&mut self) -> Result<(), Error> {
+    fn sync(&mut self) -> Result<Vec<Notification>, Error> {
         debug!("start sync {}", self.get_wallet()?.xpub);
         let start = Instant::now();
 
@@ -369,15 +394,19 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         debug!("last_used: {:?}", last_used,);
 
         self.sync_txs(&history_txs_id)?;
-        self.sync_headers(&heights_set)?;
+        let new_headers = self.sync_headers(&heights_set)?;
         self.sync_height(&txid_height)?;
 
         debug!("elapsed {}", start.elapsed().as_millis());
 
-        Ok(())
+        self.notify_blocks(new_headers)
     }
 
-    fn login(&mut self, mnemonic: &Mnemonic, password: Option<Password>) -> Result<(), Error> {
+    fn login(
+        &mut self,
+        mnemonic: &Mnemonic,
+        password: Option<Password>,
+    ) -> Result<Vec<Notification>, Error> {
         debug!("login {:#?}", self.network);
 
         // TODO: passphrase?
@@ -418,11 +447,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         )?;
 
         self.wallet = Some(wallet);
-        self.sync()?;
-        let block = self.client.block_headers_subscribe()?;
-        self.notify(json!({"block":{"block_hash":block.header.bitcoin_hash(),"block_height": block.height },"event":"block"}));
-
-        Ok(())
+        self.sync()
     }
 
     fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
