@@ -13,6 +13,12 @@ impl BEAddress {
             BEAddress::Elements(addr) => addr.script_pubkey(),
         }
     }
+    pub fn blinding_pubkey(&self) -> Option<bitcoin::secp256k1::PublicKey> {
+        match self {
+            BEAddress::Bitcoin(_) => None,
+            BEAddress::Elements(addr) => addr.blinding_pubkey,
+        }
+    }
 }
 
 impl ToString for BEAddress {

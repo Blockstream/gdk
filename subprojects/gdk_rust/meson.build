@@ -50,7 +50,7 @@ rust_sources = [
   'gdk_common/src/network.rs',
   'gdk_common/src/password.rs',
   'gdk_common/src/session.rs',
-  'gdk_common/src/util.rs',,
+  'gdk_common/src/util.rs',
 
   'gdk_electrum/Cargo.toml',
   'gdk_electrum/src/db.rs',
@@ -68,7 +68,7 @@ rust_sources = [
   'gdk_rpc/src/network.rs',
   'gdk_rpc/src/session.rs',
   'gdk_rpc/src/settings.rs',
-  'gdk_rpc/src/wallet.rs',
+  'gdk_rpc/src/wallet.rs'
 
 ]
 

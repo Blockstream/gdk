@@ -1,5 +1,5 @@
 use bitcoin::blockdata::script::{Builder, Script};
-use bitcoin::blockdata::transaction::{Transaction, TxIn, TxOut};
+use bitcoin::blockdata::transaction::{Transaction};
 use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
@@ -282,33 +282,22 @@ impl WalletCtx {
     // If request.utxo is None, we do the coin selection
     pub fn create_tx(&self, request: &CreateTransaction) -> Result<TransactionMeta, Error> {
         debug!("create_tx {:?}", request);
-        use bitcoin::consensus::serialize;
 
-        let mut tx = Transaction {
-            version: 2,
-            lock_time: 0,
-            input: vec![],
-            output: vec![],
-        };
+        let mut tx = BETransaction::new(self.network.id());
 
         let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
 
         let mut fee_val = 0;
         let mut outgoing: u64 = 0;
-        let mut is_mine = vec![];
 
         let calc_fee_bytes = |bytes| ((bytes as f64) * fee_rate) as u64;
         fee_val += calc_fee_bytes(tx.get_weight() / 4);
 
         for out in request.addressees.iter() {
-            let new_out = TxOut {
-                script_pubkey: out.address.script_pubkey(),
-                value: out.satoshi,
-            };
-            fee_val += calc_fee_bytes(serialize(&new_out).len());
 
-            tx.output.push(new_out);
-            is_mine.push(false);
+            let len = tx.add_output(&out.address, out.satoshi, self.network.policy_asset().ok() )?;
+
+            fee_val += calc_fee_bytes(len);
 
             outgoing += out.satoshi;
         }
@@ -320,20 +309,9 @@ impl WalletCtx {
         while selected_amount < outgoing + fee_val {
             debug!("selected_amount:{} outgoing:{} fee_val:{}", selected_amount, outgoing, fee_val);
             let (outpoint, (_, value)) = utxos.pop().ok_or(Error::InsufficientFunds)?;
-            let outpoint = bitcoin::OutPoint {
-                txid: outpoint.txid(),
-                vout: outpoint.vout(),
-            }; // TODO liquid
 
-            let new_in = TxIn {
-                previous_output: outpoint,
-                script_sig: Script::default(),
-                sequence: 0,
-                witness: vec![],
-            };
-            fee_val += calc_fee_bytes(serialize(&new_in).len() + 50); // TODO: adjust 50 based on the signature size
-
-            tx.input.push(new_in);
+            let len = tx.add_input(outpoint);
+            fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
 
             selected_amount += value;
         }
@@ -341,19 +319,14 @@ impl WalletCtx {
         let change_val = selected_amount - outgoing - fee_val;
         if change_val > 546 {
             let change_index = self.db.increment_index(Index::Internal)?;
-            let change_address = self.derive_address(&self.xpub, &[1, change_index])?;
+            let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
             debug!("adding change {:?}", change_address);
 
-            // TODO: we are not accounting for this output
-            tx.output.push(TxOut {
-                script_pubkey: change_address.script_pubkey(),
-                value: change_val,
-            });
-
-            is_mine.push(true);
+            tx.add_output(&change_address, change_val, self.network.policy_asset().ok())?;
         }
+
         let mut created_tx = TransactionMeta::new(
-            BETransaction::Bitcoin(tx), //TODO
+            tx, //TODO
             None,
             None,
             HashMap::new(), //TODO

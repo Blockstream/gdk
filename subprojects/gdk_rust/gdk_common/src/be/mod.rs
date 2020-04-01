@@ -10,7 +10,7 @@ pub use blockheader::*;
 pub use outpoint::*;
 pub use transaction::*;
 
-type AssetId = [u8; 32];
+pub type AssetId = [u8; 32];
 
 pub struct Unblinded {
     pub asset: AssetId,

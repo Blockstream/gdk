@@ -1,5 +1,4 @@
 use crate::be::BETransaction;
-use bitcoin::util::address::Address;
 use bitcoin::Network;
 use core::mem::transmute;
 use serde_derive::{Deserialize, Serialize};
@@ -82,7 +81,7 @@ impl ExchangeRateOk {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AddressAmount {
-    pub address: Address,
+    pub address: String,  // could be bitcoin or elements
     pub satoshi: u64,
     pub asset_tag: Option<String>,
 }

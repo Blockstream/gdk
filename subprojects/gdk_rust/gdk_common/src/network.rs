@@ -1,4 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
+use crate::be::AssetId;
+use std::convert::TryInto;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Network {
@@ -52,6 +54,16 @@ impl Network {
             (false, false, false) => NetworkId::Bitcoin(bitcoin::Network::Testnet),
             (false, false, true) => NetworkId::Bitcoin(bitcoin::Network::Regtest),
             (l, m, d) => panic!("inconsistent network parameters: lq={}, main={}, dev={}", l, m, d),
+        }
+    }
+
+    pub fn policy_asset(&self) -> Result<AssetId, crate::error::Error> {
+        if let Some(str) = self.policy_asset.as_ref() {
+            let vec = hex::decode(str)?;
+            let asset: AssetId = (&vec[..]).try_into()?;
+            Ok(asset)
+        } else {
+            Err("no policy asset".into())
         }
     }
 }
