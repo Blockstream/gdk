@@ -18,13 +18,8 @@ sha2 = "0.8.0"
 gdk-common = { path = "../gdk_common" }
 libc = "0.2"
 android_logger = { version = "0.8.6", optional = true }
-#electrum-client = "0.1.0-beta.5"
-
+electrum-client = "0.1.0-beta.6"
 chrono = "0.4.11"
-
-[dependencies.electrum-client]
-git = "https://github.com/RCasatta/rust-electrum-client/"
-rev = "e26ed29ee818b5d4220c2a8b243a38df971f37b6"
 
 [dependencies.bitcoin]
 version = "0.23"
