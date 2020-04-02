@@ -126,12 +126,12 @@ impl<S: Read + Write> ElectrumSession<S> {
             .iter()
             .map(|(be_header, height)| match be_header {
                 BEBlockHeader::Bitcoin(ref header) => Notification::Block(BlockNotification {
-                    block_hash: header.bitcoin_hash().to_vec(),
+                    block_hash: header.bitcoin_hash(),
                     block_height: *height,
                 }),
 
                 BEBlockHeader::Elements(ref header) => Notification::Block(BlockNotification {
-                    block_hash: header.bitcoin_hash().to_vec(),
+                    block_hash: header.bitcoin_hash(),
                     block_height: *height,
                 }),
             })

@@ -89,13 +89,13 @@ pub struct AddressAmount {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BlockNotification {
-    pub block_hash: Vec<u8>,
+    pub block_hash: bitcoin::BlockHash,
     pub block_height: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionNotification {
-    pub transaction_hash: Vec<u8>,
+    pub transaction_hash: bitcoin::Txid,
 }
 
 pub enum Notification {
