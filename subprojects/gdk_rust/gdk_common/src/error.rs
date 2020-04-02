@@ -21,12 +21,6 @@ impl From<String> for Error {
     }
 }
 
-/*impl From<electrum_client::types::Error> for Error {
-    fn from(e: electrum_client::types::Error) -> Error {
-        Error(format!("{:?}", e))
-    }
-}*/
-
 macro_rules! impl_error {
     ( $from:ty ) => {
         impl std::convert::From<$from> for Error {

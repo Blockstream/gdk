@@ -17,13 +17,6 @@ pub struct WGBalance {
     pub satoshi: u64,
 }
 
-/*
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WGPSBT {
-    psbt: PartiallySignedTransaction
-}
-*/
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WGAddress {
     pub address: String,
