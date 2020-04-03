@@ -196,9 +196,9 @@ impl BETransaction {
             Self::Elements(tx) => {
                 tx.output
                     .iter()
-                    .find(|o| o.is_fee())
-                    .unwrap() // safe to unwrap since one output fee is mandatory
-                    .minimum_value() // minimum_value used for extracting the explicit value
+                    .filter(|o| o.is_fee())  // TODO should check the asset is the policy asset
+                    .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
+                    .sum::<u64>()
             }
         }
     }
