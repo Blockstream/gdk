@@ -1,4 +1,3 @@
-
 #[macro_use]
 extern crate serde_json;
 
@@ -33,8 +32,8 @@ use gdk_common::session::Session;
 use gdk_common::wally::{self, asset_blinding_key_from_seed};
 
 use bitcoin::BitcoinHash;
-use std::collections::{HashMap, HashSet};
 use gdk_common::{ElementsNetwork, NetworkId};
+use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::str::FromStr;
 use std::time::Instant;
@@ -400,11 +399,11 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             },
             NetworkId::Elements(elements_network) => match elements_network {
                 ElementsNetwork::Liquid => 1776,
-                ElementsNetwork::ElementsRegtest => 1
+                ElementsNetwork::ElementsRegtest => 1,
             },
         };
         let path_string = format!("m/44'/{}'/0'", coin_type);
-        debug!("Using derivation path {}/0|1/*", path_string );
+        debug!("Using derivation path {}/0|1/*", path_string);
         let path = DerivationPath::from_str(&path_string)?;
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);

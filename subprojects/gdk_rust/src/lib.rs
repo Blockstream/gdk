@@ -31,10 +31,8 @@ use log::Level;
 use std::ffi::CString;
 use std::mem::transmute;
 use std::os::raw::c_char;
-use std::time::{Duration, SystemTime};
-
-#[cfg(feature = "android_log")]
 use std::sync::Once;
+use std::time::{Duration, SystemTime};
 
 use gdk_common::constants::{GA_ERROR, GA_OK};
 use gdk_common::model::GDKRUST_json;
@@ -48,6 +46,7 @@ use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
 // use gdk_rpc::session::RpcSession;
 use crate::error::Error;
+use log::{LevelFilter, Metadata, Record};
 
 pub struct GdkSession {
     pub backend: GdkBackend,
@@ -146,7 +145,6 @@ macro_rules! safe_mut_ref {
 // Session & account management
 //
 
-#[cfg(feature = "android_log")]
 static INIT_LOGGER: Once = Once::new();
 
 #[no_mangle]
@@ -161,6 +159,13 @@ pub extern "C" fn GDKRUST_create_session(
                 .with_min_level(Level::Trace)
                 .with_filter(FilterBuilder::new().parse("debug,hello::crate=gdk_rust").build()),
         )
+    });
+
+    #[cfg(not(feature = "android_log"))]
+    INIT_LOGGER.call_once(|| {
+        log::set_logger(&LOGGER)
+            .map(|()| log::set_max_level(LevelFilter::Info))
+            .expect("cannot initialize logging");
     });
 
     let network = &safe_ref!(network).0;
@@ -452,4 +457,26 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
         let _ = CString::from_raw(ptr);
     }
     GA_OK
+}
+
+static LOGGER: SimpleLogger = SimpleLogger;
+
+pub struct SimpleLogger;
+
+impl log::Log for SimpleLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= log::max_level()
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            if record.level() <= LevelFilter::Warn {
+                println!("{} - {}", record.level(), record.args());
+            } else {
+                println!("{}", record.args());
+            }
+        }
+    }
+
+    fn flush(&self) {}
 }

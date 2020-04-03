@@ -1,5 +1,5 @@
 use bitcoin::blockdata::script::{Builder, Script};
-use bitcoin::blockdata::transaction::{Transaction};
+use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
@@ -294,8 +294,7 @@ impl WalletCtx {
         fee_val += calc_fee_bytes(tx.get_weight() / 4);
 
         for out in request.addressees.iter() {
-
-            let len = tx.add_output(&out.address, out.satoshi, self.network.policy_asset().ok() )?;
+            let len = tx.add_output(&out.address, out.satoshi, self.network.policy_asset().ok())?;
 
             fee_val += calc_fee_bytes(len);
 

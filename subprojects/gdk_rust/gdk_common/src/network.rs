@@ -1,5 +1,5 @@
-use serde_derive::{Deserialize, Serialize};
 use crate::be::AssetId;
+use serde_derive::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

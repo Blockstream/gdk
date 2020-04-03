@@ -81,7 +81,7 @@ impl ExchangeRateOk {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AddressAmount {
-    pub address: String,  // could be bitcoin or elements
+    pub address: String, // could be bitcoin or elements
     pub satoshi: u64,
     pub asset_tag: Option<String>,
 }

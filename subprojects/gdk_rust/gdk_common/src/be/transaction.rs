@@ -1,19 +1,19 @@
 use crate::be::*;
+use crate::error::Error;
 use crate::model::Balances;
 use crate::NetworkId;
-use crate::error::Error;
-use bitcoin::hashes::{sha256d, Hash};
+use bitcoin::consensus::encode::deserialize as btc_des;
+use bitcoin::consensus::encode::serialize as btc_ser;
 use bitcoin::hash_types::Txid;
-use bitcoin::{Script};
+use bitcoin::hashes::{sha256d, Hash};
+use bitcoin::Script;
+use elements::confidential;
+use elements::encode::deserialize as elm_des;
+use elements::encode::serialize as elm_ser;
+use elements::{TxInWitness, TxOutWitness};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
-use elements::{TxOutWitness, TxInWitness};
-use elements::confidential;
-use bitcoin::consensus::encode::serialize as btc_ser;
-use elements::encode::serialize as elm_ser;
-use bitcoin::consensus::encode::deserialize as btc_des;
-use elements::encode::deserialize as elm_des;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,20 +23,19 @@ pub enum BETransaction {
 }
 
 impl BETransaction {
-
     pub fn new(id: NetworkId) -> Self {
         match id {
-            NetworkId::Bitcoin(_) => BETransaction::Bitcoin( bitcoin::Transaction {
+            NetworkId::Bitcoin(_) => BETransaction::Bitcoin(bitcoin::Transaction {
                 version: 2,
                 lock_time: 0,
                 input: vec![],
                 output: vec![],
             }),
-            NetworkId::Elements(_) => BETransaction::Elements( elements::Transaction {
+            NetworkId::Elements(_) => BETransaction::Elements(elements::Transaction {
                 version: 2,
                 lock_time: 0,
                 input: vec![],
-                output: vec![]
+                output: vec![],
             }),
         }
     }
@@ -111,7 +110,12 @@ impl BETransaction {
         }
     }
 
-    pub fn add_output(&mut self, address: &str, value: u64, asset: Option<AssetId>) -> Result<usize, Error> {
+    pub fn add_output(
+        &mut self,
+        address: &str,
+        value: u64,
+        asset: Option<AssetId>,
+    ) -> Result<usize, Error> {
         match self {
             BETransaction::Bitcoin(tx) => {
                 let script_pubkey = bitcoin::Address::from_str(&address)?.script_pubkey();
@@ -122,14 +126,18 @@ impl BETransaction {
                 let len = btc_ser(&new_out).len();
                 tx.output.push(new_out);
                 Ok(len)
-            },
+            }
             BETransaction::Elements(tx) => {
                 let address = elements::Address::from_str(&address)?;
-                let blinding_pubkey = address.blinding_pubkey.ok_or(Error("unconfidential address not supported".to_string())) ?;
+                let blinding_pubkey = address
+                    .blinding_pubkey
+                    .ok_or(Error("unconfidential address not supported".to_string()))?;
                 let bytes = blinding_pubkey.serialize();
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
                 let new_out = elements::TxOut {
-                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.expect("asset not found in elements code"))),
+                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(
+                        asset.expect("asset not found in elements code"),
+                    )),
                     value: confidential::Value::Explicit(value),
                     nonce: confidential::Nonce::Confidential(bytes[0], byte32),
                     script_pubkey: address.script_pubkey(),
@@ -154,7 +162,7 @@ impl BETransaction {
                 let len = btc_ser(&new_in).len();
                 tx.input.push(new_in);
                 len
-            },
+            }
             (BEOutPoint::Elements(outpoint), BETransaction::Elements(tx)) => {
                 let new_in = elements::TxIn {
                     previous_output: outpoint,
@@ -168,8 +176,8 @@ impl BETransaction {
                 let len = elm_ser(&new_in).len();
                 tx.input.push(new_in);
                 len
-            },
-            _ => panic!("unexpected mix of bitcoin and elements types")
+            }
+            _ => panic!("unexpected mix of bitcoin and elements types"),
         }
     }
 
@@ -252,7 +260,6 @@ impl BETransaction {
         }
     }
 }
-
 
 pub struct BETransactions(HashMap<Txid, BETransaction>);
 impl Default for BETransactions {
