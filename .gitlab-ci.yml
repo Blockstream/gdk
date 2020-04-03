@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:56a4a9eb519e8728244e389b942a3f9d4825d526509ee85b99613c6c1d54b1c5
+image: greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1
 
 stages:
   - format
@@ -12,7 +12,7 @@ stages:
   - deploy
 
 .fedora_images:
-  image: greenaddress/fedora_ci@sha256:120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41
+  image: greenaddress/fedora_ci@sha256:fa6139647ea2c92e3d744d51f7216e3ea6a2907c119b5fe978f6f1989ac626a9
   tags:
     - ga
 
@@ -82,7 +82,7 @@ release_py3m_buster_debug:
     - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ci@sha256:44fa1f93af039bf04de8f556579798256fd9c0073f1361589ac809681a45e4c0
+  image: greenaddress/ci@sha256:c4693baf6d3d1f6ef2acc9a10382c26c60ab8f78b17d6d5c8db6bbd668c4c7e1
   extends: .py_release
   script:
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6
@@ -123,32 +123,32 @@ gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
 gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r20b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true
 
 test_osx_clang:
   extends: .osx_test
