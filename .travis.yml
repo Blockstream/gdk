@@ -1,21 +1,32 @@
 language: generic
 sudo: required
-services:
-  - docker
-
-env:
-  global:
-    - DOCKERBUILDER=greenaddress/ci
-    - DOCKERHASH=56a4a9eb519e8728244e389b942a3f9d4825d526509ee85b99613c6c1d54b1c5
-    - COMPILER=gcc
-  matrix:
-    - UNUSED=true
-    - COMPILER=clang
-    - COMPILER=mingw-w64
-    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41
-    - DOCKERBUILDER=greenaddress/fedora_ci DOCKERHASH=120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41 COMPILER=clang
-    - DOCKERHASH=44fa1f93af039bf04de8f556579798256fd9c0073f1361589ac809681a45e4c0
-
-
-script:
-  - docker run -v $PWD:/gdk $DOCKERBUILDER@sha256:$DOCKERHASH /bin/bash -c "cd /gdk && ./tools/build.sh --$COMPILER"
+matrix:
+  include:
+    - os: osx
+      osx_image: xcode11.3
+      install:
+        - brew update
+        - brew upgrade
+        - brew install ninja autoconf libtool gnu-sed python3 wget pkg-config swig gnu-getopt gnu-tar
+        - python3 -m pip install virtualenv meson
+        - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.42.0
+      script:
+        - ./tools/build.sh --clang --python-version 3.7
+    - services:
+        - docker
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:56a4a9eb519e8728244e389b942a3f9d4825d526509ee85b99613c6c1d54b1c5 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
+    - services:
+        - docker
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:56a4a9eb519e8728244e389b942a3f9d4825d526509ee85b99613c6c1d54b1c5 /bin/bash -c "cd /gdk && ./tools/build.sh --mingw-w64"
+    - services:
+        - docker
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:56a4a9eb519e8728244e389b942a3f9d4825d526509ee85b99613c6c1d54b1c5 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
+    - services:
+        - docker
+      script: docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
+    - services:
+        - docker
+      script: docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:120c1da342ed28f6b03d87e27d407407f6533d6836a0c3342634a6a46e15fc41 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
+    - services:
+        - docker
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:44fa1f93af039bf04de8f556579798256fd9c0073f1361589ac809681a45e4c0 /bin/bash -c "cd /gdk && ./tools/build.sh --gcc"
