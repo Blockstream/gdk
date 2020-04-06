@@ -9,9 +9,9 @@ matrix:
         - brew upgrade
         - brew install ninja autoconf libtool gnu-sed python3 wget pkg-config swig gnu-getopt gnu-tar
         - python3 -m pip install virtualenv meson
-        - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.42.0
+        - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.42.0
       script:
-        - ./tools/build.sh --clang --python-version 3.7
+        - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version 3.7
     - services:
         - docker
       script: docker run -v $PWD:/gdk greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1 /bin/bash -c "cd /gdk && ./tools/build.sh --clang"
