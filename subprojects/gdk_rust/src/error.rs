@@ -8,11 +8,12 @@ pub enum Error {
     JsonFrom(serde_json::Error),
     Electrum(electrum::error::Error),
     Rates(ExchangeRateError), // Rpc(rpc::error::Error),
+    Common(gdk_common::error::Error)
 }
 
 impl Error {
     /// Convert the error to a GDK-compatible code.
-    pub fn to_gdk_code(&self) -> &'static str {
+    pub fn to_gdk_code(&self) -> String {
         // Unhandles error codes:
         // id_no_amount_specified
         // id_fee_rate_is_below_minimum
@@ -21,8 +22,9 @@ impl Error {
 
         // TODO rpc
         match *self {
-            Error::Electrum(electrum::error::Error::InsufficientFunds) => "id_insufficient_funds",
-            _ => "id_unknown",
+            Error::Electrum(electrum::error::Error::InsufficientFunds) => "id_insufficient_funds".to_string(),
+            Error::Electrum(electrum::error::Error::InvalidAddress) => "id_invalid_address".to_string(),
+            _ => "id_unknown".to_string(),
         }
     }
 
@@ -32,6 +34,7 @@ impl Error {
             Error::JsonFrom(ref json) => format!("{}", json),
             Error::Electrum(ref electrum) => format!("{}", electrum),
             Error::Rates(ref rates_err) => format!("{:?}", rates_err),
+            Error::Common(ref err) => format!("{:?}", err),
         }
     }
 }

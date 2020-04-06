@@ -1,14 +1,17 @@
 use std::string::ToString;
 
 #[derive(Debug)]
-pub struct Error(pub String);
+pub enum Error {
+    Generic(String),
+    InvalidAddress
+}
 
 pub fn err<R>(str: &str) -> Result<R, Error> {
-    Err(Error(str.into()))
+    Err(Error::Generic(str.into()))
 }
 
 pub fn fn_err(str: &str) -> impl Fn() -> Error + '_ {
-    move || Error(str.into())
+    move || Error::Generic(str.into())
 }
 
 pub fn _io_err(str: &str) -> std::io::Error {
@@ -17,7 +20,7 @@ pub fn _io_err(str: &str) -> std::io::Error {
 
 impl From<String> for Error {
     fn from(e: String) -> Error {
-        Error(e)
+        Error::Generic(e)
     }
 }
 
@@ -25,7 +28,7 @@ macro_rules! impl_error {
     ( $from:ty ) => {
         impl std::convert::From<$from> for Error {
             fn from(err: $from) -> Self {
-                Error(err.to_string())
+                Error::Generic(err.to_string())
             }
         }
     };
