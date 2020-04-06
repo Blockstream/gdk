@@ -164,7 +164,7 @@ pub extern "C" fn GDKRUST_create_session(
     #[cfg(not(feature = "android_log"))]
     INIT_LOGGER.call_once(|| {
         log::set_logger(&LOGGER)
-            .map(|()| log::set_max_level(LevelFilter::Info))
+            .map(|()| log::set_max_level(LevelFilter::Debug))
             .expect("cannot initialize logging");
     });
 
