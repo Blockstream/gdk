@@ -68,7 +68,12 @@ bool test_get_fee_estimates(ga::sdk::session& session) {
 }
 
 bool test_create_sign_transaction(ga::sdk::session& session) {
-    nlohmann::json addressees = {{{ "address", "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b"}, { "satoshi", 2000} }};
+    auto address = "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b";
+    if (session.is_liquid()) {
+       address = "VJLEPoiNtivvKcXtmcFVBPzaL4DukwSjjk3c8kyfczeAFMgQoKbie1AZbB1YiuBAZgdRH6TwCBBPGSBW";
+    }
+    nlohmann::json addressees = {{{ "address", address}, { "satoshi", 2000} }};
+
     nlohmann::json create_tx = {
       { "addressees",  addressees},
       { "subaccount", 0 },

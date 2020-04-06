@@ -128,10 +128,10 @@ impl BETransaction {
                 Ok(len)
             }
             BETransaction::Elements(tx) => {
-                let address = elements::Address::from_str(&address)?;
+                let address = elements::Address::from_str(&address).map_err(|_| Error::InvalidAddress )?;
                 let blinding_pubkey = address
                     .blinding_pubkey
-                    .ok_or(Error("unconfidential address not supported".to_string()))?;
+                    .ok_or(Error::InvalidAddress)?;
                 let bytes = blinding_pubkey.serialize();
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
                 let new_out = elements::TxOut {
