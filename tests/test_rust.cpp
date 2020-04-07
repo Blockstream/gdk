@@ -67,13 +67,9 @@ bool test_get_fee_estimates(ga::sdk::session& session) {
     return true;
 }
 
-bool test_create_sign_transaction(ga::sdk::session& session) {
+bool test_create_transaction(ga::sdk::session& session) {
     auto address = "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b";
-    if (session.is_liquid()) {
-       address = "VJLEPoiNtivvKcXtmcFVBPzaL4DukwSjjk3c8kyfczeAFMgQoKbie1AZbB1YiuBAZgdRH6TwCBBPGSBW";
-    }
     nlohmann::json addressees = {{{ "address", address}, { "satoshi", 2000} }};
-
     nlohmann::json create_tx = {
       { "addressees",  addressees},
       { "subaccount", 0 },
@@ -82,13 +78,41 @@ bool test_create_sign_transaction(ga::sdk::session& session) {
 
     printf("create_tx %s\n", create_tx.dump().c_str());
     auto tx_created = session.create_transaction(create_tx);
-    printf("tx_created %s\n", tx_created.dump().c_str());
+    auto error = session.is_liquid() ? "id_invalid_address" : ""; 
+    ASSERT(tx_created.value("error", "") == error, "invalid liquid address");
+
+    address = "VJLEPoiNtivvKcXtmcFVBPzaL4DukwSjjk3c8kyfczeAFMgQoKbie1AZbB1YiuBAZgdRH6TwCBBPGSBW";
+    addressees = {{{ "address", address}, { "satoshi", 2000} }};
+    create_tx = {
+      { "addressees",  addressees},
+      { "subaccount", 0 },
+      { "fee_rate", 1000 }
+    };
+
+    printf("create_tx %s\n", create_tx.dump().c_str());
+    tx_created = session.create_transaction(create_tx);
+    error = session.is_liquid() ? "" : "id_invalid_address"; 
+    ASSERT(tx_created.value("error", "") == error, "invalid bitcoin address");
+
+    return true;
+}
+
+bool test_sign_transaction(ga::sdk::session& session) {
+    auto address = session.is_liquid() ? "VJLEPoiNtivvKcXtmcFVBPzaL4DukwSjjk3c8kyfczeAFMgQoKbie1AZbB1YiuBAZgdRH6TwCBBPGSBW" : "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b";
+    nlohmann::json addressees = {{{ "address", address}, { "satoshi", 2000} }};
+
+    nlohmann::json create_tx = {
+      { "addressees",  addressees},
+      { "subaccount", 0 },
+      { "fee_rate", 1000 }
+    };
+
+    auto tx_created = session.create_transaction(create_tx);
     auto tx_signed = session.sign_transaction(tx_created);
     printf("tx_signed %s\n", tx_signed.dump().c_str());
 
     return true;
 }
-
 bool test_get_mnemonic_passphrase(ga::sdk::session& session) {
     bool threw = false;
     auto mnemonic = session.get_mnemonic_passphrase("");
@@ -186,7 +210,7 @@ int main()
         TEST(test_get_transactions(session));
         TEST(test_get_balance(session));
         // test_get_fee_estimates(session);
-        TEST(test_create_sign_transaction(session));
+        TEST(test_create_transaction(session));
         TEST(test_get_mnemonic_passphrase(session));
         TEST(test_convert_amount(session));
 
