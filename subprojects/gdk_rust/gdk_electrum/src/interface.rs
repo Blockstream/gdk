@@ -294,7 +294,8 @@ impl WalletCtx {
         fee_val += calc_fee_bytes(tx.get_weight() / 4);
 
         for out in request.addressees.iter() {
-            let len = tx.add_output(&out.address, out.satoshi, self.network.policy_asset().ok())
+            let len = tx
+                .add_output(&out.address, out.satoshi, self.network.policy_asset().ok())
                 .map_err(|_| Error::InvalidAddress)?;
             fee_val += calc_fee_bytes(len);
 

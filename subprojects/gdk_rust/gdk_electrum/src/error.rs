@@ -45,7 +45,6 @@ impl Display for Error {
             Error::SliceConversionError(ref slice_err) => write!(f, "slice: {}", slice_err),
             Error::ElementsEncode(ref el_err) => write!(f, "el_err: {}", el_err),
             Error::Common(ref cmn_err) => write!(f, "cmn_err: {:?}", cmn_err),
-
         }
     }
 }
