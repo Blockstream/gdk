@@ -3,7 +3,7 @@ use std::string::ToString;
 #[derive(Debug)]
 pub enum Error {
     Generic(String),
-    InvalidAddress
+    InvalidAddress,
 }
 
 pub fn err<R>(str: &str) -> Result<R, Error> {
