@@ -7,7 +7,9 @@ use std::ptr;
 use bitcoin::secp256k1;
 use std::fmt;
 
+use crate::be::AssetId;
 use crate::util::{make_str, read_str};
+use bitcoin::hashes::{sha256d, Hash};
 
 pub mod ffi;
 
@@ -97,8 +99,6 @@ pub fn bip39_mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Option<[u8; B
 
 /// Calculate the signature hash for a specific index of
 /// an Elements transaction.
-
-#[cfg(feature = "liquid")]
 pub fn tx_get_elements_signature_hash(
     tx: &elements::Transaction,
     index: usize,
@@ -113,7 +113,7 @@ pub fn tx_get_elements_signature_hash(
         0
     };
 
-    let tx_bytes = serialize(tx);
+    let tx_bytes = elements::encode::serialize(tx);
     let mut wally_tx = ptr::null();
     let ret = unsafe {
         ffi::wally_tx_from_bytes(
@@ -125,7 +125,7 @@ pub fn tx_get_elements_signature_hash(
     };
     assert_eq!(ret, ffi::WALLY_OK);
 
-    let value = serialize(value);
+    let value = elements::encode::serialize(value);
     let mut out = [0u8; sha256d::Hash::LEN];
     let ret = unsafe {
         ffi::wally_tx_get_elements_signature_hash(
@@ -211,9 +211,9 @@ pub fn asset_unblind(
 ) -> Result<([u8; 32], [u8; 32], [u8; 32], u64), crate::error::Error> {
     let pub_key = pub_key.serialize();
 
-    let mut asset_out = [0; 32];
-    let mut abf_out = [0; 32];
-    let mut vbf_out = [0; 32];
+    let mut asset_out = [0u8; 32];
+    let mut abf_out = [0u8; 32];
+    let mut vbf_out = [0u8; 32];
     let mut value_out = 0u64;
     let ret = unsafe {
         ffi::wally_asset_unblind(
@@ -294,6 +294,153 @@ pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256
     };
     assert_eq!(ret, ffi::WALLY_OK);
     secp256k1::PublicKey::from_slice(&pub_key[..]).unwrap() // TODO return Result?
+}
+
+pub fn asset_generator_from_bytes(asset: AssetId, abf: [u8; 32]) -> [u8; 33] {
+    let mut generator = [0u8; 33];
+    let ret = unsafe {
+        ffi::wally_asset_generator_from_bytes(
+            asset.as_ptr(),
+            asset.len(),
+            abf.as_ptr(),
+            abf.len(),
+            generator.as_mut_ptr(),
+            generator.len(),
+        )
+    };
+    assert_eq!(ret, ffi::WALLY_OK);
+    generator
+}
+
+pub fn asset_final_vbf(values: Vec<u64>, num_inputs: u32, abf: Vec<u8>, vbf: Vec<u8>) -> [u8; 32] {
+    let mut final_vbf = [0u8; 32];
+
+    let ret = unsafe {
+        ffi::wally_asset_final_vbf(
+            values.as_ptr(),
+            values.len(),
+            num_inputs,
+            abf.as_ptr(),
+            abf.len(),
+            vbf.as_ptr(),
+            vbf.len(),
+            final_vbf.as_mut_ptr(),
+            final_vbf.len(),
+        )
+    };
+    assert_eq!(ret, ffi::WALLY_OK);
+    final_vbf
+}
+
+pub fn asset_value_commitment(value: u64, vbf: [u8; 32], generator: [u8; 33]) -> [u8; 33] {
+    let mut value_commitment = [0u8; 33];
+
+    let ret = unsafe {
+        ffi::wally_asset_value_commitment(
+            value,
+            vbf.as_ptr(),
+            vbf.len(),
+            generator.as_ptr(),
+            generator.len(),
+            value_commitment.as_mut_ptr(),
+            value_commitment.len(),
+        )
+    };
+    assert_eq!(ret, ffi::WALLY_OK);
+    value_commitment
+}
+
+pub fn asset_rangeproof(
+    value: u64,
+    pub_key: secp256k1::PublicKey,
+    priv_key: secp256k1::SecretKey,
+    asset: AssetId,
+    abf: [u8; 32],
+    vbf: [u8; 32],
+    commitment: [u8; 33],
+    extra: bitcoin::Script,
+    generator: [u8; 33],
+    min_value: u64,
+    exp: i32,
+    min_bits: i32,
+) -> Vec<u8> {
+    let mut rangeproof_buffer = [0u8; 5134];
+    let mut written = 0usize;
+    let pub_key = pub_key.serialize();
+
+    let ret = unsafe {
+        ffi::wally_asset_rangeproof(
+            value,
+            pub_key.as_ptr(),
+            pub_key.len(),
+            priv_key.as_ptr(),
+            priv_key.len(),
+            asset.as_ptr(),
+            asset.len(),
+            abf.as_ptr(),
+            abf.len(),
+            vbf.as_ptr(),
+            vbf.len(),
+            commitment.as_ptr(),
+            commitment.len(),
+            extra.as_bytes().as_ptr(),
+            extra.as_bytes().len(),
+            generator.as_ptr(),
+            generator.len(),
+            min_value,
+            exp,
+            min_bits,
+            rangeproof_buffer.as_mut_ptr(),
+            rangeproof_buffer.len(),
+            &mut written,
+        )
+    };
+
+    assert_eq!(ret, ffi::WALLY_OK);
+    rangeproof_buffer[0..written].to_vec()
+}
+
+pub fn asset_surjectionproof(
+    output_asset: AssetId,
+    output_abf: [u8; 32],
+    output_generator: [u8; 33],
+    bytes: [u8; 32],
+    asset: [u8; 32],
+    abf: [u8; 32],
+    generator: [u8; 33],
+    num_inputs: usize,
+) -> Vec<u8> {
+    let mut proof_size = 0usize;
+    let ret = unsafe { ffi::wally_asset_surjectionproof_size(num_inputs, &mut proof_size) };
+    assert_eq!(ret, ffi::WALLY_OK);
+
+    let mut proof = Vec::with_capacity(proof_size);
+    let mut written = 0usize;
+
+    let ret = unsafe {
+        ffi::wally_asset_surjectionproof(
+            output_asset.as_ptr(),
+            output_asset.len(),
+            output_abf.as_ptr(),
+            output_abf.len(),
+            output_generator.as_ptr(),
+            output_generator.len(),
+            bytes.as_ptr(),
+            bytes.len(),
+            asset.as_ptr(),
+            asset.len(),
+            abf.as_ptr(),
+            abf.len(),
+            generator.as_ptr(),
+            generator.len(),
+            proof.as_mut_ptr(),
+            proof_size,
+            &mut written,
+        )
+    };
+
+    assert_eq!(ret, ffi::WALLY_OK);
+    proof
 }
 
 #[cfg(test)]
@@ -394,7 +541,8 @@ mod tests {
             value_commitment,
             script,
             asset_commitment,
-        );
+        )
+        .unwrap();
 
         assert_eq!(
             asset.to_vec(),
@@ -477,6 +625,40 @@ mod tests {
         assert_eq!(
             hex::encode(&vbf[..]),
             "1ace094a11fb12b82d8c1e7d4e1abfebc087a3cf90369d65b54379f40feb3190"
+        );
+    }
+
+    #[test]
+    fn test_blind() {
+        // from libwally test_assets.js
+        let vec = hex::decode("8b5d87d94b9f54dc5dd9f31df5dffedc974fc4d5bf0d2ee1297e5aba504ccc26")
+            .unwrap();
+        let mut vbf = [0u8; 32];
+        vbf.copy_from_slice(&vec[..]);
+
+        let vec = hex::decode("0ba4fd25e0e2108e55aec683810a8652f9b067242419a1f7cc0f01f92b4b078252")
+            .unwrap();
+        let mut generator = [0u8; 33];
+        generator.copy_from_slice(&vec[..]);
+
+        let commitment = asset_value_commitment(10000, vbf, generator);
+        assert_eq!(
+            hex::encode(&commitment[..]),
+            "08a9de5e391458abf4eb6ff0cc346fa0a8b5b0806b2ee9261dde54d436423c1982"
+        );
+
+        let ones = [0x17u8; 32];
+        let values = [20000u64, 4910, 13990, 1100].to_vec();
+        let asset = ones.clone();
+        let abf = ones.clone();
+        let abfs = hex::decode("7fca161c2b849a434f49065cf590f5f1909f25e252f728dfd53669c3c8f8e37100000000000000000000000000000000000000000000000000000000000000002c89075f3c8861fea27a15682d664fb643bc08598fe36dcf817fcabc7ef5cf2efdac7bbad99a45187f863cd58686a75135f2cc0714052f809b0c1f603bcdc574").unwrap();
+        let vbfs = hex::decode("1c07611b193009e847e5b296f05a561c559ca84e16d1edae6cbe914b73fb6904000000000000000000000000000000000000000000000000000000000000000074e4135177cd281b332bb8fceb46da32abda5d6dc4d2eef6342a5399c9fb3c48").unwrap();
+
+        let generator = asset_generator_from_bytes(asset, abf);
+        let vbf = asset_final_vbf(values.clone(), 1, abfs, vbfs);
+        assert_eq!(
+            hex::encode(&vbf[..]),
+            "6996212c70fa85b82d4fd76bd262e0cebc5d8f52350a73af8d2b881a30442b9d"
         );
     }
 }
