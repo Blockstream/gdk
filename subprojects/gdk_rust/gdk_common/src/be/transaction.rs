@@ -134,9 +134,7 @@ impl BETransaction {
                 let bytes = blinding_pubkey.serialize();
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
                 let new_out = elements::TxOut {
-                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(
-                        asset.expect("asset not found in elements code"),
-                    )),
+                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.unwrap())),
                     value: confidential::Value::Explicit(value),
                     nonce: confidential::Nonce::Confidential(bytes[0], byte32),
                     script_pubkey: address.script_pubkey(),
@@ -146,6 +144,17 @@ impl BETransaction {
                 tx.output.push(new_out);
                 Ok(len)
             }
+        }
+    }
+
+    pub fn add_fee_if_elements(&mut self, value: u64, asset: Option<AssetId>) {
+        if let BETransaction::Elements(tx) = self {
+            let new_out = elements::TxOut {
+                asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.unwrap() )) ,
+                value: confidential::Value::Explicit(value),
+                ..Default::default()
+            };
+            tx.output.push(new_out);
         }
     }
 

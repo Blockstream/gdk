@@ -59,7 +59,8 @@ impl Network {
 
     pub fn policy_asset(&self) -> Result<AssetId, crate::error::Error> {
         if let Some(str) = self.policy_asset.as_ref() {
-            let vec = hex::decode(str)?;
+            let mut vec = hex::decode(str)?;
+            vec.reverse();
             let asset: AssetId = (&vec[..]).try_into()?;
             Ok(asset)
         } else {
