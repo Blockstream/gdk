@@ -1,10 +1,10 @@
 [wrap-file]
-directory = GSL-1212beae777dba02c230ece8c0c0ec12790047ea
+directory = GSL-7e99e76c9761d0d0b0848b91f8648830670ee872
 
-source_url = https://github.com/microsoft/GSL/archive/1212beae777dba02c230ece8c0c0ec12790047ea.tar.gz
-source_filename = GSL-1212beae777dba02c230ece8c0c0ec12790047ea.tar.gz
-source_hash = 266e13bb82d60957a1112c3141e6e767dcb466070bcfdc4182abe0850aaa0856
+source_url = https://github.com/microsoft/GSL/archive/7e99e76c9761d0d0b0848b91f8648830670ee872.tar.gz
+source_filename = GSL-7e99e76c9761d0d0b0848b91f8648830670ee872.tar.gz
+source_hash = b12a64e4625d8a8b811a82bb5fa91e5562a3b5dc35e69cb1be42588e2ea5739f
 
-patch_url = file:./subprojects/GSL-meson/GSL-meson-266e13bb82d60957a1112c3141e6e767dcb466070bcfdc4182abe0850aaa0856.tar
-patch_filename = GSL-meson-266e13bb82d60957a1112c3141e6e767dcb466070bcfdc4182abe0850aaa0856.tar
-patch_hash = 68f1ffe92b9787bafce3fb244c94a1cc7418096b430ad21c73de668dc233f910
+patch_url = file:./subprojects/GSL-meson/GSL-meson-b12a64e4625d8a8b811a82bb5fa91e5562a3b5dc35e69cb1be42588e2ea5739f.tar
+patch_filename = GSL-meson-b12a64e4625d8a8b811a82bb5fa91e5562a3b5dc35e69cb1be42588e2ea5739f.tar
+patch_hash = af6ee3e2d8ce0247e35e68dacef87d2ad910ea2060701a14cc18d5bcc99f5d64
