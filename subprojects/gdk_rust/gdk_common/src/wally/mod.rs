@@ -10,6 +10,7 @@ use std::fmt;
 use crate::be::AssetId;
 use crate::util::{make_str, read_str};
 use bitcoin::hashes::{sha256d, Hash};
+use elements::confidential::{Asset, Value};
 
 pub mod ffi;
 
@@ -296,7 +297,7 @@ pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256
     secp256k1::PublicKey::from_slice(&pub_key[..]).unwrap() // TODO return Result?
 }
 
-pub fn asset_generator_from_bytes(asset: AssetId, abf: [u8; 32]) -> [u8; 33] {
+pub fn asset_generator_from_bytes(asset: &AssetId, abf: &[u8; 32]) -> Asset {
     let mut generator = [0u8; 33];
     let ret = unsafe {
         ffi::wally_asset_generator_from_bytes(
@@ -309,7 +310,11 @@ pub fn asset_generator_from_bytes(asset: AssetId, abf: [u8; 32]) -> [u8; 33] {
         )
     };
     assert_eq!(ret, ffi::WALLY_OK);
-    generator
+
+    let prefix = generator[0];
+    let mut suffix = [0u8;32];
+    suffix.copy_from_slice(&generator[1..]);
+    Asset::Confidential(prefix, suffix)
 }
 
 pub fn asset_final_vbf(values: Vec<u64>, num_inputs: u32, abf: Vec<u8>, vbf: Vec<u8>) -> [u8; 32] {
@@ -332,8 +337,11 @@ pub fn asset_final_vbf(values: Vec<u64>, num_inputs: u32, abf: Vec<u8>, vbf: Vec
     final_vbf
 }
 
-pub fn asset_value_commitment(value: u64, vbf: [u8; 32], generator: [u8; 33]) -> [u8; 33] {
+pub fn asset_value_commitment(value: u64, vbf: [u8; 32], generator: Asset) -> Value {
     let mut value_commitment = [0u8; 33];
+
+    let generator = elements::encode::serialize(&generator);
+    assert_eq!(generator.len(), 33);
 
     let ret = unsafe {
         ffi::wally_asset_value_commitment(
@@ -347,7 +355,10 @@ pub fn asset_value_commitment(value: u64, vbf: [u8; 32], generator: [u8; 33]) ->
         )
     };
     assert_eq!(ret, ffi::WALLY_OK);
-    value_commitment
+    let prefix = value_commitment[0];
+    let mut suffix = [0u8;32];
+    suffix.copy_from_slice(&value_commitment[1..]);
+    Value::Confidential(prefix, suffix)
 }
 
 pub fn asset_rangeproof(
@@ -357,9 +368,9 @@ pub fn asset_rangeproof(
     asset: AssetId,
     abf: [u8; 32],
     vbf: [u8; 32],
-    commitment: [u8; 33],
-    extra: bitcoin::Script,
-    generator: [u8; 33],
+    commitment: Value,
+    extra: &bitcoin::Script,
+    generator: Asset,
     min_value: u64,
     exp: i32,
     min_bits: i32,
@@ -367,6 +378,8 @@ pub fn asset_rangeproof(
     let mut rangeproof_buffer = [0u8; 5134];
     let mut written = 0usize;
     let pub_key = pub_key.serialize();
+    let commitment = elements::encode::serialize(&commitment); // should check commitment and generator are confidential
+    let generator = elements::encode::serialize(&generator);
 
     let ret = unsafe {
         ffi::wally_asset_rangeproof(
@@ -403,16 +416,19 @@ pub fn asset_rangeproof(
 pub fn asset_surjectionproof(
     output_asset: AssetId,
     output_abf: [u8; 32],
-    output_generator: [u8; 33],
+    output_generator: Asset,
     bytes: [u8; 32],
-    asset: [u8; 32],
-    abf: [u8; 32],
-    generator: [u8; 33],
+    assets: &Vec<u8>,
+    abfs: &Vec<u8>,
+    generators: &Vec<u8>,
     num_inputs: usize,
 ) -> Vec<u8> {
     let mut proof_size = 0usize;
     let ret = unsafe { ffi::wally_asset_surjectionproof_size(num_inputs, &mut proof_size) };
     assert_eq!(ret, ffi::WALLY_OK);
+
+    let output_generator = elements::encode::serialize(&output_generator);
+
 
     let mut proof = Vec::with_capacity(proof_size);
     let mut written = 0usize;
@@ -427,12 +443,12 @@ pub fn asset_surjectionproof(
             output_generator.len(),
             bytes.as_ptr(),
             bytes.len(),
-            asset.as_ptr(),
-            asset.len(),
-            abf.as_ptr(),
-            abf.len(),
-            generator.as_ptr(),
-            generator.len(),
+            assets.as_ptr(),
+            assets.len(),
+            abfs.as_ptr(),
+            abfs.len(),
+            generators.as_ptr(),
+            generators.len(),
             proof.as_mut_ptr(),
             proof_size,
             &mut written,
@@ -660,5 +676,13 @@ mod tests {
             hex::encode(&vbf[..]),
             "6996212c70fa85b82d4fd76bd262e0cebc5d8f52350a73af8d2b881a30442b9d"
         );
+    }
+
+    #[test]
+    fn test_sur_size() {
+        let mut proof_size = 0usize;
+        let ret = unsafe { ffi::wally_asset_surjectionproof_size(num_inputs, &mut proof_size) };
+        assert_eq!(ret, ffi::WALLY_OK);
+        assert_eq!(proof_size, 0);
     }
 }

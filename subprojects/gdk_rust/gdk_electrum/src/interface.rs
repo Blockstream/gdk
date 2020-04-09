@@ -284,6 +284,7 @@ impl WalletCtx {
         debug!("create_tx {:?}", request);
 
         let mut tx = BETransaction::new(self.network.id());
+        let policy_asset = self.network.policy_asset().ok();
 
         let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
 
@@ -322,8 +323,9 @@ impl WalletCtx {
             let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
             debug!("adding change {:?}", change_address);
 
-            tx.add_output(&change_address, change_val, self.network.policy_asset().ok())?;
+            tx.add_output(&change_address, change_val, policy_asset)?;
         }
+        tx.add_fee_if_elements(fee_val, policy_asset);
 
         let mut created_tx = TransactionMeta::new(
             tx, //TODO
@@ -405,8 +407,143 @@ impl WalletCtx {
 
                 Ok(wgtx)
             }
-            BETransaction::Elements(_tx) => Err(Error::Generic("can't sign liquid".into())),
+            BETransaction::Elements(tx) => {
+                let mut out_tx = tx.clone();
+                self.blind_tx(&mut out_tx)?;
+                let wgtx: TransactionMeta = BETransaction::Elements(out_tx).into();
+
+                Ok(wgtx)
+            }
         }
+    }
+
+    fn blind_tx(&self, tx: &mut elements::Transaction) -> Result<(), Error> {
+        debug!("blind_tx {}", tx.txid());
+        let mut input_assets = vec![];
+        let mut input_abfs = vec![];
+        let mut input_vbfs = vec![];
+        let mut input_ags = vec![];
+        let mut input_values = vec![];
+        for input in tx.input.iter() {
+            debug!("input {:?}", input);
+
+            let unblinded = self
+                .db
+                .get_unblinded(&input.previous_output)?
+                .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
+            debug!("unblinded value: {} asset:{}", unblinded.value, hex::encode(&unblinded.asset[..]));
+
+            input_values.push(unblinded.value);
+            input_assets.extend(unblinded.asset.to_vec());
+            input_abfs.extend(unblinded.abf.to_vec());
+            input_vbfs.extend(unblinded.vbf.to_vec());
+            let input_asset = asset_generator_from_bytes(&unblinded.asset, &unblinded.abf);
+            input_ags.extend(elements::encode::serialize(&input_asset));
+        }
+
+        //let random_bytes = rand::thread_rng().gen::<[u8; 32]>().clone();
+        let random_bytes = [11u8; 32];
+        let min_value = 1;
+        let ct_exp = 0;
+        let ct_bits = 52;
+
+        let mut output_blinded_values = vec![];
+        for output in tx.output.iter() {
+            if !output.is_fee() {
+                output_blinded_values.push(output.minimum_value());
+            }
+        }
+        debug!("output_blinded_values {:?}", output_blinded_values);
+        let mut all_values = vec![];
+        all_values.extend(input_values);
+        all_values.extend(output_blinded_values);
+        let in_num = tx.input.len();
+        let out_num = tx.output.len();
+
+        let output_abfs: Vec<Vec<u8>> = (0..out_num - 1).map(|_| random_bytes.to_vec()).collect();
+        let mut output_vbfs: Vec<Vec<u8>> =
+            (0..out_num - 2).map(|_| random_bytes.to_vec()).collect();
+
+        let mut all_abfs = vec![];
+        all_abfs.extend(input_abfs.to_vec());
+        all_abfs.extend(output_abfs.iter().cloned().flatten().collect::<Vec<u8>>());
+
+        let mut all_vbfs = vec![];
+        all_vbfs.extend(input_vbfs.to_vec());
+        all_vbfs.extend(output_vbfs.iter().cloned().flatten().collect::<Vec<u8>>());
+
+        let last_vbf = asset_final_vbf(all_values, in_num as u32, all_abfs, all_vbfs);
+        output_vbfs.push(last_vbf.to_vec());
+
+        for (i, mut output) in tx.output.iter_mut().enumerate() {
+            debug!("output {:?}", output);
+            if !output.is_fee() {
+                match (output.value, output.asset, output.nonce) {
+                    (Value::Explicit(value), Asset::Explicit(asset), Nonce::Confidential(_, _)) => {
+                        let nonce = elements::encode::serialize(&output.nonce);
+                        let blinding_pubkey = PublicKey::from_slice(&nonce).unwrap();
+                        let blinding_key = asset_blinding_key_to_ec_private_key(
+                            self.master_blinding.as_ref().unwrap(),
+                            &output.script_pubkey,
+                        );
+                        let mut output_abf = [0u8; 32];
+                        output_abf.copy_from_slice(&(&output_abfs[i])[..]);
+                        let mut output_vbf = [0u8; 32];
+                        output_vbf.copy_from_slice(&(&output_vbfs[i])[..]);
+                        let asset = asset.clone().into_inner();
+
+                        let output_generator = asset_generator_from_bytes(&asset, &output_abf);
+                        let output_value_commitment =
+                            asset_value_commitment(value, output_vbf, output_generator);
+
+                        let rangeproof = asset_rangeproof(
+                            value,
+                            blinding_pubkey.key,
+                            blinding_key,
+                            asset,
+                            output_abf,
+                            output_vbf,
+                            output_value_commitment,
+                            &output.script_pubkey,
+                            output_generator,
+                            min_value,
+                            ct_exp,
+                            ct_bits,
+                        );
+                        debug!("asset: {}", hex::encode(&asset));
+                        debug!("output_abf: {}", hex::encode(&output_abf));
+                        debug!(
+                            "output_generator: {}",
+                            hex::encode(&elements::encode::serialize(&output_generator))
+                        );
+                        debug!("random_bytes: {}", hex::encode(&random_bytes));
+                        debug!("input_assets: {}", hex::encode(&input_assets));
+                        debug!("input_abfs: {}", hex::encode(&input_abfs));
+                        debug!("input_ags: {}", hex::encode(&input_ags));
+                        debug!("in_num: {}", in_num);
+
+                        let surjectionproof = asset_surjectionproof(
+                            asset,
+                            output_abf,
+                            output_generator,
+                            random_bytes,
+                            &input_assets,
+                            &input_abfs,
+                            &input_ags,
+                            in_num,
+                        );
+                        debug!("surjectionproof: {}", hex::encode(&surjectionproof));
+
+                        output.asset = output_generator;
+                        output.value = output_value_commitment;
+                        output.witness.surjection_proof = surjectionproof;
+                        output.witness.rangeproof = rangeproof;
+                    }
+                    _ => panic!("create_tx created things not right"),
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn validate_address(&self, _address: Address) -> Result<bool, Error> {
