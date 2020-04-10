@@ -43,6 +43,12 @@ impl NetworkId {
             _ => None,
         }
     }
+    pub fn get_elements_network(self: NetworkId) -> Option<ElementsNetwork> {
+        match self {
+            NetworkId::Elements(net) => Some(net),
+            _ => None,
+        }
+    }
 }
 
 impl Network {

@@ -7,7 +7,7 @@ use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::PublicKey;
-use elements::{self, AddressParams};
+use elements;
 use gdk_common::model::Balances;
 use hex;
 use log::{debug, warn};
@@ -26,6 +26,7 @@ use crate::model::*;
 use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::*;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -100,18 +101,12 @@ impl WalletCtx {
                     asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
                 let public_key = ec_public_key_from_private_key(blinding_key);
                 let blinder = Some(public_key);
-                let addr = match network {
-                    ElementsNetwork::Liquid => elements::Address::p2shwpkh(
-                        &derived.public_key,
-                        blinder,
-                        &AddressParams::LIQUID,
-                    ),
-                    ElementsNetwork::ElementsRegtest => elements::Address::p2shwpkh(
-                        &derived.public_key,
-                        blinder,
-                        &AddressParams::ELEMENTS,
-                    ),
-                };
+                let addr = elements::Address::p2shwpkh(
+                    &derived.public_key,
+                    blinder,
+                    address_params(network),
+                );
+
                 Ok(BEAddress::Elements(addr))
             }
         }
@@ -310,6 +305,7 @@ impl WalletCtx {
         while selected_amount < outgoing + fee_val {
             debug!("selected_amount:{} outgoing:{} fee_val:{}", selected_amount, outgoing, fee_val);
             let (outpoint, (_, value)) = utxos.pop().ok_or(Error::InsufficientFunds)?;
+            debug!("popped out utxo of value: {}", value);
 
             let len = tx.add_input(outpoint);
             fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
@@ -318,13 +314,18 @@ impl WalletCtx {
         }
 
         let change_val = selected_amount - outgoing - fee_val;
-        if change_val > 546 {
+        let min_change = match self.network.id() {
+            NetworkId::Bitcoin(_) => 546,
+            NetworkId::Elements(_) => 0,
+        };
+        if change_val > min_change {
             let change_index = self.db.increment_index(Index::Internal)?;
             let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
             debug!("adding change {:?}", change_address);
 
             tx.add_output(&change_address, change_val, policy_asset)?;
         }
+
         tx.add_fee_if_elements(fee_val, policy_asset);
 
         let mut created_tx = TransactionMeta::new(
@@ -410,6 +411,46 @@ impl WalletCtx {
             BETransaction::Elements(tx) => {
                 let mut out_tx = tx.clone();
                 self.blind_tx(&mut out_tx)?;
+
+                for idx in 0..out_tx.input.len() {
+                    let prev_output = out_tx.input[idx].previous_output.clone();
+                    debug!("input#{} prev_output:{:?}", idx, prev_output);
+                    let prev_tx = self
+                        .db
+                        .get_liquid_tx(&prev_output.txid)?
+                        .ok_or_else(|| Error::Generic("cannot find tx in db".into()))?;
+                    let out = prev_tx.output[prev_output.vout as usize].clone();
+                    let derivation_path = self
+                        .db
+                        .get_path(&out.script_pubkey)?
+                        .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
+                        .to_derivation_path()?;
+
+                    let privkey = self.xprv.derive_priv(&self.secp, &derivation_path).unwrap();
+                    let pubkey = ExtendedPubKey::from_private(&self.secp, &privkey);
+                    let el_net = self.network.id().get_elements_network().unwrap();
+                    let script_code =
+                        elements::Address::p2pkh(&pubkey.public_key, None, address_params(el_net))
+                            .script_pubkey();
+                    let sighash = tx_get_elements_signature_hash(
+                        &out_tx,
+                        idx,
+                        &script_code,
+                        &out.value,
+                        bitcoin::SigHashType::All.as_u32(),
+                        true, // segwit
+                    );
+                    let msg = secp256k1::Message::from_slice(&sighash[..]).unwrap();
+                    let mut signature =
+                        self.secp.sign(&msg, &privkey.private_key.key).serialize_der().to_vec();
+                    signature.push(0x01);
+
+                    let redeem_script = script_sig(&pubkey.public_key);
+                    out_tx.input[idx].sequence = 0xfffffffe;
+                    out_tx.input[idx].script_sig = redeem_script;
+                    out_tx.input[idx].witness.script_witness =
+                        vec![signature, pubkey.public_key.to_bytes()];
+                }
                 let wgtx: TransactionMeta = BETransaction::Elements(out_tx).into();
 
                 Ok(wgtx)
@@ -431,7 +472,11 @@ impl WalletCtx {
                 .db
                 .get_unblinded(&input.previous_output)?
                 .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
-            debug!("unblinded value: {} asset:{}", unblinded.value, hex::encode(&unblinded.asset[..]));
+            debug!(
+                "unblinded value: {} asset:{}",
+                unblinded.value,
+                hex::encode(&unblinded.asset[..])
+            );
 
             input_values.push(unblinded.value);
             input_assets.extend(unblinded.asset.to_vec());
@@ -441,8 +486,8 @@ impl WalletCtx {
             input_ags.extend(elements::encode::serialize(&input_asset));
         }
 
-        //let random_bytes = rand::thread_rng().gen::<[u8; 32]>().clone();
-        let random_bytes = [11u8; 32];
+        let random_bytes = rand::thread_rng().gen::<[u8; 32]>().clone();
+        //let random_bytes = [11u8; 32];
         let min_value = 1;
         let ct_exp = 0;
         let ct_bits = 52;
@@ -480,12 +525,14 @@ impl WalletCtx {
             if !output.is_fee() {
                 match (output.value, output.asset, output.nonce) {
                     (Value::Explicit(value), Asset::Explicit(asset), Nonce::Confidential(_, _)) => {
+                        debug!("value: {}", value);
                         let nonce = elements::encode::serialize(&output.nonce);
                         let blinding_pubkey = PublicKey::from_slice(&nonce).unwrap();
                         let blinding_key = asset_blinding_key_to_ec_private_key(
                             self.master_blinding.as_ref().unwrap(),
                             &output.script_pubkey,
                         );
+                        let blinding_public_key = ec_public_key_from_private_key(blinding_key);
                         let mut output_abf = [0u8; 32];
                         output_abf.copy_from_slice(&(&output_abfs[i])[..]);
                         let mut output_vbf = [0u8; 32];
@@ -534,6 +581,10 @@ impl WalletCtx {
                         );
                         debug!("surjectionproof: {}", hex::encode(&surjectionproof));
 
+                        let bytes = blinding_public_key.serialize();
+                        let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
+                        output.nonce =
+                            elements::confidential::Nonce::Confidential(bytes[0], byte32);
                         output.asset = output_generator;
                         output.value = output_value_commitment;
                         output.witness.surjection_proof = surjectionproof;
@@ -581,6 +632,13 @@ impl WalletCtx {
                 &random_bytes,
             )?, // TODO support LIQUID
         })
+    }
+}
+
+fn address_params(net: ElementsNetwork) -> &'static elements::AddressParams {
+    match net {
+        ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
+        ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
     }
 }
 
