@@ -6,6 +6,7 @@ use std::ptr;
 
 use bitcoin::secp256k1;
 use std::fmt;
+use log::debug;
 
 use crate::be::AssetId;
 use crate::util::{make_str, read_str};
@@ -124,16 +125,23 @@ pub fn tx_get_elements_signature_hash(
             &mut wally_tx,
         )
     };
-    assert_eq!(ret, ffi::WALLY_OK);
+    assert_eq!(ret, ffi::WALLY_OK, "can't serialize");
 
     let value = elements::encode::serialize(value);
     let mut out = [0u8; sha256d::Hash::LEN];
+
+    let (script_ptr, script_len) = if script_code == &bitcoin::Script::default() {
+        (ptr::null(), 0)
+    } else {
+        (script_code.as_bytes().as_ptr(), script_code.as_bytes().len())
+    };
+
     let ret = unsafe {
         ffi::wally_tx_get_elements_signature_hash(
             wally_tx,
             index,
-            script_code.as_bytes().as_ptr(),
-            script_code.as_bytes().len(),
+            script_ptr,
+            script_len,
             value.as_ptr(),
             value.len(),
             sighash,
@@ -142,7 +150,7 @@ pub fn tx_get_elements_signature_hash(
             sha256d::Hash::LEN,
         )
     };
-    assert_eq!(ret, ffi::WALLY_OK);
+    assert_eq!(ret, ffi::WALLY_OK, "can't get signature_hash");
     //TODO(stevenroose) use from_inner with hashes 0.7 in bitcoin 0.19
     sha256d::Hash::from_slice(&out[..]).unwrap()
 }
@@ -426,11 +434,11 @@ pub fn asset_surjectionproof(
     let mut proof_size = 0usize;
     let ret = unsafe { ffi::wally_asset_surjectionproof_size(num_inputs, &mut proof_size) };
     assert_eq!(ret, ffi::WALLY_OK);
+    debug!("proof_size: {}", proof_size);
 
     let output_generator = elements::encode::serialize(&output_generator);
 
-
-    let mut proof = Vec::with_capacity(proof_size);
+    let mut proof = [0u8; 8259];
     let mut written = 0usize;
 
     let ret = unsafe {
@@ -456,7 +464,8 @@ pub fn asset_surjectionproof(
     };
 
     assert_eq!(ret, ffi::WALLY_OK);
-    proof
+    assert_eq!(proof_size, written);
+    proof[..proof_size].to_vec()
 }
 
 #[cfg(test)]
@@ -654,12 +663,11 @@ mod tests {
 
         let vec = hex::decode("0ba4fd25e0e2108e55aec683810a8652f9b067242419a1f7cc0f01f92b4b078252")
             .unwrap();
-        let mut generator = [0u8; 33];
-        generator.copy_from_slice(&vec[..]);
+        let generator: elements::confidential::Asset = elements::encode::deserialize(&vec).unwrap();
 
         let commitment = asset_value_commitment(10000, vbf, generator);
         assert_eq!(
-            hex::encode(&commitment[..]),
+            hex::encode(elements::encode::serialize(&commitment)),
             "08a9de5e391458abf4eb6ff0cc346fa0a8b5b0806b2ee9261dde54d436423c1982"
         );
 
@@ -670,7 +678,7 @@ mod tests {
         let abfs = hex::decode("7fca161c2b849a434f49065cf590f5f1909f25e252f728dfd53669c3c8f8e37100000000000000000000000000000000000000000000000000000000000000002c89075f3c8861fea27a15682d664fb643bc08598fe36dcf817fcabc7ef5cf2efdac7bbad99a45187f863cd58686a75135f2cc0714052f809b0c1f603bcdc574").unwrap();
         let vbfs = hex::decode("1c07611b193009e847e5b296f05a561c559ca84e16d1edae6cbe914b73fb6904000000000000000000000000000000000000000000000000000000000000000074e4135177cd281b332bb8fceb46da32abda5d6dc4d2eef6342a5399c9fb3c48").unwrap();
 
-        let generator = asset_generator_from_bytes(asset, abf);
+        let _generator = asset_generator_from_bytes(&asset, &abf);
         let vbf = asset_final_vbf(values.clone(), 1, abfs, vbfs);
         assert_eq!(
             hex::encode(&vbf[..]),
@@ -681,8 +689,23 @@ mod tests {
     #[test]
     fn test_sur_size() {
         let mut proof_size = 0usize;
+        let num_inputs = 1;
         let ret = unsafe { ffi::wally_asset_surjectionproof_size(num_inputs, &mut proof_size) };
         assert_eq!(ret, ffi::WALLY_OK);
-        assert_eq!(proof_size, 0);
+        assert_eq!(proof_size, 67);
+    }
+#[test]
+    fn test_sighash() {
+        //from test_elements_tx.c
+        let tx_hex = include_str!("0ae624340f0cd7969d7ff70486f855ecfae62cc85061872076fd1744ca0c90c0.hex").trim();
+        let tx_sighash_hex = "450f330746507f7a53b805895b6026dd5947cbf65a7b49eeb850c32e9de17cd9";
+
+        let tx: elements::Transaction = elements::encode::deserialize(&hex::decode(tx_hex).unwrap()).unwrap();
+
+        let sighash_all = 1;
+        let value = Value::Explicit(1000);
+        let result = tx_get_elements_signature_hash(&tx, 0, &Script::default(), &value, sighash_all, true);
+
+        assert_eq!(tx_sighash_hex, hex::encode(&result.into_inner()));
     }
 }

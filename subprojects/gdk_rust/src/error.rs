@@ -8,7 +8,7 @@ pub enum Error {
     JsonFrom(serde_json::Error),
     Electrum(electrum::error::Error),
     Rates(ExchangeRateError), // Rpc(rpc::error::Error),
-    Common(gdk_common::error::Error)
+    Common(gdk_common::error::Error),
 }
 
 impl Error {
@@ -22,8 +22,12 @@ impl Error {
 
         // TODO rpc
         match *self {
-            Error::Electrum(electrum::error::Error::InsufficientFunds) => "id_insufficient_funds".to_string(),
-            Error::Electrum(electrum::error::Error::InvalidAddress) => "id_invalid_address".to_string(),
+            Error::Electrum(electrum::error::Error::InsufficientFunds) => {
+                "id_insufficient_funds".to_string()
+            }
+            Error::Electrum(electrum::error::Error::InvalidAddress) => {
+                "id_invalid_address".to_string()
+            }
             _ => "id_unknown".to_string(),
         }
     }

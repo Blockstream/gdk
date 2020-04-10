@@ -278,7 +278,7 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    debug!("GDKRUST_call_session {} {:?}", method, res);
+    trace!("GDKRUST_call_session {} {:?}", method, res);
 
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
