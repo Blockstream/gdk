@@ -109,7 +109,7 @@ bool test_sign_transaction(ga::sdk::session& session) {
 
     auto tx_created = session.create_transaction(create_tx);
     auto tx_signed = session.sign_transaction(tx_created);
-    printf("tx_signed %s\n", tx_signed.dump().c_str());
+    printf("tx_signed %s\n", tx_signed["transaction"].dump().c_str());
 
     return true;
 }

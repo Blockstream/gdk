@@ -215,6 +215,13 @@ impl Forest {
         }
     }
 
+    pub fn get_liquid_tx(&self, txid: &Txid) -> Result<Option<elements::Transaction>, Error> {
+        match self.get_tx(txid) {
+            Ok(Some(BETransaction::Elements(tx))) => Ok(Some(tx)),
+            _ => Err(Error::Generic("exptected liquid tx".to_string())),
+        }
+    }
+
     pub fn insert_tx(&self, txid: &Txid, tx: &BETransaction) -> Result<(), Error> {
         Ok(self.txs.insert(txid, tx.serialize()).map(|_| ())?)
     }
@@ -391,22 +398,5 @@ impl Path {
 
     pub fn to_derivation_path(self) -> Result<DerivationPath, Error> {
         Ok(DerivationPath::from_str(&format!("m/{}/{}", self.i, self.j))?)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::Path;
-
-    #[test]
-    fn test_path() {
-        let path = Path::new(0, 0);
-        assert_eq!(path, Path::from_slice(path.as_ref()));
-        let path = Path::new(0, 220);
-        assert_eq!(path, Path::from_slice(path.as_ref()));
-        let path = Path::new(1, 220);
-        assert_eq!(path, Path::from_slice(path.as_ref()));
-        let path = Path::new(1, 0);
-        assert_eq!(path, Path::from_slice(path.as_ref()));
     }
 }
