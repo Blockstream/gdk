@@ -492,8 +492,9 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         debug!("electrum send_transaction {:#?}", tx);
         match &tx.transaction {
             BETransaction::Bitcoin(tx) => self.client.transaction_broadcast(&tx)?,
-            BETransaction::Elements(_tx) => {
-                return Err(Error::Generic("implementme: send liquid transaction".into()))
+            BETransaction::Elements(tx) => {
+                let tx_bytes = elements::encode::serialize(tx);
+                self.client.transaction_broadcast_raw(&tx_bytes)?
             }
         };
         Ok(format!("{}", tx.txid))

@@ -283,47 +283,83 @@ impl WalletCtx {
 
         let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
 
-        let mut fee_val = 0;
-        let mut outgoing: u64 = 0;
+        let mut fee_val = 0u64;
+        let mut outgoing_map: HashMap<String,u64> = HashMap::new();
+        let mut remap: HashMap<String,AssetId> = HashMap::new();
+        if let Some(btc_asset) = policy_asset {
+            remap.insert("btc".to_string(), btc_asset);
+        }
+        outgoing_map.insert("btc".to_string(), 0);
 
         let calc_fee_bytes = |bytes| ((bytes as f64) * fee_rate) as u64;
         fee_val += calc_fee_bytes(tx.get_weight() / 4);
 
         for out in request.addressees.iter() {
+            let asset = out.asset().or(policy_asset);
             let len = tx
-                .add_output(&out.address, out.satoshi, self.network.policy_asset().ok())
+                .add_output(&out.address, out.satoshi, asset)
                 .map_err(|_| Error::InvalidAddress)?;
             fee_val += calc_fee_bytes(len);
 
-            outgoing += out.satoshi;
+            let asset_hex = if asset == policy_asset {
+                "btc".to_string()
+            } else {
+                out.asset_tag.as_ref().unwrap_or(&"btc".to_string()).to_string()
+            };
+            *outgoing_map.entry(asset_hex.clone()).or_default() += out.satoshi;
+            if let Some(asset) = asset {
+                remap.insert(asset_hex, asset);
+            }
         }
+        debug!("{:?}", outgoing_map);
 
-        let mut utxos = self.utxos()?;
+        let utxos = self.utxos()?;
         debug!("utxos len:{}", utxos.len());
 
-        let mut selected_amount: u64 = 0;
-        while selected_amount < outgoing + fee_val {
-            debug!("selected_amount:{} outgoing:{} fee_val:{}", selected_amount, outgoing, fee_val);
-            let (outpoint, (_, value)) = utxos.pop().ok_or(Error::InsufficientFunds)?;
-            debug!("popped out utxo of value: {}", value);
+        let mut outgoing: Vec<(String,u64)> = outgoing_map.into_iter().collect();
+        outgoing.sort_by(|a,b|  b.0.len().cmp( &a.0.len()) );  // just want "btc" as last
+        debug!("outgoing sorted:{:?}", outgoing);
+        for (asset, outgoing) in outgoing.iter() {
+            debug!("doing {} out:{}", asset, outgoing);
+            let mut utxos: Vec<&(BEOutPoint, (String, u64))> = utxos.iter().filter(|(_,(b,_))| b==asset ).collect();
+            utxos.sort_by(|a, b| (a.1).1.cmp(&(b.1).1));
+            debug!("filtered {} utxos:{:?}", asset, utxos);
 
-            let len = tx.add_input(outpoint);
-            fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
+            let mut selected_amount = 0u64;
+            let mut needed = if asset=="btc" {*outgoing+fee_val} else {*outgoing};
+            while selected_amount < needed {
+                debug!("selected_amount:{} outgoing:{} fee_val:{}", selected_amount, outgoing, fee_val);
+                let (outpoint, (_, value)) = utxos.pop().ok_or(Error::InsufficientFunds)?;
+                debug!("popped out utxo of value: {}", value);
 
-            selected_amount += value;
-        }
+                let len = tx.add_input(outpoint.clone());
+                fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
 
-        let change_val = selected_amount - outgoing - fee_val;
-        let min_change = match self.network.id() {
-            NetworkId::Bitcoin(_) => 546,
-            NetworkId::Elements(_) => 0,
-        };
-        if change_val > min_change {
-            let change_index = self.db.increment_index(Index::Internal)?;
-            let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
-            debug!("adding change {:?}", change_address);
+                selected_amount += value;
+                needed = if asset=="btc" {*outgoing+fee_val} else {*outgoing};
+            }
+            debug!("selected_amount {} outgoing {} fee_val {}", selected_amount, outgoing, fee_val);
+            let mut change_val = selected_amount - outgoing;
+            if asset=="btc" {
+                change_val-=fee_val;
+            }
+            debug!("change val for {} is {}", asset, change_val);
+            let min_change = match self.network.id() {
+                NetworkId::Bitcoin(_) => 546,
+                NetworkId::Elements(_) => 0,
+            };
+            if change_val > min_change {
+                let change_index = self.db.increment_index(Index::Internal)?;
+                let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
+                debug!("adding change {:?}", change_address);
 
-            tx.add_output(&change_address, change_val, policy_asset)?;
+                let len = tx.add_output(&change_address, change_val, remap.get(asset).cloned())?;
+                let increment = match self.network.id() {
+                    NetworkId::Bitcoin(_) => calc_fee_bytes(len),
+                    NetworkId::Elements(_) => if asset== "btc" { 0 } else { calc_fee_bytes(len) },  //considering 0 for btc and liquid otherwise fee output will be wrong
+                };
+                fee_val += increment;
+            }
         }
 
         tx.add_fee_if_elements(fee_val, policy_asset);
@@ -446,7 +482,6 @@ impl WalletCtx {
                     signature.push(0x01);
 
                     let redeem_script = script_sig(&pubkey.public_key);
-                    out_tx.input[idx].sequence = 0xfffffffe;
                     out_tx.input[idx].script_sig = redeem_script;
                     out_tx.input[idx].witness.script_witness =
                         vec![signature, pubkey.public_key.to_bytes()];
