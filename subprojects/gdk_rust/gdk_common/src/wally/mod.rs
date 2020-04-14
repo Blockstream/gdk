@@ -534,13 +534,13 @@ mod tests {
             &hex::decode("e8ba74f899e6b06da05fb255511c7adcea41f186326ef4fc45290fa8043f7af5")
                 .unwrap()[..],
         )
-        .unwrap();
+            .unwrap();
         // the sender's pubkey used to blind the output
         let sender_pk = secp256k1::PublicKey::from_slice(
             &hex::decode("0378d8b53305ed6482db0c8f5eb8b0ca3d5c314d7773c584faa8cf587ee8137244")
                 .unwrap()[..],
         )
-        .unwrap();
+            .unwrap();
         // amount rangeproof
         let rangeproof = hex::decode("602300000000000000010d28013bd6c293ff8791d172520c5ecdceb4d4c4bbeac9d1f016cd9069624d606d5fe0641e36cce10328f2c9c481a7342c27ef81b0b8533a72b289dfc18942651c4c31b0497bcc21444fbf73214755791c32dba25508f20f33d2a171fb46f360cfc63677df9f696a4566ce9d305ff47d51a73c3e8ee56cd6b6a1b62bf606068da2145a3805de1dfbe8de65b997d261e27f7ce5a4233b410bb2a17fe903a3a6f5a907d0e2cc1b0c16dde9a4ed99c59b2e3f3db331c4d910ffb87fa7696136c1a7562fa32f84ef4b6e7a298053dc84a851798503200a006cbf403a741a13507c9f2c57ae2139b08974777f0245e5cb5c890626c6041d65bd15c0220f20f3823a88364d9f50dddeae1de77f5015c8749622a1e15d242b029a4810374dfb3297ce87f8e16bd84e4147bc03a7279c9a7cfb85669ea51a2f04e1126b150bd995191284d1ffa5fb904501d0076d179cbef13912bdc9ecd3db4c40ec2ecb1b6987d6d526443d02a35c260d721b321535ff4749bba2cb44a928e96af0955d68159ca501758abb3c97e5781e20d2e74bfdb8f1e342fe7023181006ba3ea3624d9ce831f998c2d9953475250726f940e5543204e447c0afc2e00b7ff08564db6e6933b1a82ce30c7bed97f3b58a154a932fb229533317edcc9bb4b338e43b2ac5a5c27380d7523230f7f99729a4000\
         285b4427c9d79dd6508a81052106107a99b224e2e65fe5b5f94b71323f8cb55f8eda2283e464f35cc00dad0e5d6cfd104eef5c180683eb28040502937d1377d1c07f31d30ba7c3a11a88560078646c0b431fca020dde44b2f6258183aca426f67c3bc235d59a1680d1bc124dac0cbf4a7147d28dc7093e72dcd7259ecc75118d6b6fdcda5c66b761afdc749b8f27bc0d676e719df2850827389809215b96fc19458390892f98cc175e36cab798215f93d473561aaed05536272e97ac25a2e5915b543f058a03c9827d42525ecf6b8bb7f83440a9f2e7f6a672a918e291ec662eb044a76281c35369e1ce1a8fa78751691c3e17e409ea7c4272199aecac2ba51e7493941d5be901ff3daf66714bb066d8c00c25fbef8be50b7edfad99e96a27302f0850db4083a3c2bd7ffa367b3cb36ae3d64ed138a6b9b9da26e4b0d2beb9e6570beca85bdb5fe562122baa2791e34d0f102d15d3dfa293232fd0656012977f71c4e9f7f7579bf1d00cc414dc263a3189d9f508a8b16019f575150a632610a3dc1b50ec880cc8453a55af786ed86c0163501f0709a79565d273851a86ae49273adad202cc0f782f67953da4c442faefd903edbb30efe9489ace0802dd8063fdac5d9a9c9885536f8bfb86de8d65296cab722958366ae74c0e38e0b197eba10a930335d2f0945841cb66eea0958fc1eef40eeff\
@@ -567,7 +567,7 @@ mod tests {
             script,
             asset_commitment,
         )
-        .unwrap();
+            .unwrap();
 
         assert_eq!(
             asset.to_vec(),
@@ -694,7 +694,8 @@ mod tests {
         assert_eq!(ret, ffi::WALLY_OK);
         assert_eq!(proof_size, 67);
     }
-#[test]
+
+    #[test]
     fn test_sighash() {
         //from test_elements_tx.c
         let tx_hex = include_str!("0ae624340f0cd7969d7ff70486f855ecfae62cc85061872076fd1744ca0c90c0.hex").trim();
@@ -707,5 +708,18 @@ mod tests {
         let result = tx_get_elements_signature_hash(&tx, 0, &Script::default(), &value, sighash_all, true);
 
         assert_eq!(tx_sighash_hex, hex::encode(&result.into_inner()));
+    }
+
+    #[test]
+    fn test_rangeproofsize() {
+        //from test_elements_tx.c
+        let tx_hex = include_str!("2f3ea53c0caf358604dad126523ad8a71b1e2550011bcb85b41af54faa737af2.hex").trim();
+
+        let tx: elements::Transaction = elements::encode::deserialize(&hex::decode(tx_hex).unwrap()).unwrap();
+        println!("{}", tx.txid());
+        for output in tx.output {
+            println!("surj size: {}", output.witness.surjection_proof.len());
+            println!("rangeproof size: {}", output.witness.rangeproof.len());
+        }
     }
 }

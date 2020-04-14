@@ -140,7 +140,7 @@ impl BETransaction {
                     script_pubkey: address.script_pubkey(),
                     witness: TxOutWitness::default(),
                 };
-                let len = elm_ser(&new_out).len();
+                let len = elm_ser(&new_out).len() + 1250;  // 1250 is an estimate of the surjproof and rangeproof
                 tx.output.push(new_out);
                 Ok(len)
             }
@@ -164,7 +164,7 @@ impl BETransaction {
                 let new_in = bitcoin::TxIn {
                     previous_output: outpoint,
                     script_sig: Script::default(),
-                    sequence: 0,
+                    sequence: 0xfffffffd,  // nSequence is disabled, nLocktime is enabled, RBF is signaled.
                     witness: vec![],
                 };
                 let len = btc_ser(&new_in).len();
@@ -177,7 +177,7 @@ impl BETransaction {
                     is_pegin: false,
                     has_issuance: false,
                     script_sig: Script::default(),
-                    sequence: 0,
+                    sequence: 0xfffffffe,  // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
                     asset_issuance: Default::default(),
                     witness: TxInWitness::default(),
                 };
