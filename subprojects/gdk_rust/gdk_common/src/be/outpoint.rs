@@ -1,7 +1,7 @@
 use crate::NetworkId;
 use bitcoin::Txid;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum BEOutPoint {
     Bitcoin(bitcoin::OutPoint),
     Elements(elements::OutPoint),

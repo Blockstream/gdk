@@ -1,4 +1,4 @@
-use crate::be::BETransaction;
+use crate::be::{BETransaction, AssetId};
 use bitcoin::Network;
 use core::mem::transmute;
 use serde_derive::{Deserialize, Serialize};
@@ -8,6 +8,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::convert::TryInto;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -262,6 +263,19 @@ impl Default for Settings {
             altimeout: 600,
             pricing,
         }
+    }
+}
+
+impl AddressAmount {
+    pub fn asset(&self) -> Option<AssetId> {
+        if let Some(asset_tag)= self.asset_tag.as_ref() {
+            let vec = hex::decode(asset_tag).ok();
+            if let Some(mut vec) = vec {
+                vec.reverse();
+                return (&vec[..]).try_into().ok()
+            }
+        }
+        None
     }
 }
 
