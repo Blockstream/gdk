@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::{debug, info};
+use log::{debug, info, warn};
 use serde_json::Value;
 
 pub mod db;
@@ -10,15 +10,13 @@ pub mod interface;
 pub mod model;
 pub mod tools;
 
-use crate::db::{Index, BATCH_SIZE};
+use crate::db::{Forest, Index, BATCH_SIZE};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 
-use bitcoin::consensus::deserialize;
 use bitcoin::hashes::{sha256, Hash};
-use bitcoin::secp256k1::Secp256k1;
+use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::Transaction;
 use bitcoin::Txid;
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
@@ -29,61 +27,173 @@ use gdk_common::model::*;
 use gdk_common::network::Network;
 use gdk_common::password::Password;
 use gdk_common::session::Session;
-use gdk_common::wally::{self, asset_blinding_key_from_seed};
+use gdk_common::wally::{
+    self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, asset_unblind,
+    MasterBlindingKey,
+};
 
-use bitcoin::BitcoinHash;
+use elements::confidential::{self, Asset, Nonce};
 use gdk_common::{ElementsNetwork, NetworkId};
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::Instant;
+use std::sync::mpsc::{channel, Sender};
+use std::thread;
+use std::time::{Duration, Instant};
+
+pub enum SyncerKind {
+    Plain(Syncer<ElectrumPlaintextStream>, String),
+    Tls(Syncer<ElectrumSslStream>, String, bool),
+}
+
+pub enum TipperKind {
+    Plain(Tipper<ElectrumPlaintextStream>, String),
+    Tls(Tipper<ElectrumSslStream>, String, bool),
+}
+
+impl TipperKind {
+    pub fn tip(&mut self) -> Result<usize, Error> {
+        match self {
+            TipperKind::Plain(s, _) => s.tip(),
+            TipperKind::Tls(s, _, _) => s.tip(),
+        }
+    }
+}
+
+impl SyncerKind {
+    pub fn sync(&mut self) -> Result<bool, Error> {
+        match self {
+            SyncerKind::Plain(s, _) => s.sync(),
+            SyncerKind::Tls(s, _, _) => s.sync(),
+        }
+    }
+}
+
+pub struct Syncer<S: Read + Write> {
+    pub db: Forest,
+    pub client: electrum_client::Client<S>,
+    pub master_blinding: Option<MasterBlindingKey>,
+    pub network: Network,
+}
+
+pub struct Tipper<S: Read + Write> {
+    pub client: electrum_client::Client<S>,
+    pub network: Network,
+}
+
+impl<S: Read + Write> Tipper<S> {
+    pub fn new(client: electrum_client::Client<S>, network: Network) -> Result<Self, Error> {
+        Ok(Tipper {
+            client,
+            network,
+        })
+    }
+}
+
+impl<S: Read + Write> Syncer<S> {
+    pub fn new(
+        db: Forest,
+        client: electrum_client::Client<S>,
+        master_blinding: Option<MasterBlindingKey>,
+        network: Network,
+    ) -> Self {
+        Syncer {
+            db,
+            client,
+            master_blinding,
+            network,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct NativeNotif(
+    pub Option<(extern "C" fn(*const libc::c_void, *const GDKRUST_json), *const libc::c_void)>,
+);
+unsafe impl Send for NativeNotif {}
+
+pub struct Closer {
+    pub senders: Vec<Sender<()>>,
+}
+
+impl Closer {
+    pub fn close(&mut self) -> Result<(), Error> {
+        while let Some(sender) = self.senders.pop() {
+            sender.send(())?;
+        }
+        Ok(())
+    }
+}
 
 pub struct ElectrumSession<S: Read + Write> {
     pub db_root: String,
     pub network: Network,
+    pub url: ElectrumUrl,
     pub client: electrum_client::Client<S>,
     pub wallet: Option<WalletCtx>,
-    pub notify:
-        Option<(extern "C" fn(*const libc::c_void, *const GDKRUST_json), *const libc::c_void)>,
+    pub notify: NativeNotif,
+    pub closer: Closer,
 }
 
-fn determine_electrum_url(url: &Option<String>, tls: &Option<bool>) -> Result<ElectrumUrl, Error> {
+fn notify(notif: NativeNotif, data: Value) {
+    info!("push notification: {:?}", data);
+    if let Some((handler, self_context)) = notif.0 {
+        // TODO check the native pointer is still alive
+        handler(self_context, GDKRUST_json::new(data));
+    } else {
+        warn!("no registered handler to receive notification");
+    }
+}
+
+fn notify_block(notif: NativeNotif, height: usize) {
+    let data = json!({"block":{"block_height":height},"event":"block"});
+    notify(notif, data);
+}
+
+fn determine_electrum_url(
+    url: &Option<String>,
+    tls: &Option<bool>,
+    validate_domain: &Option<bool>,
+) -> Result<ElectrumUrl, Error> {
     let url = url.as_ref().ok_or_else(|| Error::Generic("network url is missing".into()))?;
     if url == "" {
         return Err(Error::Generic("network url is empty".into()))?;
     }
 
     if tls.unwrap_or(false) {
-        Ok(ElectrumUrl::Tls(url.into()))
+        Ok(ElectrumUrl::Tls(url.into(), validate_domain.unwrap_or(false)))
     } else {
         Ok(ElectrumUrl::Plaintext(url.into()))
     }
 }
 
 pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl, Error> {
-    determine_electrum_url(&network.url, &network.tls)
+    determine_electrum_url(&network.url, &network.tls, &network.validate_domain)
 }
 
 impl ElectrumSession<ElectrumSslStream> {
-    pub fn new_tls_session(network: Network, db_root: &str) -> Result<Self, Error> {
-        let url: &str = network
-            .url
-            .as_ref()
-            .ok_or_else(|| Error::Generic("network url missing in new_tls_session".into()))?;
-        let validate = network.validate_domain.unwrap_or(true);
-        let client = electrum_client::Client::new_ssl(url, validate)?;
-        Ok(Self::create_session(network, db_root, client))
+    pub fn new_tls_session(
+        network: Network,
+        db_root: &str,
+        url_str: &str,
+        validate: bool,
+        url: ElectrumUrl,
+    ) -> Result<Self, Error> {
+        let client = electrum_client::Client::new_ssl(url_str, validate)?;
+        Ok(Self::create_session(network, db_root, url, client))
     }
 }
 
 impl ElectrumSession<ElectrumPlaintextStream> {
-    pub fn new_plaintext_session(network: Network, db_root: &str) -> Result<Self, Error> {
-        let url: &str = network
-            .url
-            .as_ref()
-            .ok_or_else(|| Error::Generic("network url missing in new_plaintext_session".into()))?;
-        let client = electrum_client::Client::new(url)?;
-        Ok(Self::create_session(network, db_root, client))
+    pub fn new_plaintext_session(
+        network: Network,
+        db_root: &str,
+        url_str: &str,
+        url: ElectrumUrl,
+    ) -> Result<Self, Error> {
+        let client = electrum_client::Client::new(url_str)?;
+        Ok(Self::create_session(network, db_root, url, client))
     }
 }
 
@@ -91,35 +201,20 @@ impl<S: Read + Write> ElectrumSession<S> {
     pub fn create_session(
         network: Network,
         db_root: &str,
+        url: ElectrumUrl,
         client: electrum_client::Client<S>,
     ) -> Self {
         Self {
             db_root: db_root.to_string(),
             client,
             network,
+            url,
             wallet: None,
-            notify: None,
+            notify: NativeNotif(None),
+            closer: Closer {
+                senders: vec![],
+            },
         }
-    }
-
-    pub fn notify_blocks(
-        &mut self,
-        headers: Vec<(BEBlockHeader, u32)>,
-    ) -> Result<Vec<Notification>, Error> {
-        Ok(headers
-            .iter()
-            .map(|(be_header, height)| match be_header {
-                BEBlockHeader::Bitcoin(ref header) => Notification::Block(BlockNotification {
-                    block_hash: header.bitcoin_hash(),
-                    block_height: *height,
-                }),
-
-                BEBlockHeader::Elements(ref header) => Notification::Block(BlockNotification {
-                    block_hash: header.bitcoin_hash(),
-                    block_height: *height,
-                }),
-            })
-            .collect())
     }
 
     pub fn get_wallet(&self) -> Result<&WalletCtx, Error> {
@@ -128,106 +223,6 @@ impl<S: Read + Write> ElectrumSession<S> {
 
     pub fn get_wallet_mut(&mut self) -> Result<&mut WalletCtx, Error> {
         self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
-    }
-
-    fn sync_headers(
-        &mut self,
-        heights_set: &HashSet<u32>,
-    ) -> Result<Vec<(BEBlockHeader, u32)>, Error> {
-        let mut header_heights: Vec<(BEBlockHeader, u32)> = vec![];
-        let heights_in_db = self.get_wallet()?.db.get_only_heights()?;
-        let heights_to_download: Vec<u32> =
-            heights_set.difference(&heights_in_db).cloned().collect();
-        if !heights_to_download.is_empty() {
-            let headers_bytes_downloaded =
-                self.client.batch_block_header_raw(heights_to_download.clone())?;
-            let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
-            for vec in headers_bytes_downloaded {
-                headers_downloaded
-                    .push(BEBlockHeader::deserialize(&vec, self.get_wallet()?.network.id())?);
-            }
-
-            for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
-                header_heights.push(((*header).clone(), *height));
-                self.get_wallet()?.db.insert_header(*height, header)?;
-            }
-            debug!("headers_downloaded {:?}", headers_downloaded.len());
-        }
-
-        Ok(header_heights)
-    }
-
-    fn sync_height(&mut self, txid_height: &HashMap<Txid, u32>) -> Result<(), Error> {
-        // sync heights, which are my txs
-        for (txid, height) in txid_height.iter() {
-            self.get_wallet()?.db.insert_height(txid, *height)?; // adding new, but also updating reorged tx
-        }
-        for txid_db in self.get_wallet()?.db.get_only_txids()?.iter() {
-            if txid_height.get(txid_db).is_none() {
-                self.get_wallet()?.db.remove_height(txid_db)?; // something in the db is not in live list (rbf), removing
-            }
-        }
-
-        Ok(())
-    }
-
-    fn sync_txs(&mut self, history_txs_id: &HashSet<Txid>) -> Result<(), Error> {
-        let mut txs_in_db = self.get_wallet()?.db.get_all_txid()?;
-        let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
-        if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
-            let mut txs_downloaded: Vec<BETransaction> = vec![];
-            for vec in txs_bytes_downloaded {
-                txs_downloaded
-                    .push(BETransaction::deserialize(&vec, self.get_wallet()?.network.id())?);
-            }
-            debug!("txs_downloaded {:?}", txs_downloaded.len());
-            let mut previous_txs_to_download = HashSet::new();
-            for tx in txs_downloaded.iter() {
-                self.get_wallet()?.db.insert_tx(&tx.txid(), &tx)?;
-                txs_in_db.insert(tx.txid());
-                for txid in tx.previous_output_txids() {
-                    previous_txs_to_download.insert(txid);
-                }
-
-                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
-                if let BETransaction::Elements(tx) = tx {
-                    debug!("compute OutPoint Unblinded");
-                    for (i, output) in tx.output.iter().enumerate() {
-                        if self.get_wallet()?.db.is_mine(&output.script_pubkey) {
-                            let txid = tx.txid();
-                            let vout = i as u32;
-                            let outpoint = elements::OutPoint {
-                                txid,
-                                vout,
-                            };
-                            if let Err(_) = self.get_wallet()?.try_unblind(outpoint, output.clone())
-                            {
-                                debug!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
-                            }
-                        }
-                    }
-                }
-            }
-
-            let txs_to_download: Vec<&Txid> =
-                previous_txs_to_download.difference(&txs_in_db).collect();
-            if !txs_to_download.is_empty() {
-                let txs_bytes_downloaded =
-                    self.client.batch_transaction_get_raw(txs_to_download)?;
-                let mut txs_downloaded: Vec<BETransaction> = vec![];
-                for vec in txs_bytes_downloaded {
-                    txs_downloaded
-                        .push(BETransaction::deserialize(&vec, self.get_wallet()?.network.id())?);
-                }
-                debug!("previous txs_downloaded {:?}", txs_downloaded.len());
-                for tx in txs_downloaded.iter() {
-                    self.get_wallet()?.db.insert_tx(&tx.txid(), tx)?;
-                }
-            }
-        }
-
-        Ok(())
     }
 
     fn try_get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
@@ -245,7 +240,7 @@ impl<S: Read + Write> ElectrumSession<S> {
 }
 
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
-    let type_ = "incoming".to_string(); // TODO, compute
+    let type_ = tx.type_.clone();
     let len = tx.hex.len() / 2;
     let fee_rate = (tx.fee as f64 / len as f64) as u64;
     let addressees = vec![];
@@ -293,7 +288,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         if self.db_root == "" {
             self.db_root =
                 net_params["state_dir"].as_str().map(|x| x.to_string()).unwrap_or("".into());
-            debug!("setting db_root to {:?}", self.db_root);
+            info!("setting db_root to {:?}", self.db_root);
         }
 
         info!("connect {:?}", self.network);
@@ -302,71 +297,9 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn disconnect(&mut self) -> Result<(), Error> {
-        //TODO call db flush
-        Err(Error::Generic("implementme: ElectrumSession connect".into()))
-    }
-
-    fn sync(&mut self) -> Result<Vec<Notification>, Error> {
-        debug!("start sync {}", self.get_wallet()?.xpub);
-        let start = Instant::now();
-
-        //let mut client = Client::new("tn.not.fyi:55001")?;
-        let mut history_txs_id = HashSet::new();
-        let mut heights_set = HashSet::new();
-        let mut txid_height = HashMap::new();
-
-        let mut last_used = [0u32; 2];
-        for i in 0..=1 {
-            let int_or_ext = Index::from(i)?;
-            let mut batch_count = 0;
-            loop {
-                let batch = self.get_wallet()?.db.get_script_batch(
-                    int_or_ext,
-                    batch_count,
-                    self.get_wallet()?.master_blinding.as_ref(),
-                )?;
-                let result: Vec<Vec<GetHistoryRes>> =
-                    self.client.batch_script_get_history(&batch)?;
-                let max = result
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, v)| !v.is_empty())
-                    .map(|(i, _)| i as u32)
-                    .max();
-                if let Some(max) = max {
-                    last_used[i as usize] = max + batch_count * BATCH_SIZE;
-                };
-
-                let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                debug!("{}/batch({}) {:?}", i, batch_count, flattened.len());
-
-                if flattened.is_empty() {
-                    break;
-                }
-
-                for el in flattened {
-                    if el.height >= 0 {
-                        heights_set.insert(el.height as u32);
-                        txid_height.insert(el.tx_hash, el.height as u32);
-                    }
-                    history_txs_id.insert(el.tx_hash);
-                }
-
-                batch_count += 1;
-            }
-        }
-
-        self.get_wallet()?.db.insert_index(Index::External, last_used[Index::External as usize])?;
-        self.get_wallet()?.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
-        debug!("last_used: {:?}", last_used,);
-
-        self.sync_txs(&history_txs_id)?;
-        let new_headers = self.sync_headers(&heights_set)?;
-        self.sync_height(&txid_height)?;
-
-        debug!("elapsed {}", start.elapsed().as_millis());
-
-        self.notify_blocks(new_headers)
+        info!("disconnect");
+        self.closer.close()?;
+        Ok(())
     }
 
     fn login(
@@ -374,7 +307,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         mnemonic: &Mnemonic,
         password: Option<Password>,
     ) -> Result<Vec<Notification>, Error> {
-        debug!("login {:#?}", self.network);
+        info!("login {:#?}", self.network);
 
         // TODO: passphrase?
 
@@ -403,7 +336,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             },
         };
         let path_string = format!("m/44'/{}'/0'", coin_type);
-        debug!("Using derivation path {}/0|1/*", path_string);
+        info!("Using derivation path {}/0|1/*", path_string);
         let path = DerivationPath::from_str(&path_string)?;
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
@@ -417,23 +350,174 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             None
         };
 
+        let mut path: PathBuf = self.db_root.as_str().into();
+        path.push(wallet_id);
+        info!("opening sled db root path: {:?}", path);
+        let db = Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?;
+
+        let asset_icons = db.get_asset_icons()?;
+        let asset_registry = db.get_asset_registry()?;
+        let wait_registry = asset_icons.is_none() || asset_registry.is_none();
+        let db_for_registry = db.clone();
+        let registry_thread = thread::spawn(move || {
+            info!("start registry thread");
+            //TODO add if_modified_since
+            let registry = ureq::get("https://assets.blockstream.info/index.json")
+                .call()
+                .into_string()
+                .unwrap();
+
+            info!("got registry (len:{})", registry.len());
+            db_for_registry.insert_asset_registry(&registry).unwrap();
+            let icons = ureq::get("https://assets.blockstream.info/icons.json")
+                .call()
+                .into_string()
+                .unwrap();
+            info!("got icons (len:{})", icons.len());
+            db_for_registry.insert_asset_icons(&icons).unwrap();
+        });
+
+        let mut syncer = match &self.url {
+            ElectrumUrl::Tls(url, validate) => {
+                let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                SyncerKind::Tls(
+                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
+                    url.to_string(),
+                    *validate,
+                )
+            }
+            ElectrumUrl::Plaintext(url) => {
+                let client = electrum_client::Client::new(&url)?;
+                SyncerKind::Plain(
+                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
+                    url.to_string(),
+                )
+            }
+        };
+
+        let mut tipper = match &self.url {
+            ElectrumUrl::Tls(url, validate) => {
+                let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                TipperKind::Tls(
+                    Tipper::new(client, self.network.clone())?,
+                    url.to_string(),
+                    *validate,
+                )
+            }
+            ElectrumUrl::Plaintext(url) => {
+                let client = electrum_client::Client::new(&url)?;
+                TipperKind::Plain(Tipper::new(client, self.network.clone())?, url.to_string())
+            }
+        };
+
         let wallet = WalletCtx::new(
-            &self.db_root,
-            wallet_id,
+            db,
             mnemonic.clone(),
             self.network.clone(),
             xprv,
             xpub,
-            master_blinding,
+            master_blinding.clone(),
         )?;
 
         self.wallet = Some(wallet);
-        self.sync()
+
+        let notify_blocks = self.notify.clone();
+
+        let mut last_tip = tipper.tip().unwrap();
+        info!("tip is {:?}", last_tip);
+        notify_block(notify_blocks.clone(), last_tip);
+
+        let (close_tipper, r) = channel();
+        self.closer.senders.push(close_tipper);
+        thread::spawn(move || 'outer: loop {
+            for _ in 0..7 {
+                thread::sleep(Duration::from_secs(1));
+                if r.try_recv().is_ok() {
+                    info!("closing tipper");
+                    break 'outer;
+                }
+            }
+
+            match tipper.tip() {
+                Ok(current_tip) => {
+                    if last_tip != current_tip {
+                        last_tip = current_tip;
+                        info!("tip is {:?}", last_tip);
+                        notify_block(notify_blocks.clone(), last_tip);
+                    }
+                }
+                Err(e) => {
+                    warn!("exception in tipper {:?}", e);
+                    match e {
+                        Error::ClientError(_) => info!("Client error, doing nothing"),
+                        _ => {
+                            warn!("Recreating died tipper client, {:?}", e);
+
+                            match &mut tipper {
+                                TipperKind::Plain(a, url) => {
+                                    a.client = electrum_client::Client::new(url.as_str()).unwrap()
+                                }
+                                TipperKind::Tls(a, url, validate) => {
+                                    a.client =
+                                        electrum_client::Client::new_ssl(url.as_str(), *validate)
+                                            .unwrap()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let (close_syncer, r) = channel();
+        self.closer.senders.push(close_syncer);
+        let notify_txs = self.notify.clone();
+        thread::spawn(move || 'outer: loop {
+            match syncer.sync() {
+                Ok(new_txs) => {
+                    if new_txs {
+                        info!("there are new transactions");
+                        let mockup_json =
+                            json!({"event":"transaction","transaction":{"subaccounts":[0]}});
+                        notify(notify_txs.clone(), mockup_json);
+                    }
+                }
+                Err(e) => {
+                    warn!("Recreating died syncer client, {:?}", e);
+                    match &mut syncer {
+                        SyncerKind::Plain(a, url) => {
+                            a.client = electrum_client::Client::new(url.as_str()).unwrap()
+                        }
+                        SyncerKind::Tls(a, url, validate) => {
+                            a.client =
+                                electrum_client::Client::new_ssl(url.as_str(), *validate).unwrap()
+                        }
+                    }
+                }
+            };
+            for _ in 0..9 {
+                thread::sleep(Duration::from_secs(1));
+                if r.try_recv().is_ok() {
+                    info!("closing syncer");
+                    break 'outer;
+                }
+            }
+        });
+
+        if wait_registry {
+            info!("waiting registry thread");
+            registry_thread.join().unwrap();
+            info!("registry thread joined");
+        }
+
+        Ok(vec![])
     }
 
-    fn get_receive_address(&self, _addr_details: &Value) -> Result<AddressResult, Error> {
+    fn get_receive_address(&self, addr_details: &Value) -> Result<AddressResult, Error> {
+        debug!("get_receive_address {:?}", addr_details);
         let w = self.get_wallet()?;
         let a = w.get_address()?;
+        debug!("get_address {:?}", a);
         Ok(AddressResult(a.address.to_string()))
     }
 
@@ -478,18 +562,22 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         Err(Error::Generic("implementme: ElectrumSession set_transaction_memo".into()))
     }
 
-    fn create_transaction(&self, tx_req: &CreateTransaction) -> Result<TransactionMeta, Error> {
-        debug!("electrum create_transaction {:#?}", tx_req);
-        self.get_wallet()?.create_tx(tx_req)
+    fn create_transaction(&mut self, tx_req: &CreateTransaction) -> Result<TransactionMeta, Error> {
+        info!("electrum create_transaction {:#?}", tx_req);
+
+        let relay_fee = (self.client.relay_fee()? * 100_000_000.0) as u64; // from returned BTC/kB to satoshi/kB
+        info!("relay_fee is: {:?} satoshi/kB", relay_fee);
+
+        self.get_wallet()?.create_tx(tx_req, relay_fee)
     }
 
     fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        debug!("electrum sign_transaction {:#?}", create_tx);
+        info!("electrum sign_transaction {:#?}", create_tx);
         self.get_wallet()?.sign(create_tx)
     }
 
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
-        debug!("electrum send_transaction {:#?}", tx);
+        info!("electrum send_transaction {:#?}", tx);
         match &tx.transaction {
             BETransaction::Bitcoin(tx) => self.client.transaction_broadcast(&tx)?,
             BETransaction::Elements(tx) => {
@@ -501,10 +589,10 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
-        debug!("broadcast_transaction {:#?}", tx_hex);
-        let tx: Transaction = deserialize(&hex::decode(tx_hex)?)?;
-        self.client.transaction_broadcast(&tx)?;
-        Ok(format!("{}", tx.txid()))
+        info!("broadcast_transaction {:#?}", tx_hex);
+        let hex = hex::decode(tx_hex)?;
+        let txid = self.client.transaction_broadcast_raw(&hex)?;
+        Ok(format!("{}", txid))
     }
 
     /// The estimates are returned as an array of 25 elements. Each element is
@@ -533,5 +621,245 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     fn get_available_currencies(&self) -> Result<Value, Error> {
         Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITFINEX": [ "USD" ] } }))
         // TODO implement
+    }
+
+    fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, Error> {
+        info!("refresh_assets details {:?}", details);
+        let mut map = serde_json::Map::new();
+
+        let wallet = self.get_wallet()?;
+        if details.assets {
+            let assets = wallet
+                .get_asset_registry()?
+                .ok_or_else(|| Error::Generic("cannot find asset registry".into()))?;
+            map.insert("assets".to_string(), assets);
+        }
+        if details.icons {
+            let icons = wallet
+                .get_asset_icons()?
+                .ok_or_else(|| Error::Generic("cannot find asset icons".into()))?;
+            map.insert("icons".to_string(), icons);
+        }
+        Ok(Value::Object(map))
+    }
+}
+
+impl<S: Read + Write> Tipper<S> {
+    pub fn tip(&mut self) -> Result<usize, Error> {
+        let header = self.client.block_headers_subscribe_raw()?;
+        Ok(header.height)
+    }
+}
+
+impl<S: Read + Write> Syncer<S> {
+    pub fn sync(&mut self) -> Result<bool, Error> {
+        info!("start sync");
+        let start = Instant::now();
+
+        //let mut client = Client::new("tn.not.fyi:55001")?;
+        let mut history_txs_id = HashSet::new();
+        let mut heights_set = HashSet::new();
+        let mut txid_height = HashMap::new();
+
+        let mut last_used = [0u32; 2];
+        for i in 0..=1 {
+            let int_or_ext = Index::from(i)?;
+            let mut batch_count = 0;
+            loop {
+                let batch = self.db.get_script_batch(int_or_ext, batch_count)?;
+                let result: Vec<Vec<GetHistoryRes>> =
+                    self.client.batch_script_get_history(&batch)?;
+                let max = result
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, v)| !v.is_empty())
+                    .map(|(i, _)| i as u32)
+                    .max();
+                if let Some(max) = max {
+                    last_used[i as usize] = max + batch_count * BATCH_SIZE;
+                };
+
+                let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
+                info!("{}/batch({}) {:?}", i, batch_count, flattened.len());
+
+                if flattened.is_empty() {
+                    break;
+                }
+
+                for el in flattened {
+                    if el.height >= 0 {
+                        heights_set.insert(el.height as u32);
+                        txid_height.insert(el.tx_hash, el.height as u32);
+                    }
+                    history_txs_id.insert(el.tx_hash);
+                }
+
+                batch_count += 1;
+            }
+        }
+
+        self.db.insert_index(Index::External, last_used[Index::External as usize])?;
+        self.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
+        info!("last_used: {:?}", last_used,);
+
+        let new_txs = self.sync_txs(&history_txs_id)?;
+        self.sync_headers(&heights_set)?;
+        self.sync_height(&txid_height)?;
+
+        if new_txs {
+            self.db.flush()?;
+        }
+
+        info!("elapsed {}", start.elapsed().as_millis());
+
+        Ok(new_txs)
+    }
+
+    fn sync_headers(&mut self, heights_set: &HashSet<u32>) -> Result<(), Error> {
+        let heights_in_db = self.db.get_only_heights()?;
+        let heights_to_download: Vec<u32> =
+            heights_set.difference(&heights_in_db).cloned().collect();
+        if !heights_to_download.is_empty() {
+            let headers_bytes_downloaded =
+                self.client.batch_block_header_raw(heights_to_download.clone())?;
+            let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
+            for vec in headers_bytes_downloaded {
+                headers_downloaded.push(BEBlockHeader::deserialize(&vec, self.network.id())?);
+            }
+
+            for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
+                self.db.insert_header(*height, header)?;
+            }
+            info!("headers_downloaded {:?}", headers_downloaded);
+        }
+
+        Ok(())
+    }
+
+    fn sync_height(&self, txid_height: &HashMap<Txid, u32>) -> Result<(), Error> {
+        // sync heights, which are my txs
+        for (txid, height) in txid_height.iter() {
+            self.db.insert_height(txid, *height)?; // adding new, but also updating reorged tx
+        }
+        for txid_db in self.db.get_only_txids()?.iter() {
+            if txid_height.get(txid_db).is_none() {
+                self.db.remove_height(txid_db)?; // something in the db is not in live list (rbf), removing
+            }
+        }
+
+        Ok(())
+    }
+
+    fn sync_txs(&mut self, history_txs_id: &HashSet<Txid>) -> Result<bool, Error> {
+        let mut txs_in_db = self.db.get_all_txid()?;
+        let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
+        if !txs_to_download.is_empty() {
+            let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
+            let mut txs_downloaded: Vec<BETransaction> = vec![];
+            for vec in txs_bytes_downloaded {
+                txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
+            }
+            info!("txs_downloaded {:?}", txs_downloaded.len());
+            let mut previous_txs_to_download = HashSet::new();
+            for tx in txs_downloaded.iter() {
+                self.db.insert_tx(&tx.txid(), &tx)?;
+                txs_in_db.insert(tx.txid());
+                for txid in tx.previous_output_txids() {
+                    previous_txs_to_download.insert(txid);
+                }
+
+                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
+                if let BETransaction::Elements(tx) = tx {
+                    info!("compute OutPoint Unblinded");
+                    for (i, output) in tx.output.iter().enumerate() {
+                        if self.db.is_mine(&output.script_pubkey) {
+                            let txid = tx.txid();
+                            let vout = i as u32;
+                            let outpoint = elements::OutPoint {
+                                txid,
+                                vout,
+                            };
+                            if let Err(_) = self.try_unblind(outpoint, output.clone()) {
+                                info!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
+                            }
+                        }
+                    }
+                }
+            }
+
+            let txs_to_download: Vec<&Txid> =
+                previous_txs_to_download.difference(&txs_in_db).collect();
+            if !txs_to_download.is_empty() {
+                let txs_bytes_downloaded =
+                    self.client.batch_transaction_get_raw(txs_to_download)?;
+                let mut txs_downloaded: Vec<BETransaction> = vec![];
+                for vec in txs_bytes_downloaded {
+                    txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
+                }
+                info!("previous txs_downloaded {:?}", txs_downloaded.len());
+                for tx in txs_downloaded.iter() {
+                    self.db.insert_tx(&tx.txid(), tx)?;
+                }
+            }
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn try_unblind(
+        &self,
+        outpoint: elements::OutPoint,
+        output: elements::TxOut,
+    ) -> Result<(), Error> {
+        match (output.asset, output.value, output.nonce) {
+            (
+                Asset::Confidential(_, _),
+                confidential::Value::Confidential(_, _),
+                Nonce::Confidential(_, _),
+            ) => {
+                let master_blinding = self.master_blinding.as_ref().unwrap();
+
+                let script = output.script_pubkey.clone();
+                let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
+                let rangeproof = output.witness.rangeproof.clone();
+                let value_commitment = elements::encode::serialize(&output.value);
+                let asset_commitment = elements::encode::serialize(&output.asset);
+                let nonce_commitment = elements::encode::serialize(&output.nonce);
+                info!(
+                    "commitmnents len {} {} {}",
+                    value_commitment.len(),
+                    asset_commitment.len(),
+                    nonce_commitment.len()
+                );
+                let sender_pk = secp256k1::PublicKey::from_slice(&nonce_commitment).unwrap();
+
+                let (asset, abf, vbf, value) = asset_unblind(
+                    sender_pk,
+                    blinding_key,
+                    rangeproof,
+                    value_commitment,
+                    script,
+                    asset_commitment,
+                )?;
+
+                info!(
+                    "Unblinded outpoint:{} asset:{} value:{}",
+                    outpoint,
+                    hex::encode(&asset),
+                    value
+                );
+
+                let unblinded = Unblinded {
+                    asset,
+                    value,
+                    abf,
+                    vbf,
+                };
+                self.db.insert_unblinded(&outpoint, &unblinded)?;
+            }
+            _ => warn!("received unconfidential or null asset/value/nonce"),
+        }
+        Ok(())
     }
 }

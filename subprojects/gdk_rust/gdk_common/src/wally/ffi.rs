@@ -470,9 +470,6 @@ extern "C" {
         written: *mut size_t,
     ) -> c_int;
 
-
-
-
     /**
      * Convert satoshi to an explicit confidential value representation.
      *
@@ -484,10 +481,10 @@ extern "C" {
     uint64_t satoshi,
     unsigned char *bytes_out,
     size_t len);*/
-
-    pub fn wally_tx_confidential_value_from_satoshi(satoshi: u64,
-                                                    bytes_out: *mut c_uchar,
-                                                    len: size_t,
+    pub fn wally_tx_confidential_value_from_satoshi(
+        satoshi: u64,
+        bytes_out: *mut c_uchar,
+        len: size_t,
     ) -> c_int;
 
 }

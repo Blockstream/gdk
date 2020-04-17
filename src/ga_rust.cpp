@@ -129,13 +129,22 @@ namespace sdk {
         call_session("connect", m_netparams.get_json());
     }
 
-    void ga_rust::disconnect() { call_session("disconnect", {}); }
+    void ga_rust::disconnect()
+    {
+        GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
+        call_session("disconnect", {});
+    }
 
     nlohmann::json ga_rust::http_get(const nlohmann::json& params)
     {
         throw std::runtime_error("http_get not implemented");
     }
-    nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params) { return nlohmann::json(); }
+
+    nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
+    {
+        return call_session("refresh_assets", params);
+    }
+
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
 
     void ga_rust::register_user(const std::string& mnemonic, bool supports_csv)
@@ -338,11 +347,12 @@ namespace sdk {
 
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
     {
+        GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction:" << details.dump();
         nlohmann::json result(details);
 
         auto addressees_p = result.find("addressees");
         for (auto& addressee : *addressees_p) {
-            addressee["satoshi"] = addressee.value("satoshi", 0);
+            addressee["satoshi"] = addressee.value("satoshi", (long long)0);
             nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_netparams.bip21_prefix());
             if (!uri_params.is_object())
                 continue;
@@ -359,6 +369,7 @@ namespace sdk {
                 }
             }
         }
+        GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction result: " << result.dump();
 
         return call_session("create_transaction", result);
     }
@@ -485,30 +496,18 @@ namespace sdk {
         throw std::runtime_error("hash_blinding_nonce not yet implemented");
     }
 
-    liquid_support_level ga_rust::hw_liquid_support() const
-    {
-        throw std::runtime_error("hw_liquid_support not yet implemented");
-    }
+    liquid_support_level ga_rust::hw_liquid_support() const { return liquid_support_level::full; }
 
-    std::string ga_rust::get_blinding_key_for_script(const std::string& script_hex)
-    {
-        throw std::runtime_error("get_blinding_key_for_script not yet implemented");
-    }
+    std::string ga_rust::get_blinding_key_for_script(const std::string& script_hex) { return ""; }
 
-    nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details)
-    {
-        throw std::runtime_error("get_blinded_scripts not yet implemented");
-    }
+    nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details) { return nlohmann::json(); }
 
     std::string ga_rust::blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex)
     {
-        throw std::runtime_error("blind_address not yet implemented");
+        return nlohmann::json();
     }
 
-    std::string ga_rust::extract_confidential_address(const std::string& blinded_address)
-    {
-        throw std::runtime_error("extract_confidential_address not yet implemented");
-    }
+    std::string ga_rust::extract_confidential_address(const std::string& blinded_address) { return ""; }
 
     void ga_rust::upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses)
     {

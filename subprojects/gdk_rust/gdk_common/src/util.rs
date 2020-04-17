@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
-use log::debug;
+use log::{debug, info};
 
 use backtrace::Backtrace;
 use bitcoin::{Address, Amount, Network, PublicKey, Script};
@@ -44,7 +44,7 @@ pub fn fmt_time(unix_ts: u64) -> String {
 }
 
 pub fn parse_outs(details: &Value) -> Result<HashMap<String, Amount>, String> {
-    debug!("parse_addresses {:?}", details);
+    info!("parse_addresses {:?}", details);
 
     Ok(details["addressees"]
         .as_array()

@@ -43,7 +43,7 @@ use bitcoin_exchange_rates::{hyper_fetch_requests, make_tls_hyper_client, prepar
 use bitcoin_exchange_rates::{Bitfinex, Currency, Pair, Source, Ticker, Wasabi};
 
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream};
+use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream, NativeNotif};
 // use gdk_rpc::session::RpcSession;
 use crate::error::Error;
 use log::{LevelFilter, Metadata, Record};
@@ -69,7 +69,7 @@ pub enum GA_auth_handler {
 
 impl GA_auth_handler {
     fn _done(res: Value) -> *const GA_auth_handler {
-        debug!("GA_auth_handler::done() {:?}", res);
+        info!("GA_auth_handler::done() {:?}", res);
         let handler = GA_auth_handler::Done(res);
         unsafe { transmute(Box::new(handler)) }
     }
@@ -109,7 +109,7 @@ macro_rules! ok {
     ($t:expr, $x:expr, $ret:expr) => {
         unsafe {
             let x = $x;
-            debug!("ok!() {:?}", x);
+            trace!("ok!() {:?}", x);
             *$t = x;
             $ret
         }
@@ -164,7 +164,7 @@ pub extern "C" fn GDKRUST_create_session(
     #[cfg(not(feature = "android_log"))]
     INIT_LOGGER.call_once(|| {
         log::set_logger(&LOGGER)
-            .map(|()| log::set_max_level(LevelFilter::Debug))
+            .map(|()| log::set_max_level(LevelFilter::Info))
             .expect("cannot initialize logging");
     });
 
@@ -201,19 +201,29 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
         Some("electrum") => {
             let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
                 .map_err(|x| json!(x))?;
+            let move_url = url.clone();
 
-            let backend = match url {
-                ElectrumUrl::Tls(_url) => {
-                    let elec_tls_sess =
-                        ElectrumSession::new_tls_session(parsed_network.clone(), db_root)
-                            .map_err(|x| json!(x))?;
+            let backend = match &url {
+                ElectrumUrl::Tls(url_str, validate) => {
+                    let elec_tls_sess = ElectrumSession::new_tls_session(
+                        parsed_network.clone(),
+                        db_root,
+                        url_str,
+                        *validate,
+                        move_url,
+                    )
+                    .map_err(|x| json!(x))?;
                     GdkBackend::ElectrumTls(elec_tls_sess)
                 }
 
-                ElectrumUrl::Plaintext(_url) => {
-                    let elec_sess =
-                        ElectrumSession::new_plaintext_session(parsed_network.clone(), db_root)
-                            .map_err(|x| json!(x))?;
+                ElectrumUrl::Plaintext(url_str) => {
+                    let elec_sess = ElectrumSession::new_plaintext_session(
+                        parsed_network.clone(),
+                        db_root,
+                        url_str,
+                        move_url,
+                    )
+                    .map_err(|x| json!(x))?;
 
                     GdkBackend::Electrum(elec_sess)
                 }
@@ -236,9 +246,9 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
     if sess.last_xr.is_some()
         && (SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)))
     {
-        debug!("hit exchange rate cache");
+        info!("hit exchange rate cache");
     } else {
-        debug!("missed exchange rate cache");
+        info!("missed exchange rate cache");
         let rates = fetch_exchange_rates();
         // still record time even if we get no results
         sess.last_xr_fetch = SystemTime::now();
@@ -272,13 +282,15 @@ pub extern "C" fn GDKRUST_call_session(
         return json_res!(output, tickers_to_json(rates), GA_OK);
     }
 
+    info!("GDKRUST_call_session handle_call {} input {:?}", method, input);
     let res = match sess.backend {
         GdkBackend::Electrum(ref mut s) => handle_call(s, &method, &input),
         GdkBackend::ElectrumTls(ref mut s) => handle_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    trace!("GDKRUST_call_session {} {:?}", method, res);
+    let res_string = format!("{:?}", res).truncate(200);
+    info!("GDKRUST_call_session {} {:?}", method, res_string);
 
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
@@ -287,7 +299,7 @@ pub extern "C" fn GDKRUST_call_session(
             let code = e.to_gdk_code();
             let desc = e.gdk_display();
 
-            debug!("rust error {}: {}", code, desc);
+            info!("rust error {}: {}", code, desc);
             json_res!(output, json!({ "error": code, "message": desc }), GA_OK)
         }
     }
@@ -303,11 +315,11 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     let backend = &mut sess.backend;
 
     match backend {
-        GdkBackend::Electrum(ref mut s) => s.notify = Some((handler, self_context)),
-        GdkBackend::ElectrumTls(ref mut s) => s.notify = Some((handler, self_context)),
+        GdkBackend::Electrum(ref mut s) => s.notify = NativeNotif(Some((handler, self_context))),
+        GdkBackend::ElectrumTls(ref mut s) => s.notify = NativeNotif(Some((handler, self_context))),
     };
 
-    debug!("set notification handler");
+    info!("set notification handler");
 
     GA_OK
 }
@@ -396,7 +408,12 @@ where
         }
 
         "get_receive_address" => {
-            session.get_receive_address(input).map(|x| address_result_value(&x)).map_err(Into::into)
+            let a = session
+                .get_receive_address(input)
+                .map(|x| address_result_value(&x))
+                .map_err(Into::into);
+            info!("gdk_rust get_receive_address returning {:?}", a);
+            a
         }
 
         "get_mnemonic" => session
@@ -412,6 +429,11 @@ where
         "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
         "change_settings" => session
             .change_settings(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
+
+        "refresh_assets" => session
+            .refresh_assets(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
 
@@ -442,7 +464,7 @@ pub extern "C" fn GDKRUST_convert_string_to_json(
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_destroy_json(ptr: *mut GDKRUST_json) -> i32 {
-    debug!("GA_destroy_json({:?})", ptr);
+    trace!("GA_destroy_json({:?})", ptr);
     // TODO make sure this works
     unsafe {
         drop(&*ptr);
@@ -459,6 +481,7 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
     GA_OK
 }
 
+#[cfg(not(feature = "android_log"))]
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub struct SimpleLogger;

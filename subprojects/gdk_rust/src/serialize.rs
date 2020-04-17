@@ -42,6 +42,10 @@ pub fn address_io_value(addr: &AddressIO) -> Value {
 pub fn txitem_value(tx: &TxListItem) -> Value {
     let inputs = Value::Array(tx.inputs.iter().map(address_io_value).collect());
     let outputs = Value::Array(tx.inputs.iter().map(address_io_value).collect());
+    let mut satoshi = tx.satoshi.clone();
+    for (_, v) in satoshi.iter_mut() {
+        *v = v.abs();
+    }
 
     json!({
         "block_height": tx.block_height,
@@ -51,9 +55,8 @@ pub fn txitem_value(tx: &TxListItem) -> Value {
         "memo": tx.memo,
 
         "txhash": tx.txhash,
-        "transaction": tx.transaction.clone(),
 
-        "satoshi": tx.satoshi.clone(),
+        "satoshi": satoshi,
 
         "rbf_optin": tx.rbf_optin,
         "cap_cpfp": tx.cap_cpfp, // TODO
@@ -144,7 +147,7 @@ where
     session.get_transaction_details(txid).map_err(Into::into)
 }
 
-pub fn create_transaction<S, E>(session: &S, input: &Value) -> Result<Value, Error>
+pub fn create_transaction<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,
@@ -155,6 +158,7 @@ where
 
     Ok(match res {
         Err(ref err) => {
+            warn!("err {:?}", err);
             let mut input_cloned = input.clone();
             input_cloned["error"] = err.to_gdk_code().into();
             input_cloned

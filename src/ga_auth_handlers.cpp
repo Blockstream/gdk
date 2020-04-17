@@ -127,6 +127,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::make_call);
         try {
+
             if (m_code.empty() || m_method.empty()) {
                 if (!m_twofactor_data.empty()) {
                     // Remove any previous auth attempts
@@ -152,10 +153,10 @@ namespace sdk {
                 }
             } else {
                 details = remap_ga_server_error(details);
-                set_error(details.second.empty() ? std::string(e.what()) : details.second);
+                set_error(details.second.empty() ? e.what() : details.second);
             }
         } catch (const std::exception& e) {
-            set_error(m_action + std::string(" exception:") + e.what());
+            set_error(m_action + std::string("asf exception:") + e.what());
         }
     }
 
@@ -648,7 +649,7 @@ namespace sdk {
         m_result = m_twofactor_data["address"];
 
         // if we are on liquid blind the address
-        if (m_session.is_liquid()) {
+        if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
             std::string pub_blinding_key;
 
             if (m_hw_device.empty()) {
