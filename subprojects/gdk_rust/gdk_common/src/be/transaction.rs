@@ -140,7 +140,7 @@ impl BETransaction {
                     script_pubkey: address.script_pubkey(),
                     witness: TxOutWitness::default(),
                 };
-                let len = elm_ser(&new_out).len() + 1250;  // 1250 is an estimate of the surjproof and rangeproof
+                let len = elm_ser(&new_out).len() + 1200; // 1200 is an estimate of the weight of surjproof and rangeproof
                 tx.output.push(new_out);
                 Ok(len)
             }
@@ -150,7 +150,7 @@ impl BETransaction {
     pub fn add_fee_if_elements(&mut self, value: u64, asset: Option<AssetId>) {
         if let BETransaction::Elements(tx) = self {
             let new_out = elements::TxOut {
-                asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.unwrap() )) ,
+                asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.unwrap())),
                 value: confidential::Value::Explicit(value),
                 ..Default::default()
             };
@@ -164,7 +164,7 @@ impl BETransaction {
                 let new_in = bitcoin::TxIn {
                     previous_output: outpoint,
                     script_sig: Script::default(),
-                    sequence: 0xfffffffd,  // nSequence is disabled, nLocktime is enabled, RBF is signaled.
+                    sequence: 0xfffffffd, // nSequence is disabled, nLocktime is enabled, RBF is signaled.
                     witness: vec![],
                 };
                 let len = btc_ser(&new_in).len();
@@ -177,7 +177,7 @@ impl BETransaction {
                     is_pegin: false,
                     has_issuance: false,
                     script_sig: Script::default(),
-                    sequence: 0xfffffffe,  // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
+                    sequence: 0xfffffffe, // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
                     asset_issuance: Default::default(),
                     witness: TxInWitness::default(),
                 };
@@ -216,6 +216,7 @@ impl BETransaction {
         all_txs: &BETransactions,
         all_scripts: &HashSet<Script>,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        policy_asset: Option<&String>,
     ) -> Balances {
         match self {
             Self::Bitcoin(tx) => {
@@ -246,7 +247,7 @@ impl BETransaction {
                 for input in tx.input.iter() {
                     let outpoint = input.previous_output.clone();
                     if let Some(unblinded) = all_unblinded.get(&outpoint) {
-                        let asset_id_str = hex::encode(unblinded.asset);
+                        let asset_id_str = unblinded.asset_hex(policy_asset);
                         *result.entry(asset_id_str).or_default() -= unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -257,7 +258,7 @@ impl BETransaction {
                         vout: i,
                     };
                     if let Some(unblinded) = all_unblinded.get(&outpoint) {
-                        let asset_id_str = hex::encode(unblinded.asset);
+                        let asset_id_str = unblinded.asset_hex(policy_asset);
                         *result.entry(asset_id_str).or_default() += unblinded.value as i64;
                         // TODO check overflow
                     }

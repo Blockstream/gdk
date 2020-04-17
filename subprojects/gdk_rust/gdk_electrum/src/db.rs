@@ -12,7 +12,8 @@ use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
 use gdk_common::{ElementsNetwork, NetworkId};
-use log::debug;
+use log::{debug, trace};
+use serde_json::Value;
 use sled::{self, Tree};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -29,7 +30,7 @@ pub const BATCH_SIZE: u32 = 20;
 /// Path, Script           inverse of the previous
 /// OutPoint, Unblinded    unblinded values (only for liquid)
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Forest {
     txs: Tree,
     paths: Tree,
@@ -40,6 +41,7 @@ pub struct Forest {
     unblinded: Tree,
     secp: Secp256k1<All>,
     xpub: ExtendedPubKey,
+    master_blinding: Option<MasterBlindingKey>,
     id: NetworkId,
 }
 
@@ -63,6 +65,7 @@ impl Forest {
     pub fn new<P: AsRef<std::path::Path>>(
         path: P,
         xpub: ExtendedPubKey,
+        master_blinding: Option<MasterBlindingKey>,
         id: NetworkId,
     ) -> Result<Self, Error> {
         let db = sled::open(path)?;
@@ -75,6 +78,7 @@ impl Forest {
             singles: db.open_tree("singles")?,
             unblinded: db.open_tree("unblinded")?,
             secp: Secp256k1::new(),
+            master_blinding,
             xpub,
             id,
         })
@@ -105,6 +109,7 @@ impl Forest {
     }
 
     pub fn get_all_spent_and_txs(&self) -> Result<(HashSet<BEOutPoint>, BETransactions), Error> {
+        debug!("get_all_spent_and_txs");
         let mut txs = BETransactions::default();
         let mut spent = HashSet::new();
         for keyvalue in self.txs.iter() {
@@ -130,6 +135,7 @@ impl Forest {
     }
 
     pub fn get_all_scripts(&self) -> Result<HashSet<Script>, Error> {
+        debug!("get_all_scripts");
         let mut set = HashSet::new();
         for keyvalue in self.scripts.iter() {
             let (_, value) = keyvalue?;
@@ -139,12 +145,7 @@ impl Forest {
         Ok(set)
     }
 
-    pub fn get_script_batch(
-        &self,
-        int_or_ext: Index,
-        batch: u32,
-        master_blinding: Option<&MasterBlindingKey>,
-    ) -> Result<Vec<Script>, Error> {
+    pub fn get_script_batch(&self, int_or_ext: Index, batch: u32) -> Result<Vec<Script>, Error> {
         let mut result = vec![];
         let first_path = [ChildNumber::from(int_or_ext as u32)];
         let first_deriv = self.xpub.derive_pub(&self.secp, &first_path)?;
@@ -163,7 +164,7 @@ impl Forest {
                     let script = match self.id {
                         NetworkId::Bitcoin(network) => {
                             let address = Address::p2shwpkh(&second_deriv.public_key, network);
-                            debug!("{}/{} {}", int_or_ext as u32, j, address);
+                            trace!("{}/{} {}", int_or_ext as u32, j, address);
                             address.script_pubkey()
                         }
                         NetworkId::Elements(network) => {
@@ -174,7 +175,7 @@ impl Forest {
 
                             let script = p2shwpkh_script(&second_deriv.public_key);
                             let blinding_key = asset_blinding_key_to_ec_private_key(
-                                master_blinding.ok_or_else(fn_err(
+                                self.master_blinding.as_ref().ok_or_else(fn_err(
                                     "missing master blinding in elements session",
                                 ))?,
                                 &script,
@@ -187,9 +188,12 @@ impl Forest {
                                 blinder,
                                 params,
                             );
-                            debug!(
+                            trace!(
                                 "{}/{} blinded address {}  blinder {:?}",
-                                int_or_ext as u32, j, address, blinder
+                                int_or_ext as u32,
+                                j,
+                                address,
+                                blinder
                             );
                             assert_eq!(script, address.script_pubkey());
                             address.script_pubkey()
@@ -245,6 +249,7 @@ impl Forest {
     }
 
     pub fn get_all_unblinded(&self) -> Result<HashMap<elements::OutPoint, Unblinded>, Error> {
+        debug!("get_all_unblinded");
         let mut map = HashMap::new();
         for keyvalue in self.unblinded.iter() {
             let (key, value) = keyvalue?;
@@ -315,11 +320,37 @@ impl Forest {
         self.singles.get(b"s")?.map(|v| Ok(serde_json::from_slice::<Settings>(&v)?)).transpose()
     }
 
+    pub fn get_asset_icons(&self) -> Result<Option<Value>, Error> {
+        self.singles.get(b"i")?.map(|v| Ok(serde_json::from_slice::<Value>(&v)?)).transpose()
+    }
+    pub fn insert_asset_icons(&self, asset_icons: &str) -> Result<(), Error> {
+        Ok(self.singles.insert(b"i", asset_icons.as_bytes()).map(|_| ())?)
+    }
+
+    pub fn get_asset_registry(&self) -> Result<Option<Value>, Error> {
+        self.singles.get(b"r")?.map(|v| Ok(serde_json::from_slice::<Value>(&v)?)).transpose()
+    }
+    pub fn insert_asset_registry(&self, asset_registry: &str) -> Result<(), Error> {
+        Ok(self.singles.insert(b"r", asset_registry.as_bytes()).map(|_| ())?)
+    }
+
     pub fn is_mine(&self, script: &Script) -> bool {
         match self.get_path(script) {
             Ok(p) => p.is_some(),
             Err(_) => false,
         }
+    }
+
+    pub fn flush(&self) -> Result<usize, Error> {
+        let mut bytes_flushed = 0;
+        bytes_flushed += self.txs.flush()?;
+        bytes_flushed += self.paths.flush()?;
+        bytes_flushed += self.heights.flush()?;
+        bytes_flushed += self.headers.flush()?;
+        bytes_flushed += self.scripts.flush()?;
+        bytes_flushed += self.singles.flush()?;
+        bytes_flushed += self.unblinded.flush()?;
+        Ok(bytes_flushed)
     }
 }
 

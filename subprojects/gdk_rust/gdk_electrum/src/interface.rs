@@ -10,7 +10,7 @@ use bitcoin::PublicKey;
 use elements;
 use gdk_common::model::Balances;
 use hex;
-use log::{debug, warn};
+use log::{debug, info};
 use rand::Rng;
 
 use gdk_common::mnemonic::Mnemonic;
@@ -27,7 +27,6 @@ use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::*;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct WalletCtx {
@@ -41,27 +40,21 @@ pub struct WalletCtx {
     pub change_max_deriv: u32,
 }
 
+#[derive(Clone)]
 pub enum ElectrumUrl {
-    Tls(String),
+    Tls(String, bool),
     Plaintext(String),
 }
 
 impl WalletCtx {
     pub fn new(
-        db_root: &str,
-        wallet_id: String,
+        db: Forest,
         mnemonic: Mnemonic,
         network: Network,
         xprv: ExtendedPrivKey,
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
-        let mut path: PathBuf = db_root.into();
-        path.push(wallet_id);
-        debug!("opening sled db root path: {:?}", path);
-
-        let db = Forest::new(path, xpub, network.id())?;
-
         Ok(WalletCtx {
             mnemonic,
             db,
@@ -120,60 +113,8 @@ impl WalletCtx {
         self.db.insert_settings(settings)
     }
 
-    pub fn try_unblind(
-        &self,
-        outpoint: elements::OutPoint,
-        output: elements::TxOut,
-    ) -> Result<(), Error> {
-        match (output.asset, output.value, output.nonce) {
-            (Asset::Confidential(_, _), Value::Confidential(_, _), Nonce::Confidential(_, _)) => {
-                let master_blinding = self.master_blinding.as_ref().unwrap();
-
-                let script = output.script_pubkey.clone();
-                let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
-                let rangeproof = output.witness.rangeproof.clone();
-                let value_commitment = elements::encode::serialize(&output.value);
-                let asset_commitment = elements::encode::serialize(&output.asset);
-                let nonce_commitment = elements::encode::serialize(&output.nonce);
-                debug!(
-                    "commitmnents len {} {} {}",
-                    value_commitment.len(),
-                    asset_commitment.len(),
-                    nonce_commitment.len()
-                );
-                let sender_pk = secp256k1::PublicKey::from_slice(&nonce_commitment).unwrap();
-
-                let (asset, abf, vbf, value) = asset_unblind(
-                    sender_pk,
-                    blinding_key,
-                    rangeproof,
-                    value_commitment,
-                    script,
-                    asset_commitment,
-                )?;
-
-                debug!(
-                    "Unblinded outpoint:{} asset:{} value:{}",
-                    outpoint,
-                    hex::encode(&asset),
-                    value
-                );
-
-                let unblinded = Unblinded {
-                    asset,
-                    value,
-                    abf,
-                    vbf,
-                };
-                self.db.insert_unblinded(&outpoint, &unblinded)?;
-            }
-            _ => warn!("received unconfidential or null asset/value/nonce"),
-        }
-        Ok(())
-    }
-
     pub fn list_tx(&self) -> Result<Vec<TransactionMeta>, Error> {
-        debug!("start list_tx");
+        info!("start list_tx");
         let (_, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;
         let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
@@ -181,13 +122,28 @@ impl WalletCtx {
         let mut txs = vec![];
 
         for (tx_id, height) in self.db.get_my()? {
+            info!("tx_id {}", tx_id);
+
             let tx = all_txs.get(&tx_id).ok_or_else(fn_err("no tx"))?;
             let header = height
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
 
             let fee = tx.fee(&all_txs);
-            let satoshi = tx.my_balances(&all_txs, &all_scripts, &all_unblinded);
+            let satoshi = tx.my_balances(
+                &all_txs,
+                &all_scripts,
+                &all_unblinded,
+                self.network.policy_asset.as_ref(),
+            );
+
+            let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
+            let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
+            let type_ = if positives > negatives {
+                "incoming"
+            } else {
+                "outgoing"
+            };
 
             let tx_meta = TransactionMeta::new(
                 tx.clone(),
@@ -196,6 +152,7 @@ impl WalletCtx {
                 satoshi,
                 fee,
                 self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
+                type_.to_string(),
             );
 
             txs.push(tx_meta);
@@ -207,7 +164,7 @@ impl WalletCtx {
     }
 
     fn utxos(&self) -> Result<Vec<(BEOutPoint, (String, u64))>, Error> {
-        debug!("start utxos");
+        info!("start utxos");
         let (spent, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;
         let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
@@ -260,7 +217,7 @@ impl WalletCtx {
     }
 
     pub fn balance(&self) -> Result<Balances, Error> {
-        debug!("start balance");
+        info!("start balance");
         let mut result = HashMap::new();
         result.entry("btc".to_string()).or_insert(0);
         for (_, (asset, value)) in self.utxos()?.iter() {
@@ -275,17 +232,32 @@ impl WalletCtx {
     }
 
     // If request.utxo is None, we do the coin selection
-    pub fn create_tx(&self, request: &CreateTransaction) -> Result<TransactionMeta, Error> {
-        debug!("create_tx {:?}", request);
+    pub fn create_tx(
+        &self,
+        request: &CreateTransaction,
+        relay_fee: u64,
+    ) -> Result<TransactionMeta, Error> {
+        info!("create_tx {:?}", request);
+
+        if request.addressees.iter().any(|a| a.satoshi == 0) {
+            return Err(Error::InvalidAmount);
+        }
 
         let mut tx = BETransaction::new(self.network.id());
         let policy_asset = self.network.policy_asset().ok();
 
-        let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0 * 1.3; //TODO 30% increase hack because we compute fee badly
+        // convert from satoshi/kbyte to satoshi/byte
+        let fee_rate = (request.fee_rate.unwrap_or(relay_fee) as f64) / 1000.0;
+        info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
-        let mut fee_val = 0u64;
-        let mut outgoing_map: HashMap<String,u64> = HashMap::new();
-        let mut remap: HashMap<String,AssetId> = HashMap::new();
+        let mut fee_val = match self.network.id() {
+            // last output is not consider for fee dynamic calculation, consider it here
+            NetworkId::Bitcoin(_) => (70.0 * fee_rate) as u64,
+            NetworkId::Elements(_) => (1200.0 * fee_rate) as u64,
+        };
+
+        let mut outgoing_map: HashMap<String, u64> = HashMap::new();
+        let mut remap: HashMap<String, AssetId> = HashMap::new();
         if let Some(btc_asset) = policy_asset {
             remap.insert("btc".to_string(), btc_asset);
         }
@@ -311,58 +283,83 @@ impl WalletCtx {
                 remap.insert(asset_hex, asset);
             }
         }
-        debug!("{:?}", outgoing_map);
+        info!("{:?}", outgoing_map);
 
         let utxos = self.utxos()?;
-        debug!("utxos len:{}", utxos.len());
+        info!("utxos len:{}", utxos.len());
 
-        let mut outgoing: Vec<(String,u64)> = outgoing_map.into_iter().collect();
-        outgoing.sort_by(|a,b|  b.0.len().cmp( &a.0.len()) );  // just want "btc" as last
-        debug!("outgoing sorted:{:?}", outgoing);
+        let mut outgoing: Vec<(String, u64)> = outgoing_map.into_iter().collect();
+        outgoing.sort_by(|a, b| b.0.len().cmp(&a.0.len())); // just want "btc" as last
+        info!("outgoing sorted:{:?}", outgoing);
         for (asset, outgoing) in outgoing.iter() {
-            debug!("doing {} out:{}", asset, outgoing);
-            let mut utxos: Vec<&(BEOutPoint, (String, u64))> = utxos.iter().filter(|(_,(b,_))| b==asset ).collect();
+            info!("doing {} out:{}", asset, outgoing);
+            let mut utxos: Vec<&(BEOutPoint, (String, u64))> =
+                utxos.iter().filter(|(_, (b, _))| b == asset).collect();
             utxos.sort_by(|a, b| (a.1).1.cmp(&(b.1).1));
-            debug!("filtered {} utxos:{:?}", asset, utxos);
+            info!("filtered {} utxos:{:?}", asset, utxos);
 
             let mut selected_amount = 0u64;
-            let mut needed = if asset=="btc" {*outgoing+fee_val} else {*outgoing};
+            let mut needed = if asset == "btc" {
+                *outgoing + fee_val
+            } else {
+                *outgoing
+            };
             while selected_amount < needed {
-                debug!("selected_amount:{} outgoing:{} fee_val:{}", selected_amount, outgoing, fee_val);
-                let (outpoint, (_, value)) = utxos.pop().ok_or(Error::InsufficientFunds)?;
-                debug!("popped out utxo of value: {}", value);
+                info!(
+                    "selected_amount:{} outgoing:{} fee_val:{}",
+                    selected_amount, outgoing, fee_val
+                );
+                let option = utxos.pop();
+                info!("pop is: {:?}", option);
+                let (outpoint, (_, value)) = option.ok_or(Error::InsufficientFunds)?;
+                info!("popped out utxo of value: {}", value);
 
                 let len = tx.add_input(outpoint.clone());
                 fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
 
                 selected_amount += value;
-                needed = if asset=="btc" {*outgoing+fee_val} else {*outgoing};
+                needed = if asset == "btc" {
+                    *outgoing + fee_val
+                } else {
+                    *outgoing
+                };
             }
-            debug!("selected_amount {} outgoing {} fee_val {}", selected_amount, outgoing, fee_val);
+            info!("selected_amount {} outgoing {} fee_val {}", selected_amount, outgoing, fee_val);
             let mut change_val = selected_amount - outgoing;
-            if asset=="btc" {
-                change_val-=fee_val;
+            if asset == "btc" {
+                change_val -= fee_val;
             }
-            debug!("change val for {} is {}", asset, change_val);
+            info!("change val for {} is {}", asset, change_val);
             let min_change = match self.network.id() {
                 NetworkId::Bitcoin(_) => 546,
                 NetworkId::Elements(_) => 0,
             };
             if change_val > min_change {
-                let change_index = self.db.increment_index(Index::Internal)?;
-                let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
-                debug!("adding change {:?}", change_address);
+                let change_index = self.db.get_index(Index::Internal)? + 1;
+                let change_address =
+                    self.derive_address(&self.xpub, &[1, change_index])?.to_string();
+                info!("adding change {:?}", change_address);
 
                 let len = tx.add_output(&change_address, change_val, remap.get(asset).cloned())?;
                 let increment = match self.network.id() {
                     NetworkId::Bitcoin(_) => calc_fee_bytes(len),
-                    NetworkId::Elements(_) => if asset== "btc" { 0 } else { calc_fee_bytes(len) },  //considering 0 for btc and liquid otherwise fee output will be wrong
+                    NetworkId::Elements(_) => {
+                        if asset == "btc" {
+                            0
+                        } else {
+                            calc_fee_bytes(len)
+                        }
+                    } //considering 0 for btc and liquid otherwise fee output will be wrong
                 };
                 fee_val += increment;
             }
         }
 
         tx.add_fee_if_elements(fee_val, policy_asset);
+
+        let len = tx.serialize().len();
+        let rate = fee_val as f64 / len as f64;
+        info!("created tx fee {:?} size: {} rate: {}", fee_val, len, rate);
 
         let mut created_tx = TransactionMeta::new(
             tx, //TODO
@@ -371,9 +368,10 @@ impl WalletCtx {
             HashMap::new(), //TODO
             fee_val,
             self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
+            "outgoing".to_string(),
         );
         created_tx.create_transaction = Some(request.clone());
-        debug!("returning: {:?}", created_tx);
+        info!("returning: {:?}", created_tx);
 
         Ok(created_tx)
     }
@@ -408,7 +406,7 @@ impl WalletCtx {
     }
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        debug!("sign");
+        info!("sign");
 
         match &request.transaction {
             BETransaction::Bitcoin(tx) => {
@@ -416,7 +414,7 @@ impl WalletCtx {
 
                 for i in 0..tx.input.len() {
                     let prev_output = tx.input[i].previous_output.clone();
-                    debug!("input#{} prev_output:{:?}", i, prev_output);
+                    info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = self
                         .db
                         .get_bitcoin_tx(&prev_output.txid)?
@@ -427,7 +425,7 @@ impl WalletCtx {
                         .get_path(&out.script_pubkey)?
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .to_derivation_path()?;
-                    debug!(
+                    info!(
                         "input#{} prev_output:{:?} derivation_path:{:?}",
                         i, prev_output, derivation_path
                     );
@@ -439,8 +437,10 @@ impl WalletCtx {
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;
                 }
-
-                let wgtx: TransactionMeta = BETransaction::Bitcoin(out_tx).into();
+                let tx = BETransaction::Bitcoin(out_tx);
+                info!("transaction final size is {}", tx.serialize().len());
+                let wgtx: TransactionMeta = tx.into();
+                self.db.increment_index(Index::Internal)?;
 
                 Ok(wgtx)
             }
@@ -450,7 +450,7 @@ impl WalletCtx {
 
                 for idx in 0..out_tx.input.len() {
                     let prev_output = out_tx.input[idx].previous_output.clone();
-                    debug!("input#{} prev_output:{:?}", idx, prev_output);
+                    info!("input#{} prev_output:{:?}", idx, prev_output);
                     let prev_tx = self
                         .db
                         .get_liquid_tx(&prev_output.txid)?
@@ -486,7 +486,12 @@ impl WalletCtx {
                     out_tx.input[idx].witness.script_witness =
                         vec![signature, pubkey.public_key.to_bytes()];
                 }
-                let wgtx: TransactionMeta = BETransaction::Elements(out_tx).into();
+                let fee: u64 =
+                    out_tx.output.iter().filter(|o| o.is_fee()).map(|o| o.minimum_value()).sum();
+                let tx = BETransaction::Elements(out_tx);
+                info!("transaction final size is {} fee is {}", tx.serialize().len(), fee);
+                let wgtx: TransactionMeta = tx.into();
+                self.db.increment_index(Index::Internal)?;
 
                 Ok(wgtx)
             }
@@ -494,20 +499,20 @@ impl WalletCtx {
     }
 
     fn blind_tx(&self, tx: &mut elements::Transaction) -> Result<(), Error> {
-        debug!("blind_tx {}", tx.txid());
+        info!("blind_tx {}", tx.txid());
         let mut input_assets = vec![];
         let mut input_abfs = vec![];
         let mut input_vbfs = vec![];
         let mut input_ags = vec![];
         let mut input_values = vec![];
         for input in tx.input.iter() {
-            debug!("input {:?}", input);
+            info!("input {:?}", input);
 
             let unblinded = self
                 .db
                 .get_unblinded(&input.previous_output)?
                 .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
-            debug!(
+            info!(
                 "unblinded value: {} asset:{}",
                 unblinded.value,
                 hex::encode(&unblinded.asset[..])
@@ -533,7 +538,7 @@ impl WalletCtx {
                 output_blinded_values.push(output.minimum_value());
             }
         }
-        debug!("output_blinded_values {:?}", output_blinded_values);
+        info!("output_blinded_values {:?}", output_blinded_values);
         let mut all_values = vec![];
         all_values.extend(input_values);
         all_values.extend(output_blinded_values);
@@ -556,11 +561,11 @@ impl WalletCtx {
         output_vbfs.push(last_vbf.to_vec());
 
         for (i, mut output) in tx.output.iter_mut().enumerate() {
-            debug!("output {:?}", output);
+            info!("output {:?}", output);
             if !output.is_fee() {
                 match (output.value, output.asset, output.nonce) {
                     (Value::Explicit(value), Asset::Explicit(asset), Nonce::Confidential(_, _)) => {
-                        debug!("value: {}", value);
+                        info!("value: {}", value);
                         let nonce = elements::encode::serialize(&output.nonce);
                         let blinding_pubkey = PublicKey::from_slice(&nonce).unwrap();
                         let blinding_key = asset_blinding_key_to_ec_private_key(
@@ -667,6 +672,13 @@ impl WalletCtx {
                 &random_bytes,
             )?, // TODO support LIQUID
         })
+    }
+
+    pub fn get_asset_icons(&self) -> Result<Option<serde_json::Value>, Error> {
+        self.db.get_asset_icons()
+    }
+    pub fn get_asset_registry(&self) -> Result<Option<serde_json::Value>, Error> {
+        self.db.get_asset_registry()
     }
 }
 

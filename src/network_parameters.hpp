@@ -55,6 +55,7 @@ namespace sdk {
         int ct_bits() const { return m_details.at("ct_bits"); }
         bool main_net() const { return m_details.at("mainnet"); }
         bool liquid() const { return m_details.value("liquid", false); }
+        bool is_electrum() const { return m_details.value("server_type", "") == "electrum"; }
         bool use_tor() const { return m_details.value("use_tor", false); }
         std::string socks5() const { return m_details.value("socks5", ""); }
         std::string get_connection_string(bool use_tor) const { return use_tor ? gait_onion() : gait_wamp_url(); }

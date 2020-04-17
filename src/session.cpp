@@ -190,8 +190,13 @@ namespace sdk {
 
     void session::disconnect()
     {
+        GDK_LOG_SEV(log_level::debug) << "session disconnect...";
         auto p = get_impl();
         while (p && !m_impl.compare_exchange_strong(p, session_ptr{})) {
+        }
+        if (p && p->get_network_parameters().is_electrum()) {
+            GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
+            p->disconnect();
         }
     }
 

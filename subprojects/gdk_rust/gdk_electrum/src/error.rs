@@ -9,6 +9,7 @@ pub enum Error {
     InvalidMnemonic,
     InsufficientFunds,
     InvalidAddress,
+    InvalidAmount,
     DB(sled::Error),
     AddrParse(String),
     Bitcoin(bitcoin::util::Error),
@@ -22,6 +23,7 @@ pub enum Error {
     SliceConversionError(std::array::TryFromSliceError),
     ElementsEncode(elements::encode::Error),
     Common(gdk_common::error::Error),
+    Send(std::sync::mpsc::SendError<()>),
 }
 
 impl Display for Error {
@@ -32,6 +34,7 @@ impl Display for Error {
             Error::InvalidMnemonic => write!(f, "invalid mnemonic"),
             Error::InsufficientFunds => write!(f, "insufficient funds"),
             Error::InvalidAddress => write!(f, "invalid address"),
+            Error::InvalidAmount => write!(f, "invalid amount"),
             Error::UnknownCall => write!(f, "unknown call"),
             Error::DB(ref dberr) => write!(f, "bitcoin: {}", dberr),
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
@@ -45,6 +48,7 @@ impl Display for Error {
             Error::SliceConversionError(ref slice_err) => write!(f, "slice: {}", slice_err),
             Error::ElementsEncode(ref el_err) => write!(f, "el_err: {}", el_err),
             Error::Common(ref cmn_err) => write!(f, "cmn_err: {:?}", cmn_err),
+            Error::Send(ref send_err) => write!(f, "send_err: {:?}", send_err),
         }
     }
 }
@@ -136,5 +140,17 @@ impl std::convert::From<elements::encode::Error> for Error {
 impl std::convert::From<gdk_common::error::Error> for Error {
     fn from(err: gdk_common::error::Error) -> Self {
         Error::Common(err)
+    }
+}
+
+impl std::convert::From<std::sync::mpsc::SendError<()>> for Error {
+    fn from(err: std::sync::mpsc::SendError<()>) -> Self {
+        Error::Send(err)
+    }
+}
+
+impl std::convert::From<std::string::FromUtf8Error> for Error {
+    fn from(err: std::string::FromUtf8Error) -> Self {
+        Error::Generic(err.to_string())
     }
 }

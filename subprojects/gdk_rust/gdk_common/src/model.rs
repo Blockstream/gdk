@@ -1,14 +1,14 @@
-use crate::be::{BETransaction, AssetId};
+use crate::be::{AssetId, BETransaction};
 use bitcoin::Network;
 use core::mem::transmute;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
+use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::convert::TryInto;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -87,9 +87,9 @@ pub struct AddressAmount {
     pub asset_tag: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BlockNotification {
-    pub block_hash: bitcoin::BlockHash,
+    //pub block_hash: bitcoin::BlockHash,
     pub block_height: u32,
 }
 
@@ -98,6 +98,7 @@ pub struct TransactionNotification {
     pub transaction_hash: bitcoin::Txid,
 }
 
+#[derive(Debug)]
 pub enum Notification {
     Block(BlockNotification),
     Transaction(TransactionNotification),
@@ -106,7 +107,7 @@ pub enum Notification {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateTransaction {
     pub addressees: Vec<AddressAmount>,
-    pub fee_rate: Option<u64>,
+    pub fee_rate: Option<u64>,  // in satoshi/kbyte
     pub subaccount: Option<u32>,
 }
 
@@ -130,6 +131,7 @@ pub struct TransactionMeta {
     pub fee: u64,
     pub network: Option<Network>,
     pub subaccount: u32,
+    pub type_: String, // incoming or outgoing
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -153,6 +155,7 @@ impl From<BETransaction> for TransactionMeta {
             fee: 0,
             network: None,
             subaccount: 0,
+            type_: "unknown".to_string(),
         }
     }
 }
@@ -165,6 +168,7 @@ impl TransactionMeta {
         satoshi: Balances,
         fee: u64,
         network: Network,
+        type_: String,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
@@ -176,6 +180,7 @@ impl TransactionMeta {
         wgtx.satoshi = satoshi;
         wgtx.network = Some(network);
         wgtx.fee = fee;
+        wgtx.type_ = type_;
         wgtx
     }
 }
@@ -244,6 +249,14 @@ pub struct Settings {
     pub pricing: Pricing,
 }
 
+/// {"icons":true,"assets":false,"refresh":false}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RefreshAssets {
+    pub icons: bool,
+    pub assets: bool,
+    pub refresh: bool,
+}
+
 /// see comment for struct Settings
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Pricing {
@@ -268,11 +281,11 @@ impl Default for Settings {
 
 impl AddressAmount {
     pub fn asset(&self) -> Option<AssetId> {
-        if let Some(asset_tag)= self.asset_tag.as_ref() {
+        if let Some(asset_tag) = self.asset_tag.as_ref() {
             let vec = hex::decode(asset_tag).ok();
             if let Some(mut vec) = vec {
                 vec.reverse();
-                return (&vec[..]).try_into().ok()
+                return (&vec[..]).try_into().ok();
             }
         }
         None

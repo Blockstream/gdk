@@ -594,7 +594,7 @@ impl Wallet {
         Ok(address_str)
     }
 
-    pub fn get_receive_address(&self, _details: &Value) -> Result<Value, Error> {
+    pub fn get_receive_address(&self, details: &Value) -> Result<Value, Error> {
         let address = self.next_address(&self.external_xpriv, &self.next_external_child, false)?;
         Ok(json!({
             "address": address,
