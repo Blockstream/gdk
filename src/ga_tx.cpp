@@ -483,6 +483,8 @@ namespace sdk {
             }
             result["addressees_have_assets"] = addressees_have_assets;
 
+            std::vector<nlohmann::json> reordered_addressees;
+
             auto create_tx_outputs = [&](const std::string& asset_tag) {
                 const bool include_fee = asset_tag == "btc";
 
@@ -509,6 +511,7 @@ namespace sdk {
                             = session.asset_id_from_string(addressee.value("asset_tag", std::string{}));
                         if (addressee_asset_tag == asset_tag) {
                             required_total += add_tx_addressee(session, net_params, result, tx, addressee);
+                            reordered_addressees.push_back(addressee);
                         }
                     }
                 }
@@ -789,6 +792,8 @@ namespace sdk {
             }
             // do fee output + L-BTC outputs
             create_tx_outputs("btc");
+
+            result["addressees"] = reordered_addressees;
 
             if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
                 randomise_inputs(tx, used_utxos);
