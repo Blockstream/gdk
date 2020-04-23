@@ -309,6 +309,7 @@ impl WalletCtx {
                     selected_amount, outgoing, fee_val
                 );
                 let option = utxos.pop();
+                //TODO should pop also same script if any
                 info!("pop is: {:?}", option);
                 let (outpoint, (_, value)) = option.ok_or(Error::InsufficientFunds)?;
                 info!("popped out utxo of value: {}", value);
@@ -354,7 +355,7 @@ impl WalletCtx {
             }
         }
 
-        tx.scramble_outputs();
+        tx.scramble();
 
         tx.add_fee_if_elements(fee_val, policy_asset);
 
