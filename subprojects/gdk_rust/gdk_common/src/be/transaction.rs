@@ -149,13 +149,16 @@ impl BETransaction {
         }
     }
 
-    pub fn scramble_outputs(&mut self) {
+    pub fn scramble(&mut self) {
+        let mut rng = thread_rng();
         match self {
             BETransaction::Bitcoin(tx) => {
-                tx.output.shuffle(&mut thread_rng());
+                tx.input.shuffle(&mut rng);
+                tx.output.shuffle(&mut rng);
             }
             BETransaction::Elements(tx) => {
-                tx.output.shuffle(&mut thread_rng());
+                tx.input.shuffle(&mut rng);
+                tx.output.shuffle(&mut rng);
             }
         }
     }
