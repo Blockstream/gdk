@@ -1084,6 +1084,7 @@ namespace sdk {
         cleanup_appearance_settings(locker, appearance);
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
+        m_nlocktime = m_login_data["nlocktime_blocks"];
 
         // Notify the caller of their settings
         if (m_notification_handler != nullptr) {
@@ -1504,6 +1505,7 @@ namespace sdk {
 
         settings["pricing"]["currency"] = m_fiat_currency;
         settings["pricing"]["exchange"] = m_fiat_source;
+        settings["nlocktime"] = m_nlocktime;
 
         return settings;
     }
@@ -3275,6 +3277,9 @@ namespace sdk {
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.set_nlocktime", value, as_messagepack(twofactor_data).get());
         GDK_RUNTIME_ASSERT(r);
+
+        locker_t locker{ m_mutex };
+        m_nlocktime = value;
     }
 
     // Idempotent
