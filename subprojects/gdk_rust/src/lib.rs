@@ -42,8 +42,7 @@ use gdk_common::util::{make_str, read_str};
 use bitcoin_exchange_rates::{hyper_fetch_requests, make_tls_hyper_client, prepare_requests};
 use bitcoin_exchange_rates::{Bitfinex, Currency, Pair, Source, Ticker, Wasabi};
 
-use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{ElectrumPlaintextStream, ElectrumSession, ElectrumSslStream, NativeNotif};
+use gdk_electrum::{ElectrumSession, NativeNotif};
 // use gdk_rpc::session::RpcSession;
 use crate::error::Error;
 use log::{LevelFilter, Metadata, Record};
@@ -56,8 +55,7 @@ pub struct GdkSession {
 
 pub enum GdkBackend {
     // Rpc(RpcSession),
-    Electrum(ElectrumSession<ElectrumPlaintextStream>),
-    ElectrumTls(ElectrumSession<ElectrumSslStream>),
+    Electrum(ElectrumSession),
 }
 
 #[derive(Debug)]
@@ -203,31 +201,10 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
                 .map_err(|x| json!(x))?;
             let move_url = url.clone();
 
-            let backend = match &url {
-                ElectrumUrl::Tls(url_str, validate) => {
-                    let elec_tls_sess = ElectrumSession::new_tls_session(
-                        parsed_network.clone(),
-                        db_root,
-                        url_str,
-                        *validate,
-                        move_url,
-                    )
-                    .map_err(|x| json!(x))?;
-                    GdkBackend::ElectrumTls(elec_tls_sess)
-                }
-
-                ElectrumUrl::Plaintext(url_str) => {
-                    let elec_sess = ElectrumSession::new_plaintext_session(
-                        parsed_network.clone(),
-                        db_root,
-                        url_str,
-                        move_url,
-                    )
-                    .map_err(|x| json!(x))?;
-
-                    GdkBackend::Electrum(elec_sess)
-                }
-            };
+            let session = ElectrumSession::new_session(parsed_network.clone(),
+                                                       db_root,
+            move_url).map_err(|x| json!(x))?;
+            let backend = GdkBackend::Electrum(session);
 
             // some time in the past
             let last_xr_fetch = SystemTime::now() - Duration::from_secs(1000);
@@ -281,11 +258,15 @@ pub extern "C" fn GDKRUST_call_session(
         let rates = fetch_cached_exchange_rates(sess).unwrap_or(Vec::new());
         return json_res!(output, tickers_to_json(rates), GA_OK);
     }
+    let input_redacted = if method == "login" {
+        "redacted".to_string()
+    } else {
+        format!("{:?}", input)
+    };
 
-    info!("GDKRUST_call_session handle_call {} input {:?}", method, input);
+    info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
     let res = match sess.backend {
         GdkBackend::Electrum(ref mut s) => handle_call(s, &method, &input),
-        GdkBackend::ElectrumTls(ref mut s) => handle_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
@@ -316,7 +297,6 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 
     match backend {
         GdkBackend::Electrum(ref mut s) => s.notify = NativeNotif(Some((handler, self_context))),
-        GdkBackend::ElectrumTls(ref mut s) => s.notify = NativeNotif(Some((handler, self_context))),
     };
 
     info!("set notification handler");
@@ -410,7 +390,7 @@ where
         "get_receive_address" => {
             let a = session
                 .get_receive_address(input)
-                .map(|x| address_result_value(&x))
+                .map(|x| serde_json::to_value(&x).unwrap())
                 .map_err(Into::into);
             info!("gdk_rust get_receive_address returning {:?}", a);
             a

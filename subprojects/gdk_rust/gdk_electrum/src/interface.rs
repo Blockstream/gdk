@@ -14,7 +14,7 @@ use log::{debug, info};
 use rand::Rng;
 
 use gdk_common::mnemonic::Mnemonic;
-use gdk_common::model::{CreateTransaction, Settings, TransactionMeta};
+use gdk_common::model::{CreateTransaction, Settings, TransactionMeta, AddressPointer};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::*;
@@ -235,7 +235,6 @@ impl WalletCtx {
     pub fn create_tx(
         &self,
         request: &CreateTransaction,
-        relay_fee: u64,
     ) -> Result<TransactionMeta, Error> {
         info!("create_tx {:?}", request);
 
@@ -247,7 +246,7 @@ impl WalletCtx {
         let policy_asset = self.network.policy_asset().ok();
 
         // convert from satoshi/kbyte to satoshi/byte
-        let fee_rate = (request.fee_rate.unwrap_or(relay_fee) as f64) / 1000.0;
+        let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0;
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
         let mut fee_val = match self.network.id() {
@@ -354,6 +353,8 @@ impl WalletCtx {
                 fee_val += increment;
             }
         }
+
+        tx.scramble_outputs();
 
         tx.add_fee_if_elements(fee_val, policy_asset);
 
@@ -650,11 +651,11 @@ impl WalletCtx {
         Ok(())
     }
 
-    pub fn get_address(&self) -> Result<WGAddress, Error> {
-        let index = self.db.increment_index(Index::External)?;
-        let address = self.derive_address(&self.xpub, &[0, index])?.to_string();
-        Ok(WGAddress {
-            address,
+    pub fn get_address(&self) -> Result<AddressPointer, Error> {
+        let pointer = self.db.increment_index(Index::External)?;
+        let address = self.derive_address(&self.xpub, &[0, pointer])?.to_string();
+        Ok(AddressPointer {
+            address, pointer
         })
     }
     pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, Error> {

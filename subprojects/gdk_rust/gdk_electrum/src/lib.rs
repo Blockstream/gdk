@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::{debug, info, warn};
+use log::{debug, info, warn, trace};
 use serde_json::Value;
 
 pub mod db;
@@ -70,6 +70,54 @@ impl SyncerKind {
     }
 }
 
+pub enum ClientWrap {
+    Plain(electrum_client::Client<ElectrumPlaintextStream>),
+    Tls(electrum_client::Client<ElectrumSslStream>),
+}
+
+impl ClientWrap {
+    pub fn new(url: ElectrumUrl) -> Result<Self, Error> {
+
+        match url {
+            ElectrumUrl::Tls(url, validate) => {
+                let client = electrum_client::Client::new_ssl(url.as_str(), validate)?;
+                Ok(ClientWrap::Tls(client))
+            }
+            ElectrumUrl::Plaintext(url) => {
+                let client = electrum_client::Client::new(&url)?;
+                Ok(ClientWrap::Plain(client))
+            }
+        }
+    }
+
+    pub fn batch_estimate_fee<'s, I>(&mut self, numbers: I) -> Result<Vec<f64>, Error>
+        where
+            I: IntoIterator<Item = usize>,
+    {
+        Ok(match self {
+            ClientWrap::Plain(client) => client.batch_estimate_fee(numbers)?,
+            ClientWrap::Tls(client) => client.batch_estimate_fee(numbers)?,
+        })
+    }
+
+    pub fn relay_fee(&mut self) -> Result<f64, Error>
+    {
+        Ok(match self {
+            ClientWrap::Plain(client) => client.relay_fee()?,
+            ClientWrap::Tls(client) => client.relay_fee()?,
+        })
+    }
+
+    pub fn transaction_broadcast_raw(&mut self, raw_tx: &[u8]) -> Result<Txid, Error>
+    {
+        Ok(match self {
+            ClientWrap::Plain(client) => client.transaction_broadcast_raw(raw_tx)?,
+            ClientWrap::Tls(client) => client.transaction_broadcast_raw(raw_tx)?,
+        })
+    }
+
+}
+
 pub struct Syncer<S: Read + Write> {
     pub db: Forest,
     pub client: electrum_client::Client<S>,
@@ -126,11 +174,10 @@ impl Closer {
     }
 }
 
-pub struct ElectrumSession<S: Read + Write> {
+pub struct ElectrumSession {
     pub db_root: String,
     pub network: Network,
     pub url: ElectrumUrl,
-    pub client: electrum_client::Client<S>,
     pub wallet: Option<WalletCtx>,
     pub notify: NativeNotif,
     pub closer: Closer,
@@ -172,41 +219,24 @@ pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl,
     determine_electrum_url(&network.url, &network.tls, &network.validate_domain)
 }
 
-impl ElectrumSession<ElectrumSslStream> {
-    pub fn new_tls_session(
+impl ElectrumSession {
+    pub fn new_session(
         network: Network,
         db_root: &str,
-        url_str: &str,
-        validate: bool,
         url: ElectrumUrl,
     ) -> Result<Self, Error> {
-        let client = electrum_client::Client::new_ssl(url_str, validate)?;
-        Ok(Self::create_session(network, db_root, url, client))
+        Ok(Self::create_session(network, db_root, url))
     }
 }
 
-impl ElectrumSession<ElectrumPlaintextStream> {
-    pub fn new_plaintext_session(
-        network: Network,
-        db_root: &str,
-        url_str: &str,
-        url: ElectrumUrl,
-    ) -> Result<Self, Error> {
-        let client = electrum_client::Client::new(url_str)?;
-        Ok(Self::create_session(network, db_root, url, client))
-    }
-}
-
-impl<S: Read + Write> ElectrumSession<S> {
+impl ElectrumSession {
     pub fn create_session(
         network: Network,
         db_root: &str,
         url: ElectrumUrl,
-        client: electrum_client::Client<S>,
     ) -> Self {
         Self {
             db_root: db_root.to_string(),
-            client,
             network,
             url,
             wallet: None,
@@ -226,14 +256,14 @@ impl<S: Read + Write> ElectrumSession<S> {
     }
 
     fn try_get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
+        let mut client = ClientWrap::new(self.url.clone())?;
         let blocks: Vec<usize> = (1..25).collect();
-        let mut estimates: Vec<FeeEstimate> = self
-            .client
+        let mut estimates: Vec<FeeEstimate> = client
             .batch_estimate_fee(blocks)?
             .iter()
             .map(|e| FeeEstimate((*e * 100_000_000.0) as u64))
             .collect();
-        let relay_fee = self.client.relay_fee()?;
+        let relay_fee = client.relay_fee()?;
         estimates.insert(0, FeeEstimate((relay_fee * 100_000_000.0) as u64));
         Ok(estimates)
     }
@@ -272,7 +302,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     }
 }
 
-impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
+impl Session<Error> for ElectrumSession {
     // type Value = ElectrumSession;
 
     fn destroy_session(&mut self) -> Result<(), Error> {
@@ -335,7 +365,8 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
                 ElementsNetwork::ElementsRegtest => 1,
             },
         };
-        let path_string = format!("m/44'/{}'/0'", coin_type);
+        // since we use P2WPKH-nested-in-P2SH it is 49 https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
+        let path_string = format!("m/49'/{}'/0'", coin_type);
         info!("Using derivation path {}/0|1/*", path_string);
         let path = DerivationPath::from_str(&path_string)?;
         let xprv = xprv.derive_priv(&secp, &path)?;
@@ -355,27 +386,31 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
         info!("opening sled db root path: {:?}", path);
         let db = Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?;
 
-        let asset_icons = db.get_asset_icons()?;
-        let asset_registry = db.get_asset_registry()?;
-        let wait_registry = asset_icons.is_none() || asset_registry.is_none();
-        let db_for_registry = db.clone();
-        let registry_thread = thread::spawn(move || {
-            info!("start registry thread");
-            //TODO add if_modified_since
-            let registry = ureq::get("https://assets.blockstream.info/index.json")
-                .call()
-                .into_string()
-                .unwrap();
+        let mut wait_registry= false;
+        let mut registry_thread = None;
+        if self.network.liquid {
+            let asset_icons = db.get_asset_icons()?;
+            let asset_registry = db.get_asset_registry()?;
+            wait_registry = asset_icons.is_none() || asset_registry.is_none();
+            let db_for_registry = db.clone();
+            registry_thread = Some(thread::spawn(move || {
+                info!("start registry thread");
+                //TODO add if_modified_since
+                let registry = ureq::get("https://assets.blockstream.info/index.json")
+                    .call()
+                    .into_string()
+                    .unwrap();
 
-            info!("got registry (len:{})", registry.len());
-            db_for_registry.insert_asset_registry(&registry).unwrap();
-            let icons = ureq::get("https://assets.blockstream.info/icons.json")
-                .call()
-                .into_string()
-                .unwrap();
-            info!("got icons (len:{})", icons.len());
-            db_for_registry.insert_asset_icons(&icons).unwrap();
-        });
+                info!("got registry (len:{})", registry.len());
+                db_for_registry.insert_asset_registry(&registry).unwrap();
+                let icons = ureq::get("https://assets.blockstream.info/icons.json")
+                    .call()
+                    .into_string()
+                    .unwrap();
+                info!("got icons (len:{})", icons.len());
+                db_for_registry.insert_asset_icons(&icons).unwrap();
+            }));
+        }
 
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
@@ -504,21 +539,23 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
             }
         });
 
-        if wait_registry {
-            info!("waiting registry thread");
-            registry_thread.join().unwrap();
-            info!("registry thread joined");
+        if let Some(registry_thread) = registry_thread {
+            if wait_registry {
+                info!("waiting registry thread");
+                registry_thread.join().unwrap();
+                info!("registry thread joined");
+            }
         }
 
         Ok(vec![])
     }
 
-    fn get_receive_address(&self, addr_details: &Value) -> Result<AddressResult, Error> {
+    fn get_receive_address(&self, addr_details: &Value) -> Result<AddressPointer, Error> {
         debug!("get_receive_address {:?}", addr_details);
         let w = self.get_wallet()?;
         let a = w.get_address()?;
         debug!("get_address {:?}", a);
-        Ok(AddressResult(a.address.to_string()))
+        Ok(a)
     }
 
     fn get_subaccounts(&self) -> Result<Vec<Subaccount>, Error> {
@@ -565,10 +602,7 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
     fn create_transaction(&mut self, tx_req: &CreateTransaction) -> Result<TransactionMeta, Error> {
         info!("electrum create_transaction {:#?}", tx_req);
 
-        let relay_fee = (self.client.relay_fee()? * 100_000_000.0) as u64; // from returned BTC/kB to satoshi/kB
-        info!("relay_fee is: {:?} satoshi/kB", relay_fee);
-
-        self.get_wallet()?.create_tx(tx_req, relay_fee)
+        self.get_wallet()?.create_tx(tx_req)
     }
 
     fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
@@ -578,20 +612,25 @@ impl<S: Read + Write> Session<Error> for ElectrumSession<S> {
 
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
         info!("electrum send_transaction {:#?}", tx);
+        let mut client = ClientWrap::new(self.url.clone())?;
         match &tx.transaction {
-            BETransaction::Bitcoin(tx) => self.client.transaction_broadcast(&tx)?,
+            BETransaction::Bitcoin(tx) => {
+                let tx_bytes = bitcoin::consensus::encode::serialize(tx);
+                client.transaction_broadcast_raw(&tx_bytes)?
+            },
             BETransaction::Elements(tx) => {
                 let tx_bytes = elements::encode::serialize(tx);
-                self.client.transaction_broadcast_raw(&tx_bytes)?
+                client.transaction_broadcast_raw(&tx_bytes)?
             }
         };
         Ok(format!("{}", tx.txid))
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
+        let mut client = ClientWrap::new(self.url.clone())?;
         info!("broadcast_transaction {:#?}", tx_hex);
         let hex = hex::decode(tx_hex)?;
-        let txid = self.client.transaction_broadcast_raw(&hex)?;
+        let txid = client.transaction_broadcast_raw(&hex)?;
         Ok(format!("{}", txid))
     }
 
@@ -653,7 +692,7 @@ impl<S: Read + Write> Tipper<S> {
 
 impl<S: Read + Write> Syncer<S> {
     pub fn sync(&mut self) -> Result<bool, Error> {
-        info!("start sync");
+        trace!("start sync");
         let start = Instant::now();
 
         //let mut client = Client::new("tn.not.fyi:55001")?;
@@ -680,7 +719,7 @@ impl<S: Read + Write> Syncer<S> {
                 };
 
                 let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                info!("{}/batch({}) {:?}", i, batch_count, flattened.len());
+                trace!("{}/batch({}) {:?}", i, batch_count, flattened.len());
 
                 if flattened.is_empty() {
                     break;
@@ -700,7 +739,7 @@ impl<S: Read + Write> Syncer<S> {
 
         self.db.insert_index(Index::External, last_used[Index::External as usize])?;
         self.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
-        info!("last_used: {:?}", last_used,);
+        trace!("last_used: {:?}", last_used,);
 
         let new_txs = self.sync_txs(&history_txs_id)?;
         self.sync_headers(&heights_set)?;
@@ -710,7 +749,7 @@ impl<S: Read + Write> Syncer<S> {
             self.db.flush()?;
         }
 
-        info!("elapsed {}", start.elapsed().as_millis());
+        trace!("elapsed {}", start.elapsed().as_millis());
 
         Ok(new_txs)
     }

@@ -5,10 +5,6 @@ use gdk_common::model::*;
 use gdk_common::session::Session;
 use serde_json::Value;
 
-pub fn address_result_value(addr: &AddressResult) -> Value {
-    json!({"address": addr.0, "pointer": 0})
-}
-
 pub fn balance_result_value(bal: &Balances) -> Value {
     json!(bal)
 }

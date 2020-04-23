@@ -17,10 +17,6 @@ pub struct WGBalance {
     pub satoshi: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WGAddress {
-    pub address: String,
-}
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct WGEstimateFeeReq {
     pub nblocks: u32,

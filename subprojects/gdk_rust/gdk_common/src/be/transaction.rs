@@ -15,6 +15,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
@@ -143,6 +145,17 @@ impl BETransaction {
                 let len = elm_ser(&new_out).len() + 1200; // 1200 is an estimate of the weight of surjproof and rangeproof
                 tx.output.push(new_out);
                 Ok(len)
+            }
+        }
+    }
+
+    pub fn scramble_outputs(&mut self) {
+        match self {
+            BETransaction::Bitcoin(tx) => {
+                tx.output.shuffle(&mut thread_rng());
+            }
+            BETransaction::Elements(tx) => {
+                tx.output.shuffle(&mut thread_rng());
             }
         }
     }
