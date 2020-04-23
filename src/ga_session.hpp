@@ -355,6 +355,9 @@ namespace sdk {
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange)
             GDK_REQUIRES(m_mutex);
 
+        void remap_appearance_settings(ga_session::locker_t& locker, const nlohmann::json& src_json,
+            nlohmann::json& dst_json, bool from_settings) GDK_REQUIRES(m_mutex);
+
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
             const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs,

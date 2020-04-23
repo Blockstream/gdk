@@ -1498,25 +1498,9 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        auto& appearance = m_login_data["appearance"];
         nlohmann::json settings;
 
-        // Re-map settings that are erroneously inside "appearance" to the top level
-        // For historic reasons certain settings have been put under appearance and the server
-        // still expects to find them there, but logically they don't belong there at all so
-        // a more consistent scheme is presented via the gdk
-        const auto remap_appearance_setting = [&](auto src, auto dst) {
-            const auto source_p = appearance.find(src);
-            if (source_p != appearance.end()) {
-                settings[dst] = *source_p;
-            }
-        };
-        remap_appearance_setting("notifications_settings", "notifications");
-        remap_appearance_setting("unit", "unit");
-        remap_appearance_setting("pgp", "pgp");
-        remap_appearance_setting("sound", "sound");
-        remap_appearance_setting("altimeout", "altimeout");
-        remap_appearance_setting("required_num_blocks", "required_num_blocks");
+        remap_appearance_settings(locker, m_login_data["appearance"], settings, false);
 
         settings["pricing"]["currency"] = m_fiat_currency;
         settings["pricing"]["exchange"] = m_fiat_source;
@@ -1528,23 +1512,8 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        auto& appearance = m_login_data["appearance"];
-
-        // Remap appearance settings, see comment above in get_settings
-        const auto remap_appearance_setting = [&](auto src, auto dst) {
-            const auto source_p = settings.find(src);
-            if (source_p != settings.end()) {
-                appearance[dst] = *source_p;
-            }
-        };
-        remap_appearance_setting("notifications", "notifications_settings");
-        remap_appearance_setting("unit", "unit");
-        remap_appearance_setting("pgp", "pgp");
-        remap_appearance_setting("sound", "sound");
-        remap_appearance_setting("altimeout", "altimeout");
-        remap_appearance_setting("required_num_blocks", "required_num_blocks");
-
-        cleanup_appearance_settings(locker, appearance);
+        remap_appearance_settings(locker, settings, m_login_data["appearance"], true);
+        cleanup_appearance_settings(locker, m_login_data["appearance"]);
         push_appearance_to_server(locker);
 
         const auto pricing_p = settings.find("pricing");
@@ -1553,6 +1522,33 @@ namespace sdk {
             const std::string exchange = pricing_p->value("exchange", m_fiat_source);
             change_settings_pricing_source(locker, currency, exchange);
         }
+    }
+
+    // Re-map settings that are erroneously inside "appearance" to the top level
+    // For historic reasons certain settings have been put under appearance and the server
+    // still expects to find them there, but logically they don't belong there at all so
+    // a more consistent scheme is presented via the gdk
+    void ga_session::remap_appearance_settings(
+        ga_session::locker_t& locker, const nlohmann::json& src_json, nlohmann::json& dst_json, bool from_settings)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        const auto remap_appearance_setting = [&src_json, &dst_json](auto src, auto dst) {
+            const auto source_p = src_json.find(src);
+            if (source_p != src_json.end()) {
+                dst_json[dst] = *source_p;
+            }
+        };
+
+        static const char* n = "notifications";
+        static const char* n_ = "notifications_settings";
+        remap_appearance_setting(from_settings ? n : n_, from_settings ? n_ : n);
+
+        remap_appearance_setting("unit", "unit");
+        remap_appearance_setting("pgp", "pgp");
+        remap_appearance_setting("sound", "sound");
+        remap_appearance_setting("altimeout", "altimeout");
+        remap_appearance_setting("required_num_blocks", "required_num_blocks");
     }
 
     void ga_session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
