@@ -9,7 +9,7 @@ android_log = ["android_logger"]
 
 [dependencies]
 log = "0.4.8"
-rand = "0.7.2"
+rand = "0.7.3"
 hex = "0.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

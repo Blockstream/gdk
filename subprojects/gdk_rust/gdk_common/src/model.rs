@@ -233,10 +233,16 @@ pub struct Subaccount {
     pub satoshi: Balances,
 }
 
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AddressPointer {
+    pub address: String,
+    pub pointer: u32,
+}
+
 // This one is simple enough to derive a serializer
 #[derive(Serialize, Debug, Clone)]
 pub struct FeeEstimate(pub u64);
-pub struct AddressResult(pub String);
 pub struct TxsResult(pub Vec<TxListItem>);
 
 /// Change to the model of Settings and Pricing structs could break old versions.
