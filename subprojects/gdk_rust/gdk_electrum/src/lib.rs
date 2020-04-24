@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use log::{debug, info, warn, trace};
+use log::{debug, info, trace, warn};
 use serde_json::Value;
 
 pub mod db;
@@ -77,7 +77,6 @@ pub enum ClientWrap {
 
 impl ClientWrap {
     pub fn new(url: ElectrumUrl) -> Result<Self, Error> {
-
         match url {
             ElectrumUrl::Tls(url, validate) => {
                 let client = electrum_client::Client::new_ssl(url.as_str(), validate)?;
@@ -91,8 +90,8 @@ impl ClientWrap {
     }
 
     pub fn batch_estimate_fee<'s, I>(&mut self, numbers: I) -> Result<Vec<f64>, Error>
-        where
-            I: IntoIterator<Item = usize>,
+    where
+        I: IntoIterator<Item = usize>,
     {
         Ok(match self {
             ClientWrap::Plain(client) => client.batch_estimate_fee(numbers)?,
@@ -100,22 +99,19 @@ impl ClientWrap {
         })
     }
 
-    pub fn relay_fee(&mut self) -> Result<f64, Error>
-    {
+    pub fn relay_fee(&mut self) -> Result<f64, Error> {
         Ok(match self {
             ClientWrap::Plain(client) => client.relay_fee()?,
             ClientWrap::Tls(client) => client.relay_fee()?,
         })
     }
 
-    pub fn transaction_broadcast_raw(&mut self, raw_tx: &[u8]) -> Result<Txid, Error>
-    {
+    pub fn transaction_broadcast_raw(&mut self, raw_tx: &[u8]) -> Result<Txid, Error> {
         Ok(match self {
             ClientWrap::Plain(client) => client.transaction_broadcast_raw(raw_tx)?,
             ClientWrap::Tls(client) => client.transaction_broadcast_raw(raw_tx)?,
         })
     }
-
 }
 
 pub struct Syncer<S: Read + Write> {
@@ -220,21 +216,13 @@ pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl,
 }
 
 impl ElectrumSession {
-    pub fn new_session(
-        network: Network,
-        db_root: &str,
-        url: ElectrumUrl,
-    ) -> Result<Self, Error> {
+    pub fn new_session(network: Network, db_root: &str, url: ElectrumUrl) -> Result<Self, Error> {
         Ok(Self::create_session(network, db_root, url))
     }
 }
 
 impl ElectrumSession {
-    pub fn create_session(
-        network: Network,
-        db_root: &str,
-        url: ElectrumUrl,
-    ) -> Self {
+    pub fn create_session(network: Network, db_root: &str, url: ElectrumUrl) -> Self {
         Self {
             db_root: db_root.to_string(),
             network,
@@ -386,7 +374,7 @@ impl Session<Error> for ElectrumSession {
         info!("opening sled db root path: {:?}", path);
         let db = Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?;
 
-        let mut wait_registry= false;
+        let mut wait_registry = false;
         let mut registry_thread = None;
         if self.network.liquid {
             let asset_icons = db.get_asset_icons()?;
@@ -599,7 +587,10 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession set_transaction_memo".into()))
     }
 
-    fn create_transaction(&mut self, tx_req: &CreateTransaction) -> Result<TransactionMeta, Error> {
+    fn create_transaction(
+        &mut self,
+        tx_req: &mut CreateTransaction,
+    ) -> Result<TransactionMeta, Error> {
         info!("electrum create_transaction {:#?}", tx_req);
 
         self.get_wallet()?.create_tx(tx_req)
@@ -617,7 +608,7 @@ impl Session<Error> for ElectrumSession {
             BETransaction::Bitcoin(tx) => {
                 let tx_bytes = bitcoin::consensus::encode::serialize(tx);
                 client.transaction_broadcast_raw(&tx_bytes)?
-            },
+            }
             BETransaction::Elements(tx) => {
                 let tx_bytes = elements::encode::serialize(tx);
                 client.transaction_broadcast_raw(&tx_bytes)?

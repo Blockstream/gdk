@@ -109,6 +109,7 @@ pub struct CreateTransaction {
     pub addressees: Vec<AddressAmount>,
     pub fee_rate: Option<u64>,  // in satoshi/kbyte
     pub subaccount: Option<u32>,
+    pub send_all: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

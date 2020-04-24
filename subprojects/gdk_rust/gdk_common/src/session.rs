@@ -24,7 +24,7 @@ pub trait Session<E> {
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
     fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<Balances, E>;
     fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), E>;
-    fn create_transaction(&mut self, details: &CreateTransaction) -> Result<TransactionMeta, E>;
+    fn create_transaction(&mut self, details: &mut CreateTransaction) -> Result<TransactionMeta, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &TransactionMeta) -> Result<TransactionMeta, E>;
     fn send_transaction(&mut self, tx_detail_signed: &TransactionMeta) -> Result<String, E>;
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, E>;
