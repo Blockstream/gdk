@@ -14,7 +14,7 @@ use log::{debug, info};
 use rand::Rng;
 
 use gdk_common::mnemonic::Mnemonic;
-use gdk_common::model::{CreateTransaction, Settings, TransactionMeta, AddressPointer};
+use gdk_common::model::{AddressPointer, CreateTransaction, Settings, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
 use gdk_common::wally::*;
@@ -129,7 +129,7 @@ impl WalletCtx {
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
 
-            let fee = tx.fee(&all_txs);
+            let fee = tx.fee(&all_txs, &all_unblinded);
             let satoshi = tx.my_balances(
                 &all_txs,
                 &all_scripts,
@@ -231,23 +231,58 @@ impl WalletCtx {
         Ok(result)
     }
 
-    // If request.utxo is None, we do the coin selection
-    pub fn create_tx(
-        &self,
-        request: &CreateTransaction,
-    ) -> Result<TransactionMeta, Error> {
+    pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
         info!("create_tx {:?}", request);
 
-        if request.addressees.iter().any(|a| a.satoshi == 0) {
-            return Err(Error::InvalidAmount);
+        if request.addressees.is_empty() {
+            return Err(Error::EmptyAddressees);
         }
 
-        let mut tx = BETransaction::new(self.network.id());
-        let policy_asset = self.network.policy_asset().ok();
+        if !request.send_all.unwrap_or(false) && request.addressees.iter().any(|a| a.satoshi == 0) {
+            return Err(Error::InvalidAmount);
+        }
 
         // convert from satoshi/kbyte to satoshi/byte
         let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0;
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
+
+        let utxos = self.utxos()?;
+        info!("utxos len:{}", utxos.len());
+
+        if request.send_all.unwrap_or(false) {
+            info!("send_all calculating total_amount");
+            if request.addressees.len() != 1 {
+                return Err(Error::SendAll);
+            }
+            let mut test_request = request.clone();
+            let address_amount = test_request.addressees[0].clone();
+            let asset = address_amount.asset_tag.as_deref().unwrap_or("btc");
+            let total_amount: u64 =
+                utxos.iter().filter(|(_, (b, _))| b == asset).map(|(_, (_, c))| c).sum();
+            info!("asset: {} total_amount:{}", asset, total_amount);
+
+            test_request.send_all = Some(false);
+            test_request.addressees[0].satoshi = total_amount;
+            loop {
+                let mut r = test_request.clone();
+                match self.create_tx(&mut r) {
+                    Err(Error::InsufficientFunds) => {
+                        // cannot use deterministic step otherwise the fee will identify the wallet
+                        // note that this value is ok because under the dust value and we will create no change
+                        let step: u64 = rand::thread_rng().gen_range(25, 75);
+                        test_request.addressees[0].satoshi = test_request.addressees[0]
+                            .satoshi
+                            .checked_sub(step)
+                            .ok_or_else(|| Error::SendAll)?
+                    }
+                    _ => break,
+                }
+            }
+            request.addressees[0].satoshi = test_request.addressees[0].satoshi;
+        }
+
+        let mut tx = BETransaction::new(self.network.id());
+        let policy_asset = self.network.policy_asset().ok();
 
         let mut fee_val = match self.network.id() {
             // last output is not consider for fee dynamic calculation, consider it here
@@ -283,9 +318,6 @@ impl WalletCtx {
             }
         }
         info!("{:?}", outgoing_map);
-
-        let utxos = self.utxos()?;
-        info!("utxos len:{}", utxos.len());
 
         let mut outgoing: Vec<(String, u64)> = outgoing_map.into_iter().collect();
         outgoing.sort_by(|a, b| b.0.len().cmp(&a.0.len())); // just want "btc" as last
@@ -332,30 +364,37 @@ impl WalletCtx {
             info!("change val for {} is {}", asset, change_val);
             let min_change = match self.network.id() {
                 NetworkId::Bitcoin(_) => 546,
-                NetworkId::Elements(_) => 0,
+                NetworkId::Elements(_) => {
+                    if asset == "btc" {
+                        // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
+                        // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
+                        // another reason, specific to this wallet, is that the send_all algorithm could reason in steps greater than 1, making it not too slow
+                        546
+                    } else {
+                        // Assets should always create change, cause 1 satoshi could represent 1 house
+                        0
+                    }
+                }
             };
             if change_val > min_change {
+                if request.send_all.unwrap_or(false) && asset == request.addressees[0].asset_tag.as_deref().unwrap_or("btc") {
+                    return Err(Error::SendAll);
+                }
                 let change_index = self.db.get_index(Index::Internal)? + 1;
                 let change_address =
                     self.derive_address(&self.xpub, &[1, change_index])?.to_string();
                 info!("adding change {:?}", change_address);
 
                 let len = tx.add_output(&change_address, change_val, remap.get(asset).cloned())?;
-                let increment = match self.network.id() {
-                    NetworkId::Bitcoin(_) => calc_fee_bytes(len),
-                    NetworkId::Elements(_) => {
-                        if asset == "btc" {
-                            0
-                        } else {
-                            calc_fee_bytes(len)
-                        }
-                    } //considering 0 for btc and liquid otherwise fee output will be wrong
-                };
-                fee_val += increment;
+                fee_val += calc_fee_bytes(len);
             }
         }
 
         tx.scramble();
+
+        let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
+        let (_, all_txs) = self.db.get_all_spent_and_txs()?;
+        let fee_val = tx.fee(&all_txs, &all_unblinded);  // recompute exact fee_val from built tx
 
         tx.add_fee_if_elements(fee_val, policy_asset);
 
@@ -656,7 +695,8 @@ impl WalletCtx {
         let pointer = self.db.increment_index(Index::External)?;
         let address = self.derive_address(&self.xpub, &[0, pointer])?.to_string();
         Ok(AddressPointer {
-            address, pointer
+            address,
+            pointer,
         })
     }
     pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, Error> {

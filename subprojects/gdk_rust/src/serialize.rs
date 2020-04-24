@@ -148,9 +148,9 @@ where
     E: Into<Error>,
     S: Session<E>,
 {
-    let create_tx: CreateTransaction = serde_json::from_value(input.clone())?;
+    let mut create_tx: CreateTransaction = serde_json::from_value(input.clone())?;
 
-    let res = session.create_transaction(&create_tx).map(|v| json!(v)).map_err(Into::into);
+    let res = session.create_transaction(&mut create_tx).map(|v| json!(v)).map_err(Into::into);
 
     Ok(match res {
         Err(ref err) => {

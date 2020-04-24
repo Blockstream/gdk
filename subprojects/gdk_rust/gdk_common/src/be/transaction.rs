@@ -205,24 +205,42 @@ impl BETransaction {
         }
     }
 
-    pub fn fee(&self, all_txs: &BETransactions) -> u64 {
+    /// calculate transaction fee,
+    /// for bitcoin it requires all previous output to get input values.
+    /// for elements,
+    ///     for complete transactions looks at the explicit fee output,
+    ///     for incomplete tx (without explicit fee output) take the sum previous outputs value, previously unblinded
+    ///                       and use the outputs value that must be still unblinded
+    pub fn fee(&self, all_txs: &BETransactions, all_unblinded: &HashMap<elements::OutPoint, Unblinded>) -> u64 {
         match self {
             Self::Bitcoin(tx) => {
                 let sum_inputs: u64 = tx
                     .input
                     .iter()
                     .map(|i| BEOutPoint::Bitcoin(i.previous_output.clone()))
-                    .filter_map(|o| all_txs.get_previous_output_value(&o, &HashMap::new()))
+                    .filter_map(|o| all_txs.get_previous_output_value(&o, all_unblinded))
                     .sum();
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
                 sum_inputs - sum_outputs
             }
             Self::Elements(tx) => {
-                tx.output
-                    .iter()
-                    .filter(|o| o.is_fee()) // TODO should check the asset is the policy asset
-                    .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
-                    .sum::<u64>()
+                let has_fee = tx.output.iter().any(|o| o.is_fee());
+                if has_fee {
+                    tx.output
+                        .iter()
+                        .filter(|o| o.is_fee()) // TODO should check the asset is the policy asset
+                        .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
+                        .sum::<u64>()
+                } else {
+                    let sum_outputs: u64 = tx.output.iter().map(|o| o.minimum_value()).sum();
+                    let sum_inputs: u64 = tx
+                        .input
+                        .iter()
+                        .map(|i| BEOutPoint::Elements(i.previous_output.clone()))
+                        .filter_map(|o| all_txs.get_previous_output_value(&o, all_unblinded))
+                        .sum();
+                    sum_inputs - sum_outputs
+                }
             }
         }
     }
