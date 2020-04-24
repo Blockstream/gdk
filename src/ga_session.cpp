@@ -1514,15 +1514,21 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        remap_appearance_settings(locker, settings, m_login_data["appearance"], true);
-        cleanup_appearance_settings(locker, m_login_data["appearance"]);
-        push_appearance_to_server(locker);
+        nlohmann::json appearance = m_login_data["appearance"];
+        remap_appearance_settings(locker, settings, appearance, true);
+        cleanup_appearance_settings(locker, appearance);
+        if (appearance != m_login_data["appearance"]) {
+            m_login_data["appearance"] = appearance;
+            push_appearance_to_server(locker);
+        }
 
         const auto pricing_p = settings.find("pricing");
         if (pricing_p != settings.end()) {
             const std::string currency = pricing_p->value("currency", m_fiat_currency);
             const std::string exchange = pricing_p->value("exchange", m_fiat_source);
-            change_settings_pricing_source(locker, currency, exchange);
+            if (currency != m_fiat_currency || exchange != m_fiat_source) {
+                change_settings_pricing_source(locker, currency, exchange);
+            }
         }
     }
 
