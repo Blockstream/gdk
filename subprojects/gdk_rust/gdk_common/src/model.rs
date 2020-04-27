@@ -117,7 +117,7 @@ pub struct GetTransactionsOpt {
     pub first: usize,
     pub count: usize,
     pub subaccount: usize,
-    pub num_confs: usize,
+    pub num_confs: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

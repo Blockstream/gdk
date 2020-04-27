@@ -572,7 +572,6 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
-
         let txs = self.get_wallet()?.list_tx(opt)?.iter().map(make_txlist_item).collect();
 
         Ok(TxsResult(txs))
