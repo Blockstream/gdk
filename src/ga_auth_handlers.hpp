@@ -159,6 +159,7 @@ namespace sdk {
         state_type call_impl() override;
 
         nlohmann::json m_settings;
+        nlohmann::json m_nlocktime_value;
     };
 
     class change_settings_twofactor_call : public auth_handler {
