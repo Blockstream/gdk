@@ -25,7 +25,7 @@ use crate::model::*;
 
 use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 
 #[derive(Debug)]
@@ -44,6 +44,31 @@ pub struct WalletCtx {
 pub enum ElectrumUrl {
     Tls(String, bool),
     Plaintext(String),
+}
+
+#[derive(Debug)]
+pub struct UTXOInfo {
+    pub asset: String,
+    pub value: u64,
+    pub script: Script,
+}
+
+impl UTXOInfo {
+    fn new(asset: String, value: u64, script: Script) -> Self {
+        UTXOInfo {
+            asset,
+            value,
+            script,
+        }
+    }
+}
+
+pub struct WalletData {
+    pub utxos: Vec<(BEOutPoint, UTXOInfo)>,
+    pub all_txs: BETransactions,
+    pub spent: HashSet<BEOutPoint>,
+    pub all_scripts: HashSet<Script>,
+    pub all_unblinded: HashMap<elements::OutPoint, Unblinded>,
 }
 
 impl WalletCtx {
@@ -121,9 +146,7 @@ impl WalletCtx {
 
         let mut txs = vec![];
         let mut my_txids = self.db.get_my()?;
-        my_txids.sort_by(|a, b| {
-            b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX))
-        });
+        my_txids.sort_by(|a, b| b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX)));
 
         for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
             info!("tx_id {}", tx_id);
@@ -165,7 +188,7 @@ impl WalletCtx {
         Ok(txs)
     }
 
-    fn utxos(&self) -> Result<Vec<(BEOutPoint, (String, u64))>, Error> {
+    fn utxos(&self) -> Result<WalletData, Error> {
         info!("start utxos");
         let (spent, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;
@@ -174,7 +197,7 @@ impl WalletCtx {
         let mut utxos = vec![];
         for tx_id in self.db.get_only_txids()? {
             let tx = all_txs.get(&tx_id).ok_or_else(fn_err("no tx"))?;
-            let tx_utxos: Vec<(BEOutPoint, (String, u64))> = match tx {
+            let tx_utxos: Vec<(BEOutPoint, UTXOInfo)> = match tx {
                 BETransaction::Bitcoin(tx) => tx
                     .output
                     .clone()
@@ -183,7 +206,12 @@ impl WalletCtx {
                     .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
                     .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
                     .filter(|(outpoint, _)| !spent.contains(&outpoint))
-                    .map(|(outpoint, output)| (outpoint, ("btc".to_string(), output.value)))
+                    .map(|(outpoint, output)| {
+                        (
+                            outpoint,
+                            UTXOInfo::new("btc".to_string(), output.value, output.script_pubkey),
+                        )
+                    })
                     .collect(),
                 BETransaction::Elements(tx) => tx
                     .output
@@ -195,14 +223,15 @@ impl WalletCtx {
                     })
                     .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
                     .filter(|(outpoint, _)| !spent.contains(&outpoint))
-                    .filter_map(|(outpoint, _)| {
+                    .filter_map(|(outpoint, output)| {
                         if let BEOutPoint::Elements(el_outpoint) = outpoint {
                             if let Some(unblinded) = all_unblinded.get(&el_outpoint) {
                                 return Some((
                                     outpoint,
-                                    (
+                                    UTXOInfo::new(
                                         unblinded.asset_hex(self.network.policy_asset.as_ref()),
                                         unblinded.value,
+                                        output.script_pubkey,
                                     ),
                                 ));
                             }
@@ -213,22 +242,29 @@ impl WalletCtx {
             };
             utxos.extend(tx_utxos);
         }
-        utxos.sort_by(|a, b| (b.1).1.cmp(&(a.1).1));
+        utxos.sort_by(|a, b| (b.1).value.cmp(&(a.1).value));
 
-        Ok(utxos)
+        let result = WalletData {
+            utxos,
+            all_unblinded,
+            all_txs,
+            all_scripts,
+            spent,
+        };
+        Ok(result)
     }
 
     pub fn balance(&self) -> Result<Balances, Error> {
         info!("start balance");
         let mut result = HashMap::new();
         result.entry("btc".to_string()).or_insert(0);
-        for (_, (asset, value)) in self.utxos()?.iter() {
-            let asset_btc = if Some(asset) == self.network.policy_asset.as_ref() {
+        for (_, info) in self.utxos()?.utxos.iter() {
+            let asset_btc = if Some(&info.asset) == self.network.policy_asset.as_ref() {
                 "btc".to_string()
             } else {
-                asset.to_string()
+                info.asset.clone()
             };
-            *result.entry(asset_btc).or_default() += *value as i64;
+            *result.entry(asset_btc).or_default() += info.value as i64;
         }
         Ok(result)
     }
@@ -248,7 +284,8 @@ impl WalletCtx {
         let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0;
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
-        let utxos = self.utxos()?;
+        let wallet_data = self.utxos()?;
+        let utxos = wallet_data.utxos;
         info!("utxos len:{}", utxos.len());
 
         if request.send_all.unwrap_or(false) {
@@ -260,7 +297,7 @@ impl WalletCtx {
             let address_amount = test_request.addressees[0].clone();
             let asset = address_amount.asset_tag.as_deref().unwrap_or("btc");
             let total_amount: u64 =
-                utxos.iter().filter(|(_, (b, _))| b == asset).map(|(_, (_, c))| c).sum();
+                utxos.iter().filter(|(_, i)| i.asset == asset).map(|(_, i)| i.value).sum();
             info!("asset: {} total_amount:{}", asset, total_amount);
 
             test_request.send_all = Some(false);
@@ -326,9 +363,9 @@ impl WalletCtx {
         info!("outgoing sorted:{:?}", outgoing);
         for (asset, outgoing) in outgoing.iter() {
             info!("doing {} out:{}", asset, outgoing);
-            let mut utxos: Vec<&(BEOutPoint, (String, u64))> =
-                utxos.iter().filter(|(_, (b, _))| b == asset).collect();
-            utxos.sort_by(|a, b| (a.1).1.cmp(&(b.1).1));
+            let mut utxos: Vec<&(BEOutPoint, UTXOInfo)> =
+                utxos.iter().filter(|(_, i)| &i.asset == asset).collect();
+            utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
             info!("filtered {} utxos:{:?}", asset, utxos);
 
             let mut selected_amount = 0u64;
@@ -343,20 +380,32 @@ impl WalletCtx {
                     selected_amount, outgoing, fee_val
                 );
                 let option = utxos.pop();
-                //TODO should pop also same script if any
+
                 info!("pop is: {:?}", option);
-                let (outpoint, (_, value)) = option.ok_or(Error::InsufficientFunds)?;
-                info!("popped out utxo of value: {}", value);
+                let utxo = option.ok_or(Error::InsufficientFunds)?;
+                info!("popped out utxo: {:?}", utxo);
 
-                let len = tx.add_input(outpoint.clone());
-                fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
+                // UTXO with same script should be spent together
+                let mut same_script_utxo = vec![];
+                for other_utxo in utxos.iter() {
+                    if (other_utxo.1).script == (utxo.1).script {
+                        same_script_utxo.push(other_utxo.clone());
+                    }
+                }
+                utxos.retain(|(_, i)| i.script != utxo.1.script);
+                same_script_utxo.push(utxo);
 
-                selected_amount += value;
-                needed = if asset == "btc" {
-                    *outgoing + fee_val
-                } else {
-                    *outgoing
-                };
+                for (outpoint, info) in same_script_utxo {
+                    let len = tx.add_input(outpoint.clone());
+                    fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
+
+                    selected_amount += info.value;
+                    needed = if asset == "btc" {
+                        *outgoing + fee_val
+                    } else {
+                        *outgoing
+                    };
+                }
             }
             info!("selected_amount {} outgoing {} fee_val {}", selected_amount, outgoing, fee_val);
             let mut change_val = selected_amount - outgoing;
@@ -379,7 +428,9 @@ impl WalletCtx {
                 }
             };
             if change_val > min_change {
-                if request.send_all.unwrap_or(false) && asset == request.addressees[0].asset_tag.as_deref().unwrap_or("btc") {
+                if request.send_all.unwrap_or(false)
+                    && asset == request.addressees[0].asset_tag.as_deref().unwrap_or("btc")
+                {
                     return Err(Error::SendAll);
                 }
                 let change_index = self.db.get_index(Index::Internal)? + 1;
@@ -394,9 +445,7 @@ impl WalletCtx {
 
         tx.scramble();
 
-        let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
-        let (_, all_txs) = self.db.get_all_spent_and_txs()?;
-        let fee_val = tx.fee(&all_txs, &all_unblinded);  // recompute exact fee_val from built tx
+        let fee_val = tx.fee(&wallet_data.all_txs, &wallet_data.all_unblinded); // recompute exact fee_val from built tx
 
         tx.add_fee_if_elements(fee_val, policy_asset);
 
