@@ -557,7 +557,9 @@ impl Session<Error> for ElectrumSession {
 
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, Error> {
         let balance = self.get_balance(num_confs, Some(index))?;
-        let txs = self.get_transactions(&json!({}))?;
+        let mut opt = GetTransactionsOpt::default();
+        opt.count = 1;
+        let txs = self.get_transactions(&opt)?;
 
         let subaccounts_fake = Subaccount {
             type_: "electrum".into(),
@@ -569,8 +571,9 @@ impl Session<Error> for ElectrumSession {
         Ok(subaccounts_fake)
     }
 
-    fn get_transactions(&self, _details: &Value) -> Result<TxsResult, Error> {
-        let txs = self.get_wallet()?.list_tx()?.iter().map(make_txlist_item).collect();
+    fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
+
+        let txs = self.get_wallet()?.list_tx(opt)?.iter().map(make_txlist_item).collect();
 
         Ok(TxsResult(txs))
     }

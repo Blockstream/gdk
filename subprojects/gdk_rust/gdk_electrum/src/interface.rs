@@ -8,7 +8,7 @@ use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::PublicKey;
 use elements;
-use gdk_common::model::Balances;
+use gdk_common::model::{Balances, GetTransactionsOpt};
 use hex;
 use log::{debug, info};
 use rand::Rng;
@@ -113,18 +113,22 @@ impl WalletCtx {
         self.db.insert_settings(settings)
     }
 
-    pub fn list_tx(&self) -> Result<Vec<TransactionMeta>, Error> {
+    pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
         info!("start list_tx");
         let (_, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;
         let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
 
         let mut txs = vec![];
+        let mut my_txids = self.db.get_my()?;
+        my_txids.sort_by(|a, b| {
+            b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX))
+        });
 
-        for (tx_id, height) in self.db.get_my()? {
+        for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
             info!("tx_id {}", tx_id);
 
-            let tx = all_txs.get(&tx_id).ok_or_else(fn_err("no tx"))?;
+            let tx = all_txs.get(tx_id).ok_or_else(fn_err("no tx"))?;
             let header = height
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
@@ -147,7 +151,7 @@ impl WalletCtx {
 
             let tx_meta = TransactionMeta::new(
                 tx.clone(),
-                height,
+                *height,
                 header.map(|h| h.time()),
                 satoshi,
                 fee,
@@ -157,9 +161,7 @@ impl WalletCtx {
 
             txs.push(tx_meta);
         }
-        txs.sort_by(|a, b| {
-            b.height.unwrap_or(std::u32::MAX).cmp(&a.height.unwrap_or(std::u32::MAX))
-        });
+
         Ok(txs)
     }
 
