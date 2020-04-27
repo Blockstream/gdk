@@ -35,7 +35,7 @@ use std::sync::Once;
 use std::time::{Duration, SystemTime};
 
 use gdk_common::constants::{GA_ERROR, GA_OK};
-use gdk_common::model::GDKRUST_json;
+use gdk_common::model::{GDKRUST_json, GetTransactionsOpt};
 use gdk_common::session::Session;
 use gdk_common::util::{make_str, read_str};
 
@@ -363,7 +363,8 @@ where
         "get_subaccount" => get_subaccount(session, input),
 
         "get_transactions" => {
-            session.get_transactions(input).map(|x| txs_result_value(&x)).map_err(Into::into)
+            let opt: GetTransactionsOpt = serde_json::from_value(input.clone())?;
+            session.get_transactions(&opt).map(|x| txs_result_value(&x)).map_err(Into::into)
         }
 
         "get_transaction_details" => get_transaction_details(session, input),

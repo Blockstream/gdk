@@ -1,5 +1,5 @@
 use crate::mnemonic::Mnemonic;
-use crate::model::{CreateTransaction, FeeEstimate, Notification, Settings, Subaccount, TransactionMeta, TxsResult, AddressPointer};
+use crate::model::{CreateTransaction, FeeEstimate, Notification, Settings, Subaccount, TransactionMeta, TxsResult, AddressPointer, GetTransactionsOpt};
 use crate::model::{Balances, RefreshAssets};
 use crate::password::Password;
 
@@ -20,7 +20,7 @@ pub trait Session<E> {
     ) -> Result<Vec<Notification>, E>;
     fn get_subaccounts(&self) -> Result<Vec<Subaccount>, E>;
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, E>;
-    fn get_transactions(&self, details: &Value) -> Result<TxsResult, E>;
+    fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
     fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<Balances, E>;
     fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), E>;
