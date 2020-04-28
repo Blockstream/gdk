@@ -262,6 +262,7 @@ pub struct Settings {
     pub required_num_blocks: u32,
     pub altimeout: u32,
     pub pricing: Pricing,
+    pub sound: bool,
 }
 
 /// {"icons":true,"assets":false,"refresh":false}
@@ -290,6 +291,7 @@ impl Default for Settings {
             required_num_blocks: 12,
             altimeout: 600,
             pricing,
+            sound: false,
         }
     }
 }
