@@ -453,11 +453,21 @@ impl WalletCtx {
         let rate = fee_val as f64 / len as f64;
         info!("created tx fee {:?} size: {} rate: {}", fee_val, len, rate);
 
+        let mut satoshi = tx.my_balances(
+            &wallet_data.all_txs,
+            &wallet_data.all_scripts,
+            &wallet_data.all_unblinded,
+            self.network.policy_asset.as_ref(),
+        );
+        for (_, v) in satoshi.iter_mut() {
+            *v = v.abs();
+        }
+
         let mut created_tx = TransactionMeta::new(
-            tx, //TODO
+            tx,
             None,
             None,
-            HashMap::new(), //TODO
+            satoshi,
             fee_val,
             self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
             "outgoing".to_string(),
