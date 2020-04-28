@@ -194,6 +194,12 @@ fn notify_block(notif: NativeNotif, height: usize) {
     notify(notif, data);
 }
 
+fn notify_settings(notif: NativeNotif, settings: &Settings)  {
+    let value = serde_json::to_value(settings).unwrap();  // unwrap safe because settings does not contain map with non string
+    let data = json!({"settings":value,"event":"settings"});
+    notify(notif, data);
+}
+
 fn determine_electrum_url(
     url: &Option<String>,
     tls: &Option<bool>,
@@ -527,6 +533,8 @@ impl Session<Error> for ElectrumSession {
             }
         });
 
+        notify_settings(self.notify.clone(), &self.get_settings()?);
+
         if let Some(registry_thread) = registry_thread {
             if wait_registry {
                 info!("waiting registry thread");
@@ -641,13 +649,14 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet().map(|wallet| wallet.get_mnemonic())
     }
 
-    fn get_settings(&self) -> Result<Value, Error> {
-        let settings = self.get_wallet()?.get_settings()?;
-        Ok(serde_json::to_value(settings)?)
+    fn get_settings(&self) -> Result<Settings, Error> {
+        Ok(self.get_wallet()?.get_settings()?)
     }
 
     fn change_settings(&mut self, settings: &Settings) -> Result<(), Error> {
-        self.get_wallet()?.change_settings(settings)
+        self.get_wallet()?.change_settings(settings)?;
+        notify_settings(self.notify.clone(), settings);
+        Ok(())
     }
 
     fn get_available_currencies(&self) -> Result<Value, Error> {
