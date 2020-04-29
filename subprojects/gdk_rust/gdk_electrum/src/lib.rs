@@ -194,8 +194,8 @@ fn notify_block(notif: NativeNotif, height: usize) {
     notify(notif, data);
 }
 
-fn notify_settings(notif: NativeNotif, settings: &Settings)  {
-    let value = serde_json::to_value(settings).unwrap();  // unwrap safe because settings does not contain map with non string
+fn notify_settings(notif: NativeNotif, settings: &Settings) {
+    let value = serde_json::to_value(settings).unwrap(); // unwrap safe because settings does not contain map with non string
     let data = json!({"settings":value,"event":"settings"});
     notify(notif, data);
 }

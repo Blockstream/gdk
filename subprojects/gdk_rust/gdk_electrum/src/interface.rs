@@ -632,7 +632,7 @@ impl WalletCtx {
         //let random_bytes = [11u8; 32];
         let min_value = 1;
         let ct_exp = 0;
-        let ct_bits = 52;  // TODO should be read from network_parameters
+        let ct_bits = 52; // TODO should be read from network_parameters
 
         let mut output_blinded_values = vec![];
         for output in tx.output.iter() {
