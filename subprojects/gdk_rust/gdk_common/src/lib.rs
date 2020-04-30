@@ -13,6 +13,5 @@ pub mod network;
 pub mod password;
 pub mod session;
 pub mod util;
-pub mod wally;
 
 pub use network::*;

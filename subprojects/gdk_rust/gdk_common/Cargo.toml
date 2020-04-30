@@ -15,6 +15,7 @@ libc = "0.2"
 backtrace = "0.3"
 hex = "0.4.0"
 rand = "0.7.3"
+wally = { git= "https://github.com/RCasatta/wally" }
 
 [dependencies.bitcoin]
 version = "0.23"

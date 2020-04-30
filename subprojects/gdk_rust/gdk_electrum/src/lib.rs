@@ -27,7 +27,7 @@ use gdk_common::model::*;
 use gdk_common::network::Network;
 use gdk_common::password::Password;
 use gdk_common::session::Session;
-use gdk_common::wally::{
+use wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, asset_unblind,
     MasterBlindingKey,
 };

@@ -23,6 +23,7 @@ electrum-client = { git="https://github.com/RCasatta/rust-electrum-client" ,bran
 #electrum-client = { path="../../../../rust-electrum-client" }
 chrono = "0.4.11"
 ureq = "0.12.1"
+wally = { git="https://github.com/RCasatta/wally" }
 
 #[dependencies.reqwest]
 #version = "0.10.4"
