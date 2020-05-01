@@ -522,9 +522,10 @@ impl WalletCtx {
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("sign");
-
-        match &request.transaction {
-            BETransaction::Bitcoin(tx) => {
+        match self.network.id() {
+            NetworkId::Bitcoin(_) => {
+                let tx: bitcoin::Transaction =
+                    bitcoin::consensus::deserialize(&hex::decode(&request.hex)?)?;
                 let mut out_tx = tx.clone();
 
                 for i in 0..tx.input.len() {
@@ -559,7 +560,9 @@ impl WalletCtx {
 
                 Ok(wgtx)
             }
-            BETransaction::Elements(tx) => {
+            NetworkId::Elements(_) => {
+                let tx: elements::Transaction =
+                    elements::encode::deserialize(&hex::decode(&request.hex)?)?;
                 let mut out_tx = tx.clone();
                 self.blind_tx(&mut out_tx)?;
 

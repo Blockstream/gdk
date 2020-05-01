@@ -275,7 +275,11 @@ impl BETransaction {
 
                 previous_scripts.len() == tx.input.len()
                     && previous_scripts.iter().all(|i| all_scripts.contains(i))
-                    && tx.output.iter().filter(|o| !o.is_fee()).all(|o| all_scripts.contains(&o.script_pubkey))
+                    && tx
+                        .output
+                        .iter()
+                        .filter(|o| !o.is_fee())
+                        .all(|o| all_scripts.contains(&o.script_pubkey))
             }
         }
     }
