@@ -245,6 +245,18 @@ impl BETransaction {
         }
     }
 
+    pub fn is_redeposit(
+        &self, all_scripts: &HashSet<Script>) -> bool {
+        match self {
+            Self::Bitcoin(tx) => {
+                tx.output.iter().all(|o| all_scripts.contains(&o.script_pubkey) )
+            }
+            Self::Elements(tx) => {
+                tx.output.iter().all(|o| all_scripts.contains(&o.script_pubkey) )
+            }
+        }
+    }
+
     pub fn my_balances(
         &self,
         all_txs: &BETransactions,
