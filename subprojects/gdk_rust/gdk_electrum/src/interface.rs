@@ -167,10 +167,10 @@ impl WalletCtx {
 
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
-            let type_ = if positives > negatives {
-                "incoming"
-            } else {
-                "outgoing"
+            let type_ = match (positives > negatives, tx.is_redeposit(&all_scripts)) {
+                (_, true) => "redeposit",
+                (true, false ) => "incoming",
+                (false, false ) => "outgoing",
             };
 
             let tx_meta = TransactionMeta::new(
