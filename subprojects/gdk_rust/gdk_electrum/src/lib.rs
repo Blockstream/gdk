@@ -27,7 +27,7 @@ use gdk_common::model::*;
 use gdk_common::network::Network;
 use gdk_common::password::Password;
 use gdk_common::session::Session;
-use gdk_common::wally::{
+use wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, asset_unblind,
     MasterBlindingKey,
 };
@@ -194,8 +194,8 @@ fn notify_block(notif: NativeNotif, height: usize) {
     notify(notif, data);
 }
 
-fn notify_settings(notif: NativeNotif, settings: &Settings)  {
-    let value = serde_json::to_value(settings).unwrap();  // unwrap safe because settings does not contain map with non string
+fn notify_settings(notif: NativeNotif, settings: &Settings) {
+    let value = serde_json::to_value(settings).unwrap(); // unwrap safe because settings does not contain map with non string
     let data = json!({"settings":value,"event":"settings"});
     notify(notif, data);
 }

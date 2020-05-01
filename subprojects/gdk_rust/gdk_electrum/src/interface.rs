@@ -17,7 +17,7 @@ use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{AddressPointer, CreateTransaction, Settings, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::util::p2shwpkh_script;
-use gdk_common::wally::*;
+use wally::*;
 
 use crate::db::*;
 use crate::error::*;
@@ -632,7 +632,7 @@ impl WalletCtx {
         //let random_bytes = [11u8; 32];
         let min_value = 1;
         let ct_exp = 0;
-        let ct_bits = 52;
+        let ct_bits = 52; // TODO should be read from network_parameters
 
         let mut output_blinded_values = vec![];
         for output in tx.output.iter() {
@@ -659,7 +659,7 @@ impl WalletCtx {
         all_vbfs.extend(input_vbfs.to_vec());
         all_vbfs.extend(output_vbfs.iter().cloned().flatten().collect::<Vec<u8>>());
 
-        let last_vbf = asset_final_vbf(all_values, in_num as u32, all_abfs, all_vbfs);
+        let last_vbf = asset_final_vbf(all_values, in_num, all_abfs, all_vbfs);
         output_vbfs.push(last_vbf.to_vec());
 
         for (i, mut output) in tx.output.iter_mut().enumerate() {

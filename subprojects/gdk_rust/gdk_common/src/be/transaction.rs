@@ -11,12 +11,12 @@ use elements::confidential;
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::{TxInWitness, TxOutWitness};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use rand::thread_rng;
-use rand::seq::SliceRandom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
@@ -211,7 +211,11 @@ impl BETransaction {
     ///     for complete transactions looks at the explicit fee output,
     ///     for incomplete tx (without explicit fee output) take the sum previous outputs value, previously unblinded
     ///                       and use the outputs value that must be still unblinded
-    pub fn fee(&self, all_txs: &BETransactions, all_unblinded: &HashMap<elements::OutPoint, Unblinded>) -> u64 {
+    pub fn fee(
+        &self,
+        all_txs: &BETransactions,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    ) -> u64 {
         match self {
             Self::Bitcoin(tx) => {
                 let sum_inputs: u64 = tx

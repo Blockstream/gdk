@@ -8,7 +8,7 @@ use elements::AddressParams;
 use gdk_common::be::*;
 use gdk_common::model::Settings;
 use gdk_common::util::p2shwpkh_script;
-use gdk_common::wally::{
+use wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
 use gdk_common::{ElementsNetwork, NetworkId};

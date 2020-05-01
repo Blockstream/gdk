@@ -40,8 +40,6 @@ rust_sources = [
   'gdk_common/src/be/blockheader.rs',
   'gdk_common/src/be/outpoint.rs',
   'gdk_common/src/be/transaction.rs',
-  'gdk_common/src/wally/mod.rs',
-  'gdk_common/src/wally/ffi.rs',
   'gdk_common/src/constants.rs',
   'gdk_common/src/error.rs',
   'gdk_common/src/lib.rs',

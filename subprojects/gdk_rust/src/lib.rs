@@ -201,9 +201,8 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
                 .map_err(|x| json!(x))?;
             let move_url = url.clone();
 
-            let session = ElectrumSession::new_session(parsed_network.clone(),
-                                                       db_root,
-            move_url).map_err(|x| json!(x))?;
+            let session = ElectrumSession::new_session(parsed_network.clone(), db_root, move_url)
+                .map_err(|x| json!(x))?;
             let backend = GdkBackend::Electrum(session);
 
             // some time in the past
