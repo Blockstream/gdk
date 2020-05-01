@@ -194,7 +194,7 @@ fn notify_block(notif: NativeNotif, height: usize) {
     notify(notif, data);
 }
 
-fn notify_settings(notif: NativeNotif, settings: &Settings)  {
+fn notify_settings(notif: NativeNotif, settings: &Settings) {
     let data = json!({"settings":settings,"event":"settings"});
     notify(notif, data);
 }
