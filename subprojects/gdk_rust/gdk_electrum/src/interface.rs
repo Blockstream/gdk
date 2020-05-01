@@ -27,6 +27,7 @@ use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::*;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct WalletCtx {
@@ -271,6 +272,18 @@ impl WalletCtx {
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
         info!("create_tx {:?}", request);
+
+        // eagerly check for address validity
+        for address in request.addressees.iter().map(|a| &a.address) {
+            match self.network.id() {
+                NetworkId::Bitcoin(_) => bitcoin::Address::from_str(address)
+                    .map_err(|_| Error::InvalidAddress)
+                    .map(|_| ())?,
+                NetworkId::Elements(_) => elements::Address::from_str(address)
+                    .map_err(|_| Error::InvalidAddress)
+                    .map(|_| ())?,
+            }
+        }
 
         if request.addressees.is_empty() {
             return Err(Error::EmptyAddressees);
