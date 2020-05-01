@@ -195,8 +195,12 @@ fn notify_block(notif: NativeNotif, height: usize) {
 }
 
 fn notify_settings(notif: NativeNotif, settings: &Settings)  {
-    let value = serde_json::to_value(settings).unwrap();  // unwrap safe because settings does not contain map with non string
-    let data = json!({"settings":value,"event":"settings"});
+    let data = json!({"settings":settings,"event":"settings"});
+    notify(notif, data);
+}
+
+fn notify_fee(notif: NativeNotif, fees: &Vec<FeeEstimate>) {
+    let data = json!({"fees":fees,"event":"fees"});
     notify(notif, data);
 }
 
@@ -534,6 +538,9 @@ impl Session<Error> for ElectrumSession {
         });
 
         notify_settings(self.notify.clone(), &self.get_settings()?);
+
+        let estimates = self.get_fee_estimates()?;
+        notify_fee(self.notify.clone(), &estimates);
 
         if let Some(registry_thread) = registry_thread {
             if wait_registry {
