@@ -11,12 +11,12 @@ use elements::confidential;
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::{TxInWitness, TxOutWitness};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use rand::thread_rng;
-use rand::seq::SliceRandom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
@@ -211,7 +211,11 @@ impl BETransaction {
     ///     for complete transactions looks at the explicit fee output,
     ///     for incomplete tx (without explicit fee output) take the sum previous outputs value, previously unblinded
     ///                       and use the outputs value that must be still unblinded
-    pub fn fee(&self, all_txs: &BETransactions, all_unblinded: &HashMap<elements::OutPoint, Unblinded>) -> u64 {
+    pub fn fee(
+        &self,
+        all_txs: &BETransactions,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    ) -> u64 {
         match self {
             Self::Bitcoin(tx) => {
                 let sum_inputs: u64 = tx
@@ -245,14 +249,33 @@ impl BETransaction {
         }
     }
 
-    pub fn is_redeposit(
-        &self, all_scripts: &HashSet<Script>) -> bool {
+    pub fn is_redeposit(&self, all_scripts: &HashSet<Script>, all_txs: &BETransactions) -> bool {
         match self {
             Self::Bitcoin(tx) => {
-                tx.output.iter().all(|o| all_scripts.contains(&o.script_pubkey) )
+                let previous_scripts: Vec<Script> = tx
+                    .input
+                    .iter()
+                    .filter_map(|i| {
+                        all_txs.get_previous_output_script_pubkey(&i.previous_output.into())
+                    })
+                    .collect();
+
+                previous_scripts.len() == tx.input.len()
+                    && previous_scripts.iter().all(|i| all_scripts.contains(i))
+                    && tx.output.iter().all(|o| all_scripts.contains(&o.script_pubkey))
             }
             Self::Elements(tx) => {
-                tx.output.iter().all(|o| all_scripts.contains(&o.script_pubkey) )
+                let previous_scripts: Vec<Script> = tx
+                    .input
+                    .iter()
+                    .filter_map(|i| {
+                        all_txs.get_previous_output_script_pubkey(&i.previous_output.into())
+                    })
+                    .collect();
+
+                previous_scripts.len() == tx.input.len()
+                    && previous_scripts.iter().all(|i| all_scripts.contains(i))
+                    && tx.output.iter().filter(|o| !o.is_fee()).all(|o| all_scripts.contains(&o.script_pubkey))
             }
         }
     }
@@ -269,7 +292,7 @@ impl BETransaction {
                 let mut result = HashMap::new();
                 let mut my_out: i64 = 0;
                 for input in tx.input.iter() {
-                    let outpoint = BEOutPoint::Bitcoin(input.previous_output.clone());
+                    let outpoint = input.previous_output.clone().into();
                     let script = all_txs.get_previous_output_script_pubkey(&outpoint);
                     if let Some(script) = script {
                         if all_scripts.contains(&script) {

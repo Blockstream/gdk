@@ -107,7 +107,7 @@ pub enum Notification {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateTransaction {
     pub addressees: Vec<AddressAmount>,
-    pub fee_rate: Option<u64>,  // in satoshi/kbyte
+    pub fee_rate: Option<u64>, // in satoshi/kbyte
     pub subaccount: Option<u32>,
     pub send_all: Option<bool>,
 }
@@ -241,7 +241,6 @@ pub struct Subaccount {
     pub has_transactions: bool,
     pub satoshi: Balances,
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddressPointer {

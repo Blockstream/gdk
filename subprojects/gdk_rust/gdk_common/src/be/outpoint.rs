@@ -7,6 +7,18 @@ pub enum BEOutPoint {
     Elements(elements::OutPoint),
 }
 
+impl From<bitcoin::OutPoint> for BEOutPoint {
+    fn from(o: bitcoin::OutPoint) -> Self {
+        BEOutPoint::new_bitcoin(o.txid, o.vout)
+    }
+}
+
+impl From<elements::OutPoint> for BEOutPoint {
+    fn from(o: elements::OutPoint) -> Self {
+        BEOutPoint::new_elements(o.txid, o.vout)
+    }
+}
+
 impl BEOutPoint {
     pub fn new_bitcoin(txid: Txid, vout: u32) -> Self {
         BEOutPoint::Bitcoin(bitcoin::OutPoint {
