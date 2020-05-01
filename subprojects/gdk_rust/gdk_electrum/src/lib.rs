@@ -621,17 +621,9 @@ impl Session<Error> for ElectrumSession {
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
         info!("electrum send_transaction {:#?}", tx);
         let mut client = ClientWrap::new(self.url.clone())?;
-        match &tx.transaction {
-            BETransaction::Bitcoin(tx) => {
-                let tx_bytes = bitcoin::consensus::encode::serialize(tx);
-                client.transaction_broadcast_raw(&tx_bytes)?
-            }
-            BETransaction::Elements(tx) => {
-                let tx_bytes = elements::encode::serialize(tx);
-                client.transaction_broadcast_raw(&tx_bytes)?
-            }
-        };
-        Ok(format!("{}", tx.txid))
+        let tx_bytes = hex::decode(&tx.hex)?;
+        let txid = client.transaction_broadcast_raw(&tx_bytes)?;
+        Ok(format!("{}", txid))
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {

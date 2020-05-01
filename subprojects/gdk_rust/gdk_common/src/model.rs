@@ -124,8 +124,6 @@ pub struct GetTransactionsOpt {
 pub struct TransactionMeta {
     #[serde(flatten)]
     pub create_transaction: Option<CreateTransaction>,
-    #[serde(rename = "transaction_object")]
-    pub transaction: BETransaction,
     #[serde(rename = "transaction")]
     pub hex: String,
     pub txid: String,
@@ -150,7 +148,6 @@ impl From<BETransaction> for TransactionMeta {
         let timestamp = now();
         TransactionMeta {
             create_transaction: None,
-            transaction,
             height: None,
             created_at: format(timestamp),
             timestamp,
