@@ -298,13 +298,11 @@ impl Forest {
     pub fn insert_index(&self, int_or_ext: Index, value: u32) -> Result<(), Error> {
         Ok(self.singles.insert([int_or_ext as u8], &value.to_be_bytes()).map(|_| ())?)
     }
-
     pub fn get_index(&self, int_or_ext: Index) -> Result<u32, Error> {
         let ivec = self.singles.get([int_or_ext as u8])?.ok_or_else(fn_err("no index"))?;
         let bytes: [u8; 4] = ivec.as_ref().try_into()?;
         Ok(u32::from_be_bytes(bytes))
     }
-
     pub fn increment_index(&self, int_or_ext: Index) -> Result<u32, Error> {
         //TODO should be done atomically
         let new_index = self.get_index(int_or_ext)? + 1;
@@ -315,7 +313,6 @@ impl Forest {
     pub fn insert_settings(&self, settings: &Settings) -> Result<(), Error> {
         Ok(self.singles.insert(b"s", serde_json::to_vec(settings)?).map(|_| ())?)
     }
-
     pub fn get_settings(&self) -> Result<Option<Settings>, Error> {
         self.singles.get(b"s")?.map(|v| Ok(serde_json::from_slice::<Settings>(&v)?)).transpose()
     }
@@ -323,15 +320,15 @@ impl Forest {
     pub fn get_asset_icons(&self) -> Result<Option<Value>, Error> {
         self.singles.get(b"i")?.map(|v| Ok(serde_json::from_slice::<Value>(&v)?)).transpose()
     }
-    pub fn insert_asset_icons(&self, asset_icons: &str) -> Result<(), Error> {
-        Ok(self.singles.insert(b"i", asset_icons.as_bytes()).map(|_| ())?)
+    pub fn insert_asset_icons(&self, asset_icons: &Value) -> Result<(), Error> {
+        Ok(self.singles.insert(b"i", serde_json::to_vec(asset_icons)?).map(|_| ())?)
     }
 
     pub fn get_asset_registry(&self) -> Result<Option<Value>, Error> {
         self.singles.get(b"r")?.map(|v| Ok(serde_json::from_slice::<Value>(&v)?)).transpose()
     }
-    pub fn insert_asset_registry(&self, asset_registry: &str) -> Result<(), Error> {
-        Ok(self.singles.insert(b"r", asset_registry.as_bytes()).map(|_| ())?)
+    pub fn insert_asset_registry(&self, asset_registry: &Value) -> Result<(), Error> {
+        Ok(self.singles.insert(b"r", serde_json::to_vec(asset_registry)? ).map(|_| ())?)
     }
 
     pub fn is_mine(&self, script: &Script) -> bool {

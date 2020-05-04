@@ -386,7 +386,9 @@ impl Session<Error> for ElectrumSession {
 
         let mut wait_registry = false;
         let mut registry_thread = None;
+
         if self.network.liquid {
+            let registry_policy = self.network.policy_asset.clone();
             let asset_icons = db.get_asset_icons()?;
             let asset_registry = db.get_asset_registry()?;
             wait_registry = asset_icons.is_none() || asset_registry.is_none();
@@ -400,13 +402,19 @@ impl Session<Error> for ElectrumSession {
                     .unwrap();
 
                 info!("got registry (len:{})", registry.len());
+                let mut registry: Value = serde_json::from_str(&registry).unwrap();
+                if let Some(policy) = registry_policy {
+                    info!("inserting policy asset {}", policy);
+                    registry[policy.to_string()] = json!({"asset_id": policy.to_string(), "name": "btc"});
+                }
+
                 db_for_registry.insert_asset_registry(&registry).unwrap();
                 let icons = ureq::get("https://assets.blockstream.info/icons.json")
                     .call()
                     .into_string()
                     .unwrap();
                 info!("got icons (len:{})", icons.len());
-                db_for_registry.insert_asset_icons(&icons).unwrap();
+                db_for_registry.insert_asset_icons(&serde_json::from_str(&icons).unwrap()).unwrap();
             }));
         }
 
