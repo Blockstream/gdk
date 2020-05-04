@@ -374,6 +374,7 @@ impl WalletCtx {
         let mut outgoing: Vec<(String, u64)> = outgoing_map.into_iter().collect();
         outgoing.sort_by(|a, b| b.0.len().cmp(&a.0.len())); // just want "btc" as last
         info!("outgoing sorted:{:?}", outgoing);
+        let mut change_increment = 1;
         for (asset, outgoing) in outgoing.iter() {
             info!("doing {} out:{}", asset, outgoing);
             let mut utxos: Vec<&(BEOutPoint, UTXOInfo)> =
@@ -446,7 +447,8 @@ impl WalletCtx {
                 {
                     return Err(Error::SendAll);
                 }
-                let change_index = self.db.get_index(Index::Internal)? + 1;
+                let change_index = self.db.get_index(Index::Internal)? + change_increment;
+                change_increment += 1;  // in liquid there are more than 1 change, using different addresses
                 let change_address =
                     self.derive_address(&self.xpub, &[1, change_index])?.to_string();
                 info!("adding change {:?}", change_address);
@@ -486,6 +488,7 @@ impl WalletCtx {
             "outgoing".to_string(),
         );
         created_tx.create_transaction = Some(request.clone());
+        created_tx.changes_used = Some(change_increment-1);
         info!("returning: {:?}", created_tx);
 
         Ok(created_tx)
@@ -522,7 +525,7 @@ impl WalletCtx {
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("sign");
-        match self.network.id() {
+        let betx: TransactionMeta = match self.network.id() {
             NetworkId::Bitcoin(_) => {
                 let tx: bitcoin::Transaction =
                     bitcoin::consensus::deserialize(&hex::decode(&request.hex)?)?;
@@ -555,10 +558,7 @@ impl WalletCtx {
                 }
                 let tx = BETransaction::Bitcoin(out_tx);
                 info!("transaction final size is {}", tx.serialize().len());
-                let wgtx: TransactionMeta = tx.into();
-                self.db.increment_index(Index::Internal)?;
-
-                Ok(wgtx)
+                tx.into()
             }
             NetworkId::Elements(_) => {
                 let tx: elements::Transaction =
@@ -608,12 +608,18 @@ impl WalletCtx {
                     out_tx.output.iter().filter(|o| o.is_fee()).map(|o| o.minimum_value()).sum();
                 let tx = BETransaction::Elements(out_tx);
                 info!("transaction final size is {} fee is {}", tx.serialize().len(), fee);
-                let wgtx: TransactionMeta = tx.into();
-                self.db.increment_index(Index::Internal)?;
-
-                Ok(wgtx)
+                tx.into()
             }
+        };
+
+        let changes_used = request.changes_used.unwrap_or(0);
+        if changes_used > 0 {
+            info!("tx used {} changes", changes_used);
+            self.db.increment_index(Index::Internal, changes_used)?;
         }
+
+
+        Ok(betx)
     }
 
     fn blind_tx(&self, tx: &mut elements::Transaction) -> Result<(), Error> {
@@ -644,7 +650,6 @@ impl WalletCtx {
             input_ags.extend(elements::encode::serialize(&input_asset));
         }
 
-        let random_bytes = rand::thread_rng().gen::<[u8; 32]>().clone();
         //let random_bytes = [11u8; 32];
         let min_value = 1;
         let ct_exp = 0;
@@ -663,9 +668,9 @@ impl WalletCtx {
         let in_num = tx.input.len();
         let out_num = tx.output.len();
 
-        let output_abfs: Vec<Vec<u8>> = (0..out_num - 1).map(|_| random_bytes.to_vec()).collect();
+        let output_abfs: Vec<Vec<u8>> = (0..out_num - 1).map(|_| random32()).collect();
         let mut output_vbfs: Vec<Vec<u8>> =
-            (0..out_num - 2).map(|_| random_bytes.to_vec()).collect();
+            (0..out_num - 2).map(|_| random32()).collect();
 
         let mut all_abfs = vec![];
         all_abfs.extend(input_abfs.to_vec());
@@ -721,7 +726,6 @@ impl WalletCtx {
                             "output_generator: {}",
                             hex::encode(&elements::encode::serialize(&output_generator))
                         );
-                        debug!("random_bytes: {}", hex::encode(&random_bytes));
                         debug!("input_assets: {}", hex::encode(&input_assets));
                         debug!("input_abfs: {}", hex::encode(&input_abfs));
                         debug!("input_ags: {}", hex::encode(&input_ags));
@@ -731,7 +735,7 @@ impl WalletCtx {
                             asset,
                             output_abf,
                             output_generator,
-                            random_bytes,
+                            output_abf,
                             &input_assets,
                             &input_abfs,
                             &input_ags,
@@ -769,7 +773,7 @@ impl WalletCtx {
     }
 
     pub fn get_address(&self) -> Result<AddressPointer, Error> {
-        let pointer = self.db.increment_index(Index::External)?;
+        let pointer = self.db.increment_index(Index::External, 1)?;
         let address = self.derive_address(&self.xpub, &[0, pointer])?.to_string();
         Ok(AddressPointer {
             address,
@@ -814,6 +818,10 @@ fn script_sig(public_key: &PublicKey) -> Script {
         .push_slice(&PubkeyHash::hash(&public_key.to_bytes())[..])
         .into_script();
     Builder::new().push_slice(internal.as_bytes()).into_script()
+}
+
+fn random32() -> Vec<u8> {
+    rand::thread_rng().gen::<[u8; 32]>().to_vec()
 }
 
 #[cfg(test)]

@@ -303,9 +303,9 @@ impl Forest {
         let bytes: [u8; 4] = ivec.as_ref().try_into()?;
         Ok(u32::from_be_bytes(bytes))
     }
-    pub fn increment_index(&self, int_or_ext: Index) -> Result<u32, Error> {
+    pub fn increment_index(&self, int_or_ext: Index, increment: u32) -> Result<u32, Error> {
         //TODO should be done atomically
-        let new_index = self.get_index(int_or_ext)? + 1;
+        let new_index = self.get_index(int_or_ext)? + increment;
         self.insert_index(int_or_ext, new_index)?;
         Ok(new_index)
     }
