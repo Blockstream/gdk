@@ -464,7 +464,7 @@ impl Session<Error> for ElectrumSession {
 
         let notify_blocks = self.notify.clone();
 
-        let mut last_tip = tipper.tip().unwrap();
+        let mut last_tip = tipper.tip()?;
         info!("tip is {:?}", last_tip);
         notify_block(notify_blocks.clone(), last_tip);
 
@@ -490,18 +490,21 @@ impl Session<Error> for ElectrumSession {
                 Err(e) => {
                     warn!("exception in tipper {:?}", e);
                     match e {
-                        Error::ClientError(_) => info!("Client error, doing nothing"),
+                        Error::ClientError(electrum_client::types::Error::JSON(_)) => info!("tipper Client error, doing nothing"),
                         _ => {
-                            warn!("Recreating died tipper client, {:?}", e);
-
+                            warn!("trying to recreate died tipper client, {:?}", e);
                             match &mut tipper {
-                                TipperKind::Plain(a, url) => {
-                                    a.client = electrum_client::Client::new(url.as_str()).unwrap()
+                                TipperKind::Plain(tipper, url) => {
+                                    if let Ok(client) = electrum_client::Client::new(url.as_str()) {
+                                        info!("succesfully created new tipper client");
+                                        tipper.client = client;
+                                    }
                                 }
-                                TipperKind::Tls(a, url, validate) => {
-                                    a.client =
-                                        electrum_client::Client::new_ssl(url.as_str(), *validate)
-                                            .unwrap()
+                                TipperKind::Tls(tipper, url, validate) => {
+                                    if let Ok(client) = electrum_client::Client::new_ssl(url.as_str(), *validate) {
+                                        info!("succesfully created new tipper client");
+                                        tipper.client = client;
+                                    }
                                 }
                             }
                         }
@@ -524,14 +527,19 @@ impl Session<Error> for ElectrumSession {
                     }
                 }
                 Err(e) => {
-                    warn!("Recreating died syncer client, {:?}", e);
+                    warn!("trying to recreate died syncer client, {:?}", e);
                     match &mut syncer {
-                        SyncerKind::Plain(a, url) => {
-                            a.client = electrum_client::Client::new(url.as_str()).unwrap()
+                        SyncerKind::Plain(syncer, url) => {
+                            if let Ok(client) = electrum_client::Client::new(url.as_str()) {
+                                info!("succesfully created new syncer client");
+                                syncer.client = client
+                            }
                         }
-                        SyncerKind::Tls(a, url, validate) => {
-                            a.client =
-                                electrum_client::Client::new_ssl(url.as_str(), *validate).unwrap()
+                        SyncerKind::Tls(syncer, url, validate) => {
+                            if let Ok(client) = electrum_client::Client::new_ssl(url.as_str(), *validate) {
+                                info!("succesfully created new syncer client");
+                                syncer.client = client
+                            }
                         }
                     }
                 }
@@ -553,7 +561,7 @@ impl Session<Error> for ElectrumSession {
         if let Some(registry_thread) = registry_thread {
             if wait_registry {
                 info!("waiting registry thread");
-                registry_thread.join().unwrap();
+                registry_thread.join().map_err(|_| Error::Generic("cannot join".to_string()))?;
                 info!("registry thread joined");
             }
         }
