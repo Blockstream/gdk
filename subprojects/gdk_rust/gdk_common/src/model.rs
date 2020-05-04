@@ -139,6 +139,7 @@ pub struct TransactionMeta {
     pub network: Option<Network>,
     pub subaccount: u32,
     pub type_: String, // incoming or outgoing
+    pub changes_used: Option<u32>,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -162,6 +163,7 @@ impl From<BETransaction> for TransactionMeta {
             network: None,
             subaccount: 0,
             type_: "unknown".to_string(),
+            changes_used: None,
         }
     }
 }
