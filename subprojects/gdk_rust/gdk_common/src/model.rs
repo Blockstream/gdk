@@ -178,7 +178,7 @@ impl TransactionMeta {
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
-        let created_at = format(now());
+        let created_at = format(timestamp);
 
         wgtx.height = height;
         wgtx.timestamp = timestamp;
