@@ -396,25 +396,25 @@ impl Session<Error> for ElectrumSession {
             registry_thread = Some(thread::spawn(move || {
                 info!("start registry thread");
                 //TODO add if_modified_since
-                let registry = ureq::get("https://assets.blockstream.info/index.json")
-                    .call()
-                    .into_string()
-                    .unwrap();
+                let registry = ureq::get("https://assets.blockstream.info/index.json").call();
+                let icons = ureq::get("https://assets.blockstream.info/icons.json").call();
+                if registry.status() == 200 && icons.status() == 200 {
+                    match (registry.into_json(), icons.into_json()) {
+                        (Ok(mut registry), Ok(icons)) => {
+                            info!("got registry and icons");
+                            if let Some(policy) = registry_policy {
+                                info!("inserting policy asset {}", policy);
+                                registry[policy.to_string()] = json!({"asset_id": policy.to_string(), "name": "btc"});
+                            }
 
-                info!("got registry (len:{})", registry.len());
-                let mut registry: Value = serde_json::from_str(&registry).unwrap();
-                if let Some(policy) = registry_policy {
-                    info!("inserting policy asset {}", policy);
-                    registry[policy.to_string()] = json!({"asset_id": policy.to_string(), "name": "btc"});
+                            db_for_registry.insert_asset_registry(&registry).unwrap();
+                            db_for_registry.insert_asset_icons(&icons).unwrap();
+                        }
+                        _ => warn!("Registry or icons are not json"),
+                    }
+                } else {
+                    warn!("Cannot download registry and icons");
                 }
-
-                db_for_registry.insert_asset_registry(&registry).unwrap();
-                let icons = ureq::get("https://assets.blockstream.info/icons.json")
-                    .call()
-                    .into_string()
-                    .unwrap();
-                info!("got icons (len:{})", icons.len());
-                db_for_registry.insert_asset_icons(&serde_json::from_str(&icons).unwrap()).unwrap();
             }));
         }
 

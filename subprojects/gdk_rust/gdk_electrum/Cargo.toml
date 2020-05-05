@@ -22,7 +22,7 @@ android_logger = { version = "0.8.6", optional = true }
 electrum-client = { git="https://github.com/RCasatta/rust-electrum-client" ,branch = "raw_subscribe"}
 #electrum-client = { path="../../../../rust-electrum-client" }
 chrono = "0.4.11"
-ureq = "0.12.1"
+ureq = { version = "0.12.1", features = ["json"] }
 
 #[dependencies.reqwest]
 #version = "0.10.4"
