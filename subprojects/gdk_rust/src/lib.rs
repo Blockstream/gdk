@@ -247,10 +247,6 @@ pub extern "C" fn GDKRUST_call_session(
     let method = read_str(method);
     let input = &safe_ref!(input).0;
 
-    // TODO let's do some kind of cached exchange rate fetching here
-    // independent of the backends
-    // let exchange_rate_res = Ok(ExchangeRateOk::ok("USD".into(), 1.2));
-
     let sess = safe_mut_ref!(sess);
 
     if method == "exchange_rates" {
