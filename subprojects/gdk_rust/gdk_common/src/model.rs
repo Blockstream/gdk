@@ -138,6 +138,7 @@ pub struct TransactionMeta {
     pub fee: u64,
     pub network: Option<Network>,
     pub subaccount: u32,
+    #[serde(rename = "type")]
     pub type_: String, // incoming or outgoing
     pub changes_used: Option<u32>,
 }
