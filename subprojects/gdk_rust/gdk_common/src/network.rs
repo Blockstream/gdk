@@ -2,7 +2,7 @@ use crate::be::AssetId;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {
     name: String,
     network: String,
@@ -22,6 +22,7 @@ pub struct Network {
     pub url: Option<String>,
     pub validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
+    pub sync_interval: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

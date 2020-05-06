@@ -1,4 +1,4 @@
-#![recursion_limit="128"]
+#![recursion_limit = "128"]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 #[macro_use]
@@ -192,6 +192,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     }
 
     let parsed_network = parsed_network.unwrap();
+
     let db_root = network["db_root"].as_str().unwrap_or("");
 
     match network["server_type"].as_str() {
@@ -480,14 +481,3 @@ impl log::Log for SimpleLogger {
     fn flush(&self) {}
 }
 
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn play() {
-        let mut a= json!({"123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb":{"asset_id":"123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb","contract":{"entity":{"domain":"scamcoinbot.com"},"issuer_pubkey":"035d0f7b0207d9cc68870abfef621692bce082084ed3ca0c1ae432dd12d889be01","name":"Scamcoinbot token","nonce":"57258","precision":0,"ticker":"SCAM","version":0},"issuance_txin":{"txid":"27e6bd36daef786775768a6b106053d0f2f10e03b6f278715931caa00662138d","vin":0},"issuance_prevout":{"txid":"fc2535f2e4fc2ef1d19b832248e3edc2c3f4c4e3ee9c2bc51777bd738a6f9582","vout":10},"name":"Scamcoinbot token","ticker":"SCAM","precision":0,"entity":{"domain":"scamcoinbot.com"}},"4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e":{"asset_id":"4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e","contract":{"entity":{"domain":"magicalcryptofriends.com"},"issuer_pubkey":"02d2b29fe8ffef6acb5e75d0cd7f9c55d502bd876434b87c39ae209fc57c57f52a","name":"Magical Crypto Token","nonce":"13158145","precision":0,"ticker":"MCT","version":0},"issuance_txin":{"txid":"d535ded7ce07a0bb9c61d0fefff8127da3fc4833302b05e2b8a0cf9e04446af1","vin":0},"issuance_prevout":{"txid":"839e819d74ac98110fce63a3dab3a1075bbddcad811e0e125641989581919ab0","vout":1},"name":"Magical Crypto Token","ticker":"MCT","precision":0,"entity":{"domain":"magicalcryptofriends.com"}},"beebee1a548fbb20280e539b697de076d87859a25c2983ebc55f2d8bec40abc3":{"asset_id":"beebee1a548fbb20280e539b697de076d87859a25c2983ebc55f2d8bec40abc3","contract":{"entity":{"domain":"liquid.beer"},"issuer_pubkey":"02436437ab5ecb6966b7dea1333fad14a658ae185d8ced00aa598af5997b55cd24","name":"IPA pint - liquid.beer","nonce":"824737","precision":2,"ticker":"IPA","version":0},"issuance_txin":{"txid":"8eec242d424986addc3ed0bafce0adcfaef23f66ad62798feef58f1d5164237f","vin":0},"issuance_prevout":{"txid":"27e6bd36daef786775768a6b106053d0f2f10e03b6f278715931caa00662138d","vout":3},"name":"IPA pint - liquid.beer","ticker":"IPA","precision":2,"entity":{"domain":"liquid.beer"}}});
-        a["afi"] = json!({});
-        assert_eq!(2,2);
-    }
-}

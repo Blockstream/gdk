@@ -42,6 +42,10 @@ impl BETransaction {
         }
     }
 
+    pub fn from_hex(hex: &str, id: NetworkId) -> Result<Self, crate::error::Error> {
+        Self::deserialize(&hex::decode(hex)?, id)
+    }
+
     pub fn serialize(&self) -> Vec<u8> {
         match self {
             Self::Bitcoin(tx) => btc_ser(tx),
@@ -78,6 +82,20 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.input.iter().map(|i| i.previous_output.txid.clone()).collect(),
             Self::Elements(tx) => tx.input.iter().map(|i| i.previous_output.txid.clone()).collect(),
+        }
+    }
+
+    pub fn input_len(&self) -> usize {
+        match self {
+            Self::Bitcoin(tx) => tx.input.len(),
+            Self::Elements(tx) => tx.input.len(),
+        }
+    }
+
+    pub fn output_len(&self) -> usize {
+        match self {
+            Self::Bitcoin(tx) => tx.output.len(),
+            Self::Elements(tx) => tx.output.len(),
         }
     }
 

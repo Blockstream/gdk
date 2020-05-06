@@ -9,7 +9,6 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [features]
-liquid = ["elements"]
 android_log = ["android_logger"]
 stderr_logger = ["stderrlog"]
 
@@ -41,17 +40,11 @@ git = "https://github.com/jb55/rust-bitcoin-exchange-rates"
 rev = "f41e076d7d4e6c667b580f59cfb3366bd8576210"
 features = ["hyper-rustls-sync"]
 
-[dependencies.jsonrpc]
-git = "https://github.com/jb55/rust-jsonrpc"
-rev = "5e4dd4817641aa2f5b9981b4ea7f3bca52e0b3d9"
-
-[dependencies.bitcoincore-rpc]
-git = "https://github.com/jb55/rust-bitcoincore-rpc"
-rev = "f9eea91f82b3812d0c82810f74edba4259ec6939"
-
-[dependencies.elements]
-version = "0.7.1"
-optional = true
+[dev-dependencies]
+tempdir = "0.3"
+bitcoincore-rpc = "0.10.0"
+electrum-client = { git="https://github.com/RCasatta/rust-electrum-client" ,branch = "raw_subscribe"}
+elements = "0.12"
 
 [profile.release]
 lto = true
