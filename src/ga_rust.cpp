@@ -356,15 +356,28 @@ namespace sdk {
             nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_netparams.bip21_prefix());
             if (!uri_params.is_object())
                 continue;
+
             addressee["address"] = uri_params["address"];
+
+            const auto bip21_params = uri_params["bip21-params"];
+            if (!bip21_params.is_object())
+                continue;
+
+            const auto uri_amount_p = bip21_params.find("amount");
+            if (uri_amount_p != bip21_params.end()) {
+                // Use the amount specified in the URI
+                const nlohmann::json uri_amount = { { "btc", uri_amount_p->get<std::string>() } };
+                addressee["satoshi"] = amount::convert(uri_amount, "USD", "")["satoshi"];
+            }
+
             if (m_netparams.liquid()) {
-                if (uri_params["bip21-params"].contains("amount") && !uri_params["bip21-params"].contains("assetid")) {
-                    throw std::runtime_error("amount without assetid is not valid"); // fixme return error
-                } else if (uri_params["bip21-params"].contains("assetid")) {
-                    if (uri_params["bip21-params"]["assetid"] == m_netparams.policy_asset()) {
+                if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
+                    throw std::runtime_error("in liquid amount without assetid is not valid"); // fixme return error
+                } else if (bip21_params.contains("assetid")) {
+                    if (bip21_params["assetid"] == m_netparams.policy_asset()) {
                         addressee["asset_tag"] = "btc";
                     } else {
-                        addressee["asset_tag"] = uri_params["bip21-params"]["assetid"];
+                        addressee["asset_tag"] = bip21_params["assetid"];
                     }
                 }
             }
