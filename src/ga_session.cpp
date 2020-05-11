@@ -1937,7 +1937,7 @@ namespace sdk {
                 mnemonic_or_xpub = recovery_mnemonic;
             }
 
-            software_signer subsigner(m_net_params, recovery_mnemonic);
+            software_signer subsigner(m_net_params, mnemonic_or_xpub);
 
             const uint32_t mnemonic_path[2] = { harden(3), harden(subaccount) };
             const auto path = recovery_mnemonic.empty() ? empty_span<uint32_t>() : mnemonic_path;
