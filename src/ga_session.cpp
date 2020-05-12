@@ -1939,13 +1939,14 @@ namespace sdk {
 
             software_signer subsigner(m_net_params, recovery_mnemonic);
 
-            const uint32_t path[2] = { 1, subaccount };
+            const uint32_t mnemonic_path[2] = { harden(3), harden(subaccount) };
+            const auto path = recovery_mnemonic.empty() ? empty_span<uint32_t>() : mnemonic_path;
             xpubs.emplace_back(subsigner.get_bip32_xpub(path));
             const auto recovery_xpub = subsigner.get_xpub(path);
 
             recovery_chain_code = b2h(recovery_xpub.first);
             recovery_pub_key = b2h(recovery_xpub.second);
-            recovery_bip32_xpub = subsigner.get_bip32_xpub(empty_span<uint32_t>());
+            recovery_bip32_xpub = subsigner.get_bip32_xpub(path);
         }
 
         std::string receiving_id;
