@@ -479,6 +479,11 @@ namespace sdk {
                     }
 
                     asset_tags.insert(session.asset_id_from_string(addressee.value("asset_tag", "btc")));
+                    if (asset_tags.size() > 1 && net_params.main_net()) {
+                        // Multi-asset send disabled in (liquid) mainnet
+                        GDK_LOG_SEV(log_level::error) << "Multi-asset send not supported";
+                        GDK_RUNTIME_ASSERT(false);
+                    }
                 }
             }
             result["addressees_have_assets"] = addressees_have_assets;
