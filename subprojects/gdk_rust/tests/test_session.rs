@@ -11,7 +11,7 @@ use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
 use gdk_electrum::{determine_electrum_url_from_net, ElectrumSession};
 use log::LevelFilter;
-use log::{debug, info, warn, Metadata, Record};
+use log::{info, warn, Metadata, Record};
 use serde_json::Value;
 use std::net::TcpStream;
 use std::process::Child;
@@ -110,7 +110,7 @@ pub fn setup(
     }
     info!("LAUNCHING: {} {}", node_exec, args.join(" "));
     let node_process = Command::new(node_exec).args(args).spawn().unwrap();
-    debug!("node spawned");
+    info!("node spawned");
 
     let par_network = if is_liquid {
         "liquidregtest"
@@ -132,7 +132,7 @@ pub fn setup(
             Err(e) => warn!("{:?}", e),
         }
     };
-    debug!("Bitcoin started");
+    info!("Bitcoin started");
     let cookie_value = std::fs::read_to_string(&cookie_file).unwrap();
 
     let electrs_port = 62431u16 + sum_port;
@@ -165,7 +165,7 @@ pub fn setup(
 
     info!("LAUNCHING: {} {}", electrs_exec, args.join(" "));
     let electrs_process = Command::new(electrs_exec).args(args).spawn().unwrap();
-    debug!("Electrs spawned");
+    info!("Electrs spawned");
 
     node_generate(&node, 101);
 
@@ -241,12 +241,15 @@ impl TestSession {
         }
     }
 
+    /// test fees are 25 elements and greater than relay_fee
     pub fn fees(&mut self) {
         let fees = self.session.get_fee_estimates().unwrap();
         let relay_fee = self.node.get_network_info().unwrap().relay_fee.as_sat();
+        assert_eq!(fees.len(), 25);
         assert!(fees.iter().all(|f| f.0 >= relay_fee));
     }
 
+    /// test a change in the settings is saved
     pub fn settings(&mut self) {
         let mut settings = self.session.get_settings().unwrap();
         settings.altimeout += 1;
@@ -255,13 +258,18 @@ impl TestSession {
         assert_eq!(settings, new_settings);
     }
 
-    /// fund the gdk session with satoshis from the node
-    pub fn fund(&mut self, satoshi: u64) {
+    /// fund the gdk session with satoshis from the node, if on liquid issue `assets_to_issue` assets
+    pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) {
         let initial_satoshis = self.balance_gdk();
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
-        self.node_sendtoaddress(&ap.address, satoshi);
-
+        self.node_sendtoaddress(&ap.address, satoshi, None);
         self.wait_status_change();
+
+        for _ in 0..assets_to_issue.unwrap_or(0) {
+            let asset = self.node_issueasset(satoshi);
+            self.node_sendtoaddress(&ap.address, satoshi, Some(asset));
+            self.wait_status_change();
+        }
 
         assert_eq!(self.balance_gdk(), initial_satoshis + satoshi);
     }
@@ -347,8 +355,8 @@ impl TestSession {
 
         let utxo_satoshi = 100_000;
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
-        self.node_sendtoaddress(&ap.address, utxo_satoshi);
-        self.node_sendtoaddress(&ap.address, utxo_satoshi);
+        self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
+        self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
 
         self.wait_status_change();
         let satoshi = 50_000; // one utxo would be enough
@@ -428,8 +436,11 @@ impl TestSession {
         node_getnewaddress(&self.node)
     }
 
-    fn node_sendtoaddress(&self, address: &str, satoshi: u64) {
-        node_sendtoaddress(&self.node, address, satoshi)
+    fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) {
+        node_sendtoaddress(&self.node, address, satoshi, asset)
+    }
+    fn node_issueasset(&self, satoshi: u64) -> String {
+        node_issueasset(&self.node, satoshi)
     }
     fn node_generate(&self, block_num: u32) {
         node_generate(&self.node, block_num)
@@ -521,12 +532,15 @@ impl TestSession {
     }
 }
 
-fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64) {
+fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Option<String>) {
     let amount = Amount::from_sat(satoshi);
     let btc = amount.to_string_in(bitcoin::util::amount::Denomination::Bitcoin);
     info!("node_sendtoaddress {} {}", address, btc);
-    let r = client.call::<Value>("sendtoaddress", &[address.into(), btc.into()]).unwrap();
-    debug!("node_sendtoaddress result {:?}", r);
+    let r = match asset {
+        Some(asset) => client.call::<Value>("sendtoaddress", &[address.into(), btc.into(), "".into(), "".into(), false.into(), false.into(), 1.into(), "UNSET".into(), asset.into()]).unwrap(),
+        None => client.call::<Value>("sendtoaddress", &[address.into(), btc.into()]).unwrap(),
+    };
+    info!("node_sendtoaddress result {:?}", r);
 }
 
 fn node_getnewaddress(client: &Client) -> String {
@@ -537,5 +551,13 @@ fn node_getnewaddress(client: &Client) -> String {
 fn node_generate(client: &Client, block_num: u32) {
     let address = node_getnewaddress(client);
     let r = client.call::<Value>("generatetoaddress", &[block_num.into(), address.into()]).unwrap();
-    debug!("generate result {:?}", r);
+    info!("generate result {:?}", r);
+}
+
+fn node_issueasset(client: &Client, satoshi: u64) -> String {
+    let amount = Amount::from_sat(satoshi);
+    let btc = amount.to_string_in(bitcoin::util::amount::Denomination::Bitcoin);
+    let r = client.call::<Value>("issueasset", &[btc.into(), 0.into()]).unwrap();
+    info!("node_issueasset result {:?}", r);
+    r.get("asset").unwrap().as_str().unwrap().to_string()
 }
