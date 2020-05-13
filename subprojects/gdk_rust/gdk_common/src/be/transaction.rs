@@ -306,8 +306,7 @@ impl BETransaction {
         &self,
         all_txs: &BETransactions,
         all_scripts: &HashSet<Script>,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-        policy_asset: Option<&String>,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>
     ) -> Balances {
         match self {
             Self::Bitcoin(tx) => {
@@ -338,7 +337,7 @@ impl BETransaction {
                 for input in tx.input.iter() {
                     let outpoint = input.previous_output.clone();
                     if let Some(unblinded) = all_unblinded.get(&outpoint) {
-                        let asset_id_str = unblinded.asset_hex(policy_asset);
+                        let asset_id_str = unblinded.asset_hex();
                         *result.entry(asset_id_str).or_default() -= unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -349,7 +348,7 @@ impl BETransaction {
                         vout: i,
                     };
                     if let Some(unblinded) = all_unblinded.get(&outpoint) {
-                        let asset_id_str = unblinded.asset_hex(policy_asset);
+                        let asset_id_str = unblinded.asset_hex();
                         *result.entry(asset_id_str).or_default() += unblinded.value as i64;
                         // TODO check overflow
                     }
