@@ -166,7 +166,6 @@ impl WalletCtx {
                 &all_txs,
                 &all_scripts,
                 &all_unblinded,
-                self.network.policy_asset.as_ref(),
             );
 
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
@@ -234,7 +233,7 @@ impl WalletCtx {
                                 return Some((
                                     outpoint,
                                     UTXOInfo::new(
-                                        unblinded.asset_hex(self.network.policy_asset.as_ref()),
+                                        unblinded.asset_hex(),
                                         unblinded.value,
                                         output.script_pubkey,
                                     ),
@@ -262,14 +261,12 @@ impl WalletCtx {
     pub fn balance(&self) -> Result<Balances, Error> {
         info!("start balance");
         let mut result = HashMap::new();
-        result.entry("btc".to_string()).or_insert(0);
+        match self.network.id() {
+            NetworkId::Bitcoin(_) => result.entry("btc".to_string()).or_insert(0),
+            NetworkId::Elements(_) => result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0),
+        };
         for (_, info) in self.utxos()?.utxos.iter() {
-            let asset_btc = if Some(&info.asset) == self.network.policy_asset.as_ref() {
-                "btc".to_string()
-            } else {
-                info.asset.clone()
-            };
-            *result.entry(asset_btc).or_default() += info.value as i64;
+            *result.entry(info.asset.clone()).or_default() += info.value as i64;
         }
         Ok(result)
     }
@@ -477,7 +474,6 @@ impl WalletCtx {
             &wallet_data.all_txs,
             &wallet_data.all_scripts,
             &wallet_data.all_unblinded,
-            self.network.policy_asset.as_ref(),
         );
         for (_, v) in satoshi.iter_mut() {
             *v = v.abs();

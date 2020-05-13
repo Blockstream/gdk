@@ -42,14 +42,9 @@ impl Unblinded {
         })
     }
 
-    pub fn asset_hex(&self, policy_asset: Option<&String>) -> String {
+    pub fn asset_hex(&self) -> String {
         let mut asset = self.asset.to_vec();
         asset.reverse();
-        let hex = hex::encode(asset);
-        if Some(&hex) == policy_asset {
-            "btc".to_string()
-        } else {
-            hex
-        }
+        hex::encode(asset)
     }
 }
