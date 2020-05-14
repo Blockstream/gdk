@@ -480,4 +480,3 @@ impl log::Log for SimpleLogger {
 
     fn flush(&self) {}
 }
-

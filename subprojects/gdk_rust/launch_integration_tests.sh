@@ -19,4 +19,4 @@ fi
 ps -eaf | grep -v grep | grep electrum_integration_test | awk '{print $2}' | xargs -r kill -9
 
 # launch tests, use liquid or bitcoin as parameter to launch only the respective
-cargo test $1 $NOCAPTURE
+RUST_BACKTRACE=1 cargo test $1 $NOCAPTURE

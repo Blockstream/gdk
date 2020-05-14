@@ -47,30 +47,6 @@ pub enum ElectrumUrl {
     Plaintext(String),
 }
 
-#[derive(Debug)]
-pub struct UTXOInfo {
-    pub asset: String,
-    pub value: u64,
-    pub script: Script,
-}
-
-impl UTXOInfo {
-    fn new(asset: String, value: u64, script: Script) -> Self {
-        UTXOInfo {
-            asset,
-            value,
-            script,
-        }
-    }
-}
-
-pub struct WalletData {
-    pub utxos: Vec<(BEOutPoint, UTXOInfo)>,
-    pub all_txs: BETransactions,
-    pub spent: HashSet<BEOutPoint>,
-    pub all_scripts: HashSet<Script>,
-    pub all_unblinded: HashMap<elements::OutPoint, Unblinded>,
-}
 
 impl WalletCtx {
     pub fn new(
@@ -144,7 +120,7 @@ impl WalletCtx {
 
     }
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
-        info!("start list_tx");
+
         let (_, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;
         let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
@@ -188,6 +164,7 @@ impl WalletCtx {
 
             txs.push(tx_meta);
         }
+        info!("list_tx {:?}", txs.iter().map(|e| &e.txid).collect::<Vec<&String>>());
 
         Ok(txs)
     }
@@ -274,6 +251,7 @@ impl WalletCtx {
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
         info!("create_tx {:?}", request);
 
+        // TODO put checks into CreateTransaction::validate, add check asset_tag are valid asset hex
         // eagerly check for address validity
         for address in request.addressees.iter().map(|a| &a.address) {
             match self.network.id() {
@@ -290,8 +268,16 @@ impl WalletCtx {
             return Err(Error::EmptyAddressees);
         }
 
-        if !request.send_all.unwrap_or(false) && request.addressees.iter().any(|a| a.satoshi == 0) {
+        let send_all = request.send_all.unwrap_or(false);
+        let no_change = request.no_change.unwrap_or(false) || send_all;
+        if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
             return Err(Error::InvalidAmount);
+        }
+
+        if let NetworkId::Elements(_) = self.network.id() {
+            if request.addressees.iter().any(|a| a.asset_tag.is_none()) {
+                return Err(Error::AssetEmpty);
+            }
         }
 
         // convert from satoshi/kbyte to satoshi/byte
@@ -299,10 +285,12 @@ impl WalletCtx {
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
         let wallet_data = self.utxos()?;
-        let utxos = wallet_data.utxos;
-        info!("utxos len:{}", utxos.len());
+        let utxos = &wallet_data.utxos;
+        info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
 
-        if request.send_all.unwrap_or(false) {
+        if send_all {
+            // send_all works by recursive calling create_tx, starting from the total amount of
+            // utxos and decreasing an amount until tx fee is met
             info!("send_all calculating total_amount");
             if request.addressees.len() != 1 {
                 return Err(Error::SendAll);
@@ -315,6 +303,7 @@ impl WalletCtx {
             info!("asset: {} total_amount:{}", asset, total_amount);
 
             test_request.send_all = Some(false);
+            test_request.no_change = Some(true);
             test_request.addressees[0].satoshi = total_amount;
             loop {
                 let mut r = test_request.clone();
@@ -335,140 +324,65 @@ impl WalletCtx {
         }
 
         let mut tx = BETransaction::new(self.network.id());
-        let policy_asset = self.network.policy_asset().ok();
 
-        let mut fee_val = match self.network.id() {
-            // last output is not consider for fee dynamic calculation, consider it here
-            NetworkId::Bitcoin(_) => (70.0 * fee_rate) as u64,
-            NetworkId::Elements(_) => (1200.0 * fee_rate) as u64,
-        };
+        // transaction is created in 3 steps:
+        // 1) adding requested outputs to tx outputs
+        // 2) adding enough utxso to inputs such that tx outputs and estimated fees are covered
+        // 3) adding change(s)
 
-        let mut outgoing_map: HashMap<String, u64> = HashMap::new();
-        let mut remap: HashMap<String, AssetId> = HashMap::new();
-        if let Some(btc_asset) = policy_asset {
-            remap.insert("btc".to_string(), btc_asset);
-        }
-        outgoing_map.insert("btc".to_string(), 0);
-
-        let calc_fee_bytes = |bytes| ((bytes as f64) * fee_rate) as u64;
-        fee_val += calc_fee_bytes(tx.get_weight() / 4);
-
+        // STEP 1) add the outputs requested for this transactions
         for out in request.addressees.iter() {
-            let asset = out.asset().or(policy_asset);
-            let len = tx
-                .add_output(&out.address, out.satoshi, asset)
-                .map_err(|_| Error::InvalidAddress)?;
-            fee_val += calc_fee_bytes(len);
-
-            let asset_hex = if asset == policy_asset {
-                "btc".to_string()
-            } else {
-                out.asset_tag.as_ref().unwrap_or(&"btc".to_string()).to_string()
-            };
-            *outgoing_map.entry(asset_hex.clone()).or_default() += out.satoshi;
-            if let Some(asset) = asset {
-                remap.insert(asset_hex, asset);
-            }
+            tx.add_output(&out.address, out.satoshi, out.asset_tag.clone()).map_err(|_| Error::InvalidAddress)?;
         }
-        info!("{:?}", outgoing_map);
 
-        let mut outgoing: Vec<(String, u64)> = outgoing_map.into_iter().collect();
-        outgoing.sort_by(|a, b| b.0.len().cmp(&a.0.len())); // just want "btc" as last
-        info!("outgoing sorted:{:?}", outgoing);
-        let mut change_increment = 1;
-        for (asset, outgoing) in outgoing.iter() {
-            info!("doing {} out:{}", asset, outgoing);
-            let mut utxos: Vec<&(BEOutPoint, UTXOInfo)> =
-                utxos.iter().filter(|(_, i)| &i.asset == asset).collect();
-            utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
-            info!("filtered {} utxos:{:?}", asset, utxos);
-
-            let mut selected_amount = 0u64;
-            let mut needed = if asset == "btc" {
-                *outgoing + fee_val
-            } else {
-                *outgoing
-            };
-            while selected_amount < needed {
-                info!(
-                    "selected_amount:{} outgoing:{} fee_val:{}",
-                    selected_amount, outgoing, fee_val
-                );
-                let option = utxos.pop();
-
-                info!("pop is: {:?}", option);
-                let utxo = option.ok_or(Error::InsufficientFunds)?;
-                info!("popped out utxo: {:?}", utxo);
-
-                // UTXO with same script should be spent together
-                // TODO for liquid, different assets with same script should be spent together too
-                let mut same_script_utxo = vec![];
-                for other_utxo in utxos.iter() {
-                    if (other_utxo.1).script == (utxo.1).script {
-                        same_script_utxo.push(other_utxo.clone());
-                    }
-                }
-                utxos.retain(|(_, i)| i.script != utxo.1.script);
-                same_script_utxo.push(utxo);
-
-                for (outpoint, info) in same_script_utxo {
-                    let len = tx.add_input(outpoint.clone());
-                    fee_val += calc_fee_bytes(len + 70); // TODO: adjust 70 based on the signature size
-
-                    selected_amount += info.value;
-                    needed = if asset == "btc" {
-                        *outgoing + fee_val
-                    } else {
-                        *outgoing
-                    };
-                }
+        // STEP 2) add utxos until tx outputs are covered (including fees) or fail
+        let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
+        loop {
+            let mut needs = tx.needs(fee_rate, no_change, self.network.policy_asset.clone(), &wallet_data);  // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
+            info!("needs: {:?}", needs);
+            if needs.is_empty() {
+                // SUCCESS tx doesn't need other inputs
+                break;
             }
-            info!("selected_amount {} outgoing {} fee_val {}", selected_amount, outgoing, fee_val);
-            let mut change_val = selected_amount - outgoing;
-            if asset == "btc" {
-                change_val -= fee_val;
-            }
-            info!("change val for {} is {}", asset, change_val);
-            let min_change = match self.network.id() {
-                NetworkId::Bitcoin(_) => 546,
-                NetworkId::Elements(_) => {
-                    if asset == "btc" {
-                        // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
-                        // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
-                        // another reason, specific to this wallet, is that the send_all algorithm could reason in steps greater than 1, making it not too slow
-                        546
-                    } else {
-                        // Assets should always create change, cause 1 satoshi could represent 1 house
-                        0
-                    }
-                }
-            };
-            if change_val > min_change {
-                if request.send_all.unwrap_or(false)
-                    && asset == request.addressees[0].asset_tag.as_deref().unwrap_or("btc")
-                {
-                    return Err(Error::SendAll);
-                }
-                let change_index = self.db.get_index(Index::Internal)? + change_increment;
-                change_increment += 1; // in liquid there are more than 1 change, using different addresses
-                let change_address =
-                    self.derive_address(&self.xpub, &[1, change_index])?.to_string();
-                info!("adding change {:?}", change_address);
+            let current_need = needs.pop().unwrap();  // safe to unwrap just checked it's not empty
 
-                let len = tx.add_output(&change_address, change_val, remap.get(asset).cloned())?;
-                fee_val += calc_fee_bytes(len);
+            // taking only utxos of current asset considered, filters also utxos used in this loop
+            let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos.iter()
+                .filter(|(o, i)| i.asset == current_need.asset && !used_utxo.contains(o))
+                .collect();
+
+            // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
+            asset_utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
+            let utxo = asset_utxos.pop().ok_or(Error::InsufficientFunds)?;
+
+            // UTXO with same script must be spent together, even if it's another asset
+            for other_utxo in utxos.iter() {
+                if (other_utxo.1).script == (utxo.1).script {
+                    used_utxo.insert(other_utxo.0.clone());
+                    tx.add_input(other_utxo.0.clone());
+                }
             }
         }
 
+        // STEP 3) adding change(s)
+        let estimated_fee = tx.estimated_fee(fee_rate, tx.estimated_changes(no_change, &wallet_data) );
+        let changes = tx.changes(estimated_fee, self.network.policy_asset.clone(), &wallet_data); // Vec<Change> asset, value
+        for (i,change) in changes.iter().enumerate() {
+            let change_index = self.db.get_index(Index::Internal)? + i as u32 + 1;
+            let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
+            info!("adding change to {} of {} asset {:?}", &change_address, change.satoshi, change.asset);
+            tx.add_output(&change_address, change.satoshi,  Some(change.asset.clone()) )?;
+        }
+
+        // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
         tx.scramble();
 
         let fee_val = tx.fee(&wallet_data.all_txs, &wallet_data.all_unblinded); // recompute exact fee_val from built tx
+        if let Some(policy_asset) = self.network.policy_asset.as_ref() {
+            tx.add_fee_if_elements(fee_val, policy_asset);
+        }
 
-        tx.add_fee_if_elements(fee_val, policy_asset);
-
-        let len = tx.serialize().len();
-        let rate = fee_val as f64 / len as f64;
-        info!("created tx fee {:?} size: {} rate: {}", fee_val, len, rate);
+        info!("created tx fee {:?}", fee_val);
 
         let mut satoshi = tx.my_balances(
             &wallet_data.all_txs,
@@ -489,7 +403,7 @@ impl WalletCtx {
             "outgoing".to_string(),
         );
         created_tx.create_transaction = Some(request.clone());
-        created_tx.changes_used = Some(change_increment - 1);
+        created_tx.changes_used = Some(changes.len() as u32);
         info!("returning: {:?}", created_tx);
 
         Ok(created_tx)
@@ -553,12 +467,13 @@ impl WalletCtx {
                     let (pk, sig) = self.internal_sign(&tx, i, &derivation_path, out.value);
                     let script_sig = script_sig(&pk);
                     let witness = vec![sig, pk.to_bytes()];
-
+                    info!("added size len: script_sig:{} witness:{}", script_sig.len(), witness.iter().map(|v| v.len()).sum::<usize>());
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;
                 }
                 let tx = BETransaction::Bitcoin(out_tx);
-                info!("transaction final size is {}", tx.serialize().len());
+                info!("transaction final size is {} bytes and {} vbytes", tx.serialize().len(), tx.get_weight() / 4);
+                info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
                 tx.into()
             }
             NetworkId::Elements(_) => {
@@ -601,14 +516,17 @@ impl WalletCtx {
                     signature.push(0x01);
 
                     let redeem_script = script_sig(&pubkey.public_key);
+                    let witness = vec![signature, pubkey.public_key.to_bytes()];
+                    info!("added size len: script_sig:{} witness:{}", redeem_script.len(), witness.iter().map(|v| v.len()).sum::<usize>());
                     out_tx.input[idx].script_sig = redeem_script;
-                    out_tx.input[idx].witness.script_witness =
-                        vec![signature, pubkey.public_key.to_bytes()];
+                    out_tx.input[idx].witness.script_witness = witness;
                 }
+
                 let fee: u64 =
                     out_tx.output.iter().filter(|o| o.is_fee()).map(|o| o.minimum_value()).sum();
                 let tx = BETransaction::Elements(out_tx);
-                info!("transaction final size is {} fee is {}", tx.serialize().len(), fee);
+                info!("transaction final size is {} bytes and {} vbytes and fee is {}", tx.serialize().len(), tx.get_weight() / 4, fee);
+                info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
                 tx.into()
             }
         };
@@ -618,6 +536,7 @@ impl WalletCtx {
             info!("tx used {} changes", changes_used);
             self.db.increment_index(Index::Internal, changes_used)?;
         }
+
         betx.fee = request.fee;
 
         Ok(betx)
@@ -749,6 +668,7 @@ impl WalletCtx {
                             elements::confidential::Nonce::Confidential(bytes[0], byte32);
                         output.asset = output_generator;
                         output.value = output_value_commitment;
+                        info!("added size len: surjectionproof:{} rangeproof:{}", surjectionproof.len(), rangeproof.len());
                         output.witness.surjection_proof = surjectionproof;
                         output.witness.rangeproof = rangeproof;
                     }
