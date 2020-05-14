@@ -22,6 +22,7 @@ use std::time::Duration;
 use tempdir::TempDir;
 
 static LOGGER: SimpleLogger = SimpleLogger;
+const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
 pub struct TestSession {
@@ -66,7 +67,7 @@ pub fn setup(
     node_exec: String,
 ) -> TestSession {
     let filter = if is_debug {
-        LevelFilter::Debug
+        LevelFilter::Info
     } else {
         LevelFilter::Off
     };
@@ -261,7 +262,7 @@ impl TestSession {
     }
 
     /// send all of the balance of the  tx from the gdk session to the specified address
-    pub fn send_all(&mut self, address: &str) {
+    pub fn send_all(&mut self, address: &str, asset_tag: Option<String>) {
         //let init_sat = self.balance_gdk();
         //let init_sat_addr = self.balance_addr(address);
         let mut create_opt = CreateTransaction::default();
@@ -270,12 +271,13 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: 0,
-            asset_tag: None,
+            asset_tag,
         });
         create_opt.send_all = Some(true);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        self.check_fee_rate(fee_rate, &signed_tx);
+
+        self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
         //let end_sat_addr = self.balance_addr(address);
@@ -297,7 +299,7 @@ impl TestSession {
         });
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        self.check_fee_rate(fee_rate, &signed_tx);
+        self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
         //let end_sat_addr = self.balance_addr(address);
@@ -324,7 +326,7 @@ impl TestSession {
         }
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        self.check_fee_rate(fee_rate, &signed_tx);
+        self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
         //for el in addressees {
@@ -352,11 +354,11 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi,
-            asset_tag: None,
+            asset_tag: self.asset_tag(),
         });
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        self.check_fee_rate(fee_rate, &signed_tx);
+        self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
 
@@ -374,7 +376,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: 0,
-            asset_tag: None,
+            asset_tag: self.asset_tag(),
         });
         match self.session.create_transaction(&mut create_opt) {
             Err(Error::InvalidAmount) => assert!(true),
@@ -428,17 +430,19 @@ impl TestSession {
         node_generate(&self.node, block_num)
     }
 
-    pub fn check_fee_rate(&self, req_rate: u64, tx_meta: &TransactionMeta) {
+    pub fn check_fee_rate(&self, req_rate: u64, tx_meta: &TransactionMeta, max_perc_diff: f64) {
         let transaction = BETransaction::from_hex(&tx_meta.hex, self.network_id).unwrap();
         let real_rate = tx_meta.fee as f64 / (transaction.get_weight() as f64 / 4.0);
         let req_rate = req_rate as f64 / 1000.0;
-        let max_perc_diff = 0.90; // TODO improve fee estimation and decrease this
         assert!(
             ((real_rate - req_rate).abs() / real_rate) < max_perc_diff,
             format!("real_rate:{} req_rate:{}", real_rate, req_rate)
         ); // percentage difference between fee rate requested vs real fee
         let relay_fee = self.node.get_network_info().unwrap().relay_fee.as_sat() as f64 / 1000.0;
-        assert!(real_rate > relay_fee, "fee rate is under relay_fee");
+        assert!(
+            real_rate > relay_fee,
+            format!("fee rate:{} is under relay_fee:{}", real_rate, relay_fee)
+        );
     }
 
     /// ask the blockcain tip to electrs
@@ -485,18 +489,23 @@ impl TestSession {
         Amount::from_btc(val).unwrap().as_sat()
     }
 
-    fn asset_tag(&self) -> Option<String> {
+    pub fn asset_tag(&self) -> Option<String> {
         match self.network_id {
             NetworkId::Bitcoin(_) => None,
             NetworkId::Elements(_) => self.network.policy_asset.clone(),
         }
     }
 
-    /// balance in satoshi of the gdk session
+    /// balance in satoshi (or liquid satoshi) of the gdk session
     fn balance_gdk(&self) -> u64 {
         let balance = self.session.get_balance(0, None).unwrap();
         info!("balance: {:?}", balance);
-        *balance.get("btc").unwrap() as u64
+        match self.network_id {
+            NetworkId::Elements(_) => {
+                *balance.get(self.network.policy_asset.as_ref().unwrap()).unwrap() as u64
+            }
+            NetworkId::Bitcoin(_) => *balance.get("btc").unwrap() as u64,
+        }
     }
 
     /// stop the bitcoin node in the test session

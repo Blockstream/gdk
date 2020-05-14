@@ -17,6 +17,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
+use elements::confidential::{Asset, Value};
+use log::{info, debug};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
@@ -122,6 +124,18 @@ impl BETransaction {
             Self::Elements(tx) => tx.output[vout as usize].script_pubkey.clone(),
         }
     }
+    pub fn output_asset_hex(&self, vout: u32, all_unblinded: &HashMap<elements::OutPoint, Unblinded>) -> Option<String> {
+        match self {
+            Self::Bitcoin(_) => None,
+            Self::Elements(tx) => {
+                let outpoint = elements::OutPoint {
+                    txid: tx.txid(),
+                    vout,
+                };
+                Some(all_unblinded.get(&outpoint).unwrap().asset_hex())
+            },
+        }
+    }
 
     pub fn get_weight(&self) -> usize {
         match self {
@@ -130,12 +144,13 @@ impl BETransaction {
         }
     }
 
+    /// asset is none for bitcoin, in liquid must be Some
     pub fn add_output(
         &mut self,
         address: &str,
         value: u64,
-        asset: Option<AssetId>,
-    ) -> Result<usize, Error> {
+        asset_hex: Option<String>,
+    ) -> Result<(), Error> {
         match self {
             BETransaction::Bitcoin(tx) => {
                 let script_pubkey = bitcoin::Address::from_str(&address)?.script_pubkey();
@@ -143,28 +158,26 @@ impl BETransaction {
                     script_pubkey,
                     value,
                 };
-                let len = btc_ser(&new_out).len();
                 tx.output.push(new_out);
-                Ok(len)
             }
             BETransaction::Elements(tx) => {
-                let address =
-                    elements::Address::from_str(&address).map_err(|_| Error::InvalidAddress)?;
+                let address = elements::Address::from_str(&address).map_err(|_| Error::InvalidAddress)?;
                 let blinding_pubkey = address.blinding_pubkey.ok_or(Error::InvalidAddress)?;
                 let bytes = blinding_pubkey.serialize();
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
+                let asset = asset_hex.expect("add_output must be called with a non empty asset in liquid");
+                let asset = asset_to_bin(&asset).expect("invalid asset hex");
                 let new_out = elements::TxOut {
-                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.unwrap())),
+                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(  asset)),
                     value: confidential::Value::Explicit(value),
                     nonce: confidential::Nonce::Confidential(bytes[0], byte32),
                     script_pubkey: address.script_pubkey(),
                     witness: TxOutWitness::default(),
                 };
-                let len = elm_ser(&new_out).len() + 1200; // 1200 is an estimate of the weight of surjproof and rangeproof
                 tx.output.push(new_out);
-                Ok(len)
             }
         }
+        Ok(())
     }
 
     pub fn scramble(&mut self) {
@@ -181,10 +194,210 @@ impl BETransaction {
         }
     }
 
-    pub fn add_fee_if_elements(&mut self, value: u64, asset: Option<AssetId>) {
+    /// estimates the fee of the final transaction given the `fee_rate`
+    /// called when the tx is being built and miss things like signatures and changes outputs.
+    pub fn estimated_fee(&self, fee_rate: f64, num_changes: u8) -> u64 {
+        let dummy_tx = self.clone();
+        match dummy_tx {
+            BETransaction::Bitcoin(mut tx) => {
+                for input in tx.input.iter_mut() {
+                    input.witness = vec![vec![0u8; 105]];  // considering signature sizes (72) and compressed public key (33)
+                    input.script_sig =  vec![0u8; 23].into();  // p2shwpkh redeem script size
+                }
+                for _ in 0..num_changes {
+                    tx.output.push(bitcoin::TxOut {
+                        value: 0,
+                        script_pubkey: vec![0u8; 21].into(),  //  p2shwpkh output is 1 + hash(20)
+                    })
+                }
+                info!("DUMMYTX inputs:{} outputs:{} num_changes:{}", tx.input.len(), tx.output.len(), num_changes);
+                let vbytes = tx.get_weight() as f64 / 4.0;
+                let fee_val = (vbytes * fee_rate * 1.02) as u64;  // estimate 2% higher to avoid staying under relay fee
+                fee_val
+            }
+            BETransaction::Elements(mut tx) => {
+                for input in tx.input.iter_mut() {
+                    let mut tx_wit = TxInWitness::default();
+                    tx_wit.script_witness = vec![vec![0u8; 105]];  // considering signature sizes (72) and compressed public key (33)
+                    input.witness = tx_wit;
+                    input.script_sig =  vec![0u8; 23].into();  // p2shwpkh redeem script size
+                }
+                for _ in 0..num_changes {
+                    let new_out = elements::TxOut {
+                        asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(  [0u8; 32])),
+                        value: confidential::Value::Explicit(0),
+                        nonce: confidential::Nonce::Confidential(0, [0u8; 32]),
+                        ..Default::default()
+                    };
+                    tx.output.push(new_out);
+                }
+                for output in tx.output.iter_mut() {
+                    output.witness = TxOutWitness {
+                        surjection_proof: vec![0u8; 67],
+                        rangeproof: vec![0u8; 4174],
+                    };
+                    output.script_pubkey = vec![0u8; 21].into();
+                }
+
+                tx.output.push(elements::TxOut::default()); // mockup for the explicit fee output
+
+                info!("DUMMYTX inputs:{} outputs:{} num_changes:{}", tx.input.len(), tx.output.len(), num_changes);
+                debug!("DUMMYTX hex: {}", hex::encode(elements::encode::serialize(&tx)) );
+                let vbytes = tx.get_weight() as f64 / 4.0;
+                let fee_val = (vbytes * fee_rate * 1.02) as u64;  // estimate 2% higher to avoid staying under relay fee
+                fee_val
+            }
+        }
+    }
+
+    pub fn estimated_changes(&self, send_all: bool, wallet_data: &WalletData) -> u8 {
+        match self {
+            Self::Bitcoin(_) => {
+                1u8 - send_all as u8
+            }
+            Self::Elements(tx) => {
+                let mut different_assets = HashSet::new();
+                for input in tx.input.iter() {
+                    let asset_hex = wallet_data.all_txs.get_previous_output_asset_hex(input.previous_output, &wallet_data.all_unblinded).unwrap();
+                    different_assets.insert(asset_hex.clone());
+                }
+                if different_assets.is_empty() {
+                    0
+                } else {
+                    different_assets.len() as u8 - send_all as u8
+                }
+            }
+        }
+    }
+
+    /// return a Vector with the amount needed for this transaction to be valid
+    /// for bitcoin it contains max 1 element eg ("btc", 100)
+    /// for elements could contain more than 1 element, 1 for each asset, with the policy asset last
+    pub fn needs(
+        &self,
+        fee_rate: f64,
+        no_change: bool,
+        policy_asset: Option<String>,
+        wallet_data: &WalletData,
+    ) -> Vec<AssetValue> {
+        match self {
+            Self::Bitcoin(tx) => {
+                let sum_inputs= sum_inputs(tx, &wallet_data.all_txs);
+                let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
+                let estimated_fee = self.estimated_fee(fee_rate, self.estimated_changes(no_change, wallet_data));  // send all does not create change
+                if sum_outputs + estimated_fee > sum_inputs {
+                    vec![ AssetValue::new_bitcoin(sum_outputs + estimated_fee - sum_inputs) ]
+                } else {
+                    vec![]
+                }
+            }
+            Self::Elements(tx) => {
+                let policy_asset = policy_asset.expect("policy asset empty in elements");
+                let mut outputs: HashMap<String, u64> = HashMap::new();
+                for output in tx.output.iter() {
+                    match (output.asset, output.value) {
+                        (Asset::Explicit(asset), Value::Explicit(value)) => {
+                            let asset_hex = asset_to_hex(& asset.into_inner());
+                            *outputs.entry(asset_hex).or_insert(0) += value;
+                        }
+                        _ => panic!("asset and value should be explicit here"),
+                    }
+                }
+
+                let mut inputs: HashMap<String, u64> = HashMap::new();
+
+                for input in tx.input.iter() {
+                    let asset_hex = wallet_data.all_txs.get_previous_output_asset_hex(input.previous_output, &wallet_data.all_unblinded).unwrap();
+                    let value = wallet_data.all_txs.get_previous_output_value(&BEOutPoint::Elements(input.previous_output), &wallet_data.all_unblinded).unwrap();
+                    *inputs.entry(asset_hex).or_insert(0) += value;
+                }
+
+                let estimated_fee = self.estimated_fee(fee_rate, self.estimated_changes(no_change, wallet_data) );
+                *outputs.entry(policy_asset.clone()).or_insert(0) += estimated_fee;
+
+                let mut result = vec![];
+                for (asset,value) in outputs.iter() {
+                    if let Some(sum) = value.checked_sub(inputs.remove(asset).unwrap_or(0)) {
+                        if sum > 0 {
+                            result.push(AssetValue::new(asset.to_string(), sum));
+                        }
+                    }
+                }
+                assert!(inputs.is_empty());
+                if let Some(index) = result.iter().position(|e| e.asset==policy_asset) {
+                    let last_index = result.len() - 1;
+                    if index != last_index {
+                        result.swap(index, last_index);  // put the policy asset last
+                    }
+                }
+                result
+            }
+        }
+    }
+
+    /// return a Vector with changes of this transaction
+    /// requires inputs are greater than outputs for earch asset
+    pub fn changes(
+        &self,
+        estimated_fee: u64,
+        policy_asset: Option<String>,
+        wallet_data: &WalletData,
+    ) -> Vec<AssetValue> {
+        match self {
+            Self::Bitcoin(tx) => {
+                let sum_inputs= sum_inputs(tx, &wallet_data.all_txs);
+                let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
+                let change_value = sum_inputs - sum_outputs - estimated_fee;
+                if change_value > 546 {
+                    vec![AssetValue::new_bitcoin(change_value)]
+                } else {
+                    vec![]
+                }
+            }
+            Self::Elements(tx) => {
+                let mut outputs: HashMap<String, u64> = HashMap::new();
+                for output in tx.output.iter() {
+                    match (output.asset, output.value) {
+                        (Asset::Explicit(asset), Value::Explicit(value)) => {
+                            let asset_hex = asset_to_hex(& asset.into_inner());
+                            *outputs.entry(asset_hex).or_insert(0) += value;
+                        }
+                        _ => panic!("asset and value should be explicit here"),
+                    }
+                }
+
+                let mut inputs: HashMap<String, u64> = HashMap::new();
+                for input in tx.input.iter() {
+                    let asset_hex = wallet_data.all_txs.get_previous_output_asset_hex(input.previous_output, &wallet_data.all_unblinded).unwrap();
+                    let value = wallet_data.all_txs.get_previous_output_value(&BEOutPoint::Elements(input.previous_output), &wallet_data.all_unblinded).unwrap();
+                    *inputs.entry(asset_hex).or_insert(0) += value;
+                }
+                let mut result = vec![];
+                for (asset,value) in inputs.iter() {
+                    let mut sum = value - outputs.remove(asset).unwrap_or(0);
+                    if asset == policy_asset.as_ref().unwrap() {
+                        // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
+                        // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
+                        // another reason, specific to this wallet, is that the send_all algorithm could reason in steps greater than 1, making it not too slow
+                        sum -= estimated_fee;
+                        if sum > 546 {
+                            result.push(AssetValue::new(asset.to_string(), sum));
+                        }
+                    } else {
+                        result.push(AssetValue::new(asset.to_string(),sum));
+                    }
+                }
+                assert!(outputs.is_empty());
+                result
+            }
+        }
+    }
+
+    pub fn add_fee_if_elements(&mut self, value: u64, policy_asset: &str) {
         if let BETransaction::Elements(tx) = self {
+            let asset = asset_to_bin(policy_asset).unwrap();
             let new_out = elements::TxOut {
-                asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset.unwrap())),
+                asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset)),
                 value: confidential::Value::Explicit(value),
                 ..Default::default()
             };
@@ -192,7 +405,7 @@ impl BETransaction {
         }
     }
 
-    pub fn add_input(&mut self, outpoint: BEOutPoint) -> usize {
+    pub fn add_input(&mut self, outpoint: BEOutPoint) {
         match (outpoint, self) {
             (BEOutPoint::Bitcoin(outpoint), BETransaction::Bitcoin(tx)) => {
                 let new_in = bitcoin::TxIn {
@@ -201,9 +414,7 @@ impl BETransaction {
                     sequence: 0xfffffffd, // nSequence is disabled, nLocktime is enabled, RBF is signaled.
                     witness: vec![],
                 };
-                let len = btc_ser(&new_in).len();
                 tx.input.push(new_in);
-                len
             }
             (BEOutPoint::Elements(outpoint), BETransaction::Elements(tx)) => {
                 let new_in = elements::TxIn {
@@ -215,9 +426,7 @@ impl BETransaction {
                     asset_issuance: Default::default(),
                     witness: TxInWitness::default(),
                 };
-                let len = elm_ser(&new_in).len();
                 tx.input.push(new_in);
-                len
             }
             _ => panic!("unexpected mix of bitcoin and elements types"),
         }
@@ -236,12 +445,7 @@ impl BETransaction {
     ) -> u64 {
         match self {
             Self::Bitcoin(tx) => {
-                let sum_inputs: u64 = tx
-                    .input
-                    .iter()
-                    .map(|i| BEOutPoint::Bitcoin(i.previous_output.clone()))
-                    .filter_map(|o| all_txs.get_previous_output_value(&o, all_unblinded))
-                    .sum();
+                let sum_inputs= sum_inputs(tx, all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
                 sum_inputs - sum_outputs
             }
@@ -254,6 +458,8 @@ impl BETransaction {
                         .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
                         .sum::<u64>()
                 } else {
+                    // while we are not filtering assets, the following holds for valid tx because
+                    // sum of input assets = sum of output assets
                     let sum_outputs: u64 = tx.output.iter().map(|o| o.minimum_value()).sum();
                     let sum_inputs: u64 = tx
                         .input
@@ -261,6 +467,7 @@ impl BETransaction {
                         .map(|i| BEOutPoint::Elements(i.previous_output.clone()))
                         .filter_map(|o| all_txs.get_previous_output_value(&o, all_unblinded))
                         .sum();
+
                     sum_inputs - sum_outputs
                 }
             }
@@ -360,6 +567,14 @@ impl BETransaction {
     }
 }
 
+fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {
+    tx.input
+        .iter()
+        .map(|i| BEOutPoint::Bitcoin(i.previous_output.clone()))
+        .filter_map(|o| all_txs.get_previous_output_value(&o, &HashMap::new())) //no need of unblinded since this fn is bitcoin only
+        .sum()
+}
+
 pub struct BETransactions(HashMap<Txid, BETransaction>);
 impl Default for BETransactions {
     fn default() -> Self {
@@ -387,5 +602,25 @@ impl BETransactions {
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Option<u64> {
         self.0.get(&outpoint.txid()).map(|tx| tx.output_value(outpoint.vout(), &all_unblinded))
+    }
+
+    pub fn get_previous_output_asset_hex(&self, outpoint: elements::OutPoint, all_unblinded: &HashMap<elements::OutPoint, Unblinded>) -> Option<String> {
+        self.0.get(&outpoint.txid).map(|tx| tx.output_asset_hex(outpoint.vout, &all_unblinded).unwrap() )
+    }
+}
+
+#[derive(Debug)]
+pub struct AssetValue {
+    pub asset: String,  // None is for bitcoin, in elements MUST be Some
+    pub satoshi: u64,
+}
+
+impl AssetValue {
+    fn new_bitcoin(satoshi: u64) -> Self {
+        let asset = "btc".to_string();
+        AssetValue {asset, satoshi}
+    }
+    fn new(asset: String, satoshi: u64) -> Self {
+        AssetValue {asset, satoshi}
     }
 }

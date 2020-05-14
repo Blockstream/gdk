@@ -15,7 +15,7 @@ fn integration_liquid() {
     let node_address = test_session.node_getnewaddress();
     test_session.fund(100_000_000);
     test_session.send_tx(&node_address, 10_000);
-    test_session.send_all(&node_address);
+    test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();
     test_session.send_tx_same_script();
     test_session.fund(100_000_000);

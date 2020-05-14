@@ -1,6 +1,6 @@
 use crate::be::AssetId;
 use serde_derive::{Deserialize, Serialize};
-use std::convert::TryInto;
+use crate::be::asset_to_bin;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {
@@ -66,10 +66,7 @@ impl Network {
 
     pub fn policy_asset(&self) -> Result<AssetId, crate::error::Error> {
         if let Some(str) = self.policy_asset.as_ref() {
-            let mut vec = hex::decode(str)?;
-            vec.reverse();
-            let asset: AssetId = (&vec[..]).try_into()?;
-            Ok(asset)
+            Ok(asset_to_bin(str)?)
         } else {
             Err("no policy asset".into())
         }
