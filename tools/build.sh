@@ -21,7 +21,7 @@ BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
 LTO="false"
-CCACHE=""
+CCACHE="$(which ccache)" || CCACHE=""
 
 GETOPT='getopt'
 if [ -z "$ANDROID_NDK" ]; then
@@ -55,7 +55,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,ccache,python-version: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,disableccache,python-version: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -71,7 +71,7 @@ while true; do
         --lto) MESON_OPTIONS="$MESON_OPTIONS -Db_lto=$2"; LTO="$2"; shift 2 ;;
         --clang-tidy-version) MESON_OPTIONS="$MESON_OPTIONS -Dclang-tidy-version=-$2"; NINJA_TARGET="src/clang-tidy"; shift 2 ;;
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
-        --ccache) CCACHE="ccache" ; shift ;;
+        --disableccache) CCACHE="" ; shift ;;
         --python-version) MESON_OPTIONS="$MESON_OPTIONS -Dpython-version=$2"; shift 2 ;;
         -- ) shift; break ;;
         *) break ;;
