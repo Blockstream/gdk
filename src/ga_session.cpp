@@ -486,7 +486,7 @@ namespace sdk {
     context_ptr ga_session::tls_init_handler_impl(
         const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins)
     {
-        const context_ptr ctx = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
+        const context_ptr ctx = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tls);
         ctx->set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2
             | boost::asio::ssl::context::no_sslv3 | boost::asio::ssl::context::no_tlsv1
             | boost::asio::ssl::context::no_tlsv1_1 | boost::asio::ssl::context::single_dh_use);
