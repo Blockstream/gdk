@@ -105,7 +105,7 @@ namespace sdk {
     {
         GDK_LOG_NAMED_SCOPE("http_client");
 
-        if (ec && ec != asio::error::eof) {
+        if (ec && ec != asio::error::eof && ec != asio::ssl::error::stream_truncated) {
             set_exception(ec.message());
             return;
         }
