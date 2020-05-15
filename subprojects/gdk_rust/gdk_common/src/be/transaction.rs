@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use elements::confidential::{Asset, Value};
-use log::{info, debug};
+use log::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
@@ -196,7 +196,7 @@ impl BETransaction {
 
     /// estimates the fee of the final transaction given the `fee_rate`
     /// called when the tx is being built and miss things like signatures and changes outputs.
-    pub fn estimated_fee(&self, fee_rate: f64, num_changes: u8) -> u64 {
+    pub fn estimated_fee(&self, fee_rate: f64, more_outputs: u8) -> u64 {
         let dummy_tx = self.clone();
         match dummy_tx {
             BETransaction::Bitcoin(mut tx) => {
@@ -204,15 +204,15 @@ impl BETransaction {
                     input.witness = vec![vec![0u8; 105]];  // considering signature sizes (72) and compressed public key (33)
                     input.script_sig =  vec![0u8; 23].into();  // p2shwpkh redeem script size
                 }
-                for _ in 0..num_changes {
+                for _ in 0..more_outputs {
                     tx.output.push(bitcoin::TxOut {
                         value: 0,
                         script_pubkey: vec![0u8; 21].into(),  //  p2shwpkh output is 1 + hash(20)
                     })
                 }
-                info!("DUMMYTX inputs:{} outputs:{} num_changes:{}", tx.input.len(), tx.output.len(), num_changes);
                 let vbytes = tx.get_weight() as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.02) as u64;  // estimate 2% higher to avoid staying under relay fee
+                info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, fee_val);
                 fee_val
             }
             BETransaction::Elements(mut tx) => {
@@ -222,7 +222,7 @@ impl BETransaction {
                     input.witness = tx_wit;
                     input.script_sig =  vec![0u8; 23].into();  // p2shwpkh redeem script size
                 }
-                for _ in 0..num_changes {
+                for _ in 0..more_outputs {
                     let new_out = elements::TxOut {
                         asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(  [0u8; 32])),
                         value: confidential::Value::Explicit(0),
@@ -240,11 +240,9 @@ impl BETransaction {
                 }
 
                 tx.output.push(elements::TxOut::default()); // mockup for the explicit fee output
-
-                info!("DUMMYTX inputs:{} outputs:{} num_changes:{}", tx.input.len(), tx.output.len(), num_changes);
-                debug!("DUMMYTX hex: {}", hex::encode(elements::encode::serialize(&tx)) );
                 let vbytes = tx.get_weight() as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.02) as u64;  // estimate 2% higher to avoid staying under relay fee
+                info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, fee_val);
                 fee_val
             }
         }

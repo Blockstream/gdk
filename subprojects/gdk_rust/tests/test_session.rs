@@ -20,6 +20,8 @@ use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 use tempdir::TempDir;
+use std::sync::Once;
+
 
 static LOGGER: SimpleLogger = SimpleLogger;
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
@@ -60,30 +62,32 @@ impl log::Log for SimpleLogger {
     fn flush(&self) {}
 }
 
+static START: Once = Once::new();
+
 pub fn setup(
     is_liquid: bool,
     is_debug: bool,
     electrs_exec: String,
     node_exec: String,
 ) -> TestSession {
-    let filter = if is_debug {
-        LevelFilter::Info
-    } else {
-        LevelFilter::Off
-    };
-    log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(filter))
-        .expect("cannot initialize logging");
+
+    START.call_once(|| {
+        let filter = if is_debug {
+            LevelFilter::Info
+        } else {
+            LevelFilter::Off
+        };
+        log::set_logger(&LOGGER)
+            .map(|()| log::set_max_level(filter))
+            .expect("cannot initialize logging");
+    });
 
     let node_work_dir = TempDir::new("electrum_integration_tests").unwrap();
     let node_work_dir_str = format!("{}", &node_work_dir.path().display());
-    let sum_port = if is_liquid {
-        1
-    } else {
-        0
-    };
+    let sum_port = is_liquid as u16;
 
     let rpc_port = 55363u16 + sum_port;
+    let p2p_port = 34975u16 + sum_port;
     let socket = format!("127.0.0.1:{}", rpc_port);
     let node_url = format!("http://{}", socket);
 
@@ -92,7 +96,8 @@ pub fn setup(
 
     let datadir_arg = format!("-datadir={}", &node_work_dir.path().display());
     let rpcport_arg = format!("-rpcport={}", rpc_port);
-    let mut args: Vec<&str> = vec![&datadir_arg, &rpcport_arg];
+    let p2pport_arg = format!("-port={}", p2p_port);
+    let mut args: Vec<&str> = vec![&datadir_arg, &rpcport_arg, &p2pport_arg];
     if is_liquid {
         args.push("-initialfreecoins=2100000000");
         args.push("-chain=liquidregtest");
