@@ -719,8 +719,8 @@ namespace sdk {
             params.update(select_url(params["urls"], m_use_tor));
             json_add_if_missing(params, "proxy", socksify(m_proxy));
 
-            const auto ssl_ctx = tls_init_handler_impl(
-                params["host"], m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins());
+            auto roots = m_net_params.gait_wamp_cert_roots();
+            const auto ssl_ctx = tls_init_handler_impl(params["host"], roots, {});
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
