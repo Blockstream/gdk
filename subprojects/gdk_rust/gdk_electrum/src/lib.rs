@@ -656,8 +656,8 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
-        let mut client = ClientWrap::new(self.url.clone())?;
         info!("broadcast_transaction {:#?}", tx_hex);
+        let mut client = ClientWrap::new(self.url.clone())?;
         let hex = hex::decode(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
         Ok(format!("{}", txid))

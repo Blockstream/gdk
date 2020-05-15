@@ -269,7 +269,6 @@ impl WalletCtx {
         }
 
         let send_all = request.send_all.unwrap_or(false);
-        let no_change = request.no_change.unwrap_or(false) || send_all;
         if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
             return Err(Error::InvalidAmount);
         }
@@ -289,42 +288,25 @@ impl WalletCtx {
         info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
 
         if send_all {
-            // send_all works by recursive calling create_tx, starting from the total amount of
-            // utxos and decreasing an amount until tx fee is met
+            // send_all works by creating a dummy tx with all utxos, estimate the fee and set the
+            // sending amount to `total_amount_utxos - estimated_fee`
             info!("send_all calculating total_amount");
             if request.addressees.len() != 1 {
                 return Err(Error::SendAll);
             }
-            let mut test_request = request.clone();
-            let address_amount = test_request.addressees[0].clone();
-            let asset = address_amount.asset_tag.as_deref().unwrap_or("btc");
-            let total_amount: u64 =
-                utxos.iter().filter(|(_, i)| i.asset == asset).map(|(_, i)| i.value).sum();
-            info!("asset: {} total_amount:{}", asset, total_amount);
-
-            test_request.send_all = Some(false);
-            test_request.no_change = Some(true);
-            test_request.addressees[0].satoshi = total_amount;
-            loop {
-                let mut r = test_request.clone();
-                match self.create_tx(&mut r) {
-                    Err(Error::InsufficientFunds) => {
-                        // cannot use deterministic step otherwise the fee will identify the wallet
-                        // note that this value is ok because under the dust value and we will create no change
-                        let step: u64 = rand::thread_rng().gen_range(25, 75);
-                        test_request.addressees[0].satoshi = test_request.addressees[0]
-                            .satoshi
-                            .checked_sub(step)
-                            .ok_or_else(|| Error::SendAll)?
-                    }
-                    _ => break,
-                }
+            let asset = request.addressees[0].asset_tag.as_deref().unwrap_or("btc");
+            let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos.iter().filter(|(_, i)| i.asset == asset).collect();
+            let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
+            let mut dummy_tx = BETransaction::new(self.network.id());
+            for utxo in all_utxos.iter() {
+                dummy_tx.add_input(utxo.0.clone());
             }
-            request.addressees[0].satoshi = test_request.addressees[0].satoshi;
+            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 1) + 3;  // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+            info!("send_all asset: {} total_amount:{} utxos:{} estimated_fee:{}", asset, total_amount_utxos, all_utxos.len(), estimated_fee);
+            request.addressees[0].satoshi = total_amount_utxos - estimated_fee;
         }
 
         let mut tx = BETransaction::new(self.network.id());
-
         // transaction is created in 3 steps:
         // 1) adding requested outputs to tx outputs
         // 2) adding enough utxso to inputs such that tx outputs and estimated fees are covered
@@ -338,7 +320,7 @@ impl WalletCtx {
         // STEP 2) add utxos until tx outputs are covered (including fees) or fail
         let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
         loop {
-            let mut needs = tx.needs(fee_rate, no_change, self.network.policy_asset.clone(), &wallet_data);  // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
+            let mut needs = tx.needs(fee_rate, send_all, self.network.policy_asset.clone(), &wallet_data);  // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
             info!("needs: {:?}", needs);
             if needs.is_empty() {
                 // SUCCESS tx doesn't need other inputs
@@ -365,7 +347,7 @@ impl WalletCtx {
         }
 
         // STEP 3) adding change(s)
-        let estimated_fee = tx.estimated_fee(fee_rate, tx.estimated_changes(no_change, &wallet_data) );
+        let estimated_fee = tx.estimated_fee(fee_rate, tx.estimated_changes(send_all, &wallet_data) );
         let changes = tx.changes(estimated_fee, self.network.policy_asset.clone(), &wallet_data); // Vec<Change> asset, value
         for (i,change) in changes.iter().enumerate() {
             let change_index = self.db.get_index(Index::Internal)? + i as u32 + 1;
