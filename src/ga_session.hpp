@@ -517,7 +517,6 @@ namespace sdk {
         std::string m_system_message_ack; // Currently returned message to ack
         bool m_watch_only;
         bool m_is_locked;
-        bool m_cert_pin_validated;
         logging_levels m_log_level;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;

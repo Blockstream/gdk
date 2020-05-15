@@ -304,7 +304,6 @@ namespace sdk {
         , m_system_message_ack_id(0)
         , m_watch_only(true)
         , m_is_locked(false)
-        , m_cert_pin_validated(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_cache(net_params.at("name"))
         , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
@@ -422,7 +421,6 @@ namespace sdk {
     template <typename T>
     std::enable_if_t<std::is_same<T, client_tls>::value> ga_session::set_tls_init_handler(const std::string& host_name)
     {
-        m_cert_pin_validated = false;
         boost::get<std::unique_ptr<T>>(m_client)->set_tls_init_handler(
             [this, host_name](const websocketpp::connection_hdl) { return tls_init_handler_impl(host_name); });
     }
@@ -513,24 +511,41 @@ namespace sdk {
             if (!preverified) {
                 return false;
             }
-            const auto cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
-            if (cert == nullptr) {
-                return false;
-            }
-            std::array<unsigned char, SHA256_LEN> buf;
-            unsigned int written = 0;
-            if (X509_digest(cert, EVP_sha256(), buf.data(), &written) == 0 || written != buf.size()) {
-                return false;
-            }
-            const auto& pins = m_net_params.gait_wamp_cert_pins();
-            const auto hex_digest = b2h(buf);
-            if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
-                m_cert_pin_validated = true;
-            }
 
             // on top of rfc2818, enforce pin if this is the last cert in the chain
+            const auto& pins = m_net_params.gait_wamp_cert_pins();
             const int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
-            return asio::ssl::rfc2818_verification{ host_name }(m_cert_pin_validated || depth != 0, ctx);
+            const bool is_leaf_cert = depth == 0;
+            if (is_leaf_cert) {
+                typedef std::unique_ptr<STACK_OF(X509), void (*)(STACK_OF(X509)*)> X509_stack_ptr;
+                auto free_x509_stack = [](STACK_OF(X509) * chain) { sk_X509_pop_free(chain, X509_free); };
+                X509_stack_ptr chain(X509_STORE_CTX_get1_chain(ctx.native_handle()), free_x509_stack);
+
+                std::array<unsigned char, SHA256_LEN> sha256_digest_buf;
+                unsigned int written = 0;
+                const int chain_length = sk_X509_num(chain.get());
+                bool found_pin = false;
+                for (int idx = 0; idx < chain_length; ++idx) {
+                    const auto cert = sk_X509_value(chain.get(), idx);
+                    if (X509_digest(cert, EVP_sha256(), sha256_digest_buf.data(), &written) == 0
+                        || written != sha256_digest_buf.size()) {
+                        GDK_LOG_SEV(log_level::error) << "X509_digest failed certificate idx " << idx;
+                        return false;
+                    }
+                    const auto hex_digest = b2h(sha256_digest_buf);
+                    if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
+                        found_pin = true;
+                        break;
+                    }
+                }
+
+                if (!found_pin) {
+                    GDK_LOG_SEV(log_level::error) << "No pinned certificate found, failing ssl verification";
+                    return false;
+                }
+            }
+
+            return asio::ssl::rfc2818_verification{ host_name }(true, ctx);
         });
 
         return ctx;
