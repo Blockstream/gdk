@@ -377,7 +377,8 @@ namespace sdk {
 
         bool connect_with_tls() const;
 
-        context_ptr tls_init_handler_impl(const std::string& host_name);
+        context_ptr tls_init_handler_impl(
+            const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins);
 
         template <typename T>
         std::enable_if_t<std::is_same<T, client>::value> set_tls_init_handler(const std::string& host_name);

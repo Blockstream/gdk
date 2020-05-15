@@ -422,7 +422,10 @@ namespace sdk {
     std::enable_if_t<std::is_same<T, client_tls>::value> ga_session::set_tls_init_handler(const std::string& host_name)
     {
         boost::get<std::unique_ptr<T>>(m_client)->set_tls_init_handler(
-            [this, host_name](const websocketpp::connection_hdl) { return tls_init_handler_impl(host_name); });
+            [this, host_name](const websocketpp::connection_hdl) {
+                return tls_init_handler_impl(
+                    host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins());
+            });
     }
 
     template <typename T> void ga_session::make_client()
@@ -480,7 +483,8 @@ namespace sdk {
         no_std_exception_escape([&] { transport->detach(); });
     }
 
-    context_ptr ga_session::tls_init_handler_impl(const std::string& host_name)
+    context_ptr ga_session::tls_init_handler_impl(
+        const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins)
     {
         const context_ptr ctx = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
         ctx->set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2
@@ -490,7 +494,6 @@ namespace sdk {
             boost::asio::ssl::context::verify_peer | boost::asio::ssl::context::verify_fail_if_no_peer_cert);
         // attempt to load system roots
         ctx->set_default_verify_paths();
-        const auto& roots = m_net_params.gait_wamp_cert_roots();
         for (const auto& root : roots) {
             if (root.empty()) {
                 // TODO: at the moment looks like the roots/pins are empty strings when absent
@@ -500,20 +503,18 @@ namespace sdk {
             const boost::asio::const_buffer root_const_buff(root.c_str(), root.size());
             ctx->add_certificate_authority(root_const_buff);
         }
-        const auto& pins = m_net_params.gait_wamp_cert_pins();
         if (pins.empty() || pins[0].empty()) {
             // no pins for this network, just do rfc2818 validation
             ctx->set_verify_callback(asio::ssl::rfc2818_verification{ host_name });
             return ctx;
         }
 
-        ctx->set_verify_callback([this, host_name](bool preverified, boost::asio::ssl::verify_context& ctx) {
+        ctx->set_verify_callback([pins, host_name](bool preverified, boost::asio::ssl::verify_context& ctx) {
             if (!preverified) {
                 return false;
             }
 
             // on top of rfc2818, enforce pin if this is the last cert in the chain
-            const auto& pins = m_net_params.gait_wamp_cert_pins();
             const int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
             const bool is_leaf_cert = depth == 0;
             if (is_leaf_cert) {
@@ -718,7 +719,8 @@ namespace sdk {
             params.update(select_url(params["urls"], m_use_tor));
             json_add_if_missing(params, "proxy", socksify(m_proxy));
 
-            const auto ssl_ctx = tls_init_handler_impl(params["host"]);
+            const auto ssl_ctx = tls_init_handler_impl(
+                params["host"], m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins());
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
