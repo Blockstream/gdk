@@ -17,11 +17,10 @@ use std::net::TcpStream;
 use std::process::Child;
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::Once;
 use std::thread;
 use std::time::Duration;
 use tempdir::TempDir;
-use std::sync::Once;
-
 
 static LOGGER: SimpleLogger = SimpleLogger;
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
@@ -70,7 +69,6 @@ pub fn setup(
     electrs_exec: String,
     node_exec: String,
 ) -> TestSession {
-
     START.call_once(|| {
         let filter = if is_debug {
             LevelFilter::Info
@@ -259,19 +257,22 @@ impl TestSession {
     }
 
     /// fund the gdk session with satoshis from the node, if on liquid issue `assets_to_issue` assets
-    pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) {
-        let initial_satoshis = self.balance_gdk();
+    pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) -> Vec<String> {
+        let initial_satoshis = self.balance_gdk(None);
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
         self.node_sendtoaddress(&ap.address, satoshi, None);
         self.wait_status_change();
+        let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
             let asset = self.node_issueasset(satoshi);
-            self.node_sendtoaddress(&ap.address, satoshi, Some(asset));
+            self.node_sendtoaddress(&ap.address, satoshi, Some(asset.clone()));
             self.wait_status_change();
+            assets_issued.push(asset);
         }
 
-        assert_eq!(self.balance_gdk(), initial_satoshis + satoshi);
+        assert_eq!(self.balance_gdk(None), initial_satoshis + satoshi);
+        assets_issued
     }
 
     /// send all of the balance of the  tx from the gdk session to the specified address
@@ -284,7 +285,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: 0,
-            asset_tag,
+            asset_tag: asset_tag.clone(),
         });
         create_opt.send_all = Some(true);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
@@ -295,45 +296,67 @@ impl TestSession {
         self.wait_status_change();
         //let end_sat_addr = self.balance_addr(address);
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
-        assert_eq!(self.balance_gdk(), 0);
+        assert_eq!(self.balance_gdk(asset_tag), 0);
     }
 
     /// send a tx from the gdk session to the specified address
-    pub fn send_tx(&mut self, address: &str, satoshi: u64) {
-        let init_sat = self.balance_gdk();
+    pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>) {
+        let init_sat = self.balance_gdk(asset.clone());
+        let init_node_balance = self.balance_node(asset.clone());
         //let init_sat_addr = self.balance_addr(address);
         let mut create_opt = CreateTransaction::default();
-        let fee_rate = 1000;
+        let fee_rate = match self.network.id() {
+            NetworkId::Elements(_) => 100,
+            NetworkId::Bitcoin(_) => 1000,
+        };
         create_opt.fee_rate = Some(fee_rate);
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi,
-            asset_tag: self.asset_tag(),
+            asset_tag: asset.clone().or(self.asset_tag()),
         });
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
-        //let end_sat_addr = self.balance_addr(address);
-        //assert_eq!(init_sat_addr + satoshi, end_sat_addr);
-        assert_eq!(self.balance_gdk(), init_sat - satoshi - tx.fee);
+
+        self.tx_checks(&signed_tx.hex);
+
+        let fee = if asset.is_none() || asset == self.network.policy_asset {
+            tx.fee
+        } else {
+            0
+        };
+        assert_eq!(self.balance_node(asset.clone()), init_node_balance + satoshi);
+        assert_eq!(self.balance_gdk(asset.clone()), init_sat - satoshi - fee);
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
-    /// node's addressees
-    pub fn send_multi(&mut self, recipients: u8, amount: u64) {
-        let init_sat = self.balance_gdk();
+    /// node's addressees, if `assets` contains values, they are used as asset_tag cyclically
+    pub fn send_multi(&mut self, recipients: u8, amount: u64, assets: Vec<String>) {
+        let init_sat = self.balance_gdk(None);
+        let init_assets_sat = self.balance_gdk_all();
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
         create_opt.fee_rate = Some(fee_rate);
         let mut addressees = vec![];
+        let mut assets_cycle = assets.iter().cycle();
+        let mut tags = vec![];
         for _ in 0..recipients {
             let address = self.node_getnewaddress();
+            let asset_tag = if assets.is_empty() {
+                self.asset_tag()
+            } else {
+                let current = assets_cycle.next().unwrap().to_string();
+                tags.push(current.clone());
+                Some(current)
+            };
+
             create_opt.addressees.push(AddressAmount {
                 address: address.to_string(),
                 satoshi: amount,
-                asset_tag: self.asset_tag(),
+                asset_tag,
             });
             addressees.push(address);
         }
@@ -342,15 +365,24 @@ impl TestSession {
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
-        //for el in addressees {
-        //    assert_eq!(amount, self.balance_addr(&el))
-        //}
-        assert_eq!(init_sat - tx.fee - recipients as u64 * amount, self.balance_gdk());
+        self.tx_checks(&signed_tx.hex);
+
+        if assets.is_empty() {
+            assert_eq!(init_sat - tx.fee - recipients as u64 * amount, self.balance_gdk(None));
+        } else {
+            assert_eq!(init_sat - tx.fee, self.balance_gdk(None));
+            for tag in assets {
+                let outputs_for_this_asset = tags.iter().filter(|t| t == &&tag).count() as u64;
+                assert_eq!( *init_assets_sat.get(&tag).unwrap() as u64 - outputs_for_this_asset * amount, self.balance_gdk(Some(tag)));
+            }
+        }
+        //TODO check node balance
     }
 
     /// send a tx, check it spend utxo with the same script_pubkey together
     pub fn send_tx_same_script(&mut self) {
-        let init_sat = self.balance_gdk();
+        // TODO check same script for different assets
+        let init_sat = self.balance_gdk(None);
         assert_eq!(init_sat, 0);
 
         let utxo_satoshi = 100_000;
@@ -374,6 +406,7 @@ impl TestSession {
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
+        self.tx_checks(&signed_tx.hex);
 
         let transaction = BETransaction::from_hex(&signed_tx.hex, self.network_id).unwrap();
         assert_eq!(2, transaction.input_len());
@@ -381,7 +414,7 @@ impl TestSession {
 
     /// check send failure reasons
     pub fn send_fails(&mut self) {
-        let init_sat = self.balance_gdk();
+        let init_sat = self.balance_gdk(None);
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
         let address = self.node_getnewaddress();
@@ -409,6 +442,59 @@ impl TestSession {
         match self.session.create_transaction(&mut create_opt) {
             Err(Error::EmptyAddressees) => assert!(true),
             _ => assert!(false),
+        }
+    }
+
+    /// performs checks on transactions, like checking for address reuse in outputs and on liquid confidential commitments inequality
+    pub fn tx_checks(&self, hex: &str) {
+        match self.network_id {
+            NetworkId::Elements(_) => {
+                let tx: elements::Transaction =
+                    elements::encode::deserialize(&hex::decode(hex).unwrap()).unwrap();
+                let output_nofee: Vec<&elements::TxOut> =
+                    tx.output.iter().filter(|o| !o.is_fee()).collect();
+                for current in output_nofee.iter() {
+                    assert_eq!(
+                        1,
+                        output_nofee
+                            .iter()
+                            .filter(|o| o.script_pubkey == current.script_pubkey)
+                            .count(),
+                        "address reuse"
+                    ); // for example using the same change address for lbtc and asset change
+                    assert_eq!(
+                        1,
+                        output_nofee.iter().filter(|o| o.asset == current.asset).count(),
+                        "asset commitment equal"
+                    );
+                    assert_eq!(
+                        1,
+                        output_nofee.iter().filter(|o| o.value == current.value).count(),
+                        "value commitment equal"
+                    );
+                    assert_eq!(
+                        1,
+                        output_nofee.iter().filter(|o| o.nonce == current.nonce).count(),
+                        "nonce commitment equal"
+                    );
+                }
+                assert!(tx.output.last().unwrap().is_fee(), "last output is not a fee");
+
+            }
+            NetworkId::Bitcoin(_) => {
+                let tx: bitcoin::Transaction =
+                    bitcoin::consensus::encode::deserialize(&hex::decode(hex).unwrap()).unwrap();
+                for current in tx.output.iter() {
+                    assert_eq!(
+                        1,
+                        tx.output
+                            .iter()
+                            .filter(|o| o.script_pubkey == current.script_pubkey)
+                            .count(),
+                        "address reuse"
+                    ); // for example using the same change address for lbtc and asset change
+                }
+            }
         }
     }
 
@@ -487,22 +573,27 @@ impl TestSession {
     }
 
     /// balance in satoshi of the node
-    fn _balance_node(&self) -> u64 {
-        // using deprectated getunconfirmedbalance because getbalances not yet available in
-        // elements
-
+    fn balance_node(&self, asset: Option<String>) -> u64 {
         let balance: Value = self.node.call("getbalance", &[]).unwrap();
         let unconfirmed_balance: Value = self.node.call("getunconfirmedbalance", &[]).unwrap();
-        let val = match self.network_id {
+        match self.network_id {
             NetworkId::Bitcoin(_) => {
-                balance.get("bitcoin").unwrap().as_f64().unwrap()
-                    + unconfirmed_balance.get("bitcoin").unwrap().as_f64().unwrap()
+                ((balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap())
+                    * 100_000_000.0) as u64
             }
             NetworkId::Elements(_) => {
-                balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap()
+                let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
+                let balance = match balance.get(&asset_or_policy) {
+                    Some(Value::Number(s)) => s.as_f64().unwrap(),
+                    _ => 0.0,
+                };
+                let unconfirmed_balance = match unconfirmed_balance.get(&asset_or_policy) {
+                    Some(Value::Number(s)) => s.as_f64().unwrap(),
+                    _ => 0.0,
+                };
+                ((balance + unconfirmed_balance) * 100_000_000.0) as u64
             }
-        };
-        Amount::from_btc(val).unwrap().as_sat()
+        }
     }
 
     pub fn asset_tag(&self) -> Option<String> {
@@ -513,12 +604,19 @@ impl TestSession {
     }
 
     /// balance in satoshi (or liquid satoshi) of the gdk session
-    fn balance_gdk(&self) -> u64 {
+    fn balance_gdk_all(&self) -> Balances {
+        self.session.get_balance(0, None).unwrap()
+    }
+
+    /// balance in satoshi (or liquid satoshi) of the gdk session
+    fn balance_gdk(&self, asset: Option<String>) -> u64 {
         let balance = self.session.get_balance(0, None).unwrap();
         info!("balance: {:?}", balance);
         match self.network_id {
             NetworkId::Elements(_) => {
-                *balance.get(self.network.policy_asset.as_ref().unwrap()).unwrap() as u64
+                let asset =
+                    asset.unwrap_or(self.network.policy_asset.as_ref().unwrap().to_string());
+                *balance.get(&asset).unwrap() as u64
             }
             NetworkId::Bitcoin(_) => *balance.get("btc").unwrap() as u64,
         }
@@ -537,7 +635,22 @@ fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Optio
     let btc = amount.to_string_in(bitcoin::util::amount::Denomination::Bitcoin);
     info!("node_sendtoaddress {} {}", address, btc);
     let r = match asset {
-        Some(asset) => client.call::<Value>("sendtoaddress", &[address.into(), btc.into(), "".into(), "".into(), false.into(), false.into(), 1.into(), "UNSET".into(), asset.into()]).unwrap(),
+        Some(asset) => client
+            .call::<Value>(
+                "sendtoaddress",
+                &[
+                    address.into(),
+                    btc.into(),
+                    "".into(),
+                    "".into(),
+                    false.into(),
+                    false.into(),
+                    1.into(),
+                    "UNSET".into(),
+                    asset.into(),
+                ],
+            )
+            .unwrap(),
         None => client.call::<Value>("sendtoaddress", &[address.into(), btc.into()]).unwrap(),
     };
     info!("node_sendtoaddress result {:?}", r);

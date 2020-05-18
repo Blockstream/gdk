@@ -19,6 +19,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use elements::confidential::{Asset, Value};
 use log::info;
+use crate::wally::asset_surjectionproof_size;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
@@ -211,7 +212,7 @@ impl BETransaction {
                     })
                 }
                 let vbytes = tx.get_weight() as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.02) as u64;  // estimate 2% higher to avoid staying under relay fee
+                let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee
                 info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, fee_val);
                 fee_val
             }
@@ -224,16 +225,17 @@ impl BETransaction {
                 }
                 for _ in 0..more_outputs {
                     let new_out = elements::TxOut {
-                        asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(  [0u8; 32])),
-                        value: confidential::Value::Explicit(0),
-                        nonce: confidential::Nonce::Confidential(0, [0u8; 32]),
+                        asset: confidential::Asset::Confidential(0u8, [0u8; 32]),
+                        value: confidential::Value::Confidential(0u8, [0u8; 32]),
+                        nonce: confidential::Nonce::Confidential(0u8, [0u8; 32]),
                         ..Default::default()
                     };
                     tx.output.push(new_out);
                 }
+                let sur_size = asset_surjectionproof_size(std::cmp::max(1,tx.input.len()) );
                 for output in tx.output.iter_mut() {
                     output.witness = TxOutWitness {
-                        surjection_proof: vec![0u8; 67],
+                        surjection_proof: vec![0u8; sur_size],
                         rangeproof: vec![0u8; 4174],
                     };
                     output.script_pubkey = vec![0u8; 21].into();
@@ -241,8 +243,8 @@ impl BETransaction {
 
                 tx.output.push(elements::TxOut::default()); // mockup for the explicit fee output
                 let vbytes = tx.get_weight() as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.02) as u64;  // estimate 2% higher to avoid staying under relay fee
-                info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, fee_val);
+                let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee
+                info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} sur_size:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, sur_size, fee_val );
                 fee_val
             }
         }
@@ -321,7 +323,7 @@ impl BETransaction {
                         }
                     }
                 }
-                assert!(inputs.is_empty());
+
                 if let Some(index) = result.iter().position(|e| e.asset==policy_asset) {
                     let last_index = result.len() - 1;
                     if index != last_index {
