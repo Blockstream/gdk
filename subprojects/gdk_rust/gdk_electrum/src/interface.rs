@@ -130,7 +130,7 @@ impl WalletCtx {
         my_txids.sort_by(|a, b| b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX)));
 
         for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
-            info!("tx_id {}", tx_id);
+            debug!("tx_id {}", tx_id);
 
             let tx = all_txs.get(tx_id).ok_or_else(fn_err("no tx"))?;
             let header = height
