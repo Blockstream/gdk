@@ -374,11 +374,7 @@ namespace sdk {
                 if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
                     throw std::runtime_error("in liquid amount without assetid is not valid"); // fixme return error
                 } else if (bip21_params.contains("assetid")) {
-                    if (bip21_params["assetid"] == m_netparams.policy_asset()) {
-                        addressee["asset_tag"] = "btc";
-                    } else {
-                        addressee["asset_tag"] = bip21_params["assetid"];
-                    }
+                    addressee["asset_tag"] = bip21_params["assetid"];
                 }
             }
         }
