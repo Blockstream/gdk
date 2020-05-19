@@ -344,7 +344,7 @@ impl TestSession {
         let mut assets_cycle = assets.iter().cycle();
         let mut tags = vec![];
         for _ in 0..recipients {
-            let address = self.node_getnewaddress();
+            let address = self.node_getnewaddress(None);
             let asset_tag = if assets.is_empty() {
                 self.asset_tag()
             } else {
@@ -394,7 +394,7 @@ impl TestSession {
         let satoshi = 50_000; // one utxo would be enough
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
-        let address = self.node_getnewaddress();
+        let address = self.node_getnewaddress(None);
         create_opt.fee_rate = Some(fee_rate);
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
@@ -417,7 +417,7 @@ impl TestSession {
         let init_sat = self.balance_gdk(None);
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
-        let address = self.node_getnewaddress();
+        let address = self.node_getnewaddress(None);
         create_opt.fee_rate = Some(fee_rate);
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
@@ -518,8 +518,8 @@ impl TestSession {
         assert_eq!(initial_height + 1, new_height);
     }
 
-    pub fn node_getnewaddress(&self) -> String {
-        node_getnewaddress(&self.node)
+    pub fn node_getnewaddress(&self, kind: Option<&str>) -> String {
+        node_getnewaddress(&self.node, kind)
     }
 
     fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) {
@@ -656,13 +656,14 @@ fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Optio
     info!("node_sendtoaddress result {:?}", r);
 }
 
-fn node_getnewaddress(client: &Client) -> String {
-    let addr: Value = client.call("getnewaddress", &[]).unwrap();
+fn node_getnewaddress(client: &Client, kind: Option<&str>) -> String {
+    let kind = kind.unwrap_or("p2sh-segwit");
+    let addr: Value = client.call("getnewaddress", &["label".into(), kind.into()]).unwrap();
     addr.as_str().unwrap().to_string()
 }
 
 fn node_generate(client: &Client, block_num: u32) {
-    let address = node_getnewaddress(client);
+    let address = node_getnewaddress(client, None);
     let r = client.call::<Value>("generatetoaddress", &[block_num.into(), address.into()]).unwrap();
     info!("generate result {:?}", r);
 }

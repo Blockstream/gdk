@@ -212,7 +212,7 @@ impl BETransaction {
                     })
                 }
                 let vbytes = tx.get_weight() as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee
+                let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee TODO improve fee estimation and lower this
                 info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, fee_val);
                 fee_val
             }
@@ -243,7 +243,7 @@ impl BETransaction {
 
                 tx.output.push(elements::TxOut::default()); // mockup for the explicit fee output
                 let vbytes = tx.get_weight() as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee
+                let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
                 info!("DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} sur_size:{} fee_val:{}", tx.input.len(), tx.output.len(), more_outputs, vbytes, sur_size, fee_val );
                 fee_val
             }

@@ -12,9 +12,11 @@ fn bitcoin() {
 
     let mut test_session = test_session::setup(false, debug, electrs_exec, node_exec);
 
-    let node_address = test_session.node_getnewaddress();
+    let node_address = test_session.node_getnewaddress(None);
+    let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
     test_session.fund(100_000_000, None);
     test_session.send_tx(&node_address, 10_000, None);
+    test_session.send_tx(&node_bech32_address, 10_000, None);
     test_session.send_all(&node_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
@@ -40,9 +42,12 @@ fn liquid() {
 
     let mut test_session = test_session::setup(true, debug, electrs_exec, node_exec);
 
-    let node_address = test_session.node_getnewaddress();
+    let node_address = test_session.node_getnewaddress(None);
+    let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
+
     let assets = test_session.fund(100_000_000, Some(1));
     test_session.send_tx(&node_address, 10_000, None);
+    test_session.send_tx(&node_bech32_address, 10_000, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()));
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();
