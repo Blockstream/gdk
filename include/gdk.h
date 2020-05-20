@@ -737,6 +737,14 @@ GDK_API int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, s
 GDK_API int GA_generate_mnemonic(char** output);
 
 /**
+ * Generate a new random 12 word BIP 39 mnemonic.
+ *
+ * :param output: The generated mnemonic phrase.
+ *|     Returned string should be freed using `GA_destroy_string`.
+ */
+GDK_API int GA_generate_mnemonic_12(char** output);
+
+/**
  * Validate a BIP 39 mnemonic.
  *
  * :param mnemonic: The mnemonic phrase

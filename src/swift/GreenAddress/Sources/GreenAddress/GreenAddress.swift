@@ -529,6 +529,17 @@ public func generateMnemonic() throws -> String {
     return String(cString: buff!)
 }
 
+public func generateMnemonic12() throws -> String {
+    var buff : UnsafeMutablePointer<Int8>? = nil
+    guard GA_generate_mnemonic_12(&buff) == GA_OK else {
+        throw GaError.GenericError
+    }
+    defer {
+        GA_destroy_string(buff)
+    }
+    return String(cString: buff!)
+}
+
 public func validateMnemonic(mnemonic: String) throws -> Bool {
     var result: UInt32 = 0
     try callWrapper(fun: GA_validate_mnemonic(mnemonic, &result))

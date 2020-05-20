@@ -350,6 +350,21 @@ namespace sdk {
 } // namespace sdk
 } // namespace ga
 
+namespace {
+template <std::size_t N> int generate_mnemonic(char** output)
+{
+    try {
+        GDK_RUNTIME_ASSERT(output);
+        auto entropy = ga::sdk::get_random_bytes<N>();
+        GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
+        wally_bzero(entropy.data(), entropy.size());
+        return GA_OK;
+    } catch (const std::exception& e) {
+        return GA_ERROR;
+    }
+}
+} // namespace
+
 extern "C" int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len)
 {
     try {
@@ -360,18 +375,9 @@ extern "C" int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes
     }
 }
 
-extern "C" int GA_generate_mnemonic(char** output)
-{
-    try {
-        GDK_RUNTIME_ASSERT(output);
-        auto entropy = ga::sdk::get_random_bytes<32>();
-        GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
-        wally_bzero(entropy.data(), entropy.size());
-        return GA_OK;
-    } catch (const std::exception& e) {
-        return GA_ERROR;
-    }
-}
+extern "C" int GA_generate_mnemonic(char** output) { return generate_mnemonic<32>(output); }
+
+extern "C" int GA_generate_mnemonic_12(char** output) { return generate_mnemonic<16>(output); }
 
 extern "C" int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
 {
