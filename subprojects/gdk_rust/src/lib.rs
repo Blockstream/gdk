@@ -28,6 +28,7 @@ use serde_json::Value;
 use android_logger::{Config, FilterBuilder};
 #[cfg(feature = "android_log")]
 use log::Level;
+use std::fmt;
 use std::ffi::CString;
 use std::mem::transmute;
 use std::os::raw::c_char;
@@ -38,9 +39,6 @@ use gdk_common::constants::{GA_ERROR, GA_OK};
 use gdk_common::model::{GDKRUST_json, GetTransactionsOpt};
 use gdk_common::session::Session;
 use gdk_common::util::{make_str, read_str};
-
-use bitcoin_exchange_rates::{hyper_fetch_requests, make_tls_hyper_client, prepare_requests};
-use bitcoin_exchange_rates::{Bitfinex, Currency, Pair, Source, Ticker, Wasabi};
 
 use gdk_electrum::{ElectrumSession, NativeNotif};
 // use gdk_rpc::session::RpcSession;
@@ -300,28 +298,20 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     GA_OK
 }
 
-fn fetch_exchange_rate_sources(sources: Vec<&dyn Source>) -> Vec<Ticker> {
-    let reqs = prepare_requests(sources, Pair::new_btc(Currency::USD));
-    let client = make_tls_hyper_client();
-    let res = hyper_fetch_requests(&client, &reqs);
-
-    // NOTE: we probably never want to error on empty sources. Just return nothing
-    if res.is_none() {
-        return Vec::new();
-    }
-    let okres = res.unwrap();
-
-    okres.rates.get_vec().clone()
-}
-
 fn fetch_exchange_rates() -> Vec<Ticker> {
-    let wasabi = Wasabi::new("https://wasabiwallet.io");
-    let bitfinex = Bitfinex::new();
-
-    let sources: Vec<&dyn Source> = vec![&bitfinex, &wasabi];
-    // TODO (jb55): shuffle sources?
-
-    fetch_exchange_rate_sources(sources)
+    if let Ok(result) = ureq::get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call().into_json() {
+        if let Value::Array(array) = result {
+            if let Some(Value::Array(array)) = array.get(0) {
+                if let Some(rate) = array.get(1).and_then(|e| e.as_f64()) {
+                    let pair = Pair::new(Currency::BTC, Currency::USD);
+                    let ticker = Ticker { pair, rate };
+                    info!("got exchange rate {:?}", ticker);
+                    return vec![ticker]
+                }
+            }
+        }
+    }
+    vec![]
 }
 
 fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
@@ -479,4 +469,84 @@ impl log::Log for SimpleLogger {
     }
 
     fn flush(&self) {}
+}
+
+
+
+
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum Currency {
+    BTC,
+    USD,
+    CAD,
+    // LBTC,
+    Other(String)
+}
+
+impl std::str::FromStr for Currency {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Error> {
+        // println!("currency from_str {}", s);
+        if s.len() < 3 {
+            return Err("ticker length less than 3".to_string().into())
+        }
+
+        // TODO: support harder to parse pairs (LBTC?)
+        match s {
+            "USD" => Ok(Currency::USD),
+            "CAD" => Ok(Currency::CAD),
+            "BTC" => Ok(Currency::BTC),
+            ""    => Err("empty ticker".to_string().into()),
+            other => Ok(Currency::Other(other.into()))
+        }
+    }
+}
+
+impl fmt::Display for Currency {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s =
+            match self {
+                Currency::USD => "USD",
+                Currency::CAD => "CAD",
+                Currency::BTC => "BTC",
+                // Currency::LBTC => "LBTC",
+                Currency::Other(ref s) => s,
+            };
+        write!(f, "{}", s)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Pair((Currency, Currency));
+
+impl Pair {
+    pub fn new(c1: Currency, c2: Currency) -> Pair {
+        Pair((c1, c2))
+    }
+
+    pub fn new_btc(c: Currency) -> Pair {
+        Pair((Currency::BTC, c))
+    }
+
+    pub fn first(&self) -> &Currency {
+        &(self.0).0
+    }
+
+    pub fn second(&self) -> &Currency {
+        &(self.0).1
+    }
+}
+
+impl fmt::Display for Pair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.first(), self.second())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Ticker {
+    pub pair: Pair,
+    pub rate: f64
 }

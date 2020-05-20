@@ -84,6 +84,7 @@ impl Forest {
         })
     }
 
+    /// returns Txid of my wallet transactions, with height if confirmed
     pub fn get_my(&self) -> Result<Vec<(Txid, Option<u32>)>, Error> {
         let mut heights = vec![];
         for keyvalue in self.heights.iter() {

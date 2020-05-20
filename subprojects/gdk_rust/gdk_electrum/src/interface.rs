@@ -132,7 +132,7 @@ impl WalletCtx {
         for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
             debug!("tx_id {}", tx_id);
 
-            let tx = all_txs.get(tx_id).ok_or_else(fn_err("no tx"))?;
+            let tx = all_txs.get(tx_id).ok_or_else(fn_err(&format!("list_tx no tx {}",tx_id )))?;
             let header = height
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
@@ -177,7 +177,7 @@ impl WalletCtx {
 
         let mut utxos = vec![];
         for tx_id in self.db.get_only_txids()? {
-            let tx = all_txs.get(&tx_id).ok_or_else(fn_err("no tx"))?;
+            let tx = all_txs.get(&tx_id).ok_or_else(fn_err(&format!("utxos no tx {}", tx_id)))?;
             let tx_utxos: Vec<(BEOutPoint, UTXOInfo)> = match tx {
                 BETransaction::Bitcoin(tx) => tx
                     .output

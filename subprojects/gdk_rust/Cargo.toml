@@ -34,11 +34,7 @@ stderrlog = { version = "0.4", optional = true }
 android_logger = { version = "0.8.6", optional = true }
 url = "1.7.2"
 backtrace = "0.3"
-
-[dependencies.bitcoin-exchange-rates]
-git = "https://github.com/jb55/rust-bitcoin-exchange-rates"
-rev = "f41e076d7d4e6c667b580f59cfb3366bd8576210"
-features = ["hyper-rustls-sync"]
+ureq = { version = "1.0.0", features = ["json"] }
 
 [dev-dependencies]
 tempdir = "0.3"
