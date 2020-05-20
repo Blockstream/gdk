@@ -165,12 +165,12 @@ release_osx_ios:
     - ./tools/clean.sh dirs
     - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone
 
-# release_osx_ios_sim:
-#   extends: .ios_release
-#   script:
-#     - cd $CI_PROJECT_DIR
-#     - ./tools/clean.sh dirs
-#     - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone
+release_osx_ios_sim:
+  extends: .ios_release
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./tools/clean.sh dirs
+    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone
 
 test_osx_clang_ndk_armeabi-v7a:
   only:
@@ -290,4 +290,4 @@ package_release:
   - release_py3m_osx
   - release_osx_ios
   - apidocs
-  # - release_osx_ios_sim
+  - release_osx_ios_sim
