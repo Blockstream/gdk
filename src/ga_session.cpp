@@ -719,8 +719,17 @@ namespace sdk {
             params.update(select_url(params["urls"], m_use_tor));
             json_add_if_missing(params, "proxy", socksify(m_proxy));
 
-            auto roots = m_net_params.gait_wamp_cert_roots();
-            const auto ssl_ctx = tls_init_handler_impl(params["host"], roots, {});
+            auto root_certificates = m_net_params.gait_wamp_cert_roots();
+
+            // The caller can specify a set of custom root certiifcates to add
+            // to the default network roots
+            const auto custom_roots_p = params.find("root_certificates");
+            if (custom_roots_p != params.end()) {
+                for (const auto& custom_root_certificate : *custom_roots_p) {
+                    root_certificates.push_back(custom_root_certificate.get<std::string>());
+                }
+            }
+            const auto ssl_ctx = tls_init_handler_impl(params["host"], root_certificates, {});
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
