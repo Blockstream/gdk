@@ -28,8 +28,8 @@ use serde_json::Value;
 use android_logger::{Config, FilterBuilder};
 #[cfg(feature = "android_log")]
 use log::Level;
-use std::fmt;
 use std::ffi::CString;
+use std::fmt;
 use std::mem::transmute;
 use std::os::raw::c_char;
 use std::sync::Once;
@@ -198,10 +198,9 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
         Some("electrum") => {
             let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
                 .map_err(|x| json!(x))?;
-            let move_url = url.clone();
 
-            let session = ElectrumSession::new_session(parsed_network.clone(), db_root, move_url)
-                .map_err(|x| json!(x))?;
+            let session =
+                ElectrumSession::new_session(parsed_network, db_root, url).map_err(|x| json!(x))?;
             let backend = GdkBackend::Electrum(session);
 
             // some time in the past
@@ -233,7 +232,7 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         }
     }
 
-    return sess.last_xr.clone();
+    sess.last_xr.clone()
 }
 
 #[no_mangle]
@@ -249,7 +248,7 @@ pub extern "C" fn GDKRUST_call_session(
     let sess = safe_mut_ref!(sess);
 
     if method == "exchange_rates" {
-        let rates = fetch_cached_exchange_rates(sess).unwrap_or(Vec::new());
+        let rates = fetch_cached_exchange_rates(sess).unwrap_or_default();
         return json_res!(output, tickers_to_json(rates), GA_OK);
     }
     let input_redacted = if method == "login" {
@@ -264,7 +263,8 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    let res_string = format!("{:?}", res).truncate(200);
+    let mut res_string = format!("{:?}", res);
+    res_string.truncate(200);
     info!("GDKRUST_call_session {} {:?}", method, res_string);
 
     match res {
@@ -299,14 +299,19 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 }
 
 fn fetch_exchange_rates() -> Vec<Ticker> {
-    if let Ok(result) = ureq::get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call().into_json() {
+    if let Ok(result) =
+        ureq::get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call().into_json()
+    {
         if let Value::Array(array) = result {
             if let Some(Value::Array(array)) = array.get(0) {
                 if let Some(rate) = array.get(1).and_then(|e| e.as_f64()) {
                     let pair = Pair::new(Currency::BTC, Currency::USD);
-                    let ticker = Ticker { pair, rate };
+                    let ticker = Ticker {
+                        pair,
+                        rate,
+                    };
                     info!("got exchange rate {:?}", ticker);
-                    return vec![ticker]
+                    return vec![ticker];
                 }
             }
         }
@@ -471,17 +476,13 @@ impl log::Log for SimpleLogger {
     fn flush(&self) {}
 }
 
-
-
-
-
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Currency {
     BTC,
     USD,
     CAD,
     // LBTC,
-    Other(String)
+    Other(String),
 }
 
 impl std::str::FromStr for Currency {
@@ -490,7 +491,7 @@ impl std::str::FromStr for Currency {
     fn from_str(s: &str) -> std::result::Result<Self, Error> {
         // println!("currency from_str {}", s);
         if s.len() < 3 {
-            return Err("ticker length less than 3".to_string().into())
+            return Err("ticker length less than 3".to_string().into());
         }
 
         // TODO: support harder to parse pairs (LBTC?)
@@ -498,22 +499,21 @@ impl std::str::FromStr for Currency {
             "USD" => Ok(Currency::USD),
             "CAD" => Ok(Currency::CAD),
             "BTC" => Ok(Currency::BTC),
-            ""    => Err("empty ticker".to_string().into()),
-            other => Ok(Currency::Other(other.into()))
+            "" => Err("empty ticker".to_string().into()),
+            other => Ok(Currency::Other(other.into())),
         }
     }
 }
 
 impl fmt::Display for Currency {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s =
-            match self {
-                Currency::USD => "USD",
-                Currency::CAD => "CAD",
-                Currency::BTC => "BTC",
-                // Currency::LBTC => "LBTC",
-                Currency::Other(ref s) => s,
-            };
+        let s = match self {
+            Currency::USD => "USD",
+            Currency::CAD => "CAD",
+            Currency::BTC => "BTC",
+            // Currency::LBTC => "LBTC",
+            Currency::Other(ref s) => s,
+        };
         write!(f, "{}", s)
     }
 }
@@ -548,5 +548,5 @@ impl fmt::Display for Pair {
 #[derive(Debug, Clone)]
 pub struct Ticker {
     pub pair: Pair,
-    pub rate: f64
+    pub rate: f64,
 }

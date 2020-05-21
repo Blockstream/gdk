@@ -9,7 +9,7 @@ pub fn balance_result_value(bal: &Balances) -> Value {
     json!(bal)
 }
 
-pub fn address_type_str(addr_type: &AddressType) -> &'static str {
+pub fn address_type_str(addr_type: AddressType) -> &'static str {
     match addr_type {
         AddressType::P2pkh => "p2pkh",
         AddressType::P2sh => "p2sh",
@@ -21,7 +21,7 @@ pub fn address_type_str(addr_type: &AddressType) -> &'static str {
 pub fn address_io_value(addr: &AddressIO) -> Value {
     json!({
         "address": addr.address,
-        "address_type": address_type_str(&addr.address_type),
+        "address_type": address_type_str(addr.address_type),
         "addressee": addr.addressee,
         "is_output": addr.is_output,
         "is_relevant": addr.is_relevant,
@@ -79,7 +79,7 @@ pub fn txs_result_value(txs: &TxsResult) -> Value {
     Value::Array(txs.0.iter().map(txitem_value).collect())
 }
 
-pub fn subaccounts_value(subaccounts: &Vec<Subaccount>) -> Value {
+pub fn subaccounts_value(subaccounts: &[Subaccount]) -> Value {
     Value::Array(subaccounts.iter().map(subaccount_value).collect())
 }
 
@@ -210,8 +210,8 @@ where
     Ok(balance_result_value(&bal))
 }
 
-pub fn fee_estimate_values(estimates: &Vec<FeeEstimate>) -> Result<Value, Error> {
-    if estimates.len() == 0 {
+pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, Error> {
+    if estimates.is_empty() {
         // Current apps depend on this length
         return Err(Error::Other("Expected at least one feerate".into()));
     }

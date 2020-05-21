@@ -42,11 +42,7 @@ pub fn bip39_mnemonic_from_bytes(entropy: &[u8]) -> String {
 /// Validate the validity of a BIP-39 mnemonic.
 pub fn bip39_mnemonic_validate(mnemonic: &str) -> bool {
     let ret = unsafe { ffi::bip39_mnemonic_validate(ptr::null(), make_str(mnemonic)) };
-    if ret == ffi::WALLY_OK {
-        true
-    } else {
-        false
-    }
+    ret == ffi::WALLY_OK
 }
 
 /// Convert the mnemonic back into the entropy bytes.
@@ -210,6 +206,7 @@ pub fn asset_blinding_key_to_ec_private_key(
     secp256k1::SecretKey::from_slice(&out).expect("size is 32")
 }
 
+#[allow(clippy::type_complexity)]
 pub fn asset_unblind(
     pub_key: secp256k1::PublicKey,
     priv_key: secp256k1::SecretKey,
@@ -369,6 +366,7 @@ pub fn asset_value_commitment(value: u64, vbf: [u8; 32], generator: Asset) -> Va
     Value::Confidential(prefix, suffix)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn asset_rangeproof(
     value: u64,
     pub_key: secp256k1::PublicKey,
@@ -428,14 +426,15 @@ pub fn asset_surjectionproof_size(num_inputs: usize) -> usize {
     proof_size
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn asset_surjectionproof(
     output_asset: AssetId,
     output_abf: [u8; 32],
     output_generator: Asset,
     bytes: [u8; 32],
-    assets: &Vec<u8>,
-    abfs: &Vec<u8>,
-    generators: &Vec<u8>,
+    assets: &[u8],
+    abfs: &[u8],
+    generators: &[u8],
     num_inputs: usize,
 ) -> Vec<u8> {
     let proof_size = asset_surjectionproof_size(num_inputs);

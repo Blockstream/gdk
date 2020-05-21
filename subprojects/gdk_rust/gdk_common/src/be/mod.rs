@@ -6,14 +6,13 @@ mod outpoint;
 mod transaction;
 
 pub use address::*;
+use bitcoin::Script;
 pub use blockheader::*;
 pub use outpoint::*;
-pub use transaction::*;
-use bitcoin::Script;
 use std::collections::{HashMap, HashSet};
+pub use transaction::*;
 
 pub type AssetId = [u8; 32];
-
 
 pub struct WalletData {
     pub utxos: Vec<(BEOutPoint, UTXOInfo)>,
@@ -22,7 +21,6 @@ pub struct WalletData {
     pub all_scripts: HashSet<Script>,
     pub all_unblinded: HashMap<elements::OutPoint, Unblinded>,
 }
-
 
 #[derive(Debug)]
 pub struct UTXOInfo {
@@ -40,7 +38,6 @@ impl UTXOInfo {
         }
     }
 }
-
 
 pub struct Unblinded {
     pub asset: AssetId,
@@ -89,7 +86,6 @@ pub fn asset_to_hex(asset: &[u8]) -> String {
     asset.reverse();
     hex::encode(asset)
 }
-
 
 #[cfg(test)]
 mod tests {

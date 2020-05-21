@@ -47,7 +47,6 @@ pub enum ElectrumUrl {
     Plaintext(String),
 }
 
-
 impl WalletCtx {
     pub fn new(
         db: Forest,
@@ -73,7 +72,7 @@ impl WalletCtx {
         &self.mnemonic
     }
 
-    fn derive_address(&self, xpub: &ExtendedPubKey, path: &[u32; 2]) -> Result<BEAddress, Error> {
+    fn derive_address(&self, xpub: &ExtendedPubKey, path: [u32; 2]) -> Result<BEAddress, Error> {
         let path: Vec<ChildNumber> = path
             .iter()
             .map(|x| ChildNumber::Normal {
@@ -117,10 +116,8 @@ impl WalletCtx {
 
     pub fn get_tip(&self) -> Result<u32, Error> {
         self.db.get_tip()
-
     }
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
-
         let (_, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;
         let all_unblinded = self.db.get_all_unblinded()?; // empty map if not liquid
@@ -132,17 +129,13 @@ impl WalletCtx {
         for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
             debug!("tx_id {}", tx_id);
 
-            let tx = all_txs.get(tx_id).ok_or_else(fn_err(&format!("list_tx no tx {}",tx_id )))?;
+            let tx = all_txs.get(tx_id).ok_or_else(fn_err(&format!("list_tx no tx {}", tx_id)))?;
             let header = height
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
 
             let fee = tx.fee(&all_txs, &all_unblinded);
-            let satoshi = tx.my_balances(
-                &all_txs,
-                &all_scripts,
-                &all_unblinded,
-            );
+            let satoshi = tx.my_balances(&all_txs, &all_scripts, &all_unblinded);
 
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
@@ -240,7 +233,9 @@ impl WalletCtx {
         let mut result = HashMap::new();
         match self.network.id() {
             NetworkId::Bitcoin(_) => result.entry("btc".to_string()).or_insert(0),
-            NetworkId::Elements(_) => result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0),
+            NetworkId::Elements(_) => {
+                result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0)
+            }
         };
         for (_, info) in self.utxos()?.utxos.iter() {
             *result.entry(info.asset.clone()).or_default() += info.value as i64;
@@ -295,14 +290,21 @@ impl WalletCtx {
                 return Err(Error::SendAll);
             }
             let asset = request.addressees[0].asset_tag.as_deref().unwrap_or("btc");
-            let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos.iter().filter(|(_, i)| i.asset == asset).collect();
+            let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> =
+                utxos.iter().filter(|(_, i)| i.asset == asset).collect();
             let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
             let mut dummy_tx = BETransaction::new(self.network.id());
             for utxo in all_utxos.iter() {
                 dummy_tx.add_input(utxo.0.clone());
             }
-            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 1) + 3;  // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
-            info!("send_all asset: {} total_amount:{} utxos:{} estimated_fee:{}", asset, total_amount_utxos, all_utxos.len(), estimated_fee);
+            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 1) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+            info!(
+                "send_all asset: {} total_amount:{} utxos:{} estimated_fee:{}",
+                asset,
+                total_amount_utxos,
+                all_utxos.len(),
+                estimated_fee
+            );
             request.addressees[0].satoshi = total_amount_utxos - estimated_fee;
         }
 
@@ -314,22 +316,25 @@ impl WalletCtx {
 
         // STEP 1) add the outputs requested for this transactions
         for out in request.addressees.iter() {
-            tx.add_output(&out.address, out.satoshi, out.asset_tag.clone()).map_err(|_| Error::InvalidAddress)?;
+            tx.add_output(&out.address, out.satoshi, out.asset_tag.clone())
+                .map_err(|_| Error::InvalidAddress)?;
         }
 
         // STEP 2) add utxos until tx outputs are covered (including fees) or fail
         let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
         loop {
-            let mut needs = tx.needs(fee_rate, send_all, self.network.policy_asset.clone(), &wallet_data);  // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
+            let mut needs =
+                tx.needs(fee_rate, send_all, self.network.policy_asset.clone(), &wallet_data); // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
             info!("needs: {:?}", needs);
             if needs.is_empty() {
                 // SUCCESS tx doesn't need other inputs
                 break;
             }
-            let current_need = needs.pop().unwrap();  // safe to unwrap just checked it's not empty
+            let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
 
             // taking only utxos of current asset considered, filters also utxos used in this loop
-            let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos.iter()
+            let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
+                .iter()
                 .filter(|(o, i)| i.asset == current_need.asset && !used_utxo.contains(o))
                 .collect();
 
@@ -347,13 +352,17 @@ impl WalletCtx {
         }
 
         // STEP 3) adding change(s)
-        let estimated_fee = tx.estimated_fee(fee_rate, tx.estimated_changes(send_all, &wallet_data) );
+        let estimated_fee =
+            tx.estimated_fee(fee_rate, tx.estimated_changes(send_all, &wallet_data));
         let changes = tx.changes(estimated_fee, self.network.policy_asset.clone(), &wallet_data); // Vec<Change> asset, value
-        for (i,change) in changes.iter().enumerate() {
+        for (i, change) in changes.iter().enumerate() {
             let change_index = self.db.get_index(Index::Internal)? + i as u32 + 1;
-            let change_address = self.derive_address(&self.xpub, &[1, change_index])?.to_string();
-            info!("adding change to {} of {} asset {:?}", &change_address, change.satoshi, change.asset);
-            tx.add_output(&change_address, change.satoshi,  Some(change.asset.clone()) )?;
+            let change_address = self.derive_address(&self.xpub, [1, change_index])?.to_string();
+            info!(
+                "adding change to {} of {} asset {:?}",
+                &change_address, change.satoshi, change.asset
+            );
+            tx.add_output(&change_address, change.satoshi, Some(change.asset.clone()))?;
         }
 
         // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
@@ -429,7 +438,7 @@ impl WalletCtx {
                 let mut out_tx = tx.clone();
 
                 for i in 0..tx.input.len() {
-                    let prev_output = tx.input[i].previous_output.clone();
+                    let prev_output = tx.input[i].previous_output;
                     info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = self
                         .db
@@ -440,7 +449,7 @@ impl WalletCtx {
                         .db
                         .get_path(&out.script_pubkey)?
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                        .to_derivation_path()?;
+                        .into_derivation_path()?;
                     info!(
                         "input#{} prev_output:{:?} derivation_path:{:?}",
                         i, prev_output, derivation_path
@@ -449,23 +458,30 @@ impl WalletCtx {
                     let (pk, sig) = self.internal_sign(&tx, i, &derivation_path, out.value);
                     let script_sig = script_sig(&pk);
                     let witness = vec![sig, pk.to_bytes()];
-                    info!("added size len: script_sig:{} witness:{}", script_sig.len(), witness.iter().map(|v| v.len()).sum::<usize>());
+                    info!(
+                        "added size len: script_sig:{} witness:{}",
+                        script_sig.len(),
+                        witness.iter().map(|v| v.len()).sum::<usize>()
+                    );
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;
                 }
                 let tx = BETransaction::Bitcoin(out_tx);
-                info!("transaction final size is {} bytes and {} vbytes", tx.serialize().len(), tx.get_weight() / 4);
+                info!(
+                    "transaction final size is {} bytes and {} vbytes",
+                    tx.serialize().len(),
+                    tx.get_weight() / 4
+                );
                 info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
                 tx.into()
             }
             NetworkId::Elements(_) => {
-                let tx: elements::Transaction =
+                let mut tx: elements::Transaction =
                     elements::encode::deserialize(&hex::decode(&request.hex)?)?;
-                let mut out_tx = tx.clone();
-                self.blind_tx(&mut out_tx)?;
+                self.blind_tx(&mut tx)?;
 
-                for idx in 0..out_tx.input.len() {
-                    let prev_output = out_tx.input[idx].previous_output.clone();
+                for idx in 0..tx.input.len() {
+                    let prev_output = tx.input[idx].previous_output;
                     info!("input#{} prev_output:{:?}", idx, prev_output);
                     let prev_tx = self
                         .db
@@ -476,7 +492,7 @@ impl WalletCtx {
                         .db
                         .get_path(&out.script_pubkey)?
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                        .to_derivation_path()?;
+                        .into_derivation_path()?;
 
                     let privkey = self.xprv.derive_priv(&self.secp, &derivation_path).unwrap();
                     let pubkey = ExtendedPubKey::from_private(&self.secp, &privkey);
@@ -485,7 +501,7 @@ impl WalletCtx {
                         elements::Address::p2pkh(&pubkey.public_key, None, address_params(el_net))
                             .script_pubkey();
                     let sighash = tx_get_elements_signature_hash(
-                        &out_tx,
+                        &tx,
                         idx,
                         &script_code,
                         &out.value,
@@ -499,15 +515,24 @@ impl WalletCtx {
 
                     let redeem_script = script_sig(&pubkey.public_key);
                     let witness = vec![signature, pubkey.public_key.to_bytes()];
-                    info!("added size len: script_sig:{} witness:{}", redeem_script.len(), witness.iter().map(|v| v.len()).sum::<usize>());
-                    out_tx.input[idx].script_sig = redeem_script;
-                    out_tx.input[idx].witness.script_witness = witness;
+                    info!(
+                        "added size len: script_sig:{} witness:{}",
+                        redeem_script.len(),
+                        witness.iter().map(|v| v.len()).sum::<usize>()
+                    );
+                    tx.input[idx].script_sig = redeem_script;
+                    tx.input[idx].witness.script_witness = witness;
                 }
 
                 let fee: u64 =
-                    out_tx.output.iter().filter(|o| o.is_fee()).map(|o| o.minimum_value()).sum();
-                let tx = BETransaction::Elements(out_tx);
-                info!("transaction final size is {} bytes and {} vbytes and fee is {}", tx.serialize().len(), tx.get_weight() / 4, fee);
+                    tx.output.iter().filter(|o| o.is_fee()).map(|o| o.minimum_value()).sum();
+                let tx = BETransaction::Elements(tx);
+                info!(
+                    "transaction final size is {} bytes and {} vbytes and fee is {}",
+                    tx.serialize().len(),
+                    tx.get_weight() / 4,
+                    fee
+                );
                 info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
                 tx.into()
             }
@@ -650,7 +675,11 @@ impl WalletCtx {
                             elements::confidential::Nonce::Confidential(bytes[0], byte32);
                         output.asset = output_generator;
                         output.value = output_value_commitment;
-                        info!("added size len: surjectionproof:{} rangeproof:{}", surjectionproof.len(), rangeproof.len());
+                        info!(
+                            "added size len: surjectionproof:{} rangeproof:{}",
+                            surjectionproof.len(),
+                            rangeproof.len()
+                        );
                         output.witness.surjection_proof = surjectionproof;
                         output.witness.rangeproof = rangeproof;
                     }
@@ -676,7 +705,7 @@ impl WalletCtx {
 
     pub fn get_address(&self) -> Result<AddressPointer, Error> {
         let pointer = self.db.increment_index(Index::External, 1)?;
-        let address = self.derive_address(&self.xpub, &[0, pointer])?.to_string();
+        let address = self.derive_address(&self.xpub, [0, pointer])?.to_string();
         Ok(AddressPointer {
             address,
             pointer,

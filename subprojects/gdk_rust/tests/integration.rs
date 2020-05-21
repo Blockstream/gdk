@@ -54,7 +54,7 @@ fn liquid() {
     test_session.send_tx_same_script();
     let assets = test_session.fund(100_000_000, Some(3));
     test_session.send_multi(3, 100_000, vec![]);
-    test_session.send_multi(30, 100_000 , assets);
+    test_session.send_multi(30, 100_000, assets);
     test_session.mine_block();
     test_session.send_fails();
     test_session.fees();

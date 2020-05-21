@@ -92,7 +92,7 @@ impl ClientWrap {
         }
     }
 
-    pub fn batch_estimate_fee<'s, I>(&mut self, numbers: I) -> Result<Vec<f64>, Error>
+    pub fn batch_estimate_fee<I>(&mut self, numbers: I) -> Result<Vec<f64>, Error>
     where
         I: IntoIterator<Item = usize>,
     {
@@ -131,7 +131,11 @@ pub struct Tipper<S: Read + Write> {
 }
 
 impl<S: Read + Write> Tipper<S> {
-    pub fn new(db: Forest, client: electrum_client::Client<S>, network: Network) -> Result<Self, Error> {
+    pub fn new(
+        db: Forest,
+        client: electrum_client::Client<S>,
+        network: Network,
+    ) -> Result<Self, Error> {
         Ok(Tipper {
             db,
             client,
@@ -204,19 +208,19 @@ fn notify_settings(notif: NativeNotif, settings: &Settings) {
     notify(notif, data);
 }
 
-fn notify_fee(notif: NativeNotif, fees: &Vec<FeeEstimate>) {
+fn notify_fee(notif: NativeNotif, fees: &[FeeEstimate]) {
     let data = json!({"fees":fees,"event":"fees"});
     notify(notif, data);
 }
 
 fn determine_electrum_url(
     url: &Option<String>,
-    tls: &Option<bool>,
-    validate_domain: &Option<bool>,
+    tls: Option<bool>,
+    validate_domain: Option<bool>,
 ) -> Result<ElectrumUrl, Error> {
     let url = url.as_ref().ok_or_else(|| Error::Generic("network url is missing".into()))?;
     if url == "" {
-        return Err(Error::Generic("network url is empty".into()))?;
+        return Err(Error::Generic("network url is empty".into()));
     }
 
     if tls.unwrap_or(false) {
@@ -227,7 +231,7 @@ fn determine_electrum_url(
 }
 
 pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl, Error> {
-    determine_electrum_url(&network.url, &network.tls, &network.validate_domain)
+    determine_electrum_url(&network.url, network.tls, network.validate_domain)
 }
 
 impl ElectrumSession {
@@ -320,7 +324,7 @@ impl Session<Error> for ElectrumSession {
     fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
         if self.db_root == "" {
             self.db_root =
-                net_params["state_dir"].as_str().map(|x| x.to_string()).unwrap_or("".into());
+                net_params["state_dir"].as_str().map(|x| x.to_string()).unwrap_or_else(|| "".into());
             info!("setting db_root to {:?}", self.db_root);
         }
 
@@ -409,9 +413,9 @@ impl Session<Error> for ElectrumSession {
                         (Ok(mut registry), Ok(icons)) => {
                             info!("got registry and icons");
                             if let Some(policy) = registry_policy {
-                                info!("inserting policy asset {}", policy);
-                                registry[policy.to_string()] =
-                                    json!({"asset_id": policy.to_string(), "name": "btc"});
+                                info!("inserting policy asset {}", &policy);
+                                registry[policy] =
+                                    json!({"asset_id": &policy, "name": "btc"});
                             }
 
                             db_for_registry.insert_asset_registry(&registry).unwrap();
@@ -454,7 +458,10 @@ impl Session<Error> for ElectrumSession {
             }
             ElectrumUrl::Plaintext(url) => {
                 let client = electrum_client::Client::new(&url)?;
-                TipperKind::Plain(Tipper::new(db.clone(), client, self.network.clone())?, url.to_string())
+                TipperKind::Plain(
+                    Tipper::new(db.clone(), client, self.network.clone())?,
+                    url.to_string(),
+                )
             }
         };
 
@@ -464,7 +471,7 @@ impl Session<Error> for ElectrumSession {
             self.network.clone(),
             xprv,
             xpub,
-            master_blinding.clone(),
+            master_blinding,
         )?;
 
         self.wallet = Some(wallet);
@@ -669,7 +676,7 @@ impl Session<Error> for ElectrumSession {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        Ok(self.try_get_fee_estimates().unwrap_or(vec![FeeEstimate(1000u64); 25]))
+        Ok(self.try_get_fee_estimates().unwrap_or_else( |_| vec![FeeEstimate(1000u64); 25]))
         //TODO better implement default
     }
 
@@ -864,7 +871,7 @@ impl<S: Read + Write> Syncer<S> {
                                 txid,
                                 vout,
                             };
-                            if let Err(_) = self.try_unblind(outpoint, output.clone()) {
+                            if self.try_unblind(outpoint, output.clone()).is_err() {
                                 info!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
                             }
                         }

@@ -373,7 +373,10 @@ impl TestSession {
             assert_eq!(init_sat - tx.fee, self.balance_gdk(None));
             for tag in assets {
                 let outputs_for_this_asset = tags.iter().filter(|t| t == &&tag).count() as u64;
-                assert_eq!( *init_assets_sat.get(&tag).unwrap() as u64 - outputs_for_this_asset * amount, self.balance_gdk(Some(tag)));
+                assert_eq!(
+                    *init_assets_sat.get(&tag).unwrap() as u64 - outputs_for_this_asset * amount,
+                    self.balance_gdk(Some(tag))
+                );
             }
         }
         //TODO check node balance
@@ -479,7 +482,6 @@ impl TestSession {
                     );
                 }
                 assert!(tx.output.last().unwrap().is_fee(), "last output is not a fee");
-
             }
             NetworkId::Bitcoin(_) => {
                 let tx: bitcoin::Transaction =

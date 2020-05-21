@@ -442,7 +442,7 @@ impl Path {
         Ok(Path::new(u32::from_be_bytes(i), u32::from_be_bytes(j)))
     }
 
-    pub fn to_derivation_path(self) -> Result<DerivationPath, Error> {
+    pub fn into_derivation_path(self) -> Result<DerivationPath, Error> {
         Ok(DerivationPath::from_str(&format!("m/{}/{}", self.i, self.j))?)
     }
 }

@@ -1,6 +1,6 @@
+use crate::be::asset_to_bin;
 use crate::be::AssetId;
 use serde_derive::{Deserialize, Serialize};
-use crate::be::asset_to_bin;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {

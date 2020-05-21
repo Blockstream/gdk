@@ -1,5 +1,6 @@
 use crate::NetworkId;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum BEBlockHeader {
     Bitcoin(bitcoin::BlockHeader),
