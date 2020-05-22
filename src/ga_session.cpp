@@ -755,21 +755,22 @@ namespace sdk {
 
     nlohmann::json ga_session::refresh_http_data(const std::string& type, bool refresh)
     {
-        const auto value = [this, &type] {
+        const auto cached_value = [this, &type] {
             locker_t locker(m_mutex);
             return m_cache.get(type);
         }();
 
         if (!refresh) {
-            return value ? nlohmann::json::from_msgpack(value->begin(), value->end()) : nlohmann::json::object();
+            return cached_value ? nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end())
+                                : nlohmann::json::object();
         }
 
         nlohmann::json cached_data;
         nlohmann::json get_params
             = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/" + type + ".json" } };
 
-        if (value) {
-            cached_data = nlohmann::json::from_msgpack(value->begin(), value->end());
+        if (cached_value) {
+            cached_data = nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end());
             get_params.update({ { "headers",
                 { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
                     cached_data.at("last_modified") } } } });
