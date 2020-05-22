@@ -139,7 +139,13 @@ namespace sdk {
             } else {
                 body = { { "body", m_response.body() } };
             }
-            body.update({ { "last_modified", m_response[beast::http::field::last_modified] } });
+
+            for (const auto& field : m_response.base()) {
+                const std::string field_name = field.name_string().to_string();
+                const std::string field_value = field.value().to_string();
+                body["headers"][boost::algorithm::to_lower_copy(field_name)] = field_value;
+            }
+
             m_promise.set_value(body);
         } catch (const std::exception& ex) {
             m_promise.set_exception(std::make_exception_ptr(ex));

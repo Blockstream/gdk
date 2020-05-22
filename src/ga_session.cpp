@@ -765,7 +765,7 @@ namespace sdk {
         if (cached_value) {
             try {
                 cached_data = nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end());
-                last_modified = cached_data.at("last-modified");
+                last_modified = cached_data.at("headers").at("last-modified");
             } catch (const std::exception& e) {
                 GDK_LOG_SEV(log_level::warning) << "Error reading cached json: " << e.what();
                 cached_data = nlohmann::json::object();
