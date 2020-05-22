@@ -230,10 +230,11 @@ impl TestSession {
     /// wait gdk session status to change (new tx)
     fn wait_status_change(&mut self) {
         loop {
-            let new_status = self.session.status().unwrap();
-            if self.status != new_status {
-                self.status = new_status;
-                break;
+            if let Ok( new_status) = self.session.status() {
+                if self.status != new_status {
+                    self.status = new_status;
+                    break;
+                }
             }
             thread::sleep(Duration::from_millis(500));
         }

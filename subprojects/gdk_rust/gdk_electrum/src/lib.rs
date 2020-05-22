@@ -14,13 +14,14 @@ use crate::db::{Forest, Index, BATCH_SIZE};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 
+use sled::Batch;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Txid;
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 
-use electrum_client::GetHistoryRes;
+use electrum_client::{GetHistoryRes};
 use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
@@ -663,7 +664,9 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
-        info!("broadcast_transaction {:#?}", tx_hex);
+        let transaction = BETransaction::from_hex(&tx_hex, self.network.id())?;
+
+        info!("broadcast_transaction {:#?}", transaction.txid());
         let mut client = ClientWrap::new(self.url.clone())?;
         let hex = hex::decode(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
@@ -846,6 +849,8 @@ impl<S: Read + Write> Syncer<S> {
         let mut txs_in_db = self.db.get_all_txid()?;
         let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
         if !txs_to_download.is_empty() {
+            let mut batch = Batch::default();
+
             let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
             let mut txs_downloaded: Vec<BETransaction> = vec![];
             for vec in txs_bytes_downloaded {
@@ -854,7 +859,8 @@ impl<S: Read + Write> Syncer<S> {
             info!("txs_downloaded {:?}", txs_downloaded.len());
             let mut previous_txs_to_download = HashSet::new();
             for tx in txs_downloaded.iter() {
-                self.db.insert_tx(&tx.txid(), &tx)?;
+                //self.db.insert_tx(&tx.txid(), &tx)?;
+                batch.insert(tx.txid().as_ref(), tx.serialize());
                 txs_in_db.insert(tx.txid());
                 for txid in tx.previous_output_txids() {
                     previous_txs_to_download.insert(txid);
@@ -890,9 +896,11 @@ impl<S: Read + Write> Syncer<S> {
                 }
                 info!("previous txs_downloaded {:?}", txs_downloaded.len());
                 for tx in txs_downloaded.iter() {
-                    self.db.insert_tx(&tx.txid(), tx)?;
+                    //self.db.insert_tx(&tx.txid(), tx)?;
+                    batch.insert(tx.txid().as_ref(), tx.serialize());
                 }
             }
+            self.db.apply_txs_batch(batch)?;
             Ok(true)
         } else {
             Ok(false)

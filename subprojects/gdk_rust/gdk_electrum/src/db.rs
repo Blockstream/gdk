@@ -14,7 +14,7 @@ use gdk_common::wally::{
 use gdk_common::{ElementsNetwork, NetworkId};
 use log::{debug, trace};
 use serde_json::Value;
-use sled::{self, Tree};
+use sled::{self, Tree, Batch};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::ops::{Deref, DerefMut};
@@ -354,6 +354,10 @@ impl Forest {
             Ok(p) => p.is_some(),
             Err(_) => false,
         }
+    }
+
+    pub fn apply_txs_batch(&self, batch: Batch) -> Result<(), Error> {
+        Ok(self.txs.apply_batch(batch)?)
     }
 
     pub fn flush(&self) -> Result<usize, Error> {
