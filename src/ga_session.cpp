@@ -790,7 +790,7 @@ namespace sdk {
             return cached_data;
         }
 
-        GDK_RUNTIME_ASSERT_MSG(data.find("body") == data.end(), "expected JSON");
+        GDK_RUNTIME_ASSERT_MSG(data["body"].is_object(), "expected JSON");
         locker_t locker(m_mutex);
         m_cache.upsert_keyvalue(type, nlohmann::json::to_msgpack(data));
         if (m_local_encryption_key) {
@@ -811,7 +811,7 @@ namespace sdk {
             const auto assets = refresh_http_data("index", refresh);
             nlohmann::json json_assets;
             if (assets.find("error") == assets.end()) {
-                json_assets = assets;
+                json_assets = assets.value("body", nlohmann::json::object());
                 json_assets.update({ { m_net_params.policy_asset(),
                     { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } });
             }
@@ -822,7 +822,7 @@ namespace sdk {
             const auto icons = refresh_http_data("icons", refresh);
             nlohmann::json json_icons;
             if (icons.find("error") == icons.end()) {
-                json_icons = icons;
+                json_icons = icons.value("body", nlohmann::json::object());
             }
             result["icons"] = json_icons;
         }

@@ -135,7 +135,7 @@ namespace sdk {
             nlohmann::json body;
             const auto content_type = m_response[beast::http::field::content_type];
             if (content_type == "application/json") {
-                body = nlohmann::json::parse(m_response.body());
+                body = { { "body", nlohmann::json::parse(m_response.body()) } };
             } else {
                 body = { { "body", m_response.body() } };
             }
