@@ -50,6 +50,7 @@ namespace sdk {
         boost::beast::http::response<boost::beast::http::string_body> m_response;
         std::string m_host;
         std::string m_port;
+        std::string m_accept;
 
         std::promise<nlohmann::json> m_promise;
 

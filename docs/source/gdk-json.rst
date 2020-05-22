@@ -1037,6 +1037,7 @@ HTTP params JSON
 .. code-block:: json
 
    {
+      "accept":"json"
       "uri":"https://assets.blockstream.info"
       "target":"/index.json"
       "proxy":"localhost:9150"

@@ -52,6 +52,8 @@ namespace sdk {
             }
         }
 
+        m_accept = params.value("accept", "");
+
         if (!proxy_uri.empty()) {
             get_lowest_layer().expires_after(HTTP_TIMEOUT);
             auto proxy = std::make_shared<socks_client>(m_io, get_next_layer());
@@ -133,11 +135,13 @@ namespace sdk {
 
         try {
             nlohmann::json body;
-            const auto content_type = m_response[beast::http::field::content_type];
-            if (content_type == "application/json") {
-                body = { { "body", nlohmann::json::parse(m_response.body()) } };
+
+            if (m_accept == "json") {
+                body["body"] = nlohmann::json::parse(m_response.body());
+            } else if (m_accept == "base64") {
+                body["body"] = websocketpp::base64_encode(m_response.body());
             } else {
-                body = { { "body", m_response.body() } };
+                body["body"] = m_response.body();
             }
 
             for (const auto& field : m_response.base()) {

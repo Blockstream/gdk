@@ -730,7 +730,8 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(client != nullptr);
 
                 nlohmann::json get_params = { { "uri", host_port.first }, { "port", host_port.second },
-                    { "target", curr_params.at("target") }, { "proxy", curr_params.at("proxy") } };
+                    { "target", curr_params.at("target") }, { "proxy", curr_params.at("proxy") },
+                    { "accept", curr_params.value("accept", "") } };
                 if (!curr_params.value("headers", nlohmann::json{}).empty()) {
                     get_params.update({ { "headers", curr_params.at("headers") } });
                 }
@@ -772,8 +773,8 @@ namespace sdk {
             }
         }
 
-        nlohmann::json get_params
-            = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/" + type + ".json" } };
+        nlohmann::json get_params = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) },
+            { "target", "/" + type + ".json" }, { "accept", "json" } };
         if (!refresh) {
             return cached_data;
         }
