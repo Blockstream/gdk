@@ -250,12 +250,24 @@ impl WalletCtx {
         // eagerly check for address validity
         for address in request.addressees.iter().map(|a| &a.address) {
             match self.network.id() {
-                NetworkId::Bitcoin(_) => bitcoin::Address::from_str(address)
-                    .map_err(|_| Error::InvalidAddress)
-                    .map(|_| ())?,
-                NetworkId::Elements(_) => elements::Address::from_str(address)
-                    .map_err(|_| Error::InvalidAddress)
-                    .map(|_| ())?,
+                NetworkId::Bitcoin(network) => {
+                    if let Ok(address) = bitcoin::Address::from_str(address) {
+                        info!("address.network:{} network:{}", address.network, network);
+                        if address.network == network || (address.network == bitcoin::Network::Testnet && network == bitcoin::Network::Regtest) {
+                            continue;
+                        }
+                    }
+                    return Err(Error::InvalidAddress);
+                },
+                NetworkId::Elements(network) => {
+                    if let Ok(address) = elements::Address::from_str(address) {
+                        info!("address.params:{:?} address_params(network):{:?}", address.params, address_params(network));
+                        if address.params == address_params(network) {
+                            continue;
+                        }
+                    }
+                    return Err(Error::InvalidAddress);
+                },
             }
         }
 

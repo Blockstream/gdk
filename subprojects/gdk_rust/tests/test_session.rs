@@ -185,9 +185,9 @@ pub fn setup(
     let mut network = Network::default();
     network.url = Some(electrs_url.to_string());
     network.sync_interval = Some(1);
+    network.development = true;
     if is_liquid {
         network.liquid = true;
-        network.development = true;
         network.policy_asset =
             Some("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".into());
     }
@@ -230,7 +230,7 @@ impl TestSession {
     /// wait gdk session status to change (new tx)
     fn wait_status_change(&mut self) {
         loop {
-            if let Ok( new_status) = self.session.status() {
+            if let Ok(new_status) = self.session.status() {
                 if self.status != new_status {
                     self.status = new_status;
                     break;
@@ -428,25 +428,42 @@ impl TestSession {
             satoshi: 0,
             asset_tag: self.asset_tag(),
         });
-        match self.session.create_transaction(&mut create_opt) {
-            Err(Error::InvalidAmount) => assert!(true),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAmount)
+        ));
+
         create_opt.addressees[0].satoshi = init_sat;
-        match self.session.create_transaction(&mut create_opt) {
-            Err(Error::InsufficientFunds) => assert!(true),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InsufficientFunds)
+        ));
+
         create_opt.addressees[0].address = "x".to_string();
-        match self.session.create_transaction(&mut create_opt) {
-            Err(Error::InvalidAddress) => assert!(true),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAddress)
+        ));
+
+        create_opt.addressees[0].address = "38CMdevthTKYAtxaSkYYtcv5QgkHXdKKk5".to_string(); // mainnet address should fail
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAddress)
+        ));
+
+        create_opt.addressees[0].address =
+            "VJLCbLBTCdxhWyjVLdjcSmGAksVMtabYg15maSi93zknQD2ihC38R7CUd8KbDFnV8A4hiykxnRB3Uv6d"
+                .to_string(); // mainnet address should fail
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAddress)
+        ));
+
         create_opt.addressees.clear();
-        match self.session.create_transaction(&mut create_opt) {
-            Err(Error::EmptyAddressees) => assert!(true),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::EmptyAddressees)
+        ));
     }
 
     /// performs checks on transactions, like checking for address reuse in outputs and on liquid confidential commitments inequality
