@@ -298,6 +298,9 @@ impl TestSession {
         //let end_sat_addr = self.balance_addr(address);
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
         assert_eq!(self.balance_gdk(asset_tag), 0);
+
+        assert!(tx.create_transaction.unwrap().send_all.unwrap());
+        assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
     }
 
     /// send a tx from the gdk session to the specified address
@@ -331,6 +334,9 @@ impl TestSession {
         };
         assert_eq!(self.balance_node(asset.clone()), init_node_balance + satoshi);
         assert_eq!(self.balance_gdk(asset.clone()), init_sat - satoshi - fee);
+
+        assert!(!tx.create_transaction.unwrap().send_all.unwrap());
+        assert!(!signed_tx.create_transaction.unwrap().send_all.unwrap());
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated

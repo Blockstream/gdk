@@ -276,6 +276,7 @@ impl WalletCtx {
         }
 
         let send_all = request.send_all.unwrap_or(false);
+        request.send_all = Some(send_all); // accept default false, but always return the value
         if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
             return Err(Error::InvalidAmount);
         }
@@ -557,6 +558,7 @@ impl WalletCtx {
         }
 
         betx.fee = request.fee;
+        betx.create_transaction = request.create_transaction.clone();
 
         Ok(betx)
     }
