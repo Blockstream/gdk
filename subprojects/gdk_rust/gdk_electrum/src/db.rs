@@ -14,7 +14,7 @@ use gdk_common::wally::{
 use gdk_common::{ElementsNetwork, NetworkId};
 use log::{debug, trace};
 use serde_json::Value;
-use sled::{self, Tree, Batch};
+use sled::{self, Batch, Tree};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::ops::{Deref, DerefMut};

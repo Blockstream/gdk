@@ -14,14 +14,14 @@ use crate::db::{Forest, Index, BATCH_SIZE};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 
-use sled::Batch;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Txid;
 pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
+use sled::Batch;
 
-use electrum_client::{GetHistoryRes};
+use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
@@ -324,8 +324,10 @@ impl Session<Error> for ElectrumSession {
 
     fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
         if self.db_root == "" {
-            self.db_root =
-                net_params["state_dir"].as_str().map(|x| x.to_string()).unwrap_or_else(|| "".into());
+            self.db_root = net_params["state_dir"]
+                .as_str()
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "".into());
             info!("setting db_root to {:?}", self.db_root);
         }
 
@@ -415,8 +417,7 @@ impl Session<Error> for ElectrumSession {
                             info!("got registry and icons");
                             if let Some(policy) = registry_policy {
                                 info!("inserting policy asset {}", &policy);
-                                registry[policy] =
-                                    json!({"asset_id": &policy, "name": "btc"});
+                                registry[policy] = json!({"asset_id": &policy, "name": "btc"});
                             }
 
                             db_for_registry.insert_asset_registry(&registry).unwrap();
@@ -679,7 +680,7 @@ impl Session<Error> for ElectrumSession {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        Ok(self.try_get_fee_estimates().unwrap_or_else( |_| vec![FeeEstimate(1000u64); 25]))
+        Ok(self.try_get_fee_estimates().unwrap_or_else(|_| vec![FeeEstimate(1000u64); 25]))
         //TODO better implement default
     }
 

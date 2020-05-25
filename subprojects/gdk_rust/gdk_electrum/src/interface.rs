@@ -253,21 +253,28 @@ impl WalletCtx {
                 NetworkId::Bitcoin(network) => {
                     if let Ok(address) = bitcoin::Address::from_str(address) {
                         info!("address.network:{} network:{}", address.network, network);
-                        if address.network == network || (address.network == bitcoin::Network::Testnet && network == bitcoin::Network::Regtest) {
+                        if address.network == network
+                            || (address.network == bitcoin::Network::Testnet
+                                && network == bitcoin::Network::Regtest)
+                        {
                             continue;
                         }
                     }
                     return Err(Error::InvalidAddress);
-                },
+                }
                 NetworkId::Elements(network) => {
                     if let Ok(address) = elements::Address::from_str(address) {
-                        info!("address.params:{:?} address_params(network):{:?}", address.params, address_params(network));
+                        info!(
+                            "address.params:{:?} address_params(network):{:?}",
+                            address.params,
+                            address_params(network)
+                        );
                         if address.params == address_params(network) {
                             continue;
                         }
                     }
                     return Err(Error::InvalidAddress);
-                },
+                }
             }
         }
 
@@ -318,7 +325,9 @@ impl WalletCtx {
                 all_utxos.len(),
                 estimated_fee
             );
-            request.addressees[0].satoshi = total_amount_utxos - estimated_fee;
+            request.addressees[0].satoshi = total_amount_utxos
+                .checked_sub(estimated_fee)
+                .ok_or_else(|| Error::InsufficientFunds)?;
         }
 
         let mut tx = BETransaction::new(self.network.id());
