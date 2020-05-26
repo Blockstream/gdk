@@ -22,6 +22,10 @@ use std::str::FromStr;
 
 pub const BATCH_SIZE: u32 = 20;
 
+/// used to create db path, increase when db is updated with breaking changes
+/// so that a new db is created in a new directory
+pub const DB_VERSION: u32 = 1;
+
 /// DB
 /// Txid, Transaction      contains all my tx and all prevouts
 /// Txid, Height           contains only my tx heights
