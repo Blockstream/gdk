@@ -861,7 +861,7 @@ impl<S: Read + Write> Syncer<S> {
             let mut previous_txs_to_download = HashSet::new();
             for tx in txs_downloaded.iter() {
                 //self.db.insert_tx(&tx.txid(), &tx)?;
-                batch.insert(tx.txid().as_ref(), tx.serialize());
+                batch.insert(self.db.encrypt(tx.txid()), self.db.encrypt(tx.serialize()));
                 txs_in_db.insert(tx.txid());
                 for txid in tx.previous_output_txids() {
                     previous_txs_to_download.insert(txid);
@@ -898,7 +898,7 @@ impl<S: Read + Write> Syncer<S> {
                 info!("previous txs_downloaded {:?}", txs_downloaded.len());
                 for tx in txs_downloaded.iter() {
                     //self.db.insert_tx(&tx.txid(), tx)?;
-                    batch.insert(tx.txid().as_ref(), tx.serialize());
+                    batch.insert(self.db.encrypt(tx.txid()), self.db.encrypt(tx.serialize()));
                 }
             }
             self.db.apply_txs_batch(batch)?;

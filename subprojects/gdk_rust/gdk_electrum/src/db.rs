@@ -1,9 +1,14 @@
 use crate::error::{fn_err, Error};
+use aes::Aes128;
 use bitcoin::consensus::{deserialize, serialize};
+use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, OutPoint, Script, Transaction, TxOut, Txid};
+use block_modes::block_padding::Pkcs7;
+use block_modes::BlockMode;
+use block_modes::Cbc;
 use elements::AddressParams;
 use gdk_common::be::*;
 use gdk_common::model::Settings;
@@ -26,6 +31,8 @@ pub const BATCH_SIZE: u32 = 20;
 /// so that a new db is created in a new directory
 pub const DB_VERSION: u32 = 1;
 
+type Aes128Cbc = Cbc<Aes128, Pkcs7>;
+
 /// DB
 /// Txid, Transaction      contains all my tx and all prevouts
 /// Txid, Height           contains only my tx heights
@@ -47,6 +54,8 @@ pub struct Forest {
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
     id: NetworkId,
+    iv: [u8; 16],
+    key: [u8; 16],
 }
 
 #[derive(Clone, Copy)]
@@ -73,6 +82,10 @@ impl Forest {
         id: NetworkId,
     ) -> Result<Self, Error> {
         let db = sled::open(path)?;
+        let xpub_hash = sha256::Hash::hash(xpub.to_string().as_bytes());
+        let key = xpub_hash[..16].try_into().unwrap();
+        let iv = xpub_hash[16..].try_into().unwrap();
+
         Ok(Forest {
             txs: db.open_tree("txs")?,
             paths: db.open_tree("paths")?,
@@ -84,6 +97,8 @@ impl Forest {
             secp: Secp256k1::new(),
             master_blinding,
             xpub,
+            key,
+            iv,
             id,
         })
     }
@@ -93,6 +108,8 @@ impl Forest {
         let mut heights = vec![];
         for keyvalue in self.heights.iter() {
             let (key, value) = keyvalue?;
+            let key = self.decrypt(key)?;
+            let value = self.decrypt(value)?;
             let txid = Txid::from_slice(&key)?;
             let height = Height::from_slice(&value)?.1;
             let height = if height == 0 {
@@ -119,6 +136,8 @@ impl Forest {
         let mut spent = HashSet::new();
         for keyvalue in self.txs.iter() {
             let (key, value) = keyvalue?;
+            let key = self.decrypt(key)?;
+            let value = self.decrypt(value)?;
             let txid = Txid::from_slice(&key)?;
             let tx: BETransaction = BETransaction::deserialize(&value, self.id)?;
             for prevout in tx.previous_outputs() {
@@ -133,6 +152,7 @@ impl Forest {
         let mut set = HashSet::new();
         for keyvalue in self.txs.iter() {
             let (key, _) = keyvalue?;
+            let key = self.decrypt(key)?;
             let txid = Txid::from_slice(&key)?;
             set.insert(txid);
         }
@@ -144,7 +164,7 @@ impl Forest {
         let mut set = HashSet::new();
         for keyvalue in self.scripts.iter() {
             let (_, value) = keyvalue?;
-            let script = deserialize(&value)?;
+            let script = deserialize(&self.decrypt(value)?)?;
             set.insert(script);
         }
         Ok(set)
@@ -215,24 +235,27 @@ impl Forest {
     }
 
     pub fn get_tx(&self, txid: &Txid) -> Result<Option<BETransaction>, Error> {
-        self.txs.get(txid)?.map(|v| Ok(BETransaction::deserialize(&v, self.id)?)).transpose()
+        self.txs
+            .get(self.encrypt(txid))?
+            .map(|v| Ok(BETransaction::deserialize(&self.decrypt(v)?, self.id)?))
+            .transpose()
     }
     pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Option<Transaction>, Error> {
         match self.get_tx(txid) {
             Ok(Some(BETransaction::Bitcoin(tx))) => Ok(Some(tx)),
-            _ => Err(Error::Generic("exptected bitcoin tx".to_string())),
+            _ => Err(Error::Generic("expected bitcoin tx".to_string())),
         }
     }
 
     pub fn get_liquid_tx(&self, txid: &Txid) -> Result<Option<elements::Transaction>, Error> {
         match self.get_tx(txid) {
             Ok(Some(BETransaction::Elements(tx))) => Ok(Some(tx)),
-            _ => Err(Error::Generic("exptected liquid tx".to_string())),
+            _ => Err(Error::Generic("expected liquid tx".to_string())),
         }
     }
 
     pub fn insert_tx(&self, txid: &Txid, tx: &BETransaction) -> Result<(), Error> {
-        Ok(self.txs.insert(txid, tx.serialize()).map(|_| ())?)
+        Ok(self.txs.insert(self.encrypt(txid), self.encrypt(tx.serialize())).map(|_| ())?)
     }
 
     pub fn insert_unblinded(
@@ -242,14 +265,17 @@ impl Forest {
     ) -> Result<(), Error> {
         Ok(self
             .unblinded
-            .insert(elements::encode::serialize(outpoint), asset_value.serialize())
+            .insert(
+                self.encrypt(elements::encode::serialize(outpoint)),
+                self.encrypt(asset_value.serialize()),
+            )
             .map(|_| ())?)
     }
 
     pub fn get_unblinded(&self, outpoint: &elements::OutPoint) -> Result<Option<Unblinded>, Error> {
         self.unblinded
-            .get(elements::encode::serialize(outpoint))?
-            .map(|v| Ok(Unblinded::deserialize(&v)?))
+            .get(self.encrypt(elements::encode::serialize(outpoint)))?
+            .map(|v| Ok(Unblinded::deserialize(&self.decrypt(v)?)?))
             .transpose()
     }
 
@@ -258,6 +284,8 @@ impl Forest {
         let mut map = HashMap::new();
         for keyvalue in self.unblinded.iter() {
             let (key, value) = keyvalue?;
+            let key = self.decrypt(key)?;
+            let value = self.decrypt(value)?;
             let outpoint = elements::encode::deserialize(&key)?;
             let unblinded = Unblinded::deserialize(&value)?;
             map.insert(outpoint, unblinded);
@@ -267,46 +295,61 @@ impl Forest {
 
     pub fn get_header(&self, height: u32) -> Result<Option<BEBlockHeader>, Error> {
         self.headers
-            .get(Height::new(height))?
-            .map(|v| Ok(BEBlockHeader::deserialize(&v, self.id)?))
+            .get(self.encrypt(Height::new(height)))?
+            .map(|v| Ok(BEBlockHeader::deserialize(&self.decrypt(v)?, self.id)?))
             .transpose()
     }
 
     pub fn insert_header(&self, height: u32, header: &BEBlockHeader) -> Result<(), Error> {
-        Ok(self.headers.insert(Height::new(height), header.serialize()).map(|_| ())?)
+        Ok(self
+            .headers
+            .insert(self.encrypt(Height::new(height)), self.encrypt(header.serialize()))
+            .map(|_| ())?)
     }
 
     pub fn remove_height(&self, txid: &Txid) -> Result<(), Error> {
-        Ok(self.heights.remove(txid).map(|_| ())?)
+        Ok(self.heights.remove(self.encrypt(txid)).map(|_| ())?)
     }
 
     pub fn insert_height(&self, txid: &Txid, height: u32) -> Result<(), Error> {
-        Ok(self.heights.insert(txid, Height::new(height).as_ref()).map(|_| ())?)
+        Ok(self
+            .heights
+            .insert(self.encrypt(txid), self.encrypt(Height::new(height).as_ref()))
+            .map(|_| ())?)
     }
 
     pub fn get_script(&self, path: &Path) -> Result<Option<Script>, Error> {
-        self.scripts.get(path)?.map(|v| Ok(deserialize(&v)?)).transpose()
+        self.scripts
+            .get(self.encrypt(path))?
+            .map(|v| Ok(deserialize(&self.decrypt(v)?)?))
+            .transpose()
     }
 
     pub fn insert_script(&self, path: &Path, script: &Script) -> Result<(), Error> {
-        Ok(self.scripts.insert(path, serialize(script)).map(|_| ())?)
+        Ok(self.scripts.insert(self.encrypt(path), self.encrypt(serialize(script))).map(|_| ())?)
     }
 
     pub fn get_path(&self, script: &Script) -> Result<Option<Path>, Error> {
-        self.paths.get(script.as_bytes())?.map(|v| Ok(Path::from_slice(&v)?)).transpose()
+        self.paths
+            .get(self.encrypt(script.as_bytes()))?
+            .map(|v| Ok(Path::from_slice(&self.decrypt(v)?)?))
+            .transpose()
     }
 
     pub fn insert_path(&self, script: &Script, path: &Path) -> Result<(), Error> {
-        Ok(self.paths.insert(script.as_bytes(), path.as_ref()).map(|_| ())?)
+        Ok(self.paths.insert(self.encrypt(script.as_bytes()), self.encrypt(path)).map(|_| ())?)
     }
 
     pub fn insert_index(&self, int_or_ext: Index, value: u32) -> Result<(), Error> {
-        Ok(self.singles.insert([int_or_ext as u8], &value.to_be_bytes()).map(|_| ())?)
+        Ok(self
+            .singles
+            .insert(self.encrypt([int_or_ext as u8]), self.encrypt(value.to_be_bytes()))
+            .map(|_| ())?)
     }
     pub fn get_index(&self, int_or_ext: Index) -> Result<u32, Error> {
-        match self.singles.get([int_or_ext as u8])? {
+        match self.singles.get(self.encrypt([int_or_ext as u8]))? {
             Some(ivec) => {
-                let bytes: [u8; 4] = ivec.as_ref().try_into()?;
+                let bytes: [u8; 4] = self.decrypt(ivec)?[..].try_into()?;
                 Ok(u32::from_be_bytes(bytes))
             }
             None => Ok(0),
@@ -320,19 +363,28 @@ impl Forest {
     }
 
     pub fn insert_settings(&self, settings: &Settings) -> Result<(), Error> {
-        Ok(self.singles.insert(b"s", serde_json::to_vec(settings)?).map(|_| ())?)
+        Ok(self
+            .singles
+            .insert(self.encrypt(b"s"), self.encrypt(serde_json::to_vec(settings)?))
+            .map(|_| ())?)
     }
     pub fn get_settings(&self) -> Result<Option<Settings>, Error> {
-        self.singles.get(b"s")?.map(|v| Ok(serde_json::from_slice::<Settings>(&v)?)).transpose()
+        self.singles
+            .get(self.encrypt(b"s"))?
+            .map(|v| Ok(serde_json::from_slice::<Settings>(&self.decrypt(v)?)?))
+            .transpose()
     }
 
     pub fn insert_tip(&self, height: u32) -> Result<(), Error> {
-        Ok(self.singles.insert(b"t", &height.to_be_bytes()).map(|_| ())?)
+        Ok(self
+            .singles
+            .insert(self.encrypt(b"t"), self.encrypt(height.to_be_bytes()))
+            .map(|_| ())?)
     }
     pub fn get_tip(&self) -> Result<u32, Error> {
-        match self.singles.get(b"t")? {
+        match self.singles.get(self.encrypt(b"t"))? {
             Some(ivec) => {
-                let bytes: [u8; 4] = ivec.as_ref().try_into()?;
+                let bytes: [u8; 4] = self.decrypt(ivec)?[..].try_into()?;
                 Ok(u32::from_be_bytes(bytes))
             }
             None => Ok(0),
@@ -340,17 +392,29 @@ impl Forest {
     }
 
     pub fn get_asset_icons(&self) -> Result<Option<Value>, Error> {
-        self.singles.get(b"i")?.map(|v| Ok(serde_json::from_slice::<Value>(&v)?)).transpose()
+        self.singles
+            .get(self.encrypt(b"i"))?
+            .map(|v| Ok(serde_json::from_slice::<Value>(&self.decrypt(v)?)?))
+            .transpose()
     }
     pub fn insert_asset_icons(&self, asset_icons: &Value) -> Result<(), Error> {
-        Ok(self.singles.insert(b"i", serde_json::to_vec(asset_icons)?).map(|_| ())?)
+        Ok(self
+            .singles
+            .insert(self.encrypt(b"i"), self.encrypt(serde_json::to_vec(asset_icons)?))
+            .map(|_| ())?)
     }
 
     pub fn get_asset_registry(&self) -> Result<Option<Value>, Error> {
-        self.singles.get(b"r")?.map(|v| Ok(serde_json::from_slice::<Value>(&v)?)).transpose()
+        self.singles
+            .get(self.encrypt(b"r"))?
+            .map(|v| Ok(serde_json::from_slice::<Value>(&self.decrypt(v)?)?))
+            .transpose()
     }
     pub fn insert_asset_registry(&self, asset_registry: &Value) -> Result<(), Error> {
-        Ok(self.singles.insert(b"r", serde_json::to_vec(asset_registry)?).map(|_| ())?)
+        Ok(self
+            .singles
+            .insert(self.encrypt(b"r"), self.encrypt(serde_json::to_vec(asset_registry)?))
+            .map(|_| ())?)
     }
 
     pub fn is_mine(&self, script: &Script) -> bool {
@@ -374,6 +438,24 @@ impl Forest {
         bytes_flushed += self.singles.flush()?;
         bytes_flushed += self.unblinded.flush()?;
         Ok(bytes_flushed)
+    }
+
+    fn get_cipher(&self) -> Aes128Cbc {
+        Aes128Cbc::new_var(&self.key, &self.iv).unwrap()
+    }
+
+    pub fn encrypt<D>(&self, data: D) -> Vec<u8>
+    where
+        D: AsRef<[u8]>,
+    {
+        self.get_cipher().encrypt_vec(data.as_ref())
+    }
+
+    pub fn decrypt<D>(&self, data: D) -> Result<Vec<u8>, Error>
+    where
+        D: AsRef<[u8]>,
+    {
+        Ok(self.get_cipher().decrypt_vec(data.as_ref())?)
     }
 }
 

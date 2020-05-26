@@ -23,6 +23,8 @@ electrum-client = { git="https://github.com/blockstream/rust-electrum-client" , 
 #electrum-client = { path="../../../../rust-electrum-client" }
 chrono = "0.4.11"
 ureq = { version = "1.0.0", features = ["json"] }
+block-modes = "0.3.3"
+aes = "0.3.2"
 
 #[dependencies.reqwest]
 #version = "0.10.4"

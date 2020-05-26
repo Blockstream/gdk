@@ -27,6 +27,7 @@ pub enum Error {
     ElementsEncode(elements::encode::Error),
     Common(gdk_common::error::Error),
     Send(std::sync::mpsc::SendError<()>),
+    Encryption(block_modes::BlockModeError),
 }
 
 impl Display for Error {
@@ -55,6 +56,7 @@ impl Display for Error {
             Error::ElementsEncode(ref el_err) => write!(f, "el_err: {}", el_err),
             Error::Common(ref cmn_err) => write!(f, "cmn_err: {:?}", cmn_err),
             Error::Send(ref send_err) => write!(f, "send_err: {:?}", send_err),
+            Error::Encryption(ref send_err) => write!(f, "encryption_err: {:?}", send_err),
         }
     }
 }
@@ -157,6 +159,12 @@ impl std::convert::From<std::sync::mpsc::SendError<()>> for Error {
 
 impl std::convert::From<std::string::FromUtf8Error> for Error {
     fn from(err: std::string::FromUtf8Error) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl std::convert::From<block_modes::BlockModeError> for Error {
+    fn from(err: block_modes::BlockModeError) -> Self {
         Error::Generic(err.to_string())
     }
 }

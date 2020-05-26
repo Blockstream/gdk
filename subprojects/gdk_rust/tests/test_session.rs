@@ -398,8 +398,8 @@ impl TestSession {
         let utxo_satoshi = 100_000;
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
         self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
+        self.wait_status_change();
         self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-
         self.wait_status_change();
         let satoshi = 50_000; // one utxo would be enough
         let mut create_opt = CreateTransaction::default();
