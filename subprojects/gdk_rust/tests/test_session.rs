@@ -21,6 +21,8 @@ use std::sync::Once;
 use std::thread;
 use std::time::Duration;
 use tempdir::TempDir;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
@@ -303,7 +305,7 @@ impl TestSession {
         assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
     }
 
-    /// send a tx from the gdk session to the specified address
+    /// send a tx from the gdk session to the specified address, return txid as string
     pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>) {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
@@ -322,7 +324,7 @@ impl TestSession {
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
-        self.session.broadcast_transaction(&signed_tx.hex).unwrap();
+        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
 
         self.tx_checks(&signed_tx.hex);
@@ -337,6 +339,33 @@ impl TestSession {
 
         assert!(!tx.create_transaction.unwrap().send_all.unwrap());
         assert!(!signed_tx.create_transaction.unwrap().send_all.unwrap());
+
+        self.list_tx_contains(&txid, &vec![address.to_string()]);
+    }
+
+    fn list_tx_contains(&mut self, txid: &str, addressees: &[String]) {
+        let mut opt = GetTransactionsOpt::default();
+        opt.count = 100;
+
+        let list = self.session.get_transactions(&opt).unwrap().0;
+        let filtered_list: Vec<&TxListItem> = list.iter().filter(|e| e.txhash == txid).collect();
+        assert!(!filtered_list.is_empty(), "just made tx {} is not in tx list", txid);
+
+        let tx = filtered_list.first().unwrap();
+        let recipients = match self.network_id {
+            NetworkId::Bitcoin(_) => addressees.to_vec(),
+            NetworkId::Elements(_) => {
+                // We can't check Liquid unconfidential addressees because we can't compute those from only blockchain + mnemonic
+                addressees.iter().map(|s| {
+                    let mut a = elements::Address::from_str(s).unwrap();
+                    a.blinding_pubkey = None;
+                    a.to_string()
+                }).collect()
+            }
+        };
+        let a: HashSet<String> = HashSet::from_iter(recipients.iter().cloned());
+        let b: HashSet<String> = HashSet::from_iter(tx.addressees.iter().cloned());
+        assert_eq!(a, b, "tx does not contain recipient addresses" );
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
@@ -370,7 +399,7 @@ impl TestSession {
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
-        self.session.broadcast_transaction(&signed_tx.hex).unwrap();
+        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_status_change();
         self.tx_checks(&signed_tx.hex);
 
@@ -387,6 +416,7 @@ impl TestSession {
             }
         }
         //TODO check node balance
+        self.list_tx_contains(&txid, &addressees);
     }
 
     /// send a tx, check it spend utxo with the same script_pubkey together

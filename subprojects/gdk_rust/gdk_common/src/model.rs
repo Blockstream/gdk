@@ -178,11 +178,13 @@ impl TransactionMeta {
         fee: u64,
         network: Network,
         type_: String,
+        create_transaction: CreateTransaction,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
         let created_at = format(timestamp);
 
+        wgtx.create_transaction = Some(create_transaction);
         wgtx.height = height;
         wgtx.timestamp = timestamp;
         wgtx.created_at = created_at;
@@ -194,6 +196,7 @@ impl TransactionMeta {
     }
 }
 
+#[derive(Debug)]
 pub struct AddressIO {
     pub address: String,
     pub address_type: bitcoin::util::address::AddressType,
@@ -209,6 +212,7 @@ pub struct AddressIO {
     pub subtype: u32,
 }
 
+#[derive(Debug)]
 pub struct TxListItem {
     pub block_height: u32,
     pub created_at: String,

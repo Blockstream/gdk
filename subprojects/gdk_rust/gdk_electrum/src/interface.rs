@@ -8,7 +8,7 @@ use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::PublicKey;
 use elements;
-use gdk_common::model::{Balances, GetTransactionsOpt};
+use gdk_common::model::{Balances, GetTransactionsOpt, AddressAmount};
 use hex;
 use log::{debug, info};
 use rand::Rng;
@@ -134,6 +134,23 @@ impl WalletCtx {
                 .map(|h| self.db.get_header(h)?.ok_or_else(fn_err("no header")))
                 .transpose()?;
 
+            let mut addressees = vec![];
+            for i in 0..tx.output_len() as u32 {
+                let script = tx.output_script(i);
+                if !script.is_empty() && !all_scripts.contains(&script) {
+                    let address = tx.output_address(i, self.network.id());
+                    addressees.push(AddressAmount {
+                        address: address.unwrap_or("".to_string()),
+                        satoshi: 0, // apparently not needed in list_tx addressees
+                        asset_tag: None
+                    });
+                }
+            }
+            let create_transaction = CreateTransaction {
+                addressees,
+                ..Default::default()
+            };
+
             let fee = tx.fee(&all_txs, &all_unblinded);
             let satoshi = tx.my_balances(&all_txs, &all_scripts, &all_unblinded);
 
@@ -153,6 +170,7 @@ impl WalletCtx {
                 fee,
                 self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
                 type_.to_string(),
+                create_transaction,
             );
 
             txs.push(tx_meta);
@@ -414,8 +432,8 @@ impl WalletCtx {
             fee_val,
             self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
             "outgoing".to_string(),
+            request.clone()
         );
-        created_tx.create_transaction = Some(request.clone());
         created_tx.changes_used = Some(changes.len() as u32);
         info!("returning: {:?}", created_tx);
 
