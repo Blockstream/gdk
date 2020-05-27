@@ -454,7 +454,9 @@ impl BETransaction {
                             result.push(AssetValue::new(asset.to_string(), sum));
                         }
                     } else {
-                        result.push(AssetValue::new(asset.to_string(), sum));
+                        if sum > 0 {
+                            result.push(AssetValue::new(asset.to_string(), sum));
+                        }
                     }
                 }
                 assert!(outputs.is_empty());

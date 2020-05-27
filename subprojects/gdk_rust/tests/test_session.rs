@@ -13,6 +13,8 @@ use gdk_electrum::{determine_electrum_url_from_net, ElectrumSession};
 use log::LevelFilter;
 use log::{info, warn, Metadata, Record};
 use serde_json::Value;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 use std::net::TcpStream;
 use std::process::Child;
 use std::process::Command;
@@ -21,8 +23,6 @@ use std::sync::Once;
 use std::thread;
 use std::time::Duration;
 use tempdir::TempDir;
-use std::collections::HashSet;
-use std::iter::FromIterator;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
@@ -305,7 +305,7 @@ impl TestSession {
         assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
     }
 
-    /// send a tx from the gdk session to the specified address, return txid as string
+    /// send a tx from the gdk session to the specified address
     pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>) {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
@@ -356,16 +356,19 @@ impl TestSession {
             NetworkId::Bitcoin(_) => addressees.to_vec(),
             NetworkId::Elements(_) => {
                 // We can't check Liquid unconfidential addressees because we can't compute those from only blockchain + mnemonic
-                addressees.iter().map(|s| {
-                    let mut a = elements::Address::from_str(s).unwrap();
-                    a.blinding_pubkey = None;
-                    a.to_string()
-                }).collect()
+                addressees
+                    .iter()
+                    .map(|s| {
+                        let mut a = elements::Address::from_str(s).unwrap();
+                        a.blinding_pubkey = None;
+                        a.to_string()
+                    })
+                    .collect()
             }
         };
         let a: HashSet<String> = HashSet::from_iter(recipients.iter().cloned());
         let b: HashSet<String> = HashSet::from_iter(tx.addressees.iter().cloned());
-        assert_eq!(a, b, "tx does not contain recipient addresses" );
+        assert_eq!(a, b, "tx does not contain recipient addresses");
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
@@ -481,19 +484,29 @@ impl TestSession {
             Err(Error::InvalidAddress)
         ));
 
-        create_opt.addressees[0].address = "38CMdevthTKYAtxaSkYYtcv5QgkHXdKKk5".to_string(); // mainnet address should fail
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAddress)
-        ));
+        create_opt.addressees[0].address = "38CMdevthTKYAtxaSkYYtcv5QgkHXdKKk5".to_string(); //
+        assert!(
+            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
+            "address with different network should fail"
+        );
 
         create_opt.addressees[0].address =
             "VJLCbLBTCdxhWyjVLdjcSmGAksVMtabYg15maSi93zknQD2ihC38R7CUd8KbDFnV8A4hiykxnRB3Uv6d"
-                .to_string(); // mainnet address should fail
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAddress)
-        ));
+                .to_string();
+        assert!(
+            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
+            "address with different network should fail"
+        );
+
+        let addr =
+            "Azpt6vXqrbPuUtsumAioGjKnvukPApDssC1HwoFdSWZaBYJrUVSe5K8x9nk2HVYiYANy9mVQbW3iQ6xU";
+        let mut addr = elements::Address::from_str(addr).unwrap();
+        addr.blinding_pubkey = None;
+        create_opt.addressees[0].address = addr.to_string();
+        assert!(
+            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
+            "unblinded address should fail"
+        );
 
         create_opt.addressees.clear();
         assert!(matches!(
@@ -672,7 +685,7 @@ impl TestSession {
             NetworkId::Elements(_) => {
                 let asset =
                     asset.unwrap_or(self.network.policy_asset.as_ref().unwrap().to_string());
-                *balance.get(&asset).unwrap() as u64
+                *balance.get(&asset).unwrap_or(&0i64) as u64
             }
             NetworkId::Bitcoin(_) => *balance.get("btc").unwrap() as u64,
         }

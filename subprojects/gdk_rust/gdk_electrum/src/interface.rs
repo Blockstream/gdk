@@ -8,7 +8,7 @@ use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::PublicKey;
 use elements;
-use gdk_common::model::{Balances, GetTransactionsOpt, AddressAmount};
+use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt};
 use hex;
 use log::{debug, info};
 use rand::Rng;
@@ -142,7 +142,7 @@ impl WalletCtx {
                     addressees.push(AddressAmount {
                         address: address.unwrap_or("".to_string()),
                         satoshi: 0, // apparently not needed in list_tx addressees
-                        asset_tag: None
+                        asset_tag: None,
                     });
                 }
             }
@@ -331,21 +331,23 @@ impl WalletCtx {
             let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> =
                 utxos.iter().filter(|(_, i)| i.asset == asset).collect();
             let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
-            let mut dummy_tx = BETransaction::new(self.network.id());
-            for utxo in all_utxos.iter() {
-                dummy_tx.add_input(utxo.0.clone());
-            }
-            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 1) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
-            info!(
-                "send_all asset: {} total_amount:{} utxos:{} estimated_fee:{}",
-                asset,
-                total_amount_utxos,
-                all_utxos.len(),
-                estimated_fee
-            );
-            request.addressees[0].satoshi = total_amount_utxos
-                .checked_sub(estimated_fee)
-                .ok_or_else(|| Error::InsufficientFunds)?;
+
+            let to_send = if asset == "btc" || Some(asset.to_string()) == self.network.policy_asset {
+                let mut dummy_tx = BETransaction::new(self.network.id());
+                for utxo in all_utxos.iter() {
+                    dummy_tx.add_input(utxo.0.clone());
+                }
+                let estimated_fee = dummy_tx.estimated_fee(fee_rate, 1) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+                total_amount_utxos
+                    .checked_sub(estimated_fee)
+                    .ok_or_else(|| Error::InsufficientFunds)?
+            } else {
+                total_amount_utxos
+            };
+
+            info!("send_all asset: {} to_send:{}", asset, to_send);
+
+            request.addressees[0].satoshi = to_send;
         }
 
         let mut tx = BETransaction::new(self.network.id());
@@ -432,7 +434,7 @@ impl WalletCtx {
             fee_val,
             self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
             "outgoing".to_string(),
-            request.clone()
+            request.clone(),
         );
         created_tx.changes_used = Some(changes.len() as u32);
         info!("returning: {:?}", created_tx);

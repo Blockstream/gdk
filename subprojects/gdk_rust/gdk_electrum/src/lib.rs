@@ -281,7 +281,14 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     let type_ = tx.type_.clone();
     let len = tx.hex.len() / 2;
     let fee_rate = (tx.fee as f64 / len as f64) as u64;
-    let addressees = tx.create_transaction.as_ref().unwrap().addressees.iter().map(|e| e.address.clone()).collect();
+    let addressees = tx
+        .create_transaction
+        .as_ref()
+        .unwrap()
+        .addressees
+        .iter()
+        .map(|e| e.address.clone())
+        .collect();
 
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
