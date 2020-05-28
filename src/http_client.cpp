@@ -25,7 +25,7 @@ namespace sdk {
     {
     }
 
-    std::future<nlohmann::json> http_client::get(const nlohmann::json& params)
+    std::future<nlohmann::json> http_client::request(beast::http::verb verb, const nlohmann::json& params)
     {
         GDK_LOG_NAMED_SCOPE("http_client");
 
@@ -39,11 +39,17 @@ namespace sdk {
         preamble(m_host);
 
         m_request.version(HTTP_VERSION);
-        m_request.method(beast::http::verb::get);
+        m_request.method(verb);
         m_request.target(target);
         m_request.set(beast::http::field::connection, "close");
         m_request.set(beast::http::field::host, m_host);
         m_request.set(beast::http::field::user_agent, "GreenAddress SDK");
+
+        const auto data_p = params.find("data");
+        if (data_p != params.end()) {
+            m_request.body() = data_p->dump();
+            m_request.prepare_payload();
+        }
 
         const auto headers = params.value("headers", nlohmann::json{});
         if (!headers.empty()) {

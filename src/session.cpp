@@ -224,11 +224,11 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::http_get(const nlohmann::json& params)
+    nlohmann::json session::http_request(const nlohmann::json& params)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->http_get(params);
+            return p->http_request(params);
         });
     }
 

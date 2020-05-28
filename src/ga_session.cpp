@@ -711,7 +711,7 @@ namespace sdk {
         connect_with_tls() ? disconnect_transport<transport_tls>() : disconnect_transport<transport>();
     }
 
-    nlohmann::json ga_session::http_get(nlohmann::json params)
+    nlohmann::json ga_session::http_request(nlohmann::json params)
     {
         nlohmann::json result;
         try {
@@ -725,7 +725,8 @@ namespace sdk {
                 client = make_http_client(m_io, params["is_secure"] ? ssl_ctx.get() : nullptr);
                 GDK_RUNTIME_ASSERT(client != nullptr);
 
-                return client->get(params).get();
+                const boost::beast::http::verb verb = boost::beast::http::string_to_verb(params["method"]);
+                return client->request(verb, params).get();
             };
 
             constexpr uint8_t num_redirects = 5;
@@ -768,13 +769,13 @@ namespace sdk {
         }
 
         const std::string url = m_net_params.get_registry_connection_string(m_use_tor) + "/" + type + ".json";
-        nlohmann::json get_params = { { "urls", { url } }, { "accept", "json" } };
+        nlohmann::json get_params = { { "method", "GET" }, { "urls", { url } }, { "accept", "json" } };
         if (!last_modified.empty()) {
             get_params.update({ { "headers",
                 { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since), last_modified } } } });
         }
 
-        const nlohmann::json data = http_get(get_params);
+        const nlohmann::json data = http_request(get_params);
 
         GDK_RUNTIME_ASSERT_MSG(!data.contains("error"), "error during refresh");
         if (data.value("not_modified", false)) {
@@ -862,7 +863,7 @@ namespace sdk {
             const std::string asset_id = params.at("asset_id");
             const std::string final_target = (target_str % asset_id).str();
             const std::string url = domain_name + final_target;
-            result = http_get({ "urls", { url } });
+            result = http_request({ { "method", "GET" }, { "urls", { url } } });
             if (!result.value("error", std::string{}).empty()) {
                 return result;
             }

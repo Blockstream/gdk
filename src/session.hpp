@@ -46,7 +46,7 @@ namespace sdk {
         std::string get_tor_socks5();
 
         static bool check_proxy_connectivity(const nlohmann::json& params);
-        nlohmann::json http_get(const nlohmann::json& params);
+        nlohmann::json http_request(const nlohmann::json& params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 

@@ -505,8 +505,8 @@ public class Session {
         return String(cString: buff!)
     }
 
-    public func httpGet(params: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: params, fun: GA_http_get)
+    public func httpRequest(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_http_request)
     }
 
     public func refreshAssets(params: [String: Any]) throws -> [String: Any]? {

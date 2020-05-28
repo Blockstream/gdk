@@ -120,14 +120,14 @@ GDK_API int GA_get_tor_socks5(struct GA_session* session, char** socks5);
 GDK_API int GA_check_proxy_connectivity(const GA_json* params);
 
 /**
- * Get JSON data from an https server.
+ * Make a request to an http server.
  *
  * :param session: The session to use.
  * :param params: the :ref:`params-data` of the server to connect to.
  * :param output: Destination for the output JSON.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
-GDK_API int GA_http_get(struct GA_session* session, const GA_json* params, GA_json** output);
+GDK_API int GA_http_request(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
  *

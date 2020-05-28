@@ -21,7 +21,7 @@ namespace sdk {
         http_client& operator=(http_client&&) = delete;
         virtual ~http_client() = default;
 
-        std::future<nlohmann::json> get(const nlohmann::json& params);
+        std::future<nlohmann::json> request(boost::beast::http::verb verb, const nlohmann::json& params);
 
         void on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
         void on_write(boost::beast::error_code ec, size_t bytes_transferred);
@@ -46,7 +46,7 @@ namespace sdk {
 
         boost::asio::ip::tcp::resolver m_resolver;
         boost::beast::flat_buffer m_buffer;
-        boost::beast::http::request<boost::beast::http::empty_body> m_request;
+        boost::beast::http::request<boost::beast::http::string_body> m_request;
         boost::beast::http::response<boost::beast::http::string_body> m_response;
         std::string m_host;
         std::string m_port;

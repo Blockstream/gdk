@@ -1038,6 +1038,7 @@ HTTP params JSON
 
    {
       "accept":"json"
+      "method":"GET"
       "urls":[
           "https://assets.blockstream.info/index.json"
           "http://vi5flmr4z3h3luup.onion/index.json"

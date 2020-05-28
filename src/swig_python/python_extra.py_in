@@ -244,8 +244,8 @@ class Session(object):
     def twofactor_change_limits(self, details):
         return Call(twofactor_change_limits(self.session_obj, self._to_json(details)))
 
-    def http_get(self, params):
-        return json.loads(http_get(self.session_obj, self._to_json(params)))
+    def http_request(self, params):
+        return json.loads(http_request(self.session_obj, self._to_json(params)))
 
     def refresh_assets(self, params):
         return json.loads(refresh_assets(self.session_obj, self._to_json(params)))
