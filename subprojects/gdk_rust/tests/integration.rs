@@ -1,4 +1,5 @@
 use std::env;
+
 mod test_session;
 
 #[test]
@@ -46,12 +47,12 @@ fn liquid() {
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
 
     let assets = test_session.fund(100_000_000, Some(1));
+    test_session.send_tx_to_unconf();
     test_session.send_tx(&node_address, 10_000, None);
     test_session.send_tx(&node_bech32_address, 10_000, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()));
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_tag());
-
     test_session.mine_block();
     test_session.send_tx_same_script();
     let assets = test_session.fund(100_000_000, Some(3));

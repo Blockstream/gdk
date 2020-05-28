@@ -422,6 +422,15 @@ impl TestSession {
         self.list_tx_contains(&txid, &addressees);
     }
 
+    pub fn send_tx_to_unconf(&mut self) {
+        let init_sat = self.balance_gdk(None);
+        let ap = self.session.get_receive_address(&Value::Null).unwrap();
+        let unconf_address = to_unconfidential(ap.address);
+        self.node_sendtoaddress(&unconf_address, 10_000, None);
+        self.wait_status_change();
+        assert_eq!(init_sat, self.balance_gdk(None));
+    }
+
     /// send a tx, check it spend utxo with the same script_pubkey together
     pub fn send_tx_same_script(&mut self) {
         // TODO check same script for different assets
@@ -743,4 +752,10 @@ fn node_issueasset(client: &Client, satoshi: u64) -> String {
     let r = client.call::<Value>("issueasset", &[btc.into(), 0.into()]).unwrap();
     info!("node_issueasset result {:?}", r);
     r.get("asset").unwrap().as_str().unwrap().to_string()
+}
+
+fn to_unconfidential(elements_address: String) -> String {
+    let mut address_unconf =  elements::Address::from_str(&elements_address).unwrap();
+    address_unconf.blinding_pubkey = None;
+    address_unconf.to_string()
 }
