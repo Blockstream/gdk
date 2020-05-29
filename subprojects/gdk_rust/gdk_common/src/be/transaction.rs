@@ -2,16 +2,16 @@ use crate::be::*;
 use crate::error::Error;
 use crate::model::Balances;
 use crate::wally::asset_surjectionproof_size;
-use crate::{NetworkId, ElementsNetwork};
+use crate::{ElementsNetwork, NetworkId};
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::{sha256d, Hash};
 use bitcoin::Script;
-use elements::{confidential, AddressParams};
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
+use elements::{confidential, AddressParams};
 use elements::{TxInWitness, TxOutWitness};
 use log::info;
 use rand::seq::SliceRandom;
@@ -130,9 +130,9 @@ impl BETransaction {
         match network {
             NetworkId::Bitcoin(network) => {
                 let script = self.output_script(vout);
-                bitcoin::Address::from_script(&script,network).map(|a| a.to_string())
+                bitcoin::Address::from_script(&script, network).map(|a| a.to_string())
             }
-            NetworkId::Elements(network) =>  {
+            NetworkId::Elements(network) => {
                 // Note we are returning the unconfidential address, because recipient blinding pub key is not in the transaction
                 let script = self.output_script(vout);
                 let params = match network {
@@ -140,7 +140,7 @@ impl BETransaction {
                     ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
                 };
                 elements::Address::from_script(&script, None, params).map(|a| a.to_string())
-            },
+            }
         }
     }
 

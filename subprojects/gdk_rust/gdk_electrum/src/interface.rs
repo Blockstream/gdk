@@ -332,7 +332,8 @@ impl WalletCtx {
                 utxos.iter().filter(|(_, i)| i.asset == asset).collect();
             let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
 
-            let to_send = if asset == "btc" || Some(asset.to_string()) == self.network.policy_asset {
+            let to_send = if asset == "btc" || Some(asset.to_string()) == self.network.policy_asset
+            {
                 let mut dummy_tx = BETransaction::new(self.network.id());
                 for utxo in all_utxos.iter() {
                     dummy_tx.add_input(utxo.0.clone());

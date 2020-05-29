@@ -755,7 +755,7 @@ fn node_issueasset(client: &Client, satoshi: u64) -> String {
 }
 
 fn to_unconfidential(elements_address: String) -> String {
-    let mut address_unconf =  elements::Address::from_str(&elements_address).unwrap();
+    let mut address_unconf = elements::Address::from_str(&elements_address).unwrap();
     address_unconf.blinding_pubkey = None;
     address_unconf.to_string()
 }

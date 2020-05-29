@@ -132,12 +132,10 @@ pub struct TransactionMeta {
     pub created_at: String, // yyyy-MM-dd HH:mm:ss of timestamp
     pub error: String,
     pub addressees_have_assets: bool,
-    pub send_all: bool,
     pub is_sweep: bool,
     pub satoshi: Balances,
     pub fee: u64,
     pub network: Option<Network>,
-    pub subaccount: u32,
     #[serde(rename = "type")]
     pub type_: String, // incoming or outgoing
     pub changes_used: Option<u32>,
@@ -157,12 +155,10 @@ impl From<BETransaction> for TransactionMeta {
             hex,
             error: "".to_string(),
             addressees_have_assets: false,
-            send_all: false,
             is_sweep: false,
             satoshi: HashMap::new(),
             fee: 0,
             network: None,
-            subaccount: 0,
             type_: "unknown".to_string(),
             changes_used: None,
         }
