@@ -152,23 +152,23 @@ namespace sdk {
         return asio::const_buffer(m_request.data(), m_request.size());
     }
 
-    asio::const_buffer socks_client::connect_request(const std::string& domain_name)
+    asio::const_buffer socks_client::connect_request(const std::string& url)
     {
-        GDK_RUNTIME_ASSERT(!domain_name.empty());
+        GDK_RUNTIME_ASSERT(!url.empty());
 
-        std::string target;
-        bool is_secure;
-        const auto host_port = split_url(domain_name, target, is_secure);
+        const nlohmann::json url_info = parse_url(url);
 
         // version: 5
         // command: connect
         // reserved
         // address type domain name: 3
         // address size
-        m_request.assign({ 0x5, 0x1, 0x0, 0x3, static_cast<unsigned char>(host_port.first.size()) });
-        std::copy(std::cbegin(host_port.first), std::cend(host_port.first), std::back_inserter(m_request));
+        const std::string host = url_info["host"];
+        m_request.assign({ 0x5, 0x1, 0x0, 0x3, static_cast<unsigned char>(host.size()) });
+        std::copy(std::cbegin(host), std::cend(host), std::back_inserter(m_request));
 
-        uint16_t port = htons(std::stoul(host_port.second, nullptr, 10));
+        const std::string port_string = url_info["port"];
+        uint16_t port = htons(std::stoul(port_string, nullptr, 10));
         const auto p = reinterpret_cast<const unsigned char*>(&port);
         std::copy(p, p + sizeof(uint16_t), std::back_inserter(m_request));
 

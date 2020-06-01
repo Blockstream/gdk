@@ -319,33 +319,37 @@ namespace sdk {
         return b2h(encrypted);
     }
 
-    // TODO: URI parsing
-    std::pair<std::string, std::string> split_url(const std::string& domain_name, std::string& target, bool& is_secure)
+    nlohmann::json parse_url(const std::string& url)
     {
+        nlohmann::json retval;
+
         namespace algo = boost::algorithm;
-        auto endpoint = domain_name;
+        auto endpoint = url;
         const bool use_tls = algo::starts_with(endpoint, "wss://") || algo::starts_with(endpoint, "https://");
         if (use_tls) {
             algo::erase_all(endpoint, "wss://");
             algo::erase_all(endpoint, "https://");
-            is_secure = true;
+            retval["is_secure"] = true;
         } else {
             algo::erase_all(endpoint, "ws://");
             algo::erase_all(endpoint, "http://");
-            is_secure = false;
+            retval["is_secure"] = false;
         }
         std::vector<std::string> endpoint_parts;
         algo::split(endpoint_parts, endpoint, algo::is_any_of("/"));
         GDK_RUNTIME_ASSERT(!endpoint_parts.empty());
         if (endpoint_parts.size() > 1) {
-            target = "/"
+            retval["target"] = "/"
                 + algo::join(std::vector<std::string>(std::begin(endpoint_parts) + 1, std::end(endpoint_parts)), "/");
         }
         std::vector<std::string> host_parts;
         algo::split(host_parts, endpoint_parts[0], algo::is_any_of(":"));
         GDK_RUNTIME_ASSERT(!host_parts.empty());
-        const std::string port = host_parts.size() > 1 ? host_parts[1] : use_tls ? "443" : "80";
-        return { host_parts[0], port };
+        retval["port"] = host_parts.size() > 1 ? host_parts[1] : use_tls ? "443" : "80";
+        retval["is_onion"] = algo::ends_with(host_parts[0], ".onion");
+        retval["host"] = host_parts[0];
+
+        return retval;
     }
 } // namespace sdk
 } // namespace ga

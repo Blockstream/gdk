@@ -29,7 +29,7 @@ namespace sdk {
     {
         GDK_LOG_NAMED_SCOPE("http_client");
 
-        m_host = params.at("uri");
+        m_host = params.at("host");
         m_port = params.at("port");
         const std::string target = params.at("target");
         const std::string proxy_uri = params.at("proxy");

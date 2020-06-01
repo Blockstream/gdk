@@ -711,31 +711,21 @@ namespace sdk {
         connect_with_tls() ? disconnect_transport<transport_tls>() : disconnect_transport<transport>();
     }
 
-    nlohmann::json ga_session::http_get(const nlohmann::json& params)
+    nlohmann::json ga_session::http_get(nlohmann::json params)
     {
         nlohmann::json result;
         try {
-            nlohmann::json curr_params = params;
-            json_add_if_missing(curr_params, "proxy", socksify(m_proxy));
+            params.update(parse_url(params["urls"]));
+            json_add_if_missing(params, "proxy", socksify(m_proxy));
 
-            std::string target;
-            bool is_secure;
-            auto host_port = split_url(curr_params.at("uri"), target, is_secure);
-
-            const auto ssl_ctx = tls_init_handler_impl(host_port.first);
+            const auto ssl_ctx = tls_init_handler_impl(params["host"]);
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
-                client = make_http_client(m_io, is_secure ? ssl_ctx.get() : nullptr);
+                client = make_http_client(m_io, params["is_secure"] ? ssl_ctx.get() : nullptr);
                 GDK_RUNTIME_ASSERT(client != nullptr);
 
-                nlohmann::json get_params = { { "uri", host_port.first }, { "port", host_port.second },
-                    { "target", curr_params.at("target") }, { "proxy", curr_params.at("proxy") },
-                    { "accept", curr_params.value("accept", "") } };
-                if (!curr_params.value("headers", nlohmann::json{}).empty()) {
-                    get_params.update({ { "headers", curr_params.at("headers") } });
-                }
-                return client->get(get_params).get();
+                return client->get(params).get();
             };
 
             constexpr uint8_t num_redirects = 5;
@@ -743,7 +733,7 @@ namespace sdk {
                 result = get();
                 if (!result.value("location", std::string{}).empty()) {
                     GDK_RUNTIME_ASSERT_MSG(!m_use_tor, "redirection over Tor is not supported");
-                    host_port = split_url(result["location"], target, is_secure);
+                    params.update(parse_url(result["location"]));
                 } else {
                     break;
                 }

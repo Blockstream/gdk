@@ -161,7 +161,7 @@ namespace sdk {
         void set_heartbeat_timeout_handler(heartbeat_t handler);
         void set_ping_fail_handler(ping_fail_t handler);
 
-        nlohmann::json http_get(const nlohmann::json& params);
+        nlohmann::json http_get(nlohmann::json params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
