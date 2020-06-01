@@ -819,7 +819,12 @@ namespace sdk {
         }
 
         if (params.value("icons", false)) {
-            result["icons"] = refresh_http_data("icons", refresh);
+            const auto icons = refresh_http_data("icons", refresh);
+            nlohmann::json json_icons;
+            if (icons.find("error") == icons.end()) {
+                json_icons = icons;
+            }
+            result["icons"] = json_icons;
         }
 
         return result;
