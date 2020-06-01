@@ -9,6 +9,7 @@ use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
+use serde_json::Value;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -110,6 +111,7 @@ pub struct CreateTransaction {
     pub fee_rate: Option<u64>, // in satoshi/kbyte
     pub subaccount: Option<u32>,
     pub send_all: Option<bool>,
+    pub previous_transaction: HashMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -139,6 +141,8 @@ pub struct TransactionMeta {
     #[serde(rename = "type")]
     pub type_: String, // incoming or outgoing
     pub changes_used: Option<u32>,
+    pub rbf_optin: bool,
+    pub user_signed: bool,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -146,6 +150,8 @@ impl From<BETransaction> for TransactionMeta {
         let txid = transaction.txid().to_string();
         let hex = hex::encode(&transaction.serialize());
         let timestamp = now();
+        let rbf_optin = transaction.rbf_optin();
+
         TransactionMeta {
             create_transaction: None,
             height: None,
@@ -161,6 +167,8 @@ impl From<BETransaction> for TransactionMeta {
             network: None,
             type_: "unknown".to_string(),
             changes_used: None,
+            user_signed: false,
+            rbf_optin,
         }
     }
 }
@@ -175,6 +183,7 @@ impl TransactionMeta {
         network: Network,
         type_: String,
         create_transaction: CreateTransaction,
+        user_signed: bool,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
@@ -188,6 +197,7 @@ impl TransactionMeta {
         wgtx.network = Some(network);
         wgtx.fee = fee;
         wgtx.type_ = type_;
+        wgtx.user_signed = user_signed;
         wgtx
     }
 }
@@ -208,6 +218,7 @@ pub struct AddressIO {
     pub subtype: u32,
 }
 
+// TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
 #[derive(Debug)]
 pub struct TxListItem {
     pub block_height: u32,

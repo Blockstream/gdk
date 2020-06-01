@@ -299,12 +299,12 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         transaction_size: len,
         transaction: tx.hex.clone(), // FIXME
         satoshi: tx.satoshi.clone(),
-        rbf_optin: false,           // TODO: TransactionMeta -> TxListItem rbf_optin
+        rbf_optin: tx.rbf_optin,           // TODO: TransactionMeta -> TxListItem rbf_optin
         cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
         can_rbf: false,             // TODO: TransactionMeta -> TxListItem can_rbf
         has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
         server_signed: false,       // TODO: TransactionMeta -> TxListItem server_signed
-        user_signed: true,
+        user_signed: tx.user_signed,
         instant: false,
         fee: tx.fee,
         fee_rate,
@@ -616,6 +616,9 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, Error> {
+        if index != 0 {
+            return Err(Error::InvalidSubaccount(index));
+        }
         let balance = self.get_balance(num_confs, Some(index))?;
         let mut opt = GetTransactionsOpt::default();
         opt.count = 1;

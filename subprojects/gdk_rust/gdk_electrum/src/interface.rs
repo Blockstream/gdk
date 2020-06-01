@@ -156,10 +156,10 @@ impl WalletCtx {
 
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
-            let type_ = match (positives > negatives, tx.is_redeposit(&all_scripts, &all_txs)) {
-                (_, true) => "redeposit",
-                (true, false) => "incoming",
-                (false, false) => "outgoing",
+            let (type_, user_signed) = match (positives > negatives, tx.is_redeposit(&all_scripts, &all_txs)) {
+                (_, true) => ("redeposit", true),
+                (true, false) => ("incoming", false),
+                (false, false) => ("outgoing", true),
             };
 
             let tx_meta = TransactionMeta::new(
@@ -171,6 +171,7 @@ impl WalletCtx {
                 self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
                 type_.to_string(),
                 create_transaction,
+                user_signed,
             );
 
             txs.push(tx_meta);
@@ -300,10 +301,35 @@ impl WalletCtx {
             return Err(Error::EmptyAddressees);
         }
 
+        let subaccount = request.subaccount.unwrap_or(0);
+        if subaccount != 0 {
+            return Err(Error::InvalidSubaccount(subaccount))
+        }
+
+        if !request.previous_transaction.is_empty() {
+            return Err(Error::Generic("bump not supported".into()));
+        }
+
         let send_all = request.send_all.unwrap_or(false);
         request.send_all = Some(send_all); // accept default false, but always return the value
         if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
             return Err(Error::InvalidAmount);
+        }
+
+        if !send_all {
+            for address_amount in request.addressees.iter() {
+                if address_amount.satoshi <= 546 {
+                    match self.network.id() {
+                        NetworkId::Bitcoin(_) => return Err(Error::InvalidAmount),
+                        NetworkId::Elements(_) => {
+                            if address_amount.asset_tag == self.network.policy_asset {
+                                // we apply dust rules for liquid bitcoin as elements do
+                                return Err(Error::InvalidAmount)
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if let NetworkId::Elements(_) = self.network.id() {
@@ -313,7 +339,11 @@ impl WalletCtx {
         }
 
         // convert from satoshi/kbyte to satoshi/byte
-        let fee_rate = (request.fee_rate.unwrap_or(1000) as f64) / 1000.0;
+        let default_value = match self.network.id() {
+            NetworkId::Bitcoin(_) => 1000,
+            NetworkId::Elements(_) => 100,
+        };
+        let fee_rate = (request.fee_rate.unwrap_or(default_value) as f64) / 1000.0;
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
         let wallet_data = self.utxos()?;
@@ -436,6 +466,7 @@ impl WalletCtx {
             self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
             "outgoing".to_string(),
             request.clone(),
+            true,
         );
         created_tx.changes_used = Some(changes.len() as u32);
         info!("returning: {:?}", created_tx);

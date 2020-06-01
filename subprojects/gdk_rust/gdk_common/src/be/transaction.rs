@@ -451,6 +451,7 @@ impl BETransaction {
                         // another reason, specific to this wallet, is that the send_all algorithm could reason in steps greater than 1, making it not too slow
                         sum -= estimated_fee;
                         if sum > 546 {
+                            // we apply dust rules for liquid bitcoin as elements do
                             result.push(AssetValue::new(asset.to_string(), sum));
                         }
                     } else {
@@ -543,6 +544,13 @@ impl BETransaction {
                     sum_inputs - sum_outputs
                 }
             }
+        }
+    }
+
+    pub fn rbf_optin(&self) -> bool {
+        match self {
+            Self::Bitcoin(tx) => tx.input.iter().any(|e| e.sequence < 0xffff_fffe),
+            Self::Elements(tx) => tx.input.iter().any(|e| e.sequence < 0xffff_fffe),
         }
     }
 

@@ -407,7 +407,7 @@ namespace sdk {
     void ga_rust::send_nlocktimes() { throw std::runtime_error("send_nlocktimes not implemented"); }
     nlohmann::json ga_rust::get_expired_deposits(const nlohmann::json& deposit_details)
     {
-        throw std::runtime_error("get_expired_deposits not implemented");
+        return nlohmann::json::array();
     }
 
     void ga_rust::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)

@@ -263,8 +263,9 @@ impl TestSession {
     pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) -> Vec<String> {
         let initial_satoshis = self.balance_gdk(None);
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
-        self.node_sendtoaddress(&ap.address, satoshi, None);
+        let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
         self.wait_status_change();
+        self.list_tx_contains(&funding_tx, &vec![], false);
         let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
@@ -322,6 +323,11 @@ impl TestSession {
             asset_tag: asset.clone().or(self.asset_tag()),
         });
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
+        assert!(tx.user_signed);
+        match self.network.id() {
+            NetworkId::Elements(_) => assert!(!tx.rbf_optin),
+            NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
+        };
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
@@ -340,10 +346,10 @@ impl TestSession {
         assert!(!tx.create_transaction.unwrap().send_all.unwrap());
         assert!(!signed_tx.create_transaction.unwrap().send_all.unwrap());
 
-        self.list_tx_contains(&txid, &vec![address.to_string()]);
+        self.list_tx_contains(&txid, &vec![address.to_string()], true);
     }
 
-    fn list_tx_contains(&mut self, txid: &str, addressees: &[String]) {
+    fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
 
@@ -352,23 +358,27 @@ impl TestSession {
         assert!(!filtered_list.is_empty(), "just made tx {} is not in tx list", txid);
 
         let tx = filtered_list.first().unwrap();
-        let recipients = match self.network_id {
-            NetworkId::Bitcoin(_) => addressees.to_vec(),
-            NetworkId::Elements(_) => {
-                // We can't check Liquid unconfidential addressees because we can't compute those from only blockchain + mnemonic
-                addressees
-                    .iter()
-                    .map(|s| {
-                        let mut a = elements::Address::from_str(s).unwrap();
-                        a.blinding_pubkey = None;
-                        a.to_string()
-                    })
-                    .collect()
-            }
-        };
-        let a: HashSet<String> = HashSet::from_iter(recipients.iter().cloned());
-        let b: HashSet<String> = HashSet::from_iter(tx.addressees.iter().cloned());
-        assert_eq!(a, b, "tx does not contain recipient addresses");
+
+        if !addressees.is_empty() {
+            let recipients = match self.network_id {
+                NetworkId::Bitcoin(_) => addressees.to_vec(),
+                NetworkId::Elements(_) => {
+                    // We can't check Liquid unconfidential addressees because we can't compute those from only blockchain + mnemonic
+                    addressees
+                        .iter()
+                        .map(|s| {
+                            let mut a = elements::Address::from_str(s).unwrap();
+                            a.blinding_pubkey = None;
+                            a.to_string()
+                        })
+                        .collect()
+                }
+            };
+            let a: HashSet<String> = HashSet::from_iter(recipients.iter().cloned());
+            let b: HashSet<String> = HashSet::from_iter(tx.addressees.iter().cloned());
+            assert_eq!(a, b, "tx does not contain recipient addresses");
+        }
+        assert_eq!(tx.user_signed, user_signed);
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
@@ -419,7 +429,7 @@ impl TestSession {
             }
         }
         //TODO check node balance
-        self.list_tx_contains(&txid, &addressees);
+        self.list_tx_contains(&txid, &addressees, true);
     }
 
     pub fn send_tx_to_unconf(&mut self) {
@@ -481,11 +491,31 @@ impl TestSession {
             Err(Error::InvalidAmount)
         ));
 
-        create_opt.addressees[0].satoshi = init_sat;
+        create_opt.addressees[0].satoshi = 200;  // below dust limit
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAmount)
+        ));
+
+        create_opt.addressees[0].satoshi = init_sat; // not enough to pay the fee
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
             Err(Error::InsufficientFunds)
         ));
+
+        create_opt.subaccount = Some(1);
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidSubaccount(1))
+        ));
+        create_opt.subaccount = None;
+
+        create_opt.previous_transaction.insert("txhash".into(), "something".into());
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::Generic(_))
+        ));
+        create_opt.previous_transaction.clear();
 
         create_opt.addressees[0].address = "x".to_string();
         assert!(matches!(
@@ -576,6 +606,12 @@ impl TestSession {
         }
     }
 
+    /// test get_subaccount
+    pub fn get_subaccount(&mut self) {
+        assert!(self.session.get_subaccount(0,0).is_ok());
+        assert!(self.session.get_subaccount(1,0).is_err());
+    }
+
     /// mine a block with the node and check if gdk session see the change
     pub fn mine_block(&mut self) {
         let initial_height = self.electrs_tip();
@@ -600,7 +636,7 @@ impl TestSession {
         node_getnewaddress(&self.node, kind)
     }
 
-    fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) {
+    fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) -> String {
         node_sendtoaddress(&self.node, address, satoshi, asset)
     }
     fn node_issueasset(&self, satoshi: u64) -> String {
@@ -708,7 +744,7 @@ impl TestSession {
     }
 }
 
-fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Option<String>) {
+fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Option<String>) -> String {
     let amount = Amount::from_sat(satoshi);
     let btc = amount.to_string_in(bitcoin::util::amount::Denomination::Bitcoin);
     info!("node_sendtoaddress {} {}", address, btc);
@@ -732,6 +768,7 @@ fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Optio
         None => client.call::<Value>("sendtoaddress", &[address.into(), btc.into()]).unwrap(),
     };
     info!("node_sendtoaddress result {:?}", r);
+    r.as_str().unwrap().to_string()
 }
 
 fn node_getnewaddress(client: &Client, kind: Option<&str>) -> String {

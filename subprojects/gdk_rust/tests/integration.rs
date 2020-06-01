@@ -13,11 +13,14 @@ fn bitcoin() {
 
     let mut test_session = test_session::setup(false, debug, electrs_exec, node_exec);
 
-    let node_address = test_session.node_getnewaddress(None);
+    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
+    let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
     test_session.fund(100_000_000, None);
-    test_session.send_tx(&node_address, 10_000, None);
-    test_session.send_tx(&node_bech32_address, 10_000, None);
+    test_session.get_subaccount();
+    test_session.send_tx(&node_address, 10_000, None);  // p2shwpkh
+    test_session.send_tx(&node_bech32_address, 10_000, None);  // p2wpkh
+    test_session.send_tx(&node_legacy_address, 10_000, None);  // p2pkh
     test_session.send_all(&node_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
@@ -43,14 +46,18 @@ fn liquid() {
 
     let mut test_session = test_session::setup(true, debug, electrs_exec, node_exec);
 
-    let node_address = test_session.node_getnewaddress(None);
+    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
+    let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
 
     let assets = test_session.fund(100_000_000, Some(1));
     test_session.send_tx_to_unconf();
+    test_session.get_subaccount();
     test_session.send_tx(&node_address, 10_000, None);
     test_session.send_tx(&node_bech32_address, 10_000, None);
+    test_session.send_tx(&node_legacy_address, 10_000, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()));
+    test_session.send_tx(&node_address, 100, Some(assets[0].clone()));  // asset should send below dust limit
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();

@@ -287,6 +287,7 @@ pub fn asset_unblind_with_nonce(
     (asset_out, abf_out, vbf_out, value_out)
 }
 
+//TODO to be replaced by secp256k1::PublicKey::from_secret_key
 pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256k1::PublicKey {
     let mut pub_key = [0; 33];
 
