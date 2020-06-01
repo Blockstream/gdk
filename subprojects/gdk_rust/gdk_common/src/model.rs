@@ -111,6 +111,7 @@ pub struct CreateTransaction {
     pub fee_rate: Option<u64>, // in satoshi/kbyte
     pub subaccount: Option<u32>,
     pub send_all: Option<bool>,
+    #[serde(default)]
     pub previous_transaction: HashMap<String, Value>,
 }
 
