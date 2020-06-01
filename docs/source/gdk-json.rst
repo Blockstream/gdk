@@ -1038,8 +1038,10 @@ HTTP params JSON
 
    {
       "accept":"json"
-      "uri":"https://assets.blockstream.info"
-      "target":"/index.json"
+      "urls":[
+          "https://assets.blockstream.info/index.json"
+          "http://vi5flmr4z3h3luup.onion/index.json"
+      ]
       "proxy":"localhost:9150"
       "headers":{"If-Modified-Since":"Mon, 02 Sep 2019 22:39:39 GMT"}
    }

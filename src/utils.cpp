@@ -319,6 +319,40 @@ namespace sdk {
         return b2h(encrypted);
     }
 
+    // Given a set of urls select the most appropriate
+    // Preference is in order:
+    //  - onion
+    //  - https
+    //  - http
+    //
+    // onion urls are ignored if use_tor is false
+    nlohmann::json select_url(const std::vector<nlohmann::json>& urls, bool use_tor)
+    {
+        GDK_RUNTIME_ASSERT(!urls.empty());
+
+        std::vector<nlohmann::json> onion_urls, https_urls, insecure_urls;
+        for (const auto& url_json : urls) {
+            const auto url = parse_url(url_json);
+            if (url["is_onion"]) {
+                if (use_tor) {
+                    onion_urls.push_back(url);
+                }
+            } else if (url["is_secure"]) {
+                https_urls.push_back(url);
+            } else {
+                insecure_urls.push_back(url);
+            }
+        }
+
+        if (!onion_urls.empty()) {
+            return onion_urls[0];
+        } else if (!https_urls.empty()) {
+            return https_urls[0];
+        } else {
+            return insecure_urls[0];
+        }
+    }
+
     nlohmann::json parse_url(const std::string& url)
     {
         nlohmann::json retval;

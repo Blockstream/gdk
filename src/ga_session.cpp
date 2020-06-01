@@ -715,7 +715,7 @@ namespace sdk {
     {
         nlohmann::json result;
         try {
-            params.update(parse_url(params["urls"]));
+            params.update(select_url(params["urls"], m_use_tor));
             json_add_if_missing(params, "proxy", socksify(m_proxy));
 
             const auto ssl_ctx = tls_init_handler_impl(params["host"]);
@@ -763,12 +763,12 @@ namespace sdk {
             }
         }
 
-        nlohmann::json get_params = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) },
-            { "target", "/" + type + ".json" }, { "accept", "json" } };
         if (!refresh) {
             return cached_data;
         }
 
+        const std::string url = m_net_params.get_registry_connection_string(m_use_tor) + "/" + type + ".json";
+        nlohmann::json get_params = { { "urls", { url } }, { "accept", "json" } };
         if (!last_modified.empty()) {
             get_params.update({ { "headers",
                 { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since), last_modified } } } });
@@ -861,7 +861,8 @@ namespace sdk {
             const std::string domain_name = params.at("domain");
             const std::string asset_id = params.at("asset_id");
             const std::string final_target = (target_str % asset_id).str();
-            result = http_get({ { "uri", domain_name }, { "target", final_target } });
+            const std::string url = domain_name + final_target;
+            result = http_get({ "urls", { url } });
             if (!result.value("error", std::string{}).empty()) {
                 return result;
             }
