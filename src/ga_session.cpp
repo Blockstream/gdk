@@ -760,20 +760,27 @@ namespace sdk {
             return m_cache.get(type);
         }();
 
-        if (!refresh) {
-            return cached_value ? nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end())
-                                : nlohmann::json::object();
+        std::string last_modified;
+        nlohmann::json cached_data = nlohmann::json::object();
+        if (cached_value) {
+            try {
+                cached_data = nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end());
+                last_modified = cached_data.at("last-modified");
+            } catch (const std::exception& e) {
+                GDK_LOG_SEV(log_level::warning) << "Error reading cached json: " << e.what();
+                cached_data = nlohmann::json::object();
+            }
         }
 
-        nlohmann::json cached_data;
         nlohmann::json get_params
             = { { "uri", m_net_params.get_registry_connection_string(m_use_tor) }, { "target", "/" + type + ".json" } };
+        if (!refresh) {
+            return cached_data;
+        }
 
-        if (cached_value) {
-            cached_data = nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end());
+        if (!last_modified.empty()) {
             get_params.update({ { "headers",
-                { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since),
-                    cached_data.at("last_modified") } } } });
+                { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since), last_modified } } } });
         }
 
         const nlohmann::json data = http_get(get_params);
