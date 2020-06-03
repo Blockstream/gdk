@@ -21,7 +21,6 @@ use gdk_common::wally::*;
 
 use crate::db::*;
 use crate::error::*;
-use crate::model::*;
 
 use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::*;
@@ -156,11 +155,12 @@ impl WalletCtx {
 
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
-            let (type_, user_signed) = match (positives > negatives, tx.is_redeposit(&all_scripts, &all_txs)) {
-                (_, true) => ("redeposit", true),
-                (true, false) => ("incoming", false),
-                (false, false) => ("outgoing", true),
-            };
+            let (type_, user_signed) =
+                match (positives > negatives, tx.is_redeposit(&all_scripts, &all_txs)) {
+                    (_, true) => ("redeposit", true),
+                    (true, false) => ("incoming", false),
+                    (false, false) => ("outgoing", true),
+                };
 
             let tx_meta = TransactionMeta::new(
                 tx.clone(),
@@ -303,7 +303,7 @@ impl WalletCtx {
 
         let subaccount = request.subaccount.unwrap_or(0);
         if subaccount != 0 {
-            return Err(Error::InvalidSubaccount(subaccount))
+            return Err(Error::InvalidSubaccount(subaccount));
         }
 
         if !request.previous_transaction.is_empty() {
@@ -324,7 +324,7 @@ impl WalletCtx {
                         NetworkId::Elements(_) => {
                             if address_amount.asset_tag == self.network.policy_asset {
                                 // we apply dust rules for liquid bitcoin as elements do
-                                return Err(Error::InvalidAmount)
+                                return Err(Error::InvalidAmount);
                             }
                         }
                     }
@@ -652,7 +652,6 @@ impl WalletCtx {
             input_ags.extend(elements::encode::serialize(&input_asset));
         }
 
-        //let random_bytes = [11u8; 32];
         let min_value = 1;
         let ct_exp = 0;
         let ct_bits = 52;
@@ -774,32 +773,12 @@ impl WalletCtx {
         unimplemented!("validate not implemented");
     }
 
-    pub fn poll(&self, _xpub: WGExtendedPubKey) -> Result<(), Error> {
-        Ok(())
-    }
-
     pub fn get_address(&self) -> Result<AddressPointer, Error> {
         let pointer = self.db.increment_index(Index::External, 1)?;
         let address = self.derive_address(&self.xpub, [0, pointer])?.to_string();
         Ok(AddressPointer {
             address,
             pointer,
-        })
-    }
-    pub fn xpub_from_xprv(&self, xprv: WGExtendedPrivKey) -> Result<WGExtendedPubKey, Error> {
-        Ok(WGExtendedPubKey {
-            xpub: ExtendedPubKey::from_private(&self.secp, &xprv.xprv),
-        })
-    }
-
-    pub fn generate_xprv(&self) -> Result<WGExtendedPrivKey, Error> {
-        let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
-
-        Ok(WGExtendedPrivKey {
-            xprv: ExtendedPrivKey::new_master(
-                self.network.id().get_bitcoin_network().unwrap(),
-                &random_bytes,
-            )?, // TODO support LIQUID
         })
     }
 

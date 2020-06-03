@@ -491,7 +491,7 @@ impl TestSession {
             Err(Error::InvalidAmount)
         ));
 
-        create_opt.addressees[0].satoshi = 200;  // below dust limit
+        create_opt.addressees[0].satoshi = 200; // below dust limit
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
             Err(Error::InvalidAmount)
@@ -511,10 +511,7 @@ impl TestSession {
         create_opt.subaccount = None;
 
         create_opt.previous_transaction.insert("txhash".into(), "something".into());
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::Generic(_))
-        ));
+        assert!(matches!(self.session.create_transaction(&mut create_opt), Err(Error::Generic(_))));
         create_opt.previous_transaction.clear();
 
         create_opt.addressees[0].address = "x".to_string();
@@ -608,8 +605,8 @@ impl TestSession {
 
     /// test get_subaccount
     pub fn get_subaccount(&mut self) {
-        assert!(self.session.get_subaccount(0,0).is_ok());
-        assert!(self.session.get_subaccount(1,0).is_err());
+        assert!(self.session.get_subaccount(0, 0).is_ok());
+        assert!(self.session.get_subaccount(1, 0).is_err());
     }
 
     /// mine a block with the node and check if gdk session see the change
@@ -744,7 +741,12 @@ impl TestSession {
     }
 }
 
-fn node_sendtoaddress(client: &Client, address: &str, satoshi: u64, asset: Option<String>) -> String {
+fn node_sendtoaddress(
+    client: &Client,
+    address: &str,
+    satoshi: u64,
+    asset: Option<String>,
+) -> String {
     let amount = Amount::from_sat(satoshi);
     let btc = amount.to_string_in(bitcoin::util::amount::Denomination::Bitcoin);
     info!("node_sendtoaddress {} {}", address, btc);

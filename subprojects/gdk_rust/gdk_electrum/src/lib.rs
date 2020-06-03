@@ -7,8 +7,6 @@ use serde_json::Value;
 pub mod db;
 pub mod error;
 pub mod interface;
-pub mod model;
-pub mod tools;
 
 use crate::db::{Forest, Index, BATCH_SIZE, DB_VERSION};
 use crate::error::Error;
@@ -299,11 +297,11 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         transaction_size: len,
         transaction: tx.hex.clone(), // FIXME
         satoshi: tx.satoshi.clone(),
-        rbf_optin: tx.rbf_optin,           // TODO: TransactionMeta -> TxListItem rbf_optin
-        cap_cpfp: false,            // TODO: TransactionMeta -> TxListItem cap_cpfp
-        can_rbf: false,             // TODO: TransactionMeta -> TxListItem can_rbf
+        rbf_optin: tx.rbf_optin, // TODO: TransactionMeta -> TxListItem rbf_optin
+        cap_cpfp: false,         // TODO: TransactionMeta -> TxListItem cap_cpfp
+        can_rbf: false,          // TODO: TransactionMeta -> TxListItem can_rbf
         has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
-        server_signed: false,       // TODO: TransactionMeta -> TxListItem server_signed
+        server_signed: false,    // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: tx.user_signed,
         instant: false,
         fee: tx.fee,
@@ -938,7 +936,7 @@ impl<S: Read + Write> Syncer<S> {
                 let asset_commitment = elements::encode::serialize(&output.asset);
                 let nonce_commitment = elements::encode::serialize(&output.nonce);
                 info!(
-                    "commitmnents len {} {} {}",
+                    "commitments len {} {} {}",
                     value_commitment.len(),
                     asset_commitment.len(),
                     nonce_commitment.len()
