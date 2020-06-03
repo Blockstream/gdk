@@ -5,11 +5,11 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
+use serde_json::Value;
 use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde_json::Value;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -212,7 +212,7 @@ pub struct AddressIO {
     pub is_relevant: String,
     pub is_spent: String,
     pub pointer: u32,
-    pub pt_idx: u32,
+    pub pt_idx: u32, // vout
     pub satoshi: i64,
     pub script_type: u32,
     pub subaccount: u32,

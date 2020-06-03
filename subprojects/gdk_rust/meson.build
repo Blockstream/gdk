@@ -57,8 +57,6 @@ rust_sources = [
   'gdk_electrum/src/error.rs',
   'gdk_electrum/src/interface.rs',
   'gdk_electrum/src/lib.rs',
-  'gdk_electrum/src/model.rs',
-  'gdk_electrum/src/tools.rs',
 
   'gdk_rpc/src/coins/btc.rs',
   'gdk_rpc/src/coins/liq.rs',

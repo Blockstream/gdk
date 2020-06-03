@@ -652,9 +652,10 @@ impl WalletCtx {
             input_ags.extend(elements::encode::serialize(&input_asset));
         }
 
-        let min_value = 1;
-        let ct_exp = 0;
-        let ct_bits = 52;
+        let ct_min_value = self.network.ct_min_value;
+        let ct_exp = self.network.ct_exponent;
+        let ct_bits = self.network.ct_bits;
+        info!("ct params ct_min_value:{} ct_exp:{}, ct_bits:{}", ct_min_value, ct_exp, ct_bits);
 
         let mut output_blinded_values = vec![];
         for output in tx.output.iter() {
@@ -716,7 +717,7 @@ impl WalletCtx {
                             output_value_commitment,
                             &output.script_pubkey,
                             output_generator,
-                            min_value,
+                            ct_min_value,
                             ct_exp,
                             ct_bits,
                         );

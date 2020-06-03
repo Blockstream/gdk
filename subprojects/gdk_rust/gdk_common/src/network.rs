@@ -7,10 +7,6 @@ pub struct Network {
     name: String,
     network: String,
 
-    bech32_prefix: String,
-    p2pkh_version: u32,
-    p2sh_version: u32,
-
     pub development: bool,
     pub liquid: bool,
     pub mainnet: bool,
@@ -23,6 +19,9 @@ pub struct Network {
     pub validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
     pub sync_interval: Option<u32>,
+    pub ct_bits: i32,
+    pub ct_exponent: i32,
+    pub ct_min_value: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
