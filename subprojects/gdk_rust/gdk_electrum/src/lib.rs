@@ -422,7 +422,7 @@ impl Session<Error> for ElectrumSession {
                             info!("got registry and icons");
                             if let Some(policy) = registry_policy {
                                 info!("inserting policy asset {}", &policy);
-                                registry[policy] = json!({"asset_id": &policy, "name": "btc"});
+                                registry[policy] = json!({"asset_id": &policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
                             }
 
                             db_for_registry.insert_asset_registry(&registry).unwrap();
