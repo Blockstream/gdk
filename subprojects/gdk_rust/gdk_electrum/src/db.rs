@@ -29,7 +29,7 @@ pub const BATCH_SIZE: u32 = 20;
 
 /// used to create db path, increase when db is updated with breaking changes
 /// so that a new db is created in a new directory
-pub const DB_VERSION: u32 = 1;
+pub const DB_VERSION: u32 = 2;
 
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
@@ -82,7 +82,11 @@ impl Forest {
         id: NetworkId,
     ) -> Result<Self, Error> {
         let db = sled::open(path)?;
-        let xpub_hash = sha256::Hash::hash(xpub.to_string().as_bytes());
+        let mut enc_key_data = vec![];
+        enc_key_data.extend( &xpub.public_key.to_bytes());
+        enc_key_data.extend( &xpub.chain_code.to_bytes());
+        enc_key_data.extend( &xpub.network.magic().to_be_bytes());
+        let xpub_hash = sha256::Hash::hash(&enc_key_data);
         let key = xpub_hash[..16].try_into().unwrap();
         let iv = xpub_hash[16..].try_into().unwrap();
 
