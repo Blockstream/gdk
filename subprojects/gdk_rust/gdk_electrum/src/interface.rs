@@ -1,12 +1,11 @@
-use bitcoin::blockdata::script::{Builder, Script};
+use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::PublicKey;
+use bitcoin::{PublicKey, SigHashType};
 use elements;
 use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt};
 use hex;
@@ -16,7 +15,7 @@ use rand::Rng;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{AddressPointer, CreateTransaction, Settings, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
-use gdk_common::util::p2shwpkh_script;
+use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig};
 use gdk_common::wally::*;
 
 use crate::db::*;
@@ -477,30 +476,71 @@ impl WalletCtx {
     // TODO when we can serialize psbt
     //pub fn sign(&self, psbt: PartiallySignedTransaction) -> Result<PartiallySignedTransaction, Error> { Err(Error::Generic("NotImplemented".to_string())) }
 
-    fn internal_sign(
+    fn internal_sign_bitcoin(
         &self,
         tx: &Transaction,
         input_index: usize,
         path: &DerivationPath,
         value: u64,
-    ) -> (PublicKey, Vec<u8>) {
-        let privkey = self.xprv.derive_priv(&self.secp, &path).unwrap();
-        let pubkey = ExtendedPubKey::from_private(&self.secp, &privkey);
-
-        let witness_script = Address::p2pkh(&pubkey.public_key, pubkey.network).script_pubkey();
+    ) -> (Script, Vec<Vec<u8>>) {
+        let xprv = self.xprv.derive_priv(&self.secp, &path).unwrap();
+        let private_key = &xprv.private_key;
+        let public_key = &PublicKey::from_private_key(&self.secp, private_key);
+        let witness_script = p2pkh_script(public_key);
 
         let hash =
             SighashComponents::new(tx).sighash_all(&tx.input[input_index], &witness_script, value);
 
-        let signature = self
-            .secp
-            .sign(&Message::from_slice(&hash.into_inner()[..]).unwrap(), &privkey.private_key.key);
+        let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
+        let signature = self.secp.sign(&message, &private_key.key);
 
-        //let mut signature = signature.serialize_der().to_vec();
-        let mut signature = hex::decode(&format!("{:?}", signature)).unwrap();
-        signature.push(0x01 as u8); // TODO how to properly do this?
+        let mut signature = signature.serialize_der().to_vec();
+        signature.push(SigHashType::All as u8);
 
-        (pubkey.public_key, signature)
+        let script_sig = p2shwpkh_script_sig(public_key);
+        let witness = vec![signature, public_key.to_bytes()];
+        info!(
+            "added size len: script_sig:{} witness:{}",
+            script_sig.len(),
+            witness.iter().map(|v| v.len()).sum::<usize>()
+        );
+
+        (script_sig, witness)
+    }
+
+    pub fn internal_sign_elements(
+        &self,
+        tx: &elements::Transaction,
+        input_index: usize,
+        derivation_path: &DerivationPath,
+        value: Value,
+    ) -> (Script, Vec<Vec<u8>>) {
+        let xprv = self.xprv.derive_priv(&self.secp, &derivation_path).unwrap();
+        let private_key = &xprv.private_key;
+        let public_key = &PublicKey::from_private_key(&self.secp, private_key);
+
+        let script_code = p2pkh_script(public_key);
+        let sighash = tx_get_elements_signature_hash(
+            &tx,
+            input_index,
+            &script_code,
+            &value,
+            SigHashType::All.as_u32(),
+            true, // segwit
+        );
+        let message = secp256k1::Message::from_slice(&sighash[..]).unwrap();
+        let signature = self.secp.sign(&message, &private_key.key);
+        let mut signature = signature.serialize_der().to_vec();
+        signature.push(SigHashType::All as u8);
+
+        let script_sig = p2shwpkh_script_sig(public_key);
+        let witness = vec![signature, public_key.to_bytes()];
+        info!(
+            "added size len: script_sig:{} witness:{}",
+            script_sig.len(),
+            witness.iter().map(|v| v.len()).sum::<usize>()
+        );
+        (script_sig, witness)
     }
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
@@ -529,14 +569,9 @@ impl WalletCtx {
                         i, prev_output, derivation_path
                     );
 
-                    let (pk, sig) = self.internal_sign(&tx, i, &derivation_path, out.value);
-                    let script_sig = script_sig(&pk);
-                    let witness = vec![sig, pk.to_bytes()];
-                    info!(
-                        "added size len: script_sig:{} witness:{}",
-                        script_sig.len(),
-                        witness.iter().map(|v| v.len()).sum::<usize>()
-                    );
+                    let (script_sig, witness) =
+                        self.internal_sign_bitcoin(&tx, i, &derivation_path, out.value);
+
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;
                 }
@@ -554,9 +589,9 @@ impl WalletCtx {
                     elements::encode::deserialize(&hex::decode(&request.hex)?)?;
                 self.blind_tx(&mut tx)?;
 
-                for idx in 0..tx.input.len() {
-                    let prev_output = tx.input[idx].previous_output;
-                    info!("input#{} prev_output:{:?}", idx, prev_output);
+                for i in 0..tx.input.len() {
+                    let prev_output = tx.input[i].previous_output;
+                    info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = self
                         .db
                         .get_liquid_tx(&prev_output.txid)?
@@ -568,34 +603,11 @@ impl WalletCtx {
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .into_derivation_path()?;
 
-                    let privkey = self.xprv.derive_priv(&self.secp, &derivation_path).unwrap();
-                    let pubkey = ExtendedPubKey::from_private(&self.secp, &privkey);
-                    let el_net = self.network.id().get_elements_network().unwrap();
-                    let script_code =
-                        elements::Address::p2pkh(&pubkey.public_key, None, address_params(el_net))
-                            .script_pubkey();
-                    let sighash = tx_get_elements_signature_hash(
-                        &tx,
-                        idx,
-                        &script_code,
-                        &out.value,
-                        bitcoin::SigHashType::All.as_u32(),
-                        true, // segwit
-                    );
-                    let msg = secp256k1::Message::from_slice(&sighash[..]).unwrap();
-                    let mut signature =
-                        self.secp.sign(&msg, &privkey.private_key.key).serialize_der().to_vec();
-                    signature.push(0x01);
+                    let (script_sig, witness) =
+                        self.internal_sign_elements(&tx, i, &derivation_path, out.value);
 
-                    let redeem_script = script_sig(&pubkey.public_key);
-                    let witness = vec![signature, pubkey.public_key.to_bytes()];
-                    info!(
-                        "added size len: script_sig:{} witness:{}",
-                        redeem_script.len(),
-                        witness.iter().map(|v| v.len()).sum::<usize>()
-                    );
-                    tx.input[idx].script_sig = redeem_script;
-                    tx.input[idx].witness.script_witness = witness;
+                    tx.input[i].script_sig = script_sig;
+                    tx.input[i].witness.script_witness = witness;
                 }
 
                 let fee: u64 =
@@ -798,21 +810,13 @@ fn address_params(net: ElementsNetwork) -> &'static elements::AddressParams {
     }
 }
 
-fn script_sig(public_key: &PublicKey) -> Script {
-    let internal = Builder::new()
-        .push_int(0)
-        .push_slice(&PubkeyHash::hash(&public_key.to_bytes())[..])
-        .into_script();
-    Builder::new().push_slice(internal.as_bytes()).into_script()
-}
-
 fn random32() -> Vec<u8> {
     rand::thread_rng().gen::<[u8; 32]>().to_vec()
 }
 
 #[cfg(test)]
 mod test {
-    use crate::interface::script_sig;
+    use crate::interface::p2shwpkh_script_sig;
     use bitcoin::consensus::deserialize;
     use bitcoin::hashes::hash160;
     use bitcoin::hashes::Hash;
@@ -873,7 +877,7 @@ mod test {
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
         assert_eq!(signature_hex, "3044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb01");
 
-        let script_sig = script_sig(&public_key);
+        let script_sig = p2shwpkh_script_sig(&public_key);
 
         assert_eq!(
             format!("{}", hex::encode(script_sig.as_bytes())),
@@ -928,7 +932,7 @@ mod test {
         assert_eq!(tx.input[0].witness[0], signature);
         assert_eq!(tx.input[0].witness[1], public_key_bytes);
 
-        let script_sig = script_sig(&public_key);
+        let script_sig = p2shwpkh_script_sig(&public_key);
         assert_eq!(tx.input[0].script_sig, script_sig);
     }
 }

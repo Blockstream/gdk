@@ -12,7 +12,7 @@ use block_modes::Cbc;
 use elements::AddressParams;
 use gdk_common::be::*;
 use gdk_common::model::Settings;
-use gdk_common::util::p2shwpkh_script;
+use gdk_common::scripts::p2shwpkh_script;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };

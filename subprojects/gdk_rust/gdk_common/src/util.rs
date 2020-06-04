@@ -8,7 +8,7 @@ use std::os::raw::c_char;
 use log::{debug, info};
 
 use backtrace::Backtrace;
-use bitcoin::{Address, Amount, Network, PublicKey, Script};
+use bitcoin::Amount;
 use chrono::NaiveDateTime;
 use log::LevelFilter;
 use serde_json::Value;
@@ -111,9 +111,4 @@ impl<T> OptionExt<T> for Option<T> {
             "missing required option".into()
         })
     }
-}
-
-pub fn p2shwpkh_script(pk: &PublicKey) -> Script {
-    // using regtest is always ok because I am not interested in the address just in the script
-    Address::p2shwpkh(pk, Network::Regtest).script_pubkey()
 }
