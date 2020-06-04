@@ -42,7 +42,6 @@ rust_sources = [
   'gdk_common/src/be/transaction.rs',
   'gdk_common/src/wally/mod.rs',
   'gdk_common/src/wally/ffi.rs',
-  'gdk_common/src/constants.rs',
   'gdk_common/src/error.rs',
   'gdk_common/src/lib.rs',
   'gdk_common/src/mnemonic.rs',
@@ -50,7 +49,6 @@ rust_sources = [
   'gdk_common/src/network.rs',
   'gdk_common/src/password.rs',
   'gdk_common/src/session.rs',
-  'gdk_common/src/util.rs',
   'gdk_common/src/scripts.rs',
 
   'gdk_electrum/Cargo.toml',
@@ -58,16 +56,6 @@ rust_sources = [
   'gdk_electrum/src/error.rs',
   'gdk_electrum/src/interface.rs',
   'gdk_electrum/src/lib.rs',
-
-  'gdk_rpc/src/coins/btc.rs',
-  'gdk_rpc/src/coins/liq.rs',
-  'gdk_rpc/src/coins.rs',
-  'gdk_rpc/src/errors.rs',
-  'gdk_rpc/src/lib.rs',
-  'gdk_rpc/src/network.rs',
-  'gdk_rpc/src/session.rs',
-  'gdk_rpc/src/settings.rs',
-  'gdk_rpc/src/wallet.rs'
 
 ]
 

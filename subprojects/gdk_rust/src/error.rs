@@ -1,6 +1,5 @@
 use gdk_common::model::ExchangeRateError;
 use gdk_electrum as electrum;
-// use gdk_rpc as rpc;
 
 #[derive(Debug)]
 pub enum Error {

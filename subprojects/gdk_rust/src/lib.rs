@@ -1,28 +1,16 @@
-#![recursion_limit = "128"]
-#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 #[macro_use]
 extern crate serde_json;
-extern crate failure;
-extern crate serde_derive;
+
 #[macro_use]
 extern crate log;
-#[cfg(feature = "android_log")]
-extern crate android_logger;
-#[cfg(feature = "stderr_logger")]
-extern crate stderrlog;
-
-// Liquid
-#[cfg(feature = "liquid")]
-extern crate elements;
-#[cfg(feature = "liquid")]
-extern crate liquid_rpc;
 
 pub mod error;
 mod serialize;
 
 use crate::serialize::*;
 use serde_json::Value;
+use gdk_common::wally::{read_str, make_str};
 
 #[cfg(feature = "android_log")]
 use android_logger::{Config, FilterBuilder};
@@ -35,15 +23,15 @@ use std::os::raw::c_char;
 use std::sync::Once;
 use std::time::{Duration, SystemTime};
 
-use gdk_common::constants::{GA_ERROR, GA_OK};
 use gdk_common::model::{GDKRUST_json, GetTransactionsOpt};
 use gdk_common::session::Session;
-use gdk_common::util::{make_str, read_str};
 
 use gdk_electrum::{ElectrumSession, NativeNotif};
-// use gdk_rpc::session::RpcSession;
 use crate::error::Error;
 use log::{LevelFilter, Metadata, Record};
+
+pub const GA_OK: i32 = 0;
+pub const GA_ERROR: i32 = -1;
 
 pub struct GdkSession {
     pub backend: GdkBackend,

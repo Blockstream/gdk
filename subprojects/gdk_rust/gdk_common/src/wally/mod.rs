@@ -8,9 +8,11 @@ use bitcoin::secp256k1;
 use std::fmt;
 
 use crate::be::AssetId;
-use crate::util::{make_str, read_str};
 use bitcoin::hashes::{sha256d, Hash};
 use elements::confidential::{Asset, Value};
+use std::borrow::Cow;
+use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 
 pub mod ffi;
 
@@ -470,6 +472,15 @@ pub fn asset_surjectionproof(
     assert_eq!(ret, ffi::WALLY_OK);
     assert_eq!(proof_size, written);
     proof[..proof_size].to_vec()
+}
+
+pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *const c_char {
+    CString::new(data.into().into_owned()).unwrap().into_raw()
+}
+
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub fn read_str(s: *const c_char) -> String {
+    unsafe { CStr::from_ptr(s) }.to_str().unwrap().to_string()
 }
 
 #[cfg(test)]
