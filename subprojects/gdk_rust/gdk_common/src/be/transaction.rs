@@ -454,10 +454,8 @@ impl BETransaction {
                             // we apply dust rules for liquid bitcoin as elements do
                             result.push(AssetValue::new(asset.to_string(), sum));
                         }
-                    } else {
-                        if sum > 0 {
-                            result.push(AssetValue::new(asset.to_string(), sum));
-                        }
+                    } else if sum > 0 {
+                        result.push(AssetValue::new(asset.to_string(), sum));
                     }
                 }
                 assert!(outputs.is_empty());

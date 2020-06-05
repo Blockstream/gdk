@@ -403,15 +403,13 @@ impl Session<Error> for ElectrumSession {
         let db = Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?;
 
         let mut wait_registry = false;
-        let mut registry_thread = None;
-
-        if self.network.liquid {
+        let registry_thread = if self.network.liquid {
             let registry_policy = self.network.policy_asset.clone();
             let asset_icons = db.get_asset_icons()?;
             let asset_registry = db.get_asset_registry()?;
             wait_registry = asset_icons.is_none() || asset_registry.is_none();
             let db_for_registry = db.clone();
-            registry_thread = Some(thread::spawn(move || {
+            Some(thread::spawn(move || {
                 info!("start registry thread");
                 // TODO add if_modified_since, gzip encoding
                 let registry = ureq::get("https://assets.blockstream.info/index.json").call();
@@ -433,8 +431,10 @@ impl Session<Error> for ElectrumSession {
                 } else {
                     warn!("Cannot download registry and icons");
                 }
-            }));
-        }
+            }))
+        } else {
+            None
+        };
 
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {

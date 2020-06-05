@@ -138,7 +138,7 @@ impl WalletCtx {
                 if !script.is_empty() && !all_scripts.contains(&script) {
                     let address = tx.output_address(i, self.network.id());
                     addressees.push(AddressAmount {
-                        address: address.unwrap_or("".to_string()),
+                        address: address.unwrap_or_else(|| "".to_string()),
                         satoshi: 0, // apparently not needed in list_tx addressees
                         asset_tag: None,
                     });
@@ -261,6 +261,7 @@ impl WalletCtx {
         Ok(result)
     }
 
+    #[allow(clippy::cognitive_complexity)]
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
         info!("create_tx {:?}", request);
 

@@ -175,6 +175,7 @@ impl From<BETransaction> for TransactionMeta {
 }
 
 impl TransactionMeta {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         transaction: BETransaction,
         height: Option<u32>,
