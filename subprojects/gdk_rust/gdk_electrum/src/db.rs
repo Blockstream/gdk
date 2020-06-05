@@ -83,9 +83,9 @@ impl Forest {
     ) -> Result<Self, Error> {
         let db = sled::open(path)?;
         let mut enc_key_data = vec![];
-        enc_key_data.extend( &xpub.public_key.to_bytes());
-        enc_key_data.extend( &xpub.chain_code.to_bytes());
-        enc_key_data.extend( &xpub.network.magic().to_be_bytes());
+        enc_key_data.extend(&xpub.public_key.to_bytes());
+        enc_key_data.extend(&xpub.chain_code.to_bytes());
+        enc_key_data.extend(&xpub.network.magic().to_be_bytes());
         let xpub_hash = sha256::Hash::hash(&enc_key_data);
         let key = xpub_hash[..16].try_into().unwrap();
         let iv = xpub_hash[16..].try_into().unwrap();

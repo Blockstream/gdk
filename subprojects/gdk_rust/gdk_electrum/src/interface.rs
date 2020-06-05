@@ -664,10 +664,9 @@ impl WalletCtx {
             input_ags.extend(elements::encode::serialize(&input_asset));
         }
 
-        let ct_min_value = self.network.ct_min_value.expect("ct_min_value not set in network");
         let ct_exp = self.network.ct_exponent.expect("ct_exponent not set in network");
         let ct_bits = self.network.ct_bits.expect("ct_bits not set in network");
-        info!("ct params ct_min_value:{} ct_exp:{}, ct_bits:{}", ct_min_value, ct_exp, ct_bits);
+        info!("ct params ct_exp:{}, ct_bits:{}", ct_exp, ct_bits);
 
         let mut output_blinded_values = vec![];
         for output in tx.output.iter() {
@@ -718,6 +717,11 @@ impl WalletCtx {
                         let output_generator = asset_generator_from_bytes(&asset, &output_abf);
                         let output_value_commitment =
                             asset_value_commitment(value, output_vbf, output_generator);
+                        let min_value = if output.script_pubkey.is_provably_unspendable() {
+                            0
+                        } else {
+                            1
+                        };
 
                         let rangeproof = asset_rangeproof(
                             value,
@@ -729,7 +733,7 @@ impl WalletCtx {
                             output_value_commitment,
                             &output.script_pubkey,
                             output_generator,
-                            ct_min_value,
+                            min_value,
                             ct_exp,
                             ct_bits,
                         );

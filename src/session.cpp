@@ -144,8 +144,6 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
             if (network.value("server_type", "") == "green") {
                 session = boost::make_shared<ga_session>(network);
-            } else if (network.value("server_type", "") == "rpc") {
-                session = boost::make_shared<ga_rust>(network);
             } else if (network.value("server_type", "") == "electrum") {
                 GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
                 network["state_dir"] = std::string(gdk_config().at("datadir")) + "/state";

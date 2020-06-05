@@ -1,7 +1,7 @@
-use bitcoin::{PublicKey, Script, Address, Network};
 use bitcoin::blockdata::script::Builder;
 use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
+use bitcoin::{Address, Network, PublicKey, Script};
 
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script

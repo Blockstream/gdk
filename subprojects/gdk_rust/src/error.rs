@@ -6,7 +6,7 @@ pub enum Error {
     Other(String),
     JsonFrom(serde_json::Error),
     Electrum(electrum::error::Error),
-    Rates(ExchangeRateError), // Rpc(rpc::error::Error),
+    Rates(ExchangeRateError),
     Common(gdk_common::error::Error),
 }
 
@@ -19,7 +19,6 @@ impl Error {
         // id_invalid_replacement_fee_rate
         // id_send_all_requires_a_single_output
 
-        // TODO rpc
         match *self {
             Error::Electrum(electrum::error::Error::InsufficientFunds) => {
                 "id_insufficient_funds".to_string()
@@ -68,9 +67,3 @@ impl From<serde_json::Error> for Error {
         Error::JsonFrom(e)
     }
 }
-
-// impl From<rpc::error::Error> for Error {
-//     fn from(e: rpc::error::Error) -> Error {
-//         Error::Rpc(e)
-//     }
-// }
