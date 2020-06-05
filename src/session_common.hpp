@@ -45,7 +45,7 @@ namespace sdk {
         virtual void connect() = 0;
         virtual void disconnect() = 0;
 
-        virtual nlohmann::json http_get(const nlohmann::json& params) = 0;
+        virtual nlohmann::json http_request(nlohmann::json params) = 0;
         virtual nlohmann::json refresh_assets(const nlohmann::json& params) = 0;
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
 
