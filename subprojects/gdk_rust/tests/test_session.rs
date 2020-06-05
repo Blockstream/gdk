@@ -188,9 +188,9 @@ pub fn setup(
     network.url = Some(electrs_url.to_string());
     network.sync_interval = Some(1);
     network.development = true;
-    network.ct_bits = 52;
-    network.ct_exponent = 0;
-    network.ct_min_value = 1;
+    network.ct_bits = Some(52);
+    network.ct_exponent = Some(0);
+    network.ct_min_value = Some(1);
     if is_liquid {
         network.liquid = true;
         network.policy_asset =

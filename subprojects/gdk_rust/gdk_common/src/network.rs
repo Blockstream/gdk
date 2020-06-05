@@ -19,9 +19,9 @@ pub struct Network {
     pub validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
     pub sync_interval: Option<u32>,
-    pub ct_bits: i32,
-    pub ct_exponent: i32,
-    pub ct_min_value: u64,
+    pub ct_bits: Option<i32>,
+    pub ct_exponent: Option<i32>,
+    pub ct_min_value: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
