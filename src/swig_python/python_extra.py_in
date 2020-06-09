@@ -1,3 +1,4 @@
+import atexit
 import json
 try:
     import queue
@@ -68,14 +69,29 @@ class Session(object):
     """A GreenAddress session
 
     """
+
+    to_destroy = []
+
+    @staticmethod
+    @atexit.register
+    def destroy_all():
+        for session in Session.to_destroy:
+            session._destroy()
+        Session.to_destroy = []
+
     def __init__(self, net_params):
         self.notifications = queue.Queue()
         self.session_obj = create_session()
+        Session.to_destroy.append(self)
         _python_set_callback_handler(self.session_obj, self._callback_handler)
         return self.connect(net_params)
 
-    def destroy(self):
+    def _destroy(self):
         destroy_session(self.session_obj)
+
+    def destroy(self):
+        self._destroy()
+        Session.to_destroy.remove(self)
 
     def __enter__(self):
         return self
