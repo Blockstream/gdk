@@ -183,7 +183,7 @@ namespace sdk {
                 total = total_p;
             } else {
                 const std::string total_str = total_p;
-                total = strtoul(total_str.c_str(), nullptr, 10);
+                total = strtoull(total_str.c_str(), nullptr, 10);
             }
             return total;
         }
@@ -1070,7 +1070,7 @@ namespace sdk {
                 type = "2of2";
             }
             const std::string satoshi_str = sa["satoshi"];
-            const amount satoshi{ strtoul(satoshi_str.c_str(), nullptr, 10) };
+            const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
             const std::string recovery_chain_code = json_get_value(sa, "2of3_backup_chaincode");
             const std::string recovery_pub_key = json_get_value(sa, "2of3_backup_pubkey");
 
@@ -1085,7 +1085,7 @@ namespace sdk {
 
         // Insert the main account so callers can treat all accounts equally
         const std::string satoshi_str = login_data["satoshi"];
-        const amount satoshi{ strtoul(satoshi_str.c_str(), nullptr, 10) };
+        const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
         const bool has_txs = json_get_value(m_login_data, "has_txs", false);
         insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(), "2of2",
             satoshi, has_txs, 0);
@@ -1800,7 +1800,7 @@ namespace sdk {
                 update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
             }
             const std::string satoshi_str = json_get_value(balance, "satoshi");
-            const amount::value_type satoshi = strtoul(satoshi_str.c_str(), nullptr, 10);
+            const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", satoshi } };
         }
         const auto utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
@@ -2234,7 +2234,7 @@ namespace sdk {
             json_add_if_missing(tx_details, "has_payment_request", false);
             json_add_if_missing(tx_details, "memo", std::string());
             const std::string fee_str = tx_details["fee"];
-            const amount::value_type fee = strtoul(fee_str.c_str(), nullptr, 10);
+            const amount::value_type fee = strtoull(fee_str.c_str(), nullptr, 10);
             tx_details["fee"] = fee;
             const std::string tx_data = json_get_value(tx_details, "data");
             tx_details.erase("data");
