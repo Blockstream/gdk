@@ -263,14 +263,16 @@ impl ElectrumSession {
 
     fn try_get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
         let mut client = ClientWrap::new(self.url.clone())?;
+        let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
         let blocks: Vec<usize> = (1..25).collect();
+        // max is covering a rounding errors in production electrs which sometimes cause a fee
+        // estimates lower than relay fee
         let mut estimates: Vec<FeeEstimate> = client
             .batch_estimate_fee(blocks)?
             .iter()
-            .map(|e| FeeEstimate((*e * 100_000_000.0) as u64))
+            .map(|e| FeeEstimate(   relay_fee.max((*e * 100_000_000.0) as u64)    ))
             .collect();
-        let relay_fee = client.relay_fee()?;
-        estimates.insert(0, FeeEstimate((relay_fee * 100_000_000.0) as u64));
+        estimates.insert(0, FeeEstimate(relay_fee));
         Ok(estimates)
     }
 }

@@ -250,6 +250,7 @@ impl TestSession {
         let relay_fee = self.node.get_network_info().unwrap().relay_fee.as_sat();
         assert_eq!(fees.len(), 25);
         assert!(fees.iter().all(|f| f.0 >= relay_fee));
+        assert!(fees.windows(2).all(|s| s[0].0 <= s[1].0) );  // monotonic
     }
 
     /// test a change in the settings is saved
