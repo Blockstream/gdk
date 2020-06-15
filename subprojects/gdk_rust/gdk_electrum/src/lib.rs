@@ -6,6 +6,7 @@ use serde_json::Value;
 
 pub mod db;
 pub mod error;
+pub mod headers;
 pub mod interface;
 
 use crate::db::{Forest, Index, BATCH_SIZE, DB_VERSION};
@@ -270,7 +271,7 @@ impl ElectrumSession {
         let mut estimates: Vec<FeeEstimate> = client
             .batch_estimate_fee(blocks)?
             .iter()
-            .map(|e| FeeEstimate(   relay_fee.max((*e * 100_000_000.0) as u64)    ))
+            .map(|e| FeeEstimate(relay_fee.max((*e * 100_000_000.0) as u64)))
             .collect();
         estimates.insert(0, FeeEstimate(relay_fee));
         Ok(estimates)
