@@ -8,12 +8,12 @@ use bitcoin::util::uint::Uint256;
 use bitcoin::Txid;
 use bitcoin::{BitcoinHash, BlockHeader, Network};
 use electrum_client::GetMerkleRes;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 #[derive(Debug)]
-struct HeadersChain {
+pub struct HeadersChain {
     path: PathBuf,
     height: u32,
     last: BlockHeader,
@@ -22,7 +22,7 @@ struct HeadersChain {
 impl HeadersChain {
     /// create a chain of headers based on the file identified by the `path` parameter.
     /// if the file doesn't exist, a chain with only the genesis block (relative to `network`) is returned
-    fn new(path: PathBuf, network: Network) -> Result<HeadersChain, Error> {
+    pub fn new(path: PathBuf, network: Network) -> Result<HeadersChain, Error> {
         if !path.exists() {
             let last = genesis_block(network).header;
             let mut file = File::create(&path)?;
@@ -35,8 +35,9 @@ impl HeadersChain {
                 last,
             })
         } else {
-            let file_size = fs::metadata(&path)?.len();
             let mut file = File::open(&path)?;
+            let file_size = file.metadata()?.len();
+
             file.seek(SeekFrom::Start(file_size - 80))?;
             let mut buf = [0u8; 80];
             file.read_exact(&mut buf)?;
@@ -68,7 +69,7 @@ impl HeadersChain {
     pub fn remove(&mut self, headers_to_remove: u32) -> Result<(), Error> {
         if self.height > headers_to_remove {
             let new_height = self.height - headers_to_remove;
-            let new_size = (new_height) as u64 / 80;
+            let new_size = (new_height+1) as u64 * 80;
             let file = OpenOptions::new().write(true).open(&self.path)?;
             self.last = self.get(new_height)?;
             self.height = new_height;
@@ -119,6 +120,7 @@ impl HeadersChain {
     }
 
     /// verify the given txid and the proof against our chain of headers
+    #[allow(dead_code)]
     fn verify_tx_proof(&self, txid: &Txid, height: u32, merkle: GetMerkleRes) -> Result<(), Error> {
         let mut pos = merkle.pos;
         let mut current = txid.into_inner();
@@ -258,7 +260,19 @@ mod test {
         let old_tip = chain.tip();
         chain.remove(1);
         assert_eq!(chain.height, 198);
+        assert!(chain.get(199).is_err());
         chain.push(vec![old_tip]);
         assert_eq!(chain.height, 199);
+        assert_eq!(
+            BlockHash::from_hex("00000000e85458c1467176b04a65d5efaccfecaaab717b17a587b4069276e143")
+                .unwrap(),
+            chain.get(198).unwrap().bitcoin_hash()
+        );
+        assert_eq!(
+            BlockHash::from_hex("00000000b7691ccc084542565697eca256e56bb7f67e560b48789db27f0468eb")
+                .unwrap(),
+            chain.get(199).unwrap().bitcoin_hash()
+        );
+        assert!(chain.get(200).is_err());
     }
 }

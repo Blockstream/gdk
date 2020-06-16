@@ -21,7 +21,7 @@ else
   # By default clean everything except the downloaded package tars
   rm -fr build-*
   clean_meson
-  find subprojects/ -mindepth 1 -maxdepth 1 -not -path '*-meson*' -not -name '*wrap*' -not -name '*packagecache*' | xargs rm -rf --
+  find subprojects/ -mindepth 1 -maxdepth 1 -not -path '*-meson*' -not -name '*wrap*' -not -name '*packagecache*' -not -path '*gdk_rust*' | xargs rm -rf --
   find subprojects/packagecache/ -name '*meson*.tar' | xargs rm -rf --
 fi
 

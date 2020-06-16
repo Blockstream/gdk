@@ -738,6 +738,7 @@ impl TestSession {
 
     /// stop the bitcoin node in the test session
     pub fn stop(&mut self) {
+        self.session.disconnect().unwrap();
         self.node.stop().unwrap();
         self.node_process.wait().unwrap();
         self.electrs_process.kill().unwrap();

@@ -42,8 +42,11 @@ use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::headers::HeadersChain;
+use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::sync::{Mutex, Arc};
 
 pub enum SyncerKind {
     Plain(Syncer<ElectrumPlaintextStream>, String),
@@ -53,6 +56,11 @@ pub enum SyncerKind {
 pub enum TipperKind {
     Plain(Tipper<ElectrumPlaintextStream>, String),
     Tls(Tipper<ElectrumSslStream>, String, bool),
+}
+
+pub enum HeadersKind {
+    Plain(Headers<ElectrumPlaintextStream>, String),
+    Tls(Headers<ElectrumSslStream>, String, bool),
 }
 
 impl TipperKind {
@@ -69,6 +77,15 @@ impl SyncerKind {
         match self {
             SyncerKind::Plain(s, _) => s.sync(),
             SyncerKind::Tls(s, _, _) => s.sync(),
+        }
+    }
+}
+
+impl HeadersKind {
+    pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
+        match self {
+            HeadersKind::Plain(s, _) => s.ask(chunk_size),
+            HeadersKind::Tls(s, _, _) => s.ask(chunk_size),
         }
     }
 }
@@ -119,6 +136,7 @@ impl ClientWrap {
 
 pub struct Syncer<S: Read + Write> {
     pub db: Forest,
+    pub chain: Arc<Mutex<Option<HeadersChain>>>,
     pub client: electrum_client::Client<S>,
     pub master_blinding: Option<MasterBlindingKey>,
     pub network: Network,
@@ -126,6 +144,12 @@ pub struct Syncer<S: Read + Write> {
 
 pub struct Tipper<S: Read + Write> {
     pub db: Forest,
+    pub client: electrum_client::Client<S>,
+    pub network: Network,
+}
+
+pub struct Headers<S: Read + Write> {
+    pub chain: Arc<Mutex<Option<HeadersChain>>>,
     pub client: electrum_client::Client<S>,
     pub network: Network,
 }
@@ -149,14 +173,30 @@ impl<S: Read + Write> Syncer<S> {
         db: Forest,
         client: electrum_client::Client<S>,
         master_blinding: Option<MasterBlindingKey>,
+        chain: Arc<Mutex<Option<HeadersChain>>>,
         network: Network,
     ) -> Self {
         Syncer {
             db,
             client,
+            chain,
             master_blinding,
             network,
         }
+    }
+}
+
+impl<S: Read + Write> Headers<S> {
+    pub fn new(
+        chain: Arc<Mutex<Option<HeadersChain>>>,
+        client: electrum_client::Client<S>,
+        network: Network,
+    ) -> Result<Self, Error> {
+        Ok(Headers {
+            chain,
+            client,
+            network,
+        })
     }
 }
 
@@ -180,7 +220,7 @@ impl Closer {
 }
 
 pub struct ElectrumSession {
-    pub db_root: String,
+    pub data_root: String,
     pub network: Network,
     pub url: ElectrumUrl,
     pub wallet: Option<WalletCtx>,
@@ -243,7 +283,7 @@ impl ElectrumSession {
 impl ElectrumSession {
     pub fn create_session(network: Network, db_root: &str, url: ElectrumUrl) -> Self {
         Self {
-            db_root: db_root.to_string(),
+            data_root: db_root.to_string(),
             network,
             url,
             wallet: None,
@@ -331,12 +371,12 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
-        if self.db_root == "" {
-            self.db_root = net_params["state_dir"]
+        if self.data_root == "" {
+            self.data_root = net_params["state_dir"]
                 .as_str()
                 .map(|x| x.to_string())
                 .unwrap_or_else(|| "".into());
-            info!("setting db_root to {:?}", self.db_root);
+            info!("setting db_root to {:?}", self.data_root);
         }
 
         info!("connect {:?}", self.network);
@@ -400,7 +440,7 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
-        let mut path: PathBuf = self.db_root.as_str().into();
+        let mut path: PathBuf = self.data_root.as_str().into();
         path.push(wallet_id);
         info!("opening sled db root path: {:?}", path);
         let db = Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?;
@@ -439,11 +479,66 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
+        let chain = Arc::new(Mutex::new(None));
+        let mut chain_clone = chain.clone();
+        if let NetworkId::Bitcoin(network) = self.network.id() {
+            {
+                *chain_clone.lock().unwrap() = Some(HeadersChain::new(path, network)?);
+            }
+            let mut path: PathBuf = self.data_root.as_str().into();
+            path.push(format!("headers_chain_{}",network) );
+            let mut headers_kind = match &self.url {
+                ElectrumUrl::Tls(url, validate) => {
+                    let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                    HeadersKind::Tls(
+                        Headers::new(chain_clone, client, self.network.clone())?,
+                        url.to_string(),
+                        *validate,
+                    )
+                }
+                ElectrumUrl::Plaintext(url) => {
+                    let client = electrum_client::Client::new(&url)?;
+                    HeadersKind::Plain(
+                        Headers::new(chain_clone, client, self.network.clone())?,
+                        url.to_string(),
+                    )
+                }
+            };
+            let (close_headers, r) = channel();
+            self.closer.senders.push(close_headers);
+            let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
+            thread::spawn(move || 'outer: loop {
+                for _ in 0..30 {
+                    thread::sleep(Duration::from_secs(1));
+                    if r.try_recv().is_ok() {
+                        info!("closing headers");
+                        break 'outer;
+                    }
+                }
+                loop {
+                    thread::sleep(Duration::from_millis(100));
+                    match headers_kind.ask(chunk_size) {
+                        Ok(headers_found) => {
+                            info!("headers found: {}", headers_found);
+                            if headers_found == 0 {
+                                chunk_size = 1
+                            }
+                        },
+                        Err(_) => chunk_size /= 2,
+                    };
+                    if chunk_size == 1 {
+                        break;
+                    }
+                }
+            });
+        }
+
+        let mut chain_clone = chain.clone();
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
                 let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
                 SyncerKind::Tls(
-                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
+                    Syncer::new(db.clone(), client, master_blinding.clone(), chain_clone, self.network.clone()),
                     url.to_string(),
                     *validate,
                 )
@@ -451,7 +546,7 @@ impl Session<Error> for ElectrumSession {
             ElectrumUrl::Plaintext(url) => {
                 let client = electrum_client::Client::new(&url)?;
                 SyncerKind::Plain(
-                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
+                    Syncer::new(db.clone(), client, master_blinding.clone(), chain_clone,self.network.clone()),
                     url.to_string(),
                 )
             }
@@ -758,12 +853,23 @@ impl<S: Read + Write> Tipper<S> {
     }
 }
 
+impl<S: Read + Write> Headers<S> {
+    pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
+        let mut guard = self.chain.lock().unwrap();
+        let mut chain = guard.as_mut().unwrap();
+        info!("asking headers, current height:{} chunk_size:{} ", chain.height(), chunk_size);
+        let headers =
+            self.client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
+        let len = headers.len();
+        chain.push(headers)?;
+        Ok(len)
+    }
+}
 impl<S: Read + Write> Syncer<S> {
     pub fn sync(&mut self) -> Result<bool, Error> {
         trace!("start sync");
         let start = Instant::now();
 
-        //let mut client = Client::new("tn.not.fyi:55001")?;
         let mut history_txs_id = HashSet::new();
         let mut heights_set = HashSet::new();
         let mut txid_height = HashMap::new();
