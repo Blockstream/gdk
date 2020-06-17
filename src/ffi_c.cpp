@@ -202,12 +202,13 @@ GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::register_call(*session, *json_cast(hw_device), mnemonic)); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_login_with_pin, struct GA_session*, session, const char*, pin, const GA_json*, pin_data,
-    { session->login_with_pin(pin, *json_cast(pin_data)); })
-
 GDK_DEFINE_C_FUNCTION_5(GA_login, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
     const char*, password, struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::login_call(*session, *json_cast(hw_device), mnemonic, password)); })
+
+GDK_DEFINE_C_FUNCTION_4(GA_login_with_pin, struct GA_session*, session, const char*, pin, const GA_json*, pin_data,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::login_with_pin_call(*session, pin, *json_cast(pin_data))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_login_watch_only, struct GA_session*, session, const char*, username, const char*, password,
     { session->login_watch_only(username, password); })

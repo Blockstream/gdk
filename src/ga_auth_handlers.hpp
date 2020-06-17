@@ -33,6 +33,17 @@ namespace sdk {
         std::vector<uint32_t> m_ca_reqs;
     };
 
+    class login_with_pin_call : public auth_handler {
+    public:
+        login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data);
+
+    private:
+        state_type call_impl() override;
+
+        std::string m_pin;
+        nlohmann::json m_pin_data;
+    };
+
     class create_subaccount_call : public auth_handler {
     public:
         create_subaccount_call(session& session, const nlohmann::json& details);

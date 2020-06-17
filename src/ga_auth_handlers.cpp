@@ -386,6 +386,42 @@ namespace sdk {
     }
 
     //
+    // Login_with_pin
+    //
+    login_with_pin_call::login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data)
+        : auth_handler(session, "get_xpubs", nlohmann::json::object())
+        , m_pin(pin)
+        , m_pin_data(pin_data)
+    {
+    }
+
+    auth_handler::state_type login_with_pin_call::call_impl()
+    {
+        m_session.login_with_pin(m_pin, m_pin_data);
+
+        if (m_session.is_liquid()) {
+            // when logged in with pin, the wallet software signer is available, thus the session is able to obtain
+            // blinding key without interacting with the caller
+            for (const auto& sa : m_session.get_subaccounts()) {
+                std::vector<std::string> conf_addresses;
+
+                for (size_t i = 0; i < sa["required_ca"]; ++i) {
+                    const auto address = m_session.get_receive_address({ { "subaccount", sa["pointer"] } });
+                    const auto blinding_key = m_session.get_blinding_key_for_script(address["blinding_script_hash"]);
+                    const std::string blinded_addr = m_session.blind_address(address["address"], blinding_key);
+                    conf_addresses.emplace_back(blinded_addr);
+                }
+
+                if (!conf_addresses.empty()) {
+                    m_session.upload_confidential_addresses(sa["pointer"], conf_addresses);
+                }
+            }
+        }
+
+        return state_type::done;
+    }
+
+    //
     // Create subaccount
     //
     create_subaccount_call::create_subaccount_call(session& session, const nlohmann::json& details)

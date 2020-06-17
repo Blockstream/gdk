@@ -227,13 +227,14 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
-    public func loginWithPin(pin: String, pin_data:String) throws {
-        var result: OpaquePointer? = nil
+    public func loginWithPin(pin: String, pin_data: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil;
+        var pin_data_json: OpaquePointer = try convertDictToJSON(dict: pin_data)
+        try callWrapper(fun: GA_login_with_pin(session, pin, pin_data_json, &optr))
         defer {
-            GA_destroy_json(result)
+            GA_destroy_json(pin_data_json)
         }
-        try callWrapper(fun: GA_convert_string_to_json(pin_data, &result))
-        try callWrapper(fun: GA_login_with_pin(session, pin, result))
+        return TwoFactorCall(optr: optr!);
     }
 
     public func loginWatchOnly(username: String, password: String) throws {

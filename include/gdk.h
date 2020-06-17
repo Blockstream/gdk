@@ -178,8 +178,11 @@ GDK_API int GA_login(struct GA_session* session, const GA_json* hw_device, const
  * :param session: The session to use.
  * :param pin: The user PIN.
  * :param pin_data: The :ref:`pin-data` returned by `GA_set_pin`.
+ * :param call: Destination for the resulting GA_auth_handler to perform the login with pin.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_login_with_pin(struct GA_session* session, const char* pin, const GA_json* pin_data);
+GDK_API int GA_login_with_pin(
+    struct GA_session* session, const char* pin, const GA_json* pin_data, struct GA_auth_handler** call);
 
 /**
  * Set a watch-only login for the wallet.
