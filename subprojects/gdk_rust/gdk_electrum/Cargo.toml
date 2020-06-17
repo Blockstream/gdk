@@ -19,7 +19,7 @@ gdk-common = { path = "../gdk_common" }
 libc = "0.2"
 android_logger = { version = "0.8.6", optional = true }
 #electrum-client = "0.1.0-beta.6"
-electrum-client = { git="https://github.com/blockstream/rust-electrum-client" , rev = "d1da7916258fa2b17c94d8e47f1b4b4c26ee5339"}
+electrum-client = { git="https://github.com/blockstream/rust-electrum-client" , rev = "af07c54f1ec1c35ec486441497ba1b223c6fcab5"}
 #electrum-client = { path="../../../../rust-electrum-client" }
 chrono = "0.4.11"
 ureq = { version = "1.0.0", features = ["json"] }

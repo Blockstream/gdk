@@ -69,7 +69,7 @@ impl HeadersChain {
     pub fn remove(&mut self, headers_to_remove: u32) -> Result<(), Error> {
         if self.height > headers_to_remove {
             let new_height = self.height - headers_to_remove;
-            let new_size = (new_height+1) as u64 * 80;
+            let new_size = (new_height + 1) as u64 * 80;
             let file = OpenOptions::new().write(true).open(&self.path)?;
             self.last = self.get(new_height)?;
             self.height = new_height;
@@ -120,8 +120,12 @@ impl HeadersChain {
     }
 
     /// verify the given txid and the proof against our chain of headers
-    #[allow(dead_code)]
-    fn verify_tx_proof(&self, txid: &Txid, height: u32, merkle: GetMerkleRes) -> Result<(), Error> {
+    pub fn verify_tx_proof(
+        &self,
+        txid: &Txid,
+        height: u32,
+        merkle: GetMerkleRes,
+    ) -> Result<(), Error> {
         let mut pos = merkle.pos;
         let mut current = txid.into_inner();
 

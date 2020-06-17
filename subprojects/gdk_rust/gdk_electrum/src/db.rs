@@ -34,12 +34,14 @@ pub const DB_VERSION: u32 = 2;
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
 /// DB
-/// Txid, Transaction      contains all my tx and all prevouts
-/// Txid, Height           contains only my tx heights
-/// Height, BlockHeader    contains all headers at the height of my txs
-/// Script, Path           contains all my script up to an empty batch of BATCHSIZE
-/// Path, Script           inverse of the previous
-/// OutPoint, Unblinded    unblinded values (only for liquid)
+/// txs:        Txid, Transaction      contains all my tx and all prevouts
+/// paths:      Script, Path           contains all my script up to an empty batch of BATCHSIZE
+/// heights:    Txid, Height           contains only my tx heights
+/// headers:    Height, BlockHeader    contains all headers at the height of my txs
+/// scripts:    Path, Script           inverse of the previous
+/// singles:    byte, bytes            contains eterogenous unique values
+/// unblinded:  OutPoint, Unblinded    unblinded values (only for liquid)
+/// proofs:     Txid, Proof            contains SPV proofs
 
 #[derive(Debug, Clone)]
 pub struct Forest {
@@ -50,6 +52,7 @@ pub struct Forest {
     scripts: Tree,
     singles: Tree,
     unblinded: Tree,
+    txs_verif: Tree,
     secp: Secp256k1<All>,
     xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
@@ -98,6 +101,7 @@ impl Forest {
             scripts: db.open_tree("scripts")?,
             singles: db.open_tree("singles")?,
             unblinded: db.open_tree("unblinded")?,
+            txs_verif: db.open_tree("txs_verif")?,
             secp: Secp256k1::new(),
             master_blinding,
             xpub,
@@ -124,6 +128,26 @@ impl Forest {
             heights.push((txid, height));
         }
         Ok(heights)
+    }
+    pub fn get_my_confirmed(&self) -> Result<Vec<(Txid, u32)>, Error> {
+        Ok(self
+            .get_my()?
+            .into_iter()
+            .filter(|(_, opt)| opt.is_some())
+            .map(|(t, h)| (t, h.unwrap()))
+            .collect())
+    }
+
+    /// returns Txid of my wallet transactions, with height if confirmed
+    pub fn get_my_verified(&self) -> Result<HashSet<Txid>, Error> {
+        let mut txids = HashSet::new();
+        for keyvalue in self.txs_verif.iter() {
+            let (key, _) = keyvalue?;
+            let key = self.decrypt(key)?;
+            let txid = Txid::from_slice(&key)?;
+            txids.insert(txid);
+        }
+        Ok(txids)
     }
 
     pub fn get_only_heights(&self) -> Result<HashSet<u32>, Error> {
@@ -244,6 +268,7 @@ impl Forest {
             .map(|v| Ok(BETransaction::deserialize(&self.decrypt(v)?, self.id)?))
             .transpose()
     }
+
     pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Option<Transaction>, Error> {
         match self.get_tx(txid) {
             Ok(Some(BETransaction::Bitcoin(tx))) => Ok(Some(tx)),
@@ -260,6 +285,14 @@ impl Forest {
 
     pub fn insert_tx(&self, txid: &Txid, tx: &BETransaction) -> Result<(), Error> {
         Ok(self.txs.insert(self.encrypt(txid), self.encrypt(tx.serialize())).map(|_| ())?)
+    }
+
+    pub fn insert_tx_verified(&self, txid: &Txid) -> Result<(), Error> {
+        Ok(self.txs_verif.insert(self.encrypt(txid), vec![]).map(|_| ())?)
+    }
+
+    pub fn get_tx_verified(&self, txid: &Txid) -> Result<bool, Error> {
+        Ok(self.txs_verif.get(self.encrypt(txid))?.is_some())
     }
 
     pub fn insert_unblinded(

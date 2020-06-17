@@ -46,7 +46,7 @@ use crate::headers::HeadersChain;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 pub enum SyncerKind {
     Plain(Syncer<ElectrumPlaintextStream>, String),
@@ -86,6 +86,12 @@ impl HeadersKind {
         match self {
             HeadersKind::Plain(s, _) => s.ask(chunk_size),
             HeadersKind::Tls(s, _, _) => s.ask(chunk_size),
+        }
+    }
+    pub fn get_proofs(&mut self) -> Result<usize, Error> {
+        match self {
+            HeadersKind::Plain(s, _) => s.get_proofs(),
+            HeadersKind::Tls(s, _, _) => s.get_proofs(),
         }
     }
 }
@@ -149,6 +155,7 @@ pub struct Tipper<S: Read + Write> {
 }
 
 pub struct Headers<S: Read + Write> {
+    pub db: Forest,
     pub chain: Arc<Mutex<Option<HeadersChain>>>,
     pub client: electrum_client::Client<S>,
     pub network: Network,
@@ -188,11 +195,13 @@ impl<S: Read + Write> Syncer<S> {
 
 impl<S: Read + Write> Headers<S> {
     pub fn new(
+        db: Forest,
         chain: Arc<Mutex<Option<HeadersChain>>>,
         client: electrum_client::Client<S>,
         network: Network,
     ) -> Result<Self, Error> {
         Ok(Headers {
+            db,
             chain,
             client,
             network,
@@ -480,18 +489,20 @@ impl Session<Error> for ElectrumSession {
         };
 
         let chain = Arc::new(Mutex::new(None));
-        let mut chain_clone = chain.clone();
+        let chain_clone = chain.clone();
         if let NetworkId::Bitcoin(network) = self.network.id() {
             {
+                // block to release the lock after creating HeadersChain
+                let mut path: PathBuf = self.data_root.as_str().into();
+                path.push(format!("headers_chain_{}", network));
                 *chain_clone.lock().unwrap() = Some(HeadersChain::new(path, network)?);
             }
-            let mut path: PathBuf = self.data_root.as_str().into();
-            path.push(format!("headers_chain_{}",network) );
+
             let mut headers_kind = match &self.url {
                 ElectrumUrl::Tls(url, validate) => {
                     let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
                     HeadersKind::Tls(
-                        Headers::new(chain_clone, client, self.network.clone())?,
+                        Headers::new(db.clone(), chain_clone, client, self.network.clone())?,
                         url.to_string(),
                         *validate,
                     )
@@ -499,7 +510,7 @@ impl Session<Error> for ElectrumSession {
                 ElectrumUrl::Plaintext(url) => {
                     let client = electrum_client::Client::new(&url)?;
                     HeadersKind::Plain(
-                        Headers::new(chain_clone, client, self.network.clone())?,
+                        Headers::new(db.clone(), chain_clone, client, self.network.clone())?,
                         url.to_string(),
                     )
                 }
@@ -508,7 +519,7 @@ impl Session<Error> for ElectrumSession {
             self.closer.senders.push(close_headers);
             let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
             thread::spawn(move || 'outer: loop {
-                for _ in 0..30 {
+                for _ in 0..sync_interval {
                     thread::sleep(Duration::from_secs(1));
                     if r.try_recv().is_ok() {
                         info!("closing headers");
@@ -523,22 +534,32 @@ impl Session<Error> for ElectrumSession {
                             if headers_found == 0 {
                                 chunk_size = 1
                             }
-                        },
+                        }
                         Err(_) => chunk_size /= 2,
                     };
                     if chunk_size == 1 {
                         break;
                     }
                 }
+                match headers_kind.get_proofs() {
+                    Ok(found) => info!("found proof {}", found),
+                    Err(e) => warn!("error in getting proofs {:?}", e),
+                }
             });
         }
 
-        let mut chain_clone = chain.clone();
+        let chain_clone = chain.clone();
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
                 let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
                 SyncerKind::Tls(
-                    Syncer::new(db.clone(), client, master_blinding.clone(), chain_clone, self.network.clone()),
+                    Syncer::new(
+                        db.clone(),
+                        client,
+                        master_blinding.clone(),
+                        chain_clone,
+                        self.network.clone(),
+                    ),
                     url.to_string(),
                     *validate,
                 )
@@ -546,7 +567,13 @@ impl Session<Error> for ElectrumSession {
             ElectrumUrl::Plaintext(url) => {
                 let client = electrum_client::Client::new(&url)?;
                 SyncerKind::Plain(
-                    Syncer::new(db.clone(), client, master_blinding.clone(), chain_clone,self.network.clone()),
+                    Syncer::new(
+                        db.clone(),
+                        client,
+                        master_blinding.clone(),
+                        chain_clone,
+                        self.network.clone(),
+                    ),
                     url.to_string(),
                 )
             }
@@ -856,13 +883,37 @@ impl<S: Read + Write> Tipper<S> {
 impl<S: Read + Write> Headers<S> {
     pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
         let mut guard = self.chain.lock().unwrap();
-        let mut chain = guard.as_mut().unwrap();
+        let chain = guard.as_mut().unwrap();
         info!("asking headers, current height:{} chunk_size:{} ", chain.height(), chunk_size);
-        let headers =
-            self.client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
+        let headers = self.client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
         let len = headers.len();
         chain.push(headers)?;
         Ok(len)
+    }
+
+    pub fn get_proofs(&mut self) -> Result<usize, Error> {
+        let my_confirmed_txs: Vec<(Txid, u32)> = self.db.get_my_confirmed()?;
+        let my_proofs: HashSet<Txid> = self.db.get_my_verified()?;
+        let mut found = 0;
+        for (txid, height) in my_confirmed_txs {
+            if !my_proofs.contains(&txid) {
+                let proof = self.client.transaction_get_merkle(&txid, height as usize)?;
+                if self
+                    .chain
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .verify_tx_proof(&txid, height, proof)
+                    .is_ok()
+                {
+                    info!("proof for {} verified!", txid);
+                    self.db.insert_tx_verified(&txid)?;
+                    found += 1;
+                }
+            }
+        }
+        Ok(found)
     }
 }
 impl<S: Read + Write> Syncer<S> {

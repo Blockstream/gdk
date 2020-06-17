@@ -1,4 +1,3 @@
-
 #[macro_use]
 extern crate serde_json;
 
@@ -9,8 +8,8 @@ pub mod error;
 mod serialize;
 
 use crate::serialize::*;
+use gdk_common::wally::{make_str, read_str};
 use serde_json::Value;
-use gdk_common::wally::{read_str, make_str};
 
 #[cfg(feature = "android_log")]
 use android_logger::{Config, FilterBuilder};
@@ -26,8 +25,8 @@ use std::time::{Duration, SystemTime};
 use gdk_common::model::{GDKRUST_json, GetTransactionsOpt};
 use gdk_common::session::Session;
 
-use gdk_electrum::{ElectrumSession, NativeNotif};
 use crate::error::Error;
+use gdk_electrum::{ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
 
 pub const GA_OK: i32 = 0;
