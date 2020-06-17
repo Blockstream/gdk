@@ -310,7 +310,7 @@ impl TestSession {
     }
 
     /// send a tx from the gdk session to the specified address
-    pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>) {
+    pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
         //let init_sat_addr = self.balance_addr(address);
@@ -350,6 +350,18 @@ impl TestSession {
         assert!(!signed_tx.create_transaction.unwrap().send_all.unwrap());
 
         self.list_tx_contains(&txid, &vec![address.to_string()], true);
+
+        txid
+    }
+
+    pub fn is_verified(&mut self, txid: &str, verified: bool) {
+        let mut opt = GetTransactionsOpt::default();
+        opt.count = 100;
+        let list = self.session.get_transactions(&opt).unwrap().0;
+        let filtered_list: Vec<&TxListItem> = list.iter().filter(|e| e.txhash == txid).collect();
+        assert_eq!(filtered_list.len(), 1, "tx {} is not in tx list or there are more than one", txid);
+        let tx = filtered_list[0];
+        assert_eq!(tx.spv_verified, verified);
     }
 
     fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {

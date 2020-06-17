@@ -355,6 +355,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
         server_signed: false,    // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: tx.user_signed,
+        spv_verified: tx.spv_verified,
         instant: false,
         fee: tx.fee,
         fee_rate,

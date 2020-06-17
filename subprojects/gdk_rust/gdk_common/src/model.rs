@@ -131,7 +131,7 @@ pub struct TransactionMeta {
     pub hex: String,
     pub txid: String,
     pub height: Option<u32>,
-    pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created
+    pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created or when list_tx happens
     pub created_at: String, // yyyy-MM-dd HH:mm:ss of timestamp
     pub error: String,
     pub addressees_have_assets: bool,
@@ -144,6 +144,7 @@ pub struct TransactionMeta {
     pub changes_used: Option<u32>,
     pub rbf_optin: bool,
     pub user_signed: bool,
+    pub spv_verified: bool,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -169,6 +170,7 @@ impl From<BETransaction> for TransactionMeta {
             type_: "unknown".to_string(),
             changes_used: None,
             user_signed: false,
+            spv_verified: false,
             rbf_optin,
         }
     }
@@ -186,6 +188,7 @@ impl TransactionMeta {
         type_: String,
         create_transaction: CreateTransaction,
         user_signed: bool,
+        spv_verified: bool,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
@@ -200,6 +203,7 @@ impl TransactionMeta {
         wgtx.fee = fee;
         wgtx.type_ = type_;
         wgtx.user_signed = user_signed;
+        wgtx.spv_verified = spv_verified;
         wgtx
     }
 }
@@ -237,6 +241,7 @@ pub struct TxListItem {
     pub server_signed: bool,
     pub user_signed: bool,
     pub instant: bool,
+    pub spv_verified: bool,
     pub fee: u64,
     pub fee_rate: u64,
     pub addresses: Vec<String>,

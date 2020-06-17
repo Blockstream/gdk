@@ -160,6 +160,7 @@ impl WalletCtx {
                     (true, false) => ("incoming", false),
                     (false, false) => ("outgoing", true),
                 };
+            let spv_verified = self.db.get_tx_verified(tx_id)?;
 
             let tx_meta = TransactionMeta::new(
                 tx.clone(),
@@ -171,6 +172,7 @@ impl WalletCtx {
                 type_.to_string(),
                 create_transaction,
                 user_signed,
+                spv_verified,
             );
 
             txs.push(tx_meta);
@@ -467,6 +469,7 @@ impl WalletCtx {
             "outgoing".to_string(),
             request.clone(),
             true,
+            false,
         );
         created_tx.changes_used = Some(changes.len() as u32);
         info!("returning: {:?}", created_tx);
