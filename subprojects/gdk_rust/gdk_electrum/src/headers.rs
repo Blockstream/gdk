@@ -3,11 +3,14 @@ use bitcoin::blockdata::constants::{
     genesis_block, max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
 };
 use bitcoin::consensus::{deserialize, serialize};
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::{sha256d, Hash};
 use bitcoin::util::uint::Uint256;
-use bitcoin::Txid;
 use bitcoin::{BitcoinHash, BlockHeader, Network};
+use bitcoin::{BlockHash, Txid};
 use electrum_client::GetMerkleRes;
+use log::info;
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
@@ -17,12 +20,14 @@ pub struct HeadersChain {
     path: PathBuf,
     height: u32,
     last: BlockHeader,
+    checkpoints: HashMap<u32, BlockHash>,
 }
 
 impl HeadersChain {
     /// create a chain of headers based on the file identified by the `path` parameter.
     /// if the file doesn't exist, a chain with only the genesis block (relative to `network`) is returned
     pub fn new(path: PathBuf, network: Network) -> Result<HeadersChain, Error> {
+        let checkpoints = get_checkpoints(network);
         if !path.exists() {
             let last = genesis_block(network).header;
             let mut file = File::create(&path)?;
@@ -33,6 +38,7 @@ impl HeadersChain {
                 path,
                 height,
                 last,
+                checkpoints,
             })
         } else {
             let mut file = File::open(&path)?;
@@ -48,6 +54,7 @@ impl HeadersChain {
                 path,
                 height,
                 last,
+                checkpoints,
             })
         }
     }
@@ -111,6 +118,13 @@ impl HeadersChain {
                     return Err(Error::InvalidHeaders);
                 }
             }
+            if let Some(hash) = self.checkpoints.get(&new_height) {
+                if hash != &new_header.bitcoin_hash() {
+                    return Err(Error::InvalidHeaders);
+                }
+                info!("checkpoint {} {} is ok", new_height, hash);
+            }
+
             serialized.extend(serialize(&new_header));
             self.last = new_header;
             self.height = new_height;
@@ -163,6 +177,28 @@ impl HeadersChain {
         }
         Ok(())
     }
+}
+
+fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
+    let mut checkpoints = HashMap::new();
+    let mut i = |n, s| checkpoints.insert(n, BlockHash::from_hex(s).unwrap());
+    match network {
+        Network::Bitcoin => {
+            i(100_000, "000000000003ba27aa200b1cecaad478d2b00432346c3f1f3986da1afd33e506");
+            i(200_000, "000000000000034a7dedef4a161fa058a2d67a173a90155f3a2fe6fc132e0ebf");
+            i(300_000, "000000000000000082ccf8f1557c5d40b21edabb18d2d691cfbf87118bac7254");
+            i(400_000, "000000000000000004ec466ce4732fe6f1ed1cddc2ed4b328fff5224276e3f6f");
+            i(500_000, "00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04");
+            i(600_000, "00000000000000000007316856900e76b4f7a9139cfbfba89842c8d196cd5f91");
+            i(630_000, "000000000000000000024bead8df69990852c202db0e0097c1a12ea637d7e96d");
+        }
+        Network::Testnet => {
+            i(1_000_000, "0000000000478e259a3eda2fafbeeb0106626f946347955e99278fe6cc848414");
+            i(1_700_000, "000000000000fdd6e3e379abdfda6e82b47b51eb154f193ce3f066877f37b0af");
+        }
+        Network::Regtest => (),
+    };
+    checkpoints
 }
 
 #[cfg(test)]
