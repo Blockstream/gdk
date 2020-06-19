@@ -826,11 +826,10 @@ fn random32() -> Vec<u8> {
 mod test {
     use crate::interface::p2shwpkh_script_sig;
     use bitcoin::consensus::deserialize;
-    use bitcoin::hashes::hash160;
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
     use bitcoin::util::bip143::SighashComponents;
-    use bitcoin::util::bip32::{ChildNumber, ExtendedPrivKey, ExtendedPubKey};
+    use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::util::key::PrivateKey;
     use bitcoin::util::key::PublicKey;
     use bitcoin::Script;

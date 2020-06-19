@@ -203,7 +203,7 @@ fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
 
 #[cfg(test)]
 mod test {
-    use crate::headers::HeadersChain;
+    use crate::headers::bitcoin::HeadersChain;
     use bitcoin::consensus::encode::Decodable;
     use bitcoin::hash_types::BlockHash;
     use bitcoin::hashes::hex::FromHex;
@@ -228,7 +228,7 @@ mod test {
         let mut path = temp.into_path();
         path.push("chain");
         let mut chain = HeadersChain::new(path, Network::Bitcoin).unwrap();
-        chain.push(parsed_headers);
+        chain.push(parsed_headers).unwrap();
         assert_eq!(chain.height(), 199);
 
         assert_eq!(
@@ -298,10 +298,10 @@ mod test {
         );
 
         let old_tip = chain.tip();
-        chain.remove(1);
+        chain.remove(1).unwrap();
         assert_eq!(chain.height, 198);
         assert!(chain.get(199).is_err());
-        chain.push(vec![old_tip]);
+        chain.push(vec![old_tip]).unwrap();
         assert_eq!(chain.height, 199);
         assert_eq!(
             BlockHash::from_hex("00000000e85458c1467176b04a65d5efaccfecaaab717b17a587b4069276e143")

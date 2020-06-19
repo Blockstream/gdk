@@ -42,7 +42,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::headers::HeadersChain;
+use crate::headers::bitcoin::HeadersChain;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
