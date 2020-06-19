@@ -166,10 +166,7 @@ namespace sdk {
         const size_t max_script_len = 13 + n_pubkeys * (ga_pub_key.size() + 1) + 4;
         std::vector<unsigned char> script(max_script_len);
 
-        if (type == script_type::p2sh_p2wsh_csv_fortified_out && is_2of3) {
-            // CSV 2of3, subtype is the number of CSV blocks
-            scriptpubkey_csv_2of3_then_2_from_bytes(keys, subtype, script);
-        } else if (type == script_type::p2sh_p2wsh_csv_fortified_out) {
+        if (type == script_type::p2sh_p2wsh_csv_fortified_out && !is_2of3) {
             // CSV 2of2, subtype is the number of CSV blocks
             scriptpubkey_csv_2of2_then_1_from_bytes(keys, subtype, script);
         } else {

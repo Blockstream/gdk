@@ -2841,10 +2841,10 @@ namespace sdk {
 
     bool ga_session::subaccount_allows_csv(uint32_t subaccount) const
     {
-        // subaccounts of type '2of2_no_recovery' do not allow csv addresses (because they have
-        // 'recovery' built in).
+        // subaccounts of type '2of2_no_recovery' (have 'recovery' built in)
+        // and '2of3' do not allow csv addresses.
         // short-circuit subaccount 0 as it has a known fixed type
-        return subaccount == 0 || get_cached_subaccount(subaccount)["type"] != "2of2_no_recovery";
+        return subaccount == 0 || get_cached_subaccount(subaccount)["type"] == "2of2";
     }
 
     const std::string& ga_session::get_default_address_type(uint32_t subaccount) const
