@@ -1,10 +1,10 @@
 use crate::error::*;
+use crate::headers::compute_merkle_path;
 use bitcoin::blockdata::constants::{
     genesis_block, max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
 };
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::hashes::hex::FromHex;
-use bitcoin::hashes::{sha256d, Hash};
 use bitcoin::util::uint::Uint256;
 use bitcoin::{BitcoinHash, BlockHeader, Network};
 use bitcoin::{BlockHash, Txid};
@@ -140,24 +140,8 @@ impl HeadersChain {
         height: u32,
         merkle: GetMerkleRes,
     ) -> Result<(), Error> {
-        let mut pos = merkle.pos;
-        let mut current = txid.into_inner();
+        let calculated_merkle_root = compute_merkle_path(txid, merkle)?;
 
-        for mut hash in merkle.merkle {
-            let mut engine = sha256d::Hash::engine();
-            hash.reverse();
-            if pos % 2 == 0 {
-                engine.write(&current)?;
-                engine.write(&hash)?;
-            } else {
-                engine.write(&hash)?;
-                engine.write(&current)?;
-            }
-            current = sha256d::Hash::from_engine(engine).into_inner();
-            pos /= 2;
-        }
-
-        let calculated_merkle_root = bitcoin::TxMerkleNode::from_slice(&current)?;
         let header = self.get(height).unwrap();
         if header.merkle_root == calculated_merkle_root {
             Ok(())

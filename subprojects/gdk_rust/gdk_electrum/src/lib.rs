@@ -38,15 +38,16 @@ use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::headers::bitcoin::HeadersChain;
+use crate::headers::liquid::Verifier;
+use crate::headers::ChainOrVerifier;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
-use std::sync::{Arc, Mutex};
 
 pub enum SyncerKind {
     Plain(Syncer<ElectrumPlaintextStream>, String),
@@ -142,7 +143,6 @@ impl ClientWrap {
 
 pub struct Syncer<S: Read + Write> {
     pub db: Forest,
-    pub chain: Arc<Mutex<Option<HeadersChain>>>,
     pub client: electrum_client::Client<S>,
     pub master_blinding: Option<MasterBlindingKey>,
     pub network: Network,
@@ -156,9 +156,8 @@ pub struct Tipper<S: Read + Write> {
 
 pub struct Headers<S: Read + Write> {
     pub db: Forest,
-    pub chain: Arc<Mutex<Option<HeadersChain>>>,
     pub client: electrum_client::Client<S>,
-    pub network: Network,
+    pub checker: ChainOrVerifier,
 }
 
 impl<S: Read + Write> Tipper<S> {
@@ -180,13 +179,11 @@ impl<S: Read + Write> Syncer<S> {
         db: Forest,
         client: electrum_client::Client<S>,
         master_blinding: Option<MasterBlindingKey>,
-        chain: Arc<Mutex<Option<HeadersChain>>>,
         network: Network,
     ) -> Self {
         Syncer {
             db,
             client,
-            chain,
             master_blinding,
             network,
         }
@@ -196,15 +193,13 @@ impl<S: Read + Write> Syncer<S> {
 impl<S: Read + Write> Headers<S> {
     pub fn new(
         db: Forest,
-        chain: Arc<Mutex<Option<HeadersChain>>>,
+        checker: ChainOrVerifier,
         client: electrum_client::Client<S>,
-        network: Network,
     ) -> Result<Self, Error> {
         Ok(Headers {
             db,
-            chain,
+            checker,
             client,
-            network,
         })
     }
 }
@@ -489,78 +484,67 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
-        let chain = Arc::new(Mutex::new(None));
-        let chain_clone = chain.clone();
-        if let NetworkId::Bitcoin(network) = self.network.id() {
-            {
-                // block to release the lock after creating HeadersChain
+        let checker = match self.network.id() {
+            NetworkId::Bitcoin(network) => {
                 let mut path: PathBuf = self.data_root.as_str().into();
                 path.push(format!("headers_chain_{}", network));
-                *chain_clone.lock().unwrap() = Some(HeadersChain::new(path, network)?);
+                ChainOrVerifier::Chain(HeadersChain::new(path, network)?)
+            }
+            NetworkId::Elements(network) => {
+                let verifier = Verifier::new(network);
+                ChainOrVerifier::Verifier(verifier)
+            }
+        };
+
+        let mut headers_kind = match &self.url {
+            ElectrumUrl::Tls(url, validate) => {
+                let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                HeadersKind::Tls(
+                    Headers::new(db.clone(), checker, client)?,
+                    url.to_string(),
+                    *validate,
+                )
+            }
+            ElectrumUrl::Plaintext(url) => {
+                let client = electrum_client::Client::new(&url)?;
+                HeadersKind::Plain(Headers::new(db.clone(), checker, client)?, url.to_string())
+            }
+        };
+        let (close_headers, r) = channel();
+        self.closer.senders.push(close_headers);
+        let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
+        thread::spawn(move || loop {
+            if wait_or_close(&r, sync_interval) {
+                info!("closing headers thread");
+                break;
             }
 
-            let mut headers_kind = match &self.url {
-                ElectrumUrl::Tls(url, validate) => {
-                    let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
-                    HeadersKind::Tls(
-                        Headers::new(db.clone(), chain_clone, client, self.network.clone())?,
-                        url.to_string(),
-                        *validate,
-                    )
-                }
-                ElectrumUrl::Plaintext(url) => {
-                    let client = electrum_client::Client::new(&url)?;
-                    HeadersKind::Plain(
-                        Headers::new(db.clone(), chain_clone, client, self.network.clone())?,
-                        url.to_string(),
-                    )
-                }
-            };
-            let (close_headers, r) = channel();
-            self.closer.senders.push(close_headers);
-            let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
-            thread::spawn(move || 'outer: loop {
-                for _ in 0..sync_interval {
-                    thread::sleep(Duration::from_secs(1));
-                    if r.try_recv().is_ok() {
-                        info!("closing headers");
-                        break 'outer;
-                    }
-                }
-                loop {
-                    thread::sleep(Duration::from_millis(100));
-                    match headers_kind.ask(chunk_size) {
-                        Ok(headers_found) => {
-                            info!("headers found: {}", headers_found);
-                            if headers_found == 0 {
-                                chunk_size = 1
-                            }
+            loop {
+                match headers_kind.ask(chunk_size) {
+                    Ok(headers_found) => {
+                        info!("headers found: {}", headers_found);
+                        if headers_found == 0 {
+                            chunk_size = 1
                         }
-                        Err(_) => chunk_size /= 2,
-                    };
-                    if chunk_size == 1 {
-                        break;
                     }
+                    Err(_) => chunk_size /= 2,
+                };
+                if chunk_size == 1 {
+                    break;
                 }
-                match headers_kind.get_proofs() {
-                    Ok(found) => info!("found proof {}", found),
-                    Err(e) => warn!("error in getting proofs {:?}", e),
-                }
-            });
-        }
+            }
 
-        let chain_clone = chain.clone();
+            match headers_kind.get_proofs() {
+                Ok(found) => info!("found proof {}", found),
+                Err(e) => warn!("error in getting proofs {:?}", e),
+            }
+        });
+
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
                 let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
                 SyncerKind::Tls(
-                    Syncer::new(
-                        db.clone(),
-                        client,
-                        master_blinding.clone(),
-                        chain_clone,
-                        self.network.clone(),
-                    ),
+                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
                     url.to_string(),
                     *validate,
                 )
@@ -568,13 +552,7 @@ impl Session<Error> for ElectrumSession {
             ElectrumUrl::Plaintext(url) => {
                 let client = electrum_client::Client::new(&url)?;
                 SyncerKind::Plain(
-                    Syncer::new(
-                        db.clone(),
-                        client,
-                        master_blinding.clone(),
-                        chain_clone,
-                        self.network.clone(),
-                    ),
+                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
                     url.to_string(),
                 )
             }
@@ -617,13 +595,10 @@ impl Session<Error> for ElectrumSession {
 
         let (close_tipper, r) = channel();
         self.closer.senders.push(close_tipper);
-        thread::spawn(move || 'outer: loop {
-            for _ in 0..sync_interval {
-                thread::sleep(Duration::from_secs(1));
-                if r.try_recv().is_ok() {
-                    info!("closing tipper");
-                    break 'outer;
-                }
+        thread::spawn(move || loop {
+            if wait_or_close(&r, sync_interval) {
+                info!("closing tipper thread");
+                break;
             }
 
             match tipper.tip() {
@@ -667,7 +642,7 @@ impl Session<Error> for ElectrumSession {
         let (close_syncer, r) = channel();
         self.closer.senders.push(close_syncer);
         let notify_txs = self.notify.clone();
-        thread::spawn(move || 'outer: loop {
+        thread::spawn(move || loop {
             match syncer.sync() {
                 Ok(new_txs) => {
                     if new_txs {
@@ -697,12 +672,9 @@ impl Session<Error> for ElectrumSession {
                     }
                 }
             };
-            for _ in 0..sync_interval {
-                thread::sleep(Duration::from_secs(1));
-                if r.try_recv().is_ok() {
-                    info!("closing syncer");
-                    break 'outer;
-                }
+            if wait_or_close(&r, sync_interval) {
+                info!("closing syncer thread");
+                break;
             }
         });
 
@@ -883,13 +855,17 @@ impl<S: Read + Write> Tipper<S> {
 
 impl<S: Read + Write> Headers<S> {
     pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
-        let mut guard = self.chain.lock().unwrap();
-        let chain = guard.as_mut().unwrap();
-        info!("asking headers, current height:{} chunk_size:{} ", chain.height(), chunk_size);
-        let headers = self.client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
-        let len = headers.len();
-        chain.push(headers)?;
-        Ok(len)
+        if let ChainOrVerifier::Chain(chain) = &mut self.checker {
+            info!("asking headers, current height:{} chunk_size:{} ", chain.height(), chunk_size);
+            let headers =
+                self.client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
+            let len = headers.len();
+            chain.push(headers)?;
+            Ok(len)
+        } else {
+            // Liquid doesn't need to download the header's chain
+            Ok(0)
+        }
     }
 
     pub fn get_proofs(&mut self) -> Result<usize, Error> {
@@ -899,15 +875,20 @@ impl<S: Read + Write> Headers<S> {
         for (txid, height) in my_confirmed_txs {
             if !my_proofs.contains(&txid) {
                 let proof = self.client.transaction_get_merkle(&txid, height as usize)?;
-                if self
-                    .chain
-                    .lock()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .verify_tx_proof(&txid, height, proof)
-                    .is_ok()
-                {
+                let verified = match &self.checker {
+                    ChainOrVerifier::Chain(chain) => {
+                        chain.verify_tx_proof(&txid, height, proof).is_ok()
+                    }
+                    ChainOrVerifier::Verifier(verifier) => {
+                        if let Some(BEBlockHeader::Elements(header)) = self.db.get_header(height)? {
+                            verifier.verify_tx_proof(&txid, proof, &header).is_ok()
+                        } else {
+                            false
+                        }
+                    }
+                };
+
+                if verified {
                     info!("proof for {} verified!", txid);
                     self.db.insert_tx_verified(&txid)?;
                     found += 1;
@@ -1132,4 +1113,14 @@ impl<S: Read + Write> Syncer<S> {
         }
         Ok(())
     }
+}
+
+fn wait_or_close(r: &Receiver<()>, interval: u32) -> bool {
+    for _ in 0..interval {
+        thread::sleep(Duration::from_secs(1));
+        if r.try_recv().is_ok() {
+            return true;
+        }
+    }
+    false
 }
