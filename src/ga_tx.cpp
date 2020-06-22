@@ -578,6 +578,32 @@ namespace sdk {
 
                 bool force_add_utxo = false;
 
+                bool change_address = result.find("change_address") != result.end();
+                if (change_address) {
+                    const auto asset_change_address
+                        = result.at("change_address").value(asset_tag, nlohmann::json::object());
+                    change_address = !asset_change_address.empty();
+                }
+                if (!change_address) {
+                    // No previously generated change address found, so generate one.
+                    // Find out where to send any change
+                    const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
+                    result["change_subaccount"] = change_subaccount;
+                    auto change_address = session.get_receive_address(change_subaccount, {});
+                    if (is_liquid) {
+                        // set a temporary blinding key, will be changed later through the resolvers. we need
+                        // to have one because all our create_transaction logic relies on being able to blind
+                        // the tx for a few things (fee estimation for instance).
+                        const auto temp_pk = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+
+                        change_address["address"] = session.blind_address(change_address.at("address"), temp_pk);
+                        change_address["is_blinded"] = false;
+                    }
+
+                    add_paths(session, change_address);
+                    result["change_address"][asset_tag] = change_address;
+                }
+
                 const size_t max_loop_iterations
                     = std::max(size_t(8), utxos.size() * 2 + 1); // +1 in case empty+send all
                 size_t loop_iterations;
@@ -687,31 +713,6 @@ namespace sdk {
                     // We have more than the dust amount of change. Add a change
                     // output to collect it, then loop again in case the amount
                     // this increases the fee by requires more UTXOs.
-                    bool change_address = result.find("change_address") != result.end();
-                    if (change_address) {
-                        const auto asset_change_address
-                            = result.at("change_address").value(asset_tag, nlohmann::json::object());
-                        change_address = !asset_change_address.empty();
-                    }
-                    if (!change_address) {
-                        // No previously generated change address found, so generate one.
-                        // Find out where to send any change
-                        const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
-                        result["change_subaccount"] = change_subaccount;
-                        auto change_address = session.get_receive_address(change_subaccount, {});
-                        if (is_liquid) {
-                            // set a temporary blinding key, will be changed later through the resolvers. we need
-                            // to have one because all our create_transaction logic relies on being able to blind
-                            // the tx for a few things (fee estimation for instance).
-                            const auto temp_pk = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
-
-                            change_address["address"] = session.blind_address(change_address.at("address"), temp_pk);
-                            change_address["is_blinded"] = false;
-                        }
-
-                        add_paths(session, change_address);
-                        result["change_address"][asset_tag] = change_address;
-                    }
                     add_tx_output(net_params, result, tx, result.at("change_address").at(asset_tag).at("address"),
                         is_liquid ? 1 : 0, asset_tag == "btc" ? std::string{} : asset_tag);
                     have_change_output = true;
