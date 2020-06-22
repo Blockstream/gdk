@@ -55,7 +55,8 @@ fn liquid() {
     let assets = test_session.fund(100_000_000, Some(1));
     test_session.send_tx_to_unconf();
     test_session.get_subaccount();
-    test_session.send_tx(&node_address, 10_000, None);
+    let txid = test_session.send_tx(&node_address, 10_000, None);
+    test_session.is_verified(&txid, false);
     test_session.send_tx(&node_bech32_address, 10_000, None);
     test_session.send_tx(&node_legacy_address, 10_000, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()));
@@ -71,6 +72,8 @@ fn liquid() {
     test_session.send_fails();
     test_session.fees();
     test_session.settings();
+    test_session.is_verified(&txid, true);
+
 
     test_session.stop();
 }
