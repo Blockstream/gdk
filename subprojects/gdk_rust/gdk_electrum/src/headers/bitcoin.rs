@@ -142,7 +142,7 @@ impl HeadersChain {
     ) -> Result<(), Error> {
         let calculated_merkle_root = compute_merkle_path(txid, merkle)?;
 
-        let header = self.get(height).unwrap();
+        let header = self.get(height)?;
         if header.merkle_root == calculated_merkle_root {
             info!("proof for txid {}, block height {}, merkle root matches", txid, height);
             Ok(())

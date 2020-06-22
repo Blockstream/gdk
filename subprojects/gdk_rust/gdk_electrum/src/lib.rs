@@ -528,7 +528,12 @@ impl Session<Error> for ElectrumSession {
                             info!("headers found: {}", headers_found);
                         }
                     }
-                    Err(_) => chunk_size /= 2,
+                    Err(e) => {
+                        warn!("error while asking headers {}", e);
+                        if chunk_size > 1 {
+                            chunk_size /= 2
+                        }
+                    }
                 };
                 if chunk_size == 1 {
                     break;
