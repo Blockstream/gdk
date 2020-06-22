@@ -95,6 +95,12 @@ impl HeadersKind {
             HeadersKind::Tls(s, _, _) => s.get_proofs(),
         }
     }
+    pub fn remove(&mut self, headers: u32) -> Result<(), Error> {
+        match self {
+            HeadersKind::Plain(s, _) => s.remove(headers),
+            HeadersKind::Tls(s, _, _) => s.remove(headers),
+        }
+    }
 }
 
 pub enum ClientWrap {
@@ -513,7 +519,7 @@ impl Session<Error> for ElectrumSession {
         let (close_headers, r) = channel();
         self.closer.senders.push(close_headers);
         let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
-        thread::spawn(move || loop {
+        thread::spawn(move || 'outer: loop {
             if wait_or_close(&r, sync_interval) {
                 info!("closing headers thread");
                 break;
@@ -528,6 +534,12 @@ impl Session<Error> for ElectrumSession {
                             info!("headers found: {}", headers_found);
                         }
                     }
+                    Err(Error::InvalidHeaders) => {
+                        // this should handle reorgs and also broke IO writes update
+                        if headers_kind.remove(144).is_err() {
+                            break;
+                        }
+                    }
                     Err(e) => {
                         warn!("error while asking headers {}", e);
                         if chunk_size > 1 {
@@ -535,6 +547,10 @@ impl Session<Error> for ElectrumSession {
                         }
                     }
                 };
+                if r.try_recv().is_ok() {
+                    info!("closing headers thread");
+                    break 'outer;
+                }
                 if chunk_size == 1 {
                     break;
                 }
@@ -906,6 +922,13 @@ impl<S: Read + Write> Headers<S> {
             }
         }
         Ok(found)
+    }
+
+    pub fn remove(&mut self, headers: u32) -> Result<(), Error> {
+        if let ChainOrVerifier::Chain(chain) = &mut self.checker {
+            chain.remove(headers)?;
+        }
+        Ok(())
     }
 }
 impl<S: Read + Write> Syncer<S> {
