@@ -522,9 +522,10 @@ impl Session<Error> for ElectrumSession {
             loop {
                 match headers_kind.ask(chunk_size) {
                     Ok(headers_found) => {
-                        info!("headers found: {}", headers_found);
                         if headers_found == 0 {
                             chunk_size = 1
+                        } else {
+                            info!("headers found: {}", headers_found);
                         }
                     }
                     Err(_) => chunk_size /= 2,
@@ -535,7 +536,11 @@ impl Session<Error> for ElectrumSession {
             }
 
             match headers_kind.get_proofs() {
-                Ok(found) => info!("found proof {}", found),
+                Ok(found) => {
+                    if found > 0 {
+                        info!("found proof {}", found)
+                    }
+                }
                 Err(e) => warn!("error in getting proofs {:?}", e),
             }
         });

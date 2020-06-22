@@ -115,6 +115,7 @@ impl WalletCtx {
     pub fn get_tip(&self) -> Result<u32, Error> {
         self.db.get_tip()
     }
+
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
         let (_, all_txs) = self.db.get_all_spent_and_txs()?;
         let all_scripts = self.db.get_all_scripts()?;

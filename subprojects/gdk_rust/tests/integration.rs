@@ -74,6 +74,5 @@ fn liquid() {
     test_session.settings();
     test_session.is_verified(&txid, true);
 
-
     test_session.stop();
 }

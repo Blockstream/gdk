@@ -144,6 +144,7 @@ impl HeadersChain {
 
         let header = self.get(height).unwrap();
         if header.merkle_root == calculated_merkle_root {
+            info!("proof for txid {}, block height {}, merkle root matches", txid, height);
             Ok(())
         } else {
             Err(Error::InvalidHeaders)

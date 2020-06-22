@@ -12,6 +12,7 @@ use bitcoin::secp256k1::{Message, Secp256k1, Signature, VerifyOnly};
 use bitcoin::{BitcoinHash, PublicKey, Script, Txid};
 use electrum_client::GetMerkleRes;
 use gdk_common::ElementsNetwork;
+use log::info;
 
 /// liquid v1 block header verifier, not suitable for dynafed
 /// checks the challenge is exactly equal to the one present in block 1
@@ -139,6 +140,7 @@ impl Verifier {
                 }
             }
             if verified == required_sig {
+                info!("proof for block {} found {} valid signatures", hash, verified);
                 stack.pop().ok_or_else(|| Error::InvalidHeaders)?;
                 return Ok(());
             }
