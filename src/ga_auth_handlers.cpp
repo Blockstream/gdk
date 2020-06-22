@@ -660,6 +660,24 @@ namespace sdk {
         return state_type::done;
     }
 
+    static void cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
+    {
+        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
+
+        size_t i = 0;
+
+        for (const auto& nonce : nonces) {
+            const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
+            const std::string& script = blinded_scripts.at(i).at("script");
+
+            if (!session.has_blinding_nonce(pubkey, script)) {
+                session.set_blinding_nonce(pubkey, script, nonce);
+            }
+
+            ++i;
+        }
+    }
+
     //
     // Create transaction
     //
@@ -674,6 +692,9 @@ namespace sdk {
         try {
             m_tx = m_session.create_transaction(details);
             m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", m_tx } };
+            if (m_session.is_liquid()) {
+                m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
+            }
         } catch (const std::exception& e) {
             GDK_LOG_SEV(log_level::info) << "exception in create_transaction_call::create_transaction_call()";
             set_error(e.what());
@@ -700,6 +721,10 @@ namespace sdk {
         nlohmann::json args;
         if (!m_hw_device.empty()) {
             args = nlohmann::json::parse(m_code);
+
+            if (args.contains("nonces")) {
+                cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
+            }
         }
 
         for (const auto& it : m_tx.at("change_address").items()) {
@@ -728,24 +753,6 @@ namespace sdk {
         m_result = m_session.create_transaction(m_tx);
 
         return state_type::done;
-    }
-
-    static void cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
-    {
-        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
-
-        size_t i = 0;
-
-        for (const auto& nonce : nonces) {
-            const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
-            const std::string& script = blinded_scripts.at(i).at("script");
-
-            if (!session.has_blinding_nonce(pubkey, script)) {
-                session.set_blinding_nonce(pubkey, script, nonce);
-            }
-
-            ++i;
-        }
     }
 
     // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
