@@ -660,11 +660,12 @@ namespace sdk {
         return state_type::done;
     }
 
-    static void cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
+    static bool cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
     {
         GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
 
         size_t i = 0;
+        bool updated = false;
 
         for (const auto& nonce : nonces) {
             const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
@@ -672,10 +673,13 @@ namespace sdk {
 
             if (!session.has_blinding_nonce(pubkey, script)) {
                 session.set_blinding_nonce(pubkey, script, nonce);
+                updated = true;
             }
 
             ++i;
         }
+
+        return updated;
     }
 
     //
@@ -723,7 +727,18 @@ namespace sdk {
             args = nlohmann::json::parse(m_code);
 
             if (args.contains("nonces")) {
-                cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
+                if (cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"])) {
+                    if (m_tx["utxos"].contains("error")) {
+                        // In the case where the blinding nonces were not available the first time
+                        // create_transaction was called they will have been added under 'error'
+                        // Clear the utxos here to force the next call to create_transaction to
+                        // reload them.
+                        // This is not really ideal as it involves another server call and throws
+                        // away any non-error utxos as well but any better fix will require more
+                        // extensive refactoring
+                        m_tx.erase("utxos");
+                    }
+                }
             }
         }
 
