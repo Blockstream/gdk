@@ -752,6 +752,7 @@ namespace sdk {
             }
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
+            GDK_LOG_SEV(log_level::warning) << "Error http_request: " << ex.what();
         }
         return result;
     }
