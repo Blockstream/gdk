@@ -8,6 +8,7 @@ pub mod db;
 pub mod error;
 pub mod headers;
 pub mod interface;
+pub mod pin;
 
 use crate::db::{Forest, Index, BATCH_SIZE, DB_VERSION};
 use crate::error::Error;

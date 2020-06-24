@@ -15,6 +15,7 @@ pub enum Error {
     InvalidHeaders,
     InvalidSubaccount(u32),
     SendAll,
+    PinError,
     DB(sled::Error),
     AddrParse(String),
     Bitcoin(bitcoin::util::Error),
@@ -30,6 +31,7 @@ pub enum Error {
     Common(gdk_common::error::Error),
     Send(std::sync::mpsc::SendError<()>),
     Encryption(block_modes::BlockModeError),
+    Secp256k1(bitcoin::secp256k1::Error),
 }
 
 impl Display for Error {
@@ -61,6 +63,8 @@ impl Display for Error {
             Error::Common(ref cmn_err) => write!(f, "cmn_err: {:?}", cmn_err),
             Error::Send(ref send_err) => write!(f, "send_err: {:?}", send_err),
             Error::Encryption(ref send_err) => write!(f, "encryption_err: {:?}", send_err),
+            Error::Secp256k1(ref err) => write!(f, "Secp256k1_err: {:?}", err),
+            Error::PinError => write!(f, "PinError"),
         }
     }
 }
@@ -169,6 +173,24 @@ impl std::convert::From<std::string::FromUtf8Error> for Error {
 
 impl std::convert::From<block_modes::BlockModeError> for Error {
     fn from(err: block_modes::BlockModeError) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl std::convert::From<bitcoin::secp256k1::Error> for Error {
+    fn from(err: bitcoin::secp256k1::Error) -> Self {
+        Error::Secp256k1(err)
+    }
+}
+
+impl std::convert::From<bitcoin::util::key::Error> for Error {
+    fn from(err: bitcoin::util::key::Error) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl std::convert::From<bitcoin::hashes::hex::Error> for Error {
+    fn from(err: bitcoin::hashes::hex::Error) -> Self {
         Error::Generic(err.to_string())
     }
 }
