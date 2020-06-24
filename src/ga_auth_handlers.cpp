@@ -379,7 +379,7 @@ namespace sdk {
             set_data("get_receive_address");
             m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
 
-            return state_type::resolve_code;
+            return (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
         }
 
         return state_type::done;
