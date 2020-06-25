@@ -38,6 +38,7 @@ pub struct TestSession {
     electrs_process: Child,
     node_work_dir: TempDir,
     electrs_work_dir: TempDir,
+    db_root_dir: TempDir,
     network_id: NetworkId,
     network: Network,
 }
@@ -195,8 +196,9 @@ pub fn setup(
         network.policy_asset =
             Some("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".into());
     }
-    let db_root =
-        format!("{}", TempDir::new("electrum_integration_tests").unwrap().path().display());
+    let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
+
+    let db_root = format!("{}", db_root_dir.path().display());
     let url = determine_electrum_url_from_net(&network).unwrap();
 
     info!("creating gdk session");
@@ -225,6 +227,7 @@ pub fn setup(
         electrs_process,
         node_work_dir,
         electrs_work_dir,
+        db_root_dir,
         network_id,
         network,
     }
@@ -362,6 +365,14 @@ impl TestSession {
         assert_eq!(filtered_list.len(), 1, "tx {} is not in tx list or there are more than one", txid);
         let tx = filtered_list[0];
         assert_eq!(tx.spv_verified, verified);
+    }
+
+    pub fn reconnect(&mut self) {
+        self.session.disconnect().unwrap();
+        self.session.connect(&Value::Null).unwrap();
+        let address = self.node_getnewaddress(None);
+        let txid = self.send_tx(&address, 1000, None);
+        self.list_tx_contains(&txid, &[address], true);
     }
 
     fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {

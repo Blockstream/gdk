@@ -48,6 +48,7 @@ use crate::headers::ChainOrVerifier;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::thread::JoinHandle;
 
 pub enum SyncerKind {
     Plain(Syncer<ElectrumPlaintextStream>, String),
@@ -218,12 +219,16 @@ unsafe impl Send for NativeNotif {}
 
 pub struct Closer {
     pub senders: Vec<Sender<()>>,
+    pub handles: Vec<JoinHandle<()>>,
 }
 
 impl Closer {
     pub fn close(&mut self) -> Result<(), Error> {
         while let Some(sender) = self.senders.pop() {
             sender.send(())?;
+        }
+        while let Some(handle) = self.handles.pop() {
+            handle.join().expect("Couldn't join on the associated thread");
         }
         Ok(())
     }
@@ -236,6 +241,14 @@ pub struct ElectrumSession {
     pub wallet: Option<WalletCtx>,
     pub notify: NativeNotif,
     pub closer: Closer,
+    pub state: State,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum State {
+    Disconnected,
+    Connected,
+    Logged,
 }
 
 fn notify(notif: NativeNotif, data: Value) {
@@ -300,7 +313,9 @@ impl ElectrumSession {
             notify: NativeNotif(None),
             closer: Closer {
                 senders: vec![],
+                handles: vec![],
             },
+            state: State::Disconnected,
         }
     }
 
@@ -382,22 +397,35 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
-        if self.data_root == "" {
-            self.data_root = net_params["state_dir"]
-                .as_str()
-                .map(|x| x.to_string())
-                .unwrap_or_else(|| "".into());
-            info!("setting db_root to {:?}", self.data_root);
+        info!("connect network:{:?} state:{:?}", self.network, self.state);
+
+        if self.state == State::Disconnected {
+            if self.data_root == "" {
+                self.data_root = net_params["state_dir"]
+                    .as_str()
+                    .map(|x| x.to_string())
+                    .unwrap_or_else(|| "".into());
+                info!("setting db_root to {:?}", self.data_root);
+            }
+
+            let mnemonic = match self.get_mnemonic() {
+                Ok(mnemonic) => Some(mnemonic.clone()),
+                Err(_) => None,
+            };
+            match mnemonic {
+                Some(mnemonic) => self.login(&mnemonic, None).map(|_| ())?,
+                None => self.state = State::Connected,
+            }
         }
-
-        info!("connect {:?}", self.network);
-
         Ok(())
     }
 
     fn disconnect(&mut self) -> Result<(), Error> {
-        info!("disconnect");
-        self.closer.close()?;
+        info!("disconnect state:{:?}", self.state);
+        if self.state != State::Disconnected {
+            self.closer.close()?;
+            self.state = State::Disconnected;
+        }
         Ok(())
     }
 
@@ -406,7 +434,10 @@ impl Session<Error> for ElectrumSession {
         mnemonic: &Mnemonic,
         password: Option<Password>,
     ) -> Result<Vec<Notification>, Error> {
-        info!("login {:#?}", self.network);
+        info!("login {:?} {:?}", self.network, self.state);
+        if self.state == State::Logged {
+            return Ok(vec![]);
+        }
 
         // TODO: passphrase?
 
@@ -454,10 +485,13 @@ impl Session<Error> for ElectrumSession {
         let mut path: PathBuf = self.data_root.as_str().into();
         path.push(wallet_id);
         info!("opening sled db root path: {:?}", path);
-        let db = Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?;
+        let db = match self.get_wallet() {
+            Ok(wallet) => wallet.db.clone(),
+            Err(_) => Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?,
+        };
 
         let mut wait_registry = false;
-        let registry_thread = if self.network.liquid {
+        let registry_thread = if self.network.liquid && self.wallet.is_none() {
             let registry_policy = self.network.policy_asset.clone();
             let asset_icons = db.get_asset_icons()?;
             let asset_registry = db.get_asset_registry()?;
@@ -519,7 +553,8 @@ impl Session<Error> for ElectrumSession {
         let (close_headers, r) = channel();
         self.closer.senders.push(close_headers);
         let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
-        thread::spawn(move || 'outer: loop {
+        let headers_handle = thread::spawn(move || 'outer: loop {
+            info!("starting headers thread");
             if wait_or_close(&r, sync_interval) {
                 info!("closing headers thread");
                 break;
@@ -565,6 +600,7 @@ impl Session<Error> for ElectrumSession {
                 Err(e) => warn!("error in getting proofs {:?}", e),
             }
         });
+        self.closer.handles.push(headers_handle);
 
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
@@ -602,16 +638,18 @@ impl Session<Error> for ElectrumSession {
             }
         };
 
-        let wallet = WalletCtx::new(
-            db,
-            mnemonic.clone(),
-            self.network.clone(),
-            xprv,
-            xpub,
-            master_blinding,
-        )?;
+        if self.wallet.is_none() {
+            let wallet = WalletCtx::new(
+                db,
+                mnemonic.clone(),
+                self.network.clone(),
+                xprv,
+                xpub,
+                master_blinding,
+            )?;
 
-        self.wallet = Some(wallet);
+            self.wallet = Some(wallet);
+        }
 
         let notify_blocks = self.notify.clone();
 
@@ -621,7 +659,8 @@ impl Session<Error> for ElectrumSession {
 
         let (close_tipper, r) = channel();
         self.closer.senders.push(close_tipper);
-        thread::spawn(move || loop {
+        let tipper_handle = thread::spawn(move || loop {
+            info!("starting tipper thread");
             if wait_or_close(&r, sync_interval) {
                 info!("closing tipper thread");
                 break;
@@ -664,11 +703,13 @@ impl Session<Error> for ElectrumSession {
                 }
             }
         });
+        self.closer.handles.push(tipper_handle);
 
         let (close_syncer, r) = channel();
         self.closer.senders.push(close_syncer);
         let notify_txs = self.notify.clone();
-        thread::spawn(move || loop {
+        let syncer_handle = thread::spawn(move || loop {
+            info!("starting syncer thread");
             match syncer.sync() {
                 Ok(new_txs) => {
                     if new_txs {
@@ -703,6 +744,7 @@ impl Session<Error> for ElectrumSession {
                 break;
             }
         });
+        self.closer.handles.push(syncer_handle);
 
         notify_settings(self.notify.clone(), &self.get_settings()?);
 
@@ -717,6 +759,7 @@ impl Session<Error> for ElectrumSession {
             }
         }
 
+        self.state = State::Logged;
         Ok(vec![])
     }
 
@@ -1149,8 +1192,8 @@ impl<S: Read + Write> Syncer<S> {
 }
 
 fn wait_or_close(r: &Receiver<()>, interval: u32) -> bool {
-    for _ in 0..interval {
-        thread::sleep(Duration::from_secs(1));
+    for _ in 0..(interval * 2) {
+        thread::sleep(Duration::from_millis(500));
         if r.try_recv().is_ok() {
             return true;
         }
