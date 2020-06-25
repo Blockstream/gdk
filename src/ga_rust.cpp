@@ -64,24 +64,15 @@ namespace sdk {
     bool ga_rust::reconnect()
     {
         ga_rust::disconnect();
-        ga_rust::connect();
+        if (m_reconnect_restart) {
+            ga_rust::connect();
+        }
         return true;
     }
 
-    void ga_rust::reconnect_hint(bool enable, bool restart)
-    {
-        // TODO (will): is this even needed for gdk_rust?
-        // m_network_control.set_enabled(enable);
-        // if (restart) {
-        //     stop_reconnect();
-        // }
-    }
+    void ga_rust::reconnect_hint(bool enable, bool restart) { m_reconnect_restart = restart; }
 
-    void ga_rust::try_reconnect()
-    {
-        // TODO (will): is this even needed for gdk_rust?
-        reconnect();
-    }
+    void ga_rust::try_reconnect() { reconnect(); }
 
     void ga_rust::tor_sleep_hint(const std::string& hint)
     {

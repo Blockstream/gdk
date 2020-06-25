@@ -362,7 +362,12 @@ impl TestSession {
         opt.count = 100;
         let list = self.session.get_transactions(&opt).unwrap().0;
         let filtered_list: Vec<&TxListItem> = list.iter().filter(|e| e.txhash == txid).collect();
-        assert_eq!(filtered_list.len(), 1, "tx {} is not in tx list or there are more than one", txid);
+        assert_eq!(
+            filtered_list.len(),
+            1,
+            "tx {} is not in tx list or there are more than one",
+            txid
+        );
         let tx = filtered_list[0];
         assert_eq!(tx.spv_verified, verified);
     }

@@ -553,51 +553,54 @@ impl Session<Error> for ElectrumSession {
         let (close_headers, r) = channel();
         self.closer.senders.push(close_headers);
         let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
-        let headers_handle = thread::spawn(move || 'outer: loop {
+        let headers_handle = thread::spawn(move || {
             info!("starting headers thread");
-            if wait_or_close(&r, sync_interval) {
-                info!("closing headers thread");
-                break;
-            }
-
-            loop {
-                match headers_kind.ask(chunk_size) {
-                    Ok(headers_found) => {
-                        if headers_found == 0 {
-                            chunk_size = 1
-                        } else {
-                            info!("headers found: {}", headers_found);
-                        }
-                    }
-                    Err(Error::InvalidHeaders) => {
-                        // this should handle reorgs and also broke IO writes update
-                        if headers_kind.remove(144).is_err() {
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        warn!("error while asking headers {}", e);
-                        if chunk_size > 1 {
-                            chunk_size /= 2
-                        }
-                    }
-                };
-                if r.try_recv().is_ok() {
+            'outer: loop {
+                if wait_or_close(&r, sync_interval) {
                     info!("closing headers thread");
-                    break 'outer;
-                }
-                if chunk_size == 1 {
                     break;
                 }
-            }
 
-            match headers_kind.get_proofs() {
-                Ok(found) => {
-                    if found > 0 {
-                        info!("found proof {}", found)
+                loop {
+                    match headers_kind.ask(chunk_size) {
+                        Ok(headers_found) => {
+                            if headers_found == 0 {
+                                chunk_size = 1
+                            } else {
+                                info!("headers found: {}", headers_found);
+                            }
+                        }
+                        Err(Error::InvalidHeaders) => {
+                            // this should handle reorgs and also broke IO writes update
+                            if headers_kind.remove(144).is_err() {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            // usual error is because I reached the tip, trying asking half
+                            info!("error while asking headers {}", e);
+                            if chunk_size > 1 {
+                                chunk_size /= 2
+                            }
+                        }
+                    };
+                    if r.try_recv().is_ok() {
+                        info!("closing headers thread");
+                        break 'outer;
+                    }
+                    if chunk_size == 1 {
+                        break;
                     }
                 }
-                Err(e) => warn!("error in getting proofs {:?}", e),
+
+                match headers_kind.get_proofs() {
+                    Ok(found) => {
+                        if found > 0 {
+                            info!("found proof {}", found)
+                        }
+                    }
+                    Err(e) => warn!("error in getting proofs {:?}", e),
+                }
             }
         });
         self.closer.handles.push(headers_handle);
@@ -659,42 +662,47 @@ impl Session<Error> for ElectrumSession {
 
         let (close_tipper, r) = channel();
         self.closer.senders.push(close_tipper);
-        let tipper_handle = thread::spawn(move || loop {
+        let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
-            if wait_or_close(&r, sync_interval) {
-                info!("closing tipper thread");
-                break;
-            }
-
-            match tipper.tip() {
-                Ok(current_tip) => {
-                    if last_tip != current_tip {
-                        last_tip = current_tip;
-                        info!("tip is {:?}", last_tip);
-                        notify_block(notify_blocks.clone(), last_tip);
-                    }
+            loop {
+                if wait_or_close(&r, sync_interval) {
+                    info!("closing tipper thread");
+                    break;
                 }
-                Err(e) => {
-                    warn!("exception in tipper {:?}", e);
-                    match e {
-                        Error::ClientError(electrum_client::types::Error::JSON(_)) => {
-                            info!("tipper Client error, doing nothing")
+
+                match tipper.tip() {
+                    Ok(current_tip) => {
+                        if last_tip != current_tip {
+                            last_tip = current_tip;
+                            info!("tip is {:?}", last_tip);
+                            notify_block(notify_blocks.clone(), last_tip);
                         }
-                        _ => {
-                            warn!("trying to recreate died tipper client, {:?}", e);
-                            match &mut tipper {
-                                TipperKind::Plain(tipper, url) => {
-                                    if let Ok(client) = electrum_client::Client::new(url.as_str()) {
-                                        info!("succesfully created new tipper client");
-                                        tipper.client = client;
+                    }
+                    Err(e) => {
+                        warn!("exception in tipper {:?}", e);
+                        match e {
+                            Error::ClientError(electrum_client::types::Error::JSON(_)) => {
+                                info!("tipper Client error, doing nothing")
+                            }
+                            _ => {
+                                warn!("trying to recreate died tipper client, {:?}", e);
+                                match &mut tipper {
+                                    TipperKind::Plain(tipper, url) => {
+                                        if let Ok(client) =
+                                            electrum_client::Client::new(url.as_str())
+                                        {
+                                            info!("succesfully created new tipper client");
+                                            tipper.client = client;
+                                        }
                                     }
-                                }
-                                TipperKind::Tls(tipper, url, validate) => {
-                                    if let Ok(client) =
-                                        electrum_client::Client::new_ssl(url.as_str(), *validate)
-                                    {
-                                        info!("succesfully created new tipper client");
-                                        tipper.client = client;
+                                    TipperKind::Tls(tipper, url, validate) => {
+                                        if let Ok(client) = electrum_client::Client::new_ssl(
+                                            url.as_str(),
+                                            *validate,
+                                        ) {
+                                            info!("succesfully created new tipper client");
+                                            tipper.client = client;
+                                        }
                                     }
                                 }
                             }
@@ -708,40 +716,42 @@ impl Session<Error> for ElectrumSession {
         let (close_syncer, r) = channel();
         self.closer.senders.push(close_syncer);
         let notify_txs = self.notify.clone();
-        let syncer_handle = thread::spawn(move || loop {
+        let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
-            match syncer.sync() {
-                Ok(new_txs) => {
-                    if new_txs {
-                        info!("there are new transactions");
-                        let mockup_json =
-                            json!({"event":"transaction","transaction":{"subaccounts":[0]}});
-                        notify(notify_txs.clone(), mockup_json);
-                    }
-                }
-                Err(e) => {
-                    warn!("trying to recreate died syncer client, {:?}", e);
-                    match &mut syncer {
-                        SyncerKind::Plain(syncer, url) => {
-                            if let Ok(client) = electrum_client::Client::new(url.as_str()) {
-                                info!("succesfully created new syncer client");
-                                syncer.client = client
-                            }
-                        }
-                        SyncerKind::Tls(syncer, url, validate) => {
-                            if let Ok(client) =
-                                electrum_client::Client::new_ssl(url.as_str(), *validate)
-                            {
-                                info!("succesfully created new syncer client");
-                                syncer.client = client
-                            }
+            loop {
+                match syncer.sync() {
+                    Ok(new_txs) => {
+                        if new_txs {
+                            info!("there are new transactions");
+                            let mockup_json =
+                                json!({"event":"transaction","transaction":{"subaccounts":[0]}});
+                            notify(notify_txs.clone(), mockup_json);
                         }
                     }
+                    Err(e) => {
+                        warn!("trying to recreate died syncer client, {:?}", e);
+                        match &mut syncer {
+                            SyncerKind::Plain(syncer, url) => {
+                                if let Ok(client) = electrum_client::Client::new(url.as_str()) {
+                                    info!("succesfully created new syncer client");
+                                    syncer.client = client
+                                }
+                            }
+                            SyncerKind::Tls(syncer, url, validate) => {
+                                if let Ok(client) =
+                                    electrum_client::Client::new_ssl(url.as_str(), *validate)
+                                {
+                                    info!("succesfully created new syncer client");
+                                    syncer.client = client
+                                }
+                            }
+                        }
+                    }
+                };
+                if wait_or_close(&r, sync_interval) {
+                    info!("closing syncer thread");
+                    break;
                 }
-            };
-            if wait_or_close(&r, sync_interval) {
-                info!("closing syncer thread");
-                break;
             }
         });
         self.closer.handles.push(syncer_handle);

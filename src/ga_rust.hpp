@@ -193,6 +193,7 @@ namespace sdk {
 
         network_parameters m_netparams;
         std::shared_ptr<tor_controller> m_tor_ctrl;
+        bool m_reconnect_restart;
 
         GDKRUST_session* m_session;
         GA_notification_handler m_ga_notif_handler;
