@@ -259,7 +259,7 @@ pub extern "C" fn GDKRUST_call_session(
 
     let mut res_string = format!("{:?}", res);
     res_string.truncate(200);
-    info!("GDKRUST_call_session {} {:?}", method, res_string);
+    info!("GDKRUST_call_session {} output {:?}", method, res_string);
 
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
@@ -340,6 +340,11 @@ where
         "disconnect" => session.disconnect().map(|v| json!(v)).map_err(Into::into),
 
         "login" => login(session, input).map(|v| json!(v)),
+        "login_with_pin" => login_with_pin(session, input).map(|v| json!(v)),
+        "set_pin" => session
+            .set_pin(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
 
         "get_subaccounts" => {
             session.get_subaccounts().map(|x| serialize::subaccounts_value(&x)).map_err(Into::into)

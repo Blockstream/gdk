@@ -260,6 +260,20 @@ pub struct Subaccount {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct PinSetDetails {
+    pub pin: String,
+    pub mnemonic: String,
+    pub device_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PinGetDetails {
+    pub salt: String,
+    pub encrypted_data: String,
+    pub pin_identifier: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AddressPointer {
     pub address: String,
     pub pointer: u32,  // child_number in bip32 terminology

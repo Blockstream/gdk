@@ -174,7 +174,12 @@ namespace sdk {
     }
     void ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
-        throw std::runtime_error("login_with_pin not implemented");
+        auto details = nlohmann::json{
+            { "pin", pin },
+            { "pin_data", pin_data },
+        };
+
+        call_session("login_with_pin", details);
     }
     void ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {
@@ -318,7 +323,13 @@ namespace sdk {
 
     nlohmann::json ga_rust::set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id)
     {
-        throw std::runtime_error("set_pin not implemented");
+        auto details = nlohmann::json{
+            { "pin", pin },
+            { "mnemonic", mnemonic },
+            { "device_id", device_id },
+        };
+
+        return call_session("set_pin", details);
     }
 
     nlohmann::json ga_rust::get_unspent_outputs(const nlohmann::json& details)

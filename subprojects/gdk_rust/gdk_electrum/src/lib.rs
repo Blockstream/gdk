@@ -15,7 +15,7 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 
 use bitcoin::hashes::{sha256, Hash};
-use bitcoin::secp256k1::{self, Secp256k1};
+use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Txid;
 use sled::Batch;
@@ -45,14 +45,23 @@ use std::time::{Duration, Instant};
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
+use crate::pin::PinManager;
+use aes::Aes256;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use electrum_client::raw_client::{ElectrumPlaintextStream, ElectrumSslStream, RawClient};
 use electrum_client::ElectrumApi;
+use block_modes::block_padding::Pkcs7;
+use block_modes::BlockMode;
+use block_modes::Cbc;
+use rand::thread_rng;
+use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::thread::JoinHandle;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+
+type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 pub enum SyncerKind {
     Plain(Syncer<ElectrumPlaintextStream>, String),
@@ -424,6 +433,24 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
+    fn login_with_pin(
+        &mut self,
+        pin: String,
+        details: PinGetDetails,
+    ) -> Result<Vec<Notification>, Error> {
+        debug!("login_with_pin {} {:?}", pin, details);
+        let manager = PinManager::new()?;
+        let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
+        let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
+        let iv = hex::decode(&details.salt)?;
+        let decipher = Aes256Cbc::new_var(&server_key[..], &iv).unwrap();
+        let mnemonic = decipher.decrypt_vec(&hex::decode(&details.encrypted_data)?)?;
+        let mnemonic = std::str::from_utf8(&mnemonic).unwrap().to_string();
+        let mnemonic = Mnemonic::from(mnemonic);
+
+        self.login(&mnemonic, None)
+    }
+
     fn login(
         &mut self,
         mnemonic: &Mnemonic,
@@ -772,6 +799,23 @@ impl Session<Error> for ElectrumSession {
         let a = w.get_address()?;
         debug!("get_address {:?}", a);
         Ok(a)
+    }
+
+    fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
+        debug!("set_pin {:?}", details);
+        let manager = PinManager::new()?;
+        let client_key = SecretKey::new(&mut thread_rng());
+        let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
+        let iv = thread_rng().gen::<[u8; 16]>();
+        let cipher = Aes256Cbc::new_var(&server_key[..], &iv).unwrap();
+        let encrypted = cipher.encrypt_vec(details.mnemonic.as_bytes());
+
+        let result = PinGetDetails {
+            salt: hex::encode(&iv),
+            encrypted_data: hex::encode(&encrypted),
+            pin_identifier: hex::encode(&client_key[..]),
+        };
+        Ok(result)
     }
 
     fn get_subaccounts(&self) -> Result<Vec<Subaccount>, Error> {

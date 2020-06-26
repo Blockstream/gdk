@@ -1,9 +1,5 @@
 use crate::mnemonic::Mnemonic;
-use crate::model::{
-    AddressPointer, CreateTransaction, FeeEstimate, GetTransactionsOpt, Notification, Settings,
-    Subaccount, TransactionMeta, TxsResult,
-};
-use crate::model::{Balances, RefreshAssets};
+use crate::model::*;
 use crate::password::Password;
 
 // TODO: remove all json Values from our Session
@@ -20,6 +16,11 @@ pub trait Session<E> {
         &mut self,
         mnemonic: &Mnemonic,
         password: Option<Password>,
+    ) -> Result<Vec<Notification>, E>;
+    fn login_with_pin(
+        &mut self,
+        pin: String,
+        details: PinGetDetails,
     ) -> Result<Vec<Notification>, E>;
     fn get_subaccounts(&self) -> Result<Vec<Subaccount>, E>;
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, E>;
@@ -40,4 +41,5 @@ pub trait Session<E> {
     fn change_settings(&mut self, settings: &Settings) -> Result<(), E>;
     fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, E>;
     fn status(&self) -> Result<u64, E>;
+    fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, E>;
 }

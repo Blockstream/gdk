@@ -7,6 +7,7 @@ use bitcoin::secp256k1::{self, ecdh, All, Message, Secp256k1, SecretKey, Signatu
 use bitcoin::PublicKey;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
+use log::info;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -40,7 +41,7 @@ struct ResponseData {
     hmac: String,
 }
 
-struct PinManager {
+pub struct PinManager {
     secp: Secp256k1<All>,
     ske: secp256k1::PublicKey,
     cke: secp256k1::PublicKey,
@@ -58,6 +59,7 @@ enum PinOp {
 
 impl PinManager {
     pub fn new() -> Result<Self, Error> {
+        info!("PinManager new()");
         let data = Self::handshake_request()?;
         Self::with_handshake(data)
     }
@@ -76,8 +78,10 @@ impl PinManager {
         let response = ureq::post(&format!("{}/start_handshake", PINSERVER_URL))
             .set("content-length", "0")
             .call();
+        info!("handshake response {:?}", response);
         assert_eq!(response.status(), 200);
         let data: Handshake = serde_json::from_reader(response.into_reader()).unwrap();
+        info!("handshake returns {:?}", data);
         Ok(data)
     }
 
@@ -165,6 +169,7 @@ impl PinManager {
             .send_json(serde_json::to_value(&req).unwrap());
 
         let response: ResponseData = serde_json::from_reader(response.into_reader())?;
+        info!("server_call returns {:?}", response);
 
         response.verify_and_decrypt(&self.response_hmac_key, &self.response_encryption_key)
     }
@@ -183,6 +188,8 @@ impl ResponseData {
         let iv = hex::decode(&self.encrypted_key[..32])?;
         let decipher = Aes256Cbc::new_var(&enc_key[..], &iv).unwrap();
         let decrypted = decipher.decrypt_vec(&hex::decode(&self.encrypted_key[32..])?)?;
+        info!("verify_and_decrypt returns {}", hex::encode(&decrypted));
+
         Ok(decrypted)
     }
 }
