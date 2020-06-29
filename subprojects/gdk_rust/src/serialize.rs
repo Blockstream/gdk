@@ -4,6 +4,7 @@ use bitcoin::util::address::AddressType;
 use gdk_common::model::*;
 use gdk_common::session::Session;
 use serde_json::Value;
+use gdk_electrum::error::Error::PinError;
 
 pub fn balance_result_value(bal: &Balances) -> Value {
     json!(bal)
@@ -123,7 +124,7 @@ where
         .map(|s| s.to_string())
         .ok_or_else(|| Error::Other("login_with_pin: missing pin argument".into()))?;
     let pin_data: PinGetDetails = serde_json::from_value(input["pin_data"].clone())?;
-    session.login_with_pin(pin, pin_data).map(notification_values).map_err(Into::into)
+    session.login_with_pin(pin, pin_data).map(notification_values).map_err(|_| Error::Electrum(PinError))
 }
 
 pub fn get_subaccount<S, E>(session: &S, input: &Value) -> Result<Value, Error>

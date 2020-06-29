@@ -263,13 +263,17 @@ pub extern "C" fn GDKRUST_call_session(
 
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
-
         Err(ref e) => {
             let code = e.to_gdk_code();
             let desc = e.gdk_display();
 
+            let ret_val = match code.as_str() {
+                "id_invalid_pin" => -5,
+                _ => GA_OK,
+            };
+
             info!("rust error {}: {}", code, desc);
-            json_res!(output, json!({ "error": code, "message": desc }), GA_OK)
+            json_res!(output, json!({ "error": code, "message": desc }), ret_val)
         }
     }
 }
