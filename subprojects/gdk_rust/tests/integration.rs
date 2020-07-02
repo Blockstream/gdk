@@ -34,9 +34,11 @@ fn bitcoin() {
     test_session.settings();
     test_session.is_verified(&txid, true);
     test_session.reconnect();
-    test_session.fund(100, None);
+    test_session.spv_verify_tx(&txid, 102);
 
     test_session.stop();
+
+
 }
 
 #[test]
@@ -76,7 +78,7 @@ fn liquid() {
     test_session.settings();
     test_session.is_verified(&txid, true);
     test_session.reconnect();
-    test_session.fund(100, None);
+    test_session.spv_verify_tx(&txid, 102);
 
     test_session.stop();
 }

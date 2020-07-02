@@ -22,7 +22,7 @@ use std::os::raw::c_char;
 use std::sync::Once;
 use std::time::{Duration, SystemTime};
 
-use gdk_common::model::{GDKRUST_json, GetTransactionsOpt};
+use gdk_common::model::{GDKRUST_json, GetTransactionsOpt, SPVVerifyTx};
 use gdk_common::session::Session;
 
 use crate::error::Error;
@@ -454,6 +454,18 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
         let _ = CString::from_raw(ptr);
     }
     GA_OK
+}
+
+#[no_mangle]
+pub extern "C" fn GDKRUST_spv_verify_tx(input: *const GDKRUST_json) -> i32 {
+    info!("GDKRUST_spv_verify_tx");
+    let input: &Value = &safe_ref!(input).0;
+    info!("GDKRUST_spv_verify_tx {:?}", input);
+    let input: SPVVerifyTx = serde_json::from_value(input.clone()).unwrap();
+    match gdk_electrum::headers::spv_verify_tx(&input) {
+        Ok(res) => res.as_i32(),
+        Err(_) => -1,
+    }
 }
 
 #[cfg(not(feature = "android_log"))]

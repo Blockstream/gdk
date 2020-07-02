@@ -774,6 +774,27 @@ impl TestSession {
         }
     }
 
+    pub fn spv_verify_tx(&self, txid: &str, height: u32) {
+        let temp_dir =TempDir::new("electrum_integration_tests").unwrap();
+        let temp_dir_str = format!("{}", &temp_dir.path().display());
+
+        let param = SPVVerifyTx {
+            txid: txid.to_string(),
+            height,
+            path: temp_dir_str,
+            network: self.network.clone(),
+            tor_proxy: None,
+            headers_to_download: Some(100),
+        };
+        loop {
+            match gdk_electrum::headers::spv_verify_tx(&param) {
+                Ok(SPVVerifyResult::CallMeAgain) => continue,
+                Ok(SPVVerifyResult::Verified) => break,
+                _ => assert!(false),
+            }
+        }
+    }
+
     /// stop the bitcoin node in the test session
     pub fn stop(&mut self) {
         self.session.disconnect().unwrap();

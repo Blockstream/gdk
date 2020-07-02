@@ -54,6 +54,7 @@ impl Verifier {
         self.verify_header(header)?;
         let root = compute_merkle_root(&txid, merkle)?;
         if header.merkle_root == root {
+            info!("proof for txid {}, block height {}, merkle root matches", txid, header.height);
             Ok(())
         } else {
             Err(Error::InvalidHeaders)

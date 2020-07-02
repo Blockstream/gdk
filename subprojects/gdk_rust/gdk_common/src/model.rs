@@ -123,6 +123,22 @@ pub struct GetTransactionsOpt {
     pub num_confs: Option<usize>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct SPVVerifyTx {
+    pub txid: String,
+    pub height: u32,
+    pub path: String,
+    pub network: crate::network::Network,
+    pub tor_proxy: Option<String>,
+    pub headers_to_download: Option<usize>, // defaults to 2016, useful to set for testing
+}
+
+pub enum SPVVerifyResult {
+    CallMeAgain,
+    Verified,
+    NotVerified,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionMeta {
     #[serde(flatten)]
@@ -348,4 +364,16 @@ fn now() -> u32 {
 fn format(timestamp: u32) -> String {
     let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(timestamp as i64, 0), Utc);
     format!("{}", dt.format("%Y-%m-%d %H:%M:%S"))
+}
+
+
+impl SPVVerifyResult {
+    pub fn as_i32(&self) -> i32 {
+        match self {
+            SPVVerifyResult::CallMeAgain => 0,
+            SPVVerifyResult::Verified => 1,
+            SPVVerifyResult::NotVerified => 2,
+        }
+
+    }
 }
