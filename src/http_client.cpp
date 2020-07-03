@@ -21,6 +21,7 @@ namespace sdk {
 
     http_client::http_client(boost::asio::io_context& io)
         : m_resolver(asio::make_strand(io))
+        , m_timeout(HTTP_TIMEOUT)
         , m_io(io)
     {
     }
@@ -35,6 +36,12 @@ namespace sdk {
         const std::string proxy_uri = params.at("proxy");
 
         GDK_LOG_SEV(log_level::debug) << "Connecting to " << m_host << ":" << m_port << " for target " << target;
+
+        const auto timeout_p = params.find("timeout");
+        if (timeout_p != params.end()) {
+            m_timeout = std::chrono::seconds(timeout_p->get<int>());
+        }
+        GDK_LOG_SEV(log_level::debug) << "HTTP timeout " << m_timeout.count() << " seconds";
 
         preamble(m_host);
 
@@ -61,7 +68,7 @@ namespace sdk {
         m_accept = params.value("accept", "");
 
         if (!proxy_uri.empty()) {
-            get_lowest_layer().expires_after(HTTP_TIMEOUT);
+            get_lowest_layer().expires_after(m_timeout);
             auto proxy = std::make_shared<socks_client>(m_io, get_next_layer());
             GDK_RUNTIME_ASSERT(proxy != nullptr);
             auto f = proxy->run(m_host + ":" + m_port, proxy_uri);
@@ -79,7 +86,7 @@ namespace sdk {
         GDK_LOG_NAMED_SCOPE("http_client:on_resolve");
 
         NET_ERROR_CODE_CHECK("on resolve", ec);
-        get_lowest_layer().expires_after(HTTP_TIMEOUT);
+        get_lowest_layer().expires_after(m_timeout);
         async_connect(std::move(results));
     }
 
@@ -88,7 +95,7 @@ namespace sdk {
         GDK_LOG_NAMED_SCOPE("http_client:on_write");
 
         NET_ERROR_CODE_CHECK("on write", ec);
-        get_lowest_layer().expires_after(HTTP_TIMEOUT);
+        get_lowest_layer().expires_after(m_timeout);
         async_read();
     }
 
@@ -187,7 +194,7 @@ namespace sdk {
         GDK_LOG_NAMED_SCOPE("http_client:on_handshake");
 
         NET_ERROR_CODE_CHECK("on handshake", ec);
-        get_lowest_layer().expires_after(HTTP_TIMEOUT);
+        get_lowest_layer().expires_after(m_timeout);
         async_write();
     }
 
@@ -223,7 +230,7 @@ namespace sdk {
 
     void tls_http_client::async_handshake()
     {
-        get_lowest_layer().expires_after(HTTP_TIMEOUT);
+        get_lowest_layer().expires_after(m_timeout);
         m_stream.async_handshake(asio::ssl::stream_base::client,
             beast::bind_front_handler(&tls_http_client::on_handshake, shared_from_this()));
     }

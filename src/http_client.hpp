@@ -2,6 +2,7 @@
 #define GDK_HTTP_CLIENT_HPP
 #pragma once
 
+#include <chrono>
 #include <future>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -48,6 +49,7 @@ namespace sdk {
         boost::beast::flat_buffer m_buffer;
         boost::beast::http::request<boost::beast::http::string_body> m_request;
         boost::beast::http::response<boost::beast::http::string_body> m_response;
+        std::chrono::seconds m_timeout;
         std::string m_host;
         std::string m_port;
         std::string m_accept;
