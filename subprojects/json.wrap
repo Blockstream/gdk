@@ -1,6 +1,6 @@
 [wrap-file]
-directory = json-3.7.3
+directory = json-3.8.0
 
-source_url = https://github.com/nlohmann/json/archive/v3.7.3.tar.gz
-source_filename = json-3.7.3.tar.gz
-source_hash = 249548f4867417d66ae46b338dfe0a2805f3323e81c9e9b83c89f3adbfde6f31
+source_url = https://github.com/nlohmann/json/archive/v3.8.0.tar.gz
+source_filename = json-3.8.0.tar.gz
+source_hash = 7d0edf65f2ac7390af5e5a0b323b31202a6c11d744a74b588dc30f5a8c9865ba
