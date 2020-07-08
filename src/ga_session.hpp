@@ -167,7 +167,8 @@ namespace sdk {
             const std::string& gait_path_hex, bool supports_csv);
 
         std::string get_challenge(const std::string& address);
-        void authenticate(const std::string& sig_der_hex, const std::string& path_hex, const std::string& device_id,
+        void authenticate(const std::string& sig_der_hex, const std::string& path_hex,
+            const std::string& root_xpub_bip32, const std::string& device_id,
             const nlohmann::json& hw_device = nlohmann::json::object());
 
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
@@ -323,7 +324,8 @@ namespace sdk {
             const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
 
         void authenticate(locker_t& locker, const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& device_id, const nlohmann::json& hw_device) GDK_REQUIRES(m_mutex);
+            const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
+            GDK_REQUIRES(m_mutex);
         void login(locker_t& locker, const std::string& mnemonic) GDK_REQUIRES(m_mutex);
         void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context)
             GDK_REQUIRES(m_mutex);
@@ -335,7 +337,8 @@ namespace sdk {
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const GDK_REQUIRES(m_mutex);
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config) GDK_REQUIRES(m_mutex);
-        void update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only) GDK_REQUIRES(m_mutex);
+        void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
+            bool watch_only) GDK_REQUIRES(m_mutex);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str) GDK_REQUIRES(m_mutex);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits) GDK_REQUIRES(m_mutex);
         nlohmann::json get_spending_limits(locker_t& locker) const GDK_REQUIRES(m_mutex);

@@ -1046,7 +1046,8 @@ namespace sdk {
         }
     }
 
-    void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only)
+    void ga_session::update_login_data(
+        locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32, bool watch_only)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1086,6 +1087,25 @@ namespace sdk {
             const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
             const std::string recovery_chain_code = json_get_value(sa, "2of3_backup_chaincode");
             const std::string recovery_pub_key = json_get_value(sa, "2of3_backup_pubkey");
+            const std::string recovery_xpub_sig = json_get_value(sa, "2of3_backup_xpub_sig");
+            std::string recovery_xpub = std::string();
+            // TODO: fail if *any* 2of3 subaccount has missing or invalid
+            //       signature of the corresponding backup/recovery key.
+            if (!recovery_xpub_sig.empty() && !watch_only) {
+                recovery_xpub = json_get_value(sa, "2of3_backup_xpub");
+                GDK_RUNTIME_ASSERT(make_xpub(recovery_xpub) == make_xpub(recovery_chain_code, recovery_pub_key));
+                const auto message = format_recovery_key_message(recovery_xpub, subaccount);
+                const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
+                pub_key_t login_pubkey;
+                if (get_signer().get_hw_device().empty()) {
+                    login_pubkey = get_signer().get_xpub(LOGIN_PATH).second;
+                } else {
+                    wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
+                    ext_key derived = bip32_public_key_from_parent_path(*parent, LOGIN_PATH);
+                    memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+                }
+                GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
+            }
 
             insert_subaccount(locker, subaccount, sa["name"], sa["receiving_id"], recovery_pub_key, recovery_chain_code,
                 type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0));
@@ -1395,14 +1415,15 @@ namespace sdk {
     }
 
     void ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
     {
         locker_t locker(m_mutex);
-        authenticate(locker, sig_der_hex, path_hex, device_id, hw_device);
+        authenticate(locker, sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
     }
 
     void ga_session::authenticate(ga_session::locker_t& locker, const std::string& sig_der_hex,
-        const std::string& path_hex, const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& path_hex, const std::string& root_xpub_bip32, const std::string& device_id,
+        const nlohmann::json& hw_device)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1428,7 +1449,7 @@ namespace sdk {
             throw login_error(res::id_login_failed);
         }
         constexpr bool watch_only = false;
-        update_login_data(locker, login_data, watch_only);
+        update_login_data(locker, login_data, root_xpub_bip32, watch_only);
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
@@ -1533,7 +1554,8 @@ namespace sdk {
         const auto hexder_path = sign_challenge(locker, challenge);
         m_mnemonic = mnemonic;
 
-        authenticate(locker, hexder_path.first, hexder_path.second, std::string(), nlohmann::json::object());
+        authenticate(
+            locker, hexder_path.first, hexder_path.second, std::string(), std::string(), nlohmann::json::object());
     }
 
     nlohmann::json ga_session::get_settings()
@@ -1636,7 +1658,7 @@ namespace sdk {
         locker_t locker(m_mutex);
         constexpr bool watch_only = true;
         m_signer = std::make_unique<watch_only_signer>(m_net_params);
-        update_login_data(locker, login_data, watch_only);
+        update_login_data(locker, login_data, std::string(), watch_only);
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;

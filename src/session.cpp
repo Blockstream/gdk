@@ -313,11 +313,11 @@ namespace sdk {
     }
 
     void session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
     {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->authenticate(sig_der_hex, path_hex, device_id, hw_device);
+            p->authenticate(sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
         });
     }
 
