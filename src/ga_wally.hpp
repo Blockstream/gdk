@@ -213,6 +213,9 @@ namespace sdk {
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, bool sighash = false);
     ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool sighash = false);
 
+    bool ec_sig_verify(
+        byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);
+
     std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key);
 
     std::vector<unsigned char> ec_public_key_decompress(byte_span_t public_key);

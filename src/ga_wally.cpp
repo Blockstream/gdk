@@ -464,6 +464,13 @@ namespace sdk {
         return ret;
     }
 
+    bool ec_sig_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags)
+    {
+        return wally_ec_sig_verify(public_key.data(), public_key.size(), message_hash.data(), message_hash.size(),
+                   flags, sig.data(), sig.size())
+            == WALLY_OK;
+    }
+
     std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key)
     {
         std::vector<unsigned char> ret(EC_PUBLIC_KEY_LEN);
