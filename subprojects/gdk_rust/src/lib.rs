@@ -135,6 +135,22 @@ pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const GdkSession,
     network: *const GDKRUST_json,
 ) -> i32 {
+    init_logging();
+
+    let network = &safe_ref!(network).0;
+    let sess = create_session(&network);
+
+    if let Err(err) = sess {
+        error!("create_session error: {}", err);
+        return GA_ERROR;
+    }
+
+    let sess = unsafe { transmute(Box::new(sess.unwrap())) };
+
+    ok!(ret, sess, GA_OK)
+}
+
+fn init_logging() {
     #[cfg(feature = "android_log")]
     INIT_LOGGER.call_once(|| {
         android_logger::init_once(
@@ -150,18 +166,6 @@ pub extern "C" fn GDKRUST_create_session(
             .map(|()| log::set_max_level(LevelFilter::Info))
             .expect("cannot initialize logging");
     });
-
-    let network = &safe_ref!(network).0;
-    let sess = create_session(&network);
-
-    if let Err(err) = sess {
-        error!("create_session error: {}", err);
-        return GA_ERROR;
-    }
-
-    let sess = unsafe { transmute(Box::new(sess.unwrap())) };
-
-    ok!(ret, sess, GA_OK)
 }
 
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
@@ -458,13 +462,20 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_spv_verify_tx(input: *const GDKRUST_json) -> i32 {
+    init_logging();
     info!("GDKRUST_spv_verify_tx");
     let input: &Value = &safe_ref!(input).0;
     info!("GDKRUST_spv_verify_tx {:?}", input);
     let input: SPVVerifyTx = serde_json::from_value(input.clone()).unwrap();
     match gdk_electrum::headers::spv_verify_tx(&input) {
-        Ok(res) => res.as_i32(),
-        Err(_) => -1,
+        Ok(res) => {
+            info!("GDKRUST_spv_verify_tx returns {:?}", res);
+            res.as_i32()
+        }
+        Err(e) => {
+            warn!("{:?}", e);
+            -1
+        }
     }
 }
 

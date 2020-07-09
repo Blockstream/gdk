@@ -133,6 +133,7 @@ pub struct SPVVerifyTx {
     pub headers_to_download: Option<usize>, // defaults to 2016, useful to set for testing
 }
 
+#[derive(Debug)]
 pub enum SPVVerifyResult {
     CallMeAgain,
     Verified,
@@ -366,7 +367,6 @@ fn format(timestamp: u32) -> String {
     format!("{}", dt.format("%Y-%m-%d %H:%M:%S"))
 }
 
-
 impl SPVVerifyResult {
     pub fn as_i32(&self) -> i32 {
         match self {
@@ -374,6 +374,5 @@ impl SPVVerifyResult {
             SPVVerifyResult::Verified => 1,
             SPVVerifyResult::NotVerified => 2,
         }
-
     }
 }

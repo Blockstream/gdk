@@ -29,6 +29,7 @@ impl HeadersChain {
     pub fn new(path: PathBuf, network: Network) -> Result<HeadersChain, Error> {
         let checkpoints = get_checkpoints(network);
         if !path.exists() {
+            info!("chain file don't exists, creating");
             let last = genesis_block(network).header;
             let mut file = File::create(&path)?;
             file.write_all(&serialize(&last))?;
@@ -41,6 +42,7 @@ impl HeadersChain {
                 checkpoints,
             })
         } else {
+            info!("chain file exists, reading");
             let mut file = File::open(&path)?;
             let file_size = file.metadata()?.len();
 

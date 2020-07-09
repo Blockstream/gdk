@@ -41,7 +41,7 @@ type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 /// scripts:    Path, Script           inverse of the previous
 /// singles:    byte, bytes            contains eterogenous unique values
 /// unblinded:  OutPoint, Unblinded    unblinded values (only for liquid)
-/// proofs:     Txid, Proof            contains SPV proofs
+/// txs_verif:  Txid                   if key is present, tx has been verified through SPV
 
 #[derive(Debug, Clone)]
 pub struct Forest {

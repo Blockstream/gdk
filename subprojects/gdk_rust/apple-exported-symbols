@@ -5,3 +5,4 @@ _GDKRUST_destroy_string
 _GDKRUST_set_notification_handler
 _GDKRUST_convert_json_to_string
 _GDKRUST_convert_string_to_json
+_GDKRUST_spv_verify_tx

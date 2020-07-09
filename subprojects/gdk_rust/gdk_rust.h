@@ -41,6 +41,8 @@ GDK_API int GDKRUST_create_session(struct GDKRUST_session** session, GDKRUST_jso
 
 GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *method, const GDKRUST_json* input, GDKRUST_json** output);
 
+GDK_API int GDKRUST_spv_verify_tx(const GDKRUST_json* json);
+
 #ifndef SWIG
 /**
  * Set a handler to be called when notifications arrive.
@@ -76,6 +78,7 @@ GDK_API int GDKRUST_destroy_json(GDKRUST_json* json);
  * :param str: The string to free.
  */
 GDK_API void GDKRUST_destroy_string(char* str);
+
 
 #endif /* SWIG */
 
