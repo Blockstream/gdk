@@ -550,6 +550,11 @@ namespace sdk {
         throw std::runtime_error("upload_confidential_addresses not yet implemented");
     }
 
+    ecdsa_sig_t ga_rust::sign_hash(uint32_span_t path, byte_span_t hash)
+    {
+        throw std::runtime_error("sign_hash not yet implemented");
+    }
+
     void ga_rust::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
         const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
         const std::string& assetblinder_hex, const std::string& amountblinder_hex)

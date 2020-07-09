@@ -140,6 +140,7 @@ namespace sdk {
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;
+        virtual ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) = 0;
 
         virtual nlohmann::json get_unspent_outputs(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_unspent_outputs_for_private_key(

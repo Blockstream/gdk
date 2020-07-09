@@ -862,6 +862,14 @@ namespace sdk {
         });
     }
 
+    ecdsa_sig_t session::sign_hash(uint32_span_t path, byte_span_t hash)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->sign_hash(path, hash);
+        });
+    }
+
     nlohmann::json session::get_transaction_details(const std::string& txhash_hex)
     {
         return exception_wrapper([&] {

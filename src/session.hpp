@@ -154,6 +154,8 @@ namespace sdk {
 
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
+
         nlohmann::json get_fee_estimates();
 
         std::string get_mnemonic_passphrase(const std::string& password);

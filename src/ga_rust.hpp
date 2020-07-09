@@ -175,6 +175,8 @@ namespace sdk {
         std::string extract_confidential_address(const std::string& blinded_address);
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
+
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
         bool have_subaccounts() const;
