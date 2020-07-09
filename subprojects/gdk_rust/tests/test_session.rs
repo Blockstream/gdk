@@ -775,7 +775,7 @@ impl TestSession {
     }
 
     pub fn spv_verify_tx(&self, txid: &str, height: u32) {
-        let temp_dir =TempDir::new("electrum_integration_tests").unwrap();
+        let temp_dir = TempDir::new("electrum_integration_tests").unwrap();
         let temp_dir_str = format!("{}", &temp_dir.path().display());
 
         let param = SPVVerifyTx {

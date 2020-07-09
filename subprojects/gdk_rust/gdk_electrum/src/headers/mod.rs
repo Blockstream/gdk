@@ -1,15 +1,15 @@
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
-use ::bitcoin::hashes::{sha256d, Hash};
 use ::bitcoin::hashes::hex::FromHex;
+use ::bitcoin::hashes::{sha256d, Hash};
 use ::bitcoin::{TxMerkleNode, Txid};
 use electrum_client::GetMerkleRes;
-use std::io::Write;
-use gdk_common::model::{SPVVerifyTx, SPVVerifyResult};
+use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
 use gdk_common::NetworkId;
-use std::path::PathBuf;
 use log::info;
+use std::io::Write;
+use std::path::PathBuf;
 
 use crate::{determine_electrum_url_from_net, ClientWrap};
 
@@ -63,8 +63,12 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                 }
             } else {
                 let headers_to_download = input.headers_to_download.unwrap_or(2016).min(2016);
-                let headers = client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
-                chain.push(headers)?;
+                let headers =
+                    client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
+                if let Err(Error::InvalidHeaders) = chain.push(headers) {
+                    // handle reorgs
+                    chain.remove(144)?;
+                }
                 Ok(SPVVerifyResult::CallMeAgain)
             }
         }
@@ -72,7 +76,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             let proof = client.transaction_get_merkle(&txid, input.height as usize)?;
             let verifier = Verifier::new(elements_network);
             let header_bytes = client.block_header_raw(input.height as usize)?;
-            let header : elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
+            let header: elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
             if verifier.verify_tx_proof(&txid, proof, &header).is_ok() {
                 Ok(SPVVerifyResult::Verified)
             } else {
@@ -80,5 +84,4 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             }
         }
     }
-
 }

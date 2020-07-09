@@ -37,8 +37,6 @@ fn bitcoin() {
     test_session.spv_verify_tx(&txid, 102);
 
     test_session.stop();
-
-
 }
 
 #[test]

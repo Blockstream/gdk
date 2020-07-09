@@ -74,17 +74,14 @@ impl HeadersChain {
 
     /// to handle reorgs, it's necessary to remove some of the last headers
     pub fn remove(&mut self, headers_to_remove: u32) -> Result<(), Error> {
-        if self.height > headers_to_remove {
-            let new_height = self.height - headers_to_remove;
-            let new_size = (new_height + 1) as u64 * 80;
-            let file = OpenOptions::new().write(true).open(&self.path)?;
-            self.last = self.get(new_height)?;
-            self.height = new_height;
-            file.set_len(new_size)?;
-            Ok(())
-        } else {
-            Err(Error::Generic("Cannot remove more headers than what I have".into()))
-        }
+        let headers_to_remove = headers_to_remove.min(self.height - 1);
+        let new_height = self.height - headers_to_remove;
+        let new_size = (new_height + 1) as u64 * 80;
+        let file = OpenOptions::new().write(true).open(&self.path)?;
+        self.last = self.get(new_height)?;
+        self.height = new_height;
+        file.set_len(new_size)?;
+        Ok(())
     }
 
     pub fn tip(&self) -> BlockHeader {
