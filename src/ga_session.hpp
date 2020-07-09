@@ -195,7 +195,7 @@ namespace sdk {
         nlohmann::json get_cached_subaccount(uint32_t subaccount) const;
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         uint32_t get_next_subaccount();
-        nlohmann::json create_subaccount(const nlohmann::json& details);
+        nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);

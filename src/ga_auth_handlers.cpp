@@ -10,6 +10,7 @@
 #include "logging.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
+#include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
 namespace ga {
@@ -440,28 +441,57 @@ namespace sdk {
         if (m_session.is_liquid() && details.at("type") == "2of2_no_recovery") {
             m_remaining_ca_addrs = INITIAL_UPLOAD_CA;
         }
+        try {
+            m_subaccount = session.get_next_subaccount();
+        } catch (const std::exception& e) {
+            set_error(e.what());
+            return;
+        }
 
         if (m_hw_device.empty()) {
             m_state = state_type::make_call;
         } else {
-            try {
-                m_state = state_type::resolve_code;
-                m_subaccount = session.get_next_subaccount();
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+            m_state = state_type::resolve_code;
+            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
 
-                std::vector<nlohmann::json> paths;
-                paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
-                m_twofactor_data["paths"] = paths;
-            } catch (const std::exception& e) {
-                set_error(e.what());
-            }
+            std::vector<nlohmann::json> paths;
+            paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
+            m_twofactor_data["paths"] = paths;
         }
     }
 
     auth_handler::state_type create_subaccount_call::call_impl()
     {
+        const std::string type = m_details.at("type");
+        std::string recovery_mnemonic = json_get_value(m_details, "recovery_mnemonic");
+        std::string recovery_bip32_xpub = json_get_value(m_details, "recovery_xpub");
+
+        if (type == "2of3") {
+            // The user can provide a recovery mnemonic or bip32 xpub; if not,
+            // we generate and return a mnemonic for them.
+            if (recovery_bip32_xpub.empty()) {
+                if (recovery_mnemonic.empty()) {
+                    recovery_mnemonic = bip39_mnemonic_from_bytes(get_random_bytes<32>());
+                }
+
+                software_signer subsigner(m_session.get_network_parameters(), recovery_mnemonic);
+                const uint32_t mnemonic_path[2] = { harden(3), harden(m_subaccount) };
+                recovery_bip32_xpub = subsigner.get_bip32_xpub(mnemonic_path);
+
+                m_details["recovery_mnemonic"] = recovery_mnemonic;
+                m_details["recovery_xpub"] = recovery_bip32_xpub;
+            }
+        }
+
         if (m_hw_device.empty()) {
-            m_result = m_session.create_subaccount(m_details);
+            if (type == "2of3") {
+                // sign recovery key with login key
+                const auto message = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
+                const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
+                m_details["recovery_key_sig"] = b2h(m_session.sign_hash(LOGIN_PATH, message_hash));
+            }
+
+            m_result = m_session.create_subaccount(m_details, m_subaccount);
 
             // generate the conf addrs if required
             while (m_remaining_ca_addrs > 0) {
@@ -473,11 +503,21 @@ namespace sdk {
                 m_remaining_ca_addrs--;
             }
         } else {
+            const nlohmann::json args = nlohmann::json::parse(m_code);
             if (m_action == "get_xpubs") {
-                const nlohmann::json args = nlohmann::json::parse(m_code);
-                m_result = m_session.create_subaccount(m_details, m_subaccount, args.at("xpubs").at(0));
+                m_subaccount_xpub = args.at("xpubs").at(0);
+                if (type == "2of3") {
+                    // ask the caller to sign recovery key with login key
+                    set_data("sign_message");
+                    m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
+                    m_twofactor_data["path"] = LOGIN_PATH;
+                    return state_type::resolve_code;
+                }
+                m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
+            } else if (m_action == "sign_message") {
+                m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
+                m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
             } else if (m_action == "get_receive_address") {
-                const nlohmann::json args = nlohmann::json::parse(m_code);
                 const auto pub_blinding_key = args["blinding_key"];
 
                 m_ca_addrs.emplace_back(

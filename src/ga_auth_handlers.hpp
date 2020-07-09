@@ -54,6 +54,9 @@ namespace sdk {
         nlohmann::json m_details;
         uint32_t m_subaccount;
 
+        // used by 2of3 subaccounts
+        std::string m_subaccount_xpub;
+
         // used when a new authorized-assets-enabled subaccount is created
         std::vector<std::string> m_ca_addrs;
         uint32_t m_remaining_ca_addrs;

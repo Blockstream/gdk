@@ -1949,9 +1949,8 @@ namespace sdk {
         return subaccount;
     }
 
-    nlohmann::json ga_session::create_subaccount(const nlohmann::json& details)
+    nlohmann::json ga_session::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
     {
-        const uint32_t subaccount = get_next_subaccount();
         const uint32_t path[2] = { harden(3), harden(subaccount) };
 
         const auto xpub = [this, &path] {
@@ -1966,44 +1965,30 @@ namespace sdk {
     {
         const std::string name = details.at("name");
         const std::string type = details.at("type");
-        std::string recovery_mnemonic;
+        std::string recovery_mnemonic = json_get_value(details, "recovery_mnemonic");
+        std::string recovery_bip32_xpub = json_get_value(details, "recovery_xpub");
         std::string recovery_pub_key;
         std::string recovery_chain_code;
-        std::string recovery_bip32_xpub;
 
         std::vector<std::string> xpubs{ { xpub } };
+        std::vector<std::string> sigs{ { std::string() } };
 
         GDK_RUNTIME_ASSERT(subaccount < 16384u); // Disallow more than 16k subaccounts
 
         if (type == "2of3") {
-            // The user can provide a recovery mnemonic or bip32 xpub; if not,
-            // we generate and return a mnemonic for them.
-            std::string mnemonic_or_xpub = json_get_value(details, "recovery_xpub");
-            if (mnemonic_or_xpub.empty()) {
-                recovery_mnemonic = json_get_value(details, "recovery_mnemonic");
-                if (recovery_mnemonic.empty()) {
-                    recovery_mnemonic = bip39_mnemonic_from_bytes(get_random_bytes<32>());
-                }
-                mnemonic_or_xpub = recovery_mnemonic;
-            }
+            xpubs.emplace_back(recovery_bip32_xpub);
+            sigs.emplace_back(details.at("recovery_key_sig"));
 
-            software_signer subsigner(m_net_params, mnemonic_or_xpub);
-
-            const uint32_t mnemonic_path[2] = { harden(3), harden(subaccount) };
-            const auto path = recovery_mnemonic.empty() ? empty_span<uint32_t>() : mnemonic_path;
-            xpubs.emplace_back(subsigner.get_bip32_xpub(path));
-            const auto recovery_xpub = subsigner.get_xpub(path);
-
+            const xpub_t recovery_xpub = make_xpub(recovery_bip32_xpub);
             recovery_chain_code = b2h(recovery_xpub.first);
             recovery_pub_key = b2h(recovery_xpub.second);
-            recovery_bip32_xpub = subsigner.get_bip32_xpub(path);
         }
 
         std::string receiving_id;
         {
             wamp_call(
                 [&receiving_id](wamp_call_result result) { receiving_id = result.get().argument<std::string>(0); },
-                "com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs);
+                "com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs);
         }
 
         locker_t locker(m_mutex);

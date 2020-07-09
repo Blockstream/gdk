@@ -200,7 +200,7 @@ namespace sdk {
     }
 
     uint32_t ga_rust::get_next_subaccount() { throw std::runtime_error("get_next_subaccount not implemented"); }
-    nlohmann::json ga_rust::create_subaccount(const nlohmann::json& details)
+    nlohmann::json ga_rust::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
     {
         throw std::runtime_error("create_subaccount not implemented");
     }
