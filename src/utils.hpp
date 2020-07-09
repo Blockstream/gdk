@@ -73,6 +73,8 @@ namespace sdk {
     nlohmann::json parse_url(const std::string& url);
     nlohmann::json select_url(const std::vector<nlohmann::json>& urls, bool use_tor);
 
+    std::string format_recovery_key_message(const std::string& xpub, uint32_t subaccount, uint32_t version = 0);
+
     // Mnemonic handling
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);

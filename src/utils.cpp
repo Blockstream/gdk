@@ -402,6 +402,13 @@ namespace sdk {
 
         return retval;
     }
+
+    std::string format_recovery_key_message(const std::string& xpub, uint32_t subaccount, uint32_t version)
+    {
+        GDK_RUNTIME_ASSERT(version == 0);
+        return std::string("greenaddress.it      2of3 v") + std::to_string(version) + ' ' + xpub + ' '
+            + std::to_string(subaccount);
+    }
 } // namespace sdk
 } // namespace ga
 
