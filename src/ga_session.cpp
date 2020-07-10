@@ -1117,7 +1117,9 @@ namespace sdk {
         cleanup_appearance_settings(locker, appearance);
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
-        m_nlocktime = m_login_data["nlocktime_blocks"];
+        if (!m_watch_only) {
+            m_nlocktime = m_login_data["nlocktime_blocks"];
+        }
 
         // Notify the caller of their settings
         if (m_notification_handler != nullptr) {
@@ -1538,7 +1540,9 @@ namespace sdk {
 
         settings["pricing"]["currency"] = m_fiat_currency;
         settings["pricing"]["exchange"] = m_fiat_source;
-        settings["nlocktime"] = m_nlocktime;
+        if (!m_watch_only) {
+            settings["nlocktime"] = m_nlocktime;
+        }
 
         return settings;
     }
