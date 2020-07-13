@@ -83,6 +83,11 @@ namespace sdk {
         // Return a gait path for registration. xpub must be the users m/0x4741' path.
         static std::array<unsigned char, HMAC_SHA512_LEN> get_gait_path_bytes(const xpub_t& xpub);
 
+        // Return true if the given gait path was derived with one of the
+        // methods supported by garecovery.
+        static bool verify_gait_path(const std::string& gait_path, const xpub_t& gait_xpub, const xpub_t& root_xpub,
+            const std::string& mnemonic);
+
         xpub_hdkey get_subaccount(uint32_t subaccount) override;
 
     private:

@@ -10,6 +10,8 @@ namespace sdk {
         static const uint32_t GAIT_GENERATION_PATH = harden(0x4741); // 'GA'
         static const unsigned char GAIT_GENERATION_NONCE[30] = { 'G', 'r', 'e', 'e', 'n', 'A', 'd', 'd', 'r', 'e', 's',
             's', '.', 'i', 't', ' ', 'H', 'D', ' ', 'w', 'a', 'l', 'l', 'e', 't', ' ', 'p', 'a', 't', 'h' };
+        static const unsigned char GAIT_GENERATION_NONCE_MNEMONIC[17]
+            = { 'g', 'r', 'e', 'e', 'n', 'a', 'd', 'd', 'r', 'e', 's', 's', '_', 'p', 'a', 't', 'h' };
     } // namespace
 
     xpub_hdkey::xpub_hdkey(bool is_main_net, const xpub_t& xpub, gsl::span<const uint32_t> path)
@@ -88,6 +90,33 @@ namespace sdk {
         std::array<unsigned char, sizeof(chain_code_t) + sizeof(pub_key_t)> path_data;
         init_container(path_data, xpub.first, xpub.second);
         return hmac_sha512(GAIT_GENERATION_NONCE, path_data);
+    }
+
+    bool ga_pubkeys::verify_gait_path(
+        const std::string& gait_path, const xpub_t& gait_xpub, const xpub_t& root_xpub, const std::string& mnemonic)
+    {
+        if (gait_path == b2h(get_gait_path_bytes(gait_xpub))) {
+            return true;
+        }
+
+        if (gait_path == b2h(get_gait_path_bytes(root_xpub))) {
+            return true;
+        }
+
+        std::array<unsigned char, sizeof(chain_code_t) + sizeof(pub_key_t)> path_data;
+        init_container(path_data, gait_xpub.first, gait_xpub.second);
+        if (gait_path == b2h(hmac_sha512(GAIT_GENERATION_NONCE, ustring_span(b2h(path_data))))) {
+            return true;
+        }
+
+        if (!mnemonic.empty()) {
+            const auto derived512 = pbkdf2_hmac_sha512(ustring_span(mnemonic), GAIT_GENERATION_NONCE_MNEMONIC, 2048);
+            if (gait_path == b2h(hmac_sha512(GAIT_GENERATION_NONCE, derived512))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     ga_user_pubkeys::ga_user_pubkeys(const network_parameters& net_params)
