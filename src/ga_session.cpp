@@ -1415,22 +1415,31 @@ namespace sdk {
     }
 
     void ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& gait_xpub_bip32, const std::string& root_xpub_bip32, const std::string& device_id,
+        const nlohmann::json& hw_device)
     {
         locker_t locker(m_mutex);
-        authenticate(locker, sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
+        authenticate(locker, sig_der_hex, path_hex, gait_xpub_bip32, root_xpub_bip32, device_id, hw_device);
     }
 
     void ga_session::authenticate(ga_session::locker_t& locker, const std::string& sig_der_hex,
-        const std::string& path_hex, const std::string& root_xpub_bip32, const std::string& device_id,
-        const nlohmann::json& hw_device)
+        const std::string& path_hex, const std::string& gait_xpub_bip32, const std::string& root_xpub_bip32,
+        const std::string& device_id, const nlohmann::json& hw_device)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        xpub_t gait_xpub;
+        xpub_t root_xpub;
 
         if (m_signer == nullptr) {
             GDK_LOG_SEV(log_level::debug) << "authenticate called for hardware device";
             // Logging in with a hardware wallet; create our proxy signer
             m_signer = std::make_unique<hardware_signer>(m_net_params, hw_device);
+            gait_xpub = make_xpub(gait_xpub_bip32);
+            root_xpub = make_xpub(root_xpub_bip32);
+        } else {
+            gait_xpub = get_signer().get_xpub(ga_pubkeys::get_gait_generation_path());
+            root_xpub = get_signer().get_xpub();
         }
 
         // TODO: If no device id is given, generate one, update our settings and
@@ -1450,6 +1459,8 @@ namespace sdk {
         }
         constexpr bool watch_only = false;
         update_login_data(locker, login_data, root_xpub_bip32, watch_only);
+
+        GDK_RUNTIME_ASSERT(ga_pubkeys::verify_gait_path(login_data["gait_path"], gait_xpub, root_xpub, m_mnemonic));
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
@@ -1554,8 +1565,8 @@ namespace sdk {
         const auto hexder_path = sign_challenge(locker, challenge);
         m_mnemonic = mnemonic;
 
-        authenticate(
-            locker, hexder_path.first, hexder_path.second, std::string(), std::string(), nlohmann::json::object());
+        authenticate(locker, hexder_path.first, hexder_path.second, std::string(), std::string(), std::string(),
+            nlohmann::json::object());
     }
 
     nlohmann::json ga_session::get_settings()

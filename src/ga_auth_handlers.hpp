@@ -27,6 +27,7 @@ namespace sdk {
         std::string m_challenge;
         std::string m_mnemonic;
         std::string m_master_xpub_bip32;
+        std::string m_gait_xpub_bip32;
         std::string m_password;
 
         // used for 2of2_no_recovery
