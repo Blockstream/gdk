@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate serde_json;
 
+#[macro_use]
+extern crate lazy_static;
+
 use log::{debug, info, trace, warn};
 use serde_json::Value;
 

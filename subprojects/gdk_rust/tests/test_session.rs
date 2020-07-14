@@ -793,6 +793,13 @@ impl TestSession {
                 _ => assert!(false),
             }
         }
+
+        // second should verify immediately, (and also hit cache)
+        assert!(matches!(
+            gdk_electrum::headers::spv_verify_tx(&param),
+            Ok(SPVVerifyResult::Verified)
+        ));
+
     }
 
     /// stop the bitcoin node in the test session

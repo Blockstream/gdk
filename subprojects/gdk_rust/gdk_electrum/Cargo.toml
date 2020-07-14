@@ -25,6 +25,7 @@ block-modes = "0.3.3"
 aes = "0.3.2"
 tempdir = "0.3.7"
 secp256k1 = { version = "0.17.1", features = [ "recovery", "rand"] }
+lazy_static = "1.4.0"
 
 [dependencies.bitcoin]
 version = "0.23"  # remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature

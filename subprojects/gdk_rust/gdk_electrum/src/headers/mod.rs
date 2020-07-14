@@ -10,6 +10,7 @@ use gdk_common::NetworkId;
 use log::info;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use crate::{determine_electrum_url_from_net, ClientWrap};
 
@@ -42,9 +43,23 @@ fn compute_merkle_root(txid: &Txid, merkle: GetMerkleRes) -> Result<TxMerkleNode
     Ok(TxMerkleNode::from_slice(&current)?)
 }
 
+lazy_static! {
+    static ref SPV_MUTEX: Mutex<()> = Mutex::new(());
+}
+
 pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
+    let _ = SPV_MUTEX.lock().unwrap();
+
     info!("spv_verify_tx {:?}", input);
+
     let txid = Txid::from_hex(&input.txid)?;
+
+    let cache: VerifiedCache = VerifiedCache::new(&input.path, input.network.id())?;
+    if cache.contains(&txid)? {
+        info!("verified cache hit for {}", txid);
+        return Ok(SPVVerifyResult::Verified);
+    }
+
     let url = determine_electrum_url_from_net(&input.network)?;
     let mut client = ClientWrap::new(url)?;
 
@@ -58,6 +73,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                 info!("chain height enough to verify, downloading proof");
                 let proof = client.transaction_get_merkle(&txid, input.height as usize)?;
                 if chain.verify_tx_proof(&txid, input.height, proof).is_ok() {
+                    cache.write(&txid)?;
                     Ok(SPVVerifyResult::Verified)
                 } else {
                     Ok(SPVVerifyResult::NotVerified)
@@ -80,10 +96,32 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             let header_bytes = client.block_header_raw(input.height as usize)?;
             let header: elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
             if verifier.verify_tx_proof(&txid, proof, &header).is_ok() {
+                cache.write(&txid)?;
                 Ok(SPVVerifyResult::Verified)
             } else {
                 Ok(SPVVerifyResult::NotVerified)
             }
         }
+    }
+}
+
+struct VerifiedCache {
+    db: sled::Db,
+}
+
+impl VerifiedCache {
+    fn new(path: &str, network: NetworkId) -> Result<Self, Error> {
+        let mut path: PathBuf = (path).into();
+        path.push(format!("verified_cache_{:?}", network));
+        let db = sled::open(path)?;
+        Ok(VerifiedCache { db })
+    }
+
+    fn contains(&self, txid: &Txid) -> Result<bool, Error> {
+        Ok(self.db.contains_key(&txid )?)
+    }
+
+    fn write(&self, txid: &Txid) -> Result<(), Error> {
+        Ok(self.db.insert(&txid, &[]).map(|_| ())?)
     }
 }
