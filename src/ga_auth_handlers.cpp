@@ -732,7 +732,7 @@ namespace sdk {
         try {
             m_tx = m_session.create_transaction(details);
             m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", m_tx } };
-            if (m_session.is_liquid()) {
+            if (m_session.is_liquid() && m_session.hw_liquid_support() != liquid_support_level::full) {
                 m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
             }
         } catch (const std::exception& e) {
