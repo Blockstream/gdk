@@ -19,6 +19,7 @@
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
+#include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
@@ -2243,7 +2244,10 @@ namespace sdk {
 
         std::vector<nlohmann::json> tx_list = get_raw_transactions(subaccount, first, count);
 
+        const auto datadir = gdk_config().value("datadir", std::string{});
+        const auto path = datadir + "/state";
         const auto is_liquid = m_net_params.liquid();
+        auto is_cached = true;
         for (auto& tx_details : tx_list) {
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
             // TODO: Server should set subaccount to null if this is a spend from multiple subaccounts
@@ -2411,6 +2415,28 @@ namespace sdk {
                 tx_details["can_cpfp"] = false;
             }
 
+            tx_details["spv_verified"] = false;
+            if (!datadir.empty() && is_cached) {
+                const nlohmann::json verify_params
+                    = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] }, { "path", path },
+                          { "network", m_net_params.get_json() } };
+
+                const auto verify_result = spv_verify_tx(verify_params);
+                GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;
+                if (verify_result == 1) {
+                    tx_details["spv_verified"] = true;
+                } else {
+                    is_cached = false; // only one blocking header download call per cycle
+                    asio::post(m_pool, [verify_params] {
+                        while (true) {
+                            const auto verify_result = spv_verify_tx(verify_params);
+                            if (verify_result != 0) {
+                                break;
+                            }
+                        }
+                    });
+                }
+            }
             tx_details["addressees"] = addressees;
             tx_details["user_signed"] = true;
             tx_details["server_signed"] = true;

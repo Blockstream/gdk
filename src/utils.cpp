@@ -19,6 +19,7 @@
 
 #include "assertion.hpp"
 #include "exception.hpp"
+#include "ga_rust.hpp"
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
@@ -159,6 +160,12 @@ namespace sdk {
         std::copy(hashed.begin(), hashed.begin() + siz, static_cast<unsigned char*>(output_bytes));
 
         wally_bzero(hashed.data(), hashed.size());
+    }
+
+    int32_t spv_verify_tx(const nlohmann::json& details)
+    {
+        auto rustinput = gdkrust_json(details).get();
+        return GDKRUST_spv_verify_tx(rustinput);
     }
 
     uint32_t get_uniform_uint32_t(uint32_t upper_bound)

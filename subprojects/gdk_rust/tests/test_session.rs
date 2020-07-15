@@ -799,7 +799,6 @@ impl TestSession {
             gdk_electrum::headers::spv_verify_tx(&param),
             Ok(SPVVerifyResult::Verified)
         ));
-
     }
 
     /// stop the bitcoin node in the test session

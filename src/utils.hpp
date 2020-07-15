@@ -26,6 +26,8 @@ namespace sdk {
     // Return a uint32_t in the range 0 to (upper_bound - 1) without bias
     uint32_t get_uniform_uint32_t(uint32_t upper_bound);
 
+    int32_t spv_verify_tx(const nlohmann::json& details);
+
     // STL compatible RNG returning uniform uint32_t's
     struct uniform_uint32_rng {
         uniform_uint32_rng() // NOLINT: ignored for valgrind use

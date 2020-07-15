@@ -465,13 +465,15 @@ pub extern "C" fn GDKRUST_spv_verify_tx(input: *const GDKRUST_json) -> i32 {
     init_logging();
     info!("GDKRUST_spv_verify_tx");
     let input: &Value = &safe_ref!(input).0;
-    info!("GDKRUST_spv_verify_tx {:?}", input);
-    let input: SPVVerifyTx = serde_json::from_value(input.clone()).unwrap();
-    match gdk_electrum::headers::spv_verify_tx(&input) {
-        Ok(res) => {
-            info!("GDKRUST_spv_verify_tx returns {:?}", res);
-            res.as_i32()
+    let input: SPVVerifyTx = match serde_json::from_value(input.clone()) {
+        Ok(val) => val,
+        Err(e) => {
+            warn!("{:?}", e);
+            return -1;
         }
+    };
+    match gdk_electrum::headers::spv_verify_tx(&input) {
+        Ok(res) => res.as_i32(),
         Err(e) => {
             warn!("{:?}", e);
             -1

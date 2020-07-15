@@ -70,7 +70,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             let mut chain = HeadersChain::new(path, bitcoin_network)?;
 
             if input.height < chain.height() {
-                info!("chain height enough to verify, downloading proof");
+                info!("chain height ({}) enough to verify, downloading proof", chain.height());
                 let proof = client.transaction_get_merkle(&txid, input.height as usize)?;
                 if chain.verify_tx_proof(&txid, input.height, proof).is_ok() {
                     cache.write(&txid)?;
@@ -79,7 +79,10 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                     Ok(SPVVerifyResult::NotVerified)
                 }
             } else {
-                info!("chain height not enough to verify, downloading 2016 headers");
+                info!(
+                    "chain height ({}) not enough to verify, downloading 2016 headers",
+                    chain.height()
+                );
                 let headers_to_download = input.headers_to_download.unwrap_or(2016).min(2016);
                 let headers =
                     client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
@@ -114,11 +117,13 @@ impl VerifiedCache {
         let mut path: PathBuf = (path).into();
         path.push(format!("verified_cache_{:?}", network));
         let db = sled::open(path)?;
-        Ok(VerifiedCache { db })
+        Ok(VerifiedCache {
+            db,
+        })
     }
 
     fn contains(&self, txid: &Txid) -> Result<bool, Error> {
-        Ok(self.db.contains_key(&txid )?)
+        Ok(self.db.contains_key(&txid)?)
     }
 
     fn write(&self, txid: &Txid) -> Result<(), Error> {
