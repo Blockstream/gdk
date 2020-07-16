@@ -24,7 +24,7 @@ pub enum Error {
     JSON(serde_json::error::Error),
     StdIOError(std::io::Error),
     Hex(hex::FromHexError),
-    ClientError(electrum_client::types::Error),
+    ClientError(electrum_client::Error),
     SliceConversionError(std::array::TryFromSliceError),
     ElementsEncode(elements::encode::Error),
     Common(gdk_common::error::Error),
@@ -132,8 +132,8 @@ impl std::convert::From<hex::FromHexError> for Error {
     }
 }
 
-impl std::convert::From<electrum_client::types::Error> for Error {
-    fn from(err: electrum_client::types::Error) -> Self {
+impl std::convert::From<electrum_client::Error> for Error {
+    fn from(err: electrum_client::Error) -> Self {
         Error::ClientError(err)
     }
 }

@@ -17,7 +17,6 @@ use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Txid;
-pub use electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream};
 use sled::Batch;
 
 use electrum_client::GetHistoryRes;
@@ -46,6 +45,8 @@ use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
+use electrum_client::raw_client::{ElectrumPlaintextStream, ElectrumSslStream, RawClient};
+use electrum_client::ElectrumApi;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::thread::JoinHandle;
@@ -107,19 +108,19 @@ impl HeadersKind {
 }
 
 pub enum ClientWrap {
-    Plain(electrum_client::Client<ElectrumPlaintextStream>),
-    Tls(electrum_client::Client<ElectrumSslStream>),
+    Plain(RawClient<ElectrumPlaintextStream>),
+    Tls(RawClient<ElectrumSslStream>),
 }
 
 impl ClientWrap {
     pub fn new(url: ElectrumUrl) -> Result<Self, Error> {
         match url {
             ElectrumUrl::Tls(url, validate) => {
-                let client = electrum_client::Client::new_ssl(url.as_str(), validate)?;
+                let client = RawClient::new_ssl(url.as_str(), validate)?;
                 Ok(ClientWrap::Tls(client))
             }
             ElectrumUrl::Plaintext(url) => {
-                let client = electrum_client::Client::new(&url)?;
+                let client = RawClient::new(&url)?;
                 Ok(ClientWrap::Plain(client))
             }
         }
@@ -152,29 +153,25 @@ impl ClientWrap {
 
 pub struct Syncer<S: Read + Write> {
     pub db: Forest,
-    pub client: electrum_client::Client<S>,
+    pub client: RawClient<S>,
     pub master_blinding: Option<MasterBlindingKey>,
     pub network: Network,
 }
 
 pub struct Tipper<S: Read + Write> {
     pub db: Forest,
-    pub client: electrum_client::Client<S>,
+    pub client: RawClient<S>,
     pub network: Network,
 }
 
 pub struct Headers<S: Read + Write> {
     pub db: Forest,
-    pub client: electrum_client::Client<S>,
+    pub client: RawClient<S>,
     pub checker: ChainOrVerifier,
 }
 
 impl<S: Read + Write> Tipper<S> {
-    pub fn new(
-        db: Forest,
-        client: electrum_client::Client<S>,
-        network: Network,
-    ) -> Result<Self, Error> {
+    pub fn new(db: Forest, client: RawClient<S>, network: Network) -> Result<Self, Error> {
         Ok(Tipper {
             db,
             client,
@@ -186,7 +183,7 @@ impl<S: Read + Write> Tipper<S> {
 impl<S: Read + Write> Syncer<S> {
     pub fn new(
         db: Forest,
-        client: electrum_client::Client<S>,
+        client: RawClient<S>,
         master_blinding: Option<MasterBlindingKey>,
         network: Network,
     ) -> Self {
@@ -200,11 +197,7 @@ impl<S: Read + Write> Syncer<S> {
 }
 
 impl<S: Read + Write> Headers<S> {
-    pub fn new(
-        db: Forest,
-        checker: ChainOrVerifier,
-        client: electrum_client::Client<S>,
-    ) -> Result<Self, Error> {
+    pub fn new(db: Forest, checker: ChainOrVerifier, client: RawClient<S>) -> Result<Self, Error> {
         Ok(Headers {
             db,
             checker,
@@ -539,7 +532,7 @@ impl Session<Error> for ElectrumSession {
 
         let mut headers_kind = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
-                let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                let client = RawClient::new_ssl(url.as_str(), *validate)?;
                 HeadersKind::Tls(
                     Headers::new(db.clone(), checker, client)?,
                     url.to_string(),
@@ -547,7 +540,7 @@ impl Session<Error> for ElectrumSession {
                 )
             }
             ElectrumUrl::Plaintext(url) => {
-                let client = electrum_client::Client::new(&url)?;
+                let client = RawClient::new(&url)?;
                 HeadersKind::Plain(Headers::new(db.clone(), checker, client)?, url.to_string())
             }
         };
@@ -611,7 +604,7 @@ impl Session<Error> for ElectrumSession {
 
         let mut syncer = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
-                let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                let client = RawClient::new_ssl(url.as_str(), *validate)?;
                 SyncerKind::Tls(
                     Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
                     url.to_string(),
@@ -619,7 +612,7 @@ impl Session<Error> for ElectrumSession {
                 )
             }
             ElectrumUrl::Plaintext(url) => {
-                let client = electrum_client::Client::new(&url)?;
+                let client = RawClient::new(&url)?;
                 SyncerKind::Plain(
                     Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
                     url.to_string(),
@@ -629,7 +622,7 @@ impl Session<Error> for ElectrumSession {
 
         let mut tipper = match &self.url {
             ElectrumUrl::Tls(url, validate) => {
-                let client = electrum_client::Client::new_ssl(url.as_str(), *validate)?;
+                let client = RawClient::new_ssl(url.as_str(), *validate)?;
                 TipperKind::Tls(
                     Tipper::new(db.clone(), client, self.network.clone())?,
                     url.to_string(),
@@ -637,7 +630,7 @@ impl Session<Error> for ElectrumSession {
                 )
             }
             ElectrumUrl::Plaintext(url) => {
-                let client = electrum_client::Client::new(&url)?;
+                let client = RawClient::new(&url)?;
                 TipperKind::Plain(
                     Tipper::new(db.clone(), client, self.network.clone())?,
                     url.to_string(),
@@ -685,25 +678,22 @@ impl Session<Error> for ElectrumSession {
                     Err(e) => {
                         warn!("exception in tipper {:?}", e);
                         match e {
-                            Error::ClientError(electrum_client::types::Error::JSON(_)) => {
+                            Error::ClientError(electrum_client::Error::JSON(_)) => {
                                 info!("tipper Client error, doing nothing")
                             }
                             _ => {
                                 warn!("trying to recreate died tipper client, {:?}", e);
                                 match &mut tipper {
                                     TipperKind::Plain(tipper, url) => {
-                                        if let Ok(client) =
-                                            electrum_client::Client::new(url.as_str())
-                                        {
+                                        if let Ok(client) = RawClient::new(url.as_str()) {
                                             info!("succesfully created new tipper client");
                                             tipper.client = client;
                                         }
                                     }
                                     TipperKind::Tls(tipper, url, validate) => {
-                                        if let Ok(client) = electrum_client::Client::new_ssl(
-                                            url.as_str(),
-                                            *validate,
-                                        ) {
+                                        if let Ok(client) =
+                                            RawClient::new_ssl(url.as_str(), *validate)
+                                        {
                                             info!("succesfully created new tipper client");
                                             tipper.client = client;
                                         }
@@ -736,15 +726,13 @@ impl Session<Error> for ElectrumSession {
                         warn!("trying to recreate died syncer client, {:?}", e);
                         match &mut syncer {
                             SyncerKind::Plain(syncer, url) => {
-                                if let Ok(client) = electrum_client::Client::new(url.as_str()) {
+                                if let Ok(client) = RawClient::new(url.as_str()) {
                                     info!("succesfully created new syncer client");
                                     syncer.client = client
                                 }
                             }
                             SyncerKind::Tls(syncer, url, validate) => {
-                                if let Ok(client) =
-                                    electrum_client::Client::new_ssl(url.as_str(), *validate)
-                                {
+                                if let Ok(client) = RawClient::new_ssl(url.as_str(), *validate) {
                                     info!("succesfully created new syncer client");
                                     syncer.client = client
                                 }
