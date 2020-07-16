@@ -344,6 +344,7 @@ namespace sdk {
         nlohmann::json get_settings(locker_t& locker) GDK_REQUIRES(m_mutex);
         void unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
         nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
+        std::vector<uint32_t> get_all_subaccount_pointers() const;
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);

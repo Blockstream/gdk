@@ -2473,6 +2473,17 @@ namespace sdk {
         return amount(v);
     }
 
+    std::vector<uint32_t> ga_session::get_all_subaccount_pointers() const
+    {
+        std::vector<uint32_t> pointers;
+
+        locker_t locker(m_mutex);
+        for (const auto& subaccount : m_subaccounts) {
+            pointers.push_back(subaccount.second["pointer"]);
+        }
+        return pointers;
+    }
+
     nlohmann::json ga_session::get_blinded_scripts(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_net_params.liquid());
@@ -2480,60 +2491,60 @@ namespace sdk {
         nlohmann::json answer = nlohmann::json::array();
         std::unordered_set<std::pair<std::string, std::string>, BlindingNoncesHash> no_dups;
 
-        // there's an hard-limit of 30 pages from the backend, see https://api.greenaddress.it/txs.html#get_list_v2
-        for (size_t page_id = 0; page_id < 30; ++page_id) {
-            nlohmann::json txs;
-
-            if (details.contains("subaccount") && details.at("subaccount").is_number()) {
-                wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-                    "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(),
-                    details.at("subaccount").get<uint32_t>());
-            } else {
-                // make sure it wasn't set OR it's "all" (the only other value supported)
-                GDK_RUNTIME_ASSERT(!details.contains("subaccount") || details.at("subaccount") == "all");
-
-                wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-                    "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(),
-                    std::string("all"));
+        // Get the wallet transactions from the tx list cache
+        std::vector<nlohmann::json> txs;
+        static constexpr uint32_t max_count = std::numeric_limits<uint32_t>::max();
+        const auto subaccount_p = details.find("subaccount");
+        if (subaccount_p != details.end()) {
+            // Only get txs for specified subaccount
+            txs = get_raw_transactions(*subaccount_p, 0, max_count);
+        } else {
+            // No subaccount specified - get transactions for all subaccounts
+            nlohmann::json sa_details = details;
+            const auto sa_pointers = get_all_subaccount_pointers();
+            for (const uint32_t sa_pointer : sa_pointers) {
+                const auto sa_txs = get_raw_transactions(sa_pointer, 0, max_count);
+                txs.insert(txs.end(), sa_txs.begin(), sa_txs.end());
             }
+        }
 
-            // lock to guard m_cache
-            locker_t locker(m_mutex);
+        // lock to guard m_cache
+        // Note that m_cache is not the same as the tx list cache
+        locker_t locker(m_mutex);
 
-            for (const auto& tx : txs.at("list")) {
-                for (const auto& ep : tx.at("eps")) {
-                    const auto txhash = h2b(tx.at("txhash"));
-                    const auto vout = ep["pt_idx"];
-                    if (m_cache.has_liquidoutput(txhash, vout)) {
-                        continue;
-                    }
+        for (const auto& tx : txs) {
 
-                    const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
-                    const std::string& nonce_commitment = json_get_value(ep, "nonce_commitment", std::string{});
-                    const std::string& script = json_get_value(ep, "script", std::string{});
-
-                    if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01") // unblinded
-                        || !json_get_value(ep, "is_relevant", false) // not relevant
-                        || nonce_commitment.empty() || script.empty()) {
-                        continue;
-                    }
-
-                    const auto map_key = std::make_pair(nonce_commitment, script);
-
-                    // don't ask for the same nonces multiple times
-                    if (no_dups.find(map_key) != no_dups.end()
-                        || m_cache.has_liquidblindingnonce(h2b(nonce_commitment), h2b(script))) {
-                        continue;
-                    }
-
-                    no_dups.insert(map_key);
-                    answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+            auto&& process_endpoint = [&](const auto& ep) GDK_REQUIRES(m_mutex) {
+                const auto txhash = h2b(tx.at("txhash"));
+                const auto vout = ep["pt_idx"];
+                if (m_cache.has_liquidoutput(txhash, vout)) {
+                    return;
                 }
-            }
 
-            // last page since there are less than 30 elements, backends defaults to that number
-            if (txs.at("list").size() < 30) {
-                break;
+                const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
+                const std::string& nonce_commitment = json_get_value(ep, "nonce_commitment", std::string{});
+                const std::string& script = json_get_value(ep, "script", std::string{});
+
+                if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01") // unblinded
+                    || !json_get_value(ep, "is_relevant", false) // not relevant
+                    || nonce_commitment.empty() || script.empty()) {
+                    return;
+                }
+
+                const auto map_key = std::make_pair(nonce_commitment, script);
+
+                // don't ask for the same nonces multiple times
+                if (no_dups.find(map_key) != no_dups.end()
+                    || m_cache.has_liquidblindingnonce(h2b(nonce_commitment), h2b(script))) {
+                    return;
+                }
+
+                no_dups.insert(map_key);
+                answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+            };
+
+            for (const auto& ep : tx.at("eps")) {
+                process_endpoint(ep);
             }
         }
 
