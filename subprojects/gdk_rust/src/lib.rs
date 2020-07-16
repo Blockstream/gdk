@@ -306,6 +306,7 @@ fn fetch_exchange_rates() -> Vec<Ticker> {
     {
         if let Value::Array(array) = result {
             if let Some(Value::Array(array)) = array.get(0) {
+                // using BIDPRICE https://docs.bitfinex.com/reference#rest-public-tickers
                 if let Some(rate) = array.get(1).and_then(|e| e.as_f64()) {
                     let pair = Pair::new(Currency::BTC, Currency::USD);
                     let ticker = Ticker {
