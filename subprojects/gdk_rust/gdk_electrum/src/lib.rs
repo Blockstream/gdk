@@ -23,7 +23,7 @@ use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Txid;
 use sled::Batch;
 
-use electrum_client::{GetHeadersRes, GetHistoryRes, GetMerkleRes};
+use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
@@ -51,11 +51,11 @@ use crate::headers::ChainOrVerifier;
 use crate::pin::PinManager;
 use aes::Aes256;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
-use electrum_client::raw_client::{ElectrumPlaintextStream, ElectrumSslStream, RawClient};
-use electrum_client::ElectrumApi;
 use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
+use electrum_client::raw_client::{ElectrumPlaintextStream, ElectrumSslStream, RawClient};
+use electrum_client::ElectrumApi;
 use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
@@ -117,79 +117,6 @@ impl HeadersKind {
             HeadersKind::Plain(s, _) => s.remove(headers),
             HeadersKind::Tls(s, _, _) => s.remove(headers),
         }
-    }
-}
-
-pub enum ClientWrap {
-    Plain(RawClient<ElectrumPlaintextStream>),
-    Tls(RawClient<ElectrumSslStream>),
-}
-
-impl ClientWrap {
-    pub fn new(url: ElectrumUrl) -> Result<Self, Error> {
-        match url {
-            ElectrumUrl::Tls(url, validate) => {
-                let client = RawClient::new_ssl(url.as_str(), validate)?;
-                Ok(ClientWrap::Tls(client))
-            }
-            ElectrumUrl::Plaintext(url) => {
-                let client = RawClient::new(&url)?;
-                Ok(ClientWrap::Plain(client))
-            }
-        }
-    }
-
-    pub fn batch_estimate_fee<I>(&mut self, numbers: I) -> Result<Vec<f64>, Error>
-    where
-        I: IntoIterator<Item = usize>,
-    {
-        Ok(match self {
-            ClientWrap::Plain(client) => client.batch_estimate_fee(numbers)?,
-            ClientWrap::Tls(client) => client.batch_estimate_fee(numbers)?,
-        })
-    }
-
-    pub fn relay_fee(&mut self) -> Result<f64, Error> {
-        Ok(match self {
-            ClientWrap::Plain(client) => client.relay_fee()?,
-            ClientWrap::Tls(client) => client.relay_fee()?,
-        })
-    }
-
-    pub fn transaction_broadcast_raw(&mut self, raw_tx: &[u8]) -> Result<Txid, Error> {
-        Ok(match self {
-            ClientWrap::Plain(client) => client.transaction_broadcast_raw(raw_tx)?,
-            ClientWrap::Tls(client) => client.transaction_broadcast_raw(raw_tx)?,
-        })
-    }
-
-    pub fn transaction_get_merkle(
-        &mut self,
-        txid: &Txid,
-        height: usize,
-    ) -> Result<GetMerkleRes, Error> {
-        Ok(match self {
-            ClientWrap::Plain(client) => client.transaction_get_merkle(txid, height)?,
-            ClientWrap::Tls(client) => client.transaction_get_merkle(txid, height)?,
-        })
-    }
-
-    pub fn block_headers(
-        &mut self,
-        start_height: usize,
-        count: usize,
-    ) -> Result<GetHeadersRes, Error> {
-        Ok(match self {
-            ClientWrap::Plain(client) => client.block_headers(start_height, count)?,
-            ClientWrap::Tls(client) => client.block_headers(start_height, count)?,
-        })
-    }
-
-    pub fn block_header_raw(&mut self, height: usize) -> Result<Vec<u8>, Error> {
-        Ok(match self {
-            ClientWrap::Plain(client) => client.block_header_raw(height)?,
-            ClientWrap::Tls(client) => client.block_header_raw(height)?,
-        })
     }
 }
 
@@ -365,7 +292,7 @@ impl ElectrumSession {
     }
 
     fn try_get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        let mut client = ClientWrap::new(self.url.clone())?;
+        let client = self.url.build_client()?;
         let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
         let blocks: Vec<usize> = (1..25).collect();
         // max is covering a rounding errors in production electrs which sometimes cause a fee
@@ -912,7 +839,7 @@ impl Session<Error> for ElectrumSession {
 
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
         info!("electrum send_transaction {:#?}", tx);
-        let mut client = ClientWrap::new(self.url.clone())?;
+        let client = self.url.build_client()?;
         let tx_bytes = hex::decode(&tx.hex)?;
         let txid = client.transaction_broadcast_raw(&tx_bytes)?;
         Ok(format!("{}", txid))
@@ -922,7 +849,7 @@ impl Session<Error> for ElectrumSession {
         let transaction = BETransaction::from_hex(&tx_hex, self.network.id())?;
 
         info!("broadcast_transaction {:#?}", transaction.txid());
-        let mut client = ClientWrap::new(self.url.clone())?;
+        let client = self.url.build_client()?;
         let hex = hex::decode(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
         Ok(format!("{}", txid))

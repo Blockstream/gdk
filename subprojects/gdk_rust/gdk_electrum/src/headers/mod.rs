@@ -4,6 +4,7 @@ use crate::headers::liquid::Verifier;
 use ::bitcoin::hashes::hex::FromHex;
 use ::bitcoin::hashes::{sha256d, Hash};
 use ::bitcoin::{TxMerkleNode, Txid};
+use electrum_client::ElectrumApi;
 use electrum_client::GetMerkleRes;
 use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
 use gdk_common::NetworkId;
@@ -12,7 +13,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use crate::{determine_electrum_url_from_net, ClientWrap};
+use crate::determine_electrum_url_from_net;
 
 pub mod bitcoin;
 pub mod liquid;
@@ -66,7 +67,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     }
 
     let url = determine_electrum_url_from_net(&input.network)?;
-    let mut client = ClientWrap::new(url)?;
+    let client = url.build_client()?;
 
     match input.network.id() {
         NetworkId::Bitcoin(bitcoin_network) => {
