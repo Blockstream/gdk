@@ -55,7 +55,7 @@ use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
 use electrum_client::raw_client::{ElectrumPlaintextStream, ElectrumSslStream, RawClient};
-use electrum_client::ElectrumApi;
+use electrum_client::{Client, ElectrumApi};
 use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
@@ -71,23 +71,9 @@ pub enum SyncerKind {
     Tls(Syncer<ElectrumSslStream>, String, bool),
 }
 
-pub enum TipperKind {
-    Plain(Tipper<ElectrumPlaintextStream>, String),
-    Tls(Tipper<ElectrumSslStream>, String, bool),
-}
-
 pub enum HeadersKind {
     Plain(Headers<ElectrumPlaintextStream>, String),
     Tls(Headers<ElectrumSslStream>, String, bool),
-}
-
-impl TipperKind {
-    pub fn tip(&mut self) -> Result<usize, Error> {
-        match self {
-            TipperKind::Plain(s, _) => s.tip(),
-            TipperKind::Tls(s, _, _) => s.tip(),
-        }
-    }
 }
 
 impl SyncerKind {
@@ -127,26 +113,17 @@ pub struct Syncer<S: Read + Write> {
     pub network: Network,
 }
 
-pub struct Tipper<S: Read + Write> {
+pub struct Tipper {
     pub db: Forest,
-    pub client: RawClient<S>,
+    pub client: Client,
     pub network: Network,
+    pub url: ElectrumUrl,
 }
 
 pub struct Headers<S: Read + Write> {
     pub db: Forest,
     pub client: RawClient<S>,
     pub checker: ChainOrVerifier,
-}
-
-impl<S: Read + Write> Tipper<S> {
-    pub fn new(db: Forest, client: RawClient<S>, network: Network) -> Result<Self, Error> {
-        Ok(Tipper {
-            db,
-            client,
-            network,
-        })
-    }
 }
 
 impl<S: Read + Write> Syncer<S> {
@@ -607,22 +584,11 @@ impl Session<Error> for ElectrumSession {
             }
         };
 
-        let mut tipper = match &self.url {
-            ElectrumUrl::Tls(url, validate) => {
-                let client = RawClient::new_ssl(url.as_str(), *validate)?;
-                TipperKind::Tls(
-                    Tipper::new(db.clone(), client, self.network.clone())?,
-                    url.to_string(),
-                    *validate,
-                )
-            }
-            ElectrumUrl::Plaintext(url) => {
-                let client = RawClient::new(&url)?;
-                TipperKind::Plain(
-                    Tipper::new(db.clone(), client, self.network.clone())?,
-                    url.to_string(),
-                )
-            }
+        let mut tipper = Tipper {
+            db: db.clone(),
+            network: self.network.clone(),
+            client: self.url.build_client()?,
+            url: self.url.clone(),
         };
 
         if self.wallet.is_none() {
@@ -670,22 +636,7 @@ impl Session<Error> for ElectrumSession {
                             }
                             _ => {
                                 warn!("trying to recreate died tipper client, {:?}", e);
-                                match &mut tipper {
-                                    TipperKind::Plain(tipper, url) => {
-                                        if let Ok(client) = RawClient::new(url.as_str()) {
-                                            info!("succesfully created new tipper client");
-                                            tipper.client = client;
-                                        }
-                                    }
-                                    TipperKind::Tls(tipper, url, validate) => {
-                                        if let Ok(client) =
-                                            RawClient::new_ssl(url.as_str(), *validate)
-                                        {
-                                            info!("succesfully created new tipper client");
-                                            tipper.client = client;
-                                        }
-                                    }
-                                }
+                                tipper.client = tipper.url.build_client().unwrap(); // TODO
                             }
                         }
                     }
@@ -921,8 +872,8 @@ impl Session<Error> for ElectrumSession {
     }
 }
 
-impl<S: Read + Write> Tipper<S> {
-    pub fn tip(&mut self) -> Result<usize, Error> {
+impl Tipper {
+    pub fn tip(&self) -> Result<usize, Error> {
         let header = self.client.block_headers_subscribe_raw()?;
         self.db.insert_tip(header.height as u32)?;
         Ok(header.height)
