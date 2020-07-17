@@ -18,10 +18,14 @@ pub mod bitcoin;
 pub mod liquid;
 
 pub enum ChainOrVerifier {
+    /// used for bitcoin networks
     Chain(HeadersChain),
+
+    /// used for elements networks
     Verifier(Verifier),
 }
 
+/// compute the merkle root from the merkle path of a tx in electrum format (note the hash.reverse())
 fn compute_merkle_root(txid: &Txid, merkle: GetMerkleRes) -> Result<TxMerkleNode, Error> {
     let mut pos = merkle.pos;
     let mut current = txid.into_inner();
@@ -47,6 +51,7 @@ lazy_static! {
     static ref SPV_MUTEX: Mutex<()> = Mutex::new(());
 }
 
+/// used to expose SPV functionality through C interface
 pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
@@ -112,6 +117,8 @@ struct VerifiedCache {
     db: sled::Db,
 }
 
+// TODO this cache expose informations about user's txs
+// TODO should probably be per wallet?
 impl VerifiedCache {
     fn new(path: &str, network: NetworkId) -> Result<Self, Error> {
         let mut path: PathBuf = (path).into();
