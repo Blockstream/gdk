@@ -66,23 +66,9 @@ use rand::thread_rng;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
-pub enum SyncerKind {
-    Plain(Syncer<ElectrumPlaintextStream>, String),
-    Tls(Syncer<ElectrumSslStream>, String, bool),
-}
-
 pub enum HeadersKind {
     Plain(Headers<ElectrumPlaintextStream>, String),
     Tls(Headers<ElectrumSslStream>, String, bool),
-}
-
-impl SyncerKind {
-    pub fn sync(&mut self) -> Result<bool, Error> {
-        match self {
-            SyncerKind::Plain(s, _) => s.sync(),
-            SyncerKind::Tls(s, _, _) => s.sync(),
-        }
-    }
 }
 
 impl HeadersKind {
@@ -106,11 +92,12 @@ impl HeadersKind {
     }
 }
 
-pub struct Syncer<S: Read + Write> {
+pub struct Syncer {
     pub db: Forest,
-    pub client: RawClient<S>,
+    pub client: Client,
     pub master_blinding: Option<MasterBlindingKey>,
     pub network: Network,
+    pub url: ElectrumUrl,
 }
 
 pub struct Tipper {
@@ -124,22 +111,6 @@ pub struct Headers<S: Read + Write> {
     pub db: Forest,
     pub client: RawClient<S>,
     pub checker: ChainOrVerifier,
-}
-
-impl<S: Read + Write> Syncer<S> {
-    pub fn new(
-        db: Forest,
-        client: RawClient<S>,
-        master_blinding: Option<MasterBlindingKey>,
-        network: Network,
-    ) -> Self {
-        Syncer {
-            db,
-            client,
-            master_blinding,
-            network,
-        }
-    }
 }
 
 impl<S: Read + Write> Headers<S> {
@@ -566,22 +537,12 @@ impl Session<Error> for ElectrumSession {
         });
         self.closer.handles.push(headers_handle);
 
-        let mut syncer = match &self.url {
-            ElectrumUrl::Tls(url, validate) => {
-                let client = RawClient::new_ssl(url.as_str(), *validate)?;
-                SyncerKind::Tls(
-                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
-                    url.to_string(),
-                    *validate,
-                )
-            }
-            ElectrumUrl::Plaintext(url) => {
-                let client = RawClient::new(&url)?;
-                SyncerKind::Plain(
-                    Syncer::new(db.clone(), client, master_blinding.clone(), self.network.clone()),
-                    url.to_string(),
-                )
-            }
+        let mut syncer = Syncer {
+            db: db.clone(),
+            client: self.url.build_client()?,
+            master_blinding: master_blinding.clone(),
+            network: self.network.clone(),
+            url: self.url.clone(),
         };
 
         let mut tipper = Tipper {
@@ -636,7 +597,9 @@ impl Session<Error> for ElectrumSession {
                             }
                             _ => {
                                 warn!("trying to recreate died tipper client, {:?}", e);
-                                tipper.client = tipper.url.build_client().unwrap(); // TODO
+                                if let Ok(client) = tipper.url.build_client() {
+                                    tipper.client = client;
+                                }
                             }
                         }
                     }
@@ -662,19 +625,8 @@ impl Session<Error> for ElectrumSession {
                     }
                     Err(e) => {
                         warn!("trying to recreate died syncer client, {:?}", e);
-                        match &mut syncer {
-                            SyncerKind::Plain(syncer, url) => {
-                                if let Ok(client) = RawClient::new(url.as_str()) {
-                                    info!("succesfully created new syncer client");
-                                    syncer.client = client
-                                }
-                            }
-                            SyncerKind::Tls(syncer, url, validate) => {
-                                if let Ok(client) = RawClient::new_ssl(url.as_str(), *validate) {
-                                    info!("succesfully created new syncer client");
-                                    syncer.client = client
-                                }
-                            }
+                        if let Ok(client) = syncer.url.build_client() {
+                            syncer.client = client;
                         }
                     }
                 };
@@ -932,7 +884,7 @@ impl<S: Read + Write> Headers<S> {
         Ok(())
     }
 }
-impl<S: Read + Write> Syncer<S> {
+impl Syncer {
     pub fn sync(&mut self) -> Result<bool, Error> {
         trace!("start sync");
         let start = Instant::now();
