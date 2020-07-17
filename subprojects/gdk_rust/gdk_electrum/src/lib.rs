@@ -38,7 +38,6 @@ use gdk_common::wally::{
 use elements::confidential::{self, Asset, Nonce};
 use gdk_common::{ElementsNetwork, NetworkId};
 use std::collections::{HashMap, HashSet};
-use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -54,7 +53,6 @@ use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
-use electrum_client::raw_client::{ElectrumPlaintextStream, ElectrumSslStream, RawClient};
 use electrum_client::{Client, ElectrumApi};
 use rand::thread_rng;
 use rand::Rng;
@@ -62,35 +60,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::thread::JoinHandle;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
-
-pub enum HeadersKind {
-    Plain(Headers<ElectrumPlaintextStream>, String),
-    Tls(Headers<ElectrumSslStream>, String, bool),
-}
-
-impl HeadersKind {
-    pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
-        match self {
-            HeadersKind::Plain(s, _) => s.ask(chunk_size),
-            HeadersKind::Tls(s, _, _) => s.ask(chunk_size),
-        }
-    }
-    pub fn get_proofs(&mut self) -> Result<usize, Error> {
-        match self {
-            HeadersKind::Plain(s, _) => s.get_proofs(),
-            HeadersKind::Tls(s, _, _) => s.get_proofs(),
-        }
-    }
-    pub fn remove(&mut self, headers: u32) -> Result<(), Error> {
-        match self {
-            HeadersKind::Plain(s, _) => s.remove(headers),
-            HeadersKind::Tls(s, _, _) => s.remove(headers),
-        }
-    }
-}
 
 pub struct Syncer {
     pub db: Forest,
@@ -107,20 +78,11 @@ pub struct Tipper {
     pub url: ElectrumUrl,
 }
 
-pub struct Headers<S: Read + Write> {
+pub struct Headers {
     pub db: Forest,
-    pub client: RawClient<S>,
+    pub client: Client,
     pub checker: ChainOrVerifier,
-}
-
-impl<S: Read + Write> Headers<S> {
-    pub fn new(db: Forest, checker: ChainOrVerifier, client: RawClient<S>) -> Result<Self, Error> {
-        Ok(Headers {
-            db,
-            checker,
-            client,
-        })
-    }
+    pub url: ElectrumUrl,
 }
 
 #[derive(Clone)]
@@ -465,20 +427,13 @@ impl Session<Error> for ElectrumSession {
             }
         };
 
-        let mut headers_kind = match &self.url {
-            ElectrumUrl::Tls(url, validate) => {
-                let client = RawClient::new_ssl(url.as_str(), *validate)?;
-                HeadersKind::Tls(
-                    Headers::new(db.clone(), checker, client)?,
-                    url.to_string(),
-                    *validate,
-                )
-            }
-            ElectrumUrl::Plaintext(url) => {
-                let client = RawClient::new(&url)?;
-                HeadersKind::Plain(Headers::new(db.clone(), checker, client)?, url.to_string())
-            }
+        let mut headers = Headers {
+            db: db.clone(),
+            client: self.url.build_client()?,
+            checker,
+            url: self.url.clone(),
         };
+
         let (close_headers, r) = channel();
         self.closer.senders.push(close_headers);
         let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
@@ -495,7 +450,7 @@ impl Session<Error> for ElectrumSession {
                         info!("closing headers thread");
                         break 'outer;
                     }
-                    match headers_kind.ask(chunk_size) {
+                    match headers.ask(chunk_size) {
                         Ok(headers_found) => {
                             if headers_found == 0 {
                                 chunk_size = 1;
@@ -506,7 +461,7 @@ impl Session<Error> for ElectrumSession {
                         }
                         Err(Error::InvalidHeaders) => {
                             // this should handle reorgs and also broke IO writes update
-                            if headers_kind.remove(144).is_err() {
+                            if headers.remove(144).is_err() {
                                 break;
                             }
                         }
@@ -525,7 +480,7 @@ impl Session<Error> for ElectrumSession {
                     };
                 }
 
-                match headers_kind.get_proofs() {
+                match headers.get_proofs() {
                     Ok(found) => {
                         if found > 0 {
                             info!("found proof {}", found)
@@ -832,7 +787,7 @@ impl Tipper {
     }
 }
 
-impl<S: Read + Write> Headers<S> {
+impl Headers {
     pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
         if let ChainOrVerifier::Chain(chain) = &mut self.checker {
             info!("asking headers, current height:{} chunk_size:{} ", chain.height(), chunk_size);
