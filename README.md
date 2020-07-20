@@ -33,7 +33,8 @@ Install rust dependencies:
 
   2. Install default rust toolchain: `rustup install 1.42.0`
 
-  3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu`
+  3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios
+x86_64-apple-ios`
 
 You may also need to change your PATH environment variable to add $HOME/Library/Python/3.6/bin
 
