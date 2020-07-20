@@ -269,7 +269,7 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
         export PATH=$XCODE_DEFAULT_PATH:$XCODE_IOS_PATH:$PATH_BASE
         export AR=ar
 
-        if [ \( $BUILD = "--iphonesim" \) ]; then
+        if [ \( $BUILD = "--iphonesim" \)  -a \( "$(sw_vers -productVersion)" = "10.15" \) ]; then
             export DYLD_ROOT_PATH=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
         fi
 
