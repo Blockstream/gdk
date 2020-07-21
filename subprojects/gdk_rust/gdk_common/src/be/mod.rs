@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 
 mod address;
 mod blockheader;
@@ -9,17 +9,17 @@ pub use address::*;
 use bitcoin::Script;
 pub use blockheader::*;
 pub use outpoint::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 pub use transaction::*;
+use serde::{Serialize, Deserialize};
+use bitcoin::util::bip32::{DerivationPath, ChildNumber};
+use std::str::FromStr;
 
 pub type AssetId = [u8; 32];  // TODO use elements::issuance::AssetId
 
 pub struct WalletData {
     pub utxos: Vec<(BEOutPoint, UTXOInfo)>,
-    pub all_txs: BETransactions,
     pub spent: HashSet<BEOutPoint>,
-    pub all_scripts: HashSet<Script>,
-    pub all_unblinded: HashMap<elements::OutPoint, Unblinded>,
 }
 
 #[derive(Debug)]
@@ -39,6 +39,7 @@ impl UTXOInfo {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Unblinded {
     pub asset: AssetId,
     pub abf: [u8; 32],
@@ -85,6 +86,50 @@ pub fn asset_to_hex(asset: &[u8]) -> String {
     let mut asset = asset.to_vec();
     asset.reverse();
     hex::encode(asset)
+}
+
+
+/// Other than limiting derivation to two levels, this is required because DerivationPath dosn't
+/// derive Hash, so it cannot be used as HashMap key
+#[derive(Debug, Hash, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct TwoLayerPath {
+    i: u32,
+    j: u32,
+}
+
+impl TwoLayerPath {
+    pub fn new(i:u32, j:u32) -> Self {
+        TwoLayerPath{i,j}
+    }
+}
+
+impl TryFrom<DerivationPath> for TwoLayerPath {
+    type Error = crate::error::Error;
+
+    fn try_from(value: DerivationPath) -> Result<Self, Self::Error> {
+        let vec: Vec<ChildNumber> = value.into();
+        if vec.len() != 2 {
+            return Err(crate::error::Error::Generic("azz".into()));
+        }
+        Ok(TwoLayerPath {
+            i: vec[0].into(),
+            j: vec[0].into(),
+        })
+    }
+}
+
+impl TryInto<DerivationPath> for TwoLayerPath {
+    type Error = crate::error::Error;
+
+    fn try_into(self) -> Result<DerivationPath, Self::Error> {
+        Ok(DerivationPath::from_str(&format!("m/{}/{}", self.i, self.j))?)
+    }
+}
+
+#[derive(Default)]
+pub struct ScriptBatch {
+    pub cached: bool,
+    pub value: Vec<(TwoLayerPath, Script)>,
 }
 
 #[cfg(test)]

@@ -52,7 +52,7 @@ rust_sources = [
   'gdk_common/src/scripts.rs',
 
   'gdk_electrum/Cargo.toml',
-  'gdk_electrum/src/db.rs',
+  'gdk_electrum/src/store.rs',
   'gdk_electrum/src/error.rs',
   'gdk_electrum/src/interface.rs',
   'gdk_electrum/src/lib.rs',

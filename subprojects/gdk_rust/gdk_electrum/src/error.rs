@@ -1,6 +1,9 @@
+use crate::store::StoreMeta;
+use aes_gcm_siv::aead;
 use serde::ser::Serialize;
 use std::convert::From;
 use std::fmt::Display;
+use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Debug)]
 pub enum Error {
@@ -16,7 +19,6 @@ pub enum Error {
     InvalidSubaccount(u32),
     SendAll,
     PinError,
-    DB(sled::Error),
     AddrParse(String),
     Bitcoin(bitcoin::util::Error),
     BitcoinHashes(bitcoin::hashes::error::Error),
@@ -49,7 +51,6 @@ impl Display for Error {
             Error::AssetEmpty => write!(f, "asset_tag cannot be empty in liquid"),
             Error::InvalidSubaccount(sub) => write!(f, "invalid subaccount {}", sub),
             Error::UnknownCall => write!(f, "unknown call"),
-            Error::DB(ref dberr) => write!(f, "bitcoin: {}", dberr),
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
             Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),
             Error::BitcoinBIP32Error(ref bip32err) => write!(f, "bip32: {}", bip32err),
@@ -100,97 +101,121 @@ impl From<serde_json::error::Error> for Error {
     }
 }
 
-impl std::convert::From<bitcoin::util::bip32::Error> for Error {
+impl From<bitcoin::util::bip32::Error> for Error {
     fn from(err: bitcoin::util::bip32::Error) -> Self {
         Error::BitcoinBIP32Error(err)
     }
 }
 
-impl std::convert::From<String> for Error {
+impl From<String> for Error {
     fn from(err: String) -> Self {
         Error::Generic(err)
     }
 }
 
-impl std::convert::From<std::io::Error> for Error {
+impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Error::StdIOError(err)
     }
 }
 
-impl std::convert::From<sled::Error> for Error {
-    fn from(err: sled::Error) -> Self {
-        Error::DB(err)
-    }
-}
-
-impl std::convert::From<bitcoin::consensus::encode::Error> for Error {
+impl From<bitcoin::consensus::encode::Error> for Error {
     fn from(err: bitcoin::consensus::encode::Error) -> Self {
         Error::BitcoinConsensus(err)
     }
 }
 
-impl std::convert::From<hex::FromHexError> for Error {
+impl From<hex::FromHexError> for Error {
     fn from(err: hex::FromHexError) -> Self {
         Error::Hex(err)
     }
 }
 
-impl std::convert::From<electrum_client::Error> for Error {
+impl From<electrum_client::Error> for Error {
     fn from(err: electrum_client::Error) -> Self {
         Error::ClientError(err)
     }
 }
 
-impl std::convert::From<bitcoin::hashes::error::Error> for Error {
+impl From<bitcoin::hashes::error::Error> for Error {
     fn from(err: bitcoin::hashes::error::Error) -> Self {
         Error::BitcoinHashes(err)
     }
 }
-impl std::convert::From<elements::encode::Error> for Error {
+impl From<elements::encode::Error> for Error {
     fn from(err: elements::encode::Error) -> Self {
         Error::ElementsEncode(err)
     }
 }
 
-impl std::convert::From<gdk_common::error::Error> for Error {
+impl From<gdk_common::error::Error> for Error {
     fn from(err: gdk_common::error::Error) -> Self {
         Error::Common(err)
     }
 }
 
-impl std::convert::From<std::sync::mpsc::SendError<()>> for Error {
+impl From<std::sync::mpsc::SendError<()>> for Error {
     fn from(err: std::sync::mpsc::SendError<()>) -> Self {
         Error::Send(err)
     }
 }
 
-impl std::convert::From<std::string::FromUtf8Error> for Error {
+impl From<std::string::FromUtf8Error> for Error {
     fn from(err: std::string::FromUtf8Error) -> Self {
         Error::Generic(err.to_string())
     }
 }
 
-impl std::convert::From<block_modes::BlockModeError> for Error {
+impl From<block_modes::BlockModeError> for Error {
     fn from(err: block_modes::BlockModeError) -> Self {
         Error::Generic(err.to_string())
     }
 }
 
-impl std::convert::From<bitcoin::secp256k1::Error> for Error {
+impl From<bitcoin::secp256k1::Error> for Error {
     fn from(err: bitcoin::secp256k1::Error) -> Self {
         Error::Secp256k1(err)
     }
 }
 
-impl std::convert::From<bitcoin::util::key::Error> for Error {
+impl From<bitcoin::util::key::Error> for Error {
     fn from(err: bitcoin::util::key::Error) -> Self {
         Error::Generic(err.to_string())
     }
 }
 
-impl std::convert::From<bitcoin::hashes::hex::Error> for Error {
+impl From<bitcoin::hashes::hex::Error> for Error {
     fn from(err: bitcoin::hashes::hex::Error) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<serde_cbor::error::Error> for Error {
+    fn from(err: serde_cbor::error::Error) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<block_modes::InvalidKeyIvLength> for Error {
+    fn from(err: block_modes::InvalidKeyIvLength) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockReadGuard<'_, StoreMeta>>> for Error {
+    fn from(err: PoisonError<RwLockReadGuard<'_, StoreMeta>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockWriteGuard<'_, StoreMeta>>> for Error {
+    fn from(err: PoisonError<RwLockWriteGuard<'_, StoreMeta>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<aead::Error> for Error {
+    fn from(err: aead::Error) -> Self {
         Error::Generic(err.to_string())
     }
 }

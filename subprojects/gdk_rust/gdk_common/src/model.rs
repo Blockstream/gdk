@@ -129,6 +129,7 @@ pub struct SPVVerifyTx {
     pub height: u32,
     pub path: String,
     pub network: crate::network::Network,
+    pub encryption_key: String,
     pub tor_proxy: Option<String>,
     pub headers_to_download: Option<usize>, // defaults to 2016, useful to set for testing
 }
@@ -303,7 +304,7 @@ pub struct TxsResult(pub Vec<TxListItem>);
 
 /// Change to the model of Settings and Pricing structs could break old versions.
 /// You can't remove fields, change fields type and if you add a new field, it must be Option<T>
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Settings {
     pub unit: String,
     pub required_num_blocks: u32,
@@ -321,7 +322,7 @@ pub struct RefreshAssets {
 }
 
 /// see comment for struct Settings
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Pricing {
     currency: String,
     exchange: String,

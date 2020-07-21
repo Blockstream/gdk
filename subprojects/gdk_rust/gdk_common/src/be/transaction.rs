@@ -292,17 +292,16 @@ impl BETransaction {
         }
     }
 
-    pub fn estimated_changes(&self, send_all: bool, wallet_data: &WalletData) -> u8 {
+    pub fn estimated_changes(&self, send_all: bool, all_txs: &BETransactions, unblinded: &HashMap<elements::OutPoint, Unblinded>) -> u8 {
         match self {
             Self::Bitcoin(_) => 1u8 - send_all as u8,
             Self::Elements(tx) => {
                 let mut different_assets = HashSet::new();
                 for input in tx.input.iter() {
-                    let asset_hex = wallet_data
-                        .all_txs
+                    let asset_hex = all_txs
                         .get_previous_output_asset_hex(
                             input.previous_output,
-                            &wallet_data.all_unblinded,
+                            unblinded,
                         )
                         .unwrap();
                     different_assets.insert(asset_hex.clone());
@@ -324,14 +323,15 @@ impl BETransaction {
         fee_rate: f64,
         no_change: bool,
         policy_asset: Option<String>,
-        wallet_data: &WalletData,
+        all_txs: &BETransactions,
+        unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Vec<AssetValue> {
         match self {
             Self::Bitcoin(tx) => {
-                let sum_inputs = sum_inputs(tx, &wallet_data.all_txs);
+                let sum_inputs = sum_inputs(tx, all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
                 let estimated_fee =
-                    self.estimated_fee(fee_rate, self.estimated_changes(no_change, wallet_data)); // send all does not create change
+                    self.estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded)); // send all does not create change
                 if sum_outputs + estimated_fee > sum_inputs {
                     vec![AssetValue::new_bitcoin(sum_outputs + estimated_fee - sum_inputs)]
                 } else {
@@ -354,25 +354,23 @@ impl BETransaction {
                 let mut inputs: HashMap<String, u64> = HashMap::new();
 
                 for input in tx.input.iter() {
-                    let asset_hex = wallet_data
-                        .all_txs
+                    let asset_hex = all_txs
                         .get_previous_output_asset_hex(
                             input.previous_output,
-                            &wallet_data.all_unblinded,
+                            unblinded,
                         )
                         .unwrap();
-                    let value = wallet_data
-                        .all_txs
+                    let value = all_txs
                         .get_previous_output_value(
                             &BEOutPoint::Elements(input.previous_output),
-                            &wallet_data.all_unblinded,
+                            unblinded,
                         )
                         .unwrap();
                     *inputs.entry(asset_hex).or_insert(0) += value;
                 }
 
                 let estimated_fee =
-                    self.estimated_fee(fee_rate, self.estimated_changes(no_change, wallet_data));
+                    self.estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded));
                 *outputs.entry(policy_asset.clone()).or_insert(0) += estimated_fee;
 
                 let mut result = vec![];
@@ -401,11 +399,12 @@ impl BETransaction {
         &self,
         estimated_fee: u64,
         policy_asset: Option<String>,
-        wallet_data: &WalletData,
+        all_txs: &BETransactions,
+        unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Vec<AssetValue> {
         match self {
             Self::Bitcoin(tx) => {
-                let sum_inputs = sum_inputs(tx, &wallet_data.all_txs);
+                let sum_inputs = sum_inputs(tx, all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
                 let change_value = sum_inputs - sum_outputs - estimated_fee;
                 if change_value > DUST_VALUE {
@@ -428,18 +427,16 @@ impl BETransaction {
 
                 let mut inputs_asset_amounts: HashMap<String, u64> = HashMap::new();
                 for input in tx.input.iter() {
-                    let asset_hex = wallet_data
-                        .all_txs
+                    let asset_hex = all_txs
                         .get_previous_output_asset_hex(
                             input.previous_output,
-                            &wallet_data.all_unblinded,
+                            unblinded,
                         )
                         .unwrap();
-                    let value = wallet_data
-                        .all_txs
+                    let value = all_txs
                         .get_previous_output_value(
                             &BEOutPoint::Elements(input.previous_output),
-                            &wallet_data.all_unblinded,
+                            unblinded,
                         )
                         .unwrap();
                     *inputs_asset_amounts.entry(asset_hex).or_insert(0) += value;
@@ -559,7 +556,7 @@ impl BETransaction {
         }
     }
 
-    pub fn is_redeposit(&self, all_scripts: &HashSet<Script>, all_txs: &BETransactions) -> bool {
+    pub fn is_redeposit(&self, all_scripts: &HashMap<Script, TwoLayerPath>, all_txs: &BETransactions) -> bool {
         match self {
             Self::Bitcoin(tx) => {
                 let previous_scripts: Vec<Script> = tx
@@ -571,8 +568,8 @@ impl BETransaction {
                     .collect();
 
                 previous_scripts.len() == tx.input.len()
-                    && previous_scripts.iter().all(|i| all_scripts.contains(i))
-                    && tx.output.iter().all(|o| all_scripts.contains(&o.script_pubkey))
+                    && previous_scripts.iter().all(|i| all_scripts.contains_key(i))
+                    && tx.output.iter().all(|o| all_scripts.contains_key(&o.script_pubkey))
             }
             Self::Elements(tx) => {
                 let previous_scripts: Vec<Script> = tx
@@ -584,12 +581,12 @@ impl BETransaction {
                     .collect();
 
                 previous_scripts.len() == tx.input.len()
-                    && previous_scripts.iter().all(|i| all_scripts.contains(i))
+                    && previous_scripts.iter().all(|i| all_scripts.contains_key(i))
                     && tx
                         .output
                         .iter()
                         .filter(|o| !o.is_fee())
-                        .all(|o| all_scripts.contains(&o.script_pubkey))
+                        .all(|o| all_scripts.contains_key(&o.script_pubkey))
             }
         }
     }
@@ -597,7 +594,7 @@ impl BETransaction {
     pub fn my_balance_changes(
         &self,
         all_txs: &BETransactions,
-        all_scripts: &HashSet<Script>,
+        all_scripts: &HashMap<Script, TwoLayerPath>,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Balances {
         match self {
@@ -608,7 +605,7 @@ impl BETransaction {
                     let outpoint = input.previous_output.clone().into();
                     let script = all_txs.get_previous_output_script_pubkey(&outpoint);
                     if let Some(script) = script {
-                        if all_scripts.contains(&script) {
+                        if all_scripts.get(&script).is_some() {
                             my_out += all_txs
                                 .get_previous_output_value(&outpoint, &all_unblinded)
                                 .unwrap_or(0) as i64;
@@ -618,7 +615,7 @@ impl BETransaction {
                 let my_in: i64 = tx
                     .output
                     .iter()
-                    .filter(|o| all_scripts.contains(&o.script_pubkey))
+                    .filter(|o| all_scripts.contains_key(&o.script_pubkey))
                     .map(|o| o.value as i64)
                     .sum();
                 result.insert("btc".to_string(), my_in - my_out);
@@ -660,12 +657,9 @@ fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {
         .sum()
 }
 
+#[derive(Default, Serialize, Deserialize)]
 pub struct BETransactions(HashMap<Txid, BETransaction>);
-impl Default for BETransactions {
-    fn default() -> Self {
-        BETransactions(HashMap::new())
-    }
-}
+
 impl Deref for BETransactions {
     type Target = HashMap<Txid, BETransaction>;
     fn deref(&self) -> &<Self as Deref>::Target {

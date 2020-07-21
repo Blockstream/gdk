@@ -1,19 +1,21 @@
+use crate::determine_electrum_url_from_net;
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
-use ::bitcoin::hashes::hex::FromHex;
-use ::bitcoin::hashes::{sha256d, Hash};
+use ::bitcoin::hashes::{hex::FromHex, sha256, sha256d, Hash};
 use ::bitcoin::{TxMerkleNode, Txid};
-use electrum_client::ElectrumApi;
-use electrum_client::GetMerkleRes;
+use aes_gcm_siv::aead::{generic_array::GenericArray, Aead, NewAead};
+use aes_gcm_siv::Aes256GcmSiv;
+use electrum_client::{ElectrumApi, GetMerkleRes};
 use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
 use gdk_common::NetworkId;
 use log::info;
-use std::io::Write;
+use rand::{thread_rng, Rng};
+use std::collections::HashSet;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
-
-use crate::determine_electrum_url_from_net;
 
 pub mod bitcoin;
 pub mod liquid;
@@ -57,10 +59,10 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
     info!("spv_verify_tx {:?}", input);
-
     let txid = Txid::from_hex(&input.txid)?;
 
-    let cache: VerifiedCache = VerifiedCache::new(&input.path, input.network.id())?;
+    let mut cache: VerifiedCache =
+        VerifiedCache::new(&input.path, input.network.id(), &input.encryption_key)?;
     if cache.contains(&txid)? {
         info!("verified cache hit for {}", txid);
         return Ok(SPVVerifyResult::Verified);
@@ -115,26 +117,58 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
 }
 
 struct VerifiedCache {
-    db: sled::Db,
+    set: HashSet<Txid>,
+    filepath: PathBuf,
+    cipher: Aes256GcmSiv,
 }
 
-// TODO this cache expose informations about user's txs
-// TODO should probably be per wallet?
 impl VerifiedCache {
-    fn new(path: &str, network: NetworkId) -> Result<Self, Error> {
-        let mut path: PathBuf = (path).into();
-        path.push(format!("verified_cache_{:?}", network));
-        let db = sled::open(path)?;
+    fn new(path: &str, network: NetworkId, key: &str) -> Result<Self, Error> {
+        let mut filepath: PathBuf = path.into();
+        let filename_preimage = format!("{:?}{}", network, key);
+        let filename = hex::encode(sha256::Hash::hash(filename_preimage.as_bytes()));
+        let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
+        filepath.push(format!("verified_cache_{:?}", filename));
+        let cipher = Aes256GcmSiv::new(GenericArray::from_slice(&key_bytes));
+        let set = match VerifiedCache::read_and_decrypt(&mut filepath, &cipher) {
+            Ok(set) => set,
+            Err(_) => HashSet::new(),
+        };
         Ok(VerifiedCache {
-            db,
+            set,
+            filepath,
+            cipher,
         })
     }
 
-    fn contains(&self, txid: &Txid) -> Result<bool, Error> {
-        Ok(self.db.contains_key(&txid)?)
+    fn read_and_decrypt(
+        filepath: &mut PathBuf,
+        cipher: &Aes256GcmSiv,
+    ) -> Result<HashSet<Txid>, Error> {
+        let mut file = File::open(&filepath)?;
+        let mut nonce_bytes = [0u8; 12]; // 96 bits
+        file.read_exact(&mut nonce_bytes)?;
+        let nonce = GenericArray::from_slice(&nonce_bytes);
+        let mut ciphertext = vec![];
+        file.read_to_end(&mut ciphertext)?;
+        let plaintext = cipher.decrypt(nonce, ciphertext.as_ref())?;
+        Ok(serde_cbor::from_slice(&plaintext)?)
     }
 
-    fn write(&self, txid: &Txid) -> Result<(), Error> {
-        Ok(self.db.insert(&txid, &[]).map(|_| ())?)
+    fn contains(&self, txid: &Txid) -> Result<bool, Error> {
+        Ok(self.set.contains(txid))
+    }
+
+    fn write(&mut self, txid: &Txid) -> Result<(), Error> {
+        self.set.insert(txid.clone());
+        let mut file = File::create(&self.filepath)?;
+        let mut nonce_bytes = [0u8; 12]; // 96 bits
+        thread_rng().fill(&mut nonce_bytes);
+        let plaintext = serde_cbor::to_vec(&self.set)?;
+        let nonce = GenericArray::from_slice(&nonce_bytes);
+        let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref())?;
+        file.write(&nonce)?;
+        file.write(&ciphertext)?;
+        Ok(())
     }
 }

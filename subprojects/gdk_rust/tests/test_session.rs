@@ -483,6 +483,7 @@ impl TestSession {
     }
 
     /// send a tx, check it spend utxo with the same script_pubkey together
+    /// requires zero balance in session, the node will send two amounts to the same address
     pub fn send_tx_same_script(&mut self) {
         // TODO check same script for different assets
         let init_sat = self.balance_gdk(None);
@@ -784,6 +785,7 @@ impl TestSession {
             path: temp_dir_str,
             network: self.network.clone(),
             tor_proxy: None,
+            encryption_key: "".into(),
             headers_to_download: Some(100),
         };
         loop {

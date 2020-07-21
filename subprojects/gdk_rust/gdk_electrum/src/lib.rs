@@ -1,3 +1,5 @@
+mod store;
+
 #[macro_use]
 extern crate serde_json;
 
@@ -7,21 +9,19 @@ extern crate lazy_static;
 use log::{debug, info, trace, warn};
 use serde_json::Value;
 
-pub mod db;
 pub mod error;
 pub mod headers;
 pub mod interface;
 pub mod pin;
 
-use crate::db::{Forest, Index, BATCH_SIZE, DB_VERSION};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
+use crate::store::*;
 
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Txid;
-use sled::Batch;
 
 use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
@@ -58,13 +58,14 @@ use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use rand::seq::SliceRandom;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 pub struct Syncer {
-    pub db: Forest,
+    pub store: Store,
     pub client: Client,
     pub master_blinding: Option<MasterBlindingKey>,
     pub network: Network,
@@ -72,14 +73,14 @@ pub struct Syncer {
 }
 
 pub struct Tipper {
-    pub db: Forest,
+    pub store: Store,
     pub client: Client,
     pub network: Network,
     pub url: ElectrumUrl,
 }
 
 pub struct Headers {
-    pub db: Forest,
+    pub store: Store,
     pub client: Client,
     pub checker: ChainOrVerifier,
     pub url: ElectrumUrl,
@@ -135,7 +136,7 @@ fn notify(notif: NativeNotif, data: Value) {
     }
 }
 
-fn notify_block(notif: NativeNotif, height: usize) {
+fn notify_block(notif: NativeNotif, height: u32) {
     let data = json!({"block":{"block_height":height},"event":"block"});
     notify(notif, data);
 }
@@ -363,7 +364,7 @@ impl Session<Error> for ElectrumSession {
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
-        let wallet_desc = format!("{}{:?}{}", xpub, self.network, DB_VERSION);
+        let wallet_desc = format!("{}{:?}", xpub, self.network);
         let wallet_id = hex::encode(sha256::Hash::hash(wallet_desc.as_bytes()));
         let sync_interval = self.network.sync_interval.unwrap_or(7);
 
@@ -374,20 +375,29 @@ impl Session<Error> for ElectrumSession {
         };
 
         let mut path: PathBuf = self.data_root.as_str().into();
+        if !path.exists() {
+            std::fs::create_dir_all(&path)?;
+        }
         path.push(wallet_id);
-        info!("opening sled db root path: {:?}", path);
-        let db = match self.get_wallet() {
-            Ok(wallet) => wallet.db.clone(),
-            Err(_) => Forest::new(&path, xpub, master_blinding.clone(), self.network.id())?,
+        info!("Store root path: {:?}", path);
+        let store = match self.get_wallet() {
+            Ok(wallet) => wallet.store.clone(),
+            Err(_) => Arc::new(RwLock::new(StoreMeta::new(
+                &path,
+                xpub,
+                master_blinding.clone(),
+                self.network.id(),
+            )?)),
         };
 
         let mut wait_registry = false;
         let registry_thread = if self.network.liquid && self.wallet.is_none() {
             let registry_policy = self.network.policy_asset.clone();
-            let asset_icons = db.get_asset_icons()?;
-            let asset_registry = db.get_asset_registry()?;
+            let store_read = store.read()?;
+            let asset_icons = store_read.read_asset_icons()?;
+            let asset_registry = store_read.read_asset_registry()?;
             wait_registry = asset_icons.is_none() || asset_registry.is_none();
-            let db_for_registry = db.clone();
+            let store_for_registry = store.clone();
             Some(thread::spawn(move || {
                 info!("start registry thread");
                 // TODO add if_modified_since, gzip encoding
@@ -401,9 +411,9 @@ impl Session<Error> for ElectrumSession {
                                 info!("inserting policy asset {}", &policy);
                                 registry[policy] = json!({"asset_id": &policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
                             }
-
-                            db_for_registry.insert_asset_registry(&registry).unwrap();
-                            db_for_registry.insert_asset_icons(&icons).unwrap();
+                            let store_write = store_for_registry.write().unwrap();
+                            store_write.write_asset_registry(&registry).unwrap();
+                            store_write.write_asset_icons(&icons).unwrap();
                         }
                         _ => warn!("Registry or icons are not json"),
                     }
@@ -428,7 +438,7 @@ impl Session<Error> for ElectrumSession {
         };
 
         let mut headers = Headers {
-            db: db.clone(),
+            store: store.clone(),
             client: self.url.build_client()?,
             checker,
             url: self.url.clone(),
@@ -493,7 +503,7 @@ impl Session<Error> for ElectrumSession {
         self.closer.handles.push(headers_handle);
 
         let mut syncer = Syncer {
-            db: db.clone(),
+            store: store.clone(),
             client: self.url.build_client()?,
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
@@ -501,7 +511,7 @@ impl Session<Error> for ElectrumSession {
         };
 
         let mut tipper = Tipper {
-            db: db.clone(),
+            store: store.clone(),
             network: self.network.clone(),
             client: self.url.build_client()?,
             url: self.url.clone(),
@@ -509,7 +519,7 @@ impl Session<Error> for ElectrumSession {
 
         if self.wallet.is_none() {
             let wallet = WalletCtx::new(
-                db,
+                store,
                 mnemonic.clone(),
                 self.network.clone(),
                 xprv,
@@ -774,16 +784,20 @@ impl Session<Error> for ElectrumSession {
         let tip = self.get_wallet()?.get_tip()?;
         std::hash::Hash::hash(&tip, &mut hasher);
         let status = hasher.finish();
-        debug!("txs.len={} tip={} status={}", txs.len(), tip, status);
+        info!("txs.len={} tip={} status={}", txs.len(), tip, status);
         Ok(status)
     }
 }
 
 impl Tipper {
-    pub fn tip(&self) -> Result<usize, Error> {
+    pub fn tip(&self) -> Result<u32, Error> {
         let header = self.client.block_headers_subscribe_raw()?;
-        self.db.insert_tip(header.height as u32)?;
-        Ok(header.height)
+        let height = header.height as u32;
+        let store_tip = self.store.read()?.tip;
+        if height != store_tip {
+            self.store.write()?.tip = height;
+        }
+        Ok(height)
     }
 }
 
@@ -803,33 +817,44 @@ impl Headers {
     }
 
     pub fn get_proofs(&mut self) -> Result<usize, Error> {
-        let my_confirmed_txs: Vec<(Txid, u32)> = self.db.get_my_confirmed()?;
-        let my_proofs: HashSet<Txid> = self.db.get_my_verified()?;
-        let mut found = 0;
-        for (txid, height) in my_confirmed_txs {
-            if !my_proofs.contains(&txid) {
-                let proof = self.client.transaction_get_merkle(&txid, height as usize)?;
-                let verified = match &self.checker {
-                    ChainOrVerifier::Chain(chain) => {
-                        chain.verify_tx_proof(&txid, height, proof).is_ok()
-                    }
-                    ChainOrVerifier::Verifier(verifier) => {
-                        if let Some(BEBlockHeader::Elements(header)) = self.db.get_header(height)? {
-                            verifier.verify_tx_proof(&txid, proof, &header).is_ok()
-                        } else {
-                            false
-                        }
-                    }
-                };
+        let store_read = self.store.read()?;
+        let needs_proof: Vec<(Txid, u32)> = self
+            .store
+            .read()?
+            .heights
+            .iter()
+            .filter(|(_, opt)| opt.is_some())
+            .map(|(t, h)| (t, h.unwrap()))
+            .filter(|(t, _)| !store_read.txs_verif.contains(*t))
+            .map(|(t, h)| (t.clone(), h))
+            .collect();
+        drop(store_read);
 
-                if verified {
-                    info!("proof for {} verified!", txid);
-                    self.db.insert_tx_verified(&txid)?;
-                    found += 1;
+        let mut txs_verified = vec![];
+        for (txid, height) in needs_proof {
+            let proof = self.client.transaction_get_merkle(&txid, height as usize)?;
+            let verified = match &self.checker {
+                ChainOrVerifier::Chain(chain) => {
+                    chain.verify_tx_proof(&txid, height, proof).is_ok()
                 }
+                ChainOrVerifier::Verifier(verifier) => {
+                    if let Some(BEBlockHeader::Elements(header)) =
+                        self.store.read()?.headers.get(&height)
+                    {
+                        verifier.verify_tx_proof(&txid, proof, &header).is_ok()
+                    } else {
+                        false
+                    }
+                }
+            };
+            if verified {
+                info!("proof for {} verified!", txid);
+                txs_verified.push(txid);
             }
         }
-        Ok(found)
+        let proofs_done = txs_verified.len();
+        self.store.write()?.txs_verif.extend(txs_verified);
+        Ok(proofs_done)
     }
 
     pub fn remove(&mut self, headers: u32) -> Result<(), Error> {
@@ -839,6 +864,13 @@ impl Headers {
         Ok(())
     }
 }
+
+#[derive(Default)]
+struct DownloadTxResult {
+    txs: Vec<(Txid, BETransaction)>,
+    unblinds: Vec<(elements::OutPoint, Unblinded)>,
+}
+
 impl Syncer {
     pub fn sync(&mut self) -> Result<bool, Error> {
         trace!("start sync");
@@ -847,17 +879,20 @@ impl Syncer {
         let mut history_txs_id = HashSet::new();
         let mut heights_set = HashSet::new();
         let mut txid_height = HashMap::new();
+        let mut paths_and_scripts = vec![];
 
-        let mut last_used = [0u32; 2];
+        let mut last_used = Indexes::default();
         let mut wallet_chains = vec![0,1];
         wallet_chains.shuffle(&mut thread_rng());
-        for i in wallet_chains {
-            let int_or_ext = Index::from(i)?;
+        for i in 0..=1 {
             let mut batch_count = 0;
             loop {
-                let batch = self.db.get_script_batch(int_or_ext, batch_count)?;
+                let batch = self.store.read()?.get_script_batch(i, batch_count)?;
                 let result: Vec<Vec<GetHistoryRes>> =
-                    self.client.batch_script_get_history(&batch)?;
+                    self.client.batch_script_get_history(batch.value.iter().map(|e| &e.1))?;
+                if !batch.cached {
+                    paths_and_scripts.extend(batch.value);
+                }
                 let max = result
                     .iter()
                     .enumerate()
@@ -865,7 +900,11 @@ impl Syncer {
                     .map(|(i, _)| i as u32)
                     .max();
                 if let Some(max) = max {
-                    last_used[i as usize] = max + batch_count * BATCH_SIZE;
+                    if i == 0 {
+                        last_used.external = max + batch_count * BATCH_SIZE;
+                    } else {
+                        last_used.internal = max + batch_count * BATCH_SIZE;
+                    }
                 };
 
                 let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
@@ -878,7 +917,11 @@ impl Syncer {
                 for el in flattened {
                     if el.height >= 0 {
                         heights_set.insert(el.height as u32);
-                        txid_height.insert(el.tx_hash, el.height as u32);
+                        if el.height == 0 {
+                            txid_height.insert(el.tx_hash, None);
+                        } else {
+                            txid_height.insert(el.tx_hash, Some(el.height as u32));
+                        }
                     }
                     history_txs_id.insert(el.tx_hash);
                 }
@@ -887,25 +930,43 @@ impl Syncer {
             }
         }
 
-        self.db.insert_index(Index::External, last_used[Index::External as usize])?;
-        self.db.insert_index(Index::Internal, last_used[Index::Internal as usize])?;
-        trace!("last_used: {:?}", last_used,);
+        let new_txs = self.download_txs(&history_txs_id)?;
+        let headers = self.download_headers(&heights_set)?;
 
-        let new_txs = self.sync_txs(&history_txs_id)?;
-        self.sync_headers(&heights_set)?;
-        self.sync_height(&txid_height)?;
+        let store_indexes = self.store.read()?.indexes.clone();
 
-        if new_txs {
-            self.db.flush()?;
-        }
+        let changed = if !new_txs.txs.is_empty()
+            || !headers.is_empty()
+            || store_indexes != last_used
+            || !paths_and_scripts.is_empty()
+        {
+            debug!("There are changes in the store");
+            let mut store_write = self.store.write()?;
+            store_write.indexes = last_used;
+            store_write.all_txs.extend(new_txs.txs.into_iter());
+            store_write.unblinded.extend(new_txs.unblinds);
+            store_write.headers.extend(headers);
+            store_write.heights.clear(); // something in the db is not in live list (rbf), removing
+            store_write.heights.extend(txid_height.into_iter());
+            store_write.paths.extend(paths_and_scripts.clone().into_iter().map(|(a, b)| (b, a)));
+            store_write.scripts.extend(paths_and_scripts.into_iter());
+            store_write.flush()?;
+            true
+        } else {
+            false
+        };
+        trace!("changes:{} elapsed {}", changed, start.elapsed().as_millis());
 
-        trace!("elapsed {}", start.elapsed().as_millis());
-
-        Ok(new_txs)
+        Ok(changed)
     }
 
-    fn sync_headers(&mut self, heights_set: &HashSet<u32>) -> Result<(), Error> {
-        let heights_in_db = self.db.get_only_heights()?;
+    fn download_headers(
+        &mut self,
+        heights_set: &HashSet<u32>,
+    ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
+        let mut result = vec![];
+        let heights_in_db: HashSet<u32> =
+            self.store.read()?.heights.iter().filter_map(|(_, h)| *h).collect();
         let heights_to_download: Vec<u32> =
             heights_set.difference(&heights_in_db).cloned().collect();
         if !heights_to_download.is_empty() {
@@ -915,16 +976,18 @@ impl Syncer {
             for vec in headers_bytes_downloaded {
                 headers_downloaded.push(BEBlockHeader::deserialize(&vec, self.network.id())?);
             }
-
-            for (header, height) in headers_downloaded.iter().zip(heights_to_download.iter()) {
-                self.db.insert_header(*height, header)?;
+            info!("headers_downloaded {:?}", &headers_downloaded);
+            for (header, height) in
+                headers_downloaded.into_iter().zip(heights_to_download.into_iter())
+            {
+                result.push((height, header));
             }
-            info!("headers_downloaded {:?}", headers_downloaded);
         }
 
-        Ok(())
+        Ok(result)
     }
 
+    /*
     fn sync_height(&self, txid_height: &HashMap<Txid, u32>) -> Result<(), Error> {
         // sync heights, which are my txs
         for (txid, height) in txid_height.iter() {
@@ -938,13 +1001,15 @@ impl Syncer {
 
         Ok(())
     }
+    */
 
-    fn sync_txs(&mut self, history_txs_id: &HashSet<Txid>) -> Result<bool, Error> {
-        let mut txs_in_db = self.db.get_all_txid()?;
+    fn download_txs(&mut self, history_txs_id: &HashSet<Txid>) -> Result<DownloadTxResult, Error> {
+        let mut txs = vec![];
+        let mut unblinds = vec![];
+
+        let mut txs_in_db = self.store.read()?.all_txs.keys().cloned().collect();
         let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
         if !txs_to_download.is_empty() {
-            let mut batch = Batch::default();
-
             let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
             let mut txs_downloaded: Vec<BETransaction> = vec![];
             for vec in txs_bytes_downloaded {
@@ -952,31 +1017,34 @@ impl Syncer {
             }
             info!("txs_downloaded {:?}", txs_downloaded.len());
             let mut previous_txs_to_download = HashSet::new();
-            for tx in txs_downloaded.iter() {
-                //self.db.insert_tx(&tx.txid(), &tx)?;
-                batch.insert(self.db.encrypt(tx.txid()), self.db.encrypt(tx.serialize()));
-                txs_in_db.insert(tx.txid());
-                for txid in tx.previous_output_txids() {
-                    previous_txs_to_download.insert(txid);
-                }
+            for tx in txs_downloaded.into_iter() {
+                let txid = tx.txid();
+                txs_in_db.insert(txid);
 
-                //TODO compute OutPoint Unblinded if tx is mine and it is liquid
-                if let BETransaction::Elements(tx) = tx {
+                if let BETransaction::Elements(tx) = &tx {
                     info!("compute OutPoint Unblinded");
+                    let store_read = self.store.read()?;
                     for (i, output) in tx.output.iter().enumerate() {
-                        if self.db.is_mine(&output.script_pubkey) {
-                            let txid = tx.txid();
+                        if store_read.paths.contains_key(&output.script_pubkey) {
                             let vout = i as u32;
                             let outpoint = elements::OutPoint {
-                                txid,
+                                txid: tx.txid(),
                                 vout,
                             };
-                            if self.try_unblind(outpoint, output.clone()).is_err() {
-                                info!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint);
+
+                            match self.try_unblind(outpoint, output.clone()) {
+                                Ok(unblinded) => unblinds.push((outpoint, unblinded)),
+                                Err(_) => info!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint),
                             }
                         }
                     }
+                } else {
+                    // download all previous output only for bitcoin (to calculate fee of incoming tx)
+                    for previous_txid in tx.previous_output_txids() {
+                        previous_txs_to_download.insert(previous_txid);
+                    }
                 }
+                txs.push((txid, tx));
             }
 
             let txs_to_download: Vec<&Txid> =
@@ -984,20 +1052,17 @@ impl Syncer {
             if !txs_to_download.is_empty() {
                 let txs_bytes_downloaded =
                     self.client.batch_transaction_get_raw(txs_to_download)?;
-                let mut txs_downloaded: Vec<BETransaction> = vec![];
                 for vec in txs_bytes_downloaded {
-                    txs_downloaded.push(BETransaction::deserialize(&vec, self.network.id())?);
-                }
-                info!("previous txs_downloaded {:?}", txs_downloaded.len());
-                for tx in txs_downloaded.iter() {
-                    //self.db.insert_tx(&tx.txid(), tx)?;
-                    batch.insert(self.db.encrypt(tx.txid()), self.db.encrypt(tx.serialize()));
+                    let tx = BETransaction::deserialize(&vec, self.network.id())?;
+                    txs.push((tx.txid(), tx));
                 }
             }
-            self.db.apply_txs_batch(batch)?;
-            Ok(true)
+            Ok(DownloadTxResult {
+                txs,
+                unblinds,
+            })
         } else {
-            Ok(false)
+            Ok(DownloadTxResult::default())
         }
     }
 
@@ -1005,7 +1070,7 @@ impl Syncer {
         &self,
         outpoint: elements::OutPoint,
         output: elements::TxOut,
-    ) -> Result<(), Error> {
+    ) -> Result<Unblinded, Error> {
         match (output.asset, output.value, output.nonce) {
             (
                 Asset::Confidential(_, _),
@@ -1050,11 +1115,10 @@ impl Syncer {
                     abf,
                     vbf,
                 };
-                self.db.insert_unblinded(&outpoint, &unblinded)?;
+                Ok(unblinded)
             }
-            _ => warn!("received unconfidential or null asset/value/nonce"),
+            _ => Err(Error::Generic("received unconfidential or null asset/value/nonce".into())),
         }
-        Ok(())
     }
 }
 
