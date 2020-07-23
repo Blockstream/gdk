@@ -23,7 +23,7 @@ use std::str::FromStr;
 
 pub const DUST_VALUE: u64 = 546;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
 pub enum BETransaction {
     Bitcoin(bitcoin::Transaction),
     Elements(elements::Transaction),
@@ -63,6 +63,25 @@ impl BETransaction {
             NetworkId::Bitcoin(_) => Self::Bitcoin(btc_des(bytes)?),
             NetworkId::Elements(_) => Self::Elements(elm_des(bytes)?),
         })
+    }
+
+    /// strip witness from the transaction, txid doesn't change
+    pub fn strip_witness(&mut self)  {
+        match self {
+            Self::Bitcoin(tx) => {
+                for input in tx.input.iter_mut() {
+                    input.witness.clear();
+                }
+            }
+            Self::Elements(tx) => {
+                for input in tx.input.iter_mut()  {
+                    input.witness = TxInWitness::default();
+                }
+                for output in tx.output.iter_mut()  {
+                    output.witness = TxOutWitness::default();
+                }
+            }
+        }
     }
 
     pub fn txid(&self) -> Txid {

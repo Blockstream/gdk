@@ -70,12 +70,12 @@ pub struct RawStore {
 
 pub struct StoreMeta {
     store: RawStore,
-    xpub: ExtendedPubKey,
     master_blinding: Option<MasterBlindingKey>,
     secp: Secp256k1<All>,
     id: NetworkId,
     path: PathBuf,
     cipher: Aes256GcmSiv,
+    first_deriv: [ExtendedPubKey; 2],
 }
 
 impl Deref for StoreMeta {
@@ -106,24 +106,29 @@ impl RawStore {
     /// create a new Store, loading data from a file if any and if there is no error in reading
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
     fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
-        Self::try_new(path, cipher).unwrap_or_else(|_| {
-            warn!("Initialize store as default");
+        Self::try_new(path, cipher).unwrap_or_else(|e| {
+            warn!("Initialize store as default {:?}",e);
             Default::default()
         })
     }
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
-        if !path.as_ref().exists() {
+        let now = Instant::now();
+        let mut store_path = PathBuf::from(path.as_ref());
+        store_path.push("store");
+        if !store_path.exists() {
             return Err(Error::Generic("file do not exist".into()));
         }
-        let mut file = File::open(path)?;
+        let mut file = File::open(store_path)?;
         let mut nonce_bytes = [0u8; 12];
         file.read_exact(&mut nonce_bytes)?;
         let nonce = GenericArray::from_slice(&nonce_bytes);
         let mut contents = vec![];
         file.read_to_end(&mut contents)?;
         let decrypted = cipher.decrypt(nonce, contents.as_ref())?;
-        Ok(serde_cbor::from_slice(&decrypted)?)
+        let store = serde_cbor::from_slice(&decrypted)?;
+        info!("loading store took {}ms", now.elapsed().as_millis());
+        Ok(store)
     }
 }
 
@@ -146,14 +151,20 @@ impl StoreMeta {
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
+        let secp = Secp256k1::new();
+
+        let first_deriv = [
+        xpub.derive_pub(&secp, &[ChildNumber::from(0)])?,
+            xpub.derive_pub(&secp, &[ChildNumber::from(1)])?];
+
         Ok(StoreMeta {
             store,
             master_blinding,
             id,
-            xpub,
             cipher,
-            secp: Secp256k1::new(),
+            secp,
             path,
+            first_deriv,
         })
     }
 
@@ -162,15 +173,18 @@ impl StoreMeta {
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
         let nonce = GenericArray::from_slice(&nonce_bytes);
-        // TODO is possible to avoid allocs with writer?
+        //TODO is possible to avoid allocs with writer?
         let plaintext = serde_cbor::to_vec(&self.store)?;
         let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref())?;
         let mut store_path = self.path.clone();
         store_path.push("store");
+        //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
+        // in the front of the file
         let mut file = File::create(&store_path)?;
         file.write(&nonce_bytes)?;
         file.write(&ciphertext)?;
-        info!("flushing {} bytes took {}ms", ciphertext.len() + 16, now.elapsed().as_millis());
+        info!("flushing {} bytes on {:?} took {}ms", ciphertext.len() + 16, &store_path, now.elapsed().as_millis());
+
         Ok(())
     }
 
@@ -218,8 +232,7 @@ impl StoreMeta {
         result.cached = true;
 
         //TODO cache m/0 and m/1
-        let first_path = [ChildNumber::from(int_or_ext as u32)];
-        let first_deriv = self.xpub.derive_pub(&self.secp, &first_path)?;
+        let first_deriv = &self.first_deriv[int_or_ext as usize];
 
         let start = batch * BATCH_SIZE;
         let end = start + BATCH_SIZE;
