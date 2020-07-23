@@ -965,8 +965,9 @@ impl Syncer {
         heights_set: &HashSet<u32>,
     ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
         let mut result = vec![];
-        let heights_in_db: HashSet<u32> =
+        let mut heights_in_db: HashSet<u32> =
             self.store.read()?.heights.iter().filter_map(|(_, h)| *h).collect();
+        heights_in_db.insert(0);
         let heights_to_download: Vec<u32> =
             heights_set.difference(&heights_in_db).cloned().collect();
         if !heights_to_download.is_empty() {

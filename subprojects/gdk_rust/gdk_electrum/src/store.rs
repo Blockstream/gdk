@@ -107,7 +107,7 @@ impl RawStore {
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
     fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
-            warn!("Initialize store as default {:?}",e);
+            warn!("Initialize store as default {:?}", e);
             Default::default()
         })
     }
@@ -154,8 +154,9 @@ impl StoreMeta {
         let secp = Secp256k1::new();
 
         let first_deriv = [
-        xpub.derive_pub(&secp, &[ChildNumber::from(0)])?,
-            xpub.derive_pub(&secp, &[ChildNumber::from(1)])?];
+            xpub.derive_pub(&secp, &[ChildNumber::from(0)])?,
+            xpub.derive_pub(&secp, &[ChildNumber::from(1)])?,
+        ];
 
         Ok(StoreMeta {
             store,
@@ -183,7 +184,12 @@ impl StoreMeta {
         let mut file = File::create(&store_path)?;
         file.write(&nonce_bytes)?;
         file.write(&ciphertext)?;
-        info!("flushing {} bytes on {:?} took {}ms", ciphertext.len() + 16, &store_path, now.elapsed().as_millis());
+        info!(
+            "flushing {} bytes on {:?} took {}ms",
+            ciphertext.len() + 16,
+            &store_path,
+            now.elapsed().as_millis()
+        );
 
         Ok(())
     }

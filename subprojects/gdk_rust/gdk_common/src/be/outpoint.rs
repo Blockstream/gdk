@@ -1,4 +1,3 @@
-use crate::NetworkId;
 use bitcoin::Txid;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -31,20 +30,6 @@ impl BEOutPoint {
         BEOutPoint::Elements(elements::OutPoint {
             txid,
             vout,
-        })
-    }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        match self {
-            Self::Bitcoin(outpoint) => bitcoin::consensus::encode::serialize(outpoint),
-            Self::Elements(outpoint) => elements::encode::serialize(outpoint),
-        }
-    }
-
-    pub fn deserialize(bytes: &[u8], id: NetworkId) -> Result<Self, crate::error::Error> {
-        Ok(match id {
-            NetworkId::Bitcoin(_) => Self::Bitcoin(bitcoin::consensus::encode::deserialize(bytes)?),
-            NetworkId::Elements(_) => Self::Elements(elements::encode::deserialize(bytes)?),
         })
     }
 

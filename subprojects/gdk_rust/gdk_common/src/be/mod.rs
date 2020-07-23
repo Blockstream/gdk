@@ -14,6 +14,8 @@ pub use transaction::*;
 use serde::{Serialize, Deserialize};
 use bitcoin::util::bip32::{DerivationPath, ChildNumber};
 use std::str::FromStr;
+use std::fmt::Debug;
+use bitcoin::hashes::core::fmt::Formatter;
 
 pub type AssetId = [u8; 32];  // TODO use elements::issuance::AssetId
 
@@ -48,30 +50,14 @@ pub struct Unblinded {
 }
 
 impl Unblinded {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut vec = vec![];
-        vec.extend(&self.asset[..]);
-        vec.extend(&self.abf[..]);
-        vec.extend(&self.vbf[..]);
-        vec.extend(elements::encode::serialize(&self.value));
-        vec
-    }
-
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, crate::error::Error> {
-        let asset: AssetId = bytes[..32].as_ref().try_into()?;
-        let abf: [u8; 32] = bytes[32..64].as_ref().try_into()?;
-        let vbf: [u8; 32] = bytes[64..96].as_ref().try_into()?;
-        let value: u64 = elements::encode::deserialize(&bytes[96..])?;
-        Ok(Unblinded {
-            asset,
-            value,
-            abf,
-            vbf,
-        })
-    }
-
     pub fn asset_hex(&self) -> String {
         asset_to_hex(&self.asset)
+    }
+}
+
+impl Debug for Unblinded {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.asset_hex(), self.value)
     }
 }
 
