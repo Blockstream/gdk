@@ -367,8 +367,8 @@ namespace sdk {
 
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
-            const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs,
-            uint32_t required_ca) GDK_REQUIRES(m_mutex);
+            const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
+            amount satoshi, bool has_txs, uint32_t required_ca) GDK_REQUIRES(m_mutex);
 
         std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge)
             GDK_REQUIRES(m_mutex);

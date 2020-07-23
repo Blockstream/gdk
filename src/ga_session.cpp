@@ -1108,7 +1108,7 @@ namespace sdk {
             }
 
             insert_subaccount(locker, subaccount, sa["name"], sa["receiving_id"], recovery_pub_key, recovery_chain_code,
-                type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0));
+                recovery_xpub, type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0));
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -1120,8 +1120,8 @@ namespace sdk {
         const std::string satoshi_str = login_data["satoshi"];
         const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
         const bool has_txs = json_get_value(m_login_data, "has_txs", false);
-        insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(), "2of2",
-            satoshi, has_txs, 0);
+        insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(),
+            std::string(), "2of2", satoshi, has_txs, 0);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -1932,8 +1932,8 @@ namespace sdk {
 
     nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,
         const std::string& name, const std::string& receiving_id, const std::string& recovery_pub_key,
-        const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs,
-        uint32_t required_ca)
+        const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
+        amount satoshi, bool has_txs, uint32_t required_ca)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1944,8 +1944,8 @@ namespace sdk {
         // for the final path element in a derivation
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "satoshi", { { "btc", satoshi.value() } } }, { "has_transactions", has_txs },
-            { "required_ca", required_ca } };
+            { "recovery_xpub", recovery_xpub }, { "satoshi", { { "btc", satoshi.value() } } },
+            { "has_transactions", has_txs }, { "required_ca", required_ca } };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
@@ -2016,8 +2016,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         constexpr bool has_txs = false;
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
-        nlohmann::json subaccount_details = insert_subaccount(
-            locker, subaccount, name, receiving_id, recovery_pub_key, recovery_chain_code, type, amount(), has_txs, 0);
+        nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, receiving_id, recovery_pub_key,
+            recovery_chain_code, recovery_bip32_xpub, type, amount(), has_txs, 0);
 
         if (type == "2of3") {
             subaccount_details["recovery_mnemonic"] = recovery_mnemonic;

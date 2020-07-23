@@ -89,6 +89,7 @@ Subaccount JSON
      "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
      "recovery_chain_code": "",
      "recovery_pub_key": "",
+     "recovery_xpub": "",
      "type": "2of2"
    }
   
@@ -112,6 +113,7 @@ Subaccounts list JSON
        "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
        "recovery_chain_code": "",
        "recovery_pub_key": "",
+       "recovery_xpub": "",
        "type": "2of2"
      },
      {
@@ -124,6 +126,7 @@ Subaccounts list JSON
        "receiving_id": "GA36xH9spaXv3HCUcjbh7UEPxf1f6t",
        "recovery_chain_code": "",
        "recovery_pub_key": "",
+       "recovery_xpub": "",
        "type": "2of2"
      }
    ]
