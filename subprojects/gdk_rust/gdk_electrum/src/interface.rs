@@ -197,7 +197,10 @@ impl WalletCtx {
             let spv_verified = store_read.txs_verif.contains(*tx_id);
             trace!(
                 "tx_id {} type {} user_signed {} spv_verified {}",
-                tx_id, type_, user_signed, spv_verified
+                tx_id,
+                type_,
+                user_signed,
+                spv_verified
             );
 
             let tx_meta = TransactionMeta::new(

@@ -294,7 +294,7 @@ impl StoreMeta {
                     script
                 }
             };
-            result.value.push((path, script));
+            result.value.push((script, path));
         }
         Ok(result)
     }

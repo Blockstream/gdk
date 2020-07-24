@@ -115,7 +115,7 @@ impl TryInto<DerivationPath> for TwoLayerPath {
 #[derive(Default)]
 pub struct ScriptBatch {
     pub cached: bool,
-    pub value: Vec<(TwoLayerPath, Script)>,
+    pub value: Vec<(Script, TwoLayerPath)>,
 }
 
 #[cfg(test)]

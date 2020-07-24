@@ -21,7 +21,7 @@ use crate::store::*;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::Txid;
+use bitcoin::{Script, Txid};
 
 use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
@@ -879,7 +879,7 @@ impl Syncer {
         let mut history_txs_id = HashSet::new();
         let mut heights_set = HashSet::new();
         let mut txid_height = HashMap::new();
-        let mut paths_and_scripts = vec![];
+        let mut scripts = HashMap::new();
 
         let mut last_used = Indexes::default();
         let mut wallet_chains = vec![0,1];
@@ -889,9 +889,9 @@ impl Syncer {
             loop {
                 let batch = self.store.read()?.get_script_batch(i, batch_count)?;
                 let result: Vec<Vec<GetHistoryRes>> =
-                    self.client.batch_script_get_history(batch.value.iter().map(|e| &e.1))?;
+                    self.client.batch_script_get_history(batch.value.iter().map(|e| &e.0))?;
                 if !batch.cached {
-                    paths_and_scripts.extend(batch.value);
+                    scripts.extend(batch.value);
                 }
                 let max = result
                     .iter()
@@ -930,7 +930,7 @@ impl Syncer {
             }
         }
 
-        let new_txs = self.download_txs(&history_txs_id)?;
+        let new_txs = self.download_txs(&history_txs_id, &scripts)?;
         let headers = self.download_headers(&heights_set)?;
 
         let store_indexes = self.store.read()?.indexes.clone();
@@ -938,7 +938,7 @@ impl Syncer {
         let changed = if !new_txs.txs.is_empty()
             || !headers.is_empty()
             || store_indexes != last_used
-            || !paths_and_scripts.is_empty()
+            || !scripts.is_empty()
         {
             debug!("There are changes in the store");
             let mut store_write = self.store.write()?;
@@ -948,8 +948,8 @@ impl Syncer {
             store_write.headers.extend(headers);
             store_write.heights.clear(); // something in the db is not in live list (rbf), removing
             store_write.heights.extend(txid_height.into_iter());
-            store_write.paths.extend(paths_and_scripts.clone().into_iter().map(|(a, b)| (b, a)));
-            store_write.scripts.extend(paths_and_scripts.into_iter());
+            store_write.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
+            store_write.paths.extend(scripts.into_iter());
             store_write.flush()?;
             true
         } else {
@@ -1004,7 +1004,11 @@ impl Syncer {
     }
     */
 
-    fn download_txs(&mut self, history_txs_id: &HashSet<Txid>) -> Result<DownloadTxResult, Error> {
+    fn download_txs(
+        &mut self,
+        history_txs_id: &HashSet<Txid>,
+        scripts: &HashMap<Script, TwoLayerPath>,
+    ) -> Result<DownloadTxResult, Error> {
         let mut txs = vec![];
         let mut unblinds = vec![];
 
@@ -1027,7 +1031,10 @@ impl Syncer {
                     info!("compute OutPoint Unblinded");
                     let store_read = self.store.read()?;
                     for (i, output) in tx.output.iter().enumerate() {
-                        if store_read.paths.contains_key(&output.script_pubkey) {
+                        // could be the searched script it's not yet in the store, because created in the current run, thus it's searched also in the `scripts`
+                        if store_read.paths.contains_key(&output.script_pubkey)
+                            || scripts.contains_key(&output.script_pubkey)
+                        {
                             let vout = i as u32;
                             let outpoint = elements::OutPoint {
                                 txid: tx.txid(),
