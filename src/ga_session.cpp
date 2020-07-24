@@ -307,6 +307,9 @@ namespace sdk {
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_cache(net_params.at("name"))
         , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
+        , m_electrum_url(
+              net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))
+        , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
     {
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"
@@ -2417,9 +2420,13 @@ namespace sdk {
 
             tx_details["spv_verified"] = false;
             if (!datadir.empty() && is_cached) {
+                nlohmann::json net_params = m_net_params.get_json();
+                net_params["url"] = m_electrum_url;
+                net_params["tls"] = m_electrum_tls;
+
                 const nlohmann::json verify_params
                     = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] }, { "path", path },
-                          { "network", m_net_params.get_json() }, { "encryption_key", "TBD" } };
+                          { "network", net_params }, { "encryption_key", "TBD" } };
 
                 const auto verify_result = spv_verify_tx(verify_params);
                 GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;

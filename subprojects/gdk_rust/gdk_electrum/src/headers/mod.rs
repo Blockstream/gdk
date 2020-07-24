@@ -128,7 +128,7 @@ impl VerifiedCache {
         let filename_preimage = format!("{:?}{}", network, key);
         let filename = hex::encode(sha256::Hash::hash(filename_preimage.as_bytes()));
         let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
-        filepath.push(format!("verified_cache_{:?}", filename));
+        filepath.push(format!("verified_cache_{}", filename));
         let cipher = Aes256GcmSiv::new(GenericArray::from_slice(&key_bytes));
         let set = match VerifiedCache::read_and_decrypt(&mut filepath, &cipher) {
             Ok(set) => set,

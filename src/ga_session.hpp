@@ -527,6 +527,9 @@ namespace sdk {
         std::string m_last_tor_socks5;
         cache m_cache GDK_GUARDED_BY(m_mutex);
         const std::string m_user_agent;
+
+        const std::string m_electrum_url;
+        const bool m_electrum_tls;
     };
 
 } // namespace sdk
