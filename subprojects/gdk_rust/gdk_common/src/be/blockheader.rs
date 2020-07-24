@@ -1,5 +1,5 @@
 use crate::NetworkId;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize)]

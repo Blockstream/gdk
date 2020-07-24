@@ -1,4 +1,4 @@
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 
 mod address;
 mod blockheader;
@@ -6,16 +6,16 @@ mod outpoint;
 mod transaction;
 
 pub use address::*;
+use bitcoin::hashes::core::fmt::Formatter;
+use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use bitcoin::Script;
 pub use blockheader::*;
 pub use outpoint::*;
-use std::collections::{HashSet};
-pub use transaction::*;
-use serde::{Serialize, Deserialize};
-use bitcoin::util::bip32::{DerivationPath, ChildNumber};
-use std::str::FromStr;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fmt::Debug;
-use bitcoin::hashes::core::fmt::Formatter;
+use std::str::FromStr;
+pub use transaction::*;
 
 pub type AssetId = [u8; 32];  // TODO use elements::issuance::AssetId
 
@@ -74,7 +74,6 @@ pub fn asset_to_hex(asset: &[u8]) -> String {
     hex::encode(asset)
 }
 
-
 /// Other than limiting derivation to two levels, this is required because DerivationPath dosn't
 /// derive Hash, so it cannot be used as HashMap key
 #[derive(Debug, Hash, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -84,8 +83,11 @@ pub struct TwoLayerPath {
 }
 
 impl TwoLayerPath {
-    pub fn new(i:u32, j:u32) -> Self {
-        TwoLayerPath{i,j}
+    pub fn new(i: u32, j: u32) -> Self {
+        TwoLayerPath {
+            i,
+            j,
+        }
     }
 }
 

@@ -2419,7 +2419,7 @@ namespace sdk {
             if (!datadir.empty() && is_cached) {
                 const nlohmann::json verify_params
                     = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] }, { "path", path },
-                          { "network", m_net_params.get_json() } };
+                          { "network", m_net_params.get_json() }, { "encryption_key", "TBD" } };
 
                 const auto verify_result = spv_verify_tx(verify_params);
                 GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;
