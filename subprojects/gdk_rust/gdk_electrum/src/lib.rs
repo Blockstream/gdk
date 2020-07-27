@@ -54,36 +54,30 @@ use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
 use electrum_client::{Client, ElectrumApi};
+use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
-use rand::seq::SliceRandom;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 pub struct Syncer {
     pub store: Store,
-    pub client: Client,
     pub master_blinding: Option<MasterBlindingKey>,
     pub network: Network,
-    pub url: ElectrumUrl,
 }
 
 pub struct Tipper {
     pub store: Store,
-    pub client: Client,
     pub network: Network,
-    pub url: ElectrumUrl,
 }
 
 pub struct Headers {
     pub store: Store,
-    pub client: Client,
     pub checker: ChainOrVerifier,
-    pub url: ElectrumUrl,
 }
 
 #[derive(Clone)]
@@ -391,6 +385,9 @@ impl Session<Error> for ElectrumSession {
 
         let estimates = store.read()?.fee_estimates().clone();
         notify_fee(self.notify.clone(), &estimates);
+        let mut last_tip = store.read()?.tip;
+        notify_block(self.notify.clone(), last_tip);
+
         if let Ok(fee_client) = self.url.build_client() {
             let fee_store = store.clone();
             thread::spawn(move || {
@@ -450,82 +447,82 @@ impl Session<Error> for ElectrumSession {
 
         let mut headers = Headers {
             store: store.clone(),
-            client: self.url.build_client()?,
             checker,
-            url: self.url.clone(),
         };
 
+        let headers_url = self.url.clone();
         let (close_headers, r) = channel();
         self.closer.senders.push(close_headers);
         let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
         let headers_handle = thread::spawn(move || {
             info!("starting headers thread");
+
             'outer: loop {
                 if wait_or_close(&r, sync_interval) {
                     info!("closing headers thread");
                     break;
                 }
 
-                loop {
-                    if r.try_recv().is_ok() {
-                        info!("closing headers thread");
-                        break 'outer;
+                if let Ok(client) = headers_url.build_client() {
+                    loop {
+                        if r.try_recv().is_ok() {
+                            info!("closing headers thread");
+                            break 'outer;
+                        }
+                        match headers.ask(chunk_size, &client) {
+                            Ok(headers_found) => {
+                                if headers_found == 0 {
+                                    chunk_size = 1
+                                } else {
+                                    info!("headers found: {}", headers_found);
+                                }
+                            }
+                            Err(Error::InvalidHeaders) => {
+                                // this should handle reorgs and also broke IO writes update
+                                if headers.remove(144).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                // usual error is because I reached the tip, trying asking half
+                                //TODO this is due to an esplora electrs bug, according to spec it should
+                                // just return available headers, remove when fix is deployed and change previous
+                                // break condition to headers_found < chunk_size
+                                info!("error while asking headers {}", e);
+                                if chunk_size > 1 {
+                                    chunk_size /= 2
+                                } else {
+                                    break;
+                                }
+                            }
+                            if chunk_size == 1 {
+                                break;
+                            }
+                        }
                     }
-                    match headers.ask(chunk_size) {
-                        Ok(headers_found) => {
-                            if headers_found == 0 {
-                                chunk_size = 1;
-                                break;
-                            } else {
-                                info!("headers found: {}", headers_found);
-                            }
-                        }
-                        Err(Error::InvalidHeaders) => {
-                            // this should handle reorgs and also broke IO writes update
-                            if headers.remove(144).is_err() {
-                                break;
-                            }
-                        }
-                        Err(e) => {
-                            // usual error is because I reached the tip, trying asking half
-                            //TODO this is due to an esplora electrs bug, according to spec it should
-                            // just return available headers, remove when fix is deployed and change previous
-                            // break condition to headers_found < chunk_size
-                            info!("error while asking headers {}", e);
-                            if chunk_size > 1 {
-                                chunk_size /= 2
-                            } else {
-                                break
-                            }
-                        }
-                    };
-                }
 
-                match headers.get_proofs() {
-                    Ok(found) => {
-                        if found > 0 {
-                            info!("found proof {}", found)
+                    match headers.get_proofs(&client) {
+                        Ok(found) => {
+                            if found > 0 {
+                                info!("found proof {}", found)
+                            }
                         }
+                        Err(e) => warn!("error in getting proofs {:?}", e),
                     }
-                    Err(e) => warn!("error in getting proofs {:?}", e),
                 }
             }
         });
         self.closer.handles.push(headers_handle);
 
-        let mut syncer = Syncer {
+        let syncer = Syncer {
             store: store.clone(),
-            client: self.url.build_client()?,
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
-            url: self.url.clone(),
         };
 
-        let mut tipper = Tipper {
+        let tipper = Tipper {
             store: store.clone(),
             network: self.network.clone(),
-            client: self.url.build_client()?,
-            url: self.url.clone(),
         };
 
         if self.wallet.is_none() {
@@ -545,37 +542,27 @@ impl Session<Error> for ElectrumSession {
 
         let (close_tipper, r) = channel();
         self.closer.senders.push(close_tipper);
-        let mut last_tip = 0;
+        let tipper_url = self.url.clone();
         let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
             loop {
+                if let Ok(client) = tipper_url.build_client() {
+                    match tipper.tip(&client) {
+                        Ok(current_tip) => {
+                            if last_tip != current_tip {
+                                last_tip = current_tip;
+                                info!("tip is {:?}", last_tip);
+                                notify_block(notify_blocks.clone(), last_tip);
+                            }
+                        }
+                        Err(e) => {
+                            warn!("exception in tipper {:?}", e);
+                        }
+                    }
+                }
                 if wait_or_close(&r, sync_interval) {
                     info!("closing tipper thread");
                     break;
-                }
-
-                match tipper.tip() {
-                    Ok(current_tip) => {
-                        if last_tip != current_tip {
-                            last_tip = current_tip;
-                            info!("tip is {:?}", last_tip);
-                            notify_block(notify_blocks.clone(), last_tip);
-                        }
-                    }
-                    Err(e) => {
-                        warn!("exception in tipper {:?}", e);
-                        match e {
-                            Error::ClientError(electrum_client::Error::JSON(_)) => {
-                                info!("tipper Client error, doing nothing")
-                            }
-                            _ => {
-                                warn!("trying to recreate died tipper client, {:?}", e);
-                                if let Ok(client) = tipper.url.build_client() {
-                                    tipper.client = client;
-                                }
-                            }
-                        }
-                    }
                 }
             }
         });
@@ -584,25 +571,24 @@ impl Session<Error> for ElectrumSession {
         let (close_syncer, r) = channel();
         self.closer.senders.push(close_syncer);
         let notify_txs = self.notify.clone();
+        let syncer_url = self.url.clone();
         let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
             loop {
-                match syncer.sync() {
-                    Ok(new_txs) => {
-                        if new_txs {
-                            info!("there are new transactions");
-                            let mockup_json =
-                                json!({"event":"transaction","transaction":{"subaccounts":[0]}});
-                            notify(notify_txs.clone(), mockup_json);
+                if let Ok(client) = syncer_url.build_client() {
+                    match syncer.sync(&client) {
+                        Ok(new_txs) => {
+                            if new_txs {
+                                info!("there are new transactions");
+                                let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[0]}});
+                                notify(notify_txs.clone(), mockup_json);
+                            }
                         }
-                    }
-                    Err(e) => {
-                        warn!("trying to recreate died syncer client, {:?}", e);
-                        if let Ok(client) = syncer.url.build_client() {
-                            syncer.client = client;
+                        Err(e) => {
+                            warn!("Error during sync, {:?}", e);
                         }
-                    }
-                };
+                    };
+                }
                 if wait_or_close(&r, sync_interval) {
                     info!("closing syncer thread");
                     break;
@@ -798,11 +784,12 @@ impl Session<Error> for ElectrumSession {
 }
 
 impl Tipper {
-    pub fn tip(&self) -> Result<u32, Error> {
-        let header = self.client.block_headers_subscribe_raw()?;
+    pub fn tip(&self, client: &Client) -> Result<u32, Error> {
+        let header = client.block_headers_subscribe_raw()?;
         let height = header.height as u32;
         let store_tip = self.store.read()?.tip;
         if height != store_tip {
+            info!("saving in store new tip {}", height);
             self.store.write()?.tip = height;
         }
         Ok(height)
@@ -810,11 +797,10 @@ impl Tipper {
 }
 
 impl Headers {
-    pub fn ask(&mut self, chunk_size: usize) -> Result<usize, Error> {
+    pub fn ask(&mut self, chunk_size: usize, client: &Client) -> Result<usize, Error> {
         if let ChainOrVerifier::Chain(chain) = &mut self.checker {
             info!("asking headers, current height:{} chunk_size:{} ", chain.height(), chunk_size);
-            let headers =
-                self.client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
+            let headers = client.block_headers(chain.height() as usize + 1, chunk_size)?.headers;
             let len = headers.len();
             chain.push(headers)?;
             Ok(len)
@@ -824,7 +810,7 @@ impl Headers {
         }
     }
 
-    pub fn get_proofs(&mut self) -> Result<usize, Error> {
+    pub fn get_proofs(&mut self, client: &Client) -> Result<usize, Error> {
         let store_read = self.store.read()?;
         let needs_proof: Vec<(Txid, u32)> = self
             .store
@@ -840,7 +826,7 @@ impl Headers {
 
         let mut txs_verified = vec![];
         for (txid, height) in needs_proof {
-            let proof = self.client.transaction_get_merkle(&txid, height as usize)?;
+            let proof = client.transaction_get_merkle(&txid, height as usize)?;
             let verified = match &self.checker {
                 ChainOrVerifier::Chain(chain) => {
                     chain.verify_tx_proof(&txid, height, proof).is_ok()
@@ -880,7 +866,7 @@ struct DownloadTxResult {
 }
 
 impl Syncer {
-    pub fn sync(&mut self) -> Result<bool, Error> {
+    pub fn sync(&self, client: &Client) -> Result<bool, Error> {
         trace!("start sync");
         let start = Instant::now();
 
@@ -890,14 +876,14 @@ impl Syncer {
         let mut scripts = HashMap::new();
 
         let mut last_used = Indexes::default();
-        let mut wallet_chains = vec![0,1];
+        let mut wallet_chains = vec![0, 1];
         wallet_chains.shuffle(&mut thread_rng());
         for i in 0..=1 {
             let mut batch_count = 0;
             loop {
                 let batch = self.store.read()?.get_script_batch(i, batch_count)?;
                 let result: Vec<Vec<GetHistoryRes>> =
-                    self.client.batch_script_get_history(batch.value.iter().map(|e| &e.0))?;
+                    client.batch_script_get_history(batch.value.iter().map(|e| &e.0))?;
                 if !batch.cached {
                     scripts.extend(batch.value);
                 }
@@ -938,8 +924,8 @@ impl Syncer {
             }
         }
 
-        let new_txs = self.download_txs(&history_txs_id, &scripts)?;
-        let headers = self.download_headers(&heights_set)?;
+        let new_txs = self.download_txs(&history_txs_id, &scripts, &client)?;
+        let headers = self.download_headers(&heights_set, &client)?;
 
         let store_indexes = self.store.read()?.indexes.clone();
 
@@ -969,8 +955,9 @@ impl Syncer {
     }
 
     fn download_headers(
-        &mut self,
+        &self,
         heights_set: &HashSet<u32>,
+        client: &Client,
     ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
         let mut result = vec![];
         let mut heights_in_db: HashSet<u32> =
@@ -980,7 +967,7 @@ impl Syncer {
             heights_set.difference(&heights_in_db).cloned().collect();
         if !heights_to_download.is_empty() {
             let headers_bytes_downloaded =
-                self.client.batch_block_header_raw(heights_to_download.clone())?;
+                client.batch_block_header_raw(heights_to_download.clone())?;
             let mut headers_downloaded: Vec<BEBlockHeader> = vec![];
             for vec in headers_bytes_downloaded {
                 headers_downloaded.push(BEBlockHeader::deserialize(&vec, self.network.id())?);
@@ -1013,9 +1000,10 @@ impl Syncer {
     */
 
     fn download_txs(
-        &mut self,
+        &self,
         history_txs_id: &HashSet<Txid>,
         scripts: &HashMap<Script, TwoLayerPath>,
+        client: &Client,
     ) -> Result<DownloadTxResult, Error> {
         let mut txs = vec![];
         let mut unblinds = vec![];
@@ -1023,7 +1011,7 @@ impl Syncer {
         let mut txs_in_db = self.store.read()?.all_txs.keys().cloned().collect();
         let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
         if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = self.client.batch_transaction_get_raw(txs_to_download)?;
+            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
             let mut txs_downloaded: Vec<BETransaction> = vec![];
             for vec in txs_bytes_downloaded {
                 let tx = BETransaction::deserialize(&vec, self.network.id())?;
@@ -1068,8 +1056,7 @@ impl Syncer {
             let txs_to_download: Vec<&Txid> =
                 previous_txs_to_download.difference(&txs_in_db).collect();
             if !txs_to_download.is_empty() {
-                let txs_bytes_downloaded =
-                    self.client.batch_transaction_get_raw(txs_to_download)?;
+                let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
                 for vec in txs_bytes_downloaded {
                     let mut tx = BETransaction::deserialize(&vec, self.network.id())?;
                     tx.strip_witness();
