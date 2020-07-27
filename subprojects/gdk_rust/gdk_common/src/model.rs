@@ -298,7 +298,7 @@ pub struct AddressPointer {
 }
 
 // This one is simple enough to derive a serializer
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Deserialize)]
 pub struct FeeEstimate(pub u64);
 pub struct TxsResult(pub Vec<TxListItem>);
 

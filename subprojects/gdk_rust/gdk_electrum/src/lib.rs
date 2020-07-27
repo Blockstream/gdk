@@ -201,21 +201,20 @@ impl ElectrumSession {
     pub fn get_wallet_mut(&mut self) -> Result<&mut WalletCtx, Error> {
         self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
     }
+}
 
-    fn try_get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        let client = self.url.build_client()?;
-        let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
-        let blocks: Vec<usize> = (1..25).collect();
-        // max is covering a rounding errors in production electrs which sometimes cause a fee
-        // estimates lower than relay fee
-        let mut estimates: Vec<FeeEstimate> = client
-            .batch_estimate_fee(blocks)?
-            .iter()
-            .map(|e| FeeEstimate(relay_fee.max((*e * 100_000_000.0) as u64)))
-            .collect();
-        estimates.insert(0, FeeEstimate(relay_fee));
-        Ok(estimates)
-    }
+fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
+    let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
+    let blocks: Vec<usize> = (1..25).collect();
+    // max is covering a rounding errors in production electrs which sometimes cause a fee
+    // estimates lower than relay fee
+    let mut estimates: Vec<FeeEstimate> = client
+        .batch_estimate_fee(blocks)?
+        .iter()
+        .map(|e| FeeEstimate(relay_fee.max((*e * 100_000_000.0) as u64)))
+        .collect();
+    estimates.insert(0, FeeEstimate(relay_fee));
+    Ok(estimates)
 }
 
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
@@ -390,6 +389,18 @@ impl Session<Error> for ElectrumSession {
             )?)),
         };
 
+        let estimates = store.read()?.fee_estimates().clone();
+        notify_fee(self.notify.clone(), &estimates);
+        if let Ok(fee_client) = self.url.build_client() {
+            let fee_store = store.clone();
+            thread::spawn(move || {
+                match try_get_fee_estimates(&fee_client) {
+                    Ok(fee_estimates) => fee_store.write().unwrap().fee_estimates = fee_estimates,
+                    Err(e) => warn!("can't update fee estimates {:?}", e),
+                };
+            });
+        }
+
         let mut wait_registry = false;
         let registry_thread = if self.network.liquid && self.wallet.is_none() {
             let registry_policy = self.network.policy_asset.clone();
@@ -532,12 +543,9 @@ impl Session<Error> for ElectrumSession {
 
         let notify_blocks = self.notify.clone();
 
-        let mut last_tip = tipper.tip()?;
-        info!("tip is {:?}", last_tip);
-        notify_block(notify_blocks.clone(), last_tip);
-
         let (close_tipper, r) = channel();
         self.closer.senders.push(close_tipper);
+        let mut last_tip = 0;
         let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
             loop {
@@ -604,9 +612,6 @@ impl Session<Error> for ElectrumSession {
         self.closer.handles.push(syncer_handle);
 
         notify_settings(self.notify.clone(), &self.get_settings()?);
-
-        let estimates = self.get_fee_estimates()?;
-        notify_fee(self.notify.clone(), &estimates);
 
         if let Some(registry_thread) = registry_thread {
             if wait_registry {
@@ -729,7 +734,10 @@ impl Session<Error> for ElectrumSession {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        Ok(self.try_get_fee_estimates().unwrap_or_else(|_| vec![FeeEstimate(1000u64); 25]))
+        let fee_estimates = try_get_fee_estimates(&self.url.build_client()?)
+            .unwrap_or_else(|_| vec![FeeEstimate(1000u64); 25]);
+        self.get_wallet()?.store.write()?.fee_estimates = fee_estimates.clone();
+        Ok(fee_estimates)
         //TODO better implement default
     }
 

@@ -11,7 +11,7 @@ use elements::{AddressParams, OutPoint};
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions, Unblinded};
 use gdk_common::be::{ScriptBatch, TwoLayerPath};
 use gdk_common::error::fn_err;
-use gdk_common::model::Settings;
+use gdk_common::model::{FeeEstimate, Settings};
 use gdk_common::scripts::p2shwpkh_script;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
@@ -60,6 +60,9 @@ pub struct RawStore {
 
     /// wallet settings
     pub settings: Option<Settings>,
+
+    /// cached fee_estimates
+    pub fee_estimates: Vec<FeeEstimate>,
 
     /// height of the blockchain
     pub tip: u32,
@@ -327,6 +330,14 @@ impl StoreMeta {
             result.extend(outpoints.into_iter());
         }
         Ok(result)
+    }
+
+    pub fn fee_estimates(&self) -> Vec<FeeEstimate> {
+        if self.fee_estimates.is_empty() {
+            vec![FeeEstimate(1000u64); 25]
+        } else {
+            self.fee_estimates.clone()
+        }
     }
 }
 
