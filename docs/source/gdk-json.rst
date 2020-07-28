@@ -304,7 +304,9 @@ Sign Transaction JSON
   "is_redeposit": false,
   "is_sweep": false,
   "network_fee": 0,
-  "satoshi": 100000,
+  "satoshi": {
+    "btc": 100000
+  },
   "send_all": false,
   "server_signed": false,
   "subaccount": 0,

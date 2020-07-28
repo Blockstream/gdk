@@ -770,7 +770,7 @@ namespace sdk {
 
                 result["used_utxos"] = used_utxos;
                 result["have_change"][asset_tag] = have_change_output;
-                result["satoshi"] = required_total.value();
+                result["satoshi"][asset_tag] = required_total.value();
 
                 update_tx_info(net_params, tx, result);
 

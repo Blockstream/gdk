@@ -1204,7 +1204,7 @@ namespace sdk {
             if (!is_liquid) {
                 const uint64_t limit
                     = m_twofactor_required ? session.get_spending_limits()["satoshi"].get<uint64_t>() : 0;
-                const uint64_t satoshi = m_tx_details["satoshi"];
+                const uint64_t satoshi = m_tx_details["satoshi"]["btc"];
                 const uint64_t fee = m_tx_details["fee"];
                 const uint32_t change_index = m_tx_details["change_index"]["btc"];
 
