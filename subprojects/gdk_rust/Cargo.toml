@@ -31,7 +31,7 @@ ureq = { version = "1.0.0", features = ["json"] }
 [dev-dependencies]
 tempdir = "0.3.7"
 bitcoincore-rpc = "0.10.0"
-electrum-client = { git="https://github.com/RCasatta/rust-electrum-client" ,branch = "raw_subscribe"}
+electrum-client = "0.2.0-beta.1"
 elements = "0.12"
 
 [profile.release]

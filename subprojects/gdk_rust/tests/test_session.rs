@@ -1,6 +1,7 @@
 use bitcoin::{self, Amount};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
-use electrum_client::client::ElectrumPlaintextStream;
+use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
+use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BETransaction, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
@@ -30,8 +31,8 @@ const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 #[allow(unused)]
 pub struct TestSession {
     node: Client,
-    electrs: electrum_client::Client<ElectrumPlaintextStream>,
-    electrs_header: electrum_client::Client<ElectrumPlaintextStream>,
+    electrs: RawClient<ElectrumPlaintextStream>,
+    electrs_header: RawClient<ElectrumPlaintextStream>,
     session: ElectrumSession,
     status: u64,
     node_process: Child,
@@ -173,7 +174,7 @@ pub fn setup(
 
     info!("creating electrs client");
     let electrs = loop {
-        match electrum_client::Client::new(&electrs_url) {
+        match RawClient::new(&electrs_url) {
             Ok(c) => break c,
             Err(e) => {
                 warn!("{:?}", e);
@@ -182,7 +183,7 @@ pub fn setup(
         }
     };
     info!("done creating electrs client");
-    let mut electrs_header = electrum_client::Client::new(&electrs_url).unwrap();
+    let electrs_header = RawClient::new(&electrs_url).unwrap();
     let header = electrs_header.block_headers_subscribe_raw().unwrap();
     assert_eq!(header.height, 101);
 
@@ -214,16 +215,16 @@ pub fn setup(
     } else {
         NetworkId::Bitcoin(bitcoin::Network::Regtest)
     };
- 
+
     let status = loop {
         let status = session.status().unwrap();
-        if status ==9288996555440648771  {
+        if status == 9288996555440648771 {
             break status;
         } else {
             thread::sleep(Duration::from_millis(500));
         }
     };
-    
+
     info!("returning TestSession");
     TestSession {
         status,
