@@ -214,9 +214,16 @@ pub fn setup(
     } else {
         NetworkId::Bitcoin(bitcoin::Network::Regtest)
     };
-
-    let status = session.status().unwrap();
-    assert_eq!(status, 9288996555440648771);
+ 
+    let status = loop {
+        let status = session.status().unwrap();
+        if status ==9288996555440648771  {
+            break status;
+        } else {
+            thread::sleep(Duration::from_millis(500));
+        }
+    };
+    
     info!("returning TestSession");
     TestSession {
         status,
