@@ -58,7 +58,6 @@ GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *me
  * the handler with a :ref:`session-event` notification.
  *
  */
-
 GDK_API int GDKRUST_set_notification_handler(struct GDKRUST_session* session, GDKRUST_notification_handler handler, void *self_context);
 
 GDK_API int GDKRUST_convert_json_to_string(const GDKRUST_json* json, char** output);
