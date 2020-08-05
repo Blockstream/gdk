@@ -13,23 +13,23 @@ android_log = ["android_logger"]
 
 [dependencies]
 bitcoin = { version = "0.23", features = [ "use-serde" ] }
-rand = "0.7"
+rand = "0.7.3"
 gdk-electrum = { path = "gdk_electrum", features = ["android_log"] }
 gdk-common = { path = "gdk_common" }
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
 libc = "0.2"
-hex = "0.3"
+hex = "0.4.0"
 dirs = "1.0"
-chrono = "0.4"
-log = "0.4"
+chrono = "0.4.11"
+log = "0.4.8"
 android_logger = { version = "0.8.6", optional = true }
 url = "1.7.2"
 ureq = { version = "1.0.0", features = ["json"] }
 
 [dev-dependencies]
-tempdir = "0.3"
+tempdir = "0.3.7"
 bitcoincore-rpc = "0.10.0"
 electrum-client = { git="https://github.com/RCasatta/rust-electrum-client" ,branch = "raw_subscribe"}
 elements = "0.12"
