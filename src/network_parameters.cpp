@@ -176,6 +176,14 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "ct_exponent", 0 }, { "ct_bits", 52 }, { "bip21_prefix", "liquidnetwork" },
             { "server_type", "electrum" } })) },
 
+    { "liquid-electrum-regtest",
+        std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Liquid Regtest" },
+            { "network", "liquid-electrum-regtest" }, { "url", "localhost:50001" }, { "tls", false },
+            { "mainnet", false }, { "liquid", true }, { "development", true },
+            { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
+            { "ct_exponent", 0 }, { "ct_bits", 52 }, { "bip21_prefix", "liquidregtestnetwork" },
+            { "server_type", "electrum" } })) },
+
     { "electrum-mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Mainnet" },
             { "network", "electrum-mainnet" }, { "address_explorer_url", "https://blockstream.info/address/" },
