@@ -238,10 +238,17 @@ pub extern "C" fn GDKRUST_call_session(
         let rates = fetch_cached_exchange_rates(sess).unwrap_or_default();
         return json_res!(output, tickers_to_json(rates), GA_OK);
     }
-    let input_redacted = if method == "login" {
+
+    // Redact inputs containing private data
+    let methods_to_redact = vec!["login", "register_user", "set_pin", "create_subaccount"];
+    let input_str = format!("{:?}", &input);
+    let input_redacted = if methods_to_redact.contains(&method.as_str())
+        || input_str.contains("mnemonic")
+        || input_str.contains("xprv")
+    {
         "redacted".to_string()
     } else {
-        format!("{:?}", input)
+        input_str
     };
 
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
