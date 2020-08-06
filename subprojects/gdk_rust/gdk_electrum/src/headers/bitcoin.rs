@@ -129,6 +129,7 @@ impl HeadersChain {
             self.height = new_height;
         }
         self.flush(&mut serialized)?;
+        info!("chain tip height {} hash {} file {:?}", self.height, self.tip().bitcoin_hash() ,self.path);
         Ok(())
     }
 
