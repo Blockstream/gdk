@@ -7,7 +7,7 @@ use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{PublicKey, SigHashType, Txid};
 use elements;
-use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt};
+use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt, SPVVerifyResult};
 use hex;
 use log::{info, trace};
 use rand::Rng;
@@ -194,9 +194,11 @@ impl WalletCtx {
                 (true, false) => ("incoming", false),
                 (false, false) => ("outgoing", true),
             };
-            let spv_verified = store_read.txs_verif.contains(*tx_id);
+            let spv_verified =
+                store_read.txs_verif.get(*tx_id).unwrap_or(&SPVVerifyResult::InProgress).clone();
+
             trace!(
-                "tx_id {} type {} user_signed {} spv_verified {}",
+                "tx_id {} type {} user_signed {} spv_verified {:?}",
                 tx_id,
                 type_,
                 user_signed,
@@ -530,7 +532,7 @@ impl WalletCtx {
             "outgoing".to_string(),
             request.clone(),
             true,
-            false,
+            SPVVerifyResult::InProgress,
         );
         created_tx.changes_used = Some(changes.len() as u32);
         info!("returning: {:?}", created_tx);

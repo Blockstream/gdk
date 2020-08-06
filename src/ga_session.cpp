@@ -2418,7 +2418,7 @@ namespace sdk {
                 tx_details["can_cpfp"] = false;
             }
 
-            tx_details["spv_verified"] = false;
+            tx_details["spv_verified"] = "InProgress";
             if (!datadir.empty() && is_cached) {
                 nlohmann::json net_params = m_net_params.get_json();
                 net_params["url"] = m_electrum_url;
@@ -2430,11 +2430,11 @@ namespace sdk {
 
                 const auto verify_result = spv_verify_tx(verify_params);
                 GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;
-                if (verify_result == 1) {
-                    tx_details["spv_verified"] = true;
-                } else {
+                if (verify_result == 0) {
+                    // Cannot verify because tx height > headers height
                     is_cached = false; // only one blocking header download call per cycle
                     asio::post(m_pool, [verify_params] {
+                        // Starts a separate thread to download headers
                         while (true) {
                             const auto verify_result = spv_verify_tx(verify_params);
                             if (verify_result != 0) {
@@ -2442,6 +2442,10 @@ namespace sdk {
                             }
                         }
                     });
+                } else if (verify_result == 1) {
+                    tx_details["spv_verified"] = "Verified";
+                } else if (verify_result == 2) {
+                    tx_details["spv_verified"] = "NotVerified";
                 }
             }
             tx_details["addressees"] = addressees;

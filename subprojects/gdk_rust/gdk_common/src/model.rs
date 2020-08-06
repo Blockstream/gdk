@@ -4,6 +4,7 @@ use core::mem::transmute;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use bitcoin::hashes::core::fmt::Formatter;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::Value;
 use std::convert::TryInto;
@@ -134,9 +135,9 @@ pub struct SPVVerifyTx {
     pub headers_to_download: Option<usize>, // defaults to 2016, useful to set for testing
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum SPVVerifyResult {
-    CallMeAgain,
+    InProgress,
     Verified,
     NotVerified,
 }
@@ -162,7 +163,7 @@ pub struct TransactionMeta {
     pub changes_used: Option<u32>,
     pub rbf_optin: bool,
     pub user_signed: bool,
-    pub spv_verified: bool,
+    pub spv_verified: SPVVerifyResult,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -188,7 +189,7 @@ impl From<BETransaction> for TransactionMeta {
             type_: "unknown".to_string(),
             changes_used: None,
             user_signed: false,
-            spv_verified: false,
+            spv_verified: SPVVerifyResult::InProgress,
             rbf_optin,
         }
     }
@@ -206,7 +207,7 @@ impl TransactionMeta {
         type_: String,
         create_transaction: CreateTransaction,
         user_signed: bool,
-        spv_verified: bool,
+        spv_verified: SPVVerifyResult,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
@@ -259,7 +260,7 @@ pub struct TxListItem {
     pub server_signed: bool,
     pub user_signed: bool,
     pub instant: bool,
-    pub spv_verified: bool,
+    pub spv_verified: String,
     pub fee: u64,
     pub fee_rate: u64,
     pub addressees: Vec<String>, // receiver's addresses
@@ -371,9 +372,19 @@ fn format(timestamp: u32) -> String {
 impl SPVVerifyResult {
     pub fn as_i32(&self) -> i32 {
         match self {
-            SPVVerifyResult::CallMeAgain => 0,
+            SPVVerifyResult::InProgress => 0,
             SPVVerifyResult::Verified => 1,
             SPVVerifyResult::NotVerified => 2,
+        }
+    }
+}
+
+impl Display for SPVVerifyResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SPVVerifyResult::InProgress => write!(f, "InProgress"),
+            SPVVerifyResult::Verified => write!(f, "Verified"),
+            SPVVerifyResult::NotVerified => write!(f, "NotVerified"),
         }
     }
 }

@@ -682,9 +682,7 @@ impl BETransaction {
                 }
 
                 // we don't want to see redeposited assets
-                return result.into_iter()
-                    .filter(|&(_, v)| v != 0)
-                    .collect();
+                return result.into_iter().filter(|&(_, v)| v != 0).collect();
             }
         }
     }

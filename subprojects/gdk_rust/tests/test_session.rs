@@ -374,7 +374,7 @@ impl TestSession {
         txid
     }
 
-    pub fn is_verified(&mut self, txid: &str, verified: bool) {
+    pub fn is_verified(&mut self, txid: &str, verified: SPVVerifyResult) {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let list = self.session.get_transactions(&opt).unwrap().0;
@@ -386,7 +386,7 @@ impl TestSession {
             txid
         );
         let tx = filtered_list[0];
-        assert_eq!(tx.spv_verified, verified);
+        assert_eq!(tx.spv_verified, verified.to_string());
     }
 
     pub fn reconnect(&mut self) {
@@ -798,7 +798,7 @@ impl TestSession {
         };
         loop {
             match gdk_electrum::headers::spv_verify_tx(&param) {
-                Ok(SPVVerifyResult::CallMeAgain) => continue,
+                Ok(SPVVerifyResult::InProgress) => continue,
                 Ok(SPVVerifyResult::Verified) => break,
                 _ => assert!(false),
             }

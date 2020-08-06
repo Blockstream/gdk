@@ -98,7 +98,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                     // handle reorgs
                     chain.remove(144)?;
                 }
-                Ok(SPVVerifyResult::CallMeAgain)
+                Ok(SPVVerifyResult::InProgress)
             }
         }
         NetworkId::Elements(elements_network) => {

@@ -1,3 +1,4 @@
+use gdk_common::model::SPVVerifyResult;
 use std::env;
 
 mod test_session;
@@ -19,7 +20,7 @@ fn bitcoin() {
     test_session.fund(100_000_000, None);
     test_session.get_subaccount();
     let txid = test_session.send_tx(&node_address, 10_000, None); // p2shwpkh
-    test_session.is_verified(&txid, false);
+    test_session.is_verified(&txid, SPVVerifyResult::InProgress);
     test_session.send_tx(&node_bech32_address, 10_000, None); // p2wpkh
     test_session.send_tx(&node_legacy_address, 10_000, None); // p2pkh
     test_session.send_all(&node_address, None);
@@ -32,7 +33,7 @@ fn bitcoin() {
     test_session.send_fails();
     test_session.fees();
     test_session.settings();
-    test_session.is_verified(&txid, true);
+    test_session.is_verified(&txid, SPVVerifyResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
 
@@ -58,7 +59,7 @@ fn liquid() {
     test_session.send_tx_to_unconf();
     test_session.get_subaccount();
     let txid = test_session.send_tx(&node_address, 10_000, None);
-    test_session.is_verified(&txid, false);
+    test_session.is_verified(&txid, SPVVerifyResult::InProgress);
     test_session.send_tx(&node_bech32_address, 10_000, None);
     test_session.send_tx(&node_legacy_address, 10_000, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()));
@@ -74,7 +75,7 @@ fn liquid() {
     test_session.send_fails();
     test_session.fees();
     test_session.settings();
-    test_session.is_verified(&txid, true);
+    test_session.is_verified(&txid, SPVVerifyResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
 

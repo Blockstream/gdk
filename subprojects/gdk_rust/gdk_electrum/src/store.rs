@@ -11,7 +11,7 @@ use elements::{AddressParams, OutPoint};
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions, Unblinded};
 use gdk_common::be::{ScriptBatch, TwoLayerPath};
 use gdk_common::error::fn_err;
-use gdk_common::model::{FeeEstimate, Settings};
+use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::scripts::p2shwpkh_script;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
@@ -55,8 +55,8 @@ pub struct RawStore {
     /// unblinded values (only for liquid)
     pub unblinded: HashMap<OutPoint, Unblinded>,
 
-    /// if key is present, tx has been verified through SPV
-    pub txs_verif: HashSet<Txid>,
+    /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
+    pub txs_verif: HashMap<Txid, SPVVerifyResult>,
 
     /// wallet settings
     pub settings: Option<Settings>,

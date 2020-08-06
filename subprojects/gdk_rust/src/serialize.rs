@@ -73,6 +73,8 @@ pub fn txitem_value(tx: &TxListItem) -> Value {
         "transaction_size" : tx.transaction_size,
         "transaction_vsize" : tx.transaction_vsize,
         "transaction_weight" : tx.transaction_weight,
+
+        "spv_verified" : tx.spv_verified,
     })
 }
 

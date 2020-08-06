@@ -239,7 +239,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
         server_signed: false,    // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: tx.user_signed,
-        spv_verified: tx.spv_verified,
+        spv_verified: tx.spv_verified.to_string(),
         instant: false,
         fee: tx.fee,
         fee_rate,
@@ -819,12 +819,12 @@ impl Headers {
             .iter()
             .filter(|(_, opt)| opt.is_some())
             .map(|(t, h)| (t, h.unwrap()))
-            .filter(|(t, _)| !store_read.txs_verif.contains(*t))
+            .filter(|(t, _)| store_read.txs_verif.get(*t).is_none())
             .map(|(t, h)| (t.clone(), h))
             .collect();
         drop(store_read);
 
-        let mut txs_verified = vec![];
+        let mut txs_verified = HashMap::new();
         for (txid, height) in needs_proof {
             let proof = client.transaction_get_merkle(&txid, height as usize)?;
             let verified = match &self.checker {
@@ -843,7 +843,10 @@ impl Headers {
             };
             if verified {
                 info!("proof for {} verified!", txid);
-                txs_verified.push(txid);
+                txs_verified.insert(txid, SPVVerifyResult::Verified);
+            } else {
+                warn!("proof for {} not verified!", txid);
+                txs_verified.insert(txid, SPVVerifyResult::NotVerified);
             }
         }
         let proofs_done = txs_verified.len();
