@@ -140,6 +140,7 @@ pub enum SPVVerifyResult {
     InProgress,
     Verified,
     NotVerified,
+    Disabled,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -375,6 +376,7 @@ impl SPVVerifyResult {
             SPVVerifyResult::InProgress => 0,
             SPVVerifyResult::Verified => 1,
             SPVVerifyResult::NotVerified => 2,
+            SPVVerifyResult::Disabled => 3,
         }
     }
 }
@@ -385,6 +387,7 @@ impl Display for SPVVerifyResult {
             SPVVerifyResult::InProgress => write!(f, "InProgress"),
             SPVVerifyResult::Verified => write!(f, "Verified"),
             SPVVerifyResult::NotVerified => write!(f, "NotVerified"),
+            SPVVerifyResult::Disabled => write!(f, "Disabled"),
         }
     }
 }

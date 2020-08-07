@@ -184,7 +184,7 @@ int main()
 
     // T
     if (url != nullptr)
-        net_params["url"] = url;
+        net_params["electrum_url"] = url;
     net_params["name"] = network;
     net_params["validate_electrum_domain"] = false;
     if (tls != nullptr)
@@ -217,13 +217,13 @@ int main()
         // Try fee estimates with two different electrs
         session.disconnect();
         printf("testing regular electrs fee estimates\n");
-        net_params["url"] = "electrum2.hodlister.co:50002";
+        net_params["electrum_url"] = "electrum2.hodlister.co:50002";
         session.connect(net_params);
         TEST(test_get_fee_estimates(session));
 
         session.disconnect();
         printf("testing blockstream electrs fee estimates\n");
-        net_params["url"] = "blockstream.info:700";
+        net_params["electrum_url"] = "blockstream.info:700";
         session.connect(net_params);
         TEST(test_get_fee_estimates(session));
     }

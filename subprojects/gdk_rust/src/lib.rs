@@ -169,6 +169,7 @@ fn init_logging() {
 }
 
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
+    info!("create_session {:?}", network);
     if !network.is_object() || !network.as_object().unwrap().contains_key("server_type") {
         error!("Expected network to be an object with a server_type key");
         return Err(GA_ERROR.into());

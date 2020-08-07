@@ -194,8 +194,12 @@ impl WalletCtx {
                 (true, false) => ("incoming", false),
                 (false, false) => ("outgoing", true),
             };
-            let spv_verified =
-                store_read.txs_verif.get(*tx_id).unwrap_or(&SPVVerifyResult::InProgress).clone();
+
+            let spv_verified = if self.network.spv_enabled.unwrap_or(true) {
+                store_read.txs_verif.get(*tx_id).unwrap_or(&SPVVerifyResult::InProgress).clone()
+            } else {
+                SPVVerifyResult::Disabled
+            };
 
             trace!(
                 "tx_id {} type {} user_signed {} spv_verified {:?}",

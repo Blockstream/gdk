@@ -19,13 +19,14 @@ pub struct Network {
     address_explorer_url: String,
 
     pub tls: Option<bool>,
-    pub url: Option<String>,
+    pub electrum_url: Option<String>,
     pub validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
     pub sync_interval: Option<u32>,
     pub ct_bits: Option<i32>,
     pub ct_exponent: Option<i32>,
     pub ct_min_value: Option<u64>,
+    pub spv_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

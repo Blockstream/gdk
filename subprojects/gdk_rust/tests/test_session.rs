@@ -188,7 +188,7 @@ pub fn setup(
     assert_eq!(header.height, 101);
 
     let mut network = Network::default();
-    network.url = Some(electrs_url.to_string());
+    network.electrum_url = Some(electrs_url.to_string());
     network.sync_interval = Some(1);
     network.development = true;
     network.ct_bits = Some(52);

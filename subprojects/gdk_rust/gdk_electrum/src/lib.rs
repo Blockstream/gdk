@@ -163,7 +163,7 @@ fn determine_electrum_url(
 }
 
 pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl, Error> {
-    determine_electrum_url(&network.url, network.tls, network.validate_domain)
+    determine_electrum_url(&network.electrum_url, network.tls, network.validate_domain)
 }
 
 impl ElectrumSession {
@@ -433,86 +433,88 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
-        let checker = match self.network.id() {
-            NetworkId::Bitcoin(network) => {
-                let mut path: PathBuf = self.data_root.as_str().into();
-                path.push(format!("headers_chain_{}", network));
-                ChainOrVerifier::Chain(HeadersChain::new(path, network)?)
-            }
-            NetworkId::Elements(network) => {
-                let verifier = Verifier::new(network);
-                ChainOrVerifier::Verifier(verifier)
-            }
-        };
-
-        let mut headers = Headers {
-            store: store.clone(),
-            checker,
-        };
-
-        let headers_url = self.url.clone();
-        let (close_headers, r) = channel();
-        self.closer.senders.push(close_headers);
-        let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
-        let headers_handle = thread::spawn(move || {
-            info!("starting headers thread");
-
-            'outer: loop {
-                if wait_or_close(&r, sync_interval) {
-                    info!("closing headers thread");
-                    break;
+        if self.network.spv_enabled.unwrap_or(true) {
+            let checker = match self.network.id() {
+                NetworkId::Bitcoin(network) => {
+                    let mut path: PathBuf = self.data_root.as_str().into();
+                    path.push(format!("headers_chain_{}", network));
+                    ChainOrVerifier::Chain(HeadersChain::new(path, network)?)
                 }
+                NetworkId::Elements(network) => {
+                    let verifier = Verifier::new(network);
+                    ChainOrVerifier::Verifier(verifier)
+                }
+            };
 
-                if let Ok(client) = headers_url.build_client() {
-                    loop {
-                        if r.try_recv().is_ok() {
-                            info!("closing headers thread");
-                            break 'outer;
-                        }
-                        match headers.ask(chunk_size, &client) {
-                            Ok(headers_found) => {
-                                if headers_found == 0 {
-                                    chunk_size = 1
-                                } else {
-                                    info!("headers found: {}", headers_found);
-                                }
+            let mut headers = Headers {
+                store: store.clone(),
+                checker,
+            };
+
+            let headers_url = self.url.clone();
+            let (close_headers, r) = channel();
+            self.closer.senders.push(close_headers);
+            let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
+            let headers_handle = thread::spawn(move || {
+                info!("starting headers thread");
+
+                'outer: loop {
+                    if wait_or_close(&r, sync_interval) {
+                        info!("closing headers thread");
+                        break;
+                    }
+
+                    if let Ok(client) = headers_url.build_client() {
+                        loop {
+                            if r.try_recv().is_ok() {
+                                info!("closing headers thread");
+                                break 'outer;
                             }
-                            Err(Error::InvalidHeaders) => {
-                                // this should handle reorgs and also broke IO writes update
-                                if headers.remove(144).is_err() {
-                                    break;
+                            match headers.ask(chunk_size, &client) {
+                                Ok(headers_found) => {
+                                    if headers_found == 0 {
+                                        chunk_size = 1
+                                    } else {
+                                        info!("headers found: {}", headers_found);
+                                    }
                                 }
-                            }
-                            Err(e) => {
-                                // usual error is because I reached the tip, trying asking half
-                                //TODO this is due to an esplora electrs bug, according to spec it should
-                                // just return available headers, remove when fix is deployed and change previous
-                                // break condition to headers_found < chunk_size
-                                info!("error while asking headers {}", e);
-                                if chunk_size > 1 {
-                                    chunk_size /= 2
-                                } else {
-                                    break;
+                                Err(Error::InvalidHeaders) => {
+                                    // this should handle reorgs and also broke IO writes update
+                                    if headers.remove(144).is_err() {
+                                        break;
+                                    }
+                                }
+                                Err(e) => {
+                                    // usual error is because I reached the tip, trying asking half
+                                    //TODO this is due to an esplora electrs bug, according to spec it should
+                                    // just return available headers, remove when fix is deployed and change previous
+                                    // break condition to headers_found < chunk_size
+                                    info!("error while asking headers {}", e);
+                                    if chunk_size > 1 {
+                                        chunk_size /= 2
+                                    } else {
+                                        break;
+                                    }
                                 }
                             }
                             if chunk_size == 1 {
                                 break;
                             }
                         }
-                    }
 
-                    match headers.get_proofs(&client) {
-                        Ok(found) => {
-                            if found > 0 {
-                                info!("found proof {}", found)
+                        match headers.get_proofs(&client) {
+                            Ok(found) => {
+                                if found > 0 {
+                                    info!("found proof {}", found)
+                                }
                             }
+                            Err(e) => warn!("error in getting proofs {:?}", e),
                         }
-                        Err(e) => warn!("error in getting proofs {:?}", e),
                     }
                 }
-            }
-        });
-        self.closer.handles.push(headers_handle);
+            });
+            self.closer.handles.push(headers_handle);
+        }
 
         let syncer = Syncer {
             store: store.clone(),

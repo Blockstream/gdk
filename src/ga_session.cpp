@@ -310,6 +310,8 @@ namespace sdk {
         , m_electrum_url(
               net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))
         , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
+        , m_spv_enabled(
+              net_params.value("spv_enabled", network_parameters::get(net_params.at("name")).at("spv_enabled")))
     {
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"
@@ -2418,35 +2420,39 @@ namespace sdk {
                 tx_details["can_cpfp"] = false;
             }
 
-            tx_details["spv_verified"] = "InProgress";
-            if (!datadir.empty() && is_cached) {
-                nlohmann::json net_params = m_net_params.get_json();
-                net_params["url"] = m_electrum_url;
-                net_params["tls"] = m_electrum_tls;
+            if (m_spv_enabled) {
+                tx_details["spv_verified"] = "InProgress";
+                if (!datadir.empty() && is_cached) {
+                    nlohmann::json net_params = m_net_params.get_json();
+                    net_params["electrum_url"] = m_electrum_url;
+                    net_params["tls"] = m_electrum_tls;
 
-                const nlohmann::json verify_params
-                    = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] }, { "path", path },
-                          { "network", net_params }, { "encryption_key", "TBD" } };
+                    const nlohmann::json verify_params
+                        = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] },
+                              { "path", path }, { "network", net_params }, { "encryption_key", "TBD" } };
 
-                const auto verify_result = spv_verify_tx(verify_params);
-                GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;
-                if (verify_result == 0) {
-                    // Cannot verify because tx height > headers height
-                    is_cached = false; // only one blocking header download call per cycle
-                    asio::post(m_pool, [verify_params] {
-                        // Starts a separate thread to download headers
-                        while (true) {
-                            const auto verify_result = spv_verify_tx(verify_params);
-                            if (verify_result != 0) {
-                                break;
+                    const auto verify_result = spv_verify_tx(verify_params);
+                    GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;
+                    if (verify_result == 0) {
+                        // Cannot verify because tx height > headers height
+                        is_cached = false; // only one blocking header download call per cycle
+                        asio::post(m_pool, [verify_params] {
+                            // Starts a separate thread to download headers
+                            while (true) {
+                                const auto verify_result = spv_verify_tx(verify_params);
+                                if (verify_result != 0) {
+                                    break;
+                                }
                             }
-                        }
-                    });
-                } else if (verify_result == 1) {
-                    tx_details["spv_verified"] = "Verified";
-                } else if (verify_result == 2) {
-                    tx_details["spv_verified"] = "NotVerified";
+                        });
+                    } else if (verify_result == 1) {
+                        tx_details["spv_verified"] = "Verified";
+                    } else if (verify_result == 2) {
+                        tx_details["spv_verified"] = "NotVerified";
+                    }
                 }
+            } else {
+                tx_details["spv_verified"] = "Disabled";
             }
             tx_details["addressees"] = addressees;
             tx_details["user_signed"] = true;

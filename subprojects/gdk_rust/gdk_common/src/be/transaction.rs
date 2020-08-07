@@ -464,7 +464,6 @@ impl BETransaction {
                     if asset == policy_asset.as_ref().unwrap() {
                         // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
                         // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
-                        // another reason, specific to this wallet, is that the send_all algorithm could reason in steps greater than 1, making it not too slow
                         sum -= estimated_fee;
                         if sum > DUST_VALUE {
                             // we apply dust rules for liquid bitcoin as elements do
