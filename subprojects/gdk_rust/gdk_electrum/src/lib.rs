@@ -988,22 +988,6 @@ impl Syncer {
         Ok(result)
     }
 
-    /*
-    fn sync_height(&self, txid_height: &HashMap<Txid, u32>) -> Result<(), Error> {
-        // sync heights, which are my txs
-        for (txid, height) in txid_height.iter() {
-            self.db.insert_height(txid, *height)?; // adding new, but also updating reorged tx
-        }
-        for txid_db in self.db.get_only_txids()?.iter() {
-            if txid_height.get(txid_db).is_none() {
-                self.db.remove_height(txid_db)?; // something in the db is not in live list (rbf), removing
-            }
-        }
-
-        Ok(())
-    }
-    */
-
     fn download_txs(
         &self,
         history_txs_id: &HashSet<Txid>,
