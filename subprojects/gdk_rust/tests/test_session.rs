@@ -329,8 +329,9 @@ impl TestSession {
         assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
     }
 
+
     /// send a tx from the gdk session to the specified address
-    pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>) -> String {
+    pub fn send_tx(&mut self, address: &str, satoshi: u64, asset: Option<String>, memo: Option<String>) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
         //let init_sat_addr = self.balance_addr(address);
@@ -345,6 +346,7 @@ impl TestSession {
             satoshi,
             asset_tag: asset.clone().or(self.asset_tag()),
         });
+        create_opt.memo = memo;
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         assert!(tx.user_signed);
         match self.network.id() {
@@ -374,18 +376,16 @@ impl TestSession {
         txid
     }
 
+    pub fn test_set_get_memo(&mut self, txid: &str, old: &str, new: &str) {
+        assert_eq!(self.get_tx_from_list(txid).memo, old);
+        assert!(self.session.set_transaction_memo(txid, new, 1).is_err());
+        assert!(self.session.set_transaction_memo(txid, &"a".repeat(1025),0).is_err());
+        assert!(self.session.set_transaction_memo(txid, new, 0).is_ok());
+        assert_eq!(self.get_tx_from_list(txid).memo, new);
+    }
+
     pub fn is_verified(&mut self, txid: &str, verified: SPVVerifyResult) {
-        let mut opt = GetTransactionsOpt::default();
-        opt.count = 100;
-        let list = self.session.get_transactions(&opt).unwrap().0;
-        let filtered_list: Vec<&TxListItem> = list.iter().filter(|e| e.txhash == txid).collect();
-        assert_eq!(
-            filtered_list.len(),
-            1,
-            "tx {} is not in tx list or there are more than one",
-            txid
-        );
-        let tx = filtered_list[0];
+        let tx = self.get_tx_from_list(txid);
         assert_eq!(tx.spv_verified, verified.to_string());
     }
 
@@ -394,20 +394,21 @@ impl TestSession {
         self.session.connect(&Value::Null).unwrap();
         self.wait_status_change();
         let address = self.node_getnewaddress(None);
-        let txid = self.send_tx(&address, 1000, None);
+        let txid = self.send_tx(&address, 1000, None, None);
         self.list_tx_contains(&txid, &[address], true);
     }
 
-    fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {
+    fn get_tx_from_list(&mut self, txid: &str,) -> TxListItem {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
-
         let list = self.session.get_transactions(&opt).unwrap().0;
-        let filtered_list: Vec<&TxListItem> = list.iter().filter(|e| e.txhash == txid).collect();
+        let filtered_list: Vec<TxListItem> = list.iter().filter(|e| e.txhash == txid).cloned().collect();
         assert!(!filtered_list.is_empty(), "just made tx {} is not in tx list", txid);
+        filtered_list.first().unwrap().clone()
+    }
 
-        let tx = filtered_list.first().unwrap();
-
+    fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {
+        let tx = self.get_tx_from_list(txid);
         if !addressees.is_empty() {
             let recipients = match self.network_id {
                 NetworkId::Bitcoin(_) => addressees.to_vec(),

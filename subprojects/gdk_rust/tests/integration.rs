@@ -3,6 +3,9 @@ use std::env;
 
 mod test_session;
 
+static MEMO1: &str = "hello memo";
+static MEMO2: &str = "hello memo2";
+
 #[test]
 fn bitcoin() {
     let electrs_exec = env::var("ELECTRS_EXEC")
@@ -19,10 +22,11 @@ fn bitcoin() {
     let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
     test_session.fund(100_000_000, None);
     test_session.get_subaccount();
-    let txid = test_session.send_tx(&node_address, 10_000, None); // p2shwpkh
+    let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string())); // p2shwpkh
+    test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::InProgress);
-    test_session.send_tx(&node_bech32_address, 10_000, None); // p2wpkh
-    test_session.send_tx(&node_legacy_address, 10_000, None); // p2pkh
+    test_session.send_tx(&node_bech32_address, 10_000, None, None); // p2wpkh
+    test_session.send_tx(&node_legacy_address, 10_000, None, None); // p2pkh
     test_session.send_all(&node_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
@@ -36,6 +40,7 @@ fn bitcoin() {
     test_session.is_verified(&txid, SPVVerifyResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
+    test_session.test_set_get_memo(&txid, MEMO2, "");  // after reconnect memo has been reloaded from disk
 
     test_session.stop();
 }
@@ -58,12 +63,13 @@ fn liquid() {
     let assets = test_session.fund(100_000_000, Some(1));
     test_session.send_tx_to_unconf();
     test_session.get_subaccount();
-    let txid = test_session.send_tx(&node_address, 10_000, None);
+    let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()));
+    test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::InProgress);
-    test_session.send_tx(&node_bech32_address, 10_000, None);
-    test_session.send_tx(&node_legacy_address, 10_000, None);
-    test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()));
-    test_session.send_tx(&node_address, 100, Some(assets[0].clone())); // asset should send below dust limit
+    test_session.send_tx(&node_bech32_address, 10_000, None, None);
+    test_session.send_tx(&node_legacy_address, 10_000, None, None);
+    test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None);
+    test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None); // asset should send below dust limit
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();
@@ -78,6 +84,7 @@ fn liquid() {
     test_session.is_verified(&txid, SPVVerifyResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
+    test_session.test_set_get_memo(&txid, MEMO2, "");
 
     test_session.stop();
 }

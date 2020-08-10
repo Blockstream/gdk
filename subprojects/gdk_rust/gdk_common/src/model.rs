@@ -114,6 +114,7 @@ pub struct CreateTransaction {
     pub send_all: Option<bool>,
     #[serde(default)]
     pub previous_transaction: HashMap<String, Value>,
+    pub memo: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -228,7 +229,7 @@ impl TransactionMeta {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AddressIO {
     pub address: String,
     pub address_type: bitcoin::util::address::AddressType,
@@ -245,7 +246,7 @@ pub struct AddressIO {
 }
 
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TxListItem {
     pub block_height: u32,
     pub created_at: String,

@@ -212,8 +212,7 @@ where
         .ok_or_else(|| Error::Other("get_transaction_details: missing memo".into()))?;
 
     let memo_type = input["memo_type"]
-        .as_u64()
-        .ok_or_else(|| Error::Other("get_transaction_details: missing memo_type".into()))?;
+        .as_u64().unwrap_or(0);
 
     session.set_transaction_memo(txid, memo, memo_type as u32).map(|v| json!(v)).map_err(Into::into)
 }

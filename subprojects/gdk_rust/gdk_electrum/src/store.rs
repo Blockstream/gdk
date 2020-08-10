@@ -58,6 +58,9 @@ pub struct RawStore {
     /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
     pub txs_verif: HashMap<Txid, SPVVerifyResult>,
 
+    /// memos
+    pub memos: HashMap<Txid, String>,
+
     /// wallet settings
     pub settings: Option<Settings>,
 

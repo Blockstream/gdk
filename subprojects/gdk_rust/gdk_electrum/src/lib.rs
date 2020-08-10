@@ -18,7 +18,7 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
-use bitcoin::hashes::{sha256, Hash};
+use bitcoin::hashes::{hex::FromHex, sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{Script, Txid};
@@ -228,7 +228,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         block_height: tx.height.unwrap_or_default(),
         created_at: tx.created_at.clone(),
         type_,
-        memo: "".into(), // TODO: TransactionMeta -> TxListItem memo
+        memo: tx.create_transaction.as_ref().and_then(|c| c.memo.clone()).unwrap_or("".to_string()),
         txhash: tx.txid.clone(),
         transaction_size: len,
         transaction: tx.hex.clone(), // FIXME
@@ -680,8 +680,17 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet()?.balance()
     }
 
-    fn set_transaction_memo(&self, _txid: &str, _memo: &str, _memo_type: u32) -> Result<(), Error> {
-        Err(Error::Generic("implementme: ElectrumSession set_transaction_memo".into()))
+    fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), Error> {
+        if memo_type != 0 {
+            // GA_MEMO_USER == 0
+            return Err(Error::Generic("Only memo_type GA_MEMO_USER(0) is supported".into()));
+        }
+        let txid = Txid::from_hex(txid)?;
+        if memo.len() > 1024 {
+            return Err(Error::Generic("Too long memo (max 1024)".into()));
+        }
+        self.get_wallet()?.store.write()?.memos.insert(txid, memo.to_string());
+        Ok(())
     }
 
     fn create_transaction(

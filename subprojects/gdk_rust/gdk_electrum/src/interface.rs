@@ -1,6 +1,6 @@
 use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::hashes::Hash;
+use bitcoin::hashes::{Hash, hex::FromHex};
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
@@ -168,8 +168,11 @@ impl WalletCtx {
                     });
                 }
             }
+            let memo = store_read.memos.get(*tx_id).map(|s| s.to_string());
+
             let create_transaction = CreateTransaction {
                 addressees,
+                memo,
                 ..Default::default()
             };
 
@@ -697,6 +700,11 @@ impl WalletCtx {
 
         betx.fee = request.fee;
         betx.create_transaction = request.create_transaction.clone();
+
+        drop(store_read);
+        if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
+            self.store.write()?.memos.insert( Txid::from_hex(&betx.txid)?, memo.clone());
+        }
 
         Ok(betx)
     }
