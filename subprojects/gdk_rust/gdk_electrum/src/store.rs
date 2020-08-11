@@ -111,26 +111,12 @@ impl RawCache {
     }
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
-        let now = Instant::now();
-        let mut store_path = PathBuf::from(path.as_ref());
-        store_path.push("cache");
-        if !store_path.exists() {
-            return Err(Error::Generic("file do not exist".into()));
-        }
-        let mut file = File::open(store_path)?;
-        let mut nonce_bytes = [0u8; 12];
-        file.read_exact(&mut nonce_bytes)?;
-        let nonce = GenericArray::from_slice(&nonce_bytes);
-        let mut contents = vec![];
-        file.read_to_end(&mut contents)?;
-        let decrypted = cipher.decrypt(nonce, contents.as_ref())?;
+        let decrypted = load_decrypt("cache", path, cipher)?;
         let store = serde_cbor::from_slice(&decrypted)?;
-        info!("loading store took {}ms", now.elapsed().as_millis());
         Ok(store)
     }
 }
 
-// TODO impl RawCache and RawStore are the same except for the value returned and the file name, implement through generic trait?
 impl RawStore {
     /// create a new RawStore, loading data from a file if any and if there is no error in reading
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
@@ -142,23 +128,32 @@ impl RawStore {
     }
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
-        let now = Instant::now();
-        let mut store_path = PathBuf::from(path.as_ref());
-        store_path.push("store");
-        if !store_path.exists() {
-            return Err(Error::Generic("file do not exist".into()));
-        }
-        let mut file = File::open(store_path)?;
-        let mut nonce_bytes = [0u8; 12];
-        file.read_exact(&mut nonce_bytes)?;
-        let nonce = GenericArray::from_slice(&nonce_bytes);
-        let mut contents = vec![];
-        file.read_to_end(&mut contents)?;
-        let decrypted = cipher.decrypt(nonce, contents.as_ref())?;
+        let decrypted = load_decrypt("store", path, cipher)?;
         let store = serde_cbor::from_slice(&decrypted)?;
-        info!("loading store took {}ms", now.elapsed().as_millis());
         Ok(store)
     }
+}
+
+fn load_decrypt<P: AsRef<Path>>(
+    name: &str,
+    path: P,
+    cipher: &Aes256GcmSiv,
+) -> Result<Vec<u8>, Error> {
+    let now = Instant::now();
+    let mut store_path = PathBuf::from(path.as_ref());
+    store_path.push(name);
+    if !store_path.exists() {
+        return Err(Error::Generic(format!("{:?} do not exist", store_path)));
+    }
+    let mut file = File::open(&store_path)?;
+    let mut nonce_bytes = [0u8; 12];
+    file.read_exact(&mut nonce_bytes)?;
+    let nonce = GenericArray::from_slice(&nonce_bytes);
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)?;
+    let decrypted = cipher.decrypt(nonce, contents.as_ref())?;
+    info!("loading {:?} took {}ms", &store_path, now.elapsed().as_millis());
+    Ok(decrypted)
 }
 
 impl StoreMeta {
