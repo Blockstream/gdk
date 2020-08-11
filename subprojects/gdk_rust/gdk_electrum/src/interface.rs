@@ -1,6 +1,6 @@
 use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::hashes::{Hash, hex::FromHex};
+use bitcoin::hashes::{hex::FromHex, Hash};
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
@@ -121,23 +121,23 @@ impl WalletCtx {
     }
 
     pub fn get_settings(&self) -> Result<Settings, Error> {
-        Ok(self.store.read()?.settings.clone().unwrap_or_default())
+        Ok(self.store.read()?.store.settings.clone().unwrap_or_default())
     }
 
     pub fn change_settings(&self, settings: &Settings) -> Result<(), Error> {
-        self.store.write()?.settings = Some(settings.clone());
+        self.store.write()?.store.settings = Some(settings.clone());
         Ok(())
     }
 
     pub fn get_tip(&self) -> Result<u32, Error> {
-        Ok(self.store.read()?.tip)
+        Ok(self.store.read()?.cache.tip)
     }
 
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
         let store_read = self.store.read()?;
 
         let mut txs = vec![];
-        let mut my_txids: Vec<(&Txid, &Option<u32>)> = store_read.heights.iter().collect();
+        let mut my_txids: Vec<(&Txid, &Option<u32>)> = store_read.cache.heights.iter().collect();
         my_txids.sort_by(|a, b| {
             let height_cmp = b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX));
             match height_cmp {
@@ -150,15 +150,16 @@ impl WalletCtx {
             trace!("tx_id {}", tx_id);
 
             let tx = store_read
+                .cache
                 .all_txs
                 .get(*tx_id)
                 .ok_or_else(fn_err(&format!("list_tx no tx {}", tx_id)))?;
-            let header = height.map(|h| store_read.headers.get(&h)).flatten();
+            let header = height.map(|h| store_read.cache.headers.get(&h)).flatten();
             trace!("tx_id {} header {:?}", tx_id, header);
             let mut addressees = vec![];
             for i in 0..tx.output_len() as u32 {
                 let script = tx.output_script(i);
-                if !script.is_empty() && !store_read.paths.contains_key(&script) {
+                if !script.is_empty() && !store_read.cache.paths.contains_key(&script) {
                     let address = tx.output_address(i, self.network.id());
                     trace!("tx_id {}:{} not my script, address {:?}", tx_id, i, address);
                     addressees.push(AddressAmount {
@@ -168,7 +169,7 @@ impl WalletCtx {
                     });
                 }
             }
-            let memo = store_read.memos.get(*tx_id).map(|s| s.to_string());
+            let memo = store_read.store.memos.get(*tx_id).map(|s| s.to_string());
 
             let create_transaction = CreateTransaction {
                 addressees,
@@ -176,11 +177,11 @@ impl WalletCtx {
                 ..Default::default()
             };
 
-            let fee = tx.fee(&store_read.all_txs, &store_read.unblinded,  &self.network.policy_asset().ok())?;
+            let fee = tx.fee(&store_read.cache.all_txs, &store_read.cache.unblinded,  &self.network.policy_asset().ok())?;
             trace!("tx_id {} fee {}", tx_id, fee);
 
             let satoshi =
-                tx.my_balance_changes(&store_read.all_txs, &store_read.paths, &store_read.unblinded);
+                tx.my_balance_changes(&store_read.cache.all_txs, &store_read.cache.paths, &store_read.cache.unblinded);
             trace!("tx_id {} balances {:?}", tx_id, satoshi);
 
             // We define an incoming txs if there are more assets received by the wallet than spent
@@ -191,7 +192,7 @@ impl WalletCtx {
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
             let (type_, user_signed) = match (
                 positives > negatives,
-                tx.is_redeposit(&store_read.paths, &store_read.all_txs),
+                tx.is_redeposit(&store_read.cache.paths, &store_read.cache.all_txs),
             ) {
                 (_, true) => ("redeposit", true),
                 (true, false) => ("incoming", false),
@@ -199,7 +200,12 @@ impl WalletCtx {
             };
 
             let spv_verified = if self.network.spv_enabled.unwrap_or(true) {
-                store_read.txs_verif.get(*tx_id).unwrap_or(&SPVVerifyResult::InProgress).clone()
+                store_read
+                    .cache
+                    .txs_verif
+                    .get(*tx_id)
+                    .unwrap_or(&SPVVerifyResult::InProgress)
+                    .clone()
             } else {
                 SPVVerifyResult::Disabled
             };
@@ -238,8 +244,9 @@ impl WalletCtx {
         let store_read = self.store.read()?;
         let mut utxos = vec![];
         let spent = store_read.spent()?;
-        for tx_id in store_read.heights.keys() {
+        for tx_id in store_read.cache.heights.keys() {
             let tx = store_read
+                .cache
                 .all_txs
                 .get(tx_id)
                 .ok_or_else(fn_err(&format!("utxos no tx {}", tx_id)))?;
@@ -251,7 +258,9 @@ impl WalletCtx {
                     .enumerate()
                     .filter(|(_,output)| output.value > DUST_VALUE)
                     .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
-                    .filter(|(_, output)| store_read.paths.contains_key(&output.script_pubkey))
+                    .filter(|(_, output)| {
+                        store_read.cache.paths.contains_key(&output.script_pubkey)
+                    })
                     .filter(|(outpoint, _)| !spent.contains(&outpoint))
                     .map(|(outpoint, output)| {
                         (
@@ -270,11 +279,11 @@ impl WalletCtx {
                         .map(|(vout, output)| {
                             (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
                         })
-                        .filter(|(_, output)| store_read.paths.contains_key(&output.script_pubkey))
+                        .filter(|(_, output)| store_read.cache.paths.contains_key(&output.script_pubkey))
                         .filter(|(outpoint, _)| !spent.contains(&outpoint))
                         .filter_map(|(outpoint, output)| {
                             if let BEOutPoint::Elements(el_outpoint) = outpoint {
-                                if let Some(unblinded) = store_read.unblinded.get(&el_outpoint) {
+                                if let Some(unblinded) = store_read.cache.unblinded.get(&el_outpoint) {
                                     if unblinded.value < DUST_VALUE && unblinded.asset == policy_asset {
                                         return None;
                                     }
@@ -460,8 +469,8 @@ impl WalletCtx {
                 fee_rate,
                 send_all,
                 self.network.policy_asset.clone(),
-                &store_read.all_txs,
-                &store_read.unblinded,
+                &store_read.cache.all_txs,
+                &store_read.cache.unblinded,
             ); // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
             info!("needs: {:?}", needs);
             if needs.is_empty() {
@@ -492,16 +501,16 @@ impl WalletCtx {
         // STEP 3) adding change(s)
         let estimated_fee = tx.estimated_fee(
             fee_rate,
-            tx.estimated_changes(send_all, &store_read.all_txs, &store_read.unblinded),
+            tx.estimated_changes(send_all, &store_read.cache.all_txs, &store_read.cache.unblinded),
         );
         let changes = tx.changes(
             estimated_fee,
             self.network.policy_asset.clone(),
-            &store_read.all_txs,
-            &store_read.unblinded,
+            &store_read.cache.all_txs,
+            &store_read.cache.unblinded,
         ); // Vec<Change> asset, value
         for (i, change) in changes.iter().enumerate() {
-            let change_index = store_read.indexes.internal + i as u32 + 1;
+            let change_index = store_read.cache.indexes.internal + i as u32 + 1;
             let change_address = self.derive_address(&self.xpub, [1, change_index])?.to_string();
             info!(
                 "adding change to {} of {} asset {:?}",
@@ -514,15 +523,15 @@ impl WalletCtx {
         tx.scramble();
 
         let policy_asset = self.network.policy_asset().ok();
-        let fee_val = tx.fee(&store_read.all_txs, &store_read.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
+        let fee_val = tx.fee(&store_read.cache.all_txs, &store_read.cache.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
         tx.add_fee_if_elements(fee_val, &policy_asset)?;
 
         info!("created tx fee {:?}", fee_val);
 
         let mut satoshi = tx.my_balance_changes(
-            &store_read.all_txs,
-            &store_read.paths,
-            &store_read.unblinded,
+            &store_read.cache.all_txs,
+            &store_read.cache.paths,
+            &store_read.cache.unblinded,
         );
 
         for (_, v) in satoshi.iter_mut() {
@@ -631,6 +640,7 @@ impl WalletCtx {
                     let prev_tx = store_read.get_bitcoin_tx(&prev_output.txid)?;
                     let out = prev_tx.output[prev_output.vout as usize].clone();
                     let derivation_path: DerivationPath = store_read
+                        .cache
                         .paths
                         .get(&out.script_pubkey)
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
@@ -665,6 +675,7 @@ impl WalletCtx {
                     let prev_tx = store_read.get_liquid_tx(&prev_output.txid)?;
                     let out = prev_tx.output[prev_output.vout as usize].clone();
                     let derivation_path: DerivationPath = store_read
+                        .cache
                         .paths
                         .get(&out.script_pubkey)
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
@@ -703,7 +714,7 @@ impl WalletCtx {
 
         drop(store_read);
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
-            self.store.write()?.memos.insert( Txid::from_hex(&betx.txid)?, memo.clone());
+            self.store.write()?.store.memos.insert(Txid::from_hex(&betx.txid)?, memo.clone());
         }
 
         Ok(betx)
@@ -721,6 +732,7 @@ impl WalletCtx {
             info!("input {:?}", input);
 
             let unblinded = store_read
+                .cache
                 .unblinded
                 .get(&input.previous_output)
                 .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
@@ -857,7 +869,7 @@ impl WalletCtx {
 
     pub fn get_address(&self) -> Result<AddressPointer, Error> {
         let pointer = {
-            let mut store = self.store.write()?;
+            let store = &mut self.store.write()?.cache;
             store.indexes.external += 1;
             store.indexes.external
         };

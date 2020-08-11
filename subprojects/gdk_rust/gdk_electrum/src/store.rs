@@ -1,7 +1,6 @@
 use crate::Error;
 use aes_gcm_siv::aead::{generic_array::GenericArray, Aead, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
-use bitcoin::hashes::core::ops::Deref;
 use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
@@ -24,7 +23,6 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{Read, Write};
-use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
@@ -33,10 +31,10 @@ pub const BATCH_SIZE: u32 = 20;
 
 pub type Store = Arc<RwLock<StoreMeta>>;
 
-/// Store is a persisted and encrypted cache of wallet data, contains stuff like wallet transactions
+/// RawCache is a persisted and encrypted cache of wallet data, contains stuff like wallet transactions
 /// It is fully reconstructable from xpub and data from electrum server (plus master blinding for elements)
 #[derive(Default, Serialize, Deserialize)]
-pub struct RawStore {
+pub struct RawCache {
     /// contains all my tx and all prevouts
     pub all_txs: BETransactions,
 
@@ -58,12 +56,6 @@ pub struct RawStore {
     /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
     pub txs_verif: HashMap<Txid, SPVVerifyResult>,
 
-    /// memos
-    pub memos: HashMap<Txid, String>,
-
-    /// wallet settings
-    pub settings: Option<Settings>,
-
     /// cached fee_estimates
     pub fee_estimates: Vec<FeeEstimate>,
 
@@ -74,8 +66,20 @@ pub struct RawStore {
     pub indexes: Indexes,
 }
 
+/// RawStore contains data that are not extractable from xpub+blockchain
+/// like wallet settings and memos
+#[derive(Default, Serialize, Deserialize)]
+pub struct RawStore {
+    /// wallet settings
+    pub settings: Option<Settings>,
+
+    /// transaction memos
+    pub memos: HashMap<Txid, String>,
+}
+
 pub struct StoreMeta {
-    store: RawStore,
+    pub cache: RawCache,
+    pub store: RawStore,
     master_blinding: Option<MasterBlindingKey>,
     secp: Secp256k1<All>,
     id: NetworkId,
@@ -84,18 +88,6 @@ pub struct StoreMeta {
     first_deriv: [ExtendedPubKey; 2],
 }
 
-impl Deref for StoreMeta {
-    type Target = RawStore;
-
-    fn deref(&self) -> &Self::Target {
-        &self.store
-    }
-}
-impl DerefMut for StoreMeta {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.store
-    }
-}
 impl Drop for StoreMeta {
     fn drop(&mut self) {
         self.flush().unwrap();
@@ -108,12 +100,43 @@ pub struct Indexes {
     pub internal: u32, // m/1/*
 }
 
-impl RawStore {
-    /// create a new Store, loading data from a file if any and if there is no error in reading
+impl RawCache {
+    /// create a new RawCache, loading data from a file if any and if there is no error in reading
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
     fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
-            warn!("Initialize store as default {:?}", e);
+            warn!("Initialize cache as default {:?}", e);
+            Default::default()
+        })
+    }
+
+    fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
+        let now = Instant::now();
+        let mut store_path = PathBuf::from(path.as_ref());
+        store_path.push("cache");
+        if !store_path.exists() {
+            return Err(Error::Generic("file do not exist".into()));
+        }
+        let mut file = File::open(store_path)?;
+        let mut nonce_bytes = [0u8; 12];
+        file.read_exact(&mut nonce_bytes)?;
+        let nonce = GenericArray::from_slice(&nonce_bytes);
+        let mut contents = vec![];
+        file.read_to_end(&mut contents)?;
+        let decrypted = cipher.decrypt(nonce, contents.as_ref())?;
+        let store = serde_cbor::from_slice(&decrypted)?;
+        info!("loading store took {}ms", now.elapsed().as_millis());
+        Ok(store)
+    }
+}
+
+// TODO impl RawCache and RawStore are the same except for the value returned and the file name, implement through generic trait?
+impl RawStore {
+    /// create a new RawStore, loading data from a file if any and if there is no error in reading
+    /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
+    fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
+        Self::try_new(path, cipher).unwrap_or_else(|e| {
+            warn!("Initialize cache as default {:?}", e);
             Default::default()
         })
     }
@@ -152,6 +175,7 @@ impl StoreMeta {
         let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
         let key = GenericArray::from_slice(&key_bytes);
         let cipher = Aes256GcmSiv::new(&key);
+        let cache = RawCache::new(path.as_ref(), &cipher);
         let store = RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
         if !path.exists() {
@@ -165,6 +189,7 @@ impl StoreMeta {
         ];
 
         Ok(StoreMeta {
+            cache,
             store,
             master_blinding,
             id,
@@ -175,16 +200,16 @@ impl StoreMeta {
         })
     }
 
-    pub fn flush(&self) -> Result<(), Error> {
+    fn flush_serializable<T: serde::Serialize>(&self, name: &str, value: &T) -> Result<(), Error> {
         let now = Instant::now();
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
         let nonce = GenericArray::from_slice(&nonce_bytes);
         //TODO is possible to avoid allocs with writer?
-        let plaintext = serde_cbor::to_vec(&self.store)?;
+        let plaintext = serde_cbor::to_vec(value)?;
         let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref())?;
         let mut store_path = self.path.clone();
-        store_path.push("store");
+        store_path.push(name);
         //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
         // in the front of the file
         let mut file = File::create(&store_path)?;
@@ -196,7 +221,12 @@ impl StoreMeta {
             &store_path,
             now.elapsed().as_millis()
         );
+        Ok(())
+    }
 
+    pub fn flush(&self) -> Result<(), Error> {
+        self.flush_serializable("store", &self.store)?;
+        self.flush_serializable("cache", &self.cache)?;
         Ok(())
     }
 
@@ -250,7 +280,7 @@ impl StoreMeta {
         let end = start + BATCH_SIZE;
         for j in start..end {
             let path = TwoLayerPath::new(int_or_ext, j);
-            let opt_script = self.store.scripts.get(&path);
+            let opt_script = self.cache.scripts.get(&path);
             let script = match opt_script {
                 Some(script) => script.clone(),
                 None => {
@@ -306,14 +336,14 @@ impl StoreMeta {
     }
 
     pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Transaction, Error> {
-        match self.all_txs.get(txid) {
+        match self.cache.all_txs.get(txid) {
             Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
             _ => Err(Error::Generic("expected bitcoin tx".to_string())),
         }
     }
 
     pub fn get_liquid_tx(&self, txid: &Txid) -> Result<elements::Transaction, Error> {
-        match self.all_txs.get(txid) {
+        match self.cache.all_txs.get(txid) {
             Some(BETransaction::Elements(tx)) => Ok(tx.clone()),
             _ => Err(Error::Generic("expected liquid tx".to_string())),
         }
@@ -321,7 +351,7 @@ impl StoreMeta {
 
     pub fn spent(&self) -> Result<HashSet<BEOutPoint>, Error> {
         let mut result = HashSet::new();
-        for tx in self.store.all_txs.values() {
+        for tx in self.cache.all_txs.values() {
             let outpoints: Vec<BEOutPoint> = match tx {
                 BETransaction::Bitcoin(tx) => {
                     tx.input.iter().map(|i| BEOutPoint::Bitcoin(i.previous_output)).collect()
@@ -336,10 +366,10 @@ impl StoreMeta {
     }
 
     pub fn fee_estimates(&self) -> Vec<FeeEstimate> {
-        if self.fee_estimates.is_empty() {
+        if self.cache.fee_estimates.is_empty() {
             vec![FeeEstimate(1000u64); 25]
         } else {
-            self.fee_estimates.clone()
+            self.cache.fee_estimates.clone()
         }
     }
 }

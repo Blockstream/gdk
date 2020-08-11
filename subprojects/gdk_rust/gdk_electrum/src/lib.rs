@@ -385,14 +385,16 @@ impl Session<Error> for ElectrumSession {
 
         let estimates = store.read()?.fee_estimates().clone();
         notify_fee(self.notify.clone(), &estimates);
-        let mut last_tip = store.read()?.tip;
+        let mut last_tip = store.read()?.cache.tip;
         notify_block(self.notify.clone(), last_tip);
 
         if let Ok(fee_client) = self.url.build_client() {
             let fee_store = store.clone();
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client) {
-                    Ok(fee_estimates) => fee_store.write().unwrap().fee_estimates = fee_estimates,
+                    Ok(fee_estimates) => {
+                        fee_store.write().unwrap().cache.fee_estimates = fee_estimates
+                    }
                     Err(e) => warn!("can't update fee estimates {:?}", e),
                 };
             });
@@ -404,6 +406,7 @@ impl Session<Error> for ElectrumSession {
             let store_read = store.read()?;
             let asset_icons = store_read.read_asset_icons()?;
             let asset_registry = store_read.read_asset_registry()?;
+            drop(store_read);
             wait_registry = asset_icons.is_none() || asset_registry.is_none();
             let store_for_registry = store.clone();
             Some(thread::spawn(move || {
@@ -689,7 +692,7 @@ impl Session<Error> for ElectrumSession {
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        self.get_wallet()?.store.write()?.memos.insert(txid, memo.to_string());
+        self.get_wallet()?.store.write()?.store.memos.insert(txid, memo.to_string());
         Ok(())
     }
 
@@ -733,7 +736,7 @@ impl Session<Error> for ElectrumSession {
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
         let fee_estimates = try_get_fee_estimates(&self.url.build_client()?)
             .unwrap_or_else(|_| vec![FeeEstimate(1000u64); 25]);
-        self.get_wallet()?.store.write()?.fee_estimates = fee_estimates.clone();
+        self.get_wallet()?.store.write()?.cache.fee_estimates = fee_estimates.clone();
         Ok(fee_estimates)
         //TODO better implement default
     }
@@ -798,10 +801,10 @@ impl Tipper {
     pub fn tip(&self, client: &Client) -> Result<u32, Error> {
         let header = client.block_headers_subscribe_raw()?;
         let height = header.height as u32;
-        let store_tip = self.store.read()?.tip;
+        let store_tip = self.store.read()?.cache.tip;
         if height != store_tip {
             info!("saving in store new tip {}", height);
-            self.store.write()?.tip = height;
+            self.store.write()?.cache.tip = height;
         }
         Ok(height)
     }
@@ -826,11 +829,12 @@ impl Headers {
         let needs_proof: Vec<(Txid, u32)> = self
             .store
             .read()?
+            .cache
             .heights
             .iter()
             .filter(|(_, opt)| opt.is_some())
             .map(|(t, h)| (t, h.unwrap()))
-            .filter(|(t, _)| store_read.txs_verif.get(*t).is_none())
+            .filter(|(t, _)| store_read.cache.txs_verif.get(*t).is_none())
             .map(|(t, h)| (t.clone(), h))
             .collect();
         drop(store_read);
@@ -844,7 +848,7 @@ impl Headers {
                 }
                 ChainOrVerifier::Verifier(verifier) => {
                     if let Some(BEBlockHeader::Elements(header)) =
-                        self.store.read()?.headers.get(&height)
+                        self.store.read()?.cache.headers.get(&height)
                     {
                         verifier.verify_tx_proof(&txid, proof, &header).is_ok()
                     } else {
@@ -861,7 +865,7 @@ impl Headers {
             }
         }
         let proofs_done = txs_verified.len();
-        self.store.write()?.txs_verif.extend(txs_verified);
+        self.store.write()?.cache.txs_verif.extend(txs_verified);
         Ok(proofs_done)
     }
 
@@ -941,7 +945,7 @@ impl Syncer {
         let new_txs = self.download_txs(&history_txs_id, &scripts, &client)?;
         let headers = self.download_headers(&heights_set, &client)?;
 
-        let store_indexes = self.store.read()?.indexes.clone();
+        let store_indexes = self.store.read()?.cache.indexes.clone();
 
         let changed = if !new_txs.txs.is_empty()
             || !headers.is_empty()
@@ -950,14 +954,14 @@ impl Syncer {
         {
             debug!("There are changes in the store");
             let mut store_write = self.store.write()?;
-            store_write.indexes = last_used;
-            store_write.all_txs.extend(new_txs.txs.into_iter());
-            store_write.unblinded.extend(new_txs.unblinds);
-            store_write.headers.extend(headers);
-            store_write.heights.clear(); // something in the db is not in live list (rbf), removing
-            store_write.heights.extend(txid_height.into_iter());
-            store_write.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
-            store_write.paths.extend(scripts.into_iter());
+            store_write.cache.indexes = last_used;
+            store_write.cache.all_txs.extend(new_txs.txs.into_iter());
+            store_write.cache.unblinded.extend(new_txs.unblinds);
+            store_write.cache.headers.extend(headers);
+            store_write.cache.heights.clear(); // something in the db is not in live list (rbf), removing
+            store_write.cache.heights.extend(txid_height.into_iter());
+            store_write.cache.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
+            store_write.cache.paths.extend(scripts.into_iter());
             store_write.flush()?;
             true
         } else {
@@ -975,7 +979,7 @@ impl Syncer {
     ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
         let mut result = vec![];
         let mut heights_in_db: HashSet<u32> =
-            self.store.read()?.heights.iter().filter_map(|(_, h)| *h).collect();
+            self.store.read()?.cache.heights.iter().filter_map(|(_, h)| *h).collect();
         heights_in_db.insert(0);
         let heights_to_download: Vec<u32> =
             heights_set.difference(&heights_in_db).cloned().collect();
@@ -1006,7 +1010,7 @@ impl Syncer {
         let mut txs = vec![];
         let mut unblinds = vec![];
 
-        let mut txs_in_db = self.store.read()?.all_txs.keys().cloned().collect();
+        let mut txs_in_db = self.store.read()?.cache.all_txs.keys().cloned().collect();
         let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
         if !txs_to_download.is_empty() {
             let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
@@ -1023,10 +1027,9 @@ impl Syncer {
 
                 if let BETransaction::Elements(tx) = &tx {
                     info!("compute OutPoint Unblinded");
-                    let store_read = self.store.read()?;
                     for (i, output) in tx.output.iter().enumerate() {
                         // could be the searched script it's not yet in the store, because created in the current run, thus it's searched also in the `scripts`
-                        if store_read.paths.contains_key(&output.script_pubkey)
+                        if self.store.read()?.cache.paths.contains_key(&output.script_pubkey)
                             || scripts.contains_key(&output.script_pubkey)
                         {
                             let vout = i as u32;
