@@ -336,7 +336,7 @@ namespace sdk {
                     // Ask the caller to sign the challenge
                     set_data("sign_message");
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
-                    m_twofactor_data["path"] = std::vector<uint32_t>{ 0x4741b11e };
+                    m_twofactor_data["path"] = LOGIN_PATH;
                     return state_type::resolve_code;
                 }
                 // Register the xpub for each of our subaccounts

@@ -10,6 +10,7 @@
 
 namespace ga {
 namespace sdk {
+    inline const std::array<uint32_t, 1> LOGIN_PATH{ { 0x4741b11e } };
     inline const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
     inline const std::array<unsigned char, 8> PASSWORD_SALT = {
         { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'
