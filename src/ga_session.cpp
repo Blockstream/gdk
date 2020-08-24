@@ -1015,14 +1015,11 @@ namespace sdk {
         return challenge;
     }
 
-    void ga_session::upload_confidential_addresses(
-        locker_t& locker, uint32_t subaccount, std::vector<std::string> confidential_addresses)
+    void ga_session::upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        unique_unlock unlocker(locker);
         GDK_RUNTIME_ASSERT(confidential_addresses.size() > 0);
 
-        bool r{ false };
+        bool r = false;
         {
             wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
                 "com.greenaddress.txs.upload_authorized_assets_confidential_address", subaccount,
@@ -1031,18 +1028,12 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(r);
 
         // subtract from the required_ca
-        uint32_t original = m_subaccounts[subaccount]["required_ca"];
-        if (original > 0) {
-            m_subaccounts[subaccount]["required_ca"]
-                = confidential_addresses.size() > original ? 0 : original - confidential_addresses.size();
-        }
-    }
-
-    void ga_session::upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses)
-    {
         locker_t locker(m_mutex);
-
-        upload_confidential_addresses(locker, subaccount, confidential_addresses);
+        const uint32_t remaining = m_subaccounts[subaccount]["required_ca"];
+        if (remaining) {
+            m_subaccounts[subaccount]["required_ca"]
+                = confidential_addresses.size() > remaining ? 0 : remaining - confidential_addresses.size();
+        }
     }
 
     void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, bool watch_only)

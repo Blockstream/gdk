@@ -261,7 +261,7 @@ namespace sdk {
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
-        void upload_confidential_addresses(uint32_t subaccount, std::vector<std::string> confidential_addresses);
+        void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 
         void change_settings_pricing_source(const std::string& currency, const std::string& exchange);
 
@@ -362,9 +362,6 @@ namespace sdk {
             const std::string& receiving_id, const std::string& recovery_pub_key,
             const std::string& recovery_chain_code, const std::string& type, amount satoshi, bool has_txs,
             uint32_t required_ca) GDK_REQUIRES(m_mutex);
-
-        void upload_confidential_addresses(locker_t& locker, uint32_t subaccount,
-            std::vector<std::string> confidential_addresses) GDK_REQUIRES(m_mutex);
 
         std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge)
             GDK_REQUIRES(m_mutex);
