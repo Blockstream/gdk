@@ -451,29 +451,26 @@ namespace sdk {
                     nlohmann::json uri_params
                         = parse_bitcoin_uri(addressee.value("address", ""), net_params.bip21_prefix());
                     if (net_params.liquid() && uri_params.is_object()) {
-                        if (uri_params["bip21-params"].contains("amount")
-                            && !uri_params["bip21-params"].contains("assetid")) {
+                        const auto& bip21_params = uri_params["bip21-params"];
+                        const bool has_assetid = bip21_params.contains("assetid");
+
+                        if (!has_assetid && bip21_params.contains("amount")) {
                             result["error"] = res::id_invalid_payment_request_assetid;
                             break;
-                        } else if (uri_params["bip21-params"].contains("assetid")) {
-                            const std::string assetid = uri_params["bip21-params"]["assetid"];
-                            if (assetid.length() != 64) {
-                                result["error"] = res::id_invalid_payment_request_assetid;
-                                break;
-                            }
-                            unsigned char buff[32];
-                            size_t written;
-                            int ret = wally_hex_to_bytes(assetid.data(), buff, 32, &written);
-                            if (ret != WALLY_OK) {
+                        } else if (has_assetid) {
+                            const std::string assetid_hex = bip21_params["assetid"];
+                            try {
+                                h2b<32>(assetid_hex);
+                            } catch (const std::exception&) {
                                 result["error"] = res::id_invalid_payment_request_assetid;
                                 break;
                             }
                             addressees_have_assets = true;
 
-                            if (assetid == net_params.policy_asset()) {
+                            if (assetid_hex == net_params.policy_asset()) {
                                 addressee["asset_tag"] = "btc";
                             } else {
-                                addressee["asset_tag"] = assetid;
+                                addressee["asset_tag"] = assetid_hex;
                             }
                         }
                     }
