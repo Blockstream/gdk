@@ -779,7 +779,8 @@ namespace sdk {
         });
     }
 
-    void session::upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
+    void session::upload_confidential_addresses(
+        uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
     {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();

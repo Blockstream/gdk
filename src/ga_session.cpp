@@ -1015,7 +1015,8 @@ namespace sdk {
         return challenge;
     }
 
-    void ga_session::upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
+    void ga_session::upload_confidential_addresses(
+        uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
     {
         GDK_RUNTIME_ASSERT(confidential_addresses.size() > 0);
 
