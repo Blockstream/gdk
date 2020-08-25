@@ -26,8 +26,6 @@ std::vector<unsigned char> output_script_for_address(
     const bool is_bech32 = boost::starts_with(address, net_params.bech32_prefix());
     const bool is_blech32 = net_params.liquid() && boost::starts_with(address, net_params.blech32_prefix());
 
-    std::vector<unsigned char> script;
-
     if (net_params.liquid()) {
         if (is_bech32) {
             error = res::id_nonconfidential_addresses_not;
