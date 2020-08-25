@@ -351,7 +351,7 @@ namespace sdk {
     void ga_session::unsubscribe()
     {
         const auto subscriptions = [this] {
-            locker_t locker{ m_mutex };
+            locker_t locker(m_mutex);
             const auto subscriptions = m_subscriptions;
             m_subscriptions.clear();
             return subscriptions;
@@ -575,7 +575,7 @@ namespace sdk {
     void ga_session::emit_notification(std::string event, nlohmann::json details)
     {
         asio::post(m_pool, [this, event, details] {
-            locker_t locker{ m_mutex };
+            locker_t locker(m_mutex);
             if (m_notification_handler != nullptr) {
                 call_notification_handler(locker, new nlohmann::json({ { "event", event }, { event, details } }));
             }
@@ -684,7 +684,7 @@ namespace sdk {
     void ga_session::disconnect()
     {
         {
-            locker_t locker{ m_mutex };
+            locker_t locker(m_mutex);
 
             if (m_notification_handler != nullptr) {
                 const nlohmann::json details{ { "connected", false } };
@@ -1358,7 +1358,7 @@ namespace sdk {
     {
         GDK_LOG_NAMED_SCOPE("login");
 
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
 
         GDK_RUNTIME_ASSERT_MSG(!m_signer, "re-login on an existing session always fails");
         login(locker, password.empty() ? mnemonic : decrypt_mnemonic(mnemonic, password));
@@ -1445,7 +1445,7 @@ namespace sdk {
 
     void ga_session::set_local_encryption_key(byte_span_t key)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(key.size() == PBKDF2_HMAC_SHA512_LEN);
         GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
         auto tmp = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>();
@@ -1470,7 +1470,7 @@ namespace sdk {
     bool ga_session::login_from_cached(const std::string& mnemonic)
     {
         try {
-            locker_t locker{ m_mutex };
+            locker_t locker(m_mutex);
             login(locker, mnemonic);
             return true;
         } catch (const std::exception&) {
@@ -1754,7 +1754,7 @@ namespace sdk {
     // Idempotent
     bool ga_session::set_watch_only(const std::string& username, const std::string& password)
     {
-        bool r;
+        bool r = false;
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.addressbook.sync_custom", username, password);
         return r;
@@ -1771,7 +1771,7 @@ namespace sdk {
     // Idempotent
     bool ga_session::remove_account(const nlohmann::json& twofactor_data)
     {
-        bool r;
+        bool r = false;
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.remove_account", as_messagepack(twofactor_data).get());
         return r;
@@ -1804,7 +1804,7 @@ namespace sdk {
                 "com.greenaddress.txs.get_balance", subaccount, num_confs);
             // TODO: Make sure another session didn't change fiat currency
             {
-                locker_t locker{ m_mutex };
+                locker_t locker(m_mutex);
                 update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
             }
             const std::string satoshi_str = json_get_value(balance, "satoshi");
@@ -1934,7 +1934,7 @@ namespace sdk {
         const uint32_t path[2] = { harden(3), harden(subaccount) };
 
         const auto xpub = [this, &path] {
-            locker_t locker{ m_mutex };
+            locker_t locker(m_mutex);
             return get_signer().get_bip32_xpub(path);
         }();
         return create_subaccount(details, subaccount, xpub);
@@ -2002,7 +2002,7 @@ namespace sdk {
     template <typename T>
     void ga_session::change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data)
     {
-        bool r{ false };
+        bool r = false;
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.change_settings", key, value, as_messagepack(twofactor_data).get());
         GDK_RUNTIME_ASSERT(r);
@@ -2075,7 +2075,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
         const auto blinding_key = [this, &extra_commitment]() -> boost::optional<std::array<unsigned char, 32>> {
-            locker_t locker{ m_mutex };
+            locker_t locker(m_mutex);
 
             if (!get_signer().get_hw_device().empty()) {
                 return boost::none;
@@ -2340,8 +2340,8 @@ namespace sdk {
                 || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
 
             // TODO: improve the detection of tx type.
-            bool net_positive{ false };
-            bool net_positive_set{ false };
+            bool net_positive = false;
+            bool net_positive_set = false;
             for (const auto& asset_id : unique_asset_ids) {
                 const auto net_received = received[asset_id];
                 const auto net_spent = spent[asset_id];
@@ -2778,7 +2778,7 @@ namespace sdk {
 
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         const auto public_key = get_signer().get_public_key_from_blinding_key(h2b(script_hex));
         return b2h(public_key);
     }
@@ -2807,7 +2807,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_hw_device() const
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_signer().get_hw_device();
     }
 
@@ -3110,7 +3110,7 @@ namespace sdk {
 
     void ga_session::disable_all_pin_logins()
     {
-        bool r{ false };
+        bool r = false;
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.pin.remove_all_pin_logins");
         GDK_RUNTIME_ASSERT(r);
@@ -3162,44 +3162,44 @@ namespace sdk {
 
     bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_recovery_pubkeys().have_subaccount(subaccount);
     }
 
     std::string ga_session::get_service_xpub(uint32_t subaccount)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_ga_pubkeys().get_subaccount(subaccount).to_base58();
     }
 
     std::string ga_session::get_recovery_xpub(uint32_t subaccount)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
     }
 
     bool ga_session::supports_low_r() const
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_signer().supports_low_r();
     }
 
     liquid_support_level ga_session::hw_liquid_support() const
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_signer().supports_liquid();
     }
 
     std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return ::ga::sdk::output_script_from_utxo(
             m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }
 
     ecdsa_sig_t ga_session::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
     {
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         return get_signer().sign_hash(path, hash);
     }
 
@@ -3294,7 +3294,7 @@ namespace sdk {
     // Idempotent
     void ga_session::send_nlocktimes()
     {
-        bool r;
+        bool r = false;
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.txs.send_nlocktime");
         GDK_RUNTIME_ASSERT(r);
@@ -3319,7 +3319,7 @@ namespace sdk {
 
     void ga_session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
-        bool r;
+        bool r = false;
         const uint32_t value = locktime_details.at("value");
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.set_csvtime", value, as_messagepack(twofactor_data).get());
@@ -3328,13 +3328,13 @@ namespace sdk {
 
     void ga_session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
-        bool r;
+        bool r = false;
         const uint32_t value = locktime_details.at("value");
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.set_nlocktime", value, as_messagepack(twofactor_data).get());
         GDK_RUNTIME_ASSERT(r);
 
-        locker_t locker{ m_mutex };
+        locker_t locker(m_mutex);
         m_nlocktime = value;
     }
 
