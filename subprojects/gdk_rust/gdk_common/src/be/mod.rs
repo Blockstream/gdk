@@ -12,17 +12,12 @@ use bitcoin::Script;
 pub use blockheader::*;
 pub use outpoint::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::fmt::Debug;
 use std::str::FromStr;
 pub use transaction::*;
 
 pub type AssetId = [u8; 32];  // TODO use elements::issuance::AssetId
-
-pub struct WalletData {
-    pub utxos: Vec<(BEOutPoint, UTXOInfo)>,
-    pub spent: HashSet<BEOutPoint>,
-}
+pub type Utxos = Vec<(BEOutPoint, UTXOInfo)>;
 
 #[derive(Debug)]
 pub struct UTXOInfo {

@@ -238,7 +238,7 @@ impl WalletCtx {
         Ok(txs)
     }
 
-    fn utxos(&self) -> Result<WalletData, Error> {
+    fn utxos(&self) -> Result<Utxos, Error> {
         info!("start utxos");
 
         let store_read = self.store.read()?;
@@ -307,11 +307,7 @@ impl WalletCtx {
         }
         utxos.sort_by(|a, b| (b.1).value.cmp(&(a.1).value));
 
-        let result = WalletData {
-            utxos,
-            spent,
-        };
-        Ok(result)
+        Ok(utxos)
     }
 
     pub fn balance(&self) -> Result<Balances, Error> {
@@ -323,7 +319,7 @@ impl WalletCtx {
                 result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0)
             }
         };
-        for (_, info) in self.utxos()?.utxos.iter() {
+        for (_, info) in self.utxos()?.iter() {
             *result.entry(info.asset.clone()).or_default() += info.value as i64;
         }
         Ok(result)
@@ -414,8 +410,7 @@ impl WalletCtx {
         let fee_rate = (request.fee_rate.unwrap_or(default_value) as f64) / 1000.0;
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
-        let wallet_data = self.utxos()?;
-        let utxos = &wallet_data.utxos;
+        let utxos = self.utxos()?;
         info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
 
         if send_all {
