@@ -695,7 +695,7 @@ impl BETransactions {
 
 #[derive(Debug)]
 pub struct AssetValue {
-    pub asset: String, // None is for bitcoin, in elements MUST be Some
+    pub asset: String,
     pub satoshi: u64,
 }
 
