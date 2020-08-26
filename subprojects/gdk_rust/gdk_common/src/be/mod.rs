@@ -12,7 +12,7 @@ pub use outpoint::*;
 use std::collections::{HashMap, HashSet};
 pub use transaction::*;
 
-pub type AssetId = [u8; 32];
+pub type AssetId = [u8; 32];  // TODO use elements::issuance::AssetId
 
 pub struct WalletData {
     pub utxos: Vec<(BEOutPoint, UTXOInfo)>,
