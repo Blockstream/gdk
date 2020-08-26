@@ -22,7 +22,7 @@ use crate::db::*;
 use crate::error::*;
 
 use elements::confidential::{Asset, Nonce, Value};
-use gdk_common::be::*;
+use gdk_common::be::{self, *};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -321,7 +321,7 @@ impl WalletCtx {
 
         if !send_all {
             for address_amount in request.addressees.iter() {
-                if address_amount.satoshi <= 546 {
+                if address_amount.satoshi <= be::DUST_VALUE {
                     match self.network.id() {
                         NetworkId::Bitcoin(_) => return Err(Error::InvalidAmount),
                         NetworkId::Elements(_) => {

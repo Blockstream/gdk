@@ -21,6 +21,8 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
+pub const DUST_VALUE: u64 = 546;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BETransaction {
     Bitcoin(bitcoin::Transaction),
@@ -406,7 +408,7 @@ impl BETransaction {
                 let sum_inputs = sum_inputs(tx, &wallet_data.all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
                 let change_value = sum_inputs - sum_outputs - estimated_fee;
-                if change_value > 546 {
+                if change_value > DUST_VALUE {
                     vec![AssetValue::new_bitcoin(change_value)]
                 } else {
                     vec![]
@@ -450,7 +452,7 @@ impl BETransaction {
                         // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
                         // another reason, specific to this wallet, is that the send_all algorithm could reason in steps greater than 1, making it not too slow
                         sum -= estimated_fee;
-                        if sum > 546 {
+                        if sum > DUST_VALUE {
                             // we apply dust rules for liquid bitcoin as elements do
                             result.push(AssetValue::new(asset.to_string(), sum));
                         }
