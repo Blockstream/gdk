@@ -415,18 +415,18 @@ impl BETransaction {
                 }
             }
             Self::Elements(tx) => {
-                let mut outputs: HashMap<String, u64> = HashMap::new();
+                let mut outputs_asset_amounts: HashMap<String, u64> = HashMap::new();
                 for output in tx.output.iter() {
                     match (output.asset, output.value) {
                         (Asset::Explicit(asset), Value::Explicit(value)) => {
                             let asset_hex = asset_to_hex(&asset.into_inner());
-                            *outputs.entry(asset_hex).or_insert(0) += value;
+                            *outputs_asset_amounts.entry(asset_hex).or_insert(0) += value;
                         }
                         _ => panic!("asset and value should be explicit here"),
                     }
                 }
 
-                let mut inputs: HashMap<String, u64> = HashMap::new();
+                let mut inputs_asset_amounts: HashMap<String, u64> = HashMap::new();
                 for input in tx.input.iter() {
                     let asset_hex = wallet_data
                         .all_txs
@@ -442,11 +442,11 @@ impl BETransaction {
                             &wallet_data.all_unblinded,
                         )
                         .unwrap();
-                    *inputs.entry(asset_hex).or_insert(0) += value;
+                    *inputs_asset_amounts.entry(asset_hex).or_insert(0) += value;
                 }
                 let mut result = vec![];
-                for (asset, value) in inputs.iter() {
-                    let mut sum = value - outputs.remove(asset).unwrap_or(0);
+                for (asset, value) in inputs_asset_amounts.iter() {
+                    let mut sum = value - outputs_asset_amounts.remove(asset).unwrap_or(0);
                     if asset == policy_asset.as_ref().unwrap() {
                         // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
                         // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
@@ -460,7 +460,7 @@ impl BETransaction {
                         result.push(AssetValue::new(asset.to_string(), sum));
                     }
                 }
-                assert!(outputs.is_empty());
+                assert!(outputs_asset_amounts.is_empty());
                 result
             }
         }
