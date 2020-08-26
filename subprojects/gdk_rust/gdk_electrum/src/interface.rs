@@ -78,7 +78,6 @@ impl WalletCtx {
             })
             .collect();
         let derived = xpub.derive_pub(&self.secp, &path)?;
-        if self.network.liquid {}
         match self.network.id() {
             NetworkId::Bitcoin(network) => {
                 Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network)))
