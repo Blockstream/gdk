@@ -41,7 +41,7 @@ pub struct WalletCtx {
 
 #[derive(Clone)]
 pub enum ElectrumUrl {
-    Tls(String, bool),
+    Tls(String, bool),  // the bool value indicates if the domain name should be validated
     Plaintext(String),
 }
 
