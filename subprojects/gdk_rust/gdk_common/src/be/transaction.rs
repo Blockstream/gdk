@@ -589,7 +589,7 @@ impl BETransaction {
         }
     }
 
-    pub fn my_balances(
+    pub fn my_balance_changes(
         &self,
         all_txs: &BETransactions,
         all_scripts: &HashSet<Script>,

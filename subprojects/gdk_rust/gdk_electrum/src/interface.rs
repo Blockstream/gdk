@@ -151,7 +151,7 @@ impl WalletCtx {
             };
 
             let fee = tx.fee(&all_txs, &all_unblinded);
-            let satoshi = tx.my_balances(&all_txs, &all_scripts, &all_unblinded);
+            let satoshi = tx.my_balance_changes(&all_txs, &all_scripts, &all_unblinded);
 
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
@@ -451,7 +451,7 @@ impl WalletCtx {
 
         info!("created tx fee {:?}", fee_val);
 
-        let mut satoshi = tx.my_balances(
+        let mut satoshi = tx.my_balance_changes(
             &wallet_data.all_txs,
             &wallet_data.all_scripts,
             &wallet_data.all_unblinded,
