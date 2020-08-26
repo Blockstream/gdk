@@ -16,9 +16,12 @@ namespace ga {
 namespace sdk {
     class tx_list_cache {
     public:
-        using get_txs_fn_t = std::function<std::vector<nlohmann::json>(uint32_t)>;
+        using get_txs_fn_t = std::function<std::vector<nlohmann::json>(uint32_t, nlohmann::json&)>;
+        using get_fn_ret_t = std::pair<std::vector<nlohmann::json>, nlohmann::json>;
 
-        std::vector<nlohmann::json> get(uint32_t first, uint32_t count, get_txs_fn_t get_txs);
+        // Get an item from the cache, using 'get_txs' to fetch missing entries.
+        // Note that 'get_txs' must not lock the mutex on ga_session.
+        get_fn_ret_t get(uint32_t first, uint32_t count, get_txs_fn_t get_txs);
 
     private:
         static constexpr uint32_t CACHE_SIZE = 1024;

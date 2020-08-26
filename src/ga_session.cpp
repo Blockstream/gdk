@@ -2188,32 +2188,46 @@ namespace sdk {
         const uint32_t first = details.at("first");
         const uint32_t count = details.at("count");
 
-        return m_tx_list_caches.get(subaccount)->get(first, count, [this, subaccount](uint32_t page) {
-            return get_transactions(subaccount, page);
-        });
+        auto result = m_tx_list_caches.get(subaccount)
+                          ->get(first, count, [this, subaccount](uint32_t page, nlohmann::json& state_info) {
+                              return get_transactions(subaccount, page, state_info);
+                          });
+
+        {
+            // Update our local block height from the returned results
+            // TODO: Use block_hash/height reversal to detect reorgs & uncache
+            locker_t locker(m_mutex);
+
+            if (result.second.contains("cur_block") && result.second["cur_block"] > m_block_height) {
+                m_block_height = result.second["cur_block"];
+            }
+
+            // Note: fiat_value is actually the fiat exchange rate
+            if (result.second.contains("fiat_value") && !result.second["fiat_value"].is_null()) {
+                const double fiat_rate = result.second["fiat_value"];
+                update_fiat_rate(locker, std::to_string(fiat_rate));
+            }
+        }
+        return result.first;
     }
 
-    std::vector<nlohmann::json> ga_session::get_transactions(uint32_t subaccount, uint32_t page_id)
+    std::vector<nlohmann::json> ga_session::get_transactions(
+        uint32_t subaccount, uint32_t page_id, nlohmann::json& state_info)
     {
+        // Note: This function must not take the session lock or deadlocks will result.
         nlohmann::json txs;
         wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
             "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
 
-        {
-            locker_t locker(m_mutex);
-            // Update our local block height from the returned results
-            // TODO: Use block_hash/height reversal to detect reorgs & uncache
-            const uint32_t block_height = txs["cur_block"];
-            if (block_height > m_block_height) {
-                m_block_height = block_height;
-            }
-
-            // Note: fiat_value is actually the fiat exchange rate
-            if (!txs["fiat_value"].is_null()) {
-                const double fiat_rate = txs["fiat_value"];
-                update_fiat_rate(locker, std::to_string(fiat_rate));
-            }
+        // Update block height and fiat rate in our state info
+        const uint32_t block_height = txs["cur_block"];
+        if (block_height > state_info["cur_block"]) {
+            state_info["cur_block"] = block_height;
         }
+        if (!txs["fiat_value"].is_null()) {
+            state_info["fiat_value"] = txs["fiat_value"];
+        }
+
         // Postprocess the returned API data
         // TODO: confidential transactions, social payments/BIP70
         txs.erase("fiat_value");
