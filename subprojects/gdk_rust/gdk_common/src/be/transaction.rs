@@ -693,6 +693,7 @@ impl BETransactions {
     }
 }
 
+//TODO remove this, `fn needs` could return BTreeMap<String, u64> instead
 #[derive(Debug)]
 pub struct AssetValue {
     pub asset: String,
