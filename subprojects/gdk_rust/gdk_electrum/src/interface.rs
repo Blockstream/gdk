@@ -789,15 +789,6 @@ impl WalletCtx {
         Ok(())
     }
 
-    pub fn validate_address(&self, _address: Address) -> Result<bool, Error> {
-        // if we managed to get here it means that the address is already valid.
-        // only other thing we can check is if it the network is right.
-
-        // TODO implement for both Liquid and Bitcoin address
-        //Ok(address.network == self.network)
-        unimplemented!("validate not implemented");
-    }
-
     pub fn get_address(&self) -> Result<AddressPointer, Error> {
         let pointer = self.db.increment_index(Index::External, 1)?;
         let address = self.derive_address(&self.xpub, [0, pointer])?.to_string();
