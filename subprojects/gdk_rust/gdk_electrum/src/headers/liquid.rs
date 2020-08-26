@@ -1,7 +1,7 @@
 use elements::{self, BlockExtData};
 
 use crate::error::*;
-use crate::headers::compute_merkle_path;
+use crate::headers::compute_merkle_root;
 use bitcoin::blockdata::opcodes;
 use bitcoin::blockdata::opcodes::Class;
 use bitcoin::blockdata::script::Instruction;
@@ -52,7 +52,7 @@ impl Verifier {
         header: &elements::BlockHeader,
     ) -> Result<(), Error> {
         self.verify_header(header)?;
-        let root = compute_merkle_path(&txid, merkle)?;
+        let root = compute_merkle_root(&txid, merkle)?;
         if header.merkle_root == root {
             Ok(())
         } else {

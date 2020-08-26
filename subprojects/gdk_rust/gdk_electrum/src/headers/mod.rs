@@ -14,7 +14,7 @@ pub enum ChainOrVerifier {
     Verifier(Verifier),
 }
 
-fn compute_merkle_path(txid: &Txid, merkle: GetMerkleRes) -> Result<TxMerkleNode, Error> {
+fn compute_merkle_root(txid: &Txid, merkle: GetMerkleRes) -> Result<TxMerkleNode, Error> {
     let mut pos = merkle.pos;
     let mut current = txid.into_inner();
 

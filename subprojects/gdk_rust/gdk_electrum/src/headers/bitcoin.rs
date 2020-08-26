@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::headers::compute_merkle_path;
+use crate::headers::compute_merkle_root;
 use bitcoin::blockdata::constants::{
     genesis_block, max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
 };
@@ -140,7 +140,7 @@ impl HeadersChain {
         height: u32,
         merkle: GetMerkleRes,
     ) -> Result<(), Error> {
-        let calculated_merkle_root = compute_merkle_path(txid, merkle)?;
+        let calculated_merkle_root = compute_merkle_root(txid, merkle)?;
 
         let header = self.get(height)?;
         if header.merkle_root == calculated_merkle_root {
