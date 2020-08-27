@@ -49,6 +49,8 @@ use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::thread::JoinHandle;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 
 pub enum SyncerKind {
     Plain(Syncer<ElectrumPlaintextStream>, String),
@@ -994,7 +996,9 @@ impl<S: Read + Write> Syncer<S> {
         let mut txid_height = HashMap::new();
 
         let mut last_used = [0u32; 2];
-        for i in 0..=1 {
+        let mut wallet_chains = vec![0,1];
+        wallet_chains.shuffle(&mut thread_rng());
+        for i in wallet_chains {
             let int_or_ext = Index::from(i)?;
             let mut batch_count = 0;
             loop {
