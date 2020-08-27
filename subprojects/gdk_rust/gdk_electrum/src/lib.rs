@@ -375,7 +375,6 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         instant: false,
         fee: tx.fee,
         fee_rate,
-        addresses: vec![],
         addressees,              // notice the extra "e" -- its intentional
         inputs: vec![],          // tx.input.iter().map(format_gdk_input).collect(),
         outputs: vec![],         //tx.output.iter().map(format_gdk_output).collect(),

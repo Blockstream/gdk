@@ -244,7 +244,6 @@ pub struct TxListItem {
     pub spv_verified: bool,
     pub fee: u64,
     pub fee_rate: u64,
-    pub addresses: Vec<String>,
     pub addressees: Vec<String>, // receiver's addresses
     pub inputs: Vec<AddressIO>,  // tx.input.iter().map(format_gdk_input).collect(),
     pub outputs: Vec<AddressIO>, //tx.output.iter().map(format_gdk_output).collect(),
