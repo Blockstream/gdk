@@ -563,10 +563,15 @@ impl Session<Error> for ElectrumSession {
                 }
 
                 loop {
+                    if r.try_recv().is_ok() {
+                        info!("closing headers thread");
+                        break 'outer;
+                    }
                     match headers_kind.ask(chunk_size) {
                         Ok(headers_found) => {
                             if headers_found == 0 {
-                                chunk_size = 1
+                                chunk_size = 1;
+                                break;
                             } else {
                                 info!("headers found: {}", headers_found);
                             }
@@ -579,19 +584,17 @@ impl Session<Error> for ElectrumSession {
                         }
                         Err(e) => {
                             // usual error is because I reached the tip, trying asking half
+                            //TODO this is due to an esplora electrs bug, according to spec it should
+                            // just return available headers, remove when fix is deployed and change previous
+                            // break condition to headers_found < chunk_size
                             info!("error while asking headers {}", e);
                             if chunk_size > 1 {
                                 chunk_size /= 2
+                            } else {
+                                break
                             }
                         }
                     };
-                    if r.try_recv().is_ok() {
-                        info!("closing headers thread");
-                        break 'outer;
-                    }
-                    if chunk_size == 1 {
-                        break;
-                    }
                 }
 
                 match headers_kind.get_proofs() {
