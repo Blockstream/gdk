@@ -41,7 +41,7 @@ pub struct WalletCtx {
 
 #[derive(Clone)]
 pub enum ElectrumUrl {
-    Tls(String, bool),  // the bool value indicates if the domain name should be validated
+    Tls(String, bool), // the bool value indicates if the domain name should be validated
     Plaintext(String),
 }
 
@@ -149,7 +149,7 @@ impl WalletCtx {
                 ..Default::default()
             };
 
-            let fee = tx.fee(&all_txs, &all_unblinded);
+            let fee = tx.fee(&all_txs, &all_unblinded, &self.network.policy_asset().ok())?;
             let satoshi = tx.my_balance_changes(&all_txs, &all_scripts, &all_unblinded);
 
             // We define an incoming txs if there are more assets received by the wallet than spent
@@ -447,10 +447,9 @@ impl WalletCtx {
         // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
         tx.scramble();
 
-        let fee_val = tx.fee(&wallet_data.all_txs, &wallet_data.all_unblinded); // recompute exact fee_val from built tx
-        if let Some(policy_asset) = self.network.policy_asset.as_ref() {
-            tx.add_fee_if_elements(fee_val, policy_asset);
-        }
+        let policy_asset = self.network.policy_asset().ok();
+        let fee_val = tx.fee(&wallet_data.all_txs, &wallet_data.all_unblinded, &policy_asset)?; // recompute exact fee_val from built tx
+        tx.add_fee_if_elements(fee_val, &policy_asset)?;
 
         info!("created tx fee {:?}", fee_val);
 

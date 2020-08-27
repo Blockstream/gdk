@@ -1,6 +1,10 @@
 use crate::be::asset_to_bin;
 use crate::be::AssetId;
+use crate::error::Error;
 use serde_derive::{Deserialize, Serialize};
+use elements::confidential::Asset;
+use bitcoin::hashes::{sha256d, Hash};
+use elements::confidential;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {
@@ -63,11 +67,16 @@ impl Network {
         }
     }
 
-    pub fn policy_asset(&self) -> Result<AssetId, crate::error::Error> {
+    pub fn policy_asset_id(&self) -> Result<AssetId, Error> {
         if let Some(str) = self.policy_asset.as_ref() {
             Ok(asset_to_bin(str)?)
         } else {
             Err("no policy asset".into())
         }
+    }
+
+    pub fn policy_asset(&self) -> Result<Asset, Error> {
+        let asset_id = self.policy_asset_id()?;
+        Ok(confidential::Asset::Explicit(sha256d::Hash::from_inner(asset_id)))
     }
 }

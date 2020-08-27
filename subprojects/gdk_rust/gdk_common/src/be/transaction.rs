@@ -466,16 +466,17 @@ impl BETransaction {
         }
     }
 
-    pub fn add_fee_if_elements(&mut self, value: u64, policy_asset: &str) {
+    pub fn add_fee_if_elements(&mut self, value: u64, policy_asset: &Option<Asset>) -> Result<(), Error> {
         if let BETransaction::Elements(tx) = self {
-            let asset = asset_to_bin(policy_asset).unwrap();
+            let policy_asset = policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
             let new_out = elements::TxOut {
-                asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset)),
+                asset: policy_asset,
                 value: confidential::Value::Explicit(value),
                 ..Default::default()
             };
             tx.output.push(new_out);
         }
+        Ok(())
     }
 
     pub fn add_input(&mut self, outpoint: BEOutPoint) {
@@ -515,8 +516,9 @@ impl BETransaction {
         &self,
         all_txs: &BETransactions,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-    ) -> u64 {
-        match self {
+        policy_asset: &Option<Asset>,
+    ) -> Result<u64, Error> {
+        Ok(match self {
             Self::Bitcoin(tx) => {
                 let sum_inputs = sum_inputs(tx, all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
@@ -524,10 +526,13 @@ impl BETransaction {
             }
             Self::Elements(tx) => {
                 let has_fee = tx.output.iter().any(|o| o.is_fee());
+
                 if has_fee {
+                    let policy_asset = policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
                     tx.output
                         .iter()
-                        .filter(|o| o.is_fee()) // TODO should check the asset is the policy asset
+                        .filter(|o| o.is_fee())
+                        .filter(|o| policy_asset == o.asset )
                         .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
                         .sum::<u64>()
                 } else {
@@ -544,7 +549,7 @@ impl BETransaction {
                     sum_inputs - sum_outputs
                 }
             }
-        }
+        })
     }
 
     pub fn rbf_optin(&self) -> bool {
