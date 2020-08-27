@@ -608,6 +608,7 @@ public func bip32KeyToBase58(isMainnet: Bool = true, pubKey: [UInt8], chainCode:
     let chainCode_: UnsafePointer<UInt8> = UnsafePointer(chainCode)
     defer {
         bip32_key_free(extkey)
+        wally_free_string(base58)
     }
     if (bip32_key_init_alloc(UInt32(version), UInt32(1), UInt32(0), chainCode_, chainCode.count,
                              pubKey_, pubKey.count, nil, 0, nil, 0, nil, 0, &extkey) != WALLY_OK) {
