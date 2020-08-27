@@ -201,6 +201,7 @@ impl WalletCtx {
                     .clone()
                     .into_iter()
                     .enumerate()
+                    .filter(|(_,output)| output.value > DUST_VALUE)
                     .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
                     .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
                     .filter(|(outpoint, _)| !spent.contains(&outpoint))
@@ -211,32 +212,38 @@ impl WalletCtx {
                         )
                     })
                     .collect(),
-                BETransaction::Elements(tx) => tx
-                    .output
-                    .clone()
-                    .into_iter()
-                    .enumerate()
-                    .map(|(vout, output)| {
-                        (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
-                    })
-                    .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
-                    .filter(|(outpoint, _)| !spent.contains(&outpoint))
-                    .filter_map(|(outpoint, output)| {
-                        if let BEOutPoint::Elements(el_outpoint) = outpoint {
-                            if let Some(unblinded) = all_unblinded.get(&el_outpoint) {
-                                return Some((
-                                    outpoint,
-                                    UTXOInfo::new(
-                                        unblinded.asset_hex(),
-                                        unblinded.value,
-                                        output.script_pubkey,
-                                    ),
-                                ));
+                BETransaction::Elements(tx) => {
+                    let policy_asset = self.network.policy_asset_id()?;
+                    tx
+                        .output
+                        .clone()
+                        .into_iter()
+                        .enumerate()
+                        .map(|(vout, output)| {
+                            (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
+                        })
+                        .filter(|(_, output)| all_scripts.contains(&output.script_pubkey))
+                        .filter(|(outpoint, _)| !spent.contains(&outpoint))
+                        .filter_map(|(outpoint, output)| {
+                            if let BEOutPoint::Elements(el_outpoint) = outpoint {
+                                if let Some(unblinded) = all_unblinded.get(&el_outpoint) {
+                                    if unblinded.value < DUST_VALUE && unblinded.asset == policy_asset {
+                                        return None;
+                                    }
+                                    return Some((
+                                        outpoint,
+                                        UTXOInfo::new(
+                                            unblinded.asset_hex(),
+                                            unblinded.value,
+                                            output.script_pubkey,
+                                        ),
+                                    ));
+                                }
                             }
-                        }
-                        None
-                    })
-                    .collect(),
+                            None
+                        })
+                        .collect()
+                },
             };
             utxos.extend(tx_utxos);
         }

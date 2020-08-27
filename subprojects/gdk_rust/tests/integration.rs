@@ -34,6 +34,7 @@ fn bitcoin() {
     test_session.settings();
     test_session.is_verified(&txid, true);
     test_session.reconnect();
+    test_session.fund(100, None);
 
     test_session.stop();
 }
@@ -75,6 +76,7 @@ fn liquid() {
     test_session.settings();
     test_session.is_verified(&txid, true);
     test_session.reconnect();
+    test_session.fund(100, None);
 
     test_session.stop();
 }

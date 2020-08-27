@@ -2,7 +2,7 @@ use bitcoin::{self, Amount};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use electrum_client::client::ElectrumPlaintextStream;
 use elements;
-use gdk_common::be::{BEAddress, BETransaction};
+use gdk_common::be::{BEAddress, BETransaction, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::session::Session;
@@ -109,6 +109,7 @@ pub fn setup(
     if !is_debug {
         args.push("-daemon");
     }
+    args.push("-dustrelayfee=0.00000001");
     info!("LAUNCHING: {} {}", node_exec, args.join(" "));
     let node_process = Command::new(node_exec).args(args).spawn().unwrap();
     info!("node spawned");
@@ -280,6 +281,14 @@ impl TestSession {
             self.wait_status_change();
             assets_issued.push(asset);
         }
+
+        // node is allowed to make tx below dust with dustrelayfee, but gdk session should not see
+        // this as spendable, thus the balance should not change
+        let satoshi = if satoshi < DUST_VALUE {
+            0
+        } else {
+            satoshi
+        };
 
         assert_eq!(self.balance_gdk(None), initial_satoshis + satoshi);
         assets_issued
