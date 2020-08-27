@@ -915,6 +915,7 @@ impl Session<Error> for ElectrumSession {
         let mut hasher = DefaultHasher::new();
         for tx in txs.iter() {
             std::hash::Hash::hash(&tx.txid, &mut hasher);
+            std::hash::Hash::hash(&tx.height, &mut hasher);
         }
         let tip = self.get_wallet()?.get_tip()?;
         std::hash::Hash::hash(&tip, &mut hasher);

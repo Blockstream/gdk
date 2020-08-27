@@ -234,7 +234,7 @@ pub fn setup(
 }
 
 impl TestSession {
-    /// wait gdk session status to change (new tx)
+    /// wait gdk session status to change (new tx, or new block)
     fn wait_status_change(&mut self) {
         loop {
             if let Ok(new_status) = self.session.status() {
@@ -375,6 +375,7 @@ impl TestSession {
     pub fn reconnect(&mut self) {
         self.session.disconnect().unwrap();
         self.session.connect(&Value::Null).unwrap();
+        self.wait_status_change();
         let address = self.node_getnewaddress(None);
         let txid = self.send_tx(&address, 1000, None);
         self.list_tx_contains(&txid, &[address], true);
