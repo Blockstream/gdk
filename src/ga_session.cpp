@@ -2182,72 +2182,67 @@ namespace sdk {
         return utxos;
     }
 
-    nlohmann::json ga_session::get_transactions(const nlohmann::json& details)
+    std::vector<nlohmann::json> ga_session::get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count)
     {
-        const uint32_t subaccount = details.at("subaccount");
-        const uint32_t first = details.at("first");
-        const uint32_t count = details.at("count");
+        // Note: This function must not take the session lock or deadlocks will result.
+        auto&& server_get = [this, subaccount](uint32_t page_id, nlohmann::json& state_info) {
+            nlohmann::json txs;
+            wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
+                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
 
-        auto result = m_tx_list_caches.get(subaccount)
-                          ->get(first, count, [this, subaccount](uint32_t page, nlohmann::json& state_info) {
-                              return get_transactions(subaccount, page, state_info);
-                          });
+            // Update block height and fiat rate in our state info
+            const uint32_t block_height = txs["cur_block"];
+            if (block_height > state_info["cur_block"]) {
+                state_info["cur_block"] = block_height;
+            }
+            if (!txs["fiat_value"].is_null()) {
+                state_info["fiat_value"] = txs["fiat_value"];
+            }
+
+            // Remove all replaced transactions
+            // TODO: Add 'replaces' to txs that were bumped, and mark replaced
+            // txs that aren't in our list as double spent
+            std::vector<nlohmann::json> tx_list;
+            tx_list.reserve(txs["list"].size());
+            for (auto& tx_details : txs["list"]) {
+                if (tx_details.find("replaced_by") == tx_details.end()) {
+                    tx_list.emplace_back(tx_details);
+                }
+            }
+
+            return tx_list;
+        };
+
+        std::vector<nlohmann::json> tx_list;
+        nlohmann::json state_info;
+        std::tie(tx_list, state_info) = m_tx_list_caches.get(subaccount)->get(first, count, server_get);
 
         {
             // Update our local block height from the returned results
             // TODO: Use block_hash/height reversal to detect reorgs & uncache
             locker_t locker(m_mutex);
 
-            if (result.second.contains("cur_block") && result.second["cur_block"] > m_block_height) {
-                m_block_height = result.second["cur_block"];
+            if (state_info.contains("cur_block") && state_info["cur_block"] > m_block_height) {
+                m_block_height = state_info["cur_block"];
             }
 
             // Note: fiat_value is actually the fiat exchange rate
-            if (result.second.contains("fiat_value") && !result.second["fiat_value"].is_null()) {
-                const double fiat_rate = result.second["fiat_value"];
+            if (state_info.contains("fiat_value") && !state_info["fiat_value"].is_null()) {
+                const double fiat_rate = state_info["fiat_value"];
                 update_fiat_rate(locker, std::to_string(fiat_rate));
             }
         }
-        return result.first;
+
+        return tx_list;
     }
 
-    std::vector<nlohmann::json> ga_session::get_transactions(
-        uint32_t subaccount, uint32_t page_id, nlohmann::json& state_info)
+    nlohmann::json ga_session::get_transactions(const nlohmann::json& details)
     {
-        // Note: This function must not take the session lock or deadlocks will result.
-        nlohmann::json txs;
-        wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-            "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
+        const uint32_t subaccount = details.at("subaccount");
+        const uint32_t first = details.at("first");
+        const uint32_t count = details.at("count");
 
-        // Update block height and fiat rate in our state info
-        const uint32_t block_height = txs["cur_block"];
-        if (block_height > state_info["cur_block"]) {
-            state_info["cur_block"] = block_height;
-        }
-        if (!txs["fiat_value"].is_null()) {
-            state_info["fiat_value"] = txs["fiat_value"];
-        }
-
-        // Postprocess the returned API data
-        // TODO: confidential transactions, social payments/BIP70
-        txs.erase("fiat_value");
-        txs.erase("cur_block");
-        txs.erase("block_hash");
-        txs.erase("unclaimed"); // Always empty, never used
-        txs.erase("fiat_currency");
-        txs["page_id"] = page_id;
-        json_add_if_missing(txs, "next_page_id", 0, true);
-
-        // Remove all replaced transactions
-        // TODO: Add 'replaces' to txs that were bumped, and mark replaced
-        // txs that aren't in our list as double spent
-        std::vector<nlohmann::json> tx_list;
-        tx_list.reserve(txs["list"].size());
-        for (auto& tx_details : txs["list"]) {
-            if (tx_details.find("replaced_by") == tx_details.end()) {
-                tx_list.emplace_back(tx_details);
-            }
-        }
+        std::vector<nlohmann::json> tx_list = get_raw_transactions(subaccount, first, count);
 
         const auto is_liquid = m_net_params.liquid();
         for (auto& tx_details : tx_list) {
