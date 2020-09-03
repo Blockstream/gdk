@@ -87,7 +87,7 @@ namespace sdk {
 
     namespace {
         static const std::string SOCKS5("socks5://");
-        static const std::string USER_AGENT("[v2,sw,csv]");
+        static const std::string USER_AGENT("[v2,sw,csv,csv_opt]");
         static const std::string USER_AGENT_NO_CSV("[v2,sw]");
         static const std::string CACHE_UPCOMING_NLOCKTIME("upcomingnlocktime");
         // TODO: The server should return these
