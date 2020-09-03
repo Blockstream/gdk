@@ -147,8 +147,9 @@ namespace sdk {
         __builtin_unreachable();
     }
 
-    static std::vector<unsigned char> output_script(const pub_key_t& ga_pub_key, const pub_key_t& user_pub_key,
-        gsl::span<const unsigned char> backup_pub_key, script_type type, uint32_t subtype)
+    static std::vector<unsigned char> output_script(const network_parameters& net_params, const pub_key_t& ga_pub_key,
+        const pub_key_t& user_pub_key, gsl::span<const unsigned char> backup_pub_key, script_type type,
+        uint32_t subtype)
     {
         const bool is_2of3 = !backup_pub_key.empty();
 
@@ -168,7 +169,8 @@ namespace sdk {
 
         if (type == script_type::p2sh_p2wsh_csv_fortified_out && !is_2of3) {
             // CSV 2of2, subtype is the number of CSV blocks
-            scriptpubkey_csv_2of2_then_1_from_bytes(keys, subtype, script);
+            const bool optimize = !net_params.liquid(); // Liquid uses old style CSV
+            scriptpubkey_csv_2of2_then_1_from_bytes(keys, subtype, optimize, script);
         } else {
             // P2SH or P2SH-P2WSH standard 2of2/2of3 multisig
             scriptpubkey_multisig_from_bytes(keys, threshold, script);
@@ -198,10 +200,11 @@ namespace sdk {
 
         if (recovery_pubkeys.have_subaccount(subaccount)) {
             // 2of3
-            return output_script(ga_pub_key, user_pub_key, recovery_pubkeys.derive(subaccount, pointer), type, subtype);
+            return output_script(
+                net_params, ga_pub_key, user_pub_key, recovery_pubkeys.derive(subaccount, pointer), type, subtype);
         }
         // 2of2
-        return output_script(ga_pub_key, user_pub_key, empty_span(), type, subtype);
+        return output_script(net_params, ga_pub_key, user_pub_key, empty_span(), type, subtype);
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
