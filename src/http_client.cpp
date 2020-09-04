@@ -15,7 +15,18 @@ namespace sdk {
     namespace {
 
         constexpr uint8_t HTTP_VERSION = 11;
-        constexpr auto HTTP_TIMEOUT = 5s;
+
+        // This timeout is the time-frame in which the entire operation must complete.
+        // ie. from issuing the initial request to receiving the entire response.
+        // It is *not* a timeout between constituent consecutive packets.
+        //
+        // The underlying protocol ought to monitor time between underlying
+        // transport packets, and timeout if there is an apparent interruption,
+        // but since we cannot test that easily (on all platforms) we will apply
+        // a 'whole operation' timeout here as belt-and-braces.
+        // NOTE: this timeout expiring appears to cause a 'partial message' error,
+        // rather than an obvious 'timeout' error.
+        constexpr auto HTTP_TIMEOUT = 30s;
 
     } // namespace
 
