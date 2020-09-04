@@ -138,6 +138,7 @@ namespace sdk {
                 m_twofactor_data["code"] = m_code;
             }
             m_state = call_impl();
+            m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
         } catch (const autobahn::call_error& e) {
             auto details = get_error_details(e);
             if (is_twofactor_invalid_code_error(details.second)) {
