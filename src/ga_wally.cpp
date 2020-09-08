@@ -203,17 +203,20 @@ namespace sdk {
 
     uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script)
     {
-        GDK_RUNTIME_ASSERT(redeem_script.at(0) == OP_DEPTH);
-        GDK_RUNTIME_ASSERT(redeem_script.at(1) == OP_1SUB);
         size_t csv_blocks_offset;
-        if (redeem_script.at(2) == OP_IF) {
+
+        if (redeem_script.at(0) == OP_DEPTH && redeem_script.at(1) == OP_1SUB && redeem_script.at(2) == OP_IF) {
             // 2of2 redeem script, with csv_blocks at:
             // OP_DEPTH OP_1SUB OP_IF <main_pubkey> OP_CHECKSIGVERIFY OP_ELSE <csv_blocks>
-            csv_blocks_offset = 39;
-        } else if (redeem_script.at(2) == OP_1SUB) {
-            // 2of3 redeem script, with csv_blocks at:
-            // OP_DEPTH OP_1SUB OP_1SUB OP_IF OP_2 <main_pubkey> OP_ELSE <csv_blocks>
-            csv_blocks_offset = 40;
+            csv_blocks_offset = 1 + 1 + 1 + (EC_PUBLIC_KEY_LEN + 1) + 1 + 1;
+        } else if (redeem_script.at(0) == EC_PUBLIC_KEY_LEN
+            && redeem_script.at(EC_PUBLIC_KEY_LEN + 1) == OP_CHECKSIGVERIFY
+            && redeem_script.at(EC_PUBLIC_KEY_LEN + 2) == EC_PUBLIC_KEY_LEN
+            && redeem_script.at(EC_PUBLIC_KEY_LEN * 2 + 3) == OP_CHECKSIG
+            && redeem_script.at(EC_PUBLIC_KEY_LEN * 2 + 4) == OP_IFDUP) {
+            // 2of2 optimized redeem script, with csv_blocks at:
+            // <recovery_pubkey> OP_CHECKSIGVERIFY <main_pubkey> OP_CHECKSIG OP_IFDUP OP_NOTIF <csv_blocks>
+            csv_blocks_offset = (EC_PUBLIC_KEY_LEN + 1) + 1 + (EC_PUBLIC_KEY_LEN + 1) + 1 + 1 + 1;
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "Invalid CSV redeem script");
             __builtin_unreachable();
