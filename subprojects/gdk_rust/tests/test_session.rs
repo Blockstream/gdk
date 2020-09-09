@@ -106,6 +106,7 @@ pub fn setup(
         args.push("-validatepegin=0");
     } else {
         args.push("-regtest");
+        args.push("-fallbackfee=0.0001");
     };
     if !is_debug {
         args.push("-daemon");
@@ -392,7 +393,6 @@ impl TestSession {
     pub fn reconnect(&mut self) {
         self.session.disconnect().unwrap();
         self.session.connect(&Value::Null).unwrap();
-        self.wait_status_change();
         let address = self.node_getnewaddress(None);
         let txid = self.send_tx(&address, 1000, None, None);
         self.list_tx_contains(&txid, &[address], true);

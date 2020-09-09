@@ -254,6 +254,27 @@ apidocs:
     - cd docs/build && tar czf ../../apidocs.tar.gz html/ && cd ../..
     - deactivate
 
+integration_test_rust:
+  tags:
+    - ga
+  script:
+    - source /root/.cargo/env
+    - ./tools/build.sh --clang --buildtype=debug
+    - export WALLY_DIR=$PWD/build-clang/libwally-core/build/lib/
+    - git clone https://github.com/Blockstream/electrs electrs-elements
+    - cd electrs-elements && git checkout b18f82c024ab607cd25dc9f1fcde59499e75099c && cargo build --features liquid && cd ..
+    - export ELECTRS_LIQUID_EXEC=$PWD/electrs-elements/target/debug/electrs
+    - git clone https://github.com/romanz/electrs electrs-bitcoin
+    - cd electrs-bitcoin && git checkout f776473f3c532451c459cbd944826b2fc7d4f546 && cargo build && cd ..
+    - export ELECTRS_EXEC=$PWD/electrs-bitcoin/target/debug/electrs
+    - curl https://bitcoincore.org/bin/bitcoin-core-0.20.1/bitcoin-0.20.1-x86_64-linux-gnu.tar.gz | tar -xvz bitcoin-0.20.1/bin/bitcoind
+    - export BITCOIND_EXEC=$PWD/bitcoin-0.20.1/bin/bitcoind
+    - curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.18.1.8/elements-0.18.1.8-x86_64-linux-gnu.tar.gz | tar -xvz elements-0.18.1.8/bin/elementsd
+    - export ELEMENTSD_EXEC=$PWD/elements-0.18.1.8/bin/elementsd
+    - cd subprojects/gdk_rust
+    - DEBUG=1 ./launch_integration_tests.sh bitcoin
+    - DEBUG=1 ./launch_integration_tests.sh liquid
+
 package_release:
   tags:
     - garelease

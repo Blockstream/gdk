@@ -2,12 +2,12 @@
 
 # launch with DEBUG env equal something when debugging to see outputs
 
-# adapt the following vars to your environment
-export ELECTRS_EXEC=$HOME/git/electrs/target/release/electrs
-export ELECTRS_LIQUID_EXEC=$HOME/git/electrs-blockstream/target/release/electrs
-export ELEMENTSD_EXEC=$HOME/git/elements/src/elementsd
-export BITCOIND_EXEC=bitcoind
-export WALLY_DIR=$HOME/git/gdk/build-clang/libwally-core/build/lib/
+# use externally defined env vars or the following defaults
+export ELECTRS_EXEC=${ELECTRS_EXEC:=$HOME/git/electrs/target/release/electrs}
+export ELECTRS_LIQUID_EXEC=${ELECTRS_LIQUID_EXEC:=$HOME/git/electrs-blockstream/target/release/electrs}
+export ELEMENTSD_EXEC=${ELEMENTSD_EXEC:=$HOME/git/elements/src/elementsd}
+export BITCOIND_EXEC=${BITCOIND_EXEC:=$HOME/git/bitcoind/src/bitcoind}
+export WALLY_DIR=${WALLY_DIR:=$HOME/git/gdk/build-clang/libwally-core/build/lib/}
 
 if [[ -z "${DEBUG}" ]]; then
   NOCAPTURE=""
