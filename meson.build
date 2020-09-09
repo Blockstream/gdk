@@ -85,7 +85,7 @@ common_link_args = [
     '-Wl,-z,noexecstack'
 ]
 
-if is_darwin or cross_iphone_build
+if (is_darwin or cross_iphone_build) and not cross_android_build
   # to generate keys in gdk_rust
   add_project_link_arguments(['-Wl,-framework,Security'], language : 'cpp')
 endif

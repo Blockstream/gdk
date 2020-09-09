@@ -193,9 +193,6 @@ test_osx_clang_ndk_arm64-v8a:
     - ./tools/build.sh --ndk arm64-v8a
 
 test_osx_clang_ndk_x86:
-  only:
-    refs:
-      - master
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
