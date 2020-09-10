@@ -194,6 +194,7 @@ pub fn setup(
     network.development = true;
     network.ct_bits = Some(52);
     network.ct_exponent = Some(0);
+    network.spv_enabled = Some(true);
     if is_liquid {
         network.liquid = true;
         network.policy_asset =

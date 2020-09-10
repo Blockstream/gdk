@@ -435,7 +435,7 @@ impl Session<Error> for ElectrumSession {
             None
         };
 
-        if self.network.spv_enabled.unwrap_or(true) {
+        if self.network.spv_enabled.unwrap_or(false) {
             let checker = match self.network.id() {
                 NetworkId::Bitcoin(network) => {
                     let mut path: PathBuf = self.data_root.as_str().into();

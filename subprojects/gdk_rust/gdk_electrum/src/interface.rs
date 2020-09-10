@@ -199,7 +199,7 @@ impl WalletCtx {
                 (false, false) => ("outgoing", true),
             };
 
-            let spv_verified = if self.network.spv_enabled.unwrap_or(true) {
+            let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
                 store_read
                     .cache
                     .txs_verif
