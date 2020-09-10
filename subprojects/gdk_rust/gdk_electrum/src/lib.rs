@@ -732,8 +732,12 @@ impl Session<Error> for ElectrumSession {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
+        let min_fee = match self.network.id() {
+            NetworkId::Bitcoin(_) => 1000,
+            NetworkId::Elements(_) => 100,
+        };
         let fee_estimates = try_get_fee_estimates(&self.url.build_client()?)
-            .unwrap_or_else(|_| vec![FeeEstimate(1000u64); 25]);
+            .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
         self.get_wallet()?.store.write()?.cache.fee_estimates = fee_estimates.clone();
         Ok(fee_estimates)
         //TODO better implement default

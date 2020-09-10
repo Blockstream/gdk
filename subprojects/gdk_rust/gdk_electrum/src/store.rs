@@ -362,7 +362,11 @@ impl StoreMeta {
 
     pub fn fee_estimates(&self) -> Vec<FeeEstimate> {
         if self.cache.fee_estimates.is_empty() {
-            vec![FeeEstimate(1000u64); 25]
+            let min_fee = match self.id {
+                NetworkId::Bitcoin(_) => 1000,
+                NetworkId::Elements(_) => 100,
+            };
+            vec![FeeEstimate(min_fee); 25]
         } else {
             self.cache.fee_estimates.clone()
         }
