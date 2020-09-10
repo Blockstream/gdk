@@ -155,8 +155,8 @@ fn init_logging() {
     INIT_LOGGER.call_once(|| {
         android_logger::init_once(
             Config::default()
-                .with_min_level(Level::Trace)
-                .with_filter(FilterBuilder::new().parse("debug,hello::crate=gdk_rust").build()),
+                .with_min_level(Level::Debug)
+                .with_filter(FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build()),
         )
     });
 

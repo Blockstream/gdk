@@ -40,7 +40,7 @@ fn bitcoin() {
     test_session.is_verified(&txid, SPVVerifyResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
-    test_session.test_set_get_memo(&txid, MEMO2, "");  // after reconnect memo has been reloaded from disk
+    test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
 
     test_session.stop();
 }
