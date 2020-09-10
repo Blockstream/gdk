@@ -79,8 +79,10 @@ impl PinManager {
             .set("content-length", "0")
             .call();
         info!("handshake response {:?}", response);
-        assert_eq!(response.status(), 200);
-        let data: Handshake = serde_json::from_reader(response.into_reader()).unwrap();
+        if !response.ok() {
+            return Err(Error::PinError)
+        }
+        let data: Handshake = serde_json::from_reader(response.into_reader())?;
         info!("handshake returns {:?}", data);
         Ok(data)
     }
@@ -167,6 +169,10 @@ impl PinManager {
 
         let response = ureq::post(&format!("{}/{}", PINSERVER_URL, op))
             .send_json(serde_json::to_value(&req).unwrap());
+
+        if !response.ok() {
+            return Err(Error::PinError)
+        }
 
         let response: ResponseData = serde_json::from_reader(response.into_reader())?;
         info!("server_call returns {:?}", response);
