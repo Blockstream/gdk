@@ -69,8 +69,9 @@ pub fn asset_to_hex(asset: &[u8]) -> String {
     hex::encode(asset)
 }
 
-/// Other than limiting derivation to two levels, this is required because DerivationPath dosn't
+/// Other than limiting derivation to two levels, this is required because DerivationPath don't
 /// derive Hash, so it cannot be used as HashMap key
+//TODO DerivationPath now derive Hash, update when released
 #[derive(Debug, Hash, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct TwoLayerPath {
     i: u32,
@@ -92,7 +93,7 @@ impl TryFrom<DerivationPath> for TwoLayerPath {
     fn try_from(value: DerivationPath) -> Result<Self, Self::Error> {
         let vec: Vec<ChildNumber> = value.into();
         if vec.len() != 2 {
-            return Err(crate::error::Error::Generic("azz".into()));
+            return Err(crate::error::Error::Generic("Only two levels derivation paths are allowed".into()));
         }
         Ok(TwoLayerPath {
             i: vec[0].into(),
