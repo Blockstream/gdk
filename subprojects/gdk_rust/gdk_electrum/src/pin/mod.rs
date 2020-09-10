@@ -78,12 +78,10 @@ impl PinManager {
         let response = ureq::post(&format!("{}/start_handshake", PINSERVER_URL))
             .set("content-length", "0")
             .call();
-        info!("handshake response {:?}", response);
         if !response.ok() {
             return Err(Error::PinError)
         }
         let data: Handshake = serde_json::from_reader(response.into_reader())?;
-        info!("handshake returns {:?}", data);
         Ok(data)
     }
 
@@ -175,7 +173,6 @@ impl PinManager {
         }
 
         let response: ResponseData = serde_json::from_reader(response.into_reader())?;
-        info!("server_call returns {:?}", response);
 
         response.verify_and_decrypt(&self.response_hmac_key, &self.response_encryption_key)
     }
@@ -194,7 +191,6 @@ impl ResponseData {
         let iv = hex::decode(&self.encrypted_key[..32])?;
         let decipher = Aes256Cbc::new_var(&enc_key[..], &iv).unwrap();
         let decrypted = decipher.decrypt_vec(&hex::decode(&self.encrypted_key[32..])?)?;
-        info!("verify_and_decrypt returns {}", hex::encode(&decrypted));
 
         Ok(decrypted)
     }

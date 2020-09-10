@@ -301,7 +301,6 @@ impl Session<Error> for ElectrumSession {
         pin: String,
         details: PinGetDetails,
     ) -> Result<Vec<Notification>, Error> {
-        debug!("login_with_pin {} {:?}", pin, details);
         let manager = PinManager::new()?;
         let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
@@ -625,7 +624,6 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
-        debug!("set_pin {:?}", details);
         let manager = PinManager::new()?;
         let client_key = SecretKey::new(&mut thread_rng());
         let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
