@@ -153,11 +153,9 @@ pub extern "C" fn GDKRUST_create_session(
 fn init_logging() {
     #[cfg(feature = "android_log")]
     INIT_LOGGER.call_once(|| {
-        android_logger::init_once(
-            Config::default()
-                .with_min_level(Level::Debug)
-                .with_filter(FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build()),
-        )
+        android_logger::init_once(Config::default().with_min_level(Level::Debug).with_filter(
+            FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build(),
+        ))
     });
 
     #[cfg(not(feature = "android_log"))]

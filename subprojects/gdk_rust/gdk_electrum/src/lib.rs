@@ -690,7 +690,8 @@ impl Session<Error> for ElectrumSession {
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        self.get_wallet()?.store.write()?.store.memos.insert(txid, memo.to_string());
+        self.get_wallet()?.store.write()?.insert_memo(txid, memo)?;
+
         Ok(())
     }
 

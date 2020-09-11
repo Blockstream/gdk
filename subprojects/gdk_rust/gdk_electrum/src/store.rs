@@ -219,9 +219,19 @@ impl StoreMeta {
         Ok(())
     }
 
-    pub fn flush(&self) -> Result<(), Error> {
+    fn flush_store(&self) -> Result<(), Error> {
         self.flush_serializable("store", &self.store)?;
-        self.flush_serializable("cache", &self.cache)?;
+        Ok(())
+    }
+
+    fn flush_cache(&self) -> Result<(), Error> {
+        self.flush_serializable("cache", &self.store)?;
+        Ok(())
+    }
+
+    pub fn flush(&self) -> Result<(), Error> {
+        self.flush_store()?;
+        self.flush_cache()?;
         Ok(())
     }
 
@@ -370,6 +380,12 @@ impl StoreMeta {
         } else {
             self.cache.fee_estimates.clone()
         }
+    }
+
+    pub fn insert_memo(&mut self, txid: Txid, memo: &str) -> Result<(), Error>{
+        self.store.memos.insert(txid, memo.to_string());
+        self.flush_store()?;
+        Ok(())
     }
 }
 
