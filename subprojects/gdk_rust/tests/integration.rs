@@ -27,7 +27,7 @@ fn bitcoin() {
     test_session.is_verified(&txid, SPVVerifyResult::InProgress);
     test_session.send_tx(&node_bech32_address, 10_000, None, None); // p2wpkh
     test_session.send_tx(&node_legacy_address, 10_000, None, None); // p2pkh
-    test_session.send_all(&node_address, None);
+    test_session.send_all(&node_legacy_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
     test_session.fund(100_000_000, None);

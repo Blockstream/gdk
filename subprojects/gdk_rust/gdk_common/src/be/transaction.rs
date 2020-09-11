@@ -245,7 +245,7 @@ impl BETransaction {
 
     /// estimates the fee of the final transaction given the `fee_rate`
     /// called when the tx is being built and miss things like signatures and changes outputs.
-    pub fn estimated_fee(&self, fee_rate: f64, more_outputs: u8) -> u64 {
+    pub fn estimated_fee(&self, fee_rate: f64, more_changes: u8) -> u64 {
         let dummy_tx = self.clone();
         match dummy_tx {
             BETransaction::Bitcoin(mut tx) => {
@@ -253,7 +253,7 @@ impl BETransaction {
                     input.witness = vec![vec![0u8; 72], vec![0u8; 33]]; // considering signature sizes (72) and compressed public key (33)
                     input.script_sig = vec![0u8; 23].into(); // p2shwpkh redeem script size
                 }
-                for _ in 0..more_outputs {
+                for _ in 0..more_changes {
                     tx.output.push(bitcoin::TxOut {
                         value: 0,
                         script_pubkey: vec![0u8; 21].into(), //  p2shwpkh output is 1 + hash(20)
@@ -265,7 +265,7 @@ impl BETransaction {
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
                     tx.input.len(),
                     tx.output.len(),
-                    more_outputs,
+                    more_changes,
                     vbytes,
                     fee_val
                 );
@@ -278,7 +278,7 @@ impl BETransaction {
                     input.witness = tx_wit;
                     input.script_sig = vec![0u8; 23].into(); // p2shwpkh redeem script size
                 }
-                for _ in 0..more_outputs {
+                for _ in 0..more_changes {
                     let new_out = elements::TxOut {
                         asset: confidential::Asset::Confidential(0u8, [0u8; 32]),
                         value: confidential::Value::Confidential(0u8, [0u8; 32]),
@@ -303,7 +303,7 @@ impl BETransaction {
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} sur_size:{} fee_val:{}",
                     tx.input.len(),
                     tx.output.len(),
-                    more_outputs,
+                    more_changes,
                     vbytes,
                     sur_size,
                     fee_val

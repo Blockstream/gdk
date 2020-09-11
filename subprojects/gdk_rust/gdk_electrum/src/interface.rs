@@ -431,7 +431,10 @@ impl WalletCtx {
                 for utxo in all_utxos.iter() {
                     dummy_tx.add_input(utxo.0.clone());
                 }
-                let estimated_fee = dummy_tx.estimated_fee(fee_rate, 1) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+                let out = &request.addressees[0];  // safe because we checked we have exactly one recipient
+                dummy_tx.add_output(&out.address, out.satoshi, out.asset_tag.clone())
+                    .map_err(|_| Error::InvalidAddress)?;
+                let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
                 total_amount_utxos
                     .checked_sub(estimated_fee)
                     .ok_or_else(|| Error::InsufficientFunds)?
