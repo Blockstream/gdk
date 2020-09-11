@@ -121,11 +121,11 @@ impl WalletCtx {
     }
 
     pub fn get_settings(&self) -> Result<Settings, Error> {
-        Ok(self.store.read()?.store.settings.clone().unwrap_or_default())
+        Ok(self.store.read()?.get_settings().unwrap_or_default())
     }
 
     pub fn change_settings(&self, settings: &Settings) -> Result<(), Error> {
-        self.store.write()?.store.settings = Some(settings.clone());
+        self.store.write()?.insert_settings(Some(settings.clone()))?;
         Ok(())
     }
 
@@ -169,7 +169,7 @@ impl WalletCtx {
                     });
                 }
             }
-            let memo = store_read.store.memos.get(*tx_id).map(|s| s.to_string());
+            let memo = store_read.get_memo(tx_id).map(|s| s.to_string());
 
             let create_transaction = CreateTransaction {
                 addressees,
@@ -709,7 +709,7 @@ impl WalletCtx {
 
         drop(store_read);
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
-            self.store.write()?.store.memos.insert(Txid::from_hex(&betx.txid)?, memo.clone());
+            self.store.write()?.insert_memo(Txid::from_hex(&betx.txid)?, memo)?;
         }
 
         Ok(betx)

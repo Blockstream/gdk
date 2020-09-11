@@ -71,10 +71,10 @@ pub struct RawCache {
 #[derive(Default, Serialize, Deserialize)]
 pub struct RawStore {
     /// wallet settings
-    pub settings: Option<Settings>,
+    settings: Option<Settings>,
 
     /// transaction memos
-    pub memos: HashMap<Txid, String>,
+    memos: HashMap<Txid, String>,
 }
 
 pub struct StoreMeta {
@@ -386,6 +386,20 @@ impl StoreMeta {
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
+    }
+
+    pub fn get_memo(&self, txid: &Txid) -> Option<&String> {
+        self.store.memos.get(txid)
+    }
+
+    pub fn insert_settings(&mut self, settings: Option<Settings>) -> Result<(), Error> {
+        self.store.settings = settings;
+        self.flush_store()?;
+        Ok(())
+    }
+
+    pub fn get_settings(&self) -> Option<Settings> {
+        self.store.settings.clone()
     }
 }
 
