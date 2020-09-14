@@ -41,7 +41,7 @@ elif [ "$(uname)" = "FreeBSD" ]; then
     GETOPT='/usr/local/bin/getopt'
 fi
 
-if [ -f /.dockerenv ]; then
+if [ \( -f /.dockerenv \) -a \( -f /root/.cargo/env \) ]; then
     source /root/.cargo/env
 fi
 
@@ -59,7 +59,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,disableccache,python-version: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,disableccache,python-version:,enable-rust -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -77,6 +77,7 @@ while true; do
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
         --disableccache) CCACHE="" ; shift ;;
         --python-version) MESON_OPTIONS="$MESON_OPTIONS -Dpython-version=$2"; shift 2 ;;
+        --enable-rust ) MESON_OPTIONS="$MESON_OPTIONS -Denable-rust=true"; shift ;;
         -- ) shift; break ;;
         *) break ;;
     esac

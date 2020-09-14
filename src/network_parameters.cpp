@@ -169,6 +169,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:3000" }, { "spv_enabled", false }, { "bip21_prefix", "bitcoin" },
             { "server_type", "green" } })) },
 
+#ifdef BUILD_GDK_RUST
     { "liquid-electrum-mainnet",
         std::make_shared<nlohmann::json>(
             nlohmann::json({ { "name", "Electrum Liquid" }, { "network", "liquid-electrum-mainnet" },
@@ -210,6 +211,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "tx_explorer_url", "http://127.0.0.1:8080/tx/" }, { "mainnet", false }, { "liquid", false },
             { "electrum_url", "localhost:50001" }, { "spv_enabled", false }, { "development", true },
             { "bip21_prefix", "bitcoin" }, { "server_type", "electrum" } })) },
+#endif
 
 };
 

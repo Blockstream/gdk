@@ -68,24 +68,24 @@ test_gcc:
   tags:
     - ga
   script:
-    - ./tools/build.sh --gcc
+    - ./tools/build.sh --gcc --enable-rust
 
 release_py3m_buster:
   extends: .py_release
   script:
-    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7
+    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7 --enable-rust
 
 release_py3m_buster_debug:
   extends: .py_release
   when: manual
   script:
-    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7
+    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7 --enable-rust
 
 release_py3m_ubuntu_18.04:
   image: greenaddress/ci@sha256:c4693baf6d3d1f6ef2acc9a10382c26c60ab8f78b17d6d5c8db6bbd668c4c7e1
   extends: .py_release
   script:
-    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6
+    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --enable-rust
 
 release_py3m_osx:
   extends: .py_release
@@ -93,12 +93,12 @@ release_py3m_osx:
     - osx
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7
+    - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7 --enable-rust
 
 test_fedora_gcc:
   extends: .fedora_images
   script:
-    - ./tools/build.sh --gcc
+    - ./tools/build.sh --gcc --enable-rust
 
 test_fedora_debug_gcc:
   extends: .fedora_images
@@ -106,71 +106,71 @@ test_fedora_debug_gcc:
     refs:
       - master
   script:
-    - ./tools/build.sh --buildtype=debugoptimized --gcc
+    - ./tools/build.sh --buildtype=debugoptimized --gcc --enable-rust
 
 test_fedora_clang:
   extends: .fedora_images
   script:
-    - ./tools/build.sh --clang
+    - ./tools/build.sh --clang --enable-rust
 
 test_clang:
   tags:
     - ga
   script:
-    - ./tools/build.sh --clang --enable-tests # REVERTME
+    - ./tools/build.sh --clang --enable-rust --enable-tests # REVERTME
     - ninja -C build-clang test_rust && ./build-clang/test_rust # REVERTME
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true --enable-rust
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
 
 gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true --enable-rust
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true
+    - ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true --enable-rust
 
 test_osx_clang:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --clang --lto=true
+    - ./tools/build.sh --clang --lto=true --enable-rust
 
 release_osx_ios:
   extends: .ios_release
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone
+    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone --enable-rust
 
 release_osx_ios_sim:
   extends: .ios_release
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone
+    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone --enable-rust
 
 test_osx_clang_ndk_armeabi-v7a:
   only:
@@ -180,7 +180,7 @@ test_osx_clang_ndk_armeabi-v7a:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --ndk armeabi-v7a
+    - ./tools/build.sh --ndk armeabi-v7a --enable-rust
 
 test_osx_clang_ndk_arm64-v8a:
   only:
@@ -190,14 +190,14 @@ test_osx_clang_ndk_arm64-v8a:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --ndk arm64-v8a
+    - ./tools/build.sh --ndk arm64-v8a --enable-rust
 
 test_osx_clang_ndk_x86:
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --ndk x86
+    - ./tools/build.sh --ndk x86 --enable-rust
 
 test_osx_clang_ndk_x86_64:
   only:
@@ -207,7 +207,7 @@ test_osx_clang_ndk_x86_64:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
-    - ./tools/build.sh --ndk x86_64
+    - ./tools/build.sh --ndk x86_64 --enable-rust
 
 # TODO: gdk-rust breaks this, figure out why
 #
@@ -216,7 +216,7 @@ test_osx_clang_ndk_x86_64:
 #     - freebsd
 #   script:
 #     - cd $CI_PROJECT_DIR
-#     - ./tools/build.sh --gcc
+#     - ./tools/build.sh --gcc --enable-rust
 
 test_freebsd_clang:
   tags:
@@ -225,7 +225,7 @@ test_freebsd_clang:
     - export PATH="/usr/local/llvm60/bin:$PATH"
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --clang
+    - ./tools/build.sh --clang --enable-rust
 
 test_windows_mingw_w64_cross:
   tags:
@@ -236,7 +236,7 @@ test_windows_mingw_w64_cross:
     paths:
     - build-windows-mingw-w64/src/libgreenaddress*
   script:
-    - ./tools/build.sh --mingw-w64
+    - ./tools/build.sh --mingw-w64 --enable-rust
 
 apidocs:
   tags:
@@ -259,7 +259,7 @@ integration_test_rust:
     - ga
   script:
     - source /root/.cargo/env
-    - ./tools/build.sh --clang --buildtype=debug
+    - ./tools/build.sh --clang --buildtype=debug --enable-rust
     - export WALLY_DIR=$PWD/build-clang/libwally-core/build/lib/
     - git clone https://github.com/Blockstream/electrs electrs-elements
     - cd electrs-elements && git checkout b18f82c024ab607cd25dc9f1fcde59499e75099c && cargo build --features liquid && cd ..
