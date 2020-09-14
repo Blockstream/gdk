@@ -97,7 +97,7 @@ impl TryFrom<DerivationPath> for TwoLayerPath {
         }
         Ok(TwoLayerPath {
             i: vec[0].into(),
-            j: vec[0].into(),
+            j: vec[1].into(),
         })
     }
 }
