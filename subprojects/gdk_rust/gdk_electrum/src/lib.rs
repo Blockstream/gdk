@@ -898,7 +898,7 @@ impl Syncer {
         let mut last_used = Indexes::default();
         let mut wallet_chains = vec![0, 1];
         wallet_chains.shuffle(&mut thread_rng());
-        for i in 0..=1 {
+        for i in wallet_chains {
             let mut batch_count = 0;
             loop {
                 let batch = self.store.read()?.get_script_batch(i, batch_count)?;
