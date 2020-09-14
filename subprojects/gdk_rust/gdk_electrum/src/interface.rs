@@ -701,18 +701,20 @@ impl WalletCtx {
             }
         };
 
-        let changes_used = request.changes_used.unwrap_or(0);
-        if changes_used > 0 {
-            info!("tx used {} changes", changes_used);
-            //self.db.increment_index(Index::Internal, changes_used)?;  //TODO do I need to increment this here? What if I don't broadcast?
-        }
-
         betx.fee = request.fee;
         betx.create_transaction = request.create_transaction.clone();
 
         drop(store_read);
+        let mut store_write = self.store.write()?;
+
+        let changes_used = request.changes_used.unwrap_or(0);
+        if changes_used > 0 {
+            info!("tx used {} changes", changes_used);
+            store_write.cache.indexes.internal += changes_used;
+        }
+
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
-            self.store.write()?.insert_memo(Txid::from_hex(&betx.txid)?, memo)?;
+            store_write.insert_memo(Txid::from_hex(&betx.txid)?, memo)?;
         }
 
         Ok(betx)
