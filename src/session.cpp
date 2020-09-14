@@ -10,7 +10,9 @@
 
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
+#ifdef BUILD_GDK_RUST
 #include "ga_rust.hpp"
+#endif
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -144,10 +146,12 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
             if (network.value("server_type", "") == "green") {
                 session = boost::make_shared<ga_session>(network);
+#ifdef BUILD_GDK_RUST
             } else if (network.value("server_type", "") == "electrum") {
                 GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
                 network["state_dir"] = std::string(gdk_config().at("datadir")) + "/state";
                 session = boost::make_shared<ga_rust>(network);
+#endif
             } else {
                 GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
             }

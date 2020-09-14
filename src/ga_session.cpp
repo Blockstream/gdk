@@ -19,7 +19,9 @@
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
+#ifdef BUILD_GDK_RUST
 #include "ga_rust.hpp"
+#endif
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
@@ -307,9 +309,14 @@ namespace sdk {
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_cache(net_params.at("name"))
         , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
+#ifdef BUILD_GDK_RUST
         , m_electrum_url(
               net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))
         , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
+#else
+        , m_electrum_url()
+        , m_electrum_tls(false)
+#endif
         , m_spv_enabled(
               net_params.value("spv_enabled", network_parameters::get(net_params.at("name")).at("spv_enabled")))
     {

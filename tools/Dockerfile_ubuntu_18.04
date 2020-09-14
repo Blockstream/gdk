@@ -2,4 +2,4 @@ FROM ubuntu:18.04@sha256:bec5a2727be7fff3d308193cfde3491f8fba1a2ba392b7546b43a05
 COPY ubuntu_18.04_deps.sh /deps.sh
 COPY requirements.txt /requirements.txt
 RUN /deps.sh && rm /deps.sh
-CMD cd /sdk && ./tools/build.sh --clang
+CMD cd /sdk && ./tools/build.sh --clang --enable-rust

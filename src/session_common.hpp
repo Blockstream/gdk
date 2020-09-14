@@ -17,12 +17,14 @@ namespace ga {
 namespace sdk {
     class network_parameters;
     class ga_session;
-    class ga_rust;
     class ga_pubkeys;
     class ga_user_pubkeys;
     class network_control_context;
     class signer;
     using ping_fail_t = std::function<void()>;
+#ifdef BUILD_GDK_RUST
+    class ga_rust;
+#endif
 
     class session_common {
     public:

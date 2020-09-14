@@ -19,7 +19,9 @@
 
 #include "assertion.hpp"
 #include "exception.hpp"
+#ifdef BUILD_GDK_RUST
 #include "ga_rust.hpp"
+#endif
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
@@ -164,8 +166,14 @@ namespace sdk {
 
     int32_t spv_verify_tx(const nlohmann::json& details)
     {
+#ifdef BUILD_GDK_RUST
         auto rustinput = gdkrust_json(details).get();
         return GDKRUST_spv_verify_tx(rustinput);
+#else
+        (void)details;
+        GDK_RUNTIME_ASSERT_MSG(false, "SPV not implemented");
+        return 0;
+#endif
     }
 
     uint32_t get_uniform_uint32_t(uint32_t upper_bound)

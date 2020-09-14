@@ -108,7 +108,7 @@ if (not is_darwin and not cross_win_build) or cross_android_build
 endif
 
 # https://developer.android.com/ndk/guides/asan
-# https://github.com/android/ndk/issues/988 
+# https://github.com/android/ndk/issues/988
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64234
 if get_option('b_sanitize') == 'address'
     if is_clang
@@ -125,6 +125,9 @@ if debug
     endif
 else
     add_project_arguments(['-DNDEBUG'], language : ['c', 'cpp'])
+endif
+if get_option('enable-rust')
+    add_project_arguments(['-DBUILD_GDK_RUST'], language : ['c', 'cpp'])
 endif
 
 if meson.is_cross_build()
@@ -166,7 +169,9 @@ if cross_win_build
 endif
 
 sed = find_program('gsed', 'sed')
-cargo = find_program('cargo')
+if get_option('enable-rust')
+    cargo = find_program('cargo')
+endif
 swig = find_program('swig', required : false)
 if swig.found()
     pymodule = import('python3')
@@ -258,9 +263,11 @@ library_deps += compiler.find_library('execinfo', required : is_freebsd)
 
 subproject_deps = []
 
-gdkrust = subproject('gdk_rust')
 wallycore = subproject('libwally-core')
-subproject_deps += gdkrust.get_variable('gdk_rust_dep')
+if get_option('enable-rust')
+    gdkrust = subproject('gdk_rust')
+    subproject_deps += gdkrust.get_variable('gdk_rust_dep')
+endif
 subproject_deps += wallycore.get_variable('wallycore_dep')
 subproject_deps += dependency('external_autobahn-cpp', fallback : ['autobahn-cpp', 'autobahn_dep'])
 subproject_deps += dependency('external_boost', fallback : ['boost', 'boost_dep'])
@@ -272,8 +279,10 @@ subproject_deps += dependency('external_websocketpp', fallback : ['websocketpp',
 subproject_deps += dependency('external_tor', fallback : ['tor', 'tor_dep'])
 
 # includes
-incdirs = ['.', 'subprojects/gdk_rust']
-
+incdirs = ['.']
+if get_option('enable-rust')
+    incdirs += ['subprojects/gdk_rust']
+endif
 incdir = include_directories(incdirs)
 
 # builds
@@ -284,16 +293,17 @@ endforeach
 
 
 if get_option('enable-tests')
-  test('test multisession',
-      executable('test_multi_session', 'tests/test_multi_session.cpp',
-                  link_with: libga.get_static_lib(),
-                  dependencies: dependencies
-                ))
+    test('test multisession',
+         executable('test_multi_session', 'tests/test_multi_session.cpp',
+                    link_with: libga.get_static_lib(),
+                    dependencies: dependencies
+        ))
 
-
-  test('test rust',
-       executable('test_rust', 'tests/test_rust.cpp',
-                  link_with: libga.get_static_lib(),
-                  dependencies: dependencies
-       ))
+    if get_option('enable-rust')
+        test('test rust',
+             executable('test_rust', 'tests/test_rust.cpp',
+                        link_with: libga.get_static_lib(),
+                        dependencies: dependencies
+        ))
+    endif
 endif
