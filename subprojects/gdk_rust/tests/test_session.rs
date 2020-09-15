@@ -1,4 +1,4 @@
-use bitcoin::{self, Amount};
+use bitcoin::{self, Amount, BlockHash};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
 use electrum_client::ElectrumApi;
@@ -34,7 +34,8 @@ pub struct TestSession {
     electrs: RawClient<ElectrumPlaintextStream>,
     electrs_header: RawClient<ElectrumPlaintextStream>,
     session: ElectrumSession,
-    status: u64,
+    tx_status: u64,
+    block_status: (u32, BlockHash),
     node_process: Child,
     electrs_process: Child,
     node_work_dir: TempDir,
@@ -211,6 +212,17 @@ pub fn setup(
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
     session.login(&mnemonic, None).unwrap();
+    let tx_status = session.tx_status().unwrap();
+    assert_eq!(tx_status, 15130871412783076140);
+    let block_status = loop {
+        let block_status = session.block_status().unwrap();
+        if block_status.0 == 101 {
+            break block_status;
+        } else {
+            thread::sleep(Duration::from_millis(500));
+        }
+    };
+    assert_eq!(block_status.0, 101);
 
     let network_id = if is_liquid {
         NetworkId::Elements(ElementsNetwork::ElementsRegtest)
@@ -218,18 +230,10 @@ pub fn setup(
         NetworkId::Bitcoin(bitcoin::Network::Regtest)
     };
 
-    let status = loop {
-        let status = session.status().unwrap();
-        if status == 9288996555440648771 {
-            break status;
-        } else {
-            thread::sleep(Duration::from_millis(500));
-        }
-    };
-
     info!("returning TestSession");
     TestSession {
-        status,
+        tx_status,
+        block_status,
         node,
         electrs,
         electrs_header,
@@ -245,12 +249,25 @@ pub fn setup(
 }
 
 impl TestSession {
-    /// wait gdk session status to change (new tx, or new block)
-    fn wait_status_change(&mut self) {
-        loop {
-            if let Ok(new_status) = self.session.status() {
-                if self.status != new_status {
-                    self.status = new_status;
+    /// wait gdk session block status to change (max 1 min)
+    fn wait_tx_status_change(&mut self) {
+        for _ in 0..120 {
+            if let Ok(new_status) = self.session.tx_status() {
+                if self.tx_status != new_status {
+                    self.tx_status = new_status;
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+    }
+
+    /// wait gdk session tx status to change (max 1 min)
+    fn wait_block_status_change(&mut self) {
+        for _ in 0..120 {
+            if let Ok(new_status) = self.session.block_status() {
+                if self.block_status != new_status {
+                    self.block_status = new_status;
                     break;
                 }
             }
@@ -281,14 +298,14 @@ impl TestSession {
         let initial_satoshis = self.balance_gdk(None);
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
-        self.wait_status_change();
+        self.wait_tx_status_change();
         self.list_tx_contains(&funding_tx, &vec![], false);
         let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
             let asset = self.node_issueasset(satoshi);
             self.node_sendtoaddress(&ap.address, satoshi, Some(asset.clone()));
-            self.wait_status_change();
+            self.wait_tx_status_change();
             assets_issued.push(asset);
         }
 
@@ -322,7 +339,7 @@ impl TestSession {
 
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_status_change();
+        self.wait_tx_status_change();
         //let end_sat_addr = self.balance_addr(address);
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
         assert_eq!(self.balance_gdk(asset_tag), 0);
@@ -363,7 +380,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_status_change();
+        self.wait_tx_status_change();
 
         self.tx_checks(&signed_tx.hex);
 
@@ -470,7 +487,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_status_change();
+        self.wait_tx_status_change();
         self.tx_checks(&signed_tx.hex);
 
         if assets.is_empty() {
@@ -494,7 +511,7 @@ impl TestSession {
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
         let unconf_address = to_unconfidential(ap.address);
         self.node_sendtoaddress(&unconf_address, 10_000, None);
-        self.wait_status_change();
+        self.wait_tx_status_change();
         assert_eq!(init_sat, self.balance_gdk(None));
     }
 
@@ -508,9 +525,9 @@ impl TestSession {
         let utxo_satoshi = 100_000;
         let ap = self.session.get_receive_address(&Value::Null).unwrap();
         self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_status_change();
+        self.wait_tx_status_change();
         self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_status_change();
+        self.wait_tx_status_change();
         let satoshi = 50_000; // one utxo would be enough
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
@@ -525,7 +542,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_status_change();
+        self.wait_tx_status_change();
         self.tx_checks(&signed_tx.hex);
 
         let transaction = BETransaction::from_hex(&signed_tx.hex, self.network_id).unwrap();
@@ -672,7 +689,7 @@ impl TestSession {
         let initial_height = self.electrs_tip();
         info!("mine_block initial_height {}", initial_height);
         self.node_generate(1);
-        self.wait_status_change();
+        self.wait_block_status_change();
         let new_height = loop {
             // apparently even if gdk session status changed (thus new height come in)
             // it could happend this is the old height (maybe due to caching) thus we loop wait

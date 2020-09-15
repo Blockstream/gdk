@@ -5,7 +5,7 @@ use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{PublicKey, SigHashType, Txid};
+use bitcoin::{BlockHash, PublicKey, SigHashType, Txid};
 use elements;
 use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt, SPVVerifyResult};
 use hex;
@@ -129,7 +129,7 @@ impl WalletCtx {
         Ok(())
     }
 
-    pub fn get_tip(&self) -> Result<u32, Error> {
+    pub fn get_tip(&self) -> Result<(u32, BlockHash), Error> {
         Ok(self.store.read()?.cache.tip)
     }
 
@@ -177,11 +177,18 @@ impl WalletCtx {
                 ..Default::default()
             };
 
-            let fee = tx.fee(&store_read.cache.all_txs, &store_read.cache.unblinded,  &self.network.policy_asset().ok())?;
+            let fee = tx.fee(
+                &store_read.cache.all_txs,
+                &store_read.cache.unblinded,
+                &self.network.policy_asset().ok(),
+            )?;
             trace!("tx_id {} fee {}", tx_id, fee);
 
-            let satoshi =
-                tx.my_balance_changes(&store_read.cache.all_txs, &store_read.cache.paths, &store_read.cache.unblinded);
+            let satoshi = tx.my_balance_changes(
+                &store_read.cache.all_txs,
+                &store_read.cache.paths,
+                &store_read.cache.unblinded,
+            );
             trace!("tx_id {} balances {:?}", tx_id, satoshi);
 
             // We define an incoming txs if there are more assets received by the wallet than spent
@@ -256,7 +263,7 @@ impl WalletCtx {
                     .clone()
                     .into_iter()
                     .enumerate()
-                    .filter(|(_,output)| output.value > DUST_VALUE)
+                    .filter(|(_, output)| output.value > DUST_VALUE)
                     .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
                     .filter(|(_, output)| {
                         store_read.cache.paths.contains_key(&output.script_pubkey)
@@ -271,20 +278,25 @@ impl WalletCtx {
                     .collect(),
                 BETransaction::Elements(tx) => {
                     let policy_asset = self.network.policy_asset_id()?;
-                    tx
-                        .output
+                    tx.output
                         .clone()
                         .into_iter()
                         .enumerate()
                         .map(|(vout, output)| {
                             (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
                         })
-                        .filter(|(_, output)| store_read.cache.paths.contains_key(&output.script_pubkey))
+                        .filter(|(_, output)| {
+                            store_read.cache.paths.contains_key(&output.script_pubkey)
+                        })
                         .filter(|(outpoint, _)| !spent.contains(&outpoint))
                         .filter_map(|(outpoint, output)| {
                             if let BEOutPoint::Elements(el_outpoint) = outpoint {
-                                if let Some(unblinded) = store_read.cache.unblinded.get(&el_outpoint) {
-                                    if unblinded.value < DUST_VALUE && unblinded.asset == policy_asset {
+                                if let Some(unblinded) =
+                                    store_read.cache.unblinded.get(&el_outpoint)
+                                {
+                                    if unblinded.value < DUST_VALUE
+                                        && unblinded.asset == policy_asset
+                                    {
                                         return None;
                                     }
                                     return Some((
@@ -296,12 +308,11 @@ impl WalletCtx {
                                         ),
                                     ));
                                 }
-
                             }
                             None
                         })
                         .collect()
-                },
+                }
             };
             utxos.extend(tx_utxos);
         }
@@ -431,8 +442,9 @@ impl WalletCtx {
                 for utxo in all_utxos.iter() {
                     dummy_tx.add_input(utxo.0.clone());
                 }
-                let out = &request.addressees[0];  // safe because we checked we have exactly one recipient
-                dummy_tx.add_output(&out.address, out.satoshi, out.asset_tag.clone())
+                let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
+                dummy_tx
+                    .add_output(&out.address, out.satoshi, out.asset_tag.clone())
                     .map_err(|_| Error::InvalidAddress)?;
                 let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
                 total_amount_utxos
@@ -521,7 +533,8 @@ impl WalletCtx {
         tx.scramble();
 
         let policy_asset = self.network.policy_asset().ok();
-        let fee_val = tx.fee(&store_read.cache.all_txs, &store_read.cache.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
+        let fee_val =
+            tx.fee(&store_read.cache.all_txs, &store_read.cache.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
         tx.add_fee_if_elements(fee_val, &policy_asset)?;
 
         info!("created tx fee {:?}", fee_val);

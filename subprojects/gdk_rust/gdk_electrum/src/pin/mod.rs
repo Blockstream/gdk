@@ -79,7 +79,7 @@ impl PinManager {
             .set("content-length", "0")
             .call();
         if !response.ok() {
-            return Err(Error::PinError)
+            return Err(Error::PinError);
         }
         let data: Handshake = serde_json::from_reader(response.into_reader())?;
         Ok(data)
@@ -169,7 +169,7 @@ impl PinManager {
             .send_json(serde_json::to_value(&req).unwrap());
 
         if !response.ok() {
-            return Err(Error::PinError)
+            return Err(Error::PinError);
         }
 
         let response: ResponseData = serde_json::from_reader(response.into_reader())?;

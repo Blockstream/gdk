@@ -21,7 +21,7 @@ use crate::store::*;
 use bitcoin::hashes::{hex::FromHex, sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{Script, Txid};
+use bitcoin::{BlockHash, Script, Txid};
 
 use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
@@ -289,6 +289,7 @@ impl Session<Error> for ElectrumSession {
 
     fn disconnect(&mut self) -> Result<(), Error> {
         info!("disconnect state:{:?}", self.state);
+        info!("disconnect STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
         if self.state != State::Disconnected {
             self.closer.close()?;
             self.state = State::Disconnected;
@@ -319,6 +320,7 @@ impl Session<Error> for ElectrumSession {
         password: Option<Password>,
     ) -> Result<Vec<Notification>, Error> {
         info!("login {:?} {:?}", self.network, self.state);
+
         if self.state == State::Logged {
             return Ok(vec![]);
         }
@@ -384,8 +386,8 @@ impl Session<Error> for ElectrumSession {
 
         let estimates = store.read()?.fee_estimates().clone();
         notify_fee(self.notify.clone(), &estimates);
-        let mut last_tip = store.read()?.cache.tip;
-        notify_block(self.notify.clone(), last_tip);
+        let mut tip_height = store.read()?.cache.tip.0;
+        notify_block(self.notify.clone(), tip_height);
 
         if let Ok(fee_client) = self.url.build_client() {
             let fee_store = store.clone();
@@ -541,6 +543,7 @@ impl Session<Error> for ElectrumSession {
 
             self.wallet = Some(wallet);
         }
+        info!("login STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
 
         let notify_blocks = self.notify.clone();
 
@@ -553,10 +556,10 @@ impl Session<Error> for ElectrumSession {
                 if let Ok(client) = tipper_url.build_client() {
                     match tipper.tip(&client) {
                         Ok(current_tip) => {
-                            if last_tip != current_tip {
-                                last_tip = current_tip;
-                                info!("tip is {:?}", last_tip);
-                                notify_block(notify_blocks.clone(), last_tip);
+                            if tip_height != current_tip {
+                                tip_height = current_tip;
+                                info!("tip is {:?}", tip_height);
+                                notify_block(notify_blocks.clone(), tip_height);
                             }
                         }
                         Err(e) => {
@@ -565,7 +568,7 @@ impl Session<Error> for ElectrumSession {
                     }
                 }
                 if wait_or_close(&r, sync_interval) {
-                    info!("closing tipper thread");
+                    info!("closing tipper thread {:?}", tip_height);
                     break;
                 }
             }
@@ -579,8 +582,8 @@ impl Session<Error> for ElectrumSession {
         let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
             loop {
-                if let Ok(client) = syncer_url.build_client() {
-                    match syncer.sync(&client) {
+                match syncer_url.build_client() {
+                    Ok(client) => match syncer.sync(&client) {
                         Ok(new_txs) => {
                             if new_txs {
                                 info!("there are new transactions");
@@ -588,10 +591,9 @@ impl Session<Error> for ElectrumSession {
                                 notify(notify_txs.clone(), mockup_json);
                             }
                         }
-                        Err(e) => {
-                            warn!("Error during sync, {:?}", e);
-                        }
-                    };
+                        Err(e) => warn!("Error during sync, {:?}", e),
+                    },
+                    Err(e) => warn!("Can't build client {:?}", e),
                 }
                 if wait_or_close(&r, sync_interval) {
                     info!("closing syncer thread");
@@ -783,7 +785,13 @@ impl Session<Error> for ElectrumSession {
         Ok(Value::Object(map))
     }
 
-    fn status(&self) -> Result<u64, Error> {
+    fn block_status(&self) -> Result<(u32, BlockHash), Error> {
+        let tip = self.get_wallet()?.get_tip()?;
+        info!("tip={:?}", tip);
+        Ok(tip)
+    }
+
+    fn tx_status(&self) -> Result<u64, Error> {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let txs = self.get_wallet()?.list_tx(&opt)?;
@@ -791,10 +799,8 @@ impl Session<Error> for ElectrumSession {
         for tx in txs.iter() {
             std::hash::Hash::hash(&tx.txid, &mut hasher);
         }
-        let tip = self.get_wallet()?.get_tip()?;
-        std::hash::Hash::hash(&tip, &mut hasher);
         let status = hasher.finish();
-        info!("txs.len={} tip={} status={}", txs.len(), tip, status);
+        info!("txs.len={} status={}", txs.len(), status);
         Ok(status)
     }
 }
@@ -803,10 +809,12 @@ impl Tipper {
     pub fn tip(&self, client: &Client) -> Result<u32, Error> {
         let header = client.block_headers_subscribe_raw()?;
         let height = header.height as u32;
-        let store_tip = self.store.read()?.cache.tip;
-        if height != store_tip {
-            info!("saving in store new tip {}", height);
-            self.store.write()?.cache.tip = height;
+        let tip_height = self.store.read()?.cache.tip.0;
+        if height != tip_height {
+            let hash =
+                BEBlockHeader::deserialize(&header.header, self.network.id())?.bitcoin_hash();
+            info!("saving in store new tip {:?}", (height, hash));
+            self.store.write()?.cache.tip = (height, hash);
         }
         Ok(height)
     }
@@ -887,7 +895,7 @@ struct DownloadTxResult {
 
 impl Syncer {
     pub fn sync(&self, client: &Client) -> Result<bool, Error> {
-        trace!("start sync");
+        info!("start sync");
         let start = Instant::now();
 
         let mut history_txs_id = HashSet::new();
@@ -954,7 +962,12 @@ impl Syncer {
             || store_indexes != last_used
             || !scripts.is_empty()
         {
-            debug!("There are changes in the store");
+            info!(
+                "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
+                new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<Txid>>(),
+                headers,
+                txid_height
+            );
             let mut store_write = self.store.write()?;
             store_write.cache.indexes = last_used;
             store_write.cache.all_txs.extend(new_txs.txs.into_iter());

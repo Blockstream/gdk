@@ -5,7 +5,7 @@ use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey};
-use bitcoin::{Address, Script, Transaction, Txid};
+use bitcoin::{Address, BlockHash, Script, Transaction, Txid};
 use elements::{AddressParams, OutPoint};
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions, Unblinded};
 use gdk_common::be::{ScriptBatch, TwoLayerPath};
@@ -59,8 +59,8 @@ pub struct RawCache {
     /// cached fee_estimates
     pub fee_estimates: Vec<FeeEstimate>,
 
-    /// height of the blockchain
-    pub tip: u32,
+    /// height and hash of tip of the blockchain
+    pub tip: (u32, BlockHash),
 
     /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
     pub indexes: Indexes,
@@ -382,7 +382,7 @@ impl StoreMeta {
         }
     }
 
-    pub fn insert_memo(&mut self, txid: Txid, memo: &str) -> Result<(), Error>{
+    pub fn insert_memo(&mut self, txid: Txid, memo: &str) -> Result<(), Error> {
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
