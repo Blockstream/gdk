@@ -710,6 +710,9 @@ impl WalletCtx {
         let changes_used = request.changes_used.unwrap_or(0);
         if changes_used > 0 {
             info!("tx used {} changes", changes_used);
+            // The next sync would update the internal index but we increment the internal index also
+            // here after sign so that if we immediately create another tx we are not reusing addresses
+            // This implies signing multiple times without broadcasting leads to gaps in the internal chain
             store_write.cache.indexes.internal += changes_used;
         }
 

@@ -960,8 +960,12 @@ impl Syncer {
             store_write.cache.all_txs.extend(new_txs.txs.into_iter());
             store_write.cache.unblinded.extend(new_txs.unblinds);
             store_write.cache.headers.extend(headers);
-            store_write.cache.heights.clear(); // something in the db is not in live list (rbf), removing
+
+            // height map is used for the live list of transactions, since due to reorg or rbf tx
+            // could disappear from the list, we clear the list and keep only the last values returned by the server
+            store_write.cache.heights.clear();
             store_write.cache.heights.extend(txid_height.into_iter());
+
             store_write.cache.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
             store_write.cache.paths.extend(scripts.into_iter());
             store_write.flush()?;
