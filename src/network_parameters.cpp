@@ -78,7 +78,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false }, { "development", true },
                 { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } }, { "bip21_prefix", "bitcoin" },
-                { "electrum_url", "localhost:3000" }, { "spv_enabled", false }, { "server_type", "green" } })) },
+                { "electrum_url", "localhost:3000" }, { "spv_enabled", false }, { "tls", false },
+                { "server_type", "green" } })) },
 
     { "liquid",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -116,8 +117,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
             { "blinded_prefix", 4u }, { "ct_exponent", 0 }, { "ct_bits", 52 }, { "blech32_prefix", "el" },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 25920, 51840, 65535 } },
-            { "electrum_url", "localhost:50001" }, { "spv_enabled", false }, { "bip21_prefix", "liquidnetwork" },
-            { "server_type", "green" } })) },
+            { "electrum_url", "localhost:50001" }, { "spv_enabled", false }, { "tls", false },
+            { "bip21_prefix", "liquidnetwork" }, { "server_type", "green" } })) },
 
     { "mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json(
@@ -166,8 +167,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "default_peers", std::vector<std::string>{ { "192.168.56.1:19000" } } }, { "p2pkh_version", 111u },
             { "p2sh_version", 196u }, { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false },
             { "development", true }, { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
-            { "electrum_url", "localhost:3000" }, { "spv_enabled", false }, { "bip21_prefix", "bitcoin" },
-            { "server_type", "green" } })) },
+            { "electrum_url", "localhost:3000" }, { "spv_enabled", false }, { "tls", false },
+            { "bip21_prefix", "bitcoin" }, { "server_type", "green" } })) },
 
 #ifdef BUILD_GDK_RUST
     { "liquid-electrum-mainnet",
@@ -185,8 +186,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
 
     { "liquid-electrum-regtest",
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Liquid Regtest" },
-            { "network", "liquid-electrum-regtest" }, { "url", "localhost:50001" }, { "tls", false },
-            { "mainnet", false }, { "liquid", true }, { "development", true },
+            { "network", "liquid-electrum-regtest" }, { "url", "localhost:50001" }, { "spv_enabled", false },
+            { "tls", false }, { "mainnet", false }, { "liquid", true }, { "development", true },
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
             { "ct_exponent", 0 }, { "ct_bits", 52 }, { "bip21_prefix", "liquidregtestnetwork" },
             { "server_type", "electrum" } })) },
@@ -209,7 +210,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Electrum Regtest" },
             { "network", "electrum-regtest" }, { "address_explorer_url", "http://127.0.0.1:8080/address/" },
             { "tx_explorer_url", "http://127.0.0.1:8080/tx/" }, { "mainnet", false }, { "liquid", false },
-            { "electrum_url", "localhost:50001" }, { "spv_enabled", false }, { "development", true },
+            { "electrum_url", "localhost:50001" }, { "spv_enabled", false }, { "tls", false }, { "development", true },
             { "bip21_prefix", "bitcoin" }, { "server_type", "electrum" } })) },
 #endif
 
