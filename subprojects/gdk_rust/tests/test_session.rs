@@ -123,7 +123,6 @@ pub fn setup(
         "regtest"
     };
     let cookie_file = node_work_dir.path().join(par_network).join(".cookie");
-    let cookie_file_str = format!("{}", cookie_file.as_path().display());
     // wait bitcoind is ready, use default wallet
     let node: Client = loop {
         thread::sleep(Duration::from_millis(500));
@@ -156,14 +155,9 @@ pub fn setup(
         &daemon_url,
         "--network",
         par_network,
+        "--cookie",
+        &cookie_value
     ];
-    if is_liquid {
-        args.push("--cookie");
-        args.push(&cookie_value);
-    } else {
-        args.push("--cookie-file");
-        args.push(&cookie_file_str);
-    };
     if is_debug {
         args.push("-v");
     }
@@ -819,7 +813,7 @@ impl TestSession {
             network: self.network.clone(),
             tor_proxy: None,
             encryption_key: "".into(),
-            headers_to_download: Some(100),
+            headers_to_download: Some(1),  // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
         };
         loop {
             match gdk_electrum::headers::spv_verify_tx(&param) {
