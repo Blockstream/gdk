@@ -1116,6 +1116,7 @@ namespace sdk {
         cleanup_appearance_settings(locker, appearance);
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
+        m_csv_blocks = m_login_data["csv_blocks"];
         if (!m_watch_only) {
             m_nlocktime = m_login_data["nlocktime_blocks"];
         }
@@ -1539,6 +1540,7 @@ namespace sdk {
 
         settings["pricing"]["currency"] = m_fiat_currency;
         settings["pricing"]["exchange"] = m_fiat_source;
+        settings["csvtime"] = m_csv_blocks;
         if (!m_watch_only) {
             settings["nlocktime"] = m_nlocktime;
         }
@@ -3379,6 +3381,9 @@ namespace sdk {
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.set_csvtime", value, as_messagepack(twofactor_data).get());
         GDK_RUNTIME_ASSERT(r);
+
+        locker_t locker(m_mutex);
+        m_csv_blocks = value;
     }
 
     void ga_session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)

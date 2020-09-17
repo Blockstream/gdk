@@ -605,6 +605,8 @@ Settings JSON
 
   {
     "altimeout": 10,
+    "csvtime": 51840,
+    "nlocktime": 12960,
     "notifications": {
       "email_incoming": true,
       "email_outgoing": true
