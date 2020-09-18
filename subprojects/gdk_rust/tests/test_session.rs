@@ -124,7 +124,10 @@ pub fn setup(
     };
     let cookie_file = node_work_dir.path().join(par_network).join(".cookie");
     // wait bitcoind is ready, use default wallet
+    let mut i = 120;
     let node: Client = loop {
+        assert!(i > 0, "1 minute without updates");
+        i -= 1;
         thread::sleep(Duration::from_millis(500));
         assert!(node_process.stderr.is_none());
         let client_result = Client::new(node_url.clone(), Auth::CookieFile(cookie_file.clone()));
@@ -156,7 +159,7 @@ pub fn setup(
         "--network",
         par_network,
         "--cookie",
-        &cookie_value
+        &cookie_value,
     ];
     if is_debug {
         args.push("-v");
@@ -169,7 +172,10 @@ pub fn setup(
     node_generate(&node, 101);
 
     info!("creating electrs client");
+    let mut i = 120;
     let electrs = loop {
+        assert!(i > 0, "1 minute without updates");
+        i -= 1;
         match RawClient::new(&electrs_url) {
             Ok(c) => break c,
             Err(e) => {
@@ -208,7 +214,10 @@ pub fn setup(
     session.login(&mnemonic, None).unwrap();
     let tx_status = session.tx_status().unwrap();
     assert_eq!(tx_status, 15130871412783076140);
+    let mut i = 120;
     let block_status = loop {
+        assert!(i > 0, "1 minute without updates");
+        i -= 1;
         let block_status = session.block_status().unwrap();
         if block_status.0 == 101 {
             break block_status;
@@ -684,7 +693,10 @@ impl TestSession {
         info!("mine_block initial_height {}", initial_height);
         self.node_generate(1);
         self.wait_block_status_change();
+        let mut i = 120;
         let new_height = loop {
+            assert!(i > 0, "1 minute without updates");
+            i -= 1;
             // apparently even if gdk session status changed (thus new height come in)
             // it could happend this is the old height (maybe due to caching) thus we loop wait
             let new_height = self.electrs_tip();
@@ -813,7 +825,7 @@ impl TestSession {
             network: self.network.clone(),
             tor_proxy: None,
             encryption_key: "".into(),
-            headers_to_download: Some(1),  // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
+            headers_to_download: Some(1), // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
         };
         loop {
             match gdk_electrum::headers::spv_verify_tx(&param) {
