@@ -156,16 +156,17 @@ integration_test_rust:
     - ga
   script:
     - source /root/.cargo/env
-    - rustup update stable
     - rustup override set 1.46.0
-    - ./tools/build.sh --clang --buildtype=debug --enable-rust
-    - export WALLY_DIR=$PWD/build-clang/libwally-core/build/lib/
+    - git clone https://github.com/ElementsProject/libwally-core
+    - cd libwally-core && ./tools/autogen.sh && ./configure --enable-debug --prefix=$PWD/build --enable-static --disable-shared --enable-elements --enable-ecmult-static-precomputation && make && make install && cd ..
+    - export WALLY_DIR=$PWD/libwally-core/build/lib/
     - git clone https://github.com/Blockstream/electrs electrs-elements
-    - cd electrs-elements && git checkout 5bae341585f70699cf12b587a1e9d392df43d674 && cargo build --features liquid && cd ..
-    - export ELECTRS_LIQUID_EXEC=$PWD/electrs-elements/target/debug/electrs
-    - git clone https://github.com/Blockstream/electrs electrs-bitcoin
-    - cd electrs-bitcoin && git checkout 5bae341585f70699cf12b587a1e9d392df43d674 && cargo build && cd ..
-    - export ELECTRS_EXEC=$PWD/electrs-bitcoin/target/debug/electrs
+    - cd electrs-elements && git checkout 5bae341585f70699cf12b587a1e9d392df43d674
+    - cargo install --debug --root /tmp/electrs_bitcoin --locked --path .
+    - cargo install --debug --root /tmp/electrs_liquid --locked --path . --features liquid
+    - cd ..
+    - export ELECTRS_LIQUID_EXEC=/tmp/electrs_liquid/bin/electrs
+    - export ELECTRS_EXEC=/tmp/electrs_bitcoin/bin/electrs
     - curl https://bitcoincore.org/bin/bitcoin-core-0.20.1/bitcoin-0.20.1-x86_64-linux-gnu.tar.gz | tar -xvz bitcoin-0.20.1/bin/bitcoind
     - export BITCOIND_EXEC=$PWD/bitcoin-0.20.1/bin/bitcoind
     - curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.18.1.8/elements-0.18.1.8-x86_64-linux-gnu.tar.gz | tar -xvz elements-0.18.1.8/bin/elementsd
