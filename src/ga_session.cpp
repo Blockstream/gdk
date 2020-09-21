@@ -2807,6 +2807,16 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(server_address == user_address);
         }
 
+        if (addr_type == address_type::csv) {
+            uint32_t csv_blocks = get_csv_blocks_from_csv_redeem_script(server_script);
+            // This not only ensures that the csvtime is the one that was set
+            // by the user, but, more importantly, ensures that the csvtime is
+            // among the csv buckets. If it wasn't, coins held by such scripts
+            // may not be recoverable.
+            locker_t locker(m_mutex);
+            GDK_RUNTIME_ASSERT(csv_blocks == m_csv_blocks);
+        }
+
         // Only scriptpubkey, we will add the blinding key later
         address["address"] = server_address;
 
