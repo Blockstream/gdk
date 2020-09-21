@@ -225,9 +225,11 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  *
  * :param session: The session to use.
  * :param details: The :ref:`subaccount`. "name" (which must not be already used in
- *|     the wallet) and "type" (either "2of2" or "2of3") must be populated. For
- *|     type "2of3" the caller may provide either "recovery_mnemonic" or "recovery_xpub"
- *|     if they do not wish to have a mnemonic passphrase generated automatically.
+ *|     the wallet) and "type" (either "2of2", "2of2_no_recovery" or "2of3") must be
+ *|     populated. Type "2of2_no_recovery" is available only for Liquid networks and
+ *|     always requires both keys for spending. For type "2of3" the caller may provide
+ *|     either "recovery_mnemonic" or "recovery_xpub" if they do not wish to have a
+ *|     mnemonic passphrase generated automatically.
  *|     All other fields are ignored.
  * :param subaccount: Destination for the created subaccount details. For 2of3
  *|     subaccounts the field "recovery_xpub" will be populated, and "recovery_mnemonic"
