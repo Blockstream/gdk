@@ -238,11 +238,11 @@ pub struct AddressIO {
     pub is_relevant: String,
     pub is_spent: String,
     pub pointer: u32, // child_number in bip32 terminology
-    pub pt_idx: u32, // vout
+    pub pt_idx: u32,  // vout
     pub satoshi: i64,
     pub script_type: u32,
     pub subaccount: u32,
-    pub subtype: u32,  // unused here, but used in gdk interface for CSV bucketing
+    pub subtype: u32, // unused here, but used in gdk interface for CSV bucketing
 }
 
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
@@ -297,7 +297,7 @@ pub struct PinGetDetails {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddressPointer {
     pub address: String,
-    pub pointer: u32,  // child_number in bip32 terminology
+    pub pointer: u32, // child_number in bip32 terminology
 }
 
 // This one is simple enough to derive a serializer

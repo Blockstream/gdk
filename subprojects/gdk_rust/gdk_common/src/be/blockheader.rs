@@ -1,6 +1,6 @@
 use crate::NetworkId;
-use serde::{Deserialize, Serialize};
 use bitcoin::{BitcoinHash, BlockHash};
+use serde::{Deserialize, Serialize};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize)]

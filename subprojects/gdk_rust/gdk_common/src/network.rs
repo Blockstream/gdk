@@ -1,10 +1,10 @@
 use crate::be::asset_to_bin;
 use crate::be::AssetId;
 use crate::error::Error;
-use serde_derive::{Deserialize, Serialize};
-use elements::confidential::Asset;
 use bitcoin::hashes::{sha256d, Hash};
 use elements::confidential;
+use elements::confidential::Asset;
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {

@@ -16,7 +16,7 @@ use std::fmt::Debug;
 use std::str::FromStr;
 pub use transaction::*;
 
-pub type AssetId = [u8; 32];  // TODO use elements::issuance::AssetId
+pub type AssetId = [u8; 32]; // TODO use elements::issuance::AssetId
 pub type Utxos = Vec<(BEOutPoint, UTXOInfo)>;
 
 #[derive(Debug)]
@@ -93,7 +93,9 @@ impl TryFrom<DerivationPath> for TwoLayerPath {
     fn try_from(value: DerivationPath) -> Result<Self, Self::Error> {
         let vec: Vec<ChildNumber> = value.into();
         if vec.len() != 2 {
-            return Err(crate::error::Error::Generic("Only two levels derivation paths are allowed".into()));
+            return Err(crate::error::Error::Generic(
+                "Only two levels derivation paths are allowed".into(),
+            ));
         }
         Ok(TwoLayerPath {
             i: vec[0].into(),

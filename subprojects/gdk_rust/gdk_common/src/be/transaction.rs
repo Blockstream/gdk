@@ -479,9 +479,14 @@ impl BETransaction {
         }
     }
 
-    pub fn add_fee_if_elements(&mut self, value: u64, policy_asset: &Option<Asset>) -> Result<(), Error> {
+    pub fn add_fee_if_elements(
+        &mut self,
+        value: u64,
+        policy_asset: &Option<Asset>,
+    ) -> Result<(), Error> {
         if let BETransaction::Elements(tx) = self {
-            let policy_asset = policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
+            let policy_asset =
+                policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
             let new_out = elements::TxOut {
                 asset: policy_asset,
                 value: confidential::Value::Explicit(value),
@@ -541,11 +546,12 @@ impl BETransaction {
                 let has_fee = tx.output.iter().any(|o| o.is_fee());
 
                 if has_fee {
-                    let policy_asset = policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
+                    let policy_asset = policy_asset
+                        .ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
                     tx.output
                         .iter()
                         .filter(|o| o.is_fee())
-                        .filter(|o| policy_asset == o.asset )
+                        .filter(|o| policy_asset == o.asset)
                         .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
                         .sum::<u64>()
                 } else {
