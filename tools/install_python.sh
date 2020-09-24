@@ -2,11 +2,14 @@
 set -e
 
 export GDK_VERSION=$1
+export PYTHON_EXE=$2
+
 export PYTHON_DESTDIR="${DESTDIR}/${MESON_INSTALL_PREFIX}"
 
 mkdir -p $PYTHON_DESTDIR
 
 VENV_DIR=${MESON_BUILD_ROOT}/venv
+virtualenv --clear -p ${PYTHON_EXE} ${VENV_DIR}
 
 source $VENV_DIR/bin/activate
 
@@ -19,7 +22,7 @@ cp ${MESON_SOURCE_ROOT}/src/swig_python/setup.py .
 pip install wheel
 
 pip wheel --wheel-dir=$PYTHON_DESTDIR .
-virtualenv -p python ${MESON_BUILD_ROOT}/smoketestvenv
+virtualenv --clear -p ${PYTHON_EXE} ${MESON_BUILD_ROOT}/smoketestvenv
 deactivate
 
 source ${MESON_BUILD_ROOT}/smoketestvenv/bin/activate

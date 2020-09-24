@@ -192,14 +192,15 @@ if swig.found()
         endif
     endforeach
 
-    python_config_dir = host_machine.system()
-    if python_config_dir.contains('linux')
-        python_config_dir = 'x86_64-linux-gnu'
-    endif
-
+    pymod = import('python')
     python_version = get_option('python-version')
-    run_command('virtualenv', '--clear', '-p', 'python' + python_version, join_paths(meson.build_root(), 'venv'))
-    python_dep = compiler.find_library('python' + python_version + 'm', dirs : join_paths(meson.build_root(), 'venv', 'lib', 'python' + python_version, 'config-' + python_version + 'm-' + python_config_dir), required : false)
+    python_dep = dependency('', required : false)
+    if python_version != ''
+      python_installation = pymod.find_installation('python' + python_version, required : false)
+      if python_installation.found()
+        python_dep = python_installation.dependency()
+      endif
+    endif
 
     if java_target == ''
         java_target = '1.8'
