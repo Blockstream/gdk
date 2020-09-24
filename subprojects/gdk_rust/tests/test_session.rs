@@ -173,21 +173,24 @@ pub fn setup(
 
     info!("creating electrs client");
     let mut i = 120;
-    let electrs = loop {
+    let electrs_header = loop {
         assert!(i > 0, "1 minute without updates");
         i -= 1;
         match RawClient::new(&electrs_url) {
-            Ok(c) => break c,
+            Ok(c) => {
+                let header = c.block_headers_subscribe_raw().unwrap();
+                if header.height == 101 {
+                    break c;
+                }
+            }
             Err(e) => {
                 warn!("{:?}", e);
                 thread::sleep(Duration::from_millis(500));
             }
         }
     };
+    let electrs = RawClient::new(&electrs_url).unwrap();
     info!("done creating electrs client");
-    let electrs_header = RawClient::new(&electrs_url).unwrap();
-    let header = electrs_header.block_headers_subscribe_raw().unwrap();
-    assert_eq!(header.height, 101);
 
     let mut network = Network::default();
     network.electrum_url = Some(electrs_url.to_string());
