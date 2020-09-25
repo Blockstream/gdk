@@ -73,7 +73,6 @@ fn liquid() {
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();
-    test_session.send_tx_same_script();
     let assets = test_session.fund(100_000_000, Some(3));
     test_session.send_multi(3, 100_000, vec![]);
     test_session.send_multi(30, 100_000, assets);
