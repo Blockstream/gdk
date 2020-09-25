@@ -499,11 +499,24 @@ impl WalletCtx {
             asset_utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
             let utxo = asset_utxos.pop().ok_or(Error::InsufficientFunds)?;
 
-            // UTXO with same script must be spent together, even if it's another asset
-            for other_utxo in utxos.iter() {
-                if (other_utxo.1).script == (utxo.1).script {
-                    used_utxo.insert(other_utxo.0.clone());
-                    tx.add_input(other_utxo.0.clone());
+            match self.network.id() {
+                NetworkId::Bitcoin(_) => {
+                    // UTXO with same script must be spent together
+                    for other_utxo in utxos.iter() {
+                        if (other_utxo.1).script == (utxo.1).script {
+                            used_utxo.insert(other_utxo.0.clone());
+                            tx.add_input(other_utxo.0.clone());
+                        }
+                    }
+                }
+                NetworkId::Elements(_) => {
+                    // Don't spend same script together in liquid. This would allow an attacker
+                    // to cheaply send assets without value to the target, which will have to
+                    // waste fees for the extra tx inputs and (eventually) outputs.
+                    // While blinded address are required and not public knowledge,
+                    // they are still available to whom transacted with us in the past
+                    used_utxo.insert(utxo.0.clone());
+                    tx.add_input(utxo.0.clone());
                 }
             }
         }
