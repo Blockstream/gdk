@@ -385,10 +385,10 @@ impl SPVVerifyResult {
 impl Display for SPVVerifyResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SPVVerifyResult::InProgress => write!(f, "InProgress"),
-            SPVVerifyResult::Verified => write!(f, "Verified"),
-            SPVVerifyResult::NotVerified => write!(f, "NotVerified"),
-            SPVVerifyResult::Disabled => write!(f, "Disabled"),
+            SPVVerifyResult::InProgress => write!(f, "in_progress"),
+            SPVVerifyResult::Verified => write!(f, "verified"),
+            SPVVerifyResult::NotVerified => write!(f, "not_verified"),
+            SPVVerifyResult::Disabled => write!(f, "disabled"),
         }
     }
 }
