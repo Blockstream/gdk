@@ -28,7 +28,8 @@ Connection parameter JSON
       "log_level": "info",
       "proxy": "localhost:9150",
       "use_tor": true,
-      "user_agent": "green_android v2.33"
+      "user_agent": "green_android v2.33",
+      "spv_enabled": false,
    }
 
 .. _hw-device:
@@ -208,7 +209,8 @@ Transactions list JSON
         "txhash": "fe50531d94fae597d9e209582a401e62b1f705ace93eca94fe2e42f187456e4a",
         "type": "incoming",
         "user_signed": true,
-        "vsize": 205
+        "vsize": 205,
+        "spv_verified": "disabled"
       }
     ]
 
