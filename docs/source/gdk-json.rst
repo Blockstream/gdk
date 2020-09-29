@@ -666,14 +666,18 @@ Receive Address JSON
 
 
 
-.. _unspent-utxos-details:
+.. _unspent-utxos-request:
 
-Utxos details JSON
-------------------
+Unspent UTXOs Request JSON
+--------------------------
 
 .. code-block:: json
 
-  {"subaccount":3,"num_confs":0}
+  {
+    "subaccount": 3,
+    "num_confs": 0,
+    "all_coins": false
+  }
 
 
 
