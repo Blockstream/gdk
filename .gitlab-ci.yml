@@ -180,6 +180,7 @@ test_osx_clang:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --clang --lto=true --enable-rust
 
 release_osx_ios:
@@ -187,6 +188,7 @@ release_osx_ios:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone --enable-rust
 
 release_osx_ios_sim:
@@ -194,6 +196,7 @@ release_osx_ios_sim:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone --enable-rust
 
 test_osx_clang_ndk_armeabi-v7a:
@@ -204,6 +207,7 @@ test_osx_clang_ndk_armeabi-v7a:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --ndk armeabi-v7a --enable-rust
 
 test_osx_clang_ndk_arm64-v8a:
@@ -214,6 +218,7 @@ test_osx_clang_ndk_arm64-v8a:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --ndk arm64-v8a --enable-rust
 
 test_osx_clang_ndk_x86:
@@ -221,6 +226,7 @@ test_osx_clang_ndk_x86:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --ndk x86 --enable-rust
 
 test_osx_clang_ndk_x86_64:
@@ -231,6 +237,7 @@ test_osx_clang_ndk_x86_64:
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --ndk x86_64 --enable-rust
 
 # TODO: gdk-rust breaks this, figure out why
