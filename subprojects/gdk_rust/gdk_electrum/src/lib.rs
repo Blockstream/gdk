@@ -1025,7 +1025,7 @@ impl Syncer {
     fn download_txs(
         &self,
         history_txs_id: &HashSet<Txid>,
-        scripts: &HashMap<Script, TwoLayerPath>,
+        scripts: &HashMap<Script, DerivationPath>,
         client: &Client,
     ) -> Result<DownloadTxResult, Error> {
         let mut txs = vec![];

@@ -1,4 +1,4 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 
 mod address;
 mod blockheader;
@@ -7,13 +7,12 @@ mod transaction;
 
 pub use address::*;
 use bitcoin::hashes::core::fmt::Formatter;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath};
+use bitcoin::util::bip32::DerivationPath;
 use bitcoin::Script;
 pub use blockheader::*;
 pub use outpoint::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::str::FromStr;
 pub use transaction::*;
 
 pub type AssetId = [u8; 32]; // TODO use elements::issuance::AssetId
@@ -69,53 +68,10 @@ pub fn asset_to_hex(asset: &[u8]) -> String {
     hex::encode(asset)
 }
 
-/// Other than limiting derivation to two levels, this is required because DerivationPath don't
-/// derive Hash, so it cannot be used as HashMap key
-//TODO DerivationPath now derive Hash, update when released
-#[derive(Debug, Hash, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct TwoLayerPath {
-    i: u32,
-    j: u32,
-}
-
-impl TwoLayerPath {
-    pub fn new(i: u32, j: u32) -> Self {
-        TwoLayerPath {
-            i,
-            j,
-        }
-    }
-}
-
-impl TryFrom<DerivationPath> for TwoLayerPath {
-    type Error = crate::error::Error;
-
-    fn try_from(value: DerivationPath) -> Result<Self, Self::Error> {
-        let vec: Vec<ChildNumber> = value.into();
-        if vec.len() != 2 {
-            return Err(crate::error::Error::Generic(
-                "Only two levels derivation paths are allowed".into(),
-            ));
-        }
-        Ok(TwoLayerPath {
-            i: vec[0].into(),
-            j: vec[1].into(),
-        })
-    }
-}
-
-impl TryInto<DerivationPath> for TwoLayerPath {
-    type Error = crate::error::Error;
-
-    fn try_into(self) -> Result<DerivationPath, Self::Error> {
-        Ok(DerivationPath::from_str(&format!("m/{}/{}", self.i, self.j))?)
-    }
-}
-
 #[derive(Default)]
 pub struct ScriptBatch {
     pub cached: bool,
-    pub value: Vec<(Script, TwoLayerPath)>,
+    pub value: Vec<(Script, DerivationPath)>,
 }
 
 #[cfg(test)]

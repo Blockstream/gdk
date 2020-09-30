@@ -4,11 +4,11 @@ use aes_gcm_siv::Aes256GcmSiv;
 use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey};
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, BlockHash, Script, Transaction, Txid};
 use elements::{AddressParams, OutPoint};
-use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions, Unblinded};
-use gdk_common::be::{ScriptBatch, TwoLayerPath};
+use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions};
+use gdk_common::be::{ScriptBatch, Unblinded};
 use gdk_common::error::fn_err;
 use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::scripts::p2shwpkh_script;
@@ -24,6 +24,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
@@ -39,10 +40,10 @@ pub struct RawCache {
     pub all_txs: BETransactions,
 
     /// contains all my script up to an empty batch of BATCHSIZE
-    pub paths: HashMap<Script, TwoLayerPath>,
+    pub paths: HashMap<Script, DerivationPath>,
 
     /// inverse of `paths`
-    pub scripts: HashMap<TwoLayerPath, Script>, // TODO use DerivationPath once Hash gets merged
+    pub scripts: HashMap<DerivationPath, Script>, // TODO use DerivationPath once Hash gets merged
 
     /// contains only my wallet txs with the relative heights (None if unconfirmed)
     pub heights: HashMap<Txid, Option<u32>>,
@@ -284,7 +285,7 @@ impl StoreMeta {
         let start = batch * BATCH_SIZE;
         let end = start + BATCH_SIZE;
         for j in start..end {
-            let path = TwoLayerPath::new(int_or_ext, j);
+            let path = DerivationPath::from_str(&format!("m/{}/{}", int_or_ext, j))?;
             let opt_script = self.cache.scripts.get(&path);
             let script = match opt_script {
                 Some(script) => script.clone(),

@@ -580,7 +580,7 @@ impl BETransaction {
 
     pub fn is_redeposit(
         &self,
-        all_scripts: &HashMap<Script, TwoLayerPath>,
+        all_scripts: &HashMap<Script, DerivationPath>,
         all_txs: &BETransactions,
     ) -> bool {
         match self {
@@ -620,7 +620,7 @@ impl BETransaction {
     pub fn my_balance_changes(
         &self,
         all_txs: &BETransactions,
-        all_scripts: &HashMap<Script, TwoLayerPath>,
+        all_scripts: &HashMap<Script, DerivationPath>,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Balances {
         match self {

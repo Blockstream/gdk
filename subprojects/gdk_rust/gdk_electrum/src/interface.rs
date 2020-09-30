@@ -668,8 +668,7 @@ impl WalletCtx {
                         .paths
                         .get(&out.script_pubkey)
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                        .clone()
-                        .try_into()?;
+                        .clone();
                     info!(
                         "input#{} prev_output:{:?} derivation_path:{:?}",
                         i, prev_output, derivation_path
@@ -703,8 +702,7 @@ impl WalletCtx {
                         .paths
                         .get(&out.script_pubkey)
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                        .clone()
-                        .try_into()?;
+                        .clone();
 
                     let (script_sig, witness) =
                         self.internal_sign_elements(&tx, i, &derivation_path, out.value);
