@@ -3398,11 +3398,14 @@ namespace sdk {
     {
         bool r = false;
         const uint32_t value = locktime_details.at("value");
+        locker_t locker(m_mutex);
+        // This not only saves a server round trip in case of bad value, but
+        // also ensures that the value is recoverable.
+        GDK_RUNTIME_ASSERT(std::find(m_csv_buckets.begin(), m_csv_buckets.end(), value) != m_csv_buckets.end());
         wamp_call([&r](wamp_call_result result) { r = result.get().argument<bool>(0); },
             "com.greenaddress.login.set_csvtime", value, as_messagepack(twofactor_data).get());
         GDK_RUNTIME_ASSERT(r);
 
-        locker_t locker(m_mutex);
         m_csv_blocks = value;
     }
 
