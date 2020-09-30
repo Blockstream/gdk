@@ -502,6 +502,7 @@ namespace sdk {
         uint64_t m_earliest_block_time GDK_GUARDED_BY(m_mutex);
         uint64_t m_nlocktime GDK_GUARDED_BY(m_mutex);
         uint32_t m_csv_blocks GDK_GUARDED_BY(m_mutex);
+        std::vector<uint32_t> m_csv_buckets GDK_GUARDED_BY(m_mutex);
 
         nlohmann::json m_assets;
 
