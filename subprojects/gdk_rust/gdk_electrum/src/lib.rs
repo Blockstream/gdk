@@ -811,8 +811,7 @@ impl Tipper {
         let height = header.height as u32;
         let tip_height = self.store.read()?.cache.tip.0;
         if height != tip_height {
-            let hash =
-                BEBlockHeader::deserialize(&header.header, self.network.id())?.bitcoin_hash();
+            let hash = BEBlockHeader::deserialize(&header.header, self.network.id())?.block_hash();
             info!("saving in store new tip {:?}", (height, hash));
             self.store.write()?.cache.tip = (height, hash);
         }

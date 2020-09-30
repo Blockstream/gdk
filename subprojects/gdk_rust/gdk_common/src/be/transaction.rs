@@ -6,12 +6,11 @@ use crate::{ElementsNetwork, NetworkId};
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
 use bitcoin::hash_types::Txid;
-use bitcoin::hashes::{sha256d, Hash};
 use bitcoin::Script;
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
-use elements::{confidential, AddressParams};
+use elements::{confidential, issuance, AddressParams};
 use elements::{TxInWitness, TxOutWitness};
 use log::{info, trace};
 use rand::seq::SliceRandom;
@@ -216,8 +215,9 @@ impl BETransaction {
                 let asset =
                     asset_hex.expect("add_output must be called with a non empty asset in liquid");
                 let asset = asset_to_bin(&asset).expect("invalid asset hex");
+                let asset_id = issuance::AssetId::from_slice(&asset)?;
                 let new_out = elements::TxOut {
-                    asset: confidential::Asset::Explicit(sha256d::Hash::from_inner(asset)),
+                    asset: confidential::Asset::Explicit(asset_id),
                     value: confidential::Value::Explicit(value),
                     nonce: confidential::Nonce::Confidential(bytes[0], byte32),
                     script_pubkey: address.script_pubkey(),

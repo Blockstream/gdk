@@ -1,9 +1,8 @@
 use crate::be::asset_to_bin;
 use crate::be::AssetId;
 use crate::error::Error;
-use bitcoin::hashes::{sha256d, Hash};
-use elements::confidential;
 use elements::confidential::Asset;
+use elements::{confidential, issuance};
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -78,6 +77,7 @@ impl Network {
 
     pub fn policy_asset(&self) -> Result<Asset, Error> {
         let asset_id = self.policy_asset_id()?;
-        Ok(confidential::Asset::Explicit(sha256d::Hash::from_inner(asset_id)))
+        let asset_id = issuance::AssetId::from_slice(&asset_id)?;
+        Ok(confidential::Asset::Explicit(asset_id))
     }
 }

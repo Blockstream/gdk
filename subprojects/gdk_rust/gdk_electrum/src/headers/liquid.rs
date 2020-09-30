@@ -2,14 +2,14 @@ use elements::{self, BlockExtData};
 
 use crate::error::*;
 use crate::headers::compute_merkle_root;
-use bitcoin::blockdata::opcodes;
 use bitcoin::blockdata::opcodes::Class;
 use bitcoin::blockdata::script::Instruction;
+use bitcoin::blockdata::{opcodes, script};
 use bitcoin::hash_types::BlockHash;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{Message, Secp256k1, Signature, VerifyOnly};
-use bitcoin::{BitcoinHash, PublicKey, Script, Txid};
+use bitcoin::{PublicKey, Script, Txid};
 use electrum_client::GetMerkleRes;
 use gdk_common::ElementsNetwork;
 use log::info;
@@ -64,7 +64,7 @@ impl Verifier {
     /// verify the given liquid header
     fn verify_header(&self, header: &elements::BlockHeader) -> Result<(), Error> {
         let mut stack = vec![];
-        let hash = header.bitcoin_hash();
+        let hash = header.block_hash();
         if hash == self.genesis || self.is_regtest {
             // TODO add regtest verification
             return Ok(());
@@ -78,7 +78,8 @@ impl Verifier {
                 if challenge != &self.challenge {
                     return Err(Error::InvalidHeaders);
                 }
-                for instr in solution.iter(true).chain(challenge.iter(true)) {
+                for instr in solution.instructions_minimal().chain(challenge.instructions_minimal())
+                {
                     self.process_instr(&instr, &hash, &mut stack)?;
                 }
                 if stack.is_empty() {
@@ -93,14 +94,14 @@ impl Verifier {
 
     fn process_instr(
         &self,
-        instr: &Instruction,
+        instr: &Result<Instruction, script::Error>,
         hash: &BlockHash,
         stack: &mut Vec<Vec<u8>>,
     ) -> Result<(), Error> {
         match instr {
-            Instruction::PushBytes(data) => Ok(stack.push(data.to_vec())),
-            Instruction::Op(op) => self.process_op(op, hash, stack),
-            Instruction::Error(_) => Err(Error::InvalidHeaders),
+            Ok(Instruction::PushBytes(data)) => Ok(stack.push(data.to_vec())),
+            Ok(Instruction::Op(op)) => self.process_op(op, hash, stack),
+            Err(_) => Err(Error::InvalidHeaders),
         }
     }
 

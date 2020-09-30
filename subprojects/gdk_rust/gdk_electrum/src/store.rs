@@ -295,7 +295,8 @@ impl StoreMeta {
                     // Note we are using regtest here because we are not interested in the address, only in script construction
                     let script = match self.id {
                         NetworkId::Bitcoin(network) => {
-                            let address = Address::p2shwpkh(&second_deriv.public_key, network);
+                            let address =
+                                Address::p2shwpkh(&second_deriv.public_key, network).unwrap();
                             trace!("{}/{} {}", int_or_ext as u32, j, address);
                             address.script_pubkey()
                         }

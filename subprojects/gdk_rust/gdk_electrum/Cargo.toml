@@ -19,18 +19,15 @@ aes-gcm-siv = "0.5.0"
 gdk-common = { path = "../gdk_common" }
 libc = "0.2"
 android_logger = { version = "0.8.6", optional = true }
-electrum-client = "0.2.0-beta.3"
+electrum-client = "0.3.0-beta.1"
 chrono = "0.4.11"
 ureq = { version = "1.0.0", features = ["json"] }
 block-modes = "0.3.3"
 aes = "0.3.2"
 tempdir = "0.3.7"
-secp256k1 = { version = "0.17.1", features = [ "recovery", "rand"] }
+secp256k1 = { version = "0.19.0", features = [ "recovery", "rand"] }
 lazy_static = "1.4.0"
 
-[dependencies.bitcoin]
-version = "0.23"  # remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature
-features = ["use-serde"]
-
-[dependencies.elements]
-version = "0.12"
+# remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature
+bitcoin = { version = "0.25", features = [ "use-serde" ] }
+elements = { version = "0.13", features = ["serde"] }

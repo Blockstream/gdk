@@ -97,7 +97,7 @@ impl WalletCtx {
         let derived = xpub.derive_pub(&self.secp, &path)?;
         match self.network.id() {
             NetworkId::Bitcoin(network) => {
-                Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network)))
+                Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network).unwrap()))
             }
             NetworkId::Elements(network) => {
                 let master_blinding_key = self
@@ -829,7 +829,8 @@ impl WalletCtx {
                         output_vbf.copy_from_slice(&(&output_vbfs[i])[..]);
                         let asset = asset.clone().into_inner();
 
-                        let output_generator = asset_generator_from_bytes(&asset, &output_abf);
+                        let output_generator =
+                            asset_generator_from_bytes(&asset.into_inner(), &output_abf);
                         let output_value_commitment =
                             asset_value_commitment(value, output_vbf, output_generator);
                         let min_value = if output.script_pubkey.is_provably_unspendable() {
@@ -842,7 +843,7 @@ impl WalletCtx {
                             value,
                             blinding_pubkey.key,
                             blinding_key,
-                            asset,
+                            asset.into_inner(),
                             output_abf,
                             output_vbf,
                             output_value_commitment,
@@ -864,7 +865,7 @@ impl WalletCtx {
                         trace!("in_num: {}", in_num);
 
                         let surjectionproof = asset_surjectionproof(
-                            asset,
+                            asset.into_inner(),
                             output_abf,
                             output_generator,
                             output_abf,

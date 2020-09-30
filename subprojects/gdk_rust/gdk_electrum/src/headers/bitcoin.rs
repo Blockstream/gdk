@@ -6,8 +6,8 @@ use bitcoin::blockdata::constants::{
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::uint::Uint256;
-use bitcoin::{BitcoinHash, BlockHeader, Network};
 use bitcoin::{BlockHash, Txid};
+use bitcoin::{BlockHeader, Network};
 use electrum_client::GetMerkleRes;
 use log::info;
 use std::collections::HashMap;
@@ -95,7 +95,7 @@ impl HeadersChain {
         let mut serialized = vec![];
         for new_header in new_headers {
             let new_height = self.height + 1;
-            if self.last.bitcoin_hash() != new_header.prev_blockhash
+            if self.last.block_hash() != new_header.prev_blockhash
                 || new_header.validate_pow(&new_header.target()).is_err()
             {
                 return Err(Error::InvalidHeaders);
@@ -118,7 +118,7 @@ impl HeadersChain {
                 }
             }
             if let Some(hash) = self.checkpoints.get(&new_height) {
-                if hash != &new_header.bitcoin_hash() {
+                if hash != &new_header.block_hash() {
                     return Err(Error::InvalidHeaders);
                 }
                 info!("checkpoint {} {} is ok", new_height, hash);
@@ -132,7 +132,7 @@ impl HeadersChain {
         info!(
             "chain tip height {} hash {} file {:?}",
             self.height,
-            self.tip().bitcoin_hash(),
+            self.tip().block_hash(),
             self.path
         );
         Ok(())

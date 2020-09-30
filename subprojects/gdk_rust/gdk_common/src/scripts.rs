@@ -7,7 +7,7 @@ use bitcoin::{Address, Network, PublicKey, Script};
 // it is always ok because I am not interested in the address just in the script
 
 pub fn p2shwpkh_script(pk: &PublicKey) -> Script {
-    Address::p2shwpkh(pk, Network::Regtest).script_pubkey()
+    Address::p2shwpkh(pk, Network::Regtest).unwrap().script_pubkey()
 }
 
 pub fn p2pkh_script(pk: &PublicKey) -> Script {
