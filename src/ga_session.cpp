@@ -1116,7 +1116,17 @@ namespace sdk {
         cleanup_appearance_settings(locker, appearance);
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
+
+        // Check that csv blocks used are recoverable and provided by the server
+        const auto net_csv_buckets = m_net_params.csv_buckets();
+        for (uint32_t bucket : m_login_data["csv_times"]) {
+            if (std::find(net_csv_buckets.begin(), net_csv_buckets.end(), bucket) != net_csv_buckets.end()) {
+                m_csv_buckets.insert(m_csv_buckets.end(), bucket);
+            }
+        }
+        GDK_RUNTIME_ASSERT(m_csv_buckets.size() > 0);
         m_csv_blocks = m_login_data["csv_blocks"];
+        GDK_RUNTIME_ASSERT(std::find(m_csv_buckets.begin(), m_csv_buckets.end(), m_csv_blocks) != m_csv_buckets.end());
         if (!m_watch_only) {
             m_nlocktime = m_login_data["nlocktime_blocks"];
         }
