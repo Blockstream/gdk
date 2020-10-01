@@ -93,6 +93,7 @@ release_py3m_osx:
     - osx
   script:
     - cd $CI_PROJECT_DIR
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7 --enable-rust
 
 test_fedora_gcc:
