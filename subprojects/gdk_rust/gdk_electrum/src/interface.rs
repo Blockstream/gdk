@@ -3,7 +3,6 @@ use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hashes::{hex::FromHex, Hash};
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::Address;
-use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{BlockHash, PublicKey, SigHashType, Txid};
 use elements;
@@ -21,6 +20,7 @@ use gdk_common::wally::*;
 use crate::error::*;
 use crate::store::*;
 
+use bitcoin::util::bip143::SigHashCache;
 use electrum_client::raw_client::RawClient;
 use electrum_client::Client;
 use elements::confidential::{Asset, Nonce, Value};
@@ -595,8 +595,12 @@ impl WalletCtx {
         let public_key = &PublicKey::from_private_key(&self.secp, private_key);
         let witness_script = p2pkh_script(public_key);
 
-        let hash =
-            SighashComponents::new(tx).sighash_all(&tx.input[input_index], &witness_script, value);
+        let hash = SigHashCache::new(tx).signature_hash(
+            input_index,
+            &witness_script,
+            value,
+            SigHashType::All,
+        );
 
         let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
         let signature = self.secp.sign(&message, &private_key.key);
@@ -933,7 +937,6 @@ mod test {
     use bitcoin::consensus::deserialize;
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
-    use bitcoin::util::bip143::SighashComponents;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::util::key::PrivateKey;
     use bitcoin::util::key::PublicKey;
