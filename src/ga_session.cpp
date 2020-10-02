@@ -2734,6 +2734,17 @@ namespace sdk {
     }
 
     // Idempotent
+    nlohmann::json ga_session::set_unspent_outputs_status(
+        const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    {
+        nlohmann::json status;
+        wamp_call([&status](wamp_call_result result) { status = get_json_result(result.get()); },
+            "com.greenaddress.vault.set_utxo_status", as_messagepack(details).get(),
+            as_messagepack(twofactor_data).get());
+        return status;
+    }
+
+    // Idempotent
     nlohmann::json ga_session::get_transaction_details(const std::string& txhash) const
     {
         std::string tx_data;

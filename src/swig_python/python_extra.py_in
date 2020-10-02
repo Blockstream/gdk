@@ -187,6 +187,9 @@ class Session(object):
             get_unspent_outputs_for_private_key(self.session_obj, private_key, password, unused)
         )
 
+    def set_unspent_outputs_status(self, details):
+        return Call(set_unspent_outputs_status(self.session_obj, self._to_json(details)))
+
     def get_transaction_details(self, txhash_hex):
         return json.loads(get_transaction_details(self.session_obj, txhash_hex))
 

@@ -312,6 +312,16 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
+    public func setUnspentOutputsStatus(details: [String: Any]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_set_unspent_outputs_status(session, details_json, &optr))
+        defer {
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!)
+    }
+
     public func getReceiveAddress(details: [String: Any]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil
         var details_json: OpaquePointer = try convertDictToJSON(dict: details)

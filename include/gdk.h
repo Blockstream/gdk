@@ -294,7 +294,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* de
  * Get the user's unspent transaction outputs.
  *
  * :param session: The session to use.
- * :param details: :ref:`unspent-utxos-request` detailing the unspent transaction outputs to fetch.
+ * :param details: :ref:`unspent-outputs-request` detailing the unspent transaction outputs to fetch.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -314,6 +314,17 @@ GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* de
  */
 GDK_API int GA_get_unspent_outputs_for_private_key(
     struct GA_session* session, const char* private_key, const char* password, uint32_t unused, GA_json** utxos);
+
+/**
+ * Change the status of a user's unspent transaction outputs.
+ *
+ * :param session: The session to use.
+ * :param details: :ref:`unspent-outputs-status` detailing the unspent transaction outputs status to set.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_set_unspent_outputs_status(
+    struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get a transaction's details.

@@ -301,6 +301,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs, struct GA_session*, session, con
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::get_unspent_outputs_call(*session, *json_cast(details))); });
 
+GDK_DEFINE_C_FUNCTION_3(GA_set_unspent_outputs_status, struct GA_session*, session, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::set_unspent_outputs_status_call(*session, *json_cast(details))); });
+
 GDK_DEFINE_C_FUNCTION_5(GA_get_unspent_outputs_for_private_key, struct GA_session*, session, const char*, private_key,
     const char*, password, uint32_t, unused, GA_json**, utxos, {
         *json_cast(utxos)

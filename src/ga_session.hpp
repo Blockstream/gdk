@@ -242,6 +242,7 @@ namespace sdk {
         nlohmann::json get_unspent_outputs(const nlohmann::json& details);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
+        nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transaction_details(const std::string& txhash) const;
         std::vector<nlohmann::json> get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count);
 

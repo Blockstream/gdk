@@ -666,7 +666,7 @@ Receive Address JSON
 
 
 
-.. _unspent-utxos-request:
+.. _unspent-outputs-request:
 
 Unspent UTXOs Request JSON
 --------------------------
@@ -680,6 +680,34 @@ Unspent UTXOs Request JSON
   }
 
 
+
+.. _unspent-outputs-status:
+
+Unspent Ouputs Set Status JSON
+------------------------------
+
+Valid status values are `"default"` for normal behaviour or `"frozen"`. Frozen
+outputs are hidden from the caller's balance and unspent output requests, are
+not returned in nlocktime emails, and cannot be spent. An account containing
+frozen outputs can be deleted, whereas an account with unfrozen outputs can not.
+
+Freezing an output requires two factor authentication. Outputs should only be
+frozen in response to e.g. a dust attack on the wallet. Once a wallet is
+deleted, any frozen outputs it contained will be unspendable forever.
+
+.. note:: Only outputs of value less that two times the dust limit can be frozen.
+
+.. code-block:: json
+
+  {
+    "list" : [
+      {
+        "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
+        "pt_idx": 1,
+        "user_status": "frozen"
+      }
+    ]
+  }
 
 .. _transactions-details:
 

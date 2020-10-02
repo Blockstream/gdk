@@ -925,6 +925,55 @@ namespace sdk {
     }
 
     //
+    // Set unspent outputs status
+    //
+    set_unspent_outputs_status_call::set_unspent_outputs_status_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "set_utxo_status")
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        try {
+            GDK_RUNTIME_ASSERT(details["list"].is_array());
+
+            nlohmann::json args = details;
+            bool seen_frozen = false;
+
+            for (auto& item : args["list"]) {
+                auto& status = item["user_status"];
+                if (status == "default") {
+                    status = 0;
+                } else if (status == "frozen") {
+                    status = 1;
+                    seen_frozen = true;
+                } else {
+                    GDK_RUNTIME_ASSERT_MSG(false, "Unknown UTXO status");
+                }
+            }
+
+            m_details = args;
+
+            if (m_state == state_type::request_code) {
+                if (!seen_frozen) {
+                    // No 2FA needed to un-freeze a UTXO
+                    m_state = state_type::make_call;
+                } else {
+                    m_twofactor_data = { { "list", args["list"] } };
+                }
+            }
+        } catch (const std::exception& e) {
+            set_error(e.what());
+        }
+    }
+
+    auth_handler::state_type set_unspent_outputs_status_call::call_impl()
+    {
+        m_result = m_session.set_unspent_outputs_status(m_details, m_twofactor_data);
+        return state_type::done;
+    }
+
+    //
     // Get expired deposits
     //
     get_expired_deposits_call::get_expired_deposits_call(session& session, const nlohmann::json& details)

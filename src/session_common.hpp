@@ -139,6 +139,9 @@ namespace sdk {
         virtual nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused)
             = 0;
+        virtual nlohmann::json set_unspent_outputs_status(
+            const nlohmann::json& details, const nlohmann::json& twofactor_data)
+            = 0;
         virtual nlohmann::json get_transaction_details(const std::string& txhash_hex) const = 0;
 
         virtual nlohmann::json create_transaction(const nlohmann::json& details) = 0;

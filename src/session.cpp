@@ -726,6 +726,15 @@ namespace sdk {
         });
     }
 
+    nlohmann::json session::set_unspent_outputs_status(
+        const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->set_unspent_outputs_status(details, twofactor_data);
+        });
+    }
+
     nlohmann::json session::create_transaction(const nlohmann::json& details)
     {
         return exception_wrapper([&] {

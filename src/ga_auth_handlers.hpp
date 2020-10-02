@@ -154,6 +154,16 @@ namespace sdk {
         state_type wrapped_call_impl() override;
     };
 
+    class set_unspent_outputs_status_call : public auth_handler {
+    public:
+        set_unspent_outputs_status_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
     class get_expired_deposits_call : public needs_unblind_call {
     public:
         get_expired_deposits_call(session& session, const nlohmann::json& details);

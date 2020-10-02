@@ -336,11 +336,19 @@ namespace sdk {
     {
         throw std::runtime_error("get_unspent_outputs not implemented");
     }
+
     nlohmann::json ga_rust::get_unspent_outputs_for_private_key(
         const std::string& private_key, const std::string& password, uint32_t unused)
     {
         throw std::runtime_error("get_unspent_outputs_for_private_key not implemented");
     }
+
+    nlohmann::json ga_rust::set_unspent_outputs_status(
+        const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    {
+        throw std::runtime_error("set_unspent_outputs_status not implemented");
+    }
+
     nlohmann::json ga_rust::get_transaction_details(const std::string& txhash_hex) const
     {
         auto details = nlohmann::json(txhash_hex);
