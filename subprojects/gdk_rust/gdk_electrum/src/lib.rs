@@ -403,45 +403,6 @@ impl Session<Error> for ElectrumSession {
             });
         }
 
-        let mut wait_registry = false;
-        let registry_thread = if self.network.liquid && self.wallet.is_none() {
-            let registry_policy = self.network.policy_asset.clone();
-            let store_read = store.read()?;
-            info!("reading icons and registry");
-            let asset_icons = store_read.read_asset_icons()?;
-            let asset_registry = store_read.read_asset_registry()?;
-            info!("reading icons and registry end");
-            drop(store_read);
-            wait_registry = asset_icons.is_none() || asset_registry.is_none();
-
-            let store_for_registry = store.clone();
-            Some(thread::spawn(move || {
-                info!("start registry thread");
-                // TODO add if_modified_since, gzip encoding
-                let registry = ureq::get("https://assets.blockstream.info/index.json").call();
-                let icons = ureq::get("https://assets.blockstream.info/icons.json").call();
-                if registry.status() == 200 && icons.status() == 200 {
-                    match (registry.into_json(), icons.into_json()) {
-                        (Ok(mut registry), Ok(icons)) => {
-                            info!("got registry and icons");
-                            if let Some(policy) = registry_policy {
-                                info!("inserting policy asset {}", &policy);
-                                registry[policy] = json!({"asset_id": &policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
-                            }
-                            let store_write = store_for_registry.write().unwrap();
-                            store_write.write_asset_registry(&registry).unwrap();
-                            store_write.write_asset_icons(&icons).unwrap();
-                        }
-                        _ => warn!("Registry or icons are not json"),
-                    }
-                } else {
-                    warn!("Cannot download registry and icons");
-                }
-            }))
-        } else {
-            None
-        };
-
         if self.network.spv_enabled.unwrap_or(false) {
             let checker = match self.network.id() {
                 NetworkId::Bitcoin(network) => {
@@ -610,14 +571,6 @@ impl Session<Error> for ElectrumSession {
 
         notify_settings(self.notify.clone(), &self.get_settings()?);
 
-        if let Some(registry_thread) = registry_thread {
-            if wait_registry {
-                info!("waiting registry thread");
-                registry_thread.join().map_err(|_| Error::Generic("cannot join".to_string()))?;
-                info!("registry thread joined");
-            }
-        }
-
         self.state = State::Logged;
         Ok(vec![])
     }
@@ -771,22 +724,81 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, Error> {
-        info!("refresh_assets details {:?}", details);
-        let mut map = serde_json::Map::new();
+        info!("refresh_assets {:?}", details);
 
-        let wallet = self.get_wallet()?;
+        if !(details.icons || details.assets) {
+            return Err(Error::Generic(
+                "cannot call refresh assets with both icons and assets false".to_string(),
+            ));
+        }
+
+        let mut assets_option: Option<Value> = None;
+        let mut icons_option: Option<Value> = None;
+
+        if details.refresh {
+            if details.assets {
+                // TODO add if_modified_since, gzip encoding
+                let assets_response = ureq::get("https://assets.blockstream.info/index.json")
+                    .timeout_connect(15_000)
+                    .timeout_read(15_000)
+                    .call();
+                let mut assets = assets_response.into_json()?;
+                let registry_policy = self
+                    .network
+                    .policy_asset
+                    .clone()
+                    .ok_or_else(|| Error::Generic("policy assets not available".into()))?;
+                assets[registry_policy] = json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
+                assets_option = Some(assets);
+            }
+
+            if details.icons {
+                // TODO add if_modified_since, gzip encoding
+                let icons_response = ureq::get("https://assets.blockstream.info/icons.json")
+                    .timeout_connect(15_000)
+                    .timeout_read(15_000)
+                    .call();
+                icons_option = Some(icons_response.into_json()?);
+            }
+
+            if icons_option.is_some() || assets_option.is_some() {
+                let store_write = self.get_wallet()?.store.write()?;
+                if let Some(icons) = icons_option.as_ref() {
+                    store_write.write_asset_icons(icons)?;
+                }
+                if let Some(assets) = assets_option.as_ref() {
+                    store_write.write_asset_registry(assets)?;
+                }
+            }
+        }
+
+        let mut map = serde_json::Map::new();
         if details.assets {
-            let assets = wallet
-                .get_asset_registry()?
-                .ok_or_else(|| Error::Generic("cannot find asset registry".into()))?;
+            let assets = match assets_option {
+                Some(assets) => assets,
+                None => self
+                    .get_wallet()?
+                    .store
+                    .read()?
+                    .read_asset_registry()?
+                    .ok_or_else(|| Error::Generic("assets registry not available".into()))?,
+            };
             map.insert("assets".to_string(), assets);
         }
+
         if details.icons {
-            let icons = wallet
-                .get_asset_icons()?
-                .ok_or_else(|| Error::Generic("cannot find asset icons".into()))?;
+            let icons = match icons_option {
+                Some(icons) => icons,
+                None => self
+                    .get_wallet()?
+                    .store
+                    .read()?
+                    .read_asset_icons()?
+                    .ok_or_else(|| Error::Generic("icon registry not available".into()))?,
+            };
             map.insert("icons".to_string(), icons);
         }
+
         Ok(Value::Object(map))
     }
 
