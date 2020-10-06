@@ -59,7 +59,7 @@ use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
-use std::sync::{Arc, RwLock};
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread::JoinHandle;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
@@ -732,71 +732,72 @@ impl Session<Error> for ElectrumSession {
             ));
         }
 
-        let mut assets_option: Option<Value> = None;
-        let mut icons_option: Option<Value> = None;
+        let mut assets = Value::Null;
+        let mut icons = Value::Null;
 
         if details.refresh {
+            let (tx_assets, rx_assets) = mpsc::channel();
             if details.assets {
-                // TODO add if_modified_since, gzip encoding
-                let assets_response = ureq::get("https://assets.blockstream.info/index.json")
-                    .timeout_connect(15_000)
-                    .timeout_read(15_000)
-                    .call();
-                let mut assets = assets_response.into_json()?;
                 let registry_policy = self
                     .network
                     .policy_asset
                     .clone()
                     .ok_or_else(|| Error::Generic("policy assets not available".into()))?;
-                assets[registry_policy] = json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
-                assets_option = Some(assets);
+                thread::spawn(move || match call_assets(registry_policy) {
+                    Ok(assets) => tx_assets.send(Some(assets)),
+                    Err(_) => tx_assets.send(None),
+                });
             }
 
+            let (tx_icons, rx_icons) = mpsc::channel();
             if details.icons {
-                // TODO add if_modified_since, gzip encoding
-                let icons_response = ureq::get("https://assets.blockstream.info/icons.json")
-                    .timeout_connect(15_000)
-                    .timeout_read(15_000)
-                    .call();
-                icons_option = Some(icons_response.into_json()?);
+                thread::spawn(move || match call_icons() {
+                    Ok(icons) => tx_icons.send(Some(icons)),
+                    Err(_) => tx_icons.send(None),
+                });
             }
 
-            if icons_option.is_some() || assets_option.is_some() {
-                let store_write = self.get_wallet()?.store.write()?;
-                if let Some(icons) = icons_option.as_ref() {
-                    store_write.write_asset_icons(icons)?;
-                }
-                if let Some(assets) = assets_option.as_ref() {
-                    store_write.write_asset_registry(assets)?;
-                }
+            if let Ok(Some(assets_recv)) = rx_assets.recv() {
+                assets = assets_recv;
+            }
+            if let Ok(Some(icons_recv)) = rx_icons.recv() {
+                icons = icons_recv;
+            }
+
+            let store_write = self.get_wallet()?.store.write()?;
+            if let Value::Object(_) = icons {
+                store_write.write_asset_icons(&icons)?;
+            }
+            if let Value::Object(_) = assets {
+                store_write.write_asset_registry(&assets)?;
             }
         }
 
         let mut map = serde_json::Map::new();
         if details.assets {
-            let assets = match assets_option {
-                Some(assets) => assets,
-                None => self
+            let assets_not_null = match assets {
+                Value::Object(_) => assets,
+                _ => self
                     .get_wallet()?
                     .store
                     .read()?
                     .read_asset_registry()?
                     .ok_or_else(|| Error::Generic("assets registry not available".into()))?,
             };
-            map.insert("assets".to_string(), assets);
+            map.insert("assets".to_string(), assets_not_null);
         }
 
         if details.icons {
-            let icons = match icons_option {
-                Some(icons) => icons,
-                None => self
+            let icons_not_null = match icons {
+                Value::Object(_) => icons,
+                _ => self
                     .get_wallet()?
                     .store
                     .read()?
                     .read_asset_icons()?
                     .ok_or_else(|| Error::Generic("icon registry not available".into()))?,
             };
-            map.insert("icons".to_string(), icons);
+            map.insert("icons".to_string(), icons_not_null);
         }
 
         Ok(Value::Object(map))
@@ -820,6 +821,32 @@ impl Session<Error> for ElectrumSession {
         info!("txs.len={} status={}", txs.len(), status);
         Ok(status)
     }
+}
+
+fn call_icons() -> Result<Value, Error> {
+    // TODO add if_modified_since, gzip encoding
+    info!("START call_icons https://assets.blockstream.info/icons.json");
+    let icons_response = ureq::get("https://assets.blockstream.info/icons.json")
+        .timeout_connect(15_000)
+        .timeout_read(15_000)
+        .call();
+    let value = icons_response.into_json()?;
+    info!("END call_icons https://assets.blockstream.info/icons.json");
+    Ok(value)
+}
+
+fn call_assets(registry_policy: String) -> Result<Value, Error> {
+    // TODO add if_modified_since, gzip encoding
+    info!("START call_assets https://assets.blockstream.info/index.json");
+    let assets_response = ureq::get("https://assets.blockstream.info/index.json")
+        .timeout_connect(15_000)
+        .timeout_read(15_000)
+        .call();
+    let mut assets = assets_response.into_json()?;
+    assets[registry_policy] =
+        json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
+    info!("END call_assets https://assets.blockstream.info/index.json");
+    Ok(assets)
 }
 
 impl Tipper {

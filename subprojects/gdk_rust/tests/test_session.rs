@@ -233,6 +233,16 @@ pub fn setup(
         NetworkId::Bitcoin(bitcoin::Network::Regtest)
     };
 
+    if is_liquid {
+        session
+            .refresh_assets(&RefreshAssets {
+                icons: true,
+                assets: true,
+                refresh: true,
+            })
+            .unwrap();
+    }
+
     info!("returning TestSession");
     TestSession {
         tx_status,
