@@ -1,5 +1,6 @@
 use bitcoin::{self, Amount, BlockHash};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
+use chrono::Utc;
 use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
 use electrum_client::ElectrumApi;
 use elements;
@@ -55,11 +56,7 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            if record.level() <= LevelFilter::Warn {
-                println!("{} - {}", record.level(), record.args());
-            } else {
-                println!("{}", record.args());
-            }
+            println!("{} {} - {}", Utc::now().format("%S%.3f"), record.level(), record.args());
         }
     }
 

@@ -389,7 +389,9 @@ impl Session<Error> for ElectrumSession {
         let mut tip_height = store.read()?.cache.tip.0;
         notify_block(self.notify.clone(), tip_height);
 
+        info!("building client");
         if let Ok(fee_client) = self.url.build_client() {
+            info!("building built end");
             let fee_store = store.clone();
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client) {
@@ -405,10 +407,13 @@ impl Session<Error> for ElectrumSession {
         let registry_thread = if self.network.liquid && self.wallet.is_none() {
             let registry_policy = self.network.policy_asset.clone();
             let store_read = store.read()?;
+            info!("reading icons and registry");
             let asset_icons = store_read.read_asset_icons()?;
             let asset_registry = store_read.read_asset_registry()?;
+            info!("reading icons and registry end");
             drop(store_read);
             wait_registry = asset_icons.is_none() || asset_registry.is_none();
+
             let store_for_registry = store.clone();
             Some(thread::spawn(move || {
                 info!("start registry thread");

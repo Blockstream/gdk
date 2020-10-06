@@ -26,6 +26,7 @@ use gdk_common::model::{GDKRUST_json, GetTransactionsOpt, SPVVerifyTx};
 use gdk_common::session::Session;
 
 use crate::error::Error;
+use chrono::Utc;
 use gdk_electrum::{ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
 
@@ -493,11 +494,7 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            if record.level() <= LevelFilter::Warn {
-                println!("{} - {}", record.level(), record.args());
-            } else {
-                println!("{}", record.args());
-            }
+            println!("{} {} - {}", Utc::now().format("%S%.3f"), record.level(), record.args());
         }
     }
 
