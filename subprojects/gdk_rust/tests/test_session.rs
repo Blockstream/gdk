@@ -364,7 +364,6 @@ impl TestSession {
     ) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
-        //let init_sat_addr = self.balance_addr(address);
         let mut create_opt = CreateTransaction::default();
         let fee_rate = match self.network.id() {
             NetworkId::Elements(_) => 100,
@@ -378,7 +377,7 @@ impl TestSession {
         });
         create_opt.memo = memo;
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
-        assert!(tx.user_signed);
+        assert!(tx.user_signed, "tx is not marked as user_signed");
         match self.network.id() {
             NetworkId::Elements(_) => assert!(!tx.rbf_optin),
             NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
@@ -395,11 +394,29 @@ impl TestSession {
         } else {
             0
         };
-        assert_eq!(self.balance_node(asset.clone()), init_node_balance + satoshi);
-        assert_eq!(self.balance_gdk(asset.clone()), init_sat - satoshi - fee);
+        assert_eq!(
+            self.balance_node(asset.clone()),
+            init_node_balance + satoshi,
+            "node balance does not match"
+        );
 
-        assert!(!tx.create_transaction.unwrap().send_all.unwrap());
-        assert!(!signed_tx.create_transaction.unwrap().send_all.unwrap());
+        let expected = init_sat - satoshi - fee;
+        for _ in 0..5 {
+            if expected != self.balance_gdk(asset.clone()) {
+                // FIXME I should not wait again, but apparently after reconnect it's needed
+                self.wait_tx_status_change();
+            }
+        }
+        assert_eq!(self.balance_gdk(asset.clone()), expected, "gdk balance does not match");
+
+        assert!(
+            !tx.create_transaction.unwrap().send_all.unwrap(),
+            "send_all in tx is true but should be false"
+        );
+        assert!(
+            !signed_tx.create_transaction.unwrap().send_all.unwrap(),
+            "send_all in signed_tx is true but should be false"
+        );
 
         self.list_tx_contains(&txid, &vec![address.to_string()], true);
 

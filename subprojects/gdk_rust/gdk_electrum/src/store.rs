@@ -226,7 +226,7 @@ impl StoreMeta {
     }
 
     fn flush_cache(&self) -> Result<(), Error> {
-        self.flush_serializable("cache", &self.store)?;
+        self.flush_serializable("cache", &self.cache)?;
         Ok(())
     }
 
