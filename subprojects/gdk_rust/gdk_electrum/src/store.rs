@@ -241,7 +241,10 @@ impl StoreMeta {
         path.push(name);
         if path.exists() {
             let file = File::open(path)?;
-            Ok(Some(serde_json::from_reader(file)?))
+            info!("start read from {}", name);
+            let value = serde_json::from_reader(file)?;
+            info!("end read from {}", name);
+            Ok(Some(value))
         } else {
             Ok(None)
         }
@@ -251,7 +254,10 @@ impl StoreMeta {
         let mut path = self.path.clone();
         path.push(name);
         let mut file = File::create(path)?;
-        file.write(&serde_json::to_vec(value)?)?;
+        let vec = serde_json::to_vec(value)?;
+        info!("start write {} bytes to {}", vec.len(), name);
+        file.write(&vec)?;
+        info!("end write {} bytes to {}", vec.len(), name);
         Ok(())
     }
 
