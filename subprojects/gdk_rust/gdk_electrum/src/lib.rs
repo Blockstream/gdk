@@ -734,6 +734,8 @@ impl Session<Error> for ElectrumSession {
 
         let mut assets = Value::Null;
         let mut icons = Value::Null;
+        let mut assets_last_modified = String::new();
+        let mut icons_last_modified = String::new();
 
         if details.refresh {
             let (tx_assets, rx_assets) = mpsc::channel();
@@ -743,33 +745,41 @@ impl Session<Error> for ElectrumSession {
                     .policy_asset
                     .clone()
                     .ok_or_else(|| Error::Generic("policy assets not available".into()))?;
-                thread::spawn(move || match call_assets(registry_policy) {
-                    Ok(assets) => tx_assets.send(Some(assets)),
+                let last_modified =
+                    self.get_wallet()?.store.read()?.cache.assets_last_modified.clone();
+                thread::spawn(move || match call_assets(registry_policy, last_modified) {
+                    Ok(p) => tx_assets.send(Some(p)),
                     Err(_) => tx_assets.send(None),
                 });
             }
 
             let (tx_icons, rx_icons) = mpsc::channel();
             if details.icons {
-                thread::spawn(move || match call_icons() {
-                    Ok(icons) => tx_icons.send(Some(icons)),
+                let last_modified =
+                    self.get_wallet()?.store.read()?.cache.icons_last_modified.clone();
+                thread::spawn(move || match call_icons(last_modified) {
+                    Ok(p) => tx_icons.send(Some(p)),
                     Err(_) => tx_icons.send(None),
                 });
             }
 
             if let Ok(Some(assets_recv)) = rx_assets.recv() {
-                assets = assets_recv;
+                assets = assets_recv.0;
+                assets_last_modified = assets_recv.1;
             }
             if let Ok(Some(icons_recv)) = rx_icons.recv() {
-                icons = icons_recv;
+                icons = icons_recv.0;
+                icons_last_modified = icons_recv.1;
             }
 
-            let store_write = self.get_wallet()?.store.write()?;
+            let mut store_write = self.get_wallet()?.store.write()?;
             if let Value::Object(_) = icons {
                 store_write.write_asset_icons(&icons)?;
+                store_write.cache.icons_last_modified = icons_last_modified;
             }
             if let Value::Object(_) = assets {
                 store_write.write_asset_registry(&assets)?;
+                store_write.cache.assets_last_modified = assets_last_modified;
             }
         }
 
@@ -823,30 +833,38 @@ impl Session<Error> for ElectrumSession {
     }
 }
 
-fn call_icons() -> Result<Value, Error> {
-    // TODO add if_modified_since, gzip encoding
+fn call_icons(last_modified: String) -> Result<(Value, String), Error> {
+    // TODO gzip encoding
     info!("START call_icons https://assets.blockstream.info/icons.json");
     let icons_response = ureq::get("https://assets.blockstream.info/icons.json")
         .timeout_connect(15_000)
         .timeout_read(15_000)
+        .set("If-Modified-Since", &last_modified)
         .call();
+    let status = icons_response.status();
+    info!("call_icons https://assets.blockstream.info/icons.json returns {}", status);
+    let last_modified = icons_response.header("Last-Modified").unwrap_or_default().to_string();
     let value = icons_response.into_json()?;
-    info!("END call_icons https://assets.blockstream.info/icons.json");
-    Ok(value)
+    info!("END call_icons https://assets.blockstream.info/icons.json {}", status);
+    Ok((value, last_modified))
 }
 
-fn call_assets(registry_policy: String) -> Result<Value, Error> {
-    // TODO add if_modified_since, gzip encoding
+fn call_assets(registry_policy: String, last_modified: String) -> Result<(Value, String), Error> {
+    // TODO add gzip encoding
     info!("START call_assets https://assets.blockstream.info/index.json");
     let assets_response = ureq::get("https://assets.blockstream.info/index.json")
         .timeout_connect(15_000)
         .timeout_read(15_000)
+        .set("If-Modified-Since", &last_modified)
         .call();
+    let status = assets_response.status();
+    info!("call_assets https://assets.blockstream.info/index.json returns {}", status);
+    let last_modified = assets_response.header("Last-Modified").unwrap_or_default().to_string();
     let mut assets = assets_response.into_json()?;
     assets[registry_policy] =
         json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
-    info!("END call_assets https://assets.blockstream.info/index.json");
-    Ok(assets)
+    info!("END call_assets https://assets.blockstream.info/index.json {}", status);
+    Ok((assets, last_modified))
 }
 
 impl Tipper {

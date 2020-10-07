@@ -233,16 +233,6 @@ pub fn setup(
         NetworkId::Bitcoin(bitcoin::Network::Regtest)
     };
 
-    if is_liquid {
-        session
-            .refresh_assets(&RefreshAssets {
-                icons: true,
-                assets: true,
-                refresh: true,
-            })
-            .unwrap();
-    }
-
     info!("returning TestSession");
     TestSession {
         tx_status,
@@ -867,6 +857,26 @@ impl TestSession {
             gdk_electrum::headers::spv_verify_tx(&param),
             Ok(SPVVerifyResult::Verified)
         ));
+    }
+
+    pub fn refresh_assets(&mut self, refresh: bool) {
+        let value = self.session.refresh_assets(&RefreshAssets {
+            icons: true,
+            assets: true,
+            refresh,
+        });
+        assert!(value.is_ok());
+        let value = value.unwrap();
+        assert!(value.get("assets").is_some());
+        assert!(value.get("icons").is_some());
+        assert!(
+            value
+                .get("assets")
+                .unwrap()
+                .get("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
+                .is_some(),
+            "policy asset is not present"
+        );
     }
 
     /// stop the bitcoin node in the test session

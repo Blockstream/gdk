@@ -84,6 +84,9 @@ fn liquid() {
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, "");
+    test_session.refresh_assets(true);
+    test_session.refresh_assets(true);
+    test_session.refresh_assets(false);
 
     test_session.stop();
 }

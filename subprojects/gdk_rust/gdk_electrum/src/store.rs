@@ -65,6 +65,12 @@ pub struct RawCache {
 
     /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
     pub indexes: Indexes,
+
+    /// registry assets last modified, used when making the http request
+    pub assets_last_modified: String,
+
+    /// registry icons last modified, used when making the http request
+    pub icons_last_modified: String,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
