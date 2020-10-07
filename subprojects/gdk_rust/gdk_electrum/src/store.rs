@@ -246,10 +246,13 @@ impl StoreMeta {
         let mut path = self.path.clone();
         path.push(name);
         if path.exists() {
-            let file = File::open(path)?;
+            let mut file = File::open(path)?;
+            let mut buffer = vec![];
             info!("start read from {}", name);
-            let value = serde_json::from_reader(file)?;
-            info!("end read from {}", name);
+            file.read_to_end(&mut buffer)?;
+            info!("end read from {}, start parsing json", name);
+            let value = serde_json::from_slice(&buffer)?;
+            info!("end parsing json {}", name);
             Ok(Some(value))
         } else {
             Ok(None)
