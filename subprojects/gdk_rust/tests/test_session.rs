@@ -196,6 +196,7 @@ pub fn setup(
     network.ct_bits = Some(52);
     network.ct_exponent = Some(0);
     network.spv_enabled = Some(true);
+    network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
     if is_liquid {
         network.liquid = true;
         network.policy_asset =

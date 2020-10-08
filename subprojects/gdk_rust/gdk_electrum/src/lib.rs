@@ -747,9 +747,12 @@ impl Session<Error> for ElectrumSession {
                     .ok_or_else(|| Error::Generic("policy assets not available".into()))?;
                 let last_modified =
                     self.get_wallet()?.store.read()?.cache.assets_last_modified.clone();
-                thread::spawn(move || match call_assets(registry_policy, last_modified) {
-                    Ok(p) => tx_assets.send(Some(p)),
-                    Err(_) => tx_assets.send(None),
+                let base_url = self.network.registry_base_url()?;
+                thread::spawn(move || {
+                    match call_assets(base_url, registry_policy, last_modified) {
+                        Ok(p) => tx_assets.send(Some(p)),
+                        Err(_) => tx_assets.send(None),
+                    }
                 });
             }
 
@@ -757,7 +760,8 @@ impl Session<Error> for ElectrumSession {
             if details.icons {
                 let last_modified =
                     self.get_wallet()?.store.read()?.cache.icons_last_modified.clone();
-                thread::spawn(move || match call_icons(last_modified) {
+                let base_url = self.network.registry_base_url()?;
+                thread::spawn(move || match call_icons(base_url, last_modified) {
                     Ok(p) => tx_icons.send(Some(p)),
                     Err(_) => tx_icons.send(None),
                 });
@@ -833,37 +837,43 @@ impl Session<Error> for ElectrumSession {
     }
 }
 
-fn call_icons(last_modified: String) -> Result<(Value, String), Error> {
+fn call_icons(base_url: String, last_modified: String) -> Result<(Value, String), Error> {
     // TODO gzip encoding
-    info!("START call_icons https://assets.blockstream.info/icons.json");
-    let icons_response = ureq::get("https://assets.blockstream.info/icons.json")
+    let url = format!("{}/{}", base_url, "icons.json");
+    info!("START call_icons {}", &url);
+    let icons_response = ureq::get(&url)
         .timeout_connect(15_000)
         .timeout_read(15_000)
         .set("If-Modified-Since", &last_modified)
         .call();
     let status = icons_response.status();
-    info!("call_icons https://assets.blockstream.info/icons.json returns {}", status);
+    info!("call_icons {} returns {}", &url, status);
     let last_modified = icons_response.header("Last-Modified").unwrap_or_default().to_string();
     let value = icons_response.into_json()?;
-    info!("END call_icons https://assets.blockstream.info/icons.json {}", status);
+    info!("END call_icons {} {}", &url, status);
     Ok((value, last_modified))
 }
 
-fn call_assets(registry_policy: String, last_modified: String) -> Result<(Value, String), Error> {
+fn call_assets(
+    base_url: String,
+    registry_policy: String,
+    last_modified: String,
+) -> Result<(Value, String), Error> {
     // TODO add gzip encoding
-    info!("START call_assets https://assets.blockstream.info/index.json");
-    let assets_response = ureq::get("https://assets.blockstream.info/index.json")
+    let url = format!("{}/{}", base_url, "index.json");
+    info!("START call_assets {}", &url);
+    let assets_response = ureq::get(&url)
         .timeout_connect(15_000)
         .timeout_read(15_000)
         .set("If-Modified-Since", &last_modified)
         .call();
     let status = assets_response.status();
-    info!("call_assets https://assets.blockstream.info/index.json returns {}", status);
+    info!("call_assets {} returns {}", url, status);
     let last_modified = assets_response.header("Last-Modified").unwrap_or_default().to_string();
     let mut assets = assets_response.into_json()?;
     assets[registry_policy] =
         json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
-    info!("END call_assets https://assets.blockstream.info/index.json {}", status);
+    info!("END call_assets {} {}", &url, status);
     Ok((assets, last_modified))
 }
 

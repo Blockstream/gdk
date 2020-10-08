@@ -26,6 +26,8 @@ pub struct Network {
     pub ct_exponent: Option<i32>,
     pub ct_min_value: Option<u64>,
     pub spv_enabled: Option<bool>,
+    pub asset_registry_url: Option<String>,
+    pub asset_registry_onion_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,5 +81,12 @@ impl Network {
         let asset_id = self.policy_asset_id()?;
         let asset_id = issuance::AssetId::from_slice(&asset_id)?;
         Ok(confidential::Asset::Explicit(asset_id))
+    }
+
+    pub fn registry_base_url(&self) -> Result<String, Error> {
+        self.asset_registry_url
+            .as_ref()
+            .map(|s| s.to_string())
+            .ok_or_else(|| Error::Generic("asset regitry url not available".into()))
     }
 }
