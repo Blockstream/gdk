@@ -324,6 +324,16 @@ pub struct RefreshAssets {
     pub refresh: bool,
 }
 
+impl RefreshAssets {
+    pub fn new(icons: bool, assets: bool, refresh: bool) -> Self {
+        RefreshAssets {
+            icons,
+            assets,
+            refresh,
+        }
+    }
+}
+
 /// see comment for struct Settings
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Pricing {

@@ -1,4 +1,4 @@
-use gdk_common::model::SPVVerifyResult;
+use gdk_common::model::{RefreshAssets, SPVVerifyResult};
 use std::env;
 
 mod test_session;
@@ -84,9 +84,11 @@ fn liquid() {
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, "");
-    test_session.refresh_assets(true);
-    test_session.refresh_assets(true);
-    test_session.refresh_assets(false);
+
+    test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 200
+    test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 304
+    test_session.refresh_assets(&RefreshAssets::new(true, false, true)); // check partial request
+    test_session.refresh_assets(&RefreshAssets::new(false, true, false)); // check local read
 
     test_session.stop();
 }

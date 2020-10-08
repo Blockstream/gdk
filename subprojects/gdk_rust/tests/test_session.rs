@@ -860,24 +860,23 @@ impl TestSession {
         ));
     }
 
-    pub fn refresh_assets(&mut self, refresh: bool) {
-        let value = self.session.refresh_assets(&RefreshAssets {
-            icons: true,
-            assets: true,
-            refresh,
-        });
+    pub fn refresh_assets(&mut self, options: &RefreshAssets) {
+        let value = self.session.refresh_assets(options);
         assert!(value.is_ok());
         let value = value.unwrap();
-        assert!(value.get("assets").is_some());
-        assert!(value.get("icons").is_some());
-        assert!(
-            value
-                .get("assets")
-                .unwrap()
-                .get("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
-                .is_some(),
-            "policy asset is not present"
-        );
+        assert_eq!(options.assets, value.get("assets").is_some());
+        assert_eq!(options.icons, value.get("icons").is_some());
+
+        if options.assets {
+            assert!(
+                value
+                    .get("assets")
+                    .unwrap()
+                    .get("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
+                    .is_some(),
+                "policy asset is not present"
+            );
+        }
     }
 
     /// stop the bitcoin node in the test session

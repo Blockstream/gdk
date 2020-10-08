@@ -767,13 +767,17 @@ impl Session<Error> for ElectrumSession {
                 });
             }
 
-            if let Ok(Some(assets_recv)) = rx_assets.recv() {
-                assets = assets_recv.0;
-                assets_last_modified = assets_recv.1;
+            if details.assets {
+                if let Ok(Some(assets_recv)) = rx_assets.recv() {
+                    assets = assets_recv.0;
+                    assets_last_modified = assets_recv.1;
+                }
             }
-            if let Ok(Some(icons_recv)) = rx_icons.recv() {
-                icons = icons_recv.0;
-                icons_last_modified = icons_recv.1;
+            if details.icons {
+                if let Ok(Some(icons_recv)) = rx_icons.recv() {
+                    icons = icons_recv.0;
+                    icons_last_modified = icons_recv.1;
+                }
             }
 
             let mut store_write = self.get_wallet()?.store.write()?;
