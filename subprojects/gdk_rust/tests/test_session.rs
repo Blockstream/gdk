@@ -478,7 +478,7 @@ impl TestSession {
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
     /// node's addressees, if `assets` contains values, they are used as asset_tag cyclically
-    pub fn send_multi(&mut self, recipients: u8, amount: u64, assets: Vec<String>) {
+    pub fn send_multi(&mut self, recipients: u8, amount: u64, assets: &Vec<String>) {
         let init_sat = self.balance_gdk(None);
         let init_assets_sat = self.balance_gdk_all();
         let mut create_opt = CreateTransaction::default();
@@ -516,10 +516,10 @@ impl TestSession {
         } else {
             assert_eq!(init_sat - tx.fee, self.balance_gdk(None));
             for tag in assets {
-                let outputs_for_this_asset = tags.iter().filter(|t| t == &&tag).count() as u64;
+                let outputs_for_this_asset = tags.iter().filter(|t| t == &tag).count() as u64;
                 assert_eq!(
-                    *init_assets_sat.get(&tag).unwrap() as u64 - outputs_for_this_asset * amount,
-                    self.balance_gdk(Some(tag))
+                    *init_assets_sat.get(tag).unwrap() as u64 - outputs_for_this_asset * amount,
+                    self.balance_gdk(Some(tag.to_string()))
                 );
             }
         }
@@ -877,6 +877,18 @@ impl TestSession {
                 "policy asset is not present"
             );
         }
+    }
+
+    /// check `get_unspent_outputs` contains the `expected_amounts` for the given `asset`
+    pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) {
+        let outputs = self.session.get_unspent_outputs(&Value::Null).unwrap();
+        dbg!(&outputs);
+        let option = outputs.0.get(asset);
+        assert!(option.is_some());
+        expected_amounts.sort();
+        let mut amounts: Vec<u64> = option.unwrap().iter().map(|e| e.satoshi).collect();
+        amounts.sort();
+        assert_eq!(expected_amounts, amounts, "amounts in utxo doesn't match in number or amounts");
     }
 
     /// stop the bitcoin node in the test session

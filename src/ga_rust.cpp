@@ -334,7 +334,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_unspent_outputs(const nlohmann::json& details)
     {
-        throw std::runtime_error("get_unspent_outputs not implemented");
+        return call_session("get_unspent_outputs", details);
     }
 
     nlohmann::json ga_rust::get_unspent_outputs_for_private_key(

@@ -23,14 +23,24 @@ pub struct UTXOInfo {
     pub asset: String,
     pub value: u64,
     pub script: Script,
+    pub height: Option<u32>,
+    pub path: DerivationPath,
 }
 
 impl UTXOInfo {
-    pub fn new(asset: String, value: u64, script: Script) -> Self {
+    pub fn new(
+        asset: String,
+        value: u64,
+        script: Script,
+        height: Option<u32>,
+        path: DerivationPath,
+    ) -> Self {
         UTXOInfo {
             asset,
             value,
             script,
+            height,
+            path,
         }
     }
 }

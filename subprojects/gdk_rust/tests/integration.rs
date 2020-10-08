@@ -31,8 +31,8 @@ fn bitcoin() {
     test_session.mine_block();
     test_session.send_tx_same_script();
     test_session.fund(100_000_000, None);
-    test_session.send_multi(3, 100_000, vec![]);
-    test_session.send_multi(30, 100_000, vec![]);
+    test_session.send_multi(3, 100_000, &vec![]);
+    test_session.send_multi(30, 100_000, &vec![]);
     test_session.mine_block();
     test_session.send_fails();
     test_session.fees();
@@ -41,6 +41,7 @@ fn bitcoin() {
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
+    test_session.utxo("btc", vec![149741, 96697489]);
 
     test_session.stop();
 }
@@ -74,8 +75,8 @@ fn liquid() {
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();
     let assets = test_session.fund(100_000_000, Some(3));
-    test_session.send_multi(3, 100_000, vec![]);
-    test_session.send_multi(30, 100_000, assets);
+    test_session.send_multi(3, 100_000, &vec![]);
+    test_session.send_multi(30, 100_000, &assets);
     test_session.mine_block();
     test_session.send_fails();
     test_session.fees();
@@ -84,6 +85,7 @@ fn liquid() {
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, "");
+    test_session.utxo(&assets[0], vec![99000000]);
 
     test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 200
     test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 304

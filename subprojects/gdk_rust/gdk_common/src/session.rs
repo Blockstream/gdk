@@ -43,4 +43,5 @@ pub trait Session<E> {
     fn block_status(&self) -> Result<(u32, bitcoin::BlockHash), E>;
     fn tx_status(&self) -> Result<u64, E>;
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, E>;
+    fn get_unspent_outputs(&self, details: &Value) -> Result<GetUnspentOutputs, E>;
 }

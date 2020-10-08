@@ -416,6 +416,9 @@ where
             .refresh_assets(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
+        "get_unspent_outputs" => {
+            session.get_unspent_outputs(input).map(|v| json!(v)).map_err(Into::into)
+        }
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),

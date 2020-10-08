@@ -245,13 +245,13 @@ impl WalletCtx {
         Ok(txs)
     }
 
-    fn utxos(&self) -> Result<Utxos, Error> {
+    pub fn utxos(&self) -> Result<Utxos, Error> {
         info!("start utxos");
 
         let store_read = self.store.read()?;
         let mut utxos = vec![];
         let spent = store_read.spent()?;
-        for tx_id in store_read.cache.heights.keys() {
+        for (tx_id, height) in store_read.cache.heights.iter() {
             let tx = store_read
                 .cache
                 .all_txs
@@ -265,14 +265,24 @@ impl WalletCtx {
                     .enumerate()
                     .filter(|(_, output)| output.value > DUST_VALUE)
                     .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
-                    .filter(|(_, output)| {
-                        store_read.cache.paths.contains_key(&output.script_pubkey)
+                    .filter_map(|(vout, output)| {
+                        store_read
+                            .cache
+                            .paths
+                            .get(&output.script_pubkey)
+                            .map(|path| (vout, output, path))
                     })
-                    .filter(|(outpoint, _)| !spent.contains(&outpoint))
-                    .map(|(outpoint, output)| {
+                    .filter(|(outpoint, _, _)| !spent.contains(&outpoint))
+                    .map(|(outpoint, output, path)| {
                         (
                             outpoint,
-                            UTXOInfo::new("btc".to_string(), output.value, output.script_pubkey),
+                            UTXOInfo::new(
+                                "btc".to_string(),
+                                output.value,
+                                output.script_pubkey,
+                                height.clone(),
+                                path.clone(),
+                            ),
                         )
                     })
                     .collect(),
@@ -285,11 +295,15 @@ impl WalletCtx {
                         .map(|(vout, output)| {
                             (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
                         })
-                        .filter(|(_, output)| {
-                            store_read.cache.paths.contains_key(&output.script_pubkey)
+                        .filter_map(|(vout, output)| {
+                            store_read
+                                .cache
+                                .paths
+                                .get(&output.script_pubkey)
+                                .map(|path| (vout, output, path))
                         })
-                        .filter(|(outpoint, _)| !spent.contains(&outpoint))
-                        .filter_map(|(outpoint, output)| {
+                        .filter(|(outpoint, _, _)| !spent.contains(&outpoint))
+                        .filter_map(|(outpoint, output, path)| {
                             if let BEOutPoint::Elements(el_outpoint) = outpoint {
                                 if let Some(unblinded) =
                                     store_read.cache.unblinded.get(&el_outpoint)
@@ -305,6 +319,8 @@ impl WalletCtx {
                                             unblinded.asset_hex(),
                                             unblinded.value,
                                             output.script_pubkey,
+                                            height.clone(),
+                                            path.clone(),
                                         ),
                                     ));
                                 }

@@ -839,6 +839,17 @@ impl Session<Error> for ElectrumSession {
         info!("txs.len={} status={}", txs.len(), status);
         Ok(status)
     }
+
+    fn get_unspent_outputs(&self, _details: &Value) -> Result<GetUnspentOutputs, Error> {
+        let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
+
+        for (outpoint, info) in self.get_wallet()?.utxos()?.iter() {
+            let cur = UnspentOutput::new(outpoint, info);
+            (*unspent_outputs.entry(info.asset.clone()).or_insert(vec![])).push(cur);
+        }
+
+        Ok(GetUnspentOutputs(unspent_outputs))
+    }
 }
 
 fn call_icons(base_url: String, last_modified: String) -> Result<(Value, String), Error> {
