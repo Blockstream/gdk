@@ -1,5 +1,5 @@
 use crate::Error;
-use aes_gcm_siv::aead::{generic_array::GenericArray, Aead, NewAead};
+use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
 use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
@@ -129,7 +129,7 @@ impl RawStore {
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
     fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
-            warn!("Initialize cache as default {:?}", e);
+            warn!("Initialize store as default {:?}", e);
             Default::default()
         })
     }
@@ -158,9 +158,9 @@ fn load_decrypt<P: AsRef<Path>>(
     let nonce = GenericArray::from_slice(&nonce_bytes);
     let mut contents = vec![];
     file.read_to_end(&mut contents)?;
-    let decrypted = cipher.decrypt(nonce, contents.as_ref())?;
+    cipher.decrypt_in_place(nonce, b"", &mut contents)?;
     info!("loading {:?} took {}ms", &store_path, now.elapsed().as_millis());
-    Ok(decrypted)
+    Ok(contents)
 }
 
 impl StoreMeta {
@@ -207,19 +207,18 @@ impl StoreMeta {
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
         let nonce = GenericArray::from_slice(&nonce_bytes);
-        //TODO is possible to avoid allocs with writer?
-        let plaintext = serde_cbor::to_vec(value)?;
-        let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref())?;
+        let mut data = serde_cbor::to_vec(value)?;
+        self.cipher.encrypt_in_place(nonce, b"", &mut data)?;
         let mut store_path = self.path.clone();
         store_path.push(name);
         //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
         // in the front of the file
         let mut file = File::create(&store_path)?;
         file.write(&nonce_bytes)?;
-        file.write(&ciphertext)?;
+        file.write(&data)?;
         info!(
             "flushing {} bytes on {:?} took {}ms",
-            ciphertext.len() + 16,
+            data.len() + 16,
             &store_path,
             now.elapsed().as_millis()
         );
