@@ -157,7 +157,7 @@ namespace sdk {
                 set_error(details.second.empty() ? e.what() : details.second);
             }
         } catch (const std::exception& e) {
-            set_error(m_action + std::string("asf exception:") + e.what());
+            set_error(m_action + std::string(" exception:") + e.what());
         }
     }
 
