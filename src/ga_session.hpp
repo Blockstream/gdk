@@ -127,7 +127,7 @@ namespace sdk {
     };
 
     struct event_loop_controller {
-        explicit event_loop_controller(boost::asio::io_service& io);
+        explicit event_loop_controller(boost::asio::io_context& io);
 
         void reset();
 
