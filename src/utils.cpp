@@ -387,10 +387,12 @@ namespace sdk {
         std::vector<std::string> endpoint_parts;
         algo::split(endpoint_parts, endpoint, algo::is_any_of("/"));
         GDK_RUNTIME_ASSERT(!endpoint_parts.empty());
+        std::string target;
         if (endpoint_parts.size() > 1) {
-            retval["target"] = "/"
+            target = "/"
                 + algo::join(std::vector<std::string>(std::begin(endpoint_parts) + 1, std::end(endpoint_parts)), "/");
         }
+        retval["target"] = target;
         std::vector<std::string> host_parts;
         algo::split(host_parts, endpoint_parts[0], algo::is_any_of(":"));
         GDK_RUNTIME_ASSERT(!host_parts.empty());
