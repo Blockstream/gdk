@@ -78,7 +78,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                 { "default_peers", nlohmann::json::array() }, { "p2pkh_version", 111u }, { "p2sh_version", 196u },
                 { "bech32_prefix", "bcrt" }, { "mainnet", false }, { "liquid", false }, { "development", true },
                 { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } }, { "bip21_prefix", "bitcoin" },
-                { "electrum_url", "localhost:3000" }, { "spv_enabled", false }, { "tls", false },
+                { "electrum_url", "localhost:19002" }, { "spv_enabled", false }, { "tls", false },
                 { "server_type", "green" } })) },
 
     { "liquid",
