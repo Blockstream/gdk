@@ -38,7 +38,7 @@ namespace sdk {
 
             if (utxo.find("user_path") == utxo.end()) {
                 // Populate the full user path for h/w signing
-                utxo["user_path"] = ga_user_pubkeys::get_full_path(subaccount, pointer);
+                utxo["user_path"] = session.get_subaccount_full_path(subaccount, pointer);
             }
 
             if (utxo.find("service_xpub") == utxo.end()) {
@@ -847,7 +847,7 @@ namespace sdk {
                 tx_set_input_script(
                     tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), ec_sig_to_der(user_sig, true)));
             } else {
-                const auto path = ga_user_pubkeys::get_full_path(subaccount, pointer);
+                const auto path = session.get_subaccount_full_path(subaccount, pointer);
                 const auto user_sig = session.sign_hash(path, tx_hash);
 
                 if (is_segwit_script_type(type)) {

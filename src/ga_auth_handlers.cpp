@@ -350,7 +350,7 @@ namespace sdk {
                 // Ask the caller for the xpubs for each subaccount
                 std::vector<nlohmann::json> paths;
                 for (const auto sa : m_session.get_subaccounts()) {
-                    paths.emplace_back(ga_user_pubkeys::get_subaccount_path(sa["pointer"]));
+                    paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
                 }
                 set_data("get_xpubs");
                 m_twofactor_data["paths"] = paths;
@@ -450,7 +450,7 @@ namespace sdk {
                 m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
 
                 std::vector<nlohmann::json> paths;
-                paths.emplace_back(ga_user_pubkeys::get_subaccount_path(m_subaccount));
+                paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
                 m_twofactor_data["paths"] = paths;
             } catch (const std::exception& e) {
                 set_error(e.what());

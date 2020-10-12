@@ -90,6 +90,27 @@ namespace sdk {
     };
 
     //
+    // Base class for a users pubkeys
+    //
+    class user_pubkeys : public detail::xpub_hdkeys_base {
+    public:
+        using detail::xpub_hdkeys_base::xpub_hdkeys_base;
+
+        // Get the path to a subaccount parent
+        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const = 0;
+
+        // Get the full path to a key in a subaccount
+        virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) const = 0;
+
+        virtual bool have_subaccount(uint32_t subaccount) = 0;
+
+        virtual void add_subaccount(uint32_t subaccount, const xpub_t& xpub) = 0;
+        virtual void remove_subaccount(uint32_t subaccount) = 0;
+
+        virtual xpub_hdkey get_subaccount(uint32_t subaccount) override = 0;
+    };
+
+    //
     // Derives GA user public keys for the given network:
     // Main account:
     //     m/1/pointer
@@ -99,7 +120,7 @@ namespace sdk {
     // passing the xpub of the m/3'/subaccount' key before calling derive()
     // on a subaccount.
     //
-    class ga_user_pubkeys final : public detail::xpub_hdkeys_base {
+    class ga_user_pubkeys final : public user_pubkeys {
     public:
         explicit ga_user_pubkeys(const network_parameters& net_params);
         ga_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub);
@@ -110,17 +131,26 @@ namespace sdk {
         ga_user_pubkeys& operator=(ga_user_pubkeys&&) = default;
         ~ga_user_pubkeys() override = default;
 
+        // Note: The 2 static implementations below are used for GA watch only
+        // logins where the users xpubs aren't (yet) available.
+
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
-        static std::vector<uint32_t> get_subaccount_path(uint32_t subaccount);
+        static std::vector<uint32_t> get_ga_subaccount_root_path(uint32_t subaccount);
+        // Get the full path to a key in a subaccount
+        static std::vector<uint32_t> get_ga_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
+
+        // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
+        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
 
         // Get the full path to a key in a subaccount
-        static std::vector<uint32_t> get_full_path(uint32_t subaccount, uint32_t pointer);
+        virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) const override;
 
-        bool have_subaccount(uint32_t subaccount);
+        virtual bool have_subaccount(uint32_t subaccount) override;
 
-        void add_subaccount(uint32_t subaccount, const xpub_t& xpub);
+        virtual void add_subaccount(uint32_t subaccount, const xpub_t& xpub) override;
+        virtual void remove_subaccount(uint32_t subaccount) override;
 
-        xpub_hdkey get_subaccount(uint32_t subaccount) override;
+        virtual xpub_hdkey get_subaccount(uint32_t subaccount) override;
     };
 
     //

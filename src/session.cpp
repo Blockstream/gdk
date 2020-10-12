@@ -394,6 +394,22 @@ namespace sdk {
         });
     }
 
+    std::vector<uint32_t> session::get_subaccount_root_path(uint32_t subaccount)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->get_subaccount_root_path(subaccount);
+        });
+    }
+
+    std::vector<uint32_t> session::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->get_subaccount_full_path(subaccount, pointer);
+        });
+    }
+
     uint32_t session::get_next_subaccount()
     {
         return exception_wrapper([&] {

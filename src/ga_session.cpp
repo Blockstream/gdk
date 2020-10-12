@@ -3235,7 +3235,7 @@ namespace sdk {
     }
 
     // Post-login idempotent
-    ga_user_pubkeys& ga_session::get_user_pubkeys()
+    user_pubkeys& ga_session::get_user_pubkeys()
     {
         GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
         return *m_user_pubkeys;
@@ -3246,6 +3246,24 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
         return *m_recovery_pubkeys;
+    }
+
+    std::vector<uint32_t> ga_session::get_subaccount_root_path(uint32_t subaccount)
+    {
+        if (m_user_pubkeys) {
+            locker_t locker(m_mutex);
+            return m_user_pubkeys->get_subaccount_root_path(subaccount);
+        }
+        return ga_user_pubkeys::get_ga_subaccount_root_path(subaccount);
+    }
+
+    std::vector<uint32_t> ga_session::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
+    {
+        if (m_user_pubkeys) {
+            locker_t locker(m_mutex);
+            return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer);
+        }
+        return ga_user_pubkeys::get_ga_subaccount_full_path(subaccount, pointer);
     }
 
     bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)

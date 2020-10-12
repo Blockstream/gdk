@@ -91,17 +91,17 @@ namespace sdk {
     }
 
     ga_user_pubkeys::ga_user_pubkeys(const network_parameters& net_params)
-        : detail::xpub_hdkeys_base(net_params)
+        : user_pubkeys(net_params)
     {
     }
 
     ga_user_pubkeys::ga_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub)
-        : detail::xpub_hdkeys_base(net_params, xpub)
+        : user_pubkeys(net_params, xpub)
     {
         add_subaccount(0, m_xpub);
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_path(uint32_t subaccount)
+    std::vector<uint32_t> ga_user_pubkeys::get_ga_subaccount_root_path(uint32_t subaccount)
     {
         if (subaccount != 0u) {
             return std::vector<uint32_t>({ harden(3), harden(subaccount) });
@@ -109,12 +109,22 @@ namespace sdk {
         return std::vector<uint32_t>();
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_full_path(uint32_t subaccount, uint32_t pointer)
+    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    {
+        return get_ga_subaccount_root_path(subaccount); // Defer to static impl
+    }
+
+    std::vector<uint32_t> ga_user_pubkeys::get_ga_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
     {
         if (subaccount != 0u) {
             return std::vector<uint32_t>({ harden(3), harden(subaccount), 1, pointer });
         }
         return std::vector<uint32_t>({ 1, pointer });
+    }
+
+    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) const
+    {
+        return get_ga_subaccount_full_path(subaccount, pointer); // Defer to static impl
     }
 
     bool ga_user_pubkeys::have_subaccount(uint32_t subaccount)
@@ -126,6 +136,13 @@ namespace sdk {
     {
         std::array<uint32_t, 1> path{ { 1 } };
         m_subaccounts.emplace(subaccount, xpub_hdkey(m_is_main_net, xpub, path));
+    }
+
+    void ga_user_pubkeys::remove_subaccount(uint32_t subaccount)
+    {
+        // Removing subaccounts is not supported for Green multisig wallets
+        (void)subaccount;
+        GDK_RUNTIME_ASSERT(false);
     }
 
     xpub_hdkey ga_user_pubkeys::get_subaccount(uint32_t subaccount)

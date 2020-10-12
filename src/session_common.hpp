@@ -20,8 +20,9 @@ namespace sdk {
     class ga_pubkeys;
     class ga_user_pubkeys;
     class network_control_context;
-    class signer;
     using ping_fail_t = std::function<void()>;
+    class signer;
+    class user_pubkeys;
 #ifdef BUILD_GDK_RUST
     class ga_rust;
 #endif
@@ -84,6 +85,8 @@ namespace sdk {
         virtual nlohmann::json get_subaccounts() = 0;
         virtual nlohmann::json get_subaccount(uint32_t subaccount) = 0;
         virtual void rename_subaccount(uint32_t subaccount, const std::string& new_name) = 0;
+        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) = 0;
+        virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) = 0;
 
         virtual nlohmann::json get_balance(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_available_currencies() const = 0;
@@ -192,7 +195,7 @@ namespace sdk {
         virtual const network_parameters& get_network_parameters() const = 0;
         virtual signer& get_signer() = 0;
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
-        virtual ga_user_pubkeys& get_user_pubkeys() = 0;
+        virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
     };
 

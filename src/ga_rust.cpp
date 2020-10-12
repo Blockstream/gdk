@@ -275,6 +275,16 @@ namespace sdk {
         throw std::runtime_error("rename_subaccount not implemented");
     }
 
+    std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
+    {
+        throw std::runtime_error("get_subaccount_root_path not implemented");
+    }
+
+    std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
+    {
+        throw std::runtime_error("get_subaccount_full_path not implemented");
+    }
+
     nlohmann::json ga_rust::get_balance(const nlohmann::json& details) { return call_session("get_balance", details); }
 
     nlohmann::json ga_rust::get_available_currencies() const
@@ -505,7 +515,7 @@ namespace sdk {
 
     signer& ga_rust::get_signer() { throw std::runtime_error("get_signer not implemented"); }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
-    ga_user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
+    user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rust::get_recovery_pubkeys()
     {
         throw std::runtime_error("get_recovery_pubkeys not implemented");

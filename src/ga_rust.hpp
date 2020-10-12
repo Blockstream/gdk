@@ -100,6 +100,8 @@ namespace sdk {
         nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
+        std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
+        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
 
         nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
@@ -184,7 +186,7 @@ namespace sdk {
         const network_parameters& get_network_parameters() const;
         signer& get_signer();
         ga_pubkeys& get_ga_pubkeys();
-        ga_user_pubkeys& get_user_pubkeys();
+        user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
 
         void set_local_encryption_key(byte_span_t key);

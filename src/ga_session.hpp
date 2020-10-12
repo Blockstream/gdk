@@ -26,10 +26,6 @@ namespace ga {
 namespace sdk {
     enum class logging_levels : uint32_t;
 
-    class ga_pubkeys;
-    class ga_user_pubkeys;
-    class signer;
-
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
     struct tor_controller;
@@ -297,9 +293,11 @@ namespace sdk {
         signer& get_signer() GDK_REQUIRES(m_mutex);
         const signer& get_signer() const GDK_REQUIRES(m_mutex);
         ga_pubkeys& get_ga_pubkeys() GDK_REQUIRES(m_mutex);
-        ga_user_pubkeys& get_user_pubkeys() GDK_REQUIRES(m_mutex);
+        user_pubkeys& get_user_pubkeys() GDK_REQUIRES(m_mutex);
         ga_user_pubkeys& get_recovery_pubkeys() GDK_REQUIRES(m_mutex);
         bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
+        std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
+        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
         std::string get_service_xpub(uint32_t subaccount);
         std::string get_recovery_xpub(uint32_t subaccount);
         bool supports_low_r() const;
@@ -509,7 +507,7 @@ namespace sdk {
 
         std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);
-        std::unique_ptr<ga_user_pubkeys> m_user_pubkeys GDK_PT_GUARDED_BY(m_mutex);
+        std::unique_ptr<user_pubkeys> m_user_pubkeys GDK_PT_GUARDED_BY(m_mutex);
         std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys GDK_PT_GUARDED_BY(m_mutex);
         uint32_t m_next_subaccount GDK_GUARDED_BY(m_mutex);
         std::vector<uint32_t> m_fee_estimates GDK_GUARDED_BY(m_mutex);
