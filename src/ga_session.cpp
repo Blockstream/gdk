@@ -2644,15 +2644,7 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(!confidential_only || m_net_params.liquid());
 
-        nlohmann::json utxos;
-        wamp_call(
-            [&utxos](wamp_call_result result) {
-                const auto r = result.get();
-                if (r.number_of_arguments() != 0) {
-                    utxos = get_json_result(r);
-                }
-            },
-            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
+        nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs);
 
         const auto upcoming_nlocktime = get_upcoming_nlocktime();
         if (!upcoming_nlocktime.empty()) {
@@ -2703,6 +2695,21 @@ namespace sdk {
         });
 
         return asset_utxos;
+    }
+
+    // Idempotent
+    nlohmann::json ga_session::get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs)
+    {
+        nlohmann::json utxos;
+        wamp_call(
+            [&utxos](wamp_call_result result) {
+                const auto r = result.get();
+                if (r.number_of_arguments() != 0) {
+                    utxos = get_json_result(r);
+                }
+            },
+            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
+        return utxos;
     }
 
     // Idempotent
