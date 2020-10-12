@@ -1121,6 +1121,9 @@ namespace sdk {
                 // gauth doesn't have an init_enable step
                 const std::string data = json_get_value(m_details, "data");
                 m_session.init_enable_twofactor(m_method_to_update, data, m_twofactor_data);
+            } else {
+                const std::string proxy_code = m_session.auth_handler_request_proxy_code("gauth", m_twofactor_data);
+                m_twofactor_data = { { "method", "proxy" }, { "code", proxy_code } };
             }
             // Move to enable the 2fa method
             return on_init_done("enable_");
@@ -1130,27 +1133,7 @@ namespace sdk {
             // method using its code (which proves the user got a code from the
             // method being enabled)
             if (m_method_to_update == "gauth") {
-                try {
-                    m_session.enable_gauth(m_code, m_gauth_data);
-                } catch (const autobahn::call_error& e) {
-                    const auto details = get_error_details(e);
-                    if (is_twofactor_invalid_code_error(details.second)) {
-                        // The caller entered the wrong code
-                        // We can't know if they entered the wrong gauth code
-                        // or the wrong initial 2fa code to enable gauth (unless
-                        // they dont have any two factor methods enabled yet),
-                        // so if they have other 2fa, send them back to the
-                        // initial state
-                        const auto methods = m_session.get_enabled_twofactor_methods();
-                        if (!methods.empty()) {
-                            m_action = "enable_2fa";
-                            m_methods = methods;
-                            m_twofactor_data = { { "method", m_method_to_update } };
-                            return state_type::request_code;
-                        }
-                    }
-                    throw;
-                }
+                m_session.enable_gauth(m_code, m_gauth_data);
             } else {
                 m_session.enable_twofactor(m_method_to_update, m_code);
             }

@@ -230,6 +230,7 @@ namespace sdk {
         void disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data);
         void auth_handler_request_code(
             const std::string& method, const std::string& action, const nlohmann::json& twofactor_data);
+        std::string auth_handler_request_proxy_code(const std::string& action, const nlohmann::json& twofactor_data);
         nlohmann::json reset_twofactor(const std::string& email);
         nlohmann::json confirm_twofactor_reset(
             const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data);

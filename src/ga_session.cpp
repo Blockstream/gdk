@@ -3120,6 +3120,17 @@ namespace sdk {
     }
 
     // Idempotent
+    std::string ga_session::auth_handler_request_proxy_code(
+        const std::string& action, const nlohmann::json& twofactor_data)
+    {
+        const std::string api_method = "com.greenaddress.twofactor.request_proxy";
+        nlohmann::json state;
+        wamp_call([&state](wamp_call_result result) { state = get_json_result(result.get()); }, api_method, action,
+            as_messagepack(twofactor_data).get());
+        return state;
+    }
+
+    // Idempotent
     nlohmann::json ga_session::reset_twofactor(const std::string& email)
     {
         const std::string api_method = "com.greenaddress.twofactor.request_reset";

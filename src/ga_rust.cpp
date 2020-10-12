@@ -311,6 +311,12 @@ namespace sdk {
     {
     }
 
+    std::string ga_rust::auth_handler_request_proxy_code(
+        const std::string& action, const nlohmann::json& twofactor_data)
+    {
+        return std::string{};
+    }
+
     nlohmann::json ga_rust::reset_twofactor(const std::string& email) { return nlohmann::json{}; }
 
     nlohmann::json ga_rust::confirm_twofactor_reset(

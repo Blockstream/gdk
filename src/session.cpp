@@ -644,6 +644,15 @@ namespace sdk {
         });
     }
 
+    std::string session::auth_handler_request_proxy_code(
+        const std::string& action, const nlohmann::json& twofactor_data)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->auth_handler_request_proxy_code(action, twofactor_data);
+        });
+    }
+
     nlohmann::json session::reset_twofactor(const std::string& email)
     {
         return exception_wrapper([&] {

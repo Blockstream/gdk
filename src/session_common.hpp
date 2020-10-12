@@ -109,6 +109,9 @@ namespace sdk {
         virtual void auth_handler_request_code(
             const std::string& method, const std::string& action, const nlohmann::json& twofactor_data)
             = 0;
+        virtual std::string auth_handler_request_proxy_code(
+            const std::string& action, const nlohmann::json& twofactor_data)
+            = 0;
         virtual nlohmann::json reset_twofactor(const std::string& email) = 0;
         virtual nlohmann::json confirm_twofactor_reset(
             const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
