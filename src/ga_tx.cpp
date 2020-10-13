@@ -531,7 +531,11 @@ namespace sdk {
                     // Collect utxos in order until we have covered the amount to send
                     // FIXME: Better coin selection algorithms (esp. minimum size)
                     const auto asset_utxos_p = utxos.find(asset_tag);
-                    if (asset_utxos_p != utxos.end()) {
+                    if (asset_utxos_p == utxos.end()) {
+                        if (!is_rbf) {
+                            set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
+                        }
+                    } else {
                         for (auto& utxo : utxos.at(asset_tag)) {
                             if (send_all || total < required_total) {
                                 v = add_utxo(session, tx, utxo);
