@@ -167,7 +167,7 @@ namespace sdk {
         const size_t max_script_len = 13 + n_pubkeys * (ga_pub_key.size() + 1) + 4;
         std::vector<unsigned char> script(max_script_len);
 
-        if (type == script_type::p2sh_p2wsh_csv_fortified_out && !is_2of3) {
+        if (type == script_type::ga_p2sh_p2wsh_csv_fortified_out && !is_2of3) {
             // CSV 2of2, subtype is the number of CSV blocks
             const bool optimize = !net_params.liquid(); // Liquid uses old style CSV
             scriptpubkey_csv_2of2_then_1_from_bytes(keys, subtype, optimize, script);
@@ -187,7 +187,7 @@ namespace sdk {
 
         type = utxo.at("script_type");
         uint32_t subtype = 0;
-        if (type == script_type::p2sh_p2wsh_csv_fortified_out) {
+        if (type == script_type::ga_p2sh_p2wsh_csv_fortified_out) {
             // subtype indicates the number of csv blocks and must be one of the known bucket values
             subtype = utxo.at("subtype");
             const auto csv_buckets = net_params.csv_buckets();
