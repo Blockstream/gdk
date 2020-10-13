@@ -1,7 +1,7 @@
 use crate::be::{AssetId, BEOutPoint, BETransaction, UTXOInfo};
 use bitcoin::Network;
 use core::mem::transmute;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use bitcoin::hashes::core::fmt::Formatter;

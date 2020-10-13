@@ -1,4 +1,5 @@
-use bitcoin::{self, Amount, BlockHash};
+use bitcoin::hashes::hex::FromHex;
+use bitcoin::{self, Amount, BlockHash, Txid};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use chrono::Utc;
 use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
@@ -898,8 +899,15 @@ impl TestSession {
         self.node_process.wait().unwrap();
         self.electrs_process.kill().unwrap();
     }
-}
 
+    pub fn check_decryption(&mut self, tip: u32, txids: &[&str]) {
+        let cache = self.session.export_cache().unwrap();
+        assert_eq!(cache.tip.0, tip);
+        for txid in txids {
+            assert!(cache.all_txs.get(&Txid::from_hex(txid).unwrap()).is_some())
+        }
+    }
+}
 fn node_sendtoaddress(
     client: &Client,
     address: &str,

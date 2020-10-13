@@ -42,6 +42,7 @@ fn bitcoin() {
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
     test_session.utxo("btc", vec![149741, 96697489]);
+    test_session.check_decryption(103, &[&txid]);
 
     test_session.stop();
 }
@@ -65,6 +66,7 @@ fn liquid() {
     test_session.send_tx_to_unconf();
     test_session.get_subaccount();
     let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()));
+    test_session.check_decryption(101, &[&txid]);
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::InProgress);
     test_session.send_tx(&node_bech32_address, 10_000, None, None);
@@ -86,6 +88,7 @@ fn liquid() {
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, "");
     test_session.utxo(&assets[0], vec![99000000]);
+    // test_session.check_decryption(103, &[&txid]); // TODO restore after sorting out https://github.com/ElementsProject/rust-elements/pull/61
 
     test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 200
     test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 304

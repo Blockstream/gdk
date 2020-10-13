@@ -6,6 +6,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, BlockHash, Script, Transaction, Txid};
+use elements::encode::serialize;
 use elements::{AddressParams, OutPoint};
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions};
 use gdk_common::be::{ScriptBatch, Unblinded};
@@ -156,11 +157,14 @@ fn load_decrypt<P: AsRef<Path>>(
     let mut nonce_bytes = [0u8; 12];
     file.read_exact(&mut nonce_bytes)?;
     let nonce = GenericArray::from_slice(&nonce_bytes);
-    let mut contents = vec![];
-    file.read_to_end(&mut contents)?;
-    cipher.decrypt_in_place(nonce, b"", &mut contents)?;
+    let mut ciphertext = vec![];
+    file.read_to_end(&mut ciphertext)?;
+
+    cipher.decrypt_in_place(nonce, b"", &mut ciphertext)?;
+    let plaintext = ciphertext;
+
     info!("loading {:?} took {}ms", &store_path, now.elapsed().as_millis());
-    Ok(contents)
+    Ok(plaintext)
 }
 
 impl StoreMeta {
@@ -207,18 +211,21 @@ impl StoreMeta {
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
         let nonce = GenericArray::from_slice(&nonce_bytes);
-        let mut data = serde_cbor::to_vec(value)?;
-        self.cipher.encrypt_in_place(nonce, b"", &mut data)?;
+        let mut plaintext = serde_cbor::to_vec(value)?;
+
+        self.cipher.encrypt_in_place(nonce, b"", &mut plaintext)?;
+        let ciphertext = plaintext;
+
         let mut store_path = self.path.clone();
         store_path.push(name);
         //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
         // in the front of the file
         let mut file = File::create(&store_path)?;
         file.write(&nonce_bytes)?;
-        file.write(&data)?;
+        file.write(&ciphertext)?;
         info!(
             "flushing {} bytes on {:?} took {}ms",
-            data.len() + 16,
+            ciphertext.len() + 16,
             &store_path,
             now.elapsed().as_millis()
         );
@@ -416,6 +423,13 @@ impl StoreMeta {
 
     pub fn get_settings(&self) -> Option<Settings> {
         self.store.settings.clone()
+    }
+}
+
+impl StoreMeta {
+    pub fn export_cache(&self) -> Result<RawCache, Error> {
+        self.flush_cache()?;
+        RawCache::try_new(&self.path, &self.cipher)
     }
 }
 

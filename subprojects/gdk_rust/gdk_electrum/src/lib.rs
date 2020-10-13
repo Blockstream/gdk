@@ -852,6 +852,12 @@ impl Session<Error> for ElectrumSession {
     }
 }
 
+impl ElectrumSession {
+    pub fn export_cache(&self) -> Result<RawCache, Error> {
+        self.get_wallet()?.store.read()?.export_cache()
+    }
+}
+
 fn call_icons(base_url: String, last_modified: String) -> Result<(Value, String), Error> {
     // TODO gzip encoding
     let url = format!("{}/{}", base_url, "icons.json");

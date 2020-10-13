@@ -3,7 +3,7 @@ use crate::be::AssetId;
 use crate::error::Error;
 use elements::confidential::Asset;
 use elements::{confidential, issuance};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {
