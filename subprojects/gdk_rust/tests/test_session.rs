@@ -360,6 +360,7 @@ impl TestSession {
         satoshi: u64,
         asset: Option<String>,
         memo: Option<String>,
+        unspent_outputs: Option<GetUnspentOutputs>,
     ) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
@@ -375,6 +376,7 @@ impl TestSession {
             asset_tag: asset.clone().or(self.asset_tag()),
         });
         create_opt.memo = memo;
+        create_opt.utxos = unspent_outputs;
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         assert!(tx.user_signed, "tx is not marked as user_signed");
         match self.network.id() {
@@ -439,7 +441,7 @@ impl TestSession {
         self.session.disconnect().unwrap();
         self.session.connect(&Value::Null).unwrap();
         let address = self.node_getnewaddress(None);
-        let txid = self.send_tx(&address, 1000, None, None);
+        let txid = self.send_tx(&address, 1000, None, None, None);
         self.list_tx_contains(&txid, &[address], true);
     }
 
@@ -889,7 +891,7 @@ impl TestSession {
     }
 
     /// check `get_unspent_outputs` contains the `expected_amounts` for the given `asset`
-    pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) {
+    pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) -> GetUnspentOutputs {
         let outputs = self.session.get_unspent_outputs(&Value::Null).unwrap();
         dbg!(&outputs);
         let option = outputs.0.get(asset);
@@ -898,6 +900,8 @@ impl TestSession {
         let mut amounts: Vec<u64> = option.unwrap().iter().map(|e| e.satoshi).collect();
         amounts.sort();
         assert_eq!(expected_amounts, amounts, "amounts in utxo doesn't match in number or amounts");
+
+        outputs
     }
 
     /// stop the bitcoin node in the test session

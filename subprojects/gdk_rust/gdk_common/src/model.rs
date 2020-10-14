@@ -1,16 +1,19 @@
-use crate::be::{AssetId, BEOutPoint, BETransaction, UTXOInfo};
-use bitcoin::Network;
+use crate::be::{AssetId, BEOutPoint, BETransaction, UTXOInfo, Utxos};
+use bitcoin::hashes::hex::{FromHex, ToHex};
+use bitcoin::{Network, Script, Txid};
 use core::mem::transmute;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::error::Error;
 use bitcoin::hashes::core::fmt::Formatter;
-use bitcoin::util::bip32::ChildNumber;
+use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::Value;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fmt::Display;
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
@@ -116,6 +119,7 @@ pub struct CreateTransaction {
     #[serde(default)]
     pub previous_transaction: HashMap<String, Value>,
     pub memo: Option<String>,
+    pub utxos: Option<GetUnspentOutputs>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -416,6 +420,8 @@ pub struct UnspentOutput {
     pub satoshi: u64,
     pub subaccount: u32,
     pub txhash: String,
+    pub derivation_path: String,
+    pub scriptpubkey_hex: String,
 }
 
 impl UnspentOutput {
@@ -425,6 +431,8 @@ impl UnspentOutput {
         unspent_output.satoshi = info.value;
         unspent_output.txhash = format!("{}", outpoint.txid());
         unspent_output.pt_idx = outpoint.vout();
+        unspent_output.derivation_path = info.path.to_string();
+        unspent_output.scriptpubkey_hex = info.script.to_hex();
         let childs: Vec<ChildNumber> = info.path.clone().into();
         if let Some(ChildNumber::Normal {
             index,
@@ -434,6 +442,32 @@ impl UnspentOutput {
         }
         unspent_output.block_height = info.height.unwrap_or(0);
         unspent_output
+    }
+}
+
+impl TryFrom<&GetUnspentOutputs> for Utxos {
+    type Error = Error;
+
+    fn try_from(unspent_outputs: &GetUnspentOutputs) -> Result<Self, Error> {
+        let mut utxos = vec![];
+        for (asset, v) in unspent_outputs.0.iter() {
+            for e in v {
+                let txid = Txid::from_hex(&e.txhash).unwrap(); // FIXME
+                let outpoint = match &asset[..] {
+                    "btc" => BEOutPoint::new_bitcoin(txid, e.pt_idx),
+                    _ => BEOutPoint::new_elements(txid, e.pt_idx),
+                };
+                let script = Script::from(hex::decode(&e.scriptpubkey_hex)?);
+                let height = match e.block_height {
+                    0 => None,
+                    n => Some(n),
+                };
+                let path = DerivationPath::from_str(&e.derivation_path)?;
+                let utxo_info = UTXOInfo::new(asset.to_string(), e.satoshi, script, height, path);
+                utxos.push((outpoint, utxo_info));
+            }
+        }
+        Ok(utxos)
     }
 }
 

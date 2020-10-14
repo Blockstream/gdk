@@ -447,7 +447,10 @@ impl WalletCtx {
         let fee_rate = (request.fee_rate.unwrap_or(default_value) as f64) / 1000.0;
         info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
-        let utxos = self.utxos()?;
+        let utxos = match &request.utxos {
+            None => self.utxos()?,
+            Some(utxos) => utxos.try_into()?,
+        };
         info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
 
         if send_all {
