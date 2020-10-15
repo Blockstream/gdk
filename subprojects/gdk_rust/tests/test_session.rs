@@ -158,6 +158,7 @@ pub fn setup(
         par_network,
         "--cookie",
         &cookie_value,
+        "--jsonrpc-import",
     ];
     if is_debug {
         args.push("-v");
