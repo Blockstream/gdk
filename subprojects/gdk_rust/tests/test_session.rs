@@ -35,7 +35,7 @@ pub struct TestSession {
     node: Client,
     electrs: RawClient<ElectrumPlaintextStream>,
     electrs_header: RawClient<ElectrumPlaintextStream>,
-    session: ElectrumSession,
+    pub session: ElectrumSession,
     tx_status: u64,
     block_status: (u32, BlockHash),
     node_process: Child,
@@ -45,6 +45,8 @@ pub struct TestSession {
     db_root_dir: TempDir,
     network_id: NetworkId,
     network: Network,
+    pub p2p_port: u16,
+    pub electrs_url: String,
 }
 
 //TODO duplicated why I cannot import?
@@ -256,6 +258,8 @@ pub fn setup(
         db_root_dir,
         network_id,
         network,
+        p2p_port,
+        electrs_url,
     }
 }
 
@@ -274,7 +278,7 @@ impl TestSession {
     }
 
     /// wait gdk session tx status to change (max 1 min)
-    fn wait_block_status_change(&mut self) {
+    pub fn wait_block_status_change(&mut self) {
         for _ in 0..120 {
             if let Ok(new_status) = self.session.block_status() {
                 if self.block_status != new_status {
@@ -754,8 +758,18 @@ impl TestSession {
     fn node_issueasset(&self, satoshi: u64) -> String {
         node_issueasset(&self.node, satoshi)
     }
-    fn node_generate(&self, block_num: u32) {
+    pub fn node_generate(&self, block_num: u32) {
         node_generate(&self.node, block_num)
+    }
+    pub fn node_connect(&self, port: u16) {
+        //self.node.call::<Value>("clearbanned", &[]).unwrap();
+        self.node
+            .call::<Value>("addnode", &[format!("127.0.0.1:{}", port).into(), "add".into()])
+            .unwrap();
+    }
+    pub fn node_disconnect_all(&self) {
+        // if we disconnect without banning, the other peer will connect back to us
+        self.node.call::<Value>("setban", &["127.0.0.1".into(), "add".into()]).unwrap();
     }
 
     pub fn check_fee_rate(&self, req_rate: u64, tx_meta: &TransactionMeta, max_perc_diff: f64) {

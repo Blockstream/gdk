@@ -1,7 +1,13 @@
 use gdk_common::model::{RefreshAssets, SPVVerifyResult};
-use std::env;
+use gdk_common::session::Session;
+use gdk_electrum::headers::bitcoin::HeadersChain;
+use gdk_electrum::interface::ElectrumUrl;
+use gdk_electrum::spv;
+
+use std::{env, path};
 
 mod test_session;
+use test_session::TestSession;
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
@@ -118,4 +124,117 @@ fn liquid() {
     test_session.refresh_assets(&RefreshAssets::new(false, true, false)); // check local read
 
     test_session.stop();
+}
+
+#[test]
+fn spv_cross_validation() {
+    // Scenario 1: our local chain is a minority fork
+    {
+        // Setup two competing chain forks at height 126 and 1142
+        let (mut test_session1, mut test_session2) = setup_forking_sessions();
+        test_session1.node_generate(5); // session1 is on a minority fork
+        test_session2.node_generate(1020); // session2 is on the most-work chain
+        test_session1.wait_block_status_change();
+        test_session2.wait_block_status_change();
+        assert_eq!(test_session1.session.block_status().unwrap().0, 126);
+        assert_eq!(test_session2.session.block_status().unwrap().0, 1141);
+
+        // Grab direct access to session1's HeadersChain
+        let session1_chain = get_chain(&mut test_session1);
+        assert_eq!(session1_chain.height(), 126);
+
+        // Cross-validate session1's chain against session'2 electrum server
+        let session2_electrum_url = ElectrumUrl::Plaintext(test_session2.electrs_url.clone());
+        let result = spv::spv_cross_validate(
+            &session1_chain,
+            &session1_chain.tip().block_hash(),
+            &session2_electrum_url,
+        )
+        .unwrap();
+
+        let (common_ancestor, longest_height) = assert_get_fork(&result);
+        assert_eq!(common_ancestor, 121);
+        assert_eq!(longest_height, 1141);
+
+        test_session2.stop();
+    }
+
+    // Scenario 2: our local chain is lagging behind a longer chain
+    {
+        // Setup two nodes, make session2 ahead by 12 blocks
+        let (mut test_session1, mut test_session2) = setup_forking_sessions();
+        test_session2.node_generate(12);
+        test_session2.wait_block_status_change();
+
+        // Grab direct access to session1's HeadersChain
+        let session1_chain = get_chain(&mut test_session1);
+        assert_eq!(session1_chain.height(), 121);
+
+        // Cross-validate session1's chain against session'2 electrum server
+        let session2_electrum_url = ElectrumUrl::Plaintext(test_session2.electrs_url.clone());
+        let result = spv::spv_cross_validate(
+            &session1_chain,
+            &session1_chain.tip().block_hash(),
+            &session2_electrum_url,
+        )
+        .unwrap();
+
+        assert_eq!(assert_get_lagging(&result), 133);
+
+        test_session2.stop();
+    }
+}
+
+
+fn setup_forking_sessions() -> (TestSession, TestSession) {
+    let electrs_exec = env::var("ELECTRS_EXEC")
+        .expect("env ELECTRS_EXEC pointing to electrs executable is required");
+    let node_exec = env::var("BITCOIND_EXEC")
+        .expect("env BITCOIND_EXEC pointing to elementsd executable is required");
+    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
+    let debug = env::var("DEBUG").is_ok();
+
+    let mut test_session1 = test_session::setup(false, debug, &electrs_exec, &node_exec, 1);
+    let mut test_session2 = test_session::setup(false, debug, &electrs_exec, &node_exec, 2);
+
+    // Connect nodes and point both to the same tip
+    test_session2.node_connect(test_session1.p2p_port);
+    test_session1.node_generate(20);
+
+    test_session1.wait_block_status_change();
+    test_session2.wait_block_status_change();
+    assert_eq!(test_session2.session.block_status().unwrap().0, 121);
+    assert_eq!(test_session2.session.block_status().unwrap().0, 121);
+
+    // Disconnect so they don't learn about eachother blocks
+    test_session1.node_disconnect_all();
+
+    (test_session1, test_session2)
+}
+
+fn get_chain(test_session: &mut TestSession) -> HeadersChain {
+    test_session.stop();
+    let mut path: path::PathBuf = test_session.session.data_root.as_str().into();
+    path.push("headers_chain_regtest");
+    HeadersChain::new(path, bitcoin::Network::Regtest).unwrap()
+}
+
+fn assert_get_lagging(result: &spv::CrossValidationResult) -> u32 {
+    match result {
+        spv::CrossValidationResult::Lagging {
+            longest_height,
+            ..
+        } => *longest_height,
+        _ => panic!("invalid result, expected Lagging: {:?}", result),
+    }
+}
+fn assert_get_fork(result: &spv::CrossValidationResult) -> (u32, u32) {
+    match result {
+        spv::CrossValidationResult::MinorityFork {
+            common_ancestor,
+            longest_height,
+            ..
+        } => (*common_ancestor, *longest_height),
+        _ => panic!("invalid result, expected MinorityFork: {:?}", result),
+    }
 }
