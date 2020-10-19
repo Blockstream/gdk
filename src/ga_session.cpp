@@ -2640,11 +2640,12 @@ namespace sdk {
     {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
+        const bool all_coins = json_get_value(details, "all_coins", false);
         const bool confidential_only = details.value("confidential", false);
 
         GDK_RUNTIME_ASSERT(!confidential_only || m_net_params.liquid());
 
-        nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs);
+        nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs, all_coins);
 
         const auto upcoming_nlocktime = get_upcoming_nlocktime();
         if (!upcoming_nlocktime.empty()) {
@@ -2698,7 +2699,7 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs)
+    nlohmann::json ga_session::get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins)
     {
         nlohmann::json utxos;
         wamp_call(
@@ -2708,7 +2709,7 @@ namespace sdk {
                     utxos = get_json_result(r);
                 }
             },
-            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
+            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins);
         return utxos;
     }
 
