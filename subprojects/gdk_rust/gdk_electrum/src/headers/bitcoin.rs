@@ -1,11 +1,9 @@
 use crate::error::*;
 use crate::headers::compute_merkle_root;
-use bitcoin::blockdata::constants::{
-    genesis_block, max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
-};
+use crate::spv::calc_difficulty_retarget;
+use bitcoin::blockdata::constants::{genesis_block, DIFFCHANGE_INTERVAL};
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::hashes::hex::FromHex;
-use bitcoin::util::uint::Uint256;
 use bitcoin::{BlockHash, Txid};
 use bitcoin::{BlockHeader, Network};
 use electrum_client::GetMerkleRes;
@@ -105,14 +103,7 @@ impl HeadersChain {
             if new_height % DIFFCHANGE_INTERVAL == 0 {
                 self.flush(&mut serialized)?;
                 let first = self.get(new_height - DIFFCHANGE_INTERVAL)?;
-
-                let timespan = self.last.time - first.time;
-                let timespan = timespan.min(DIFFCHANGE_TIMESPAN * 4);
-                let timespan = timespan.max(DIFFCHANGE_TIMESPAN / 4);
-
-                let new_target = self.last.target() * Uint256::from_u64(timespan as u64).unwrap()
-                    / Uint256::from_u64(DIFFCHANGE_TIMESPAN as u64).unwrap();
-                let new_target = new_target.min(max_target(Network::Bitcoin));
+                let new_target = calc_difficulty_retarget(&first, &self.last);
 
                 if new_header.bits != BlockHeader::compact_target_from_u256(&new_target) {
                     return Err(Error::InvalidHeaders);

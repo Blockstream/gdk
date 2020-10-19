@@ -16,6 +16,7 @@ pub mod error;
 pub mod headers;
 pub mod interface;
 pub mod pin;
+pub mod spv;
 
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
