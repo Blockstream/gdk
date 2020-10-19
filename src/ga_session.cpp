@@ -2729,8 +2729,7 @@ namespace sdk {
             public_key_bytes = ec_public_key_decompress(public_key_bytes);
         }
         const auto script_bytes = scriptpubkey_p2pkh_from_hash160(hash160(public_key_bytes));
-        auto script_hash_bytes = sha256(script_bytes);
-        std::reverse(script_hash_bytes.begin(), script_hash_bytes.end());
+        const auto script_hash_hex = b2h_rev(sha256(script_bytes));
 
         nlohmann::json utxos;
         wamp_call(
@@ -2740,7 +2739,7 @@ namespace sdk {
                     utxos = get_json_result(r);
                 }
             },
-            "com.greenaddress.vault.get_utxos_for_script_hash", b2h(script_hash_bytes));
+            "com.greenaddress.vault.get_utxos_for_script_hash", script_hash_hex);
 
         for (auto& utxo : utxos) {
             utxo["private_key"] = b2h(private_key_bytes);
