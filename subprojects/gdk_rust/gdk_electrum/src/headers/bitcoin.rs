@@ -76,7 +76,7 @@ impl HeadersChain {
 
     /// to handle reorgs, it's necessary to remove some of the last headers
     pub fn remove(&mut self, headers_to_remove: u32) -> Result<(), Error> {
-        let headers_to_remove = headers_to_remove.min(self.height - 1);
+        let headers_to_remove = headers_to_remove.min(self.height);
         let new_height = self.height - headers_to_remove;
         let new_size = (new_height + 1) as u64 * 80;
         let file = OpenOptions::new().write(true).open(&self.path)?;
