@@ -15,7 +15,7 @@ fn bitcoin() {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session = test_session::setup(false, debug, electrs_exec, node_exec);
+    let mut test_session = test_session::setup(false, debug, &electrs_exec, &node_exec);
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -61,7 +61,7 @@ fn liquid() {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session = test_session::setup(true, debug, electrs_exec, node_exec);
+    let mut test_session = test_session::setup(true, debug, &electrs_exec, &node_exec);
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));

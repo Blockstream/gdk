@@ -69,8 +69,8 @@ static START: Once = Once::new();
 pub fn setup(
     is_liquid: bool,
     is_debug: bool,
-    electrs_exec: String,
-    node_exec: String,
+    electrs_exec: &str,
+    node_exec: &str,
 ) -> TestSession {
     START.call_once(|| {
         let filter = if is_debug {
