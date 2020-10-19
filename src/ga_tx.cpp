@@ -172,7 +172,7 @@ namespace sdk {
             }
             GDK_RUNTIME_ASSERT(subaccount_ok);
 
-            auto tx = tx_from_hex(prev_tx.at("transaction"));
+            const auto tx = tx_from_hex(prev_tx.at("transaction"));
             const auto min_fee_rate = session.get_min_fee_rate();
 
             // Store the old fee and fee rate to check if replacement
@@ -264,8 +264,7 @@ namespace sdk {
                         // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                         const uint32_t i = input.at("pt_idx");
                         GDK_RUNTIME_ASSERT(i < tx->num_inputs);
-                        std::reverse(&tx->inputs[i].txhash[0], &tx->inputs[i].txhash[0] + WALLY_TXHASH_LEN);
-                        utxo["txhash"] = b2h(tx->inputs[i].txhash);
+                        utxo["txhash"] = b2h_rev(tx->inputs[i].txhash);
                         utxo["pt_idx"] = tx->inputs[i].index;
                         calculate_input_subtype(utxo, tx, i);
                         used_utxos_map.emplace(i, utxo);
