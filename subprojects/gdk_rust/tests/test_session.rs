@@ -71,6 +71,7 @@ pub fn setup(
     is_debug: bool,
     electrs_exec: &str,
     node_exec: &str,
+    num_client: u16,
 ) -> TestSession {
     START.call_once(|| {
         let filter = if is_debug {
@@ -85,10 +86,11 @@ pub fn setup(
 
     let node_work_dir = TempDir::new("electrum_integration_tests").unwrap();
     let node_work_dir_str = format!("{}", &node_work_dir.path().display());
-    let sum_port = is_liquid as u16;
+    let sum_port = num_client * 10 + is_liquid as u16;
 
     let rpc_port = 55363u16 + sum_port;
     let p2p_port = 34975u16 + sum_port;
+    let monitor_port = 28901u16 + sum_port;
     let socket = format!("127.0.0.1:{}", rpc_port);
     let node_url = format!("http://{}", socket);
 
@@ -145,6 +147,7 @@ pub fn setup(
     let electrs_work_dir_str = format!("{}", &electrs_work_dir.path().display());
     let electrs_url = format!("127.0.0.1:{}", electrs_port);
     let daemon_url = format!("127.0.0.1:{}", rpc_port);
+    let monitor_url = format!("127.0.0.1:{}", monitor_port);
     let mut args: Vec<&str> = vec![
         "--db-dir",
         &electrs_work_dir_str,
@@ -154,6 +157,8 @@ pub fn setup(
         &electrs_url,
         "--daemon-rpc-addr",
         &daemon_url,
+        "--monitoring-addr",
+        &monitor_url,
         "--network",
         par_network,
         "--cookie",
