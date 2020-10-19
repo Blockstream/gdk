@@ -424,7 +424,7 @@ impl Session<Error> for ElectrumSession {
             let headers_url = self.url.clone();
             let (close_headers, r) = channel();
             self.closer.senders.push(close_headers);
-            let mut chunk_size = DIFFCHANGE_INTERVAL as usize;
+            let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
 
@@ -442,13 +442,14 @@ impl Session<Error> for ElectrumSession {
                             }
                             match headers.ask(chunk_size, &client) {
                                 Ok(headers_found) => {
-                                    if headers_found == 0 {
-                                        chunk_size = 1
+                                    if headers_found < chunk_size {
+                                        break;
                                     } else {
                                         info!("headers found: {}", headers_found);
                                     }
                                 }
                                 Err(Error::InvalidHeaders) => {
+                                    warn!("invalid headers");
                                     // this should handle reorgs and also broke IO writes update
                                     headers.store.write().unwrap().cache.txs_verif.clear();
                                     if let Err(e) = headers.remove(144) {
@@ -458,20 +459,9 @@ impl Session<Error> for ElectrumSession {
                                     // XXX clear affected blocks/txs more surgically?
                                 }
                                 Err(e) => {
-                                    // usual error is because I reached the tip, trying asking half
-                                    //TODO this is due to an esplora electrs bug, according to spec it should
-                                    // just return available headers, remove when fix is deployed and change previous
-                                    // break condition to headers_found < chunk_size
-                                    info!("error while asking headers {}", e);
-                                    if chunk_size > 1 {
-                                        chunk_size /= 2
-                                    } else {
-                                        break;
-                                    }
+                                    warn!("error while asking headers {}", e);
+                                    thread::sleep(Duration::from_millis(500));
                                 }
-                            }
-                            if chunk_size == 1 {
-                                break;
                             }
                         }
 
