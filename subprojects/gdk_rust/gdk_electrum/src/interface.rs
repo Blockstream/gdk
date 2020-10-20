@@ -2,7 +2,7 @@ use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hashes::{hex::FromHex, Hash};
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
-use bitcoin::util::address::Address;
+use bitcoin::util::address::{Address, Payload};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{BlockHash, PublicKey, SigHashType, Txid};
 use elements;
@@ -368,6 +368,16 @@ impl WalletCtx {
                                 && network == bitcoin::Network::Regtest)
                         {
                             continue;
+                        }
+                        if let Payload::WitnessProgram {
+                            version: v,
+                            program: _p,
+                        } = &address.payload
+                        {
+                            // Do not support segwit greater than v0
+                            if v.to_u8() > 0 {
+                                return Err(Error::InvalidAddress);
+                            }
                         }
                     }
                     return Err(Error::InvalidAddress);

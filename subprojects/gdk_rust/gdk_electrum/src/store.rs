@@ -6,7 +6,6 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, BlockHash, Script, Transaction, Txid};
-use elements::encode::serialize;
 use elements::{AddressParams, OutPoint};
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions};
 use gdk_common::be::{ScriptBatch, Unblinded};
