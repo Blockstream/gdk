@@ -617,7 +617,7 @@ impl TestSession {
             Err(Error::InvalidAddress)
         ));
 
-        create_opt.addressees[0].address = "38CMdevthTKYAtxaSkYYtcv5QgkHXdKKk5".to_string(); //
+        create_opt.addressees[0].address = "38CMdevthTKYAtxaSkYYtcv5QgkHXdKKk5".to_string();
         assert!(
             matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
             "address with different network should fail"
@@ -629,6 +629,14 @@ impl TestSession {
         assert!(
             matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
             "address with different network should fail"
+        );
+
+        create_opt.addressees[0].address =
+            "bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k7grplx"
+                .to_string(); // from bip173 test vectors
+        assert!(
+            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
+            "segwit v1 should fail"
         );
 
         let addr =
