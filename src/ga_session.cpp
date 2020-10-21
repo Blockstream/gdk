@@ -2702,14 +2702,16 @@ namespace sdk {
     nlohmann::json ga_session::get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins)
     {
         nlohmann::json utxos;
+        (void)all_coins;
         wamp_call(
+            // FIXME: Pass all_coins when Liquid and BTC backend are updated
             [&utxos](wamp_call_result result) {
                 const auto r = result.get();
                 if (r.number_of_arguments() != 0) {
                     utxos = get_json_result(r);
                 }
             },
-            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins);
+            "com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
         return utxos;
     }
 
