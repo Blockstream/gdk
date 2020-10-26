@@ -29,6 +29,7 @@ use crate::error::Error;
 use chrono::Utc;
 use gdk_electrum::{ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
+use std::str::FromStr;
 
 pub const GA_OK: i32 = 0;
 pub const GA_ERROR: i32 = -1;
@@ -136,9 +137,18 @@ pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const GdkSession,
     network: *const GDKRUST_json,
 ) -> i32 {
-    init_logging();
-
     let network = &safe_ref!(network).0;
+    let level = if network.is_object() {
+        match network.as_object().unwrap().get("log_level") {
+            Some(Value::String(val)) => LevelFilter::from_str(val).unwrap_or(LevelFilter::Info),
+            _ => LevelFilter::Info,
+        }
+    } else {
+        LevelFilter::Info
+    };
+    init_logging(level);
+    debug!("init logging");
+
     let sess = create_session(&network);
 
     if let Err(err) = sess {
@@ -151,18 +161,22 @@ pub extern "C" fn GDKRUST_create_session(
     ok!(ret, sess, GA_OK)
 }
 
-fn init_logging() {
+/// Initialize the logging framework.
+/// Note that once initialized it cannot be changed, only by reloading the library.
+fn init_logging(level: LevelFilter) {
     #[cfg(feature = "android_log")]
     INIT_LOGGER.call_once(|| {
-        android_logger::init_once(Config::default().with_min_level(Level::Debug).with_filter(
-            FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build(),
-        ))
+        android_logger::init_once(
+            Config::default().with_min_level(level.to_level().unwrap_or(Level::Error)).with_filter(
+                FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build(),
+            ),
+        )
     });
 
     #[cfg(not(feature = "android_log"))]
     INIT_LOGGER.call_once(|| {
         log::set_logger(&LOGGER)
-            .map(|()| log::set_max_level(LevelFilter::Info))
+            .map(|()| log::set_max_level(level))
             .expect("cannot initialize logging");
     });
 }
@@ -466,7 +480,7 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_spv_verify_tx(input: *const GDKRUST_json) -> i32 {
-    init_logging();
+    init_logging(LevelFilter::Info);
     info!("GDKRUST_spv_verify_tx");
     let input: &Value = &safe_ref!(input).0;
     let input: SPVVerifyTx = match serde_json::from_value(input.clone()) {

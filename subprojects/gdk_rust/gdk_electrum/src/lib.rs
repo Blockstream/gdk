@@ -987,7 +987,7 @@ struct DownloadTxResult {
 
 impl Syncer {
     pub fn sync(&self, client: &Client) -> Result<bool, Error> {
-        info!("start sync");
+        debug!("start sync");
         let start = Instant::now();
 
         let mut history_txs_id = HashSet::new();
