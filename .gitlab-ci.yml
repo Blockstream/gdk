@@ -323,7 +323,7 @@ package_release:
     - find gdk-android-jni -name "*.a" -type f -delete
     - find gdk-android-jni -name "*.syms" -type f -delete
     - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
-    - tar -czf gdk_dist/gdk-iphone.tar.gz gdk-iphone --remove-files
+    - tar -cjf gdk_dist/gdk-iphone.tar.bz2 gdk-iphone --remove-files
     - mv gdk-python/*whl gdk_dist/
     - cd gdk_dist
     - /opt/process_release
