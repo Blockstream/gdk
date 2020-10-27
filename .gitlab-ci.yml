@@ -57,6 +57,17 @@ stages:
     paths:
     - gdk-iphone
 
+.ios_sim_release:
+  extends: .osx_test
+  before_script:
+    - mkdir $CI_PROJECT_DIR/gdk-iphone-sim
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+    expire_in: 1 day
+    when: on_success
+    paths:
+    - gdk-iphone-sim
+
 test_format:
   tags:
     - ga
@@ -193,12 +204,12 @@ release_osx_ios:
     - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone --enable-rust
 
 release_osx_ios_sim:
-  extends: .ios_release
+  extends: .ios_sim_release
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone --enable-rust
+    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone-sim --enable-rust
 
 release_osx_ios_debug_norust:
   extends: .ios_release
@@ -210,13 +221,13 @@ release_osx_ios_debug_norust:
     - ./tools/build.sh --iphone static --lto=false --buildtype=debug --install $PWD/gdk-iphone
 
 release_osx_ios_sim_debug_norust:
-  extends: .ios_release
+  extends: .ios_sim_release
   when: manual
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone
+    - ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone-sim
 
 test_osx_clang_ndk_armeabi-v7a:
   only:
@@ -323,7 +334,8 @@ package_release:
     - find gdk-android-jni -name "*.a" -type f -delete
     - find gdk-android-jni -name "*.syms" -type f -delete
     - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
-    - tar -cjf gdk_dist/gdk-iphone.tar.bz2 gdk-iphone --remove-files
+    - tar -czf gdk_dist/gdk-iphone.tar.gz gdk-iphone --remove-files
+    - tar -czf gdk_dist/gdk-iphone-sim.tar.gz gdk-iphone-sim --remove-files
     - mv gdk-python/*whl gdk_dist/
     - cd gdk_dist
     - /opt/process_release
