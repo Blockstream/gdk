@@ -196,10 +196,8 @@ if swig.found()
     python_version = get_option('python-version')
     python_dep = dependency('', required : false)
     if python_version != ''
-      python_installation = pymod.find_installation('python' + python_version, required : false)
-      if python_installation.found()
-        python_dep = python_installation.dependency()
-      endif
+      python_installation = pymod.find_installation('python' + python_version, required : true)
+      python_dep = python_installation.dependency()
     endif
 
     if java_target == ''
