@@ -19,8 +19,6 @@ const MAX_CHUNK_SIZE: u32 = 200;
 const MAX_FORK_DEPTH: u32 = DIFFCHANGE_INTERVAL * 3;
 const SERVERS_PER_ROUND: usize = 3;
 
-// XXX how to alert when something's up
-
 #[derive(Debug)]
 pub struct SpvCrossValidator {
     servers: Vec<ElectrumUrl>,

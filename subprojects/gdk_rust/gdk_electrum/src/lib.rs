@@ -152,6 +152,12 @@ fn notify_fee(notif: NativeNotif, fees: &[FeeEstimate]) {
     let data = json!({"fees":fees,"event":"fees"});
     notify(notif, data);
 }
+fn notify_updated_txs(notif: NativeNotif) {
+    // This is used as a signal to trigger syncina via get_transactions, the transaction
+    // list conttained here is ignored and can be just a mock.
+    let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[0]}});
+    notify(notif, mockup_json);
+}
 
 fn determine_electrum_url(
     url: &Option<String>,
@@ -435,6 +441,7 @@ impl Session<Error> for ElectrumSession {
             let headers_url = self.url.clone();
             let (close_headers, r) = channel();
             self.closer.senders.push(close_headers);
+            let notify_headers = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
@@ -487,7 +494,10 @@ impl Session<Error> for ElectrumSession {
                         }
 
                         if round % CROSS_VALIDATION_RATE == 0 {
-                            headers.cross_validate();
+                            let status_changed = headers.cross_validate();
+                            if status_changed {
+                                notify_updated_txs(notify_headers.clone());
+                            }
                         }
 
                         round = round.wrapping_add(1);
@@ -564,8 +574,7 @@ impl Session<Error> for ElectrumSession {
                         Ok(new_txs) => {
                             if new_txs {
                                 info!("there are new transactions");
-                                let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[0]}});
-                                notify(notify_txs.clone(), mockup_json);
+                                notify_updated_txs(notify_txs.clone());
                             }
                         }
                         Err(e) => warn!("Error during sync, {:?}", e),
@@ -1004,15 +1013,26 @@ impl Headers {
         Ok(())
     }
 
-    pub fn cross_validate(&mut self) {
+    pub fn cross_validate(&mut self) -> bool {
         if let (Some(cross_validator), ChainOrVerifier::Chain(chain)) =
             (&mut self.cross_validator, &self.checker)
         {
+            let was_valid = {
+                let store = self.store.read().unwrap();
+                store.cache.cross_validation_result.as_ref().map(|r| r.is_valid())
+            };
+
             let result = cross_validator.validate(chain);
             debug!("cross validation result: {:?}", result);
 
+            let changed = was_valid.map_or(true, |was_valid| was_valid != result.is_valid());
+
             let mut store = self.store.write().unwrap();
             store.cache.cross_validation_result = Some(result);
+
+            changed
+        } else {
+            false
         }
     }
 }
