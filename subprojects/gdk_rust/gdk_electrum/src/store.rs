@@ -1,3 +1,4 @@
+use crate::spv::CrossValidationResult;
 use crate::Error;
 use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
@@ -71,6 +72,9 @@ pub struct RawCache {
 
     /// registry icons last modified, used when making the http request
     pub icons_last_modified: String,
+
+    /// the result of the last spv cross-validation execution
+    pub cross_validation_result: Option<CrossValidationResult>,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain

@@ -31,3 +31,6 @@ lazy_static = "1.4.0"
 # remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature
 bitcoin = { version = "0.25", features = [ "use-serde" ] }
 elements = { version = "0.13", features = ["serde-feature"] }
+
+[patch.crates-io]
+bitcoin = { git = "https://github.com/shesek/rust-bitcoin", branch = "0.25.2-uint-serde", features = [ "use-serde" ] }

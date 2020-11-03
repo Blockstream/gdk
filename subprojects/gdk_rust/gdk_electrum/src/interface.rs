@@ -10,6 +10,7 @@ use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt, SPVVerifyRe
 use hex;
 use log::{info, trace};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{AddressPointer, CreateTransaction, Settings, TransactionMeta};
@@ -41,7 +42,7 @@ pub struct WalletCtx {
     pub change_max_deriv: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum ElectrumUrl {
     Tls(String, bool), // the bool value indicates if the domain name should be validated
     Plaintext(String),

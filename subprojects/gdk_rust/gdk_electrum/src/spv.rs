@@ -1,5 +1,6 @@
 use log::warn;
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use bitcoin::blockdata::constants::{max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN};
@@ -18,7 +19,6 @@ const MAX_CHUNK_SIZE: u32 = 200;
 const MAX_FORK_DEPTH: u32 = DIFFCHANGE_INTERVAL * 3;
 const SERVERS_PER_ROUND: usize = 3;
 
-// XXX when to run - add to existing headers thread?
 // XXX how to alert when something's up
 
 #[derive(Debug)]
@@ -27,7 +27,7 @@ pub struct SpvCrossValidator {
     last_result: CrossValidationResult,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum CrossValidationResult {
     Valid,
 

@@ -52,6 +52,7 @@ use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
 use crate::pin::PinManager;
+use crate::spv::SpvCrossValidator;
 use aes::Aes256;
 use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use block_modes::block_padding::Pkcs7;
@@ -65,6 +66,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::sync::{mpsc, Arc, RwLock};
 use std::thread::JoinHandle;
+
+const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
@@ -82,6 +85,7 @@ pub struct Tipper {
 pub struct Headers {
     pub store: Store,
     pub checker: ChainOrVerifier,
+    pub cross_validator: Option<SpvCrossValidator>,
 }
 
 #[derive(Clone)]
@@ -420,9 +424,12 @@ impl Session<Error> for ElectrumSession {
                 }
             };
 
+            let cross_validator = SpvCrossValidator::from_network(&self.network)?;
+
             let mut headers = Headers {
                 store: store.clone(),
                 checker,
+                cross_validator,
             };
 
             let headers_url = self.url.clone();
@@ -431,6 +438,7 @@ impl Session<Error> for ElectrumSession {
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
+                let mut round = 0u8;
 
                 'outer: loop {
                     if wait_or_close(&r, sync_interval) {
@@ -477,6 +485,12 @@ impl Session<Error> for ElectrumSession {
                             }
                             Err(e) => warn!("error in getting proofs {:?}", e),
                         }
+
+                        if round % CROSS_VALIDATION_RATE == 0 {
+                            headers.cross_validate();
+                        }
+
+                        round = round.wrapping_add(1);
                     }
                 }
             });
@@ -988,6 +1002,18 @@ impl Headers {
             chain.remove(headers)?;
         }
         Ok(())
+    }
+
+    pub fn cross_validate(&mut self) {
+        if let (Some(cross_validator), ChainOrVerifier::Chain(chain)) =
+            (&mut self.cross_validator, &self.checker)
+        {
+            let result = cross_validator.validate(chain);
+            debug!("cross validation result: {:?}", result);
+
+            let mut store = self.store.write().unwrap();
+            store.cache.cross_validation_result = Some(result);
+        }
     }
 }
 
