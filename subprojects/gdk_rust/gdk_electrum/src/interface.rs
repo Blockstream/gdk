@@ -41,7 +41,7 @@ pub struct WalletCtx {
     pub change_max_deriv: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ElectrumUrl {
     Tls(String, bool), // the bool value indicates if the domain name should be validated
     Plaintext(String),

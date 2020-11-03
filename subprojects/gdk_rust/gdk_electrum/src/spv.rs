@@ -1,3 +1,5 @@
+use log::warn;
+use rand::seq::SliceRandom;
 use std::str::FromStr;
 
 use bitcoin::blockdata::constants::{max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN};
@@ -14,29 +16,36 @@ use crate::interface::ElectrumUrl;
 const INIT_CHUNK_SIZE: u32 = 5;
 const MAX_CHUNK_SIZE: u32 = 200;
 const MAX_FORK_DEPTH: u32 = DIFFCHANGE_INTERVAL * 3;
+const SERVERS_PER_ROUND: usize = 3;
 
 // XXX when to run - add to existing headers thread?
 // XXX how to alert when something's up
 
+#[derive(Debug)]
 pub struct SpvCrossValidator {
     servers: Vec<ElectrumUrl>,
+    last_result: CrossValidationResult,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum CrossValidationResult {
     Valid,
 
     // Our local chain is lagging behind a longer chain
     Lagging {
+        our_height: u32,
         longest_height: u32,
         work_diff: Uint256,
+        cross_server: ElectrumUrl,
     },
 
     // Our local chain is a lower-difficulty fork split off at `common_ancestor`
     MinorityFork {
         common_ancestor: u32,
         longest_height: u32,
+        longest_work: Uint256, // the total work in the longest chain *since the common ancestor*
         work_diff: Uint256,
+        cross_server: ElectrumUrl,
     },
 }
 
@@ -60,95 +69,67 @@ impl_error_variant!(crate::error::Error, CrossValidationError, GdkError);
 impl_error_variant!(electrum_client::Error, CrossValidationError, ElectrumError);
 
 impl SpvCrossValidator {
-    pub fn validate(
-        &mut self,
-        chain: &HeadersChain,
-    ) -> Result<CrossValidationResult, CrossValidationError> {
+    pub fn validate(&mut self, chain: &HeadersChain) -> CrossValidationResult {
+        // Pick some random servers to cross-validate against for this round
+        let mut round_servers = self.random_servers(SERVERS_PER_ROUND);
+
+        // Clear the last failing result if our chain extended sufficiently to obsolete it,
+        // but prioritize the server that reported it for an immediate re-check.
+        if !self.last_result.is_valid() && self.last_result.is_resolved(chain) {
+            round_servers.insert(0, self.last_result.server_origin().unwrap());
+            self.last_result = CrossValidationResult::Valid;
+        }
+
+        let mut last_result = self.last_result.clone();
         let local_tip_hash = chain.tip().block_hash();
-        let mut final_result = CrossValidationResult::Valid;
 
-        for server_url in &self.servers {
-            let curr_result = spv_cross_validate(chain, &local_tip_hash, server_url)?;
-
-            // Determine the most relevant/severe validation result to report back
-            final_result = match (final_result, &curr_result) {
-                // Anything takes priority over Valid
-                (CrossValidationResult::Valid, _) => curr_result,
-
-                // MinorityFork takes priority over Lagging
-                (
-                    CrossValidationResult::Lagging {
-                        ..
-                    },
-                    CrossValidationResult::MinorityFork {
-                        ..
-                    },
-                ) => curr_result,
-
-                // Prefer the Lagging result with the most extra work
-                (
-                    CrossValidationResult::Lagging {
-                        work_diff: p_work,
-                        ..
-                    },
-                    CrossValidationResult::Lagging {
-                        work_diff: r_work,
-                        ..
-                    },
-                ) if *r_work > p_work => curr_result,
-
-                // Prefer the MinorityFork result with the most extra work
-                (
-                    CrossValidationResult::MinorityFork {
-                        work_diff: p_work,
-                        ..
-                    },
-                    CrossValidationResult::MinorityFork {
-                        work_diff: r_work,
-                        ..
-                    },
-                ) if *r_work > p_work => curr_result,
-
-                // Otherwise, stick with what we have
-                (r, _) => r,
+        // Cross-validate against the secondary servers, keeping track of the most severe
+        // validation result seen so far
+        for server_url in &round_servers {
+            let server_result = match spv_cross_validate(chain, &local_tip_hash, server_url) {
+                Ok(r) => r,
+                Err(e) => {
+                    warn!("SPV cross validation via {:?} failed with: {:?}", server_url, e);
+                    continue;
+                }
             };
 
-            // XXX break early if the result is severe enough already?
+            last_result = last_result.merge(server_result);
         }
 
         // Give some grace for minor digressions from the longest chain
         // XXX determine exact logic
-        match final_result {
+        match last_result {
             CrossValidationResult::Lagging {
                 longest_height,
+                our_height,
                 ..
-            } if longest_height - chain.height() == 1 => {
+            } if longest_height - our_height == 1 => {
                 // Lagging behind the longest chain by 1 block
-                final_result = CrossValidationResult::Valid
-            }
-            CrossValidationResult::MinorityFork {
-                common_ancestor,
-                longest_height,
-                ..
-            } if common_ancestor == longest_height - 1 => {
-                // A shallow fork with a depth of 1 (two blocks competing at the tip)
-                // XXX this should never actually happen, because the two blocks at the tip should have the same difficulty
-                final_result = CrossValidationResult::Valid
+                last_result = CrossValidationResult::Valid;
             }
             _ => (),
         };
 
-        Ok(final_result)
+        self.last_result = last_result.clone();
+        last_result
     }
 
     pub fn from_network(network: &Network) -> Result<Option<Self>, Error> {
         Ok(if !network.liquid && network.spv_cross_validation.unwrap_or(false) {
             Some(SpvCrossValidator {
                 servers: get_network_servers(network)?,
+                last_result: CrossValidationResult::Valid,
             })
         } else {
             None
         })
+    }
+
+    fn random_servers(&self, num: usize) -> Vec<ElectrumUrl> {
+        let mut servers: Vec<_> = self.servers.iter().collect();
+        servers.shuffle(&mut rand::thread_rng());
+        servers.into_iter().take(num).cloned().collect()
     }
 }
 
@@ -182,8 +163,10 @@ pub fn spv_cross_validate(
             let fork = get_fork_branch(chain, &client, remote_tip_height, Some(chain.height()))?;
 
             return Ok(CrossValidationResult::Lagging {
+                our_height: chain.height(),
                 longest_height: fork.tip_height,
                 work_diff: fork.total_fork_work,
+                cross_server: server_url.clone(),
             });
         }
     }
@@ -201,8 +184,10 @@ pub fn spv_cross_validate(
     else {
         Ok(CrossValidationResult::MinorityFork {
             longest_height: fork.tip_height,
+            longest_work: fork.total_fork_work,
             common_ancestor: fork.common_ancestor,
             work_diff: fork.total_fork_work - our_work,
+            cross_server: server_url.clone(),
         })
     }
 }
@@ -351,8 +336,98 @@ pub fn calc_difficulty_retarget(first: &BlockHeader, last: &BlockHeader) -> Uint
     new_target.min(max_target(bitcoin::Network::Bitcoin))
 }
 
-fn parse_server_file(sl: &str) -> Vec<ElectrumUrl> {
-    sl.lines().map(FromStr::from_str).collect::<Result<_, _>>().unwrap()
+impl CrossValidationResult {
+    // Check whether MinorityFork/Lagging validation results are still in effect,
+    // based on the proof-of-work added to our local chain since the forking point
+    fn is_resolved(&self, chain: &HeadersChain) -> bool {
+        let local_work_since = |height| {
+            (height..=chain.height())
+                .fold(Uint256::zero(), |total, height| total + chain.get(height).unwrap().work())
+        };
+        match self {
+            CrossValidationResult::Lagging {
+                work_diff,
+                our_height,
+                ..
+            } => local_work_since(our_height + 1) >= *work_diff,
+
+            CrossValidationResult::MinorityFork {
+                longest_work,
+                common_ancestor,
+                ..
+            } => local_work_since(common_ancestor + 1) >= *longest_work,
+
+            CrossValidationResult::Valid => true,
+        }
+    }
+
+    // Merge the previous and current validation results, returning the most relevant/severe validation result
+    fn merge(self, new_result: Self) -> Self {
+        match (self, &new_result) {
+            // Anything takes priority over Valid
+            (CrossValidationResult::Valid, _) => new_result,
+
+            // MinorityFork takes priority over Lagging
+            (
+                CrossValidationResult::Lagging {
+                    ..
+                },
+                CrossValidationResult::MinorityFork {
+                    ..
+                },
+            ) => new_result,
+
+            // Prefer the Lagging result with the most extra work
+            (
+                CrossValidationResult::Lagging {
+                    work_diff: curr_work,
+                    ..
+                },
+                CrossValidationResult::Lagging {
+                    work_diff: new_work,
+                    ..
+                },
+            ) if *new_work > curr_work => new_result,
+
+            // Prefer the MinorityFork result with the most extra work
+            (
+                CrossValidationResult::MinorityFork {
+                    work_diff: curr_work,
+                    ..
+                },
+                CrossValidationResult::MinorityFork {
+                    work_diff: new_work,
+                    ..
+                },
+            ) if *new_work > curr_work => new_result,
+
+            // Otherwise, stick with what we have
+            (curr, _) => curr,
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        match self {
+            CrossValidationResult::Valid => true,
+            _ => false,
+        }
+    }
+
+    // Return the server that originated the validation result
+    fn server_origin(&self) -> Option<ElectrumUrl> {
+        match self {
+            CrossValidationResult::Lagging {
+                cross_server,
+                ..
+            }
+            | CrossValidationResult::MinorityFork {
+                cross_server,
+                ..
+            } => Some(cross_server.clone()),
+
+            CrossValidationResult::Valid => None,
+        }
+    }
 }
 
 lazy_static! {
