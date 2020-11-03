@@ -966,6 +966,7 @@ mod test {
     use bitcoin::consensus::deserialize;
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
+    use bitcoin::util::bip143::SighashComponents;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::util::key::PrivateKey;
     use bitcoin::util::key::PublicKey;
@@ -1039,7 +1040,7 @@ mod test {
         let public_key_bytes = public_key.to_bytes();
         let public_key_str = format!("{}", hex::encode(&public_key_bytes));
 
-        let address = Address::p2shwpkh(&public_key, Network::Testnet);
+        let address = Address::p2shwpkh(&public_key, Network::Testnet).unwrap();
         assert_eq!(format!("{}", address), "2NCEMwNagVAbbQWNfu7M7DNGxkknVTzhooC");
 
         assert_eq!(

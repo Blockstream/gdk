@@ -197,7 +197,7 @@ mod test {
     use bitcoin::consensus::encode::Decodable;
     use bitcoin::hash_types::BlockHash;
     use bitcoin::hashes::hex::FromHex;
-    use bitcoin::{BitcoinHash, BlockHeader, Network};
+    use bitcoin::{BlockHeader, Network};
     use electrum_client::GetMerkleRes;
     use std::io::Cursor;
     use tempdir::TempDir;
@@ -224,7 +224,7 @@ mod test {
         assert_eq!(
             BlockHash::from_hex("000000007bc154e0fa7ea32218a72fe2c1bb9f86cf8c9ebf9a715ed27fdb229a")
                 .unwrap(),
-            chain.get(100).unwrap().bitcoin_hash()
+            chain.get(100).unwrap().block_hash()
         );
 
         // first non-coinbase tx
@@ -296,12 +296,12 @@ mod test {
         assert_eq!(
             BlockHash::from_hex("00000000e85458c1467176b04a65d5efaccfecaaab717b17a587b4069276e143")
                 .unwrap(),
-            chain.get(198).unwrap().bitcoin_hash()
+            chain.get(198).unwrap().block_hash()
         );
         assert_eq!(
             BlockHash::from_hex("00000000b7691ccc084542565697eca256e56bb7f67e560b48789db27f0468eb")
                 .unwrap(),
-            chain.get(199).unwrap().bitcoin_hash()
+            chain.get(199).unwrap().block_hash()
         );
         assert!(chain.get(200).is_err());
     }

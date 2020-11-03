@@ -452,11 +452,11 @@ mod tests {
                 .unwrap();
 
         let id = NetworkId::Bitcoin(Network::Testnet);
-        let mut store = StoreMeta::new(&dir, xpub, None, id);
-        store.heights.insert(txid, Some(1));
+        let mut store = StoreMeta::new(&dir, xpub, None, id).unwrap();
+        store.cache.heights.insert(txid, Some(1));
         drop(store);
 
-        let store = StoreMeta::new(&dir, xpub, None, id);
-        assert_eq!(store.heights.get(&txid), Some(Some(&1)));
+        let store = StoreMeta::new(&dir, xpub, None, id).unwrap();
+        assert_eq!(store.cache.heights.get(&txid), Some(&Some(1)));
     }
 }
