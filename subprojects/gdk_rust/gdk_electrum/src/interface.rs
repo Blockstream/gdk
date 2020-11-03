@@ -229,12 +229,7 @@ impl WalletCtx {
             };
 
             let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
-                store_read
-                    .cache
-                    .txs_verif
-                    .get(*tx_id)
-                    .unwrap_or(&SPVVerifyResult::InProgress)
-                    .clone()
+                store_read.spv_verification_status(tx_id)
             } else {
                 SPVVerifyResult::Disabled
             };

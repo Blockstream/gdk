@@ -427,6 +427,13 @@ impl StoreMeta {
     pub fn get_settings(&self) -> Option<Settings> {
         self.store.settings.clone()
     }
+
+    pub fn spv_verification_status(&self, txid: &Txid) -> SPVVerifyResult {
+        match &self.cache.cross_validation_result {
+            Some(cv_result) if !cv_result.is_valid() => SPVVerifyResult::NotVerified,
+            _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyResult::InProgress),
+        }
+    }
 }
 
 impl StoreMeta {
