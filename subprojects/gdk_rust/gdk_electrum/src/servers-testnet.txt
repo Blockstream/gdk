@@ -1,0 +1,11 @@
+bitcoin.cluelessperson.com:51002:s
+blockstream.info:993:s
+electrum.blockstream.info:60002:s
+explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143:t
+hsmithsxurybd7uh.onion:53012:s
+testnet1.bauerj.eu:50002:s
+testnet.aranguren.org:51002:s
+testnet.hsmiths.com:53012:s
+testnet.qtornado.com:51002:s
+tn.not.fyi:55002:s
+wgzwu3vg3i54wayx.onion:51002:s

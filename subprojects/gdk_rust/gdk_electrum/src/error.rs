@@ -20,6 +20,7 @@ pub enum Error {
     SendAll,
     PinError,
     AddrParse(String),
+    InvalidElectrumUrl(String),
     Bitcoin(bitcoin::util::Error),
     BitcoinHashes(bitcoin::hashes::error::Error),
     BitcoinBIP32Error(bitcoin::util::bip32::Error),
@@ -66,6 +67,7 @@ impl Display for Error {
             Error::Encryption(ref send_err) => write!(f, "encryption_err: {:?}", send_err),
             Error::Secp256k1(ref err) => write!(f, "Secp256k1_err: {:?}", err),
             Error::PinError => write!(f, "PinError"),
+            Error::InvalidElectrumUrl(url) => write!(f, "Invalid Electrum URL: {}", url),
         }
     }
 }

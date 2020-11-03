@@ -62,6 +62,27 @@ impl ElectrumUrl {
     }
 }
 
+// Parse the standard <host>:<port>:<t|s> string format,
+// with an optional non-standard `:noverify` suffix to skip tls validation
+impl FromStr for ElectrumUrl {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Error> {
+        let mk_err = || Error::InvalidElectrumUrl(s.into());
+        let mut parts = s.split(":");
+        let hostname = parts.next().ok_or_else(mk_err)?;
+        let port: u16 = parts.next().ok_or_else(mk_err)?.parse().map_err(|_| mk_err())?;
+        let proto = parts.next().unwrap_or("t");
+        let validate_tls = parts.next() != Some("noverify");
+
+        let url = format!("{}:{}", hostname, port);
+        Ok(match proto {
+            "s" => ElectrumUrl::Tls(url, validate_tls),
+            "t" => ElectrumUrl::Plaintext(url),
+            _ => return Err(mk_err()),
+        })
+    }
+}
+
 impl WalletCtx {
     pub fn new(
         store: Store,

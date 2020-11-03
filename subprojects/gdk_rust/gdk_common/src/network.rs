@@ -26,6 +26,8 @@ pub struct Network {
     pub ct_exponent: Option<i32>,
     pub ct_min_value: Option<u64>,
     pub spv_enabled: Option<bool>,
+    pub spv_cross_validation: Option<bool>,
+    pub spv_cross_validation_servers: Option<Vec<String>>,
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
 }

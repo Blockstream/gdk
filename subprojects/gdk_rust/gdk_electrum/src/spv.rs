@@ -1,8 +1,13 @@
+use std::str::FromStr;
+
 use bitcoin::blockdata::constants::{max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN};
+use bitcoin::BlockHash;
 use bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
-use bitcoin::{BlockHash, Network};
 use electrum_client::{Client as ElectrumClient, ElectrumApi};
 
+use gdk_common::network::Network;
+
+use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::interface::ElectrumUrl;
 
@@ -10,7 +15,6 @@ const INIT_CHUNK_SIZE: u32 = 5;
 const MAX_CHUNK_SIZE: u32 = 200;
 const MAX_FORK_DEPTH: u32 = DIFFCHANGE_INTERVAL * 3;
 
-// XXX which servers - hardcoded list, from electrum github, from server peer discovery?
 // XXX when to run - add to existing headers thread?
 // XXX how to alert when something's up
 
@@ -135,6 +139,16 @@ impl SpvCrossValidator {
         };
 
         Ok(final_result)
+    }
+
+    pub fn from_network(network: &Network) -> Result<Option<Self>, Error> {
+        Ok(if !network.liquid && network.spv_cross_validation.unwrap_or(false) {
+            Some(SpvCrossValidator {
+                servers: get_network_servers(network)?,
+            })
+        } else {
+            None
+        })
     }
 }
 
@@ -334,5 +348,34 @@ pub fn calc_difficulty_retarget(first: &BlockHeader, last: &BlockHeader) -> Uint
     let new_target = last.target() * Uint256::from_u64(timespan as u64).unwrap()
         / Uint256::from_u64(DIFFCHANGE_TIMESPAN as u64).unwrap();
 
-    new_target.min(max_target(Network::Bitcoin))
+    new_target.min(max_target(bitcoin::Network::Bitcoin))
+}
+
+fn parse_server_file(sl: &str) -> Vec<ElectrumUrl> {
+    sl.lines().map(FromStr::from_str).collect::<Result<_, _>>().unwrap()
+}
+
+lazy_static! {
+    static ref SERVER_LIST_MAINNET: Vec<ElectrumUrl> =
+        parse_server_file(include_str!("servers-mainnet.txt"));
+    static ref SERVER_LIST_TESTNET: Vec<ElectrumUrl> =
+        parse_server_file(include_str!("servers-testnet.txt"));
+}
+fn parse_server_file(sl: &str) -> Vec<ElectrumUrl> {
+    sl.lines().map(FromStr::from_str).collect::<Result<_, _>>().unwrap()
+}
+
+pub fn get_network_servers(network: &Network) -> Result<Vec<ElectrumUrl>, Error> {
+    let net = network.id().get_bitcoin_network().expect("spv cross-validation is bitcoin-only");
+
+    match &network.spv_cross_validation_servers {
+        Some(servers) if !servers.is_empty() => {
+            servers.iter().map(String::as_ref).map(FromStr::from_str).collect()
+        }
+        _ => Ok(match net {
+            bitcoin::Network::Bitcoin => SERVER_LIST_MAINNET.clone(),
+            bitcoin::Network::Testnet => SERVER_LIST_TESTNET.clone(),
+            bitcoin::Network::Regtest => vec![],
+        }),
+    }
 }
