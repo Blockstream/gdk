@@ -420,8 +420,8 @@ pub struct UnspentOutput {
     pub satoshi: u64,
     pub subaccount: u32,
     pub txhash: String,
-    pub derivation_path: String,
-    pub scriptpubkey_hex: String,
+    pub derivation_path: String,  // not present in gdk-cpp
+    pub scriptpubkey_hex: String, // not present in gdk-cpp
 }
 
 impl UnspentOutput {
@@ -477,7 +477,7 @@ mod test {
 
     #[test]
     fn test_unspent() {
-        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13"}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221"}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811"}]}"#;
+        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "derivation_path": "m", "scriptpubkey_hex": "51"}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "derivation_path": "m", "scriptpubkey_hex": "51"}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "derivation_path": "m", "scriptpubkey_hex": "51"}]}"#;
         let json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
         println!("{:#?}", json);
     }

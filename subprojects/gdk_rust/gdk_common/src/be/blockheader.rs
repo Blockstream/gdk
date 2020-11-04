@@ -57,9 +57,10 @@ mod test {
     #[test]
     fn test_cbor_header() {
         let header = block_header_dynafed();
-        let vec = serde_cbor::to_vec(&header).unwrap();
-        let back: BlockHeader = serde_cbor::from_slice(&vec).unwrap();
-        // assert_eq!(header, back); // TODO restore after sorting out https://github.com/ElementsProject/rust-elements/pull/61
+        // TODO restore after sorting out https://github.com/ElementsProject/rust-elements/pull/61
+        // let vec = serde_cbor::to_vec(&header).unwrap();
+        // let back: BlockHeader = serde_cbor::from_slice(&vec).unwrap();
+        // assert_eq!(header, back);
     }
 
     fn block_header_dynafed() -> BlockHeader {
