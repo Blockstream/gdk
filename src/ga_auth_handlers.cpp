@@ -349,7 +349,7 @@ namespace sdk {
 
                 // Ask the caller for the xpubs for each subaccount
                 std::vector<nlohmann::json> paths;
-                for (const auto sa : m_session.get_subaccounts()) {
+                for (const auto& sa : m_session.get_subaccounts()) {
                     paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
                 }
                 set_data("get_xpubs");

@@ -257,7 +257,7 @@ namespace sdk {
 
         std::unique_lock<std::mutex> l{ registered_networks_mutex };
         all_networks.reserve(registered_networks.size());
-        for (const auto p : registered_networks) {
+        for (const auto& p : registered_networks) {
             ret[p.first] = *p.second;
             if (std::find(all_networks.begin(), all_networks.end(), p.first) == all_networks.end()) {
                 all_networks.emplace_back(p.first);

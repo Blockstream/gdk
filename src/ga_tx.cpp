@@ -242,7 +242,7 @@ namespace sdk {
 
                 result["have_change"]["btc"] = change_index != NO_CHANGE_INDEX;
                 if (change_index == NO_CHANGE_INDEX && !is_redeposit) {
-                    for (const auto in : prev_tx["inputs"]) {
+                    for (const auto& in : prev_tx["inputs"]) {
                         if (json_get_value(in, "is_relevant", false)) {
                             // Use the first inputs subaccount as our change subaccount
                             // FIXME: When the server supports multiple subaccount sends,
