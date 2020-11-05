@@ -14,6 +14,10 @@ pub fn p2pkh_script(pk: &PublicKey) -> Script {
     Address::p2pkh(pk, Network::Regtest).script_pubkey()
 }
 
+pub fn p2wpkh_script(pk: &PublicKey) -> Script {
+    Address::p2wpkh(pk, Network::Regtest).unwrap().script_pubkey()
+}
+
 pub fn p2shwpkh_script_sig(public_key: &PublicKey) -> Script {
     let internal = Builder::new()
         .push_int(0)

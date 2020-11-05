@@ -1,9 +1,13 @@
 use crate::be::asset_to_bin;
 use crate::be::AssetId;
 use crate::error::Error;
+use crate::model::WalletDerivation;
+use bitcoin::util::bip32::DerivationPath;
 use elements::confidential::Asset;
 use elements::{confidential, issuance};
+use log::info;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {
@@ -28,6 +32,7 @@ pub struct Network {
     pub spv_enabled: Option<bool>,
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
+    pub wallet_derivation: Option<WalletDerivation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,5 +93,32 @@ impl Network {
             .as_ref()
             .map(|s| s.to_string())
             .ok_or_else(|| Error::Generic("asset regitry url not available".into()))
+    }
+
+    pub fn wallet_derivation(&self) -> WalletDerivation {
+        self.wallet_derivation.as_ref().unwrap_or(&WalletDerivation::Bip49).clone()
+    }
+
+    pub fn wallet_derivation_path(&self) -> Result<DerivationPath, Error> {
+        // BIP44: m / purpose' / coin_type' / account' / change / address_index
+        // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin as defined in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+        // slip44 suggest 1 for every testnet, so we are using it also for regtest
+        let coin_type: u32 = match self.id() {
+            NetworkId::Bitcoin(bitcoin_network) => match bitcoin_network {
+                bitcoin::Network::Bitcoin => 0,
+                bitcoin::Network::Testnet => 1,
+                bitcoin::Network::Regtest => 1,
+            },
+            NetworkId::Elements(elements_network) => match elements_network {
+                ElementsNetwork::Liquid => 1776,
+                ElementsNetwork::ElementsRegtest => 1,
+            },
+        };
+        // since we use P2WPKH-nested-in-P2SH it is 49 https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
+        let bip = self.wallet_derivation();
+        let path_string = format!("m/{}'/{}'/0'", bip, coin_type);
+        info!("Using derivation path {}/0|1/*", path_string);
+
+        Ok(DerivationPath::from_str(&path_string)?)
     }
 }

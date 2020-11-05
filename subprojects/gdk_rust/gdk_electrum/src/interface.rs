@@ -6,7 +6,10 @@ use bitcoin::util::address::{Address, Payload};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{BlockHash, PublicKey, SigHashType, Txid};
 use elements;
-use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt, SPVVerifyResult};
+use gdk_common::model::WalletDerivation::*;
+use gdk_common::model::{
+    AddressAmount, Balances, GetTransactionsOpt, SPVVerifyResult, WalletDerivation,
+};
 use hex;
 use log::{info, trace};
 use rand::Rng;
@@ -14,7 +17,7 @@ use rand::Rng;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{AddressPointer, CreateTransaction, Settings, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
-use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig};
+use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig, p2wpkh_script};
 use gdk_common::wally::*;
 
 use crate::error::*;
@@ -96,25 +99,36 @@ impl WalletCtx {
             .collect();
         let derived = xpub.derive_pub(&self.secp, &path)?;
         match self.network.id() {
-            NetworkId::Bitcoin(network) => {
-                Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network).unwrap()))
-            }
+            NetworkId::Bitcoin(network) => match self.network.wallet_derivation() {
+                Bip44 => Ok(BEAddress::Bitcoin(Address::p2pkh(&derived.public_key, network))),
+                Bip49 => {
+                    Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network).unwrap()))
+                }
+                Bip84 => {
+                    Ok(BEAddress::Bitcoin(Address::p2wpkh(&derived.public_key, network).unwrap()))
+                }
+            },
             NetworkId::Elements(network) => {
                 let master_blinding_key = self
                     .master_blinding
                     .as_ref()
                     .expect("we are in elements but master blinding is None");
-                let script = p2shwpkh_script(&derived.public_key);
+                let pk = &derived.public_key;
+                let script = match self.network.wallet_derivation() {
+                    Bip44 => panic!("why legacy with liquid?"),
+                    Bip49 => p2shwpkh_script(pk),
+                    Bip84 => p2wpkh_script(pk),
+                };
                 let blinding_key =
                     asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
                 let public_key = ec_public_key_from_private_key(blinding_key);
                 let blinder = Some(public_key);
-                let addr = elements::Address::p2shwpkh(
-                    &derived.public_key,
-                    blinder,
-                    address_params(network),
-                );
-
+                let params = address_params(network);
+                let addr = match self.network.wallet_derivation() {
+                    Bip44 => panic!("why legacy with liquid?"),
+                    Bip49 => elements::Address::p2shwpkh(pk, blinder, params),
+                    Bip84 => elements::Address::p2wpkh(pk, blinder, params),
+                };
                 Ok(BEAddress::Elements(addr))
             }
         }
@@ -475,7 +489,8 @@ impl WalletCtx {
                 dummy_tx
                     .add_output(&out.address, out.satoshi, out.asset_tag.clone())
                     .map_err(|_| Error::InvalidAddress)?;
-                let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+                let estimated_fee =
+                    dummy_tx.estimated_fee(fee_rate, 0, self.network.wallet_derivation()) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
                 total_amount_utxos
                     .checked_sub(estimated_fee)
                     .ok_or_else(|| Error::InsufficientFunds)?
@@ -510,6 +525,7 @@ impl WalletCtx {
                 self.network.policy_asset.clone(),
                 &store_read.cache.all_txs,
                 &store_read.cache.unblinded,
+                self.network.wallet_derivation(),
             ); // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
             info!("needs: {:?}", needs);
             if needs.is_empty() {
@@ -554,6 +570,7 @@ impl WalletCtx {
         let estimated_fee = tx.estimated_fee(
             fee_rate,
             tx.estimated_changes(send_all, &store_read.cache.all_txs, &store_read.cache.unblinded),
+            self.network.wallet_derivation(),
         );
         let changes = tx.changes(
             estimated_fee,
@@ -618,15 +635,28 @@ impl WalletCtx {
         input_index: usize,
         path: &DerivationPath,
         value: u64,
+        wallet_derivation: WalletDerivation,
     ) -> (Script, Vec<Vec<u8>>) {
+        info!(
+            "{} input_index:{} path:{} value:{} wallet_derivation:{}",
+            tx.txid(),
+            input_index,
+            path,
+            value,
+            wallet_derivation
+        );
         let xprv = self.xprv.derive_priv(&self.secp, &path).unwrap();
         let private_key = &xprv.private_key;
         let public_key = &PublicKey::from_private_key(&self.secp, private_key);
-        let witness_script = p2pkh_script(public_key);
+        let script_code = match wallet_derivation {
+            Bip44 => unimplemented!(),
+            Bip49 => p2pkh_script(public_key),
+            Bip84 => p2pkh_script(public_key),
+        };
 
         let hash = SigHashCache::new(tx).signature_hash(
             input_index,
-            &witness_script,
+            &script_code,
             value,
             SigHashType::All,
         );
@@ -637,7 +667,11 @@ impl WalletCtx {
         let mut signature = signature.serialize_der().to_vec();
         signature.push(SigHashType::All as u8);
 
-        let script_sig = p2shwpkh_script_sig(public_key);
+        let script_sig = match wallet_derivation {
+            Bip44 => unimplemented!(),
+            Bip49 => p2shwpkh_script_sig(public_key),
+            Bip84 => Script::default(),
+        };
         let witness = vec![signature, public_key.to_bytes()];
         info!(
             "added size len: script_sig:{} witness:{}",
@@ -703,12 +737,17 @@ impl WalletCtx {
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .clone();
                     info!(
-                        "input#{} prev_output:{:?} derivation_path:{:?}",
-                        i, prev_output, derivation_path
+                        "input#{} prev_output:{:?} derivation_path:{:?} value:{}",
+                        i, prev_output, derivation_path, out.value,
                     );
 
-                    let (script_sig, witness) =
-                        self.internal_sign_bitcoin(&tx, i, &derivation_path, out.value);
+                    let (script_sig, witness) = self.internal_sign_bitcoin(
+                        &tx,
+                        i,
+                        &derivation_path,
+                        out.value,
+                        self.network.wallet_derivation(),
+                    );
 
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;

@@ -5,13 +5,13 @@ use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
-use bitcoin::{Address, BlockHash, Script, Transaction, Txid};
+use bitcoin::{BlockHash, Script, Transaction, Txid};
 use elements::{AddressParams, OutPoint};
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions};
 use gdk_common::be::{ScriptBatch, Unblinded};
 use gdk_common::error::fn_err;
-use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
-use gdk_common::scripts::p2shwpkh_script;
+use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings, WalletDerivation};
+use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2wpkh_script};
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
@@ -90,6 +90,7 @@ pub struct StoreMeta {
     master_blinding: Option<MasterBlindingKey>,
     secp: Secp256k1<All>,
     id: NetworkId,
+    wallet_derivation: WalletDerivation,
     path: PathBuf,
     cipher: Aes256GcmSiv,
     first_deriv: [ExtendedPubKey; 2],
@@ -172,6 +173,7 @@ impl StoreMeta {
         xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
         id: NetworkId,
+        wallet_derivation: WalletDerivation,
     ) -> Result<StoreMeta, Error> {
         let mut enc_key_data = vec![];
         enc_key_data.extend(&xpub.public_key.to_bytes());
@@ -198,6 +200,7 @@ impl StoreMeta {
             store,
             master_blinding,
             id,
+            wallet_derivation,
             cipher,
             secp,
             path,
@@ -313,48 +316,12 @@ impl StoreMeta {
                     result.cached = false;
                     let second_path = [ChildNumber::from(j)];
                     let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
-                    // Note we are using regtest here because we are not interested in the address, only in script construction
-                    let script = match self.id {
-                        NetworkId::Bitcoin(network) => {
-                            let address =
-                                Address::p2shwpkh(&second_deriv.public_key, network).unwrap();
-                            trace!("{}/{} {}", int_or_ext as u32, j, address);
-                            address.script_pubkey()
-                        }
-                        NetworkId::Elements(network) => {
-                            let params = match network {
-                                ElementsNetwork::Liquid => &AddressParams::LIQUID,
-                                ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
-                            };
 
-                            let script = p2shwpkh_script(&second_deriv.public_key);
-                            let blinding_key = asset_blinding_key_to_ec_private_key(
-                                self.master_blinding.as_ref().ok_or_else(fn_err(
-                                    "missing master blinding in elements session",
-                                ))?,
-                                &script,
-                            );
-                            let public_key = ec_public_key_from_private_key(blinding_key);
-                            let blinder = Some(public_key);
-
-                            let address = elements::Address::p2shwpkh(
-                                &second_deriv.public_key,
-                                blinder,
-                                params,
-                            );
-                            trace!(
-                                "{}/{} blinded address {}  blinder {:?}",
-                                int_or_ext as u32,
-                                j,
-                                address,
-                                blinder
-                            );
-                            assert_eq!(script, address.script_pubkey());
-                            address.script_pubkey()
-                        }
-                    };
-
-                    script
+                    match self.wallet_derivation {
+                        WalletDerivation::Bip44 => panic!("why legacy with liquid?"),
+                        WalletDerivation::Bip49 => p2shwpkh_script(&second_deriv.public_key),
+                        WalletDerivation::Bip84 => p2wpkh_script(&second_deriv.public_key),
+                    }
                 }
             };
             result.value.push((script, path));
@@ -438,6 +405,7 @@ mod tests {
     use bitcoin::hashes::hex::FromHex;
     use bitcoin::util::bip32::ExtendedPubKey;
     use bitcoin::{Network, Txid};
+    use gdk_common::model::WalletDerivation;
     use gdk_common::NetworkId;
     use std::str::FromStr;
     use tempdir::TempDir;
@@ -452,11 +420,11 @@ mod tests {
                 .unwrap();
 
         let id = NetworkId::Bitcoin(Network::Testnet);
-        let mut store = StoreMeta::new(&dir, xpub, None, id).unwrap();
+        let mut store = StoreMeta::new(&dir, xpub, None, id, WalletDerivation::Bip49).unwrap();
         store.cache.heights.insert(txid, Some(1));
         drop(store);
 
-        let store = StoreMeta::new(&dir, xpub, None, id).unwrap();
+        let store = StoreMeta::new(&dir, xpub, None, id, WalletDerivation::Bip49).unwrap();
         assert_eq!(store.cache.heights.get(&txid), Some(&Some(1)));
     }
 }

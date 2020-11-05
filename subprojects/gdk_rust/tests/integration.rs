@@ -1,4 +1,4 @@
-use gdk_common::model::{RefreshAssets, SPVVerifyResult};
+use gdk_common::model::{RefreshAssets, SPVVerifyResult, WalletDerivation};
 use std::env;
 
 mod test_session;
@@ -8,6 +8,20 @@ static MEMO2: &str = "hello memo2";
 
 #[test]
 fn bitcoin() {
+    bitcoin_bip(None); // defaults is 49
+}
+
+#[test]
+fn bech32() {
+    bitcoin_bip(Some(WalletDerivation::Bip84)); // wen bech32
+}
+
+#[test]
+fn legacy() {
+    bitcoin_bip(Some(WalletDerivation::Bip44)); // legacy are still good money
+}
+
+fn bitcoin_bip(der: Option<WalletDerivation>) {
     let electrs_exec = env::var("ELECTRS_EXEC")
         .expect("env ELECTRS_EXEC pointing to electrs executable is required");
     let node_exec = env::var("BITCOIND_EXEC")
@@ -15,7 +29,7 @@ fn bitcoin() {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session = test_session::setup(false, debug, electrs_exec, node_exec);
+    let mut test_session = test_session::setup(false, debug, electrs_exec, node_exec, der);
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -47,7 +61,7 @@ fn bitcoin() {
     utxos.0.get_mut("btc").unwrap().retain(|e| e.satoshi == 149741); // we want to use the smallest utxo
     test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos));
     test_session.utxo("btc", vec![139573, 96697489]); // the smallest utxo has been spent
-                                                      // TODO add a test with external UTXO
+    // TODO add a test with external UTXO
 
     test_session.stop();
 }
@@ -61,7 +75,7 @@ fn liquid() {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session = test_session::setup(true, debug, electrs_exec, node_exec);
+    let mut test_session = test_session::setup(true, debug, electrs_exec, node_exec, None);
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));

@@ -1,6 +1,6 @@
 use crate::be::*;
 use crate::error::Error;
-use crate::model::Balances;
+use crate::model::{Balances, WalletDerivation};
 use crate::wally::asset_surjectionproof_size;
 use crate::{ElementsNetwork, NetworkId};
 use bitcoin::consensus::encode::deserialize as btc_des;
@@ -245,13 +245,16 @@ impl BETransaction {
 
     /// estimates the fee of the final transaction given the `fee_rate`
     /// called when the tx is being built and miss things like signatures and changes outputs.
-    pub fn estimated_fee(&self, fee_rate: f64, more_changes: u8) -> u64 {
+    pub fn estimated_fee(&self, fee_rate: f64, more_changes: u8, deriv: WalletDerivation) -> u64 {
         let dummy_tx = self.clone();
         match dummy_tx {
             BETransaction::Bitcoin(mut tx) => {
                 for input in tx.input.iter_mut() {
                     input.witness = vec![vec![0u8; 72], vec![0u8; 33]]; // considering signature sizes (72) and compressed public key (33)
-                    input.script_sig = vec![0u8; 23].into(); // p2shwpkh redeem script size
+                    match deriv {
+                        WalletDerivation::Bip49 => input.script_sig = vec![0u8; 23].into(), // p2shwpkh redeem script size
+                        _ => (),
+                    }
                 }
                 for _ in 0..more_changes {
                     tx.output.push(bitcoin::TxOut {
@@ -348,13 +351,14 @@ impl BETransaction {
         policy_asset: Option<String>,
         all_txs: &BETransactions,
         unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        deriv: WalletDerivation,
     ) -> Vec<AssetValue> {
         match self {
             Self::Bitcoin(tx) => {
                 let sum_inputs = sum_inputs(tx, all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
                 let estimated_fee = self
-                    .estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded)); // send all does not create change
+                    .estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded), deriv); // send all does not create change
                 if sum_outputs + estimated_fee > sum_inputs {
                     vec![AssetValue::new_bitcoin(sum_outputs + estimated_fee - sum_inputs)]
                 } else {
@@ -390,7 +394,7 @@ impl BETransaction {
                 }
 
                 let estimated_fee = self
-                    .estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded));
+                    .estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded), deriv);
                 *outputs.entry(policy_asset.clone()).or_insert(0) += estimated_fee;
 
                 let mut result = vec![];

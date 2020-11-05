@@ -471,6 +471,36 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum WalletDerivation {
+    Bip44, // P2PKH aka legacy https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
+    Bip49, // P2WPKH-nested-in-P2SH aka nested segwit https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
+    Bip84, // P2WPKH aka segwit https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
+}
+
+impl Display for WalletDerivation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            WalletDerivation::Bip44 => write!(f, "44"),
+            WalletDerivation::Bip49 => write!(f, "49"),
+            WalletDerivation::Bip84 => write!(f, "84"),
+        }
+    }
+}
+
+impl FromStr for WalletDerivation {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "44" => Ok(WalletDerivation::Bip44),
+            "49" => Ok(WalletDerivation::Bip49),
+            "84" => Ok(WalletDerivation::Bip84),
+            _ => Err(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::model::GetUnspentOutputs;
