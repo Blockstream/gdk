@@ -399,7 +399,9 @@ impl TestSession {
         };
         let final_node_balance = self.balance_node(asset.clone());
 
-        assert_eq!(final_node_balance, init_node_balance + satoshi, "node balance does not match",);
+        // since the rpc returns floats this shit comparison is used
+        let diff = (final_node_balance as i64 - (init_node_balance as i64 + satoshi as i64)).abs();
+        assert!(diff <= 1, format!("node balance ({}) does not match", diff),);
 
         let expected = init_sat - satoshi - fee;
         for _ in 0..5 {
@@ -806,18 +808,16 @@ impl TestSession {
         }
     }
 
-    /// balance (including unconfirmed) in satoshi of the node
+    /// balance in satoshi of the node
     fn balance_node(&self, asset: Option<String>) -> u64 {
+        let balance: Value = self.node.call("getbalance", &[]).unwrap();
+        let unconfirmed_balance: Value = self.node.call("getunconfirmedbalance", &[]).unwrap();
         match self.network_id {
             NetworkId::Bitcoin(_) => {
-                let balances = self.node.get_balances().unwrap();
-                (balances.mine.immature + balances.mine.trusted + balances.mine.untrusted_pending)
-                    .as_sat()
+                ((balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap())
+                    * 100_000_000.0) as u64
             }
             NetworkId::Elements(_) => {
-                let balance: Value = self.node.call("getbalance", &[]).unwrap();
-                let unconfirmed_balance: Value =
-                    self.node.call("getunconfirmedbalance", &[]).unwrap();
                 let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
                 let balance = match balance.get(&asset_or_policy) {
                     Some(Value::Number(s)) => s.as_f64().unwrap(),

@@ -1,3 +1,4 @@
+use gdk_common::model::WalletDerivation::*;
 use gdk_common::model::{RefreshAssets, SPVVerifyResult, WalletDerivation};
 use std::env;
 
@@ -58,9 +59,9 @@ fn bitcoin_bip(deriv_opt: Option<WalletDerivation>) {
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
     let expected_amounts = match deriv {
-        WalletDerivation::Bip44 => vec![149625, 96697317],
-        WalletDerivation::Bip49 => vec![149741, 96697489],
-        WalletDerivation::Bip84 => vec![149788, 96697560],
+        Bip44 => vec![149625, 96697317],
+        Bip49 => vec![149741, 96697489],
+        Bip84 => vec![149788, 96697560],
     };
     let mut utxos = test_session.utxo("btc", expected_amounts);
     test_session.check_decryption(103, &[&txid]);
@@ -72,9 +73,9 @@ fn bitcoin_bip(deriv_opt: Option<WalletDerivation>) {
         .retain(|e| e.satoshi == 149625 || e.satoshi == 149741 || e.satoshi == 149788); // we want to use the smallest utxo
     test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos));
     let expected_amounts = match deriv {
-        WalletDerivation::Bip44 => vec![139399, 96697317],
-        WalletDerivation::Bip49 => vec![139573, 96697489],
-        WalletDerivation::Bip84 => vec![139643, 96697560],
+        Bip44 => vec![139399, 96697317],
+        Bip49 => vec![139573, 96697489],
+        Bip84 => vec![139643, 96697560],
     };
     test_session.utxo("btc", expected_amounts); // the smallest utxo has been spent
                                                 // TODO add a test with external UTXO
@@ -142,18 +143,18 @@ fn liquid_bip(deriv_opt: Option<WalletDerivation>) {
 
     test_session.fund(1_000_000, None);
     let expected_amounts = match deriv {
-        WalletDerivation::Bip44 => vec![1_000_000, 99_651_926],
-        WalletDerivation::Bip49 => vec![1_000_000, 99_652_226],
-        WalletDerivation::Bip84 => vec![1_000_000, 99_651_895],
+        Bip44 => vec![1_000_000, 99_651_469],
+        Bip49 => vec![1_000_000, 99_651_773],
+        Bip84 => vec![1_000_000, 99_651_895],
     };
     let policy_asset = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225";
     let mut utxos = test_session.utxo(policy_asset, expected_amounts);
     utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.satoshi == 1_000_000); // we want to use the smallest utxo
     test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos));
     let expected_amounts = match deriv {
-        WalletDerivation::Bip44 => vec![989_742, 99_651_926],
-        WalletDerivation::Bip49 => vec![989_748, 99_652_226],
-        WalletDerivation::Bip84 => vec![989_748, 99_651_895],
+        Bip44 => vec![989_740, 99_651_469],
+        Bip49 => vec![989_746, 99_651_773],
+        Bip84 => vec![989_748, 99_651_895],
     };
     test_session.utxo(policy_asset, expected_amounts); // the smallest utxo has been spent
 
