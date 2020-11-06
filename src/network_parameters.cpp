@@ -206,7 +206,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "network", "electrum-testnet" }, { "address_explorer_url", "https://blockstream.info/testnet/address/" },
             { "electrum_url", "blockstream.info:993" }, { "spv_enabled", false }, { "tls", true },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" }, { "mainnet", false }, { "liquid", false },
-            { "wallet_derivation", "84" },
             { "bip21_prefix", "bitcoin" }, { "development", false }, { "server_type", "electrum" } })) },
 
     { "electrum-regtest",

@@ -6,17 +6,13 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{BlockHash, Script, Transaction, Txid};
-use elements::{AddressParams, OutPoint};
+use elements::OutPoint;
 use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions};
 use gdk_common::be::{ScriptBatch, Unblinded};
-use gdk_common::error::fn_err;
 use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings, WalletDerivation};
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2wpkh_script};
-use gdk_common::wally::{
-    asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
-};
-use gdk_common::{ElementsNetwork, NetworkId};
-use log::{info, trace, warn};
+use gdk_common::NetworkId;
+use log::{info, warn};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -87,7 +83,6 @@ pub struct RawStore {
 pub struct StoreMeta {
     pub cache: RawCache,
     pub store: RawStore,
-    master_blinding: Option<MasterBlindingKey>,
     secp: Secp256k1<All>,
     id: NetworkId,
     wallet_derivation: WalletDerivation,
@@ -171,7 +166,6 @@ impl StoreMeta {
     pub fn new<P: AsRef<Path>>(
         path: P,
         xpub: ExtendedPubKey,
-        master_blinding: Option<MasterBlindingKey>,
         id: NetworkId,
         wallet_derivation: WalletDerivation,
     ) -> Result<StoreMeta, Error> {
@@ -198,7 +192,6 @@ impl StoreMeta {
         Ok(StoreMeta {
             cache,
             store,
-            master_blinding,
             id,
             wallet_derivation,
             cipher,
@@ -318,7 +311,7 @@ impl StoreMeta {
                     let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
 
                     match self.wallet_derivation {
-                        WalletDerivation::Bip44 => panic!("why legacy with liquid?"),
+                        WalletDerivation::Bip44 => p2pkh_script(&second_deriv.public_key),
                         WalletDerivation::Bip49 => p2shwpkh_script(&second_deriv.public_key),
                         WalletDerivation::Bip84 => p2wpkh_script(&second_deriv.public_key),
                     }
@@ -420,11 +413,11 @@ mod tests {
                 .unwrap();
 
         let id = NetworkId::Bitcoin(Network::Testnet);
-        let mut store = StoreMeta::new(&dir, xpub, None, id, WalletDerivation::Bip49).unwrap();
+        let mut store = StoreMeta::new(&dir, xpub, id, WalletDerivation::Bip49).unwrap();
         store.cache.heights.insert(txid, Some(1));
         drop(store);
 
-        let store = StoreMeta::new(&dir, xpub, None, id, WalletDerivation::Bip49).unwrap();
+        let store = StoreMeta::new(&dir, xpub, id, WalletDerivation::Bip49).unwrap();
         assert_eq!(store.cache.heights.get(&txid), Some(&Some(1)));
     }
 }

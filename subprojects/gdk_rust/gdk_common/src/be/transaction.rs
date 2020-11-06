@@ -1,5 +1,6 @@
 use crate::be::*;
 use crate::error::Error;
+use crate::model::WalletDerivation::*;
 use crate::model::{Balances, WalletDerivation};
 use crate::wally::asset_surjectionproof_size;
 use crate::{ElementsNetwork, NetworkId};
@@ -250,10 +251,14 @@ impl BETransaction {
         match dummy_tx {
             BETransaction::Bitcoin(mut tx) => {
                 for input in tx.input.iter_mut() {
-                    input.witness = vec![vec![0u8; 72], vec![0u8; 33]]; // considering signature sizes (72) and compressed public key (33)
                     match deriv {
-                        WalletDerivation::Bip49 => input.script_sig = vec![0u8; 23].into(), // p2shwpkh redeem script size
-                        _ => (),
+                        Bip44 => (),
+                        Bip49 | Bip84 => input.witness = vec![vec![0u8; 72], vec![0u8; 33]], // considering signature sizes (72) and compressed public key (33)
+                    }
+                    match deriv {
+                        Bip44 => input.script_sig = vec![0u8; 1 + 72 + 1 + 33].into(), // p2pkh script sig size
+                        Bip49 => input.script_sig = vec![0u8; 23].into(), // p2shwpkh redeem script size
+                        Bip84 => (),
                     }
                 }
                 for _ in 0..more_changes {
@@ -277,9 +282,16 @@ impl BETransaction {
             BETransaction::Elements(mut tx) => {
                 for input in tx.input.iter_mut() {
                     let mut tx_wit = TxInWitness::default();
-                    tx_wit.script_witness = vec![vec![0u8; 72], vec![0u8; 33]]; // considering signature sizes (72) and compressed public key (33)
+                    match deriv {
+                        Bip44 => (),
+                        Bip49 | Bip84 => tx_wit.script_witness = vec![vec![0u8; 72], vec![0u8; 33]], // considering signature sizes (72) and compressed public key (33)
+                    }
                     input.witness = tx_wit;
-                    input.script_sig = vec![0u8; 23].into(); // p2shwpkh redeem script size
+                    match deriv {
+                        Bip44 => input.script_sig = vec![0u8; 1 + 72 + 1 + 33].into(), // p2pkh script sig size
+                        Bip49 => input.script_sig = vec![0u8; 23].into(), // p2shwpkh redeem script size
+                        Bip84 => (),
+                    }
                 }
                 for _ in 0..more_changes {
                     let new_out = elements::TxOut {
@@ -301,7 +313,7 @@ impl BETransaction {
 
                 tx.output.push(elements::TxOut::default()); // mockup for the explicit fee output
                 let vbytes = tx.get_weight() as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
+                let fee_val = (vbytes * fee_rate * 1.04) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
                 info!(
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} sur_size:{} fee_val:{}",
                     tx.input.len(),
@@ -357,8 +369,11 @@ impl BETransaction {
             Self::Bitcoin(tx) => {
                 let sum_inputs = sum_inputs(tx, all_txs);
                 let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
-                let estimated_fee = self
-                    .estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded), deriv); // send all does not create change
+                let estimated_fee = self.estimated_fee(
+                    fee_rate,
+                    self.estimated_changes(no_change, all_txs, unblinded),
+                    deriv,
+                ); // send all does not create change
                 if sum_outputs + estimated_fee > sum_inputs {
                     vec![AssetValue::new_bitcoin(sum_outputs + estimated_fee - sum_inputs)]
                 } else {
@@ -393,8 +408,11 @@ impl BETransaction {
                     *inputs.entry(asset_hex).or_insert(0) += value;
                 }
 
-                let estimated_fee = self
-                    .estimated_fee(fee_rate, self.estimated_changes(no_change, all_txs, unblinded), deriv);
+                let estimated_fee = self.estimated_fee(
+                    fee_rate,
+                    self.estimated_changes(no_change, all_txs, unblinded),
+                    deriv,
+                );
                 *outputs.entry(policy_asset.clone()).or_insert(0) += estimated_fee;
 
                 let mut result = vec![];

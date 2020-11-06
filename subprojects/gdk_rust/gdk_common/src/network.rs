@@ -32,7 +32,7 @@ pub struct Network {
     pub spv_enabled: Option<bool>,
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
-    pub wallet_derivation: Option<WalletDerivation>,
+    pub wallet_derivation: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,7 +96,8 @@ impl Network {
     }
 
     pub fn wallet_derivation(&self) -> WalletDerivation {
-        self.wallet_derivation.as_ref().unwrap_or(&WalletDerivation::Bip49).clone()
+        WalletDerivation::from_str(self.wallet_derivation.as_ref().unwrap_or(&"49".to_string()))
+            .unwrap_or(WalletDerivation::Bip49)
     }
 
     pub fn wallet_derivation_path(&self) -> Result<DerivationPath, Error> {

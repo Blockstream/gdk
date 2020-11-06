@@ -368,7 +368,6 @@ impl Session<Error> for ElectrumSession {
             Err(_) => Arc::new(RwLock::new(StoreMeta::new(
                 &path,
                 xpub,
-                master_blinding.clone(),
                 self.network.id(),
                 self.network.wallet_derivation(),
             )?)),
@@ -1012,7 +1011,7 @@ impl Syncer {
                 };
 
                 let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                info!("{}/batch({}) {:?}", i, batch_count, flattened);
+                debug!("{}/batch({}) {:?}", i, batch_count, flattened);
 
                 if flattened.is_empty() {
                     break;

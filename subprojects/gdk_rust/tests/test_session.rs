@@ -199,7 +199,7 @@ pub fn setup(
     network.ct_exponent = Some(0);
     network.spv_enabled = Some(true);
     network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
-    network.wallet_derivation = wallet_derivation;
+    network.wallet_derivation = wallet_derivation.map(|e| e.to_string());
     if is_liquid {
         network.liquid = true;
         network.policy_asset =
@@ -399,12 +399,7 @@ impl TestSession {
         };
         let final_node_balance = self.balance_node(asset.clone());
 
-        /* TODO OOOO
-        assert_eq!(
-            final_node_balance,
-            init_node_balance + satoshi,
-            "node balance does not match",
-        );*/
+        assert_eq!(final_node_balance, init_node_balance + satoshi, "node balance does not match",);
 
         let expected = init_sat - satoshi - fee;
         for _ in 0..5 {
@@ -542,6 +537,19 @@ impl TestSession {
         self.node_sendtoaddress(&unconf_address, 10_000, None);
         self.wait_tx_status_change();
         assert_eq!(init_sat, self.balance_gdk(None));
+    }
+
+    pub fn test_address(&mut self, deriv: WalletDerivation, is_elements: bool) {
+        let first =
+            self.session.get_receive_address(&Value::Null).unwrap().address.chars().next().unwrap();
+        match (is_elements, deriv) {
+            (false, WalletDerivation::Bip44) => assert_eq!('m', first),
+            (false, WalletDerivation::Bip49) => assert_eq!('2', first),
+            (false, WalletDerivation::Bip84) => assert_eq!('b', first),
+            (true, WalletDerivation::Bip44) => assert_eq!('C', first),
+            (true, WalletDerivation::Bip49) => assert_eq!('A', first),
+            (true, WalletDerivation::Bip84) => assert_eq!('e', first),
+        }
     }
 
     /// send a tx, check it spend utxo with the same script_pubkey together
@@ -768,7 +776,7 @@ impl TestSession {
         ); // percentage difference between fee rate requested vs real fee
         let relay_fee = self.node.get_network_info().unwrap().relay_fee.as_sat() as f64 / 1000.0;
         assert!(
-            real_rate > relay_fee,
+            real_rate >= relay_fee,
             format!("fee rate:{} is under relay_fee:{}", real_rate, relay_fee)
         );
     }
@@ -798,16 +806,18 @@ impl TestSession {
         }
     }
 
-    /// balance in satoshi of the node
+    /// balance (including unconfirmed) in satoshi of the node
     fn balance_node(&self, asset: Option<String>) -> u64 {
-        let balance: Value = self.node.call("getbalance", &[]).unwrap();
-        let unconfirmed_balance: Value = self.node.call("getunconfirmedbalance", &[]).unwrap();
         match self.network_id {
             NetworkId::Bitcoin(_) => {
-                ((balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap())
-                    * 100_000_000.0) as u64
+                let balances = self.node.get_balances().unwrap();
+                (balances.mine.immature + balances.mine.trusted + balances.mine.untrusted_pending)
+                    .as_sat()
             }
             NetworkId::Elements(_) => {
+                let balance: Value = self.node.call("getbalance", &[]).unwrap();
+                let unconfirmed_balance: Value =
+                    self.node.call("getunconfirmedbalance", &[]).unwrap();
                 let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
                 let balance = match balance.get(&asset_or_policy) {
                     Some(Value::Number(s)) => s.as_f64().unwrap(),

@@ -17,7 +17,7 @@ use rand::Rng;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{AddressPointer, CreateTransaction, Settings, TransactionMeta};
 use gdk_common::network::{ElementsNetwork, Network, NetworkId};
-use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig, p2wpkh_script};
+use gdk_common::scripts::*;
 use gdk_common::wally::*;
 
 use crate::error::*;
@@ -115,7 +115,7 @@ impl WalletCtx {
                     .expect("we are in elements but master blinding is None");
                 let pk = &derived.public_key;
                 let script = match self.network.wallet_derivation() {
-                    Bip44 => panic!("why legacy with liquid?"),
+                    Bip44 => p2pkh_script(pk),
                     Bip49 => p2shwpkh_script(pk),
                     Bip84 => p2wpkh_script(pk),
                 };
@@ -125,7 +125,7 @@ impl WalletCtx {
                 let blinder = Some(public_key);
                 let params = address_params(network);
                 let addr = match self.network.wallet_derivation() {
-                    Bip44 => panic!("why legacy with liquid?"),
+                    Bip44 => elements::Address::p2pkh(pk, blinder, params),
                     Bip49 => elements::Address::p2shwpkh(pk, blinder, params),
                     Bip84 => elements::Address::p2wpkh(pk, blinder, params),
                 };
@@ -648,18 +648,17 @@ impl WalletCtx {
         let xprv = self.xprv.derive_priv(&self.secp, &path).unwrap();
         let private_key = &xprv.private_key;
         let public_key = &PublicKey::from_private_key(&self.secp, private_key);
-        let script_code = match wallet_derivation {
-            Bip44 => unimplemented!(),
-            Bip49 => p2pkh_script(public_key),
-            Bip84 => p2pkh_script(public_key),
-        };
 
-        let hash = SigHashCache::new(tx).signature_hash(
-            input_index,
-            &script_code,
-            value,
-            SigHashType::All,
-        );
+        let script_code = p2pkh_script(public_key);
+        let hash = match wallet_derivation {
+            Bip44 => tx.signature_hash(input_index, &script_code, SigHashType::All.as_u32()),
+            Bip49 | Bip84 => SigHashCache::new(tx).signature_hash(
+                input_index,
+                &script_code,
+                value,
+                SigHashType::All,
+            ),
+        };
 
         let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
         let signature = self.secp.sign(&message, &private_key.key);
@@ -668,11 +667,14 @@ impl WalletCtx {
         signature.push(SigHashType::All as u8);
 
         let script_sig = match wallet_derivation {
-            Bip44 => unimplemented!(),
+            Bip44 => p2pkh_script_sig(&signature, public_key),
             Bip49 => p2shwpkh_script_sig(public_key),
             Bip84 => Script::default(),
         };
-        let witness = vec![signature, public_key.to_bytes()];
+        let witness = match wallet_derivation {
+            Bip44 => vec![],
+            Bip49 | Bip84 => vec![signature, public_key.to_bytes()],
+        };
         info!(
             "added size len: script_sig:{} witness:{}",
             script_sig.len(),
@@ -688,11 +690,15 @@ impl WalletCtx {
         input_index: usize,
         derivation_path: &DerivationPath,
         value: Value,
+        wallet_derivation: WalletDerivation,
     ) -> (Script, Vec<Vec<u8>>) {
         let xprv = self.xprv.derive_priv(&self.secp, &derivation_path).unwrap();
         let private_key = &xprv.private_key;
         let public_key = &PublicKey::from_private_key(&self.secp, private_key);
-
+        let segwit = match wallet_derivation {
+            Bip44 => false,
+            Bip49 | Bip84 => true,
+        };
         let script_code = p2pkh_script(public_key);
         let sighash = tx_get_elements_signature_hash(
             &tx,
@@ -700,15 +706,22 @@ impl WalletCtx {
             &script_code,
             &value,
             SigHashType::All.as_u32(),
-            true, // segwit
+            segwit,
         );
         let message = secp256k1::Message::from_slice(&sighash[..]).unwrap();
         let signature = self.secp.sign(&message, &private_key.key);
         let mut signature = signature.serialize_der().to_vec();
         signature.push(SigHashType::All as u8);
 
-        let script_sig = p2shwpkh_script_sig(public_key);
-        let witness = vec![signature, public_key.to_bytes()];
+        let script_sig = match wallet_derivation {
+            Bip44 => p2pkh_script_sig(&signature, public_key),
+            Bip49 => p2shwpkh_script_sig(public_key),
+            Bip84 => Script::default(),
+        };
+        let witness = match wallet_derivation {
+            Bip44 => vec![],
+            Bip49 | Bip84 => vec![signature, public_key.to_bytes()],
+        };
         info!(
             "added size len: script_sig:{} witness:{}",
             script_sig.len(),
@@ -776,8 +789,13 @@ impl WalletCtx {
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .clone();
 
-                    let (script_sig, witness) =
-                        self.internal_sign_elements(&tx, i, &derivation_path, out.value);
+                    let (script_sig, witness) = self.internal_sign_elements(
+                        &tx,
+                        i,
+                        &derivation_path,
+                        out.value,
+                        self.network.wallet_derivation(),
+                    );
 
                     tx.input[i].script_sig = script_sig;
                     tx.input[i].witness.script_witness = witness;

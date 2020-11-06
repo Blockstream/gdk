@@ -471,7 +471,7 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum WalletDerivation {
     Bip44, // P2PKH aka legacy https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
     Bip49, // P2WPKH-nested-in-P2SH aka nested segwit https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki

@@ -25,3 +25,7 @@ pub fn p2shwpkh_script_sig(public_key: &PublicKey) -> Script {
         .into_script();
     Builder::new().push_slice(internal.as_bytes()).into_script()
 }
+
+pub fn p2pkh_script_sig(signature: &[u8], public_key: &PublicKey) -> Script {
+    Builder::new().push_slice(signature).push_slice(&public_key.to_bytes()).into_script()
+}
