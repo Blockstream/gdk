@@ -146,6 +146,7 @@ pub enum SPVVerifyResult {
     InProgress,
     Verified,
     NotVerified,
+    NotLongest,
     Disabled,
 }
 
@@ -393,6 +394,7 @@ impl SPVVerifyResult {
             SPVVerifyResult::Verified => 1,
             SPVVerifyResult::NotVerified => 2,
             SPVVerifyResult::Disabled => 3,
+            SPVVerifyResult::NotLongest => 4,
         }
     }
 }
@@ -404,6 +406,7 @@ impl Display for SPVVerifyResult {
             SPVVerifyResult::Verified => write!(f, "verified"),
             SPVVerifyResult::NotVerified => write!(f, "not_verified"),
             SPVVerifyResult::Disabled => write!(f, "disabled"),
+            SPVVerifyResult::NotLongest => write!(f, "not_longest"),
         }
     }
 }

@@ -430,7 +430,7 @@ impl StoreMeta {
 
     pub fn spv_verification_status(&self, txid: &Txid) -> SPVVerifyResult {
         match &self.cache.cross_validation_result {
-            Some(cv_result) if !cv_result.is_valid() => SPVVerifyResult::NotVerified,
+            Some(cv_result) if !cv_result.is_valid() => SPVVerifyResult::NotLongest,
             _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyResult::InProgress),
         }
     }
