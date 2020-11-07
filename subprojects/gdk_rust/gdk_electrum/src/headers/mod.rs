@@ -77,7 +77,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             path.push(format!("headers_chain_{}", bitcoin_network));
             let mut chain = HeadersChain::new(path, bitcoin_network)?;
 
-            if input.height < chain.height() {
+            if input.height <= chain.height() {
                 info!("chain height ({}) enough to verify, downloading proof", chain.height());
                 let proof = client.transaction_get_merkle(&txid, input.height as usize)?;
                 if chain.verify_tx_proof(&txid, input.height, proof).is_ok() {
