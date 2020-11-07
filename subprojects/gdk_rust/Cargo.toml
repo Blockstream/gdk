@@ -42,3 +42,4 @@ incremental = false
 
 [patch.crates-io]
 bitcoin = { git = "https://github.com/shesek/rust-bitcoin", branch = "0.25.2-uint-serde", features = [ "use-serde" ] }
+electrum-client = { git = "https://github.com/shesek/rust-electrum-client", branch = "202011-custom-ssl-stream" }
