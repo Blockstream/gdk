@@ -12,7 +12,7 @@ use gdk_common::session::Session;
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
-use gdk_electrum::{determine_electrum_url_from_net, ElectrumSession};
+use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 use log::LevelFilter;
 use log::{info, warn, Metadata, Record};
 use serde_json::Value;
@@ -74,6 +74,7 @@ pub fn setup(
     electrs_exec: &str,
     node_exec: &str,
     num_client: u16,
+    network_conf: impl FnOnce(&mut Network),
 ) -> TestSession {
     START.call_once(|| {
         let filter = if is_debug {
@@ -211,6 +212,9 @@ pub fn setup(
         network.policy_asset =
             Some("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".into());
     }
+
+    network_conf(&mut network);
+
     let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
 
     let db_root = format!("{}", db_root_dir.path().display());
@@ -265,7 +269,7 @@ pub fn setup(
 
 impl TestSession {
     /// wait gdk session block status to change (max 1 min)
-    fn wait_tx_status_change(&mut self) {
+    pub fn wait_tx_status_change(&mut self) {
         for _ in 0..120 {
             if let Ok(new_status) = self.session.tx_status() {
                 if self.tx_status != new_status {
@@ -454,7 +458,7 @@ impl TestSession {
         self.list_tx_contains(&txid, &[address], true);
     }
 
-    fn get_tx_from_list(&mut self, txid: &str) -> TxListItem {
+    pub fn get_tx_from_list(&mut self, txid: &str) -> TxListItem {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let list = self.session.get_transactions(&opt).unwrap().0;
@@ -752,7 +756,7 @@ impl TestSession {
         node_getnewaddress(&self.node, kind)
     }
 
-    fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) -> String {
+    pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) -> String {
         node_sendtoaddress(&self.node, address, satoshi, asset)
     }
     fn node_issueasset(&self, satoshi: u64) -> String {
@@ -937,6 +941,35 @@ impl TestSession {
         for txid in txids {
             assert!(cache.all_txs.get(&Txid::from_hex(txid).unwrap()).is_some())
         }
+    }
+
+    pub fn get_spv_cross_validation(&self) -> Option<spv::CrossValidationResult> {
+        let store = self.session.get_wallet().unwrap().store.read().unwrap();
+        store.cache.cross_validation_result.clone()
+    }
+
+    /// wait for the spv cross validation status to change (max 1 min)
+    pub fn wait_spv_cross_validation_change(&self, wait_for: bool) -> spv::CrossValidationResult {
+        for _ in 0..120 {
+            if let Some(result) = self.get_spv_cross_validation() {
+                if result.is_valid() == wait_for {
+                    return result;
+                }
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        panic!("1 minute with on spv cross-validation change");
+    }
+
+    /// wait for the spv validation status of a transaction to change (max 1 min)
+    pub fn wait_tx_spv_change(&mut self, txid: &str, wait_for: &str) {
+        for _ in 0..120 {
+            if self.get_tx_from_list(txid).spv_verified == wait_for {
+                return;
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        panic!("1 minute with no tx spv change");
     }
 }
 fn node_sendtoaddress(

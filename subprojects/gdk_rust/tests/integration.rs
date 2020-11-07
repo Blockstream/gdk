@@ -4,6 +4,7 @@ use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::spv;
 
+use log::info;
 use std::{env, path};
 
 mod test_session;
@@ -21,7 +22,7 @@ fn bitcoin() {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session = test_session::setup(false, debug, &electrs_exec, &node_exec, 0);
+    let mut test_session = test_session::setup(false, debug, &electrs_exec, &node_exec, 0, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -67,7 +68,7 @@ fn liquid() {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session = test_session::setup(true, debug, &electrs_exec, &node_exec, 0);
+    let mut test_session = test_session::setup(true, debug, &electrs_exec, &node_exec, 0, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -126,12 +127,13 @@ fn liquid() {
     test_session.stop();
 }
 
+// Test the low-level spv_cross_validate()
 #[test]
-fn spv_cross_validation() {
+fn spv_cross_validate() {
     // Scenario 1: our local chain is a minority fork
     {
         // Setup two competing chain forks at height 126 and 1142
-        let (mut test_session1, mut test_session2) = setup_forking_sessions();
+        let (mut test_session1, mut test_session2) = setup_forking_sessions(false);
         test_session1.node_generate(5); // session1 is on a minority fork
         test_session2.node_generate(1020); // session2 is on the most-work chain
         test_session1.wait_block_status_change();
@@ -152,7 +154,7 @@ fn spv_cross_validation() {
         )
         .unwrap();
 
-        let (common_ancestor, longest_height) = assert_get_fork(&result);
+        let (common_ancestor, longest_height) = get_minority_fork_info(&result).unwrap();
         assert_eq!(common_ancestor, 121);
         assert_eq!(longest_height, 1141);
 
@@ -162,7 +164,7 @@ fn spv_cross_validation() {
     // Scenario 2: our local chain is lagging behind a longer chain
     {
         // Setup two nodes, make session2 ahead by 12 blocks
-        let (mut test_session1, mut test_session2) = setup_forking_sessions();
+        let (mut test_session1, mut test_session2) = setup_forking_sessions(false);
         test_session2.node_generate(12);
         test_session2.wait_block_status_change();
 
@@ -179,14 +181,68 @@ fn spv_cross_validation() {
         )
         .unwrap();
 
-        assert_eq!(assert_get_lagging(&result), 133);
+        assert_eq!(get_lagging_info(&result).unwrap(), 133);
 
         test_session2.stop();
     }
 }
 
+// Test high-level session management, background validation and transaction status
+#[test]
+fn spv_cross_validation_session() {
+    let (mut test_session1, test_session2) = setup_forking_sessions(true);
 
-fn setup_forking_sessions() -> (TestSession, TestSession) {
+    // Send a payment to session1
+    let ap = test_session1.session.get_receive_address(&serde_json::Value::Null).unwrap();
+    let txid = test_session1.node_sendtoaddress(&ap.address, 999999, None);
+    test_session1.wait_tx_status_change();
+    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "in_progress");
+
+    // Confirm it, wait for it to SPV-validate
+    info!("sending tx");
+    test_session1.node_generate(1);
+    test_session1.wait_block_status_change();
+    let txitem = test_session1.get_tx_from_list(&txid);
+    assert_eq!(txitem.block_height, 122);
+    test_session1.wait_tx_spv_change(&txid, "verified");
+    info!("tx confirmed and spv validated");
+
+    // Extend session2, putting session1 on a minority fork
+    test_session2.node_generate(10);
+    test_session1.wait_block_status_change();
+    let cross_result = test_session1.wait_spv_cross_validation_change(false);
+    let (common_ancestor, longest_height) = get_minority_fork_info(&cross_result).unwrap();
+    assert_eq!(common_ancestor, 121);
+    assert_eq!(longest_height, 131);
+    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "not_longest");
+    info!("extended session2, making session1 the minority");
+
+    // Extend session1, making it the best chain
+    test_session1.node_generate(11);
+    let cross_result = test_session1.wait_spv_cross_validation_change(true);
+    assert!(cross_result.is_valid());
+    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "verified");
+    assert_eq!(test_session1.session.block_status().unwrap().0, 133);
+    info!("extended session1, making session1 the majority");
+
+    // Make session1 the minority again
+    test_session2.node_generate(3);
+    let cross_result = test_session1.wait_spv_cross_validation_change(false);
+    let (common_ancestor, longest_height) = get_minority_fork_info(&cross_result).unwrap();
+    assert_eq!(common_ancestor, 121);
+    assert_eq!(longest_height, 134);
+    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "not_longest");
+    info!("extended session2, making session1 the minority (again)");
+
+    // Reorg session1 into session2, pointing both to the same longest chain
+    test_session1.node_connect(test_session2.p2p_port);
+    let cross_result = test_session1.wait_spv_cross_validation_change(true);
+    assert!(cross_result.is_valid());
+    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "verified");
+    info!("reorged session1 into session2");
+}
+
+fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
     let electrs_exec = env::var("ELECTRS_EXEC")
         .expect("env ELECTRS_EXEC pointing to electrs executable is required");
     let node_exec = env::var("BITCOIND_EXEC")
@@ -194,8 +250,16 @@ fn setup_forking_sessions() -> (TestSession, TestSession) {
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    let mut test_session1 = test_session::setup(false, debug, &electrs_exec, &node_exec, 1);
-    let mut test_session2 = test_session::setup(false, debug, &electrs_exec, &node_exec, 2);
+    let mut test_session2 = test_session::setup(false, debug, &electrs_exec, &node_exec, 2, |_| ());
+
+    let mut test_session1 =
+        test_session::setup(false, debug, &electrs_exec, &node_exec, 1, |network| {
+            if enable_session_cross {
+                network.spv_cross_validation = Some(true);
+                network.spv_cross_validation_servers =
+                    Some(vec![test_session2.electrs_url.clone()]);
+            }
+        });
 
     // Connect nodes and point both to the same tip
     test_session2.node_connect(test_session1.p2p_port);
@@ -219,22 +283,22 @@ fn get_chain(test_session: &mut TestSession) -> HeadersChain {
     HeadersChain::new(path, bitcoin::Network::Regtest).unwrap()
 }
 
-fn assert_get_lagging(result: &spv::CrossValidationResult) -> u32 {
+fn get_lagging_info(result: &spv::CrossValidationResult) -> Option<u32> {
     match result {
         spv::CrossValidationResult::Lagging {
             longest_height,
             ..
-        } => *longest_height,
-        _ => panic!("invalid result, expected Lagging: {:?}", result),
+        } => Some(*longest_height),
+        _ => None,
     }
 }
-fn assert_get_fork(result: &spv::CrossValidationResult) -> (u32, u32) {
+fn get_minority_fork_info(result: &spv::CrossValidationResult) -> Option<(u32, u32)> {
     match result {
         spv::CrossValidationResult::MinorityFork {
             common_ancestor,
             longest_height,
             ..
-        } => (*common_ancestor, *longest_height),
-        _ => panic!("invalid result, expected MinorityFork: {:?}", result),
+        } => Some((*common_ancestor, *longest_height)),
+        _ => None,
     }
 }
