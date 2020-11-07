@@ -78,14 +78,17 @@ impl SpvCrossValidator {
         // Pick some random servers to cross-validate against for this round
         let mut round_servers = self.random_servers(SERVERS_PER_ROUND);
 
-        // Clear the last failing result if our chain extended sufficiently to obsolete it,
-        // but prioritize the server that reported it for an immediate re-check.
-        if !self.last_result.is_valid() && self.last_result.is_resolved(chain) {
+        if !self.last_result.is_valid() {
+            // Prioritize the server that failed the cross-validation for an immediate re-check
             round_servers.insert(0, self.last_result.server_origin().unwrap());
-            self.last_result = CrossValidationResult::Valid;
+
+            // Clear the last failing result if our chain extended sufficiently to obsolete it
+            if self.last_result.is_resolved(chain) {
+                self.last_result = CrossValidationResult::Valid;
+            }
         }
 
-        let mut last_result = self.last_result.clone();
+        let mut curr_result = self.last_result.clone();
         let local_tip_hash = chain.tip().block_hash();
 
         // Cross-validate against the secondary servers, keeping track of the most severe
@@ -99,25 +102,25 @@ impl SpvCrossValidator {
                 }
             };
 
-            last_result = last_result.merge(server_result);
+            curr_result = curr_result.merge(server_result);
         }
 
         // Give some grace for minor digressions from the longest chain
         // XXX determine exact logic
-        match last_result {
+        match curr_result {
             CrossValidationResult::Lagging {
                 longest_height,
                 our_height,
                 ..
             } if longest_height - our_height == 1 => {
                 // Lagging behind the longest chain by 1 block
-                last_result = CrossValidationResult::Valid;
+                curr_result = CrossValidationResult::Valid;
             }
             _ => (),
         };
 
-        self.last_result = last_result.clone();
-        last_result
+        self.last_result = curr_result.clone();
+        curr_result
     }
 
     pub fn from_network(network: &Network) -> Result<Option<Self>, Error> {
