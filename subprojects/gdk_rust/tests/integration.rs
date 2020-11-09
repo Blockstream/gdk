@@ -154,9 +154,9 @@ fn spv_cross_validate() {
         )
         .unwrap();
 
-        let (common_ancestor, longest_height) = get_minority_fork_info(&result).unwrap();
-        assert_eq!(common_ancestor, 121);
-        assert_eq!(longest_height, 1141);
+        let inv = assert_unwrap_invalid(result);
+        assert_eq!(inv.common_ancestor, 121);
+        assert_eq!(inv.longest_height, 1141);
 
         test_session2.stop();
     }
@@ -181,7 +181,7 @@ fn spv_cross_validate() {
         )
         .unwrap();
 
-        assert_eq!(get_lagging_info(&result).unwrap(), 133);
+        assert_eq!(assert_unwrap_invalid(result).longest_height, 133);
 
         test_session2.stop();
     }
@@ -211,9 +211,9 @@ fn spv_cross_validation_session() {
     test_session2.node_generate(10);
     test_session1.wait_block_status_change();
     let cross_result = test_session1.wait_spv_cross_validation_change(false);
-    let (common_ancestor, longest_height) = get_minority_fork_info(&cross_result).unwrap();
-    assert_eq!(common_ancestor, 121);
-    assert_eq!(longest_height, 131);
+    let inv = assert_unwrap_invalid(cross_result);
+    assert_eq!(inv.common_ancestor, 121);
+    assert_eq!(inv.longest_height, 131);
     assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "not_longest");
     info!("extended session2, making session1 the minority");
 
@@ -228,9 +228,9 @@ fn spv_cross_validation_session() {
     // Make session1 the minority again
     test_session2.node_generate(3);
     let cross_result = test_session1.wait_spv_cross_validation_change(false);
-    let (common_ancestor, longest_height) = get_minority_fork_info(&cross_result).unwrap();
-    assert_eq!(common_ancestor, 121);
-    assert_eq!(longest_height, 134);
+    let inv = assert_unwrap_invalid(cross_result);
+    assert_eq!(inv.common_ancestor, 121);
+    assert_eq!(inv.longest_height, 134);
     assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "not_longest");
     info!("extended session2, making session1 the minority (again)");
 
@@ -283,22 +283,9 @@ fn get_chain(test_session: &mut TestSession) -> HeadersChain {
     HeadersChain::new(path, bitcoin::Network::Regtest).unwrap()
 }
 
-fn get_lagging_info(result: &spv::CrossValidationResult) -> Option<u32> {
+fn assert_unwrap_invalid(result: spv::CrossValidationResult) -> spv::CrossValidationInvalid {
     match result {
-        spv::CrossValidationResult::Lagging {
-            longest_height,
-            ..
-        } => Some(*longest_height),
-        _ => None,
-    }
-}
-fn get_minority_fork_info(result: &spv::CrossValidationResult) -> Option<(u32, u32)> {
-    match result {
-        spv::CrossValidationResult::MinorityFork {
-            common_ancestor,
-            longest_height,
-            ..
-        } => Some((*common_ancestor, *longest_height)),
-        _ => None,
+        spv::CrossValidationResult::Invalid(inv) => inv,
+        _ => panic!("expected cross-validation to fail"),
     }
 }
