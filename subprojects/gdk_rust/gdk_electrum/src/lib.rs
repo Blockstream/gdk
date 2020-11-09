@@ -943,21 +943,27 @@ impl Headers {
 
         let mut txs_verified = HashMap::new();
         for (txid, height) in needs_proof {
-            let proof = client.transaction_get_merkle(&txid, height as usize)?;
-            let verified = match &self.checker {
-                ChainOrVerifier::Chain(chain) => {
-                    chain.verify_tx_proof(&txid, height, proof).is_ok()
-                }
-                ChainOrVerifier::Verifier(verifier) => {
-                    if let Some(BEBlockHeader::Elements(header)) =
-                        self.store.read()?.cache.headers.get(&height)
-                    {
-                        verifier.verify_tx_proof(&txid, proof, &header).is_ok()
-                    } else {
-                        false
+            let verified = match client.transaction_get_merkle(&txid, height as usize) {
+                Ok(proof) => match &self.checker {
+                    ChainOrVerifier::Chain(chain) => {
+                        chain.verify_tx_proof(&txid, height, proof).is_ok()
                     }
+                    ChainOrVerifier::Verifier(verifier) => {
+                        if let Some(BEBlockHeader::Elements(header)) =
+                            self.store.read()?.cache.headers.get(&height)
+                        {
+                            verifier.verify_tx_proof(&txid, proof, &header).is_ok()
+                        } else {
+                            false
+                        }
+                    }
+                },
+                Err(e) => {
+                    warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
+                    false
                 }
             };
+
             if verified {
                 info!("proof for {} verified!", txid);
                 txs_verified.insert(txid, SPVVerifyResult::Verified);
