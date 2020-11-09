@@ -143,6 +143,7 @@ pub struct SPVVerifyTx {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum SPVVerifyResult {
+    Unconfirmed,
     InProgress,
     Verified,
     NotVerified,
@@ -395,6 +396,7 @@ impl SPVVerifyResult {
             SPVVerifyResult::NotVerified => 2,
             SPVVerifyResult::Disabled => 3,
             SPVVerifyResult::NotLongest => 4,
+            SPVVerifyResult::Unconfirmed => 5,
         }
     }
 }
@@ -407,6 +409,7 @@ impl Display for SPVVerifyResult {
             SPVVerifyResult::NotVerified => write!(f, "not_verified"),
             SPVVerifyResult::Disabled => write!(f, "disabled"),
             SPVVerifyResult::NotLongest => write!(f, "not_longest"),
+            SPVVerifyResult::Unconfirmed => write!(f, "unconfirmed"),
         }
     }
 }

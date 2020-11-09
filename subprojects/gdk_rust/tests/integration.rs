@@ -198,15 +198,14 @@ fn spv_cross_validation_session() {
     test_session1.wait_tx_status_change();
     let txitem = test_session1.get_tx_from_list(&txid);
     assert_eq!(txitem.block_height, 0);
-    assert_eq!(txitem.spv_verified, "in_progress");
+    assert_eq!(txitem.spv_verified, "unconfirmed");
     info!("sent mempool tx");
 
     // Confirm it, wait for it to SPV-validate
     test_session1.node_generate(1);
     test_session1.wait_block_status_change();
     test_session1.wait_tx_spv_change(&txid, "verified");
-    let txitem = test_session1.get_tx_from_list(&txid);
-    assert_eq!(txitem.block_height, 122);
+    assert_eq!(test_session1.get_tx_from_list(&txid).block_height, 122);
     info!("tx confirmed and spv validated");
 
     // Extend session2, putting session1 on a minority fork
@@ -243,7 +242,7 @@ fn spv_cross_validation_session() {
     assert!(cross_result.is_valid());
     let txitem = test_session1.get_tx_from_list(&txid);
     assert_eq!(txitem.block_height, 0);
-    assert_eq!(txitem.spv_verified, "in_progress");
+    assert_eq!(txitem.spv_verified, "unconfirmed");
     info!("reorged session1 into session2, tx is unconfirmed again");
 
     // Re-confirm the tx and then re-fork the chain, such that the tx is confirmed before the forking point

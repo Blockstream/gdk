@@ -438,7 +438,7 @@ impl StoreMeta {
                 _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyResult::InProgress),
             }
         } else {
-            SPVVerifyResult::InProgress
+            SPVVerifyResult::Unconfirmed
         }
     }
 }
