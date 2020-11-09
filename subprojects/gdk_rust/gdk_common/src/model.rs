@@ -488,14 +488,24 @@ impl Display for WalletDerivation {
     }
 }
 
-impl FromStr for WalletDerivation {
-    type Err = ();
+impl Into<u8> for WalletDerivation {
+    fn into(self) -> u8 {
+        match self {
+            WalletDerivation::Bip44 => 44,
+            WalletDerivation::Bip49 => 49,
+            WalletDerivation::Bip84 => 84,
+        }
+    }
+}
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "44" => Ok(WalletDerivation::Bip44),
-            "49" => Ok(WalletDerivation::Bip49),
-            "84" => Ok(WalletDerivation::Bip84),
+impl TryFrom<u8> for WalletDerivation {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            44 => Ok(WalletDerivation::Bip44),
+            49 => Ok(WalletDerivation::Bip49),
+            84 => Ok(WalletDerivation::Bip84),
             _ => Err(()),
         }
     }

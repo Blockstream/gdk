@@ -7,6 +7,7 @@ use elements::confidential::Asset;
 use elements::{confidential, issuance};
 use log::info;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -32,7 +33,8 @@ pub struct Network {
     pub spv_enabled: Option<bool>,
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
-    pub wallet_derivation: Option<String>,
+    pub wallet_derivation: Option<u8>,
+    pub subaccount: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,7 +98,7 @@ impl Network {
     }
 
     pub fn wallet_derivation(&self) -> WalletDerivation {
-        WalletDerivation::from_str(self.wallet_derivation.as_ref().unwrap_or(&"49".to_string()))
+        WalletDerivation::try_from(self.wallet_derivation.unwrap_or(49))
             .unwrap_or(WalletDerivation::Bip49)
     }
 
@@ -117,7 +119,7 @@ impl Network {
         };
         // since we use P2WPKH-nested-in-P2SH it is 49 https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
         let bip = self.wallet_derivation();
-        let path_string = format!("m/{}'/{}'/0'", bip, coin_type);
+        let path_string = format!("m/{}'/{}'/{}'", bip, coin_type, self.subaccount.unwrap_or(0));
         info!("Using derivation path {}/0|1/*", path_string);
 
         Ok(DerivationPath::from_str(&path_string)?)

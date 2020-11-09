@@ -534,6 +534,9 @@ namespace sdk {
         const std::string m_electrum_url;
         const bool m_electrum_tls;
         const bool m_spv_enabled;
+
+        uint8_t m_wallet_derivation;
+        uint8_t m_subaccount;
     };
 
 } // namespace sdk

@@ -199,7 +199,7 @@ pub fn setup(
     network.ct_exponent = Some(0);
     network.spv_enabled = Some(true);
     network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
-    network.wallet_derivation = wallet_derivation.map(|e| e.to_string());
+    network.wallet_derivation = wallet_derivation.map(|e| e.into());
     if is_liquid {
         network.liquid = true;
         network.policy_asset =
