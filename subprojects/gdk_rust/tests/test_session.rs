@@ -766,7 +766,7 @@ impl TestSession {
         node_generate(&self.node, block_num)
     }
     pub fn node_connect(&self, port: u16) {
-        //self.node.call::<Value>("clearbanned", &[]).unwrap();
+        self.node.call::<Value>("clearbanned", &[]).unwrap();
         self.node
             .call::<Value>("addnode", &[format!("127.0.0.1:{}", port).into(), "add".into()])
             .unwrap();

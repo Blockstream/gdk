@@ -196,15 +196,17 @@ fn spv_cross_validation_session() {
     let ap = test_session1.session.get_receive_address(&serde_json::Value::Null).unwrap();
     let txid = test_session1.node_sendtoaddress(&ap.address, 999999, None);
     test_session1.wait_tx_status_change();
-    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "in_progress");
+    let txitem = test_session1.get_tx_from_list(&txid);
+    assert_eq!(txitem.block_height, 0);
+    assert_eq!(txitem.spv_verified, "in_progress");
+    info!("sent mempool tx");
 
     // Confirm it, wait for it to SPV-validate
-    info!("sending tx");
     test_session1.node_generate(1);
     test_session1.wait_block_status_change();
+    test_session1.wait_tx_spv_change(&txid, "verified");
     let txitem = test_session1.get_tx_from_list(&txid);
     assert_eq!(txitem.block_height, 122);
-    test_session1.wait_tx_spv_change(&txid, "verified");
     info!("tx confirmed and spv validated");
 
     // Extend session2, putting session1 on a minority fork
@@ -235,11 +237,30 @@ fn spv_cross_validation_session() {
     info!("extended session2, making session1 the minority (again)");
 
     // Reorg session1 into session2, pointing both to the same longest chain
+    // Cross-validation should now succeed, but our tx should now appear as unconfirmed again
     test_session1.node_connect(test_session2.p2p_port);
     let cross_result = test_session1.wait_spv_cross_validation_change(true);
     assert!(cross_result.is_valid());
-    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "verified");
-    info!("reorged session1 into session2");
+    let txitem = test_session1.get_tx_from_list(&txid);
+    assert_eq!(txitem.block_height, 0);
+    assert_eq!(txitem.spv_verified, "in_progress");
+    info!("reorged session1 into session2, tx is unconfirmed again");
+
+    // Re-confirm the tx and then re-fork the chain, such that the tx is confirmed before the forking point
+    // Cross-validation should fail, but the tx should still appear as SPV-validated
+    test_session1.node_generate(1);
+    test_session1.wait_tx_spv_change(&txid, "verified");
+    assert_eq!(test_session1.get_tx_from_list(&txid).block_height, 135);
+    test_session1.node_disconnect_all();
+    test_session1.node_generate(5);
+    test_session2.node_generate(10);
+    let cross_result = test_session1.wait_spv_cross_validation_change(false);
+    let inv = assert_unwrap_invalid(cross_result);
+    assert_eq!(inv.common_ancestor, 135);
+    assert_eq!(inv.longest_height, 145);
+    let txitem = test_session1.get_tx_from_list(&txid);
+    assert_eq!(txitem.block_height, 135);
+    assert_eq!(txitem.spv_verified, "verified");
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {

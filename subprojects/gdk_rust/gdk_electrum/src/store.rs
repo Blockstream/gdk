@@ -429,9 +429,16 @@ impl StoreMeta {
     }
 
     pub fn spv_verification_status(&self, txid: &Txid) -> SPVVerifyResult {
-        match &self.cache.cross_validation_result {
-            Some(cv_result) if !cv_result.is_valid() => SPVVerifyResult::NotLongest,
-            _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyResult::InProgress),
+        if let Some(height) = self.cache.heights.get(txid).unwrap_or(&None) {
+            match &self.cache.cross_validation_result {
+                Some(CrossValidationResult::Invalid(inv)) if *height > inv.common_ancestor => {
+                    // Report an SPV validation failure if the transaction was confirmed after the forking point
+                    SPVVerifyResult::NotLongest
+                }
+                _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyResult::InProgress),
+            }
+        } else {
+            SPVVerifyResult::InProgress
         }
     }
 }
