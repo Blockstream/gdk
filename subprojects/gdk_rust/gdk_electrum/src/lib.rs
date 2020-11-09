@@ -1056,12 +1056,18 @@ impl Syncer {
         let new_txs = self.download_txs(&history_txs_id, &scripts, &client)?;
         let headers = self.download_headers(&heights_set, &client)?;
 
-        let store_indexes = self.store.read()?.cache.indexes.clone();
+        let store_read = self.store.read()?;
+        let store_indexes = store_read.cache.indexes.clone();
+        let txs_heights_changed = txid_height
+            .iter()
+            .any(|(txid, height)| store_read.cache.heights.get(txid) != Some(height));
+        drop(store_read);
 
         let changed = if !new_txs.txs.is_empty()
             || !headers.is_empty()
             || store_indexes != last_used
             || !scripts.is_empty()
+            || txs_heights_changed
         {
             info!(
                 "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
