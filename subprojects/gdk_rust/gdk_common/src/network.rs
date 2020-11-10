@@ -105,7 +105,7 @@ impl Network {
     pub fn wallet_derivation_path(&self) -> Result<DerivationPath, Error> {
         // BIP44: m / purpose' / coin_type' / account' / change / address_index
         // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin as defined in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-        // slip44 suggest 1 for every testnet, so we are using it also for regtest
+        // slip44 suggests 1 for every testnet, so we are using it also for regtest
         let coin_type: u32 = match self.id() {
             NetworkId::Bitcoin(bitcoin_network) => match bitcoin_network {
                 bitcoin::Network::Bitcoin => 0,
