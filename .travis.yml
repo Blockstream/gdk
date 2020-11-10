@@ -7,8 +7,10 @@ matrix:
       install:
         - brew update
         - brew upgrade
-        - brew install ninja autoconf libtool gnu-sed python3 wget pkg-config swig gnu-getopt gnu-tar
-        - python3 -m pip install virtualenv meson===0.51.2
+        - brew install ninja autoconf libtool gnu-sed python@3.7 wget pkg-config swig gnu-getopt gnu-tar
+        - /usr/local/opt/python@3.7/bin/python3 -m venv venv
+        - source venv/bin/activate
+        - pip install -r ./tools/requirements.txt
         - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.42.0
       script:
         - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version 3.7 --enable-rust
