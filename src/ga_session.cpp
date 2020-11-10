@@ -314,9 +314,9 @@ namespace sdk {
         , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
         , m_spv_enabled(
               net_params.value("spv_enabled", network_parameters::get(net_params.at("name")).at("spv_enabled")))
-        , m_wallet_derivation(net_params.value(
-              "wallet_derivation", network_parameters::get(net_params.at("name")).at("wallet_derivation")))
-        , m_subaccount(net_params.value("subaccount", network_parameters::get(net_params.at("name")).at("subaccount")))
+        , m_purpose(net_params.value("purpose", network_parameters::get(net_params.at("name")).at("purpose")))
+        , m_bip44_account(
+              net_params.value("bip44_account", network_parameters::get(net_params.at("name")).at("bip44_account")))
     {
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"

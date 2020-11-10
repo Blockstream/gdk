@@ -1,7 +1,7 @@
 use crate::be::*;
 use crate::error::Error;
-use crate::model::WalletDerivation::*;
-use crate::model::{Balances, WalletDerivation};
+use crate::model::Purpose::*;
+use crate::model::{Balances, Purpose};
 use crate::wally::asset_surjectionproof_size;
 use crate::{ElementsNetwork, NetworkId};
 use bitcoin::consensus::encode::deserialize as btc_des;
@@ -246,7 +246,7 @@ impl BETransaction {
 
     /// estimates the fee of the final transaction given the `fee_rate`
     /// called when the tx is being built and miss things like signatures and changes outputs.
-    pub fn estimated_fee(&self, fee_rate: f64, more_changes: u8, deriv: WalletDerivation) -> u64 {
+    pub fn estimated_fee(&self, fee_rate: f64, more_changes: u8, deriv: Purpose) -> u64 {
         let dummy_tx = self.clone();
         match dummy_tx {
             BETransaction::Bitcoin(mut tx) => {
@@ -363,7 +363,7 @@ impl BETransaction {
         policy_asset: Option<String>,
         all_txs: &BETransactions,
         unblinded: &HashMap<elements::OutPoint, Unblinded>,
-        deriv: WalletDerivation,
+        purpose: Purpose,
     ) -> Vec<AssetValue> {
         match self {
             Self::Bitcoin(tx) => {
@@ -372,7 +372,7 @@ impl BETransaction {
                 let estimated_fee = self.estimated_fee(
                     fee_rate,
                     self.estimated_changes(no_change, all_txs, unblinded),
-                    deriv,
+                    purpose,
                 ); // send all does not create change
                 if sum_outputs + estimated_fee > sum_inputs {
                     vec![AssetValue::new_bitcoin(sum_outputs + estimated_fee - sum_inputs)]
@@ -411,7 +411,7 @@ impl BETransaction {
                 let estimated_fee = self.estimated_fee(
                     fee_rate,
                     self.estimated_changes(no_change, all_txs, unblinded),
-                    deriv,
+                    purpose,
                 );
                 *outputs.entry(policy_asset.clone()).or_insert(0) += estimated_fee;
 

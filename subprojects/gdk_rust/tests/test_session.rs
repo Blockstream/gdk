@@ -71,7 +71,7 @@ pub fn setup(
     is_debug: bool,
     electrs_exec: String,
     node_exec: String,
-    wallet_derivation: Option<WalletDerivation>,
+    purpose: Option<Purpose>,
 ) -> TestSession {
     START.call_once(|| {
         let filter = if is_debug {
@@ -199,7 +199,7 @@ pub fn setup(
     network.ct_exponent = Some(0);
     network.spv_enabled = Some(true);
     network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
-    network.wallet_derivation = wallet_derivation.map(|e| e.into());
+    network.purpose = purpose.map(|e| e.into());
     if is_liquid {
         network.liquid = true;
         network.policy_asset =
@@ -541,16 +541,16 @@ impl TestSession {
         assert_eq!(init_sat, self.balance_gdk(None));
     }
 
-    pub fn test_address(&mut self, deriv: WalletDerivation, is_elements: bool) {
+    pub fn test_address(&mut self, deriv: Purpose, is_elements: bool) {
         let first =
             self.session.get_receive_address(&Value::Null).unwrap().address.chars().next().unwrap();
         match (is_elements, deriv) {
-            (false, WalletDerivation::Bip44) => assert_eq!('m', first),
-            (false, WalletDerivation::Bip49) => assert_eq!('2', first),
-            (false, WalletDerivation::Bip84) => assert_eq!('b', first),
-            (true, WalletDerivation::Bip44) => assert_eq!('C', first),
-            (true, WalletDerivation::Bip49) => assert_eq!('A', first),
-            (true, WalletDerivation::Bip84) => assert_eq!('e', first),
+            (false, Purpose::Bip44) => assert!(['m', 'n'].contains(&first)),
+            (false, Purpose::Bip49) => assert_eq!('2', first),
+            (false, Purpose::Bip84) => assert_eq!('b', first),
+            (true, Purpose::Bip44) => assert_eq!('C', first),
+            (true, Purpose::Bip49) => assert_eq!('A', first),
+            (true, Purpose::Bip84) => assert_eq!('e', first),
         }
     }
 

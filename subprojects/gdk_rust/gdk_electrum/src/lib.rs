@@ -369,7 +369,7 @@ impl Session<Error> for ElectrumSession {
                 &path,
                 xpub,
                 self.network.id(),
-                self.network.wallet_derivation(),
+                self.network.purpose(),
             )?)),
         };
 

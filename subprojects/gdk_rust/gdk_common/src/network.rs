@@ -1,7 +1,7 @@
 use crate::be::asset_to_bin;
 use crate::be::AssetId;
 use crate::error::Error;
-use crate::model::WalletDerivation;
+use crate::model::Purpose;
 use bitcoin::util::bip32::DerivationPath;
 use elements::confidential::Asset;
 use elements::{confidential, issuance};
@@ -33,8 +33,8 @@ pub struct Network {
     pub spv_enabled: Option<bool>,
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
-    pub wallet_derivation: Option<u8>,
-    pub subaccount: Option<u8>,
+    pub purpose: Option<u8>,
+    pub bip44_account: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -97,9 +97,8 @@ impl Network {
             .ok_or_else(|| Error::Generic("asset regitry url not available".into()))
     }
 
-    pub fn wallet_derivation(&self) -> WalletDerivation {
-        WalletDerivation::try_from(self.wallet_derivation.unwrap_or(49))
-            .unwrap_or(WalletDerivation::Bip49)
+    pub fn purpose(&self) -> Purpose {
+        Purpose::try_from(self.purpose.unwrap_or(49)).unwrap_or(Purpose::Bip49)
     }
 
     pub fn wallet_derivation_path(&self) -> Result<DerivationPath, Error> {
@@ -117,9 +116,8 @@ impl Network {
                 ElementsNetwork::ElementsRegtest => 1,
             },
         };
-        // since we use P2WPKH-nested-in-P2SH it is 49 https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
-        let bip = self.wallet_derivation();
-        let path_string = format!("m/{}'/{}'/{}'", bip, coin_type, self.subaccount.unwrap_or(0));
+        let path_string =
+            format!("m/{}'/{}'/{}'", self.purpose(), coin_type, self.bip44_account.unwrap_or(0));
         info!("Using derivation path {}/0|1/*", path_string);
 
         Ok(DerivationPath::from_str(&path_string)?)

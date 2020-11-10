@@ -1,5 +1,5 @@
-use gdk_common::model::WalletDerivation::*;
-use gdk_common::model::{RefreshAssets, SPVVerifyResult, WalletDerivation};
+use gdk_common::model::Purpose::*;
+use gdk_common::model::{Purpose, RefreshAssets, SPVVerifyResult};
 use std::env;
 
 mod test_session;
@@ -9,7 +9,7 @@ static MEMO2: &str = "hello memo2";
 
 #[test]
 fn bitcoin_44() {
-    bitcoin_bip(Some(WalletDerivation::Bip44)); // legacy are still good money
+    bitcoin_bip(Some(Purpose::Bip44)); // legacy are still good money
 }
 
 #[test]
@@ -19,11 +19,11 @@ fn bitcoin_49() {
 
 #[test]
 fn bitcoin_84() {
-    bitcoin_bip(Some(WalletDerivation::Bip84)); // wen bech32
+    bitcoin_bip(Some(Purpose::Bip84)); // wen bech32
 }
 
-fn bitcoin_bip(deriv_opt: Option<WalletDerivation>) {
-    let deriv = deriv_opt.unwrap_or(WalletDerivation::Bip49);
+fn bitcoin_bip(deriv_opt: Option<Purpose>) {
+    let deriv = deriv_opt.unwrap_or(Purpose::Bip49);
     let electrs_exec = env::var("ELECTRS_EXEC")
         .expect("env ELECTRS_EXEC pointing to electrs executable is required");
     let node_exec = env::var("BITCOIND_EXEC")
@@ -85,7 +85,7 @@ fn bitcoin_bip(deriv_opt: Option<WalletDerivation>) {
 
 #[test]
 fn liquid_44() {
-    liquid_bip(Some(WalletDerivation::Bip44)); // is it even a thing?
+    liquid_bip(Some(Purpose::Bip44)); // is it even a thing?
 }
 
 #[test]
@@ -95,11 +95,11 @@ fn liquid_49() {
 
 #[test]
 fn liquid_84() {
-    liquid_bip(Some(WalletDerivation::Bip84)); // wen blech32
+    liquid_bip(Some(Purpose::Bip84)); // wen blech32
 }
 
-fn liquid_bip(deriv_opt: Option<WalletDerivation>) {
-    let deriv = deriv_opt.unwrap_or(WalletDerivation::Bip49);
+fn liquid_bip(deriv_opt: Option<Purpose>) {
+    let deriv = deriv_opt.unwrap_or(Purpose::Bip49);
     let electrs_exec = env::var("ELECTRS_LIQUID_EXEC")
         .expect("env ELECTRS_LIQUID_EXEC pointing to electrs executable is required");
     let node_exec = env::var("ELEMENTSD_EXEC")

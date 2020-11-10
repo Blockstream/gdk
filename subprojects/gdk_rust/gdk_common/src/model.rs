@@ -472,40 +472,40 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-pub enum WalletDerivation {
+pub enum Purpose {
     Bip44, // P2PKH aka legacy https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
     Bip49, // P2WPKH-nested-in-P2SH aka nested segwit https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
     Bip84, // P2WPKH aka segwit https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
 }
 
-impl Display for WalletDerivation {
+impl Display for Purpose {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            WalletDerivation::Bip44 => write!(f, "44"),
-            WalletDerivation::Bip49 => write!(f, "49"),
-            WalletDerivation::Bip84 => write!(f, "84"),
+            Purpose::Bip44 => write!(f, "44"),
+            Purpose::Bip49 => write!(f, "49"),
+            Purpose::Bip84 => write!(f, "84"),
         }
     }
 }
 
-impl Into<u8> for WalletDerivation {
+impl Into<u8> for Purpose {
     fn into(self) -> u8 {
         match self {
-            WalletDerivation::Bip44 => 44,
-            WalletDerivation::Bip49 => 49,
-            WalletDerivation::Bip84 => 84,
+            Purpose::Bip44 => 44,
+            Purpose::Bip49 => 49,
+            Purpose::Bip84 => 84,
         }
     }
 }
 
-impl TryFrom<u8> for WalletDerivation {
+impl TryFrom<u8> for Purpose {
     type Error = ();
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            44 => Ok(WalletDerivation::Bip44),
-            49 => Ok(WalletDerivation::Bip49),
-            84 => Ok(WalletDerivation::Bip84),
+            44 => Ok(Purpose::Bip44),
+            49 => Ok(Purpose::Bip49),
+            84 => Ok(Purpose::Bip84),
             _ => Err(()),
         }
     }
