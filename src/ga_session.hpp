@@ -535,8 +535,8 @@ namespace sdk {
         const bool m_electrum_tls;
         const bool m_spv_enabled;
 
-        uint8_t m_purpose;
-        uint8_t m_bip44_account;
+        const uint8_t m_purpose;
+        const uint8_t m_bip44_account;
     };
 
 } // namespace sdk
