@@ -265,6 +265,11 @@ namespace sdk {
             const auto& user_agent = supports_csv ? USER_AGENT : USER_AGENT_NO_CSV;
             return user_agent + version;
         }
+
+        static nlohmann::json get_value_or_default(const nlohmann::json& net_params, const std::string& field)
+        {
+            return net_params.value(field, network_parameters::get(net_params.at("name")).at(field));
+        }
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -309,14 +314,11 @@ namespace sdk {
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_cache(net_params.at("name"))
         , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
-        , m_electrum_url(
-              net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))
-        , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
-        , m_spv_enabled(
-              net_params.value("spv_enabled", network_parameters::get(net_params.at("name")).at("spv_enabled")))
-        , m_purpose(net_params.value("purpose", network_parameters::get(net_params.at("name")).at("purpose")))
-        , m_bip44_account(
-              net_params.value("bip44_account", network_parameters::get(net_params.at("name")).at("bip44_account")))
+        , m_electrum_url(get_value_or_default(net_params, "electrum_url"))
+        , m_electrum_tls(get_value_or_default(net_params, "tls"))
+        , m_spv_enabled(get_value_or_default(net_params, "spv_enabled"))
+        , m_purpose(get_value_or_default(net_params, "purpose"))
+        , m_bip44_account(get_value_or_default(net_params, "bip44_account"))
     {
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"
