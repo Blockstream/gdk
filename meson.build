@@ -174,15 +174,17 @@ if get_option('enable-rust')
 endif
 swig = find_program('swig', required : false)
 if swig.found()
-    pymodule = import('python3')
-    python3 = pymodule.find_python()
+    pymodule = import('python')
+    python_version = get_option('python-version')
+    python_installation = pymodule.find_installation('python' + python_version, required : true)
+    python_exe = python_installation.path()
 
     environment_variables = [
         'JAVA_HOME',
         'JAVA_TARGET'
     ]
     foreach v : environment_variables
-        res = run_command(python3, '-c', 'import os; print(os.environ["' + v + '"], end = "")')
+        res = run_command(python_exe, '-c', 'import os; print(os.environ["' + v + '"], end = "")')
         if res.returncode() == 0
             stdout = res.stdout()
             set_variable(v.to_lower(), stdout)
@@ -192,12 +194,11 @@ if swig.found()
         endif
     endforeach
 
-    pymod = import('python')
-    python_version = get_option('python-version')
-    python_dep = dependency('', required : false)
     if python_version != ''
-      python_installation = pymod.find_installation('python' + python_version, required : true)
-      python_dep = python_installation.dependency()
+        python_dep = python_installation.dependency()
+    else
+        # Python only needed for reading 'environment_variables' above
+        python_dep = dependency('', required : false)
     endif
 
     if java_target == ''
