@@ -196,6 +196,9 @@ if swig.found()
 
     if python_version != ''
         python_dep = python_installation.dependency()
+        if not python_dep.found()
+            error('Python development dependency not be found, please install python(version)-dev and try again.')
+        endif
     else
         # Python only needed for reading 'environment_variables' above
         python_dep = dependency('', required : false)
