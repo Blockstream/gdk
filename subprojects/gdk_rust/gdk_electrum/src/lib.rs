@@ -931,14 +931,23 @@ impl Headers {
 
     pub fn get_proofs(&mut self, client: &Client) -> Result<usize, Error> {
         let store_read = self.store.read()?;
-        let needs_proof: Vec<(Txid, u32)> = self
-            .store
-            .read()?
+
+        // find unconfirmed transactions that were previously confirmed and had
+        // their SPV validation cached, to be cleared below
+        let remove_proof: Vec<Txid> = store_read
             .cache
             .heights
             .iter()
-            .filter(|(_, opt)| opt.is_some())
-            .map(|(t, h)| (t, h.unwrap()))
+            .filter(|(t, h)| h.is_none() && store_read.cache.txs_verif.get(*t).is_some())
+            .map(|(t, _)| t.clone())
+            .collect();
+
+        // find confirmed transactions with no SPV validation cache
+        let needs_proof: Vec<(Txid, u32)> = store_read
+            .cache
+            .heights
+            .iter()
+            .filter_map(|(t, h_opt)| Some((t, (*h_opt)?)))
             .filter(|(t, _)| store_read.cache.txs_verif.get(*t).is_none())
             .map(|(t, h)| (t.clone(), h))
             .collect();
@@ -976,7 +985,11 @@ impl Headers {
             }
         }
         let proofs_done = txs_verified.len();
-        self.store.write()?.cache.txs_verif.extend(txs_verified);
+        let mut store_write = self.store.write()?;
+        store_write.cache.txs_verif.extend(txs_verified);
+        for txid in remove_proof {
+            store_write.cache.txs_verif.remove(&txid);
+        }
         Ok(proofs_done)
     }
 
