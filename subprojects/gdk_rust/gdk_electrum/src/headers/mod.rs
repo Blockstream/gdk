@@ -9,7 +9,7 @@ use aes_gcm_siv::Aes256GcmSiv;
 use electrum_client::{ElectrumApi, GetMerkleRes};
 use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
 use gdk_common::NetworkId;
-use log::info;
+use log::{info, warn};
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::fs::File;
@@ -79,7 +79,13 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
 
             if input.height <= chain.height() {
                 info!("chain height ({}) enough to verify, downloading proof", chain.height());
-                let proof = client.transaction_get_merkle(&txid, input.height as usize)?;
+                let proof = match client.transaction_get_merkle(&txid, input.height as usize) {
+                    Ok(proof) => proof,
+                    Err(e) => {
+                        warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
+                        return Ok(SPVVerifyResult::NotVerified);
+                    }
+                };
                 if chain.verify_tx_proof(&txid, input.height, proof).is_ok() {
                     cache.write(&txid)?;
                     Ok(SPVVerifyResult::Verified)
@@ -104,7 +110,13 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             }
         }
         NetworkId::Elements(elements_network) => {
-            let proof = client.transaction_get_merkle(&txid, input.height as usize)?;
+            let proof = match client.transaction_get_merkle(&txid, input.height as usize) {
+                Ok(proof) => proof,
+                Err(e) => {
+                    warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
+                    return Ok(SPVVerifyResult::NotVerified);
+                }
+            };
             let verifier = Verifier::new(elements_network);
             let header_bytes = client.block_header_raw(input.height as usize)?;
             let header: elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
