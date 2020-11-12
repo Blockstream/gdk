@@ -450,9 +450,12 @@ impl Session<Error> for ElectrumSession {
                                 }
                                 Err(Error::InvalidHeaders) => {
                                     // this should handle reorgs and also broke IO writes update
-                                    if headers.remove(144).is_err() {
+                                    headers.store.write().unwrap().cache.txs_verif.clear();
+                                    if let Err(e) = headers.remove(144) {
+                                        warn!("failed removing headers: {:?}", e);
                                         break;
                                     }
+                                    // XXX clear affected blocks/txs more surgically?
                                 }
                                 Err(e) => {
                                     // usual error is because I reached the tip, trying asking half

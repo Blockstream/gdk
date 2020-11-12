@@ -97,6 +97,8 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                 if let Err(Error::InvalidHeaders) = chain.push(headers) {
                     // handle reorgs
                     chain.remove(144)?;
+                    cache.clear()?;
+                    // XXX clear affected blocks/txs more surgically?
                 }
                 Ok(SPVVerifyResult::InProgress)
             }
@@ -161,6 +163,15 @@ impl VerifiedCache {
 
     fn write(&mut self, txid: &Txid) -> Result<(), Error> {
         self.set.insert(txid.clone());
+        self.flush()
+    }
+
+    fn clear(&mut self) -> Result<(), Error> {
+        self.set.clear();
+        self.flush()
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
         let mut file = File::create(&self.filepath)?;
         let mut nonce_bytes = [0u8; 12]; // 96 bits
         thread_rng().fill(&mut nonce_bytes);
