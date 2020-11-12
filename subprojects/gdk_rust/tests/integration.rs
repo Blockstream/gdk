@@ -44,6 +44,7 @@ fn bitcoin_bip(deriv_opt: Option<Purpose>) {
     test_session.is_verified(&txid, SPVVerifyResult::InProgress);
     test_session.send_tx(&node_bech32_address, 10_000, None, None, None); // p2wpkh
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None); // p2pkh
+    test_session.test_subaccount();
     test_session.send_all(&node_legacy_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
@@ -125,6 +126,7 @@ fn liquid_bip(deriv_opt: Option<Purpose>) {
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None);
     test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None, None); // asset should send below dust limit
+    test_session.test_subaccount();
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();

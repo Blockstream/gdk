@@ -554,6 +554,55 @@ impl TestSession {
         }
     }
 
+    pub fn test_subaccount(&mut self) {
+        let initial_balance_account_0 = self.balance_gdk(self.asset_tag());
+        let mut subaccount_network = self.network.clone();
+        subaccount_network.bip44_account = Some(1);
+        let db_root_dir = TempDir::new("electrum_integration_tests_2").unwrap();
+        let db_root = format!("{}", db_root_dir.path().display());
+        let url = determine_electrum_url_from_net(&subaccount_network).unwrap();
+        let mut session = ElectrumSession::create_session(subaccount_network, &db_root, url);
+        let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
+        session.login(&mnemonic, None).unwrap();
+        let ap = session.get_receive_address(&Value::Null).unwrap();
+        let expected = 1230;
+        self.node_sendtoaddress(&ap.address, expected, None);
+
+        for i in 0..=30 {
+            let balances = session.get_balance(0, Some(i)).unwrap(); // TODO note subaccount is not really used here
+            let satoshi =
+                *balances.get(&self.asset_tag().unwrap_or("btc".to_string())).unwrap() as u64;
+            if satoshi == expected {
+                break;
+            }
+            if i == 30 {
+                assert!(false, "bip44_account 1 balance does not match");
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        let intermediate_balance_account_0 = self.balance_gdk(self.asset_tag());
+        assert_eq!(
+            initial_balance_account_0, intermediate_balance_account_0,
+            "account 0 balance changed but it shouldn't"
+        );
+
+        let return_addr = self.session.get_receive_address(&Value::Null).unwrap().address;
+        let mut create_opt = CreateTransaction::default();
+        create_opt.addressees.push(AddressAmount {
+            address: return_addr.to_string(),
+            satoshi: 0,
+            asset_tag: self.asset_tag(),
+        });
+        create_opt.send_all = Some(true);
+        let tx = session.create_transaction(&mut create_opt).unwrap();
+        let signed_tx = session.sign_transaction(&tx).unwrap();
+
+        let _ = session.broadcast_transaction(&signed_tx.hex).unwrap();
+        self.wait_tx_status_change();
+        let final_balance_account_0 = self.balance_gdk(self.asset_tag());
+        assert!(final_balance_account_0 > initial_balance_account_0);
+    }
+
     /// send a tx, check it spend utxo with the same script_pubkey together
     /// requires zero balance in session, the node will send two amounts to the same address
     pub fn send_tx_same_script(&mut self) {
