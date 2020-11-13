@@ -87,6 +87,12 @@ impl ElectrumUrl {
             ElectrumUrl::Plaintext(url) => Ok(Client::TCP(make_stream(url)?.into())),
         }
     }
+    pub fn url(&self) -> &str {
+        match self {
+            ElectrumUrl::Tls(url, _) => url,
+            ElectrumUrl::Plaintext(url) => url,
+        }
+    }
 }
 
 /// Timeouts for connect, read and write
