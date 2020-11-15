@@ -195,7 +195,12 @@ if swig.found()
     endforeach
 
     if python_version != ''
-        python_dep = python_installation.dependency()
+        # Note: Use embed:true to force linking libpython, since we don't
+        # allow missing symbols in our final .so file.
+        # FIXME: When making a python module we must avoid linking libpython
+        # and allow the interpreter to provide the symbols for manylinux
+        # compatibility.
+        python_dep = python_installation.dependency(embed:true)
         if not python_dep.found()
             error('Python development dependency not be found, please install python(version)-dev and try again.')
         endif
