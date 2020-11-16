@@ -1,17 +1,28 @@
 language: generic
 sudo: required
+addons:
+  homebrew:
+    update: true
+    packages:
+      - autoconf
+      - gnu-getopt
+      - gnu-sed
+      - gnu-tar
+      - libtool
+      - ninja
+      - pkg-config
+      - python3
+      - swig
+      - wget
 matrix:
   include:
     - os: osx
       osx_image: xcode11.3
       install:
-        - brew update
-        - brew upgrade
-        - brew install ninja autoconf libtool gnu-sed python3 wget pkg-config swig gnu-getopt gnu-tar
         - python3 -m pip install virtualenv meson===0.51.2
         - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.42.0
       script:
-        - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version 3.7 --enable-rust
+        - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version $(python3 --version | cut -d ' ' -f 2 | cut -d '.' -f1,2) --enable-rust
     - services:
         - docker
       script: docker run -v $PWD:/gdk greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1 /bin/bash -c "cd /gdk && ./tools/build.sh --clang --enable-rust"
