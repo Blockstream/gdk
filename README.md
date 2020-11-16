@@ -23,7 +23,7 @@ Install Xcode and brew if not installed, then
 
 ```
 brew update && brew install ninja automake autoconf libtool gnu-sed python3 wget pkg-config swig (optional) gnu-getopt gnu-tar
-pip3 install --user meson
+pip3 install --user meson 
 xcode-select --install
 ```
 
