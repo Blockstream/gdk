@@ -195,12 +195,18 @@ if swig.found()
     endforeach
 
     if python_version != ''
-        # Note: Use embed:true to force linking libpython, since we don't
-        # allow missing symbols in our final .so file.
         # FIXME: When making a python module we must avoid linking libpython
         # and allow the interpreter to provide the symbols for manylinux
         # compatibility.
-        python_dep = python_installation.dependency(embed:true)
+        if python_installation.language_version().version_compare('<3.8')
+            # Note: Use embed:true to force linking libpython, since we don't
+            # allow missing symbols in our final .so file.
+            python_dep = python_installation.dependency(embed:true)
+        else
+            # Work around for https://github.com/mesonbuild/meson/issues/5629
+            python_dep = dependency('python-@0@-embed'.format(python_version), version: '>=3', required: false)
+        endif
+
         if not python_dep.found()
             error('Python development dependency not be found, please install python(version)-dev and try again.')
         endif
