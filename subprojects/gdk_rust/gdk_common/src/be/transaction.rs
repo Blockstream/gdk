@@ -149,15 +149,15 @@ impl BETransaction {
         &self,
         vout: u32,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-    ) -> u64 {
+    ) -> Option<u64> {
         match self {
-            Self::Bitcoin(tx) => tx.output[vout as usize].value,
+            Self::Bitcoin(tx) => Some(tx.output[vout as usize].value),
             Self::Elements(tx) => {
                 let outpoint = elements::OutPoint {
                     txid: tx.txid(),
                     vout,
                 };
-                all_unblinded.get(&outpoint).unwrap().value // TODO return Result<u64>?
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.value)
             }
         }
     }
@@ -203,7 +203,7 @@ impl BETransaction {
                     txid: tx.txid(),
                     vout,
                 };
-                Some(all_unblinded.get(&outpoint).unwrap().asset())
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.asset())
             }
         }
     }
@@ -846,7 +846,10 @@ impl BETransactions {
         outpoint: &BEOutPoint,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Option<u64> {
-        self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_value(outpoint.vout(), &all_unblinded))
+        match self.0.get(&outpoint.txid()) {
+            None => None,
+            Some(txe) => txe.tx.output_value(outpoint.vout(), &all_unblinded),
+        }
     }
 
     pub fn get_previous_output_asset(
@@ -854,9 +857,10 @@ impl BETransactions {
         outpoint: elements::OutPoint,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Option<elements::issuance::AssetId> {
-        self.0
-            .get(&outpoint.txid.into())
-            .map(|txe| txe.tx.output_asset(outpoint.vout, &all_unblinded).unwrap())
+        match self.0.get(&outpoint.txid.into()) {
+            None => None,
+            Some(txe) => txe.tx.output_asset(outpoint.vout, &all_unblinded),
+        }
     }
 }
 
