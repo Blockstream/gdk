@@ -320,7 +320,7 @@ pub struct AddressIO {
     pub is_spent: String,
     pub pointer: u32, // child_number in bip32 terminology
     pub pt_idx: u32,  // vout
-    pub satoshi: i64,
+    pub satoshi: u64,
     pub script_type: u32,
     pub subaccount: u32,
     pub subtype: u32, // unused here, but used in gdk interface for CSV bucketing
