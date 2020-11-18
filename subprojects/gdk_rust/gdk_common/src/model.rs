@@ -329,6 +329,28 @@ pub struct AddressIO {
     pub subtype: u32, // unused here, but used in gdk interface for CSV bucketing
 }
 
+impl Default for AddressIO {
+    fn default() -> Self {
+        AddressIO {
+            address: "".into(),
+            address_type: bitcoin::util::address::AddressType::P2sh.into(),
+            addressee: "".into(),
+            asset_id: "".into(),
+            is_output: "".into(),
+            is_relevant: "".into(),
+            is_spent: "".into(),
+            pointer: 0,
+            pt_idx: 0,
+            satoshi: 0,
+            script_type: 0,
+            subaccount: 0,
+            subtype: 0,
+            assetblinder: "".into(),
+            amountblinder: "".into(),
+        }
+    }
+}
+
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TxListItem {
