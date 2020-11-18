@@ -208,6 +208,40 @@ impl BETransaction {
         }
     }
 
+    pub fn output_assetblinder_hex(
+        &self,
+        vout: u32,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    ) -> Option<String> {
+        match self {
+            Self::Bitcoin(_) => None,
+            Self::Elements(tx) => {
+                let outpoint = elements::OutPoint {
+                    txid: tx.txid(),
+                    vout,
+                };
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.assetblinder_hex())
+            }
+        }
+    }
+
+    pub fn output_amountblinder_hex(
+        &self,
+        vout: u32,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    ) -> Option<String> {
+        match self {
+            Self::Bitcoin(_) => None,
+            Self::Elements(tx) => {
+                let outpoint = elements::OutPoint {
+                    txid: tx.txid(),
+                    vout,
+                };
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.amountblinder_hex())
+            }
+        }
+    }
+
     pub fn get_weight(&self) -> usize {
         match self {
             Self::Bitcoin(tx) => tx.get_weight(),
@@ -860,6 +894,28 @@ impl BETransactions {
         match self.0.get(&outpoint.txid.into()) {
             None => None,
             Some(txe) => txe.tx.output_asset(outpoint.vout, &all_unblinded),
+        }
+    }
+
+    pub fn get_previous_output_assetblinder_hex(
+        &self,
+        outpoint: elements::OutPoint,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    ) -> Option<String> {
+        match self.0.get(&outpoint.txid.into()) {
+            None => None,
+            Some(txe) => txe.tx.output_assetblinder_hex(outpoint.vout, &all_unblinded),
+        }
+    }
+
+    pub fn get_previous_output_amountblinder_hex(
+        &self,
+        outpoint: elements::OutPoint,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    ) -> Option<String> {
+        match self.0.get(&outpoint.txid.into()) {
+            None => None,
+            Some(txe) => txe.tx.output_amountblinder_hex(outpoint.vout, &all_unblinded),
         }
     }
 }
