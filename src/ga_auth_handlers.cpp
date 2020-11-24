@@ -619,13 +619,15 @@ namespace sdk {
                     args.at("asset_commitments").is_array() && args.at("asset_commitments").size() == outputs.size());
                 GDK_RUNTIME_ASSERT(
                     args.at("value_commitments").is_array() && args.at("value_commitments").size() == outputs.size());
-                GDK_RUNTIME_ASSERT(args.at("abfs").is_array() && args.at("abfs").size() == outputs.size());
-                GDK_RUNTIME_ASSERT(args.at("vbfs").is_array() && args.at("vbfs").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(
+                    args.at("assetblinders").is_array() && args.at("assetblinders").size() == outputs.size());
+                GDK_RUNTIME_ASSERT(
+                    args.at("amountblinders").is_array() && args.at("amountblinders").size() == outputs.size());
 
                 const auto& asset_commitments = args.at("asset_commitments");
                 const auto& value_commitments = args.at("value_commitments");
-                const auto& abfs = args.at("abfs");
-                const auto& vbfs = args.at("vbfs");
+                const auto& abfs = args.at("assetblinders");
+                const auto& vbfs = args.at("amountblinders");
 
                 size_t i = 0;
                 for (const auto& out : outputs) {

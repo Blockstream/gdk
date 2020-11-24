@@ -552,7 +552,7 @@ namespace sdk {
 
     void ga_rust::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
         const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-        const std::string& abf, const std::string& vbf)
+        const std::string& assetblinder_hex, const std::string& amountblinder_hex)
     {
         throw std::runtime_error("blind_output not yet implemented");
     }

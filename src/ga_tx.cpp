@@ -969,11 +969,11 @@ namespace sdk {
         for (const auto& utxo : details["used_utxos"]) {
             const auto asset_id = h2b_rev(utxo["asset_id"]);
             input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
-            const auto abf = h2b(utxo["abf"]);
+            const auto abf = h2b_rev(utxo["assetblinder"]);
             const auto generator = asset_generator_from_bytes(asset_id, abf);
             input_ags.insert(input_ags.end(), std::begin(generator), std::end(generator));
             input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
-            const auto vbf = h2b(utxo["vbf"]);
+            const auto vbf = h2b_rev(utxo["amountblinder"]);
             input_vbfs.insert(input_vbfs.end(), std::begin(vbf), std::end(vbf));
             input_values.emplace_back(utxo["satoshi"]);
         }
@@ -1066,7 +1066,7 @@ namespace sdk {
         for (const auto& utxo : details["used_utxos"]) {
             const auto asset_id = h2b_rev(utxo["asset_id"]);
             input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
-            const auto abf = h2b(utxo["abf"]);
+            const auto abf = h2b_rev(utxo["assetblinder"]);
             const auto generator = asset_generator_from_bytes(asset_id, abf);
             input_ags.insert(input_ags.end(), std::begin(generator), std::end(generator));
             input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));

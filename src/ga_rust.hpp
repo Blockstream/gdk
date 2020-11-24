@@ -165,7 +165,7 @@ namespace sdk {
 
         void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
             const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-            const std::string& abf, const std::string& vbf);
+            const std::string& assetblinder_hex, const std::string& amountblinder_hex);
         void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
         bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
         liquid_support_level hw_liquid_support() const;

@@ -108,6 +108,8 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
 
+        static const std::string ZEROS(64, '0');
+
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
         {
@@ -2066,8 +2068,8 @@ namespace sdk {
 
         if (boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value)) {
             utxo["satoshi"] = value;
-            utxo["abf"] = b2h(abf_t{ { 0 } });
-            utxo["vbf"] = b2h(vbf_t{ { 0 } });
+            utxo["assetblinder"] = ZEROS;
+            utxo["amountblinder"] = ZEROS;
             const auto asset_tag = h2b(utxo.value("asset_tag", policy_asset));
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag.data() + 1, asset_tag.size() - 1));
@@ -2120,8 +2122,9 @@ namespace sdk {
             }
 
             utxo["satoshi"] = std::get<3>(unblinded);
-            utxo["abf"] = b2h(std::get<2>(unblinded));
-            utxo["vbf"] = b2h(std::get<1>(unblinded));
+            // Return in display order
+            utxo["assetblinder"] = b2h_rev(std::get<2>(unblinded));
+            utxo["amountblinder"] = b2h_rev(std::get<1>(unblinded));
             utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
             utxo["confidential"] = true;
             if (utxo.contains("txhash")) {
@@ -3400,10 +3403,10 @@ namespace sdk {
 
     void ga_session::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
         const nlohmann::json& output, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-        const std::string& abf, const std::string& vbf)
+        const std::string& assetblinder_hex, const std::string& amountblinder_hex)
     {
         ::ga::sdk::blind_output(*this, details, tx, index, output, h2b<33>(asset_commitment_hex),
-            h2b<33>(value_commitment_hex), h2b<32>(abf), h2b<32>(vbf));
+            h2b<33>(value_commitment_hex), h2b_rev<32>(assetblinder_hex), h2b_rev<32>(amountblinder_hex));
     }
 
     // Idempotent

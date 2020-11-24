@@ -384,18 +384,19 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
         nlohmann::json utxo;
-        const auto _get_result = [this](const int column, const int size) {
+        const auto _get_reversed_result = [this](const int column, const int size) {
             GDK_RUNTIME_ASSERT(sqlite3_column_bytes(m_stmt_liquidoutput_search.get(), column) == size);
             const auto res
                 = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(m_stmt_liquidoutput_search.get(), column));
             GDK_RUNTIME_ASSERT(res);
-            return b2h(gsl::make_span(res, size));
+            // cache values are stored in byte order not display order (reversed)
+            return b2h_rev(gsl::make_span(res, size));
         };
 
-        utxo["asset_id"] = _get_result(0, ASSET_TAG_LEN);
+        utxo["asset_id"] = _get_reversed_result(0, ASSET_TAG_LEN);
         utxo["satoshi"] = sqlite3_column_int64(m_stmt_liquidoutput_search.get(), 1);
-        utxo["abf"] = _get_result(2, 32);
-        utxo["vbf"] = _get_result(3, 32);
+        utxo["assetblinder"] = _get_reversed_result(2, 32);
+        utxo["amountblinder"] = _get_reversed_result(3, 32);
 
         GDK_RUNTIME_ASSERT(sqlite3_step(m_stmt_liquidoutput_search.get()) == SQLITE_DONE);
         return utxo;
@@ -430,17 +431,18 @@ namespace sdk {
         bind_blob(m_stmt_liquidoutput_insert.get(), 1, txhash);
 
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquidoutput_insert.get(), 2, vout) == SQLITE_OK);
-        const auto assetid = h2b(utxo["asset_id"]);
+        const auto assetid = h2b_rev(utxo["asset_id"]);
         bind_blob(m_stmt_liquidoutput_insert.get(), 3, assetid);
 
         const auto satoshi = utxo.at("satoshi");
         GDK_RUNTIME_ASSERT(sqlite3_bind_int64(m_stmt_liquidoutput_insert.get(), 4, satoshi) == SQLITE_OK);
 
-        const auto abf = h2b(utxo["abf"]);
+        const auto abf = h2b_rev(utxo["assetblinder"]);
         bind_blob(m_stmt_liquidoutput_insert.get(), 5, abf);
-        const auto vbf = h2b(utxo["vbf"]);
+        const auto vbf = h2b_rev(utxo["amountblinder"]);
         bind_blob(m_stmt_liquidoutput_insert.get(), 6, vbf);
 
+        // cache values are stored in byte order not display order (reversed)
         GDK_RUNTIME_ASSERT(sqlite3_step(m_stmt_liquidoutput_insert.get()) == SQLITE_DONE);
         m_require_write = true;
     }

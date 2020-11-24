@@ -405,9 +405,9 @@ namespace sdk {
             std::vector<uint64_t> input_values;
 
             for (const auto& utxo : result["used_utxos"]) {
-                const auto abf = h2b(utxo["abf"]);
+                const auto abf = h2b_rev(utxo["assetblinder"]);
                 input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
-                const auto vbf = h2b(utxo["vbf"]);
+                const auto vbf = h2b_rev(utxo["amountblinder"]);
                 input_vbfs.insert(input_vbfs.end(), std::begin(vbf), std::end(vbf));
                 input_values.emplace_back(utxo["satoshi"]);
             }

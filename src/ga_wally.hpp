@@ -180,6 +180,18 @@ namespace sdk {
         return buff;
     }
 
+    template <std::size_t N> std::array<unsigned char, N> h2b_rev(const std::string& hex)
+    {
+        GDK_RUNTIME_ASSERT(hex.size() / 2 == N);
+        std::array<unsigned char, N> buff{ { 0 } };
+
+        const std::vector<unsigned char> bin = h2b_rev(hex);
+        GDK_RUNTIME_ASSERT(bin.size() == N);
+
+        std::copy(std::begin(bin), std::end(bin), buff.begin());
+        return buff;
+    }
+
     std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family);
 
     std::string address_from_xpub(unsigned char btc_version, const xpub_t& xpub);
