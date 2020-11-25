@@ -2089,7 +2089,7 @@ namespace sdk {
             return;
         }
         if (utxo.contains("txhash")) {
-            const auto txhash = h2b(utxo.at("txhash"));
+            const auto txhash = h2b_rev(utxo.at("txhash"));
             const auto vout = utxo["pt_idx"];
             locker_t locker(m_mutex);
             const auto value = m_cache.get_liquidoutput(txhash, vout);
@@ -2140,7 +2140,7 @@ namespace sdk {
             utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
             utxo["confidential"] = true;
             if (utxo.contains("txhash")) {
-                const auto txhash = h2b(utxo.at("txhash"));
+                const auto txhash = h2b_rev(utxo.at("txhash"));
                 const auto vout = utxo["pt_idx"];
 
                 locker_t locker(m_mutex);
@@ -2586,7 +2586,7 @@ namespace sdk {
         for (const auto& tx : txs) {
 
             auto&& process_endpoint = [&](const auto& ep) GDK_REQUIRES(m_mutex) {
-                const auto txhash = h2b(tx.at("txhash"));
+                const auto txhash = h2b_rev(tx.at("txhash"));
                 const auto vout = ep["pt_idx"];
                 if (m_cache.has_liquidoutput(txhash, vout)) {
                     return;
