@@ -517,7 +517,8 @@ namespace sdk {
                 m_message_info = m_session.get_system_message_info(msg);
                 m_state = state_type::resolve_code;
                 m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
-                m_twofactor_data["paths"] = m_message_info.second;
+                m_twofactor_data["message"] = m_message_info.first;
+                m_twofactor_data["path"] = m_message_info.second;
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
