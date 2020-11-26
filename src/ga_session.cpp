@@ -2585,7 +2585,6 @@ namespace sdk {
             txs = get_raw_transactions(*subaccount_p, 0, max_count);
         } else {
             // No subaccount specified - get transactions for all subaccounts
-            nlohmann::json sa_details = details;
             const auto sa_pointers = get_all_subaccount_pointers();
             for (const uint32_t sa_pointer : sa_pointers) {
                 const auto sa_txs = get_raw_transactions(sa_pointer, 0, max_count);
