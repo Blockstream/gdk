@@ -2,6 +2,7 @@
 set -e
 
 boost_chrono_lib=$1/boost/build/lib/libboost_chrono.a
+boost_date_time_lib=$1/boost/build/lib/libboost_date_time.a
 boost_log_lib=$1/boost/build/lib/libboost_log.a
 boost_system_lib=$1/boost/build/lib/libboost_system.a
 boost_thread_lib=$1/boost/build/lib/libboost_thread.a
@@ -56,7 +57,7 @@ tor_trace=$1/tor/src/lib/libtor-trace.a
 tor_confmgt=$1/tor/src/lib/libtor-confmgt.a
 gdk_rust=$1/subprojects/gdk_rust/libgdk_rust.a
 
-libraries="$boost_chrono_lib $boost_log_lib $boost_system_lib $boost_thread_lib $openssl_crypto_lib $openssl_ssl_lib $secp256k1_lib $wally_lib $libevent $libevent_pthread $libcurve25519_donna $libz $tor_ed25519_donna $tor_ed25519_ref10 $tor_core $tor_keccak $tor_trunnel $tor_intmath $tor_lock $tor_malloc $tor_math $tor_memarea $tor_meminfo $tor_osinfo $tor_process $tor_sandbox $tor_smartlist_core $tor_string $tor_term $tor_time $tor_thread $tor_wallclock $tor_log $tor_tls $tor_compress $tor_container $tor_crypt_ops $tor_ctime $tor_encoding $tor_net $tor_err $tor_evloop $tor_fdio $tor_fs $tor_geoip $tor_version $tor_buf $tor_pubsub $tor_dispatch $tor_trace $tor_confmgt"
+libraries="$boost_chrono_lib $boost_date_time_lib $boost_log_lib $boost_system_lib $boost_thread_lib $openssl_crypto_lib $openssl_ssl_lib $secp256k1_lib $wally_lib $libevent $libevent_pthread $libcurve25519_donna $libz $tor_ed25519_donna $tor_ed25519_ref10 $tor_core $tor_keccak $tor_trunnel $tor_intmath $tor_lock $tor_malloc $tor_math $tor_memarea $tor_meminfo $tor_osinfo $tor_process $tor_sandbox $tor_smartlist_core $tor_string $tor_term $tor_time $tor_thread $tor_wallclock $tor_log $tor_tls $tor_compress $tor_container $tor_crypt_ops $tor_ctime $tor_encoding $tor_net $tor_err $tor_evloop $tor_fdio $tor_fs $tor_geoip $tor_version $tor_buf $tor_pubsub $tor_dispatch $tor_trace $tor_confmgt"
 if [ -f "$gdk_rust" ]; then
   libraries="$libraries $gdk_rust"
 fi

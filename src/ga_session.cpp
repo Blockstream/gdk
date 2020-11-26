@@ -1377,12 +1377,16 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             json_rename_key(details, "count", "block_height");
             details["initial_timestamp"] = m_earliest_block_time;
+
+            // Update the tx list cache before we update our own block height,
+            // in case this is a reorg (in which case 'diverged_count'refers to
+            // blocks diverged from the current GA tip)
+            m_tx_list_caches.on_new_block(m_block_height, details);
+
             const uint32_t block_height = details["block_height"];
             if (block_height > m_block_height) {
                 m_block_height = block_height;
             }
-
-            m_tx_list_caches.on_new_block(details);
 
             if (m_notification_handler != nullptr) {
                 details.erase("diverged_count");
@@ -2234,13 +2238,16 @@ namespace sdk {
         return utxos;
     }
 
-    std::vector<nlohmann::json> ga_session::get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count)
+    tx_list_cache::container_type ga_session::get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count)
     {
         // Note: This function must not take the session lock or deadlocks will result.
-        auto&& server_get = [this, subaccount](uint32_t page_id, nlohmann::json& state_info) {
+        auto&& server_get = [this, subaccount](uint32_t page_id, const std::string& start_date,
+                                const std::string& end_date, nlohmann::json& state_info) {
+            const std::vector<std::string> date_range{ start_date, end_date };
+
             nlohmann::json txs;
             wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), std::string(), subaccount);
+                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
 
             // Update block height and fiat rate in our state info
             const uint32_t block_height = txs["cur_block"];
@@ -2250,24 +2257,21 @@ namespace sdk {
             if (!txs["fiat_value"].is_null()) {
                 state_info["fiat_value"] = txs["fiat_value"];
             }
+            // Record whether there are any more results remaining
+            state_info["have_more_results"] = txs["next_page_id"].is_null();
 
-            // Remove all replaced transactions
-            // TODO: Add 'replaces' to txs that were bumped, and mark replaced
             // txs that aren't in our list as double spent
-            std::vector<nlohmann::json> tx_list;
-            tx_list.reserve(txs["list"].size());
-            for (auto& tx_details : txs["list"]) {
-                if (tx_details.find("replaced_by") == tx_details.end()) {
-                    tx_list.emplace_back(tx_details);
-                }
-            }
-
-            return tx_list;
+            auto& tx_list = txs["list"];
+            return tx_list_cache::container_type{ std::make_move_iterator(tx_list.begin()),
+                std::make_move_iterator(tx_list.end()) };
         };
 
-        std::vector<nlohmann::json> tx_list;
+        tx_list_cache::container_type tx_list;
         nlohmann::json state_info;
-        std::tie(tx_list, state_info) = m_tx_list_caches.get(subaccount)->get(first, count, server_get);
+
+        if (count) {
+            std::tie(tx_list, state_info) = m_tx_list_caches.get(subaccount)->get(first, count, server_get);
+        }
 
         {
             // Update our local block height from the returned results
@@ -2294,7 +2298,12 @@ namespace sdk {
         const uint32_t first = details.at("first");
         const uint32_t count = details.at("count");
 
-        std::vector<nlohmann::json> tx_list = get_raw_transactions(subaccount, first, count);
+        if (json_get_value(details, "clear_cache", false)) {
+            // Clear the tx list cache on user request
+            m_tx_list_caches.purge_all();
+        }
+
+        tx_list_cache::container_type tx_list = get_raw_transactions(subaccount, first, count);
 
         const auto datadir = gdk_config().value("datadir", std::string{});
         const auto path = datadir + "/state";
@@ -2581,7 +2590,7 @@ namespace sdk {
         std::set<std::pair<std::string, std::string>> no_dups;
 
         // Get the wallet transactions from the tx list cache
-        std::vector<nlohmann::json> txs;
+        tx_list_cache::container_type txs;
         static constexpr uint32_t max_count = std::numeric_limits<uint32_t>::max();
         const auto subaccount_p = details.find("subaccount");
         if (subaccount_p != details.end()) {

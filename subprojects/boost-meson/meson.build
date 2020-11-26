@@ -29,10 +29,11 @@ incdir = join_paths('..', '..', meson.build_root().split('/')[-1], boost_dir_nam
 libdir = join_paths(meson.build_root(), boost_dir_name, 'build', 'lib')
 
 chrono_lib = compiler.find_library('boost_chrono', dirs : libdir)
+date_time_lib = compiler.find_library('boost_date_time', dirs : libdir)
 log_lib = compiler.find_library('boost_log', dirs : libdir)
 system_lib = compiler.find_library('boost_system', dirs : libdir)
 thread_lib = compiler.find_library('boost_thread', dirs : libdir)
 
 boost_dep = declare_dependency(
     include_directories : include_directories(incdir),
-    dependencies : [chrono_lib, log_lib, system_lib, thread_lib])
+    dependencies : [chrono_lib, date_time_lib, log_lib, system_lib, thread_lib])
