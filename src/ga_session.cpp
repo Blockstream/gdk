@@ -303,7 +303,7 @@ namespace sdk {
         , m_watch_only(true)
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
-        , m_cache(net_params.at("name"))
+        , m_cache(m_net_params, net_params.at("name"))
         , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
         , m_electrum_url(
               net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))

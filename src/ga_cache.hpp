@@ -19,8 +19,10 @@ template <> struct default_delete<struct sqlite3_stmt> {
 
 namespace ga {
 namespace sdk {
+    class network_parameters;
+
     struct cache final {
-        cache(const std::string& network_name);
+        cache(const network_parameters& net_params, const std::string& network_name);
         void insert_liquidoutput(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
         void insert_liquidblindingnonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce);
         void upsert_keyvalue(const std::string& key, byte_span_t value);
@@ -37,6 +39,7 @@ namespace sdk {
         uint32_t m_type = 0;
         bool m_require_write = false;
         const std::string m_network_name;
+        const bool m_is_liquid;
         std::unique_ptr<sqlite3> m_db;
         std::unique_ptr<sqlite3_stmt> m_stmt_liquidblindingnonce_has;
         std::unique_ptr<sqlite3_stmt> m_stmt_liquidblindingnonce_search;
