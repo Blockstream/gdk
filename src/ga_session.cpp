@@ -2746,7 +2746,7 @@ namespace sdk {
             public_key_bytes = ec_public_key_decompress(public_key_bytes);
         }
         const auto script_bytes = scriptpubkey_p2pkh_from_hash160(hash160(public_key_bytes));
-        const auto script_hash_hex = b2h_rev(sha256(script_bytes));
+        const auto script_hash_hex = electrum_script_hash_hex(script_bytes);
 
         nlohmann::json utxos;
         wamp_call(

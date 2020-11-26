@@ -142,6 +142,8 @@ namespace sdk {
 
     std::array<unsigned char, SHA256_LEN> format_bitcoin_message_hash(byte_span_t message);
 
+    std::string electrum_script_hash_hex(byte_span_t script_bytes);
+
     void scrypt(byte_span_t password, byte_span_t salt, uint32_t cost, uint32_t block_size, uint32_t parallelism,
         std::vector<unsigned char>& out);
 
