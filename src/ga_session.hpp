@@ -149,9 +149,7 @@ namespace sdk {
 
         void connect();
         void try_reconnect();
-        void stop_reconnect();
         void reconnect_hint(bool enabled, bool restarted);
-        bool reconnect();
         std::string get_tor_socks5();
         void tor_sleep_hint(const std::string& hint);
 
@@ -318,6 +316,8 @@ namespace sdk {
         void reset();
 
         bool is_connected() const;
+        bool reconnect();
+        void stop_reconnect();
 
         void register_user(locker_t& locker, const std::string& mnemonic, bool supports_csv);
         void register_user(locker_t& locker, const std::string& master_pub_key_hex,
