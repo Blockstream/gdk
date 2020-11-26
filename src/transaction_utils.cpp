@@ -399,35 +399,6 @@ namespace sdk {
 
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
 
-        if (net_params.liquid() && result.contains("used_utxos")) {
-            std::vector<unsigned char> input_abfs;
-            std::vector<unsigned char> input_vbfs;
-            std::vector<uint64_t> input_values;
-
-            for (const auto& utxo : result["used_utxos"]) {
-                const auto abf = h2b_rev(utxo["assetblinder"]);
-                input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
-                const auto vbf = h2b_rev(utxo["amountblinder"]);
-                input_vbfs.insert(input_vbfs.end(), std::begin(vbf), std::end(vbf));
-                input_values.emplace_back(utxo["satoshi"]);
-            }
-
-            for (size_t i = 0; i < tx->num_outputs; ++i) {
-                const auto& o = tx->outputs[i];
-                if (!o.script && !o.script_len) {
-                    continue;
-                }
-
-                amount::value_type satoshi = o.satoshi;
-                GDK_RUNTIME_ASSERT(o.value);
-                if (*o.value == 1) {
-                    satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
-                }
-
-                input_values.emplace_back(satoshi);
-            }
-        }
-
         // Note that outputs may be empty if the constructed tx is incomplete
         std::vector<nlohmann::json> outputs;
         if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
