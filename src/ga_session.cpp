@@ -554,6 +554,20 @@ namespace sdk {
         return ctx;
     }
 
+    void ga_session::wamp_process_call(boost::future<void>& call_fn, uint32_t timeout_secs) const
+    {
+        for (;;) {
+            const auto status = call_fn.wait_for(boost::chrono::seconds(timeout_secs));
+            if (status == boost::future_status::timeout && !is_connected()) {
+                throw timeout_error{};
+            }
+            if (status == boost::future_status::ready) {
+                break;
+            }
+        }
+        call_fn.get();
+    }
+
     void ga_session::ping_timer_handler(const boost::system::error_code& ec)
     {
         if (ec == boost::asio::error::operation_aborted) {

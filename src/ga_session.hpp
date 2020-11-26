@@ -431,22 +431,15 @@ namespace sdk {
         template <typename F, typename... Args>
         void wamp_call(F&& body, const std::string& method_name, Args&&... args) const
         {
-            constexpr uint8_t timeout = 10;
+            constexpr uint32_t timeout_secs = 10;
             autobahn::wamp_call_options call_options;
-            call_options.set_timeout(std::chrono::seconds(timeout));
+            call_options.set_timeout(std::chrono::seconds(timeout_secs));
             auto fn = m_session->call(method_name, std::make_tuple(std::forward<Args>(args)...), call_options)
                           .then(boost::launch::async, std::forward<F>(body));
-            for (;;) {
-                const auto status = fn.wait_for(boost::chrono::seconds(timeout));
-                if (status == boost::future_status::timeout && !is_connected()) {
-                    throw timeout_error{};
-                }
-                if (status == boost::future_status::ready) {
-                    break;
-                }
-            }
-            fn.get();
+            wamp_process_call(fn, timeout_secs);
         }
+
+        void wamp_process_call(boost::future<void>& call_fn, uint32_t timeout_secs) const;
 
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
 
