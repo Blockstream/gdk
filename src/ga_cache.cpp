@@ -58,22 +58,22 @@ namespace sdk {
             return db;
         }
 
-        static auto get_stmt(bool enable, sqlite3* db, const char* statement)
+        static auto get_stmt(bool enable, std::unique_ptr<sqlite3>& db, const char* statement)
         {
             sqlite3_stmt* tmpstmt = nullptr;
             if (enable) {
-                int rc = sqlite3_prepare_v3(db, statement, -1, SQLITE_PREPARE_PERSISTENT, &tmpstmt, NULL);
-                GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(db));
+                int rc = sqlite3_prepare_v3(db.get(), statement, -1, SQLITE_PREPARE_PERSISTENT, &tmpstmt, NULL);
+                GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(db.get()));
             }
             return tmpstmt;
         }
 
-        static void stmt_check_clean(sqlite3_stmt* stmt)
+        static void stmt_check_clean(std::unique_ptr<sqlite3_stmt>& stmt)
         {
-            const int rc = sqlite3_clear_bindings(stmt);
-            GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt)));
-            const int rc2 = sqlite3_reset(stmt);
-            GDK_RUNTIME_ASSERT_MSG(rc2 == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt)));
+            const int rc = sqlite3_clear_bindings(stmt.get());
+            GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt.get())));
+            const int rc2 = sqlite3_reset(stmt.get());
+            GDK_RUNTIME_ASSERT_MSG(rc2 == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt.get())));
         }
 
         static void openssl_encrypt(byte_span_t key, byte_span_t data, const std::string& path)
@@ -199,34 +199,34 @@ namespace sdk {
             }
         }
 
-        static auto get_result(sqlite3_stmt* stmt, const int size = 0)
+        static auto get_result(std::unique_ptr<sqlite3_stmt>& stmt, const int size = 0)
         {
-            const auto res = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt, 0));
-            const auto bytes = sqlite3_column_bytes(stmt, 0);
+            const auto res = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 0));
+            const auto bytes = sqlite3_column_bytes(stmt.get(), 0);
             GDK_RUNTIME_ASSERT(size == 0 || bytes == size);
             const std::vector<unsigned char> result(res, res + bytes);
-            GDK_RUNTIME_ASSERT(sqlite3_step(stmt) == SQLITE_DONE);
+            GDK_RUNTIME_ASSERT(sqlite3_step(stmt.get()) == SQLITE_DONE);
             return result;
         }
 
-        static void bind_blob(sqlite3_stmt* stmt, const int column, byte_span_t blob)
+        static void bind_blob(std::unique_ptr<sqlite3_stmt>& stmt, const int column, byte_span_t blob)
         {
-            GDK_RUNTIME_ASSERT(sqlite3_bind_blob(stmt, column, blob.data(), blob.size(), SQLITE_STATIC) == SQLITE_OK);
+            GDK_RUNTIME_ASSERT(sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) == SQLITE_OK);
         }
 
-        static void bind_liquidblinding(sqlite3_stmt* stmt, byte_span_t pubkey, byte_span_t script)
+        static void bind_liquidblinding(std::unique_ptr<sqlite3_stmt>& stmt, byte_span_t pubkey, byte_span_t script)
         {
             bind_blob(stmt, 1, pubkey);
             bind_blob(stmt, 2, script);
         }
 
-        static bool has_result(sqlite3_stmt* stmt, int rc)
+        static bool has_result(std::unique_ptr<sqlite3_stmt>& stmt, int rc)
         {
             if (rc == SQLITE_DONE) {
                 return false;
             }
             GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
-            GDK_RUNTIME_ASSERT(sqlite3_step(stmt) == SQLITE_DONE);
+            GDK_RUNTIME_ASSERT(sqlite3_step(stmt.get()) == SQLITE_DONE);
             return true;
         }
     } // namespace
@@ -236,21 +236,21 @@ namespace sdk {
         , m_is_liquid(net_params.liquid())
         , m_db(get_db())
         , m_stmt_liquidblindingnonce_has(get_stmt(
-              m_is_liquid, m_db.get(), "SELECT 1 FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2 LIMIT 1;"))
+              m_is_liquid, m_db, "SELECT 1 FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2 LIMIT 1;"))
         , m_stmt_liquidblindingnonce_search(get_stmt(
-              m_is_liquid, m_db.get(), "SELECT nonce FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2;"))
+              m_is_liquid, m_db, "SELECT nonce FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2;"))
         , m_stmt_liquidblindingnonce_insert(get_stmt(
-              m_is_liquid, m_db.get(), "INSERT INTO LiquidBlindingNonce (pubkey, script, nonce) VALUES (?1, ?2, ?3);"))
+              m_is_liquid, m_db, "INSERT INTO LiquidBlindingNonce (pubkey, script, nonce) VALUES (?1, ?2, ?3);"))
         , m_stmt_liquidoutput_has(
-              get_stmt(m_is_liquid, m_db.get(), "SELECT 1 FROM LiquidOutput WHERE txid = ?1 AND vout = ?2 LIMIT 1;"))
-        , m_stmt_liquidoutput_search(get_stmt(m_is_liquid, m_db.get(),
+              get_stmt(m_is_liquid, m_db, "SELECT 1 FROM LiquidOutput WHERE txid = ?1 AND vout = ?2 LIMIT 1;"))
+        , m_stmt_liquidoutput_search(get_stmt(m_is_liquid, m_db,
               "SELECT assetid, satoshi, abf, vbf FROM LiquidOutput WHERE txid = ?1 AND vout = ?2;"))
-        , m_stmt_liquidoutput_insert(get_stmt(m_is_liquid, m_db.get(),
+        , m_stmt_liquidoutput_insert(get_stmt(m_is_liquid, m_db,
               "INSERT INTO LiquidOutput (txid, vout, assetid, satoshi, abf, vbf) VALUES (?1, ?2, ?3, ?4, ?5, ?6);"))
-        , m_stmt_keyvalue_upsert(get_stmt(true, m_db.get(),
+        , m_stmt_keyvalue_upsert(get_stmt(true, m_db,
               "INSERT INTO KeyValue(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value=?2;"))
-        , m_stmt_keyvalue_search(get_stmt(true, m_db.get(), "SELECT value FROM KeyValue WHERE key = ?1;"))
-        , m_stmt_keyvalue_delete(get_stmt(true, m_db.get(), "DELETE FROM KeyValue WHERE key = ?1;"))
+        , m_stmt_keyvalue_search(get_stmt(true, m_db, "SELECT value FROM KeyValue WHERE key = ?1;"))
+        , m_stmt_keyvalue_delete(get_stmt(true, m_db, "DELETE FROM KeyValue WHERE key = ?1;"))
     {
     }
 
@@ -322,18 +322,18 @@ namespace sdk {
     void cache::clear_keyvalue(const std::string& key)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_keyvalue_delete.get()); });
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_keyvalue_delete); });
         const auto key_span = ustring_span(key);
-        bind_blob(m_stmt_keyvalue_delete.get(), 1, key_span);
+        bind_blob(m_stmt_keyvalue_delete, 1, key_span);
         GDK_RUNTIME_ASSERT(sqlite3_step(m_stmt_keyvalue_delete.get()) == SQLITE_DONE);
     }
 
     boost::optional<std::vector<unsigned char>> cache::get(const std::string& key)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_keyvalue_search.get()); });
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_keyvalue_search); });
         const auto key_span = ustring_span(key);
-        bind_blob(m_stmt_keyvalue_search.get(), 1, key_span);
+        bind_blob(m_stmt_keyvalue_search, 1, key_span);
         const int rc = sqlite3_step(m_stmt_keyvalue_search.get());
 
         if (rc == SQLITE_DONE) {
@@ -341,7 +341,7 @@ namespace sdk {
         }
 
         GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
-        return get_result(m_stmt_keyvalue_search.get());
+        return get_result(m_stmt_keyvalue_search);
     }
 
     bool cache::has_liquidblindingnonce(byte_span_t pubkey, byte_span_t script)
@@ -350,24 +350,24 @@ namespace sdk {
         if (!m_stmt_liquidblindingnonce_has) {
             return false;
         }
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidblindingnonce_has.get()); });
-        bind_liquidblinding(m_stmt_liquidblindingnonce_has.get(), pubkey, script);
-        return has_result(m_stmt_liquidblindingnonce_has.get(), sqlite3_step(m_stmt_liquidblindingnonce_has.get()));
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidblindingnonce_has); });
+        bind_liquidblinding(m_stmt_liquidblindingnonce_has, pubkey, script);
+        return has_result(m_stmt_liquidblindingnonce_has, sqlite3_step(m_stmt_liquidblindingnonce_has.get()));
     }
 
     boost::optional<std::vector<unsigned char>> cache::get_liquidblindingnonce(byte_span_t pubkey, byte_span_t script)
     {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquidblindingnonce_search.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidblindingnonce_search.get()); });
-        bind_liquidblinding(m_stmt_liquidblindingnonce_search.get(), pubkey, script);
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidblindingnonce_search); });
+        bind_liquidblinding(m_stmt_liquidblindingnonce_search, pubkey, script);
         const int rc = sqlite3_step(m_stmt_liquidblindingnonce_search.get());
 
         if (rc == SQLITE_DONE) {
             return boost::none;
         }
         GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
-        return get_result(m_stmt_liquidblindingnonce_search.get());
+        return get_result(m_stmt_liquidblindingnonce_search);
     }
 
     bool cache::has_liquidoutput(byte_span_t txhash, const uint32_t vout)
@@ -376,19 +376,19 @@ namespace sdk {
         if (!m_stmt_liquidblindingnonce_has) {
             return false;
         }
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidoutput_has.get()); });
-        bind_blob(m_stmt_liquidoutput_has.get(), 1, txhash);
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidoutput_has); });
+        bind_blob(m_stmt_liquidoutput_has, 1, txhash);
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquidoutput_has.get(), 2, vout) == SQLITE_OK);
         const int rc = sqlite3_step(m_stmt_liquidoutput_has.get());
-        return has_result(m_stmt_liquidoutput_has.get(), rc);
+        return has_result(m_stmt_liquidoutput_has, rc);
     }
 
     boost::optional<nlohmann::json> cache::get_liquidoutput(byte_span_t txhash, const uint32_t vout)
     {
         GDK_RUNTIME_ASSERT(!txhash.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquidoutput_search.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidoutput_search.get()); });
-        bind_blob(m_stmt_liquidoutput_search.get(), 1, txhash);
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidoutput_search); });
+        bind_blob(m_stmt_liquidoutput_search, 1, txhash);
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquidoutput_search.get(), 2, vout) == SQLITE_OK);
         const int rc = sqlite3_step(m_stmt_liquidoutput_search.get());
         if (rc == SQLITE_DONE) {
@@ -417,10 +417,10 @@ namespace sdk {
     void cache::upsert_keyvalue(const std::string& key, byte_span_t value)
     {
         GDK_RUNTIME_ASSERT(!key.empty() && !value.empty());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_keyvalue_upsert.get()); });
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_keyvalue_upsert); });
         const auto key_span = ustring_span(key);
-        bind_blob(m_stmt_keyvalue_upsert.get(), 1, key_span);
-        bind_blob(m_stmt_keyvalue_upsert.get(), 2, value);
+        bind_blob(m_stmt_keyvalue_upsert, 1, key_span);
+        bind_blob(m_stmt_keyvalue_upsert, 2, value);
         GDK_RUNTIME_ASSERT(sqlite3_step(m_stmt_keyvalue_upsert.get()) == SQLITE_DONE);
         m_require_write = true;
     }
@@ -429,9 +429,9 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty() && !nonce.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquidblindingnonce_insert.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidblindingnonce_insert.get()); });
-        bind_liquidblinding(m_stmt_liquidblindingnonce_insert.get(), pubkey, script);
-        bind_blob(m_stmt_liquidblindingnonce_insert.get(), 3, nonce);
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidblindingnonce_insert); });
+        bind_liquidblinding(m_stmt_liquidblindingnonce_insert, pubkey, script);
+        bind_blob(m_stmt_liquidblindingnonce_insert, 3, nonce);
         GDK_RUNTIME_ASSERT(sqlite3_step(m_stmt_liquidblindingnonce_insert.get()) == SQLITE_DONE);
         m_require_write = true;
     }
@@ -440,21 +440,21 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!txhash.empty() && !utxo.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquidoutput_insert.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidoutput_insert.get()); });
+        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquidoutput_insert); });
 
-        bind_blob(m_stmt_liquidoutput_insert.get(), 1, txhash);
+        bind_blob(m_stmt_liquidoutput_insert, 1, txhash);
 
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquidoutput_insert.get(), 2, vout) == SQLITE_OK);
         const auto assetid = h2b_rev(utxo["asset_id"]);
-        bind_blob(m_stmt_liquidoutput_insert.get(), 3, assetid);
+        bind_blob(m_stmt_liquidoutput_insert, 3, assetid);
 
         const auto satoshi = utxo.at("satoshi");
         GDK_RUNTIME_ASSERT(sqlite3_bind_int64(m_stmt_liquidoutput_insert.get(), 4, satoshi) == SQLITE_OK);
 
         const auto abf = h2b_rev(utxo["assetblinder"]);
-        bind_blob(m_stmt_liquidoutput_insert.get(), 5, abf);
+        bind_blob(m_stmt_liquidoutput_insert, 5, abf);
         const auto vbf = h2b_rev(utxo["amountblinder"]);
-        bind_blob(m_stmt_liquidoutput_insert.get(), 6, vbf);
+        bind_blob(m_stmt_liquidoutput_insert, 6, vbf);
 
         // cache values are stored in byte order not display order (reversed)
         GDK_RUNTIME_ASSERT(sqlite3_step(m_stmt_liquidoutput_insert.get()) == SQLITE_DONE);
