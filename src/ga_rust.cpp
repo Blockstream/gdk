@@ -562,7 +562,7 @@ namespace sdk {
         throw std::runtime_error("blind_output not yet implemented");
     }
 
-    void ga_rust::set_local_encryption_key(byte_span_t key) {}
+    void ga_rust::set_local_encryption_key(byte_span_t key, bool is_hw_wallet) {}
 
     void ga_rust::disable_all_pin_logins() {}
 

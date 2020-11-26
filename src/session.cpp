@@ -498,11 +498,11 @@ namespace sdk {
         });
     }
 
-    void session::set_local_encryption_key(byte_span_t key)
+    void session::set_local_encryption_key(byte_span_t key, bool is_hw_wallet)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->set_local_encryption_key(key);
+            return p->set_local_encryption_key(key, is_hw_wallet);
         });
     }
 

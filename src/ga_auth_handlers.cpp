@@ -333,7 +333,8 @@ namespace sdk {
                     m_challenge = m_session.get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
                     const auto local_key = pbkdf2_hmac_sha512(get_xpub(xpubs.at(1)).second, PASSWORD_SALT);
-                    m_session.set_local_encryption_key(local_key);
+                    constexpr bool is_hw_wallet = true;
+                    m_session.set_local_encryption_key(local_key, is_hw_wallet);
 
                     // Ask the caller to sign the challenge
                     set_data("sign_message");

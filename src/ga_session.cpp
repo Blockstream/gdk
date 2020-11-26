@@ -702,6 +702,7 @@ namespace sdk {
             }
 
             m_signer.reset();
+            m_local_encryption_key = boost::none;
         }
 
         m_ping_timer.cancel();
@@ -1484,15 +1485,21 @@ namespace sdk {
         //#endif
     }
 
-    void ga_session::set_local_encryption_key(byte_span_t key)
+    void ga_session::set_local_encryption_key(byte_span_t key, bool is_hw_wallet)
     {
         locker_t locker(m_mutex);
+        set_local_encryption_key(locker, key, is_hw_wallet);
+    }
+
+    void ga_session::set_local_encryption_key(ga_session::locker_t& locker, byte_span_t key, bool is_hw_wallet)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(key.size() == PBKDF2_HMAC_SHA512_LEN);
         GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
         auto tmp = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>();
         std::copy(key.begin(), key.end(), tmp.begin());
         m_local_encryption_key = tmp;
-        m_cache.load_db(m_local_encryption_key.get(), /*hw*/ 1);
+        m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
         m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
     }
 
@@ -1530,17 +1537,11 @@ namespace sdk {
         // Create our local user keys repository
         m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, get_signer().get_xpub());
 
-        // Cache local encryption password
+        // Cache local encryption key
         const auto pwd_xpub = get_signer().get_xpub(PASSWORD_PATH);
-
-        m_local_encryption_key = [&pwd_xpub] {
-            const auto local_password = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
-            std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> tmp;
-            std::copy(local_password.begin(), local_password.end(), tmp.begin());
-            return boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>>(tmp);
-        }();
-        m_cache.load_db(m_local_encryption_key.get(), /*sw*/ 0);
-        m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
+        const auto key = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
+        constexpr bool is_hw_wallet = false;
+        set_local_encryption_key(locker, key, is_hw_wallet);
 
         // TODO: Unify normal and trezor logins
         std::string challenge;

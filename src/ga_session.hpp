@@ -201,7 +201,7 @@ namespace sdk {
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         std::string get_blinding_key_for_script(const std::string& script_hex);
-        void set_local_encryption_key(byte_span_t key);
+        void set_local_encryption_key(byte_span_t key, bool is_hw_wallet);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
         std::string extract_confidential_address(const std::string& blinded_address);
         nlohmann::json get_balance(const nlohmann::json& details);
@@ -378,6 +378,8 @@ namespace sdk {
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
         nlocktime_t get_upcoming_nlocktime();
+
+        void set_local_encryption_key(locker_t& locker, byte_span_t key, bool is_hw_wallet) GDK_REQUIRES(m_mutex);
 
         bool connect_with_tls() const;
 

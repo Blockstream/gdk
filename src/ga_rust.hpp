@@ -191,7 +191,7 @@ namespace sdk {
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
 
-        void set_local_encryption_key(byte_span_t key);
+        void set_local_encryption_key(byte_span_t key, bool is_hw_wallet);
         void disable_all_pin_logins();
 
     private:
