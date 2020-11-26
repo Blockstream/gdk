@@ -348,7 +348,7 @@ namespace sdk {
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const GDK_REQUIRES(m_mutex);
         nlohmann::json get_settings(locker_t& locker) GDK_REQUIRES(m_mutex);
         virtual nlohmann::json get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins);
-        void unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
+        bool unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
         nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
         std::vector<uint32_t> get_all_subaccount_pointers() const;
 

@@ -2075,7 +2075,7 @@ namespace sdk {
         update_fiat_rate(locker, fiat_rate);
     }
 
-    void ga_session::unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset)
+    bool ga_session::unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset)
     {
         amount::value_type value;
 
@@ -2087,7 +2087,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag.data() + 1, asset_tag.size() - 1));
             utxo["confidential"] = false;
-            return;
+            return false; // Cache not updated
         }
         if (utxo.contains("txhash")) {
             const auto txhash = h2b(utxo.at("txhash"));
@@ -2097,7 +2097,7 @@ namespace sdk {
             if (value) {
                 utxo.insert(value->begin(), value->end());
                 utxo["confidential"] = true;
-                return;
+                return false; // Cache not updated
             }
         }
         const auto rangeproof = h2b(utxo.at("range_proof"));
@@ -2131,7 +2131,7 @@ namespace sdk {
             } else {
                 // hw and missing nonce in the map
                 utxo["error"] = "missing blinding nonce";
-                return;
+                return false; // Cache not updated
             }
 
             utxo["satoshi"] = std::get<3>(unblinded);
@@ -2148,15 +2148,19 @@ namespace sdk {
                 // check again, we released the lock earlier, so some other thread could have started to unblind too
                 if (!m_cache.get_liquidoutput(txhash, vout)) {
                     m_cache.insert_liquidoutput(txhash, vout, utxo);
+                    return true; // Cache was updated
                 }
             }
         } catch (const std::exception& ex) {
             utxo["error"] = "failed to unblind utxo";
         }
+        return false; // Cache not updated
     }
 
     nlohmann::json ga_session::cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset)
     {
+        bool updated_cache = false;
+
         for (auto& utxo : utxos) {
             // Clean up the type of returned values
             const bool external = !json_get_value(utxo, "private_key").empty();
@@ -2195,7 +2199,7 @@ namespace sdk {
                 // TODO: check data returned by server for blinded utxos
                 if (!policy_asset.empty()) {
                     if (json_get_value(utxo, "is_relevant", true)) {
-                        unblind_utxo(utxo, policy_asset);
+                        updated_cache |= unblind_utxo(utxo, policy_asset);
                     }
                 } else {
                     amount::value_type value;
@@ -2210,9 +2214,11 @@ namespace sdk {
             json_add_if_missing(utxo, "subtype", 0u);
         }
 
-        locker_t locker(m_mutex);
-        if (m_local_encryption_key) {
-            m_cache.save_db(m_local_encryption_key.get());
+        if (updated_cache) {
+            locker_t locker(m_mutex);
+            if (m_local_encryption_key) {
+                m_cache.save_db(m_local_encryption_key.get());
+            }
         }
         return utxos;
     }
