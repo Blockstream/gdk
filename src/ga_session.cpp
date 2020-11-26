@@ -765,7 +765,7 @@ namespace sdk {
     {
         const auto cached_value = [this, &type] {
             locker_t locker(m_mutex);
-            return m_cache.get(type);
+            return m_cache.get_key_value(type);
         }();
 
         std::string last_modified;
@@ -800,7 +800,7 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT_MSG(data["body"].is_object(), "expected JSON");
         locker_t locker(m_mutex);
-        m_cache.upsert_keyvalue(type, nlohmann::json::to_msgpack(data));
+        m_cache.upsert_key_value(type, nlohmann::json::to_msgpack(data));
         if (m_local_encryption_key) {
             m_cache.save_db(m_local_encryption_key.get());
         }
@@ -842,7 +842,7 @@ namespace sdk {
     {
         auto upcoming = [this]() -> boost::optional<nlohmann::json> {
             locker_t locker(m_mutex);
-            const auto value = m_cache.get(CACHE_UPCOMING_NLOCKTIME);
+            const auto value = m_cache.get_key_value(CACHE_UPCOMING_NLOCKTIME);
             if (value) {
                 return nlohmann::json::from_msgpack(value->begin(), value->end());
             } else {
@@ -854,7 +854,7 @@ namespace sdk {
             wamp_call([&upcoming](wamp_call_result result) { upcoming = get_json_result(result.get()); },
                 "com.greenaddress.txs.upcoming_nlocktime");
             locker_t locker(m_mutex);
-            m_cache.upsert_keyvalue(CACHE_UPCOMING_NLOCKTIME, nlohmann::json::to_msgpack(upcoming.get()));
+            m_cache.upsert_key_value(CACHE_UPCOMING_NLOCKTIME, nlohmann::json::to_msgpack(upcoming.get()));
         }
 
         const auto upcoming_l = upcoming.get().at("list");
@@ -1328,7 +1328,7 @@ namespace sdk {
                 // Mark cached tx lists as dirty
                 m_tx_list_caches.purge(subaccount);
             }
-            m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
+            m_cache.clear_key_value(CACHE_UPCOMING_NLOCKTIME);
 
             if (m_notification_handler == nullptr) {
                 return;
@@ -1494,7 +1494,7 @@ namespace sdk {
         std::copy(key.begin(), key.end(), tmp.begin());
         m_local_encryption_key = tmp;
         m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
-        m_cache.clear_keyvalue(CACHE_UPCOMING_NLOCKTIME);
+        m_cache.clear_key_value(CACHE_UPCOMING_NLOCKTIME);
     }
 
     void ga_session::on_failed_login()
@@ -2087,7 +2087,7 @@ namespace sdk {
             const auto txhash = h2b(utxo.at("txhash"));
             const auto vout = utxo["pt_idx"];
             locker_t locker(m_mutex);
-            const auto value = m_cache.get_liquidoutput(txhash, vout);
+            const auto value = m_cache.get_liquid_output(txhash, vout);
             if (value) {
                 utxo.insert(value->begin(), value->end());
                 utxo["confidential"] = true;
@@ -2140,8 +2140,8 @@ namespace sdk {
 
                 locker_t locker(m_mutex);
                 // check again, we released the lock earlier, so some other thread could have started to unblind too
-                if (!m_cache.get_liquidoutput(txhash, vout)) {
-                    m_cache.insert_liquidoutput(txhash, vout, utxo);
+                if (!m_cache.get_liquid_output(txhash, vout)) {
+                    m_cache.insert_liquid_output(txhash, vout, utxo);
                     return true; // Cache was updated
                 }
             }
@@ -2587,7 +2587,7 @@ namespace sdk {
         for (const auto& tx : txs) {
             for (const auto& ep : tx.at("eps")) {
                 if (!json_get_value(ep, "is_relevant", false)
-                    || m_cache.has_liquidoutput(h2b(tx.at("txhash")), ep["pt_idx"])) {
+                    || m_cache.has_liquid_output(h2b(tx.at("txhash")), ep["pt_idx"])) {
                     continue; // Not relevant or already cached; ignore
                 }
 
@@ -2600,7 +2600,7 @@ namespace sdk {
 
                 if (!nonce_commitment.empty() && !script.empty()) {
                     bool was_inserted = no_dups.emplace(std::make_pair(nonce_commitment, script)).second;
-                    if (was_inserted && !m_cache.has_liquidblindingnonce(h2b(nonce_commitment), h2b(script))) {
+                    if (was_inserted && !m_cache.has_liquid_blinding_nonce(h2b(nonce_commitment), h2b(script))) {
                         // Not previously seen and not cached; add to the list to return
                         answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
                     }
@@ -2616,7 +2616,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         locker_t locker(m_mutex);
 
-        const auto data = m_cache.get_liquidblindingnonce(h2b(pubkey), h2b(script));
+        const auto data = m_cache.get_liquid_blinding_nonce(h2b(pubkey), h2b(script));
         GDK_RUNTIME_ASSERT(data != boost::none);
 
         std::array<unsigned char, 32> answer;
@@ -2630,13 +2630,13 @@ namespace sdk {
     bool ga_session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
         locker_t locker(m_mutex);
-        return m_cache.has_liquidblindingnonce(h2b(pubkey), h2b(script));
+        return m_cache.has_liquid_blinding_nonce(h2b(pubkey), h2b(script));
     }
 
     void ga_session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
     {
         locker_t locker(m_mutex);
-        m_cache.insert_liquidblindingnonce(h2b(pubkey), h2b(script), h2b(nonce));
+        m_cache.insert_liquid_blinding_nonce(h2b(pubkey), h2b(script), h2b(nonce));
     }
 
     // Idempotent
