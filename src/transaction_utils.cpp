@@ -353,7 +353,7 @@ namespace sdk {
             net_params, result, tx, address, satoshi.value(), addressee.value("asset_tag", std::string{}));
     }
 
-    void update_tx_info(const wally_tx_ptr& tx, nlohmann::json& result)
+    void update_tx_size_info(const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
         result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
@@ -395,7 +395,7 @@ namespace sdk {
 
     void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
     {
-        update_tx_info(tx, result);
+        update_tx_size_info(tx, result);
 
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
 

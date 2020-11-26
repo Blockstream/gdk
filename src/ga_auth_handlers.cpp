@@ -689,7 +689,7 @@ namespace sdk {
             std::swap(m_result, m_twofactor_data["transaction"]);
             m_result["user_signed"] = true;
             m_result["blinded"] = true;
-            update_tx_info(tx, m_result);
+            update_tx_size_info(tx, m_result);
         }
         return state_type::done;
     }

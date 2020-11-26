@@ -942,7 +942,7 @@ namespace sdk {
 
         nlohmann::json result(details);
         result["user_signed"] = true;
-        update_tx_info(tx, result);
+        update_tx_size_info(tx, result);
         return result;
     }
 
@@ -1041,7 +1041,7 @@ namespace sdk {
         if (authorized_assets) {
             result["blinding_nonces"] = blinding_nonces;
         }
-        update_tx_info(tx, result);
+        update_tx_size_info(tx, result);
         return result;
     }
 

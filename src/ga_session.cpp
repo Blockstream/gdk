@@ -3393,7 +3393,7 @@ namespace sdk {
         // may be a slightly different size once signed
         result["txhash"] = tx_details["txhash"];
         const auto tx = tx_from_hex(tx_details["tx"], flags);
-        update_tx_info(tx, result);
+        update_tx_size_info(tx, result);
         result["server_signed"] = true;
         return result;
     }
