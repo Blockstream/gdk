@@ -645,7 +645,7 @@ GDK_API int GA_destroy_json(GA_json* json);
  *| the twofactor method chosen in the "request_code" step, and pass this
  *| code to GA_auth_handler_resolve_code().
  *
- * * "call": Twofactor or hardwre authorization is complete and the caller
+ * * "call": Twofactor or hardware authorization is complete and the caller
  *| should call GA_auth_handler_call() to perform the action.
  *
  */

@@ -782,8 +782,8 @@ namespace sdk {
                     // before the transaction is actually constructed.
                     const uint32_t vsize = result.at("transaction_vsize");
                     const amount calculated_fee_rate = amount(result.at("calculated_fee_rate"));
-                    const amount bandwith_fee = vsize * min_fee_rate / 1000;
-                    if (fee < (old_fee + bandwith_fee) || calculated_fee_rate <= old_fee_rate) {
+                    const amount bandwidth_fee = vsize * min_fee_rate / 1000;
+                    if (fee < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
                         set_tx_error(result, res::id_invalid_replacement_fee_rate);
                     }
                 }

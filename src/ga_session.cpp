@@ -2797,7 +2797,7 @@ namespace sdk {
         json_rename_key(address, "addr_type", "address_type");
         GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
 
-        // Add the script type, to allow addresses to be used interchangably with utxos
+        // Add the script type, to allow addresses to be used interchangeably with utxos
         script_type addr_script_type;
         if (addr_type == address_type::csv) {
             addr_script_type = script_type::ga_p2sh_p2wsh_csv_fortified_out;
