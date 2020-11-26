@@ -3483,12 +3483,9 @@ namespace sdk {
         wamp_call([](boost::future<autobahn::wamp_call_result> result) { result.get(); },
             "com.greenaddress.txs.change_memo", txhash_hex, memo, memo_type);
 
-        // Invalidate the tx list caches so that subsequent calls to get_transactions go back
-        // to the server and pull down the new memo.
-        // FIXME: This is a very bad way of doing this and it only works for the local gdk
-        // instance. In future transaction memos will be stored in client authenticated blobs
+        // FIXME: In future transaction memos will be stored in client authenticated blobs
         // and subject to notifications.
-        m_tx_list_caches.purge_all();
+        m_tx_list_caches.set_transaction_memo(txhash_hex, memo, memo_type);
     }
 
 } // namespace sdk

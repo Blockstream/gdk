@@ -49,6 +49,19 @@ namespace sdk {
         return std::make_pair(result, state_info);
     }
 
+    void tx_list_cache::set_transaction_memo(
+        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
+    {
+        (void)memo_type;
+        std::unique_lock<std::mutex> lock{ m_mutex };
+        for (auto& tx : m_tx_cache) {
+            if (tx["txhash"] == txhash_hex) {
+                tx["memo"] = memo;
+                break; // Each tx can only appear once per subaccount
+            }
+        }
+    }
+
     void tx_list_caches::purge_all()
     {
         std::unique_lock<std::mutex> lock{ m_mutex };
@@ -69,6 +82,19 @@ namespace sdk {
             cache.reset(new tx_list_cache());
         }
         return cache;
+    }
+
+    void tx_list_caches::set_transaction_memo(
+        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
+    {
+        std::map<uint32_t, std::shared_ptr<tx_list_cache>> caches;
+        {
+            std::unique_lock<std::mutex> lock{ m_mutex };
+            caches = m_caches;
+        }
+        for (auto& cache : caches) {
+            cache.second->set_transaction_memo(txhash_hex, memo, memo_type);
+        }
     }
 
 } // namespace sdk
