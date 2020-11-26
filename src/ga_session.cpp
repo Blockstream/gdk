@@ -710,6 +710,11 @@ namespace sdk {
 
             m_signer.reset();
             m_local_encryption_key = boost::none;
+            m_tx_list_caches.purge_all();
+            // FIXME: securely destroy all held data
+            // TODO: pass in whether we are disconnecting in order to reconnect,
+            //       and if so, only securely destroy data not needed to re-login
+            //       (e.g. leave m_mnemonic alone).
         }
 
         m_ping_timer.cancel();
@@ -913,7 +918,6 @@ namespace sdk {
         on_failed_login();
         unsubscribe();
         disconnect();
-        // FIXME: securely destroy all held data
     }
 
     std::pair<std::string, std::string> ga_session::sign_challenge(
@@ -1182,8 +1186,9 @@ namespace sdk {
         on_new_fees(locker, m_login_data["fee_estimates"]);
 
         // Notify the caller of their current block
-        on_new_block(
-            locker, nlohmann::json({ { "block_height", block_height }, { "block_hash", m_login_data["block_hash"] } }));
+        on_new_block(locker,
+            nlohmann::json({ { "block_height", block_height }, { "block_hash", m_login_data["block_hash"] },
+                { "diverged_count", 0 } }));
     }
 
     void ga_session::update_fiat_rate(ga_session::locker_t& locker, const std::string& rate_str)
@@ -1338,8 +1343,8 @@ namespace sdk {
                 p->second["has_transactions"] = true;
                 p->second.erase("satoshi");
 
-                // Mark cached tx lists as dirty
-                m_tx_list_caches.purge(subaccount);
+                // Update affected subaccounts as required
+                m_tx_list_caches.on_new_transaction(subaccount, details);
             }
             m_nlocktimes.reset();
 
@@ -1376,15 +1381,14 @@ namespace sdk {
             if (block_height > m_block_height) {
                 m_block_height = block_height;
             }
+
+            m_tx_list_caches.on_new_block(details);
+
             if (m_notification_handler != nullptr) {
                 details.erase("diverged_count");
                 call_notification_handler(
                     locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
             }
-
-            // Erase all cached tx lists
-            // This is much simpler than trying to handle updates, potentially with reorgs
-            m_tx_list_caches.purge_all();
         });
     }
 
@@ -3391,9 +3395,13 @@ namespace sdk {
             update_spending_limits(locker, tx_details["limits"]);
         }
 
+        // Notify the tx cache that a new tx is expected
+        const auto txhash_hex = tx_details["txhash"];
+        m_tx_list_caches.on_new_transaction(details.at("subaccount"), { { "txhash", txhash_hex } });
+
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
-        result["txhash"] = tx_details["txhash"];
+        result["txhash"] = txhash_hex;
         const auto tx = tx_from_hex(tx_details["tx"], flags);
         update_tx_size_info(tx, result);
         result["server_signed"] = true;

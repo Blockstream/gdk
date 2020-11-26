@@ -23,16 +23,14 @@ namespace sdk {
         // Note that 'get_txs' must not lock the mutex on ga_session.
         get_fn_ret_t get(uint32_t first, uint32_t count, get_txs_fn_t get_txs);
 
+        void on_new_transaction(const nlohmann::json& details);
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
     private:
-        static constexpr uint32_t CACHE_SIZE = 1024;
         uint32_t m_next_uncached_page = 0;
         uint32_t m_first_empty_page = std::numeric_limits<uint32_t>::max();
         std::vector<nlohmann::json> m_tx_cache;
         std::mutex m_mutex;
-
-        bool cache_full();
     };
 
     class tx_list_caches {
@@ -41,6 +39,8 @@ namespace sdk {
         void purge(uint32_t subaccount);
         std::shared_ptr<tx_list_cache> get(uint32_t subaccount);
 
+        void on_new_block(const nlohmann::json& details);
+        void on_new_transaction(uint32_t subaccount, const nlohmann::json& details);
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
     private:

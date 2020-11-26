@@ -5,8 +5,6 @@
 namespace ga {
 namespace sdk {
 
-    bool tx_list_cache::cache_full() { return m_tx_cache.size() >= CACHE_SIZE; }
-
     tx_list_cache::get_fn_ret_t tx_list_cache::get(uint32_t first, uint32_t count, get_txs_fn_t get_txs)
     {
         // Code is not optimized for concurrent gets on one subaccount
@@ -31,7 +29,7 @@ namespace sdk {
         };
 
         // Add txs to the cache until either it's full or 'last' has been cached
-        while (!cache_full() && page < m_first_empty_page && fetched < last) {
+        while (page < m_first_empty_page && fetched < last) {
             fetch(0, std::numeric_limits<uint32_t>::max(), m_tx_cache);
         }
         m_next_uncached_page = page;
@@ -47,6 +45,16 @@ namespace sdk {
         }
 
         return std::make_pair(result, state_info);
+    }
+
+    void tx_list_cache::on_new_transaction(const nlohmann::json& details)
+    {
+        (void)details;
+        std::unique_lock<std::mutex> lock{ m_mutex };
+        // TODO: partially invalidate rather than clear the cache
+        m_next_uncached_page = 0;
+        m_first_empty_page = std::numeric_limits<uint32_t>::max();
+        m_tx_cache.clear();
     }
 
     void tx_list_cache::set_transaction_memo(
@@ -82,6 +90,20 @@ namespace sdk {
             cache.reset(new tx_list_cache());
         }
         return cache;
+    }
+
+    void tx_list_caches::on_new_block(const nlohmann::json& details)
+    {
+        const uint32_t diverged = details["diverged_count"];
+        if (diverged) {
+            // TODO: Only purge txs affected by the re-org
+            purge_all();
+        }
+    }
+
+    void tx_list_caches::on_new_transaction(uint32_t subaccount, const nlohmann::json& details)
+    {
+        get(subaccount)->on_new_transaction(details);
     }
 
     void tx_list_caches::set_transaction_memo(
