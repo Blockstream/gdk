@@ -255,12 +255,6 @@ namespace sdk {
             }
             return trimmed;
         }
-        struct BlindingNoncesHash {
-            std::size_t operator()(const std::pair<std::string, std::string>& k) const
-            {
-                return std::hash<std::string>()(k.first) ^ (std::hash<std::string>()(k.second) << 1);
-            }
-        };
 
         std::string get_user_agent(bool supports_csv, const std::string& version)
         {
@@ -2567,7 +2561,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_net_params.liquid());
 
         nlohmann::json answer = nlohmann::json::array();
-        std::unordered_set<std::pair<std::string, std::string>, BlindingNoncesHash> no_dups;
+        std::set<std::pair<std::string, std::string>> no_dups;
 
         // Get the wallet transactions from the tx list cache
         std::vector<nlohmann::json> txs;
@@ -2591,38 +2585,26 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         for (const auto& tx : txs) {
-
-            auto&& process_endpoint = [&](const auto& ep) GDK_REQUIRES(m_mutex) {
-                const auto txhash = h2b(tx.at("txhash"));
-                const auto vout = ep["pt_idx"];
-                if (m_cache.has_liquidoutput(txhash, vout)) {
-                    return;
+            for (const auto& ep : tx.at("eps")) {
+                if (!json_get_value(ep, "is_relevant", false)
+                    || m_cache.has_liquidoutput(h2b(tx.at("txhash")), ep["pt_idx"])) {
+                    continue; // Not relevant or already cached; ignore
                 }
 
                 const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
+                if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01")) {
+                    continue; // Unblinded or not an asset; ignore
+                }
                 const std::string& nonce_commitment = json_get_value(ep, "nonce_commitment", std::string{});
                 const std::string& script = json_get_value(ep, "script", std::string{});
 
-                if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01") // unblinded
-                    || !json_get_value(ep, "is_relevant", false) // not relevant
-                    || nonce_commitment.empty() || script.empty()) {
-                    return;
+                if (!nonce_commitment.empty() && !script.empty()) {
+                    bool was_inserted = no_dups.emplace(std::make_pair(nonce_commitment, script)).second;
+                    if (was_inserted && !m_cache.has_liquidblindingnonce(h2b(nonce_commitment), h2b(script))) {
+                        // Not previously seen and not cached; add to the list to return
+                        answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+                    }
                 }
-
-                const auto map_key = std::make_pair(nonce_commitment, script);
-
-                // don't ask for the same nonces multiple times
-                if (no_dups.find(map_key) != no_dups.end()
-                    || m_cache.has_liquidblindingnonce(h2b(nonce_commitment), h2b(script))) {
-                    return;
-                }
-
-                no_dups.insert(map_key);
-                answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
-            };
-
-            for (const auto& ep : tx.at("eps")) {
-                process_endpoint(ep);
             }
         }
 
