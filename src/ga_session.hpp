@@ -137,7 +137,7 @@ namespace sdk {
         using locker_t = annotated_unique_lock<annotated_mutex>;
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using ping_fail_t = std::function<void()>;
-        using nlocktime_t = std::map<std::pair<std::string, uint32_t>, nlohmann::json>;
+        using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(const nlohmann::json& net_params);
         ga_session(const ga_session& other) = delete;
@@ -377,7 +377,8 @@ namespace sdk {
 
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
-        nlocktime_t get_upcoming_nlocktime();
+        std::shared_ptr<nlocktime_t> update_nlocktime_info();
+        virtual nlohmann::json fetch_nlocktime_json();
 
         void set_local_encryption_key(locker_t& locker, byte_span_t key, bool is_hw_wallet) GDK_REQUIRES(m_mutex);
 
@@ -531,6 +532,7 @@ namespace sdk {
         std::chrono::system_clock::time_point m_tx_last_notification;
 
         tx_list_caches m_tx_list_caches;
+        std::shared_ptr<nlocktime_t> m_nlocktimes GDK_GUARDED_BY(m_mutex);
 
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;

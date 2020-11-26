@@ -92,7 +92,6 @@ namespace sdk {
         static const std::string SOCKS5("socks5://");
         static const std::string USER_AGENT("[v2,sw,csv,csv_opt]");
         static const std::string USER_AGENT_NO_CSV("[v2,sw]");
-        static const std::string CACHE_UPCOMING_NLOCKTIME("upcomingnlocktime");
         // TODO: The server should return these
         static const std::vector<std::string> ALL_2FA_METHODS = { { "email" }, { "sms" }, { "phone" }, { "gauth" } };
 
@@ -838,34 +837,34 @@ namespace sdk {
         return result;
     }
 
-    ga_session::nlocktime_t ga_session::get_upcoming_nlocktime()
+    std::shared_ptr<ga_session::nlocktime_t> ga_session::update_nlocktime_info()
     {
-        auto upcoming = [this]() -> boost::optional<nlohmann::json> {
-            locker_t locker(m_mutex);
-            const auto value = m_cache.get_key_value(CACHE_UPCOMING_NLOCKTIME);
-            if (value) {
-                return nlohmann::json::from_msgpack(value->begin(), value->end());
-            } else {
-                return boost::none;
-            }
-        }();
+        locker_t locker(m_mutex);
 
-        if (!upcoming) {
-            wamp_call([&upcoming](wamp_call_result result) { upcoming = get_json_result(result.get()); },
-                "com.greenaddress.txs.upcoming_nlocktime");
-            locker_t locker(m_mutex);
-            m_cache.upsert_key_value(CACHE_UPCOMING_NLOCKTIME, nlohmann::json::to_msgpack(upcoming.get()));
+        if (!m_nlocktimes) {
+            nlohmann::json nlocktime_json;
+            {
+                unique_unlock unlocker(locker);
+                nlocktime_json = fetch_nlocktime_json();
+            }
+            m_nlocktimes = std::make_shared<nlocktime_t>();
+            for (const auto& v : nlocktime_json.at("list")) {
+                const uint32_t vout = v.at("output_n");
+                const std::string k{ json_get_value(v, "txhash") + ":" + std::to_string(vout) };
+                m_nlocktimes->emplace(std::make_pair(k, v));
+            }
         }
 
-        const auto upcoming_l = upcoming.get().at("list");
+        return m_nlocktimes;
+    }
 
-        std::map<std::pair<std::string, uint32_t>, nlohmann::json> upcoming_nlocktime;
-        std::for_each(std::cbegin(upcoming_l), std::cend(upcoming_l), [&upcoming_nlocktime](const auto& v) {
-            const auto k = std::make_pair<std::string, uint32_t>(v.at("txhash"), v.at("output_n"));
-            upcoming_nlocktime.insert(std::make_pair(k, v));
-        });
-
-        return upcoming_nlocktime;
+    // Idempotent
+    nlohmann::json ga_session::fetch_nlocktime_json()
+    {
+        nlohmann::json upcoming;
+        wamp_call([&upcoming](wamp_call_result result) { upcoming = get_json_result(result.get()); },
+            "com.greenaddress.txs.upcoming_nlocktime");
+        return upcoming;
     }
 
     nlohmann::json ga_session::validate_asset_domain_name(__attribute__((unused)) const nlohmann::json& params)
@@ -1328,7 +1327,7 @@ namespace sdk {
                 // Mark cached tx lists as dirty
                 m_tx_list_caches.purge(subaccount);
             }
-            m_cache.clear_key_value(CACHE_UPCOMING_NLOCKTIME);
+            m_nlocktimes.reset();
 
             if (m_notification_handler == nullptr) {
                 return;
@@ -1494,7 +1493,7 @@ namespace sdk {
         std::copy(key.begin(), key.end(), tmp.begin());
         m_local_encryption_key = tmp;
         m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
-        m_cache.clear_key_value(CACHE_UPCOMING_NLOCKTIME);
+        m_nlocktimes.reset();
     }
 
     void ga_session::on_failed_login()
@@ -2651,15 +2650,16 @@ namespace sdk {
 
         nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs, all_coins);
 
-        const auto upcoming_nlocktime = get_upcoming_nlocktime();
-        if (!upcoming_nlocktime.empty()) {
-            std::for_each(std::begin(utxos), std::end(utxos), [&upcoming_nlocktime](auto& utxo) {
-                const auto k = std::make_pair<std::string, uint32_t>(utxo.at("txhash"), utxo.at("pt_idx"));
-                const auto it = upcoming_nlocktime.find(k);
-                if (it != upcoming_nlocktime.end()) {
+        const auto nlocktimes = update_nlocktime_info();
+        if (!nlocktimes->empty()) {
+            for (auto& utxo : utxos) {
+                const uint32_t vout = utxo.at("pt_idx");
+                const std::string k{ json_get_value(utxo, "txhash") + ":" + std::to_string(vout) };
+                const auto it = nlocktimes->find(k);
+                if (it != nlocktimes->end()) {
                     utxo["nlocktime_at"] = it->second.at("nlocktime_at");
                 }
-            });
+            };
         }
 
         cleanup_utxos(utxos, m_net_params.policy_asset());
