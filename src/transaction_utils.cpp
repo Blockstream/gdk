@@ -179,7 +179,7 @@ namespace sdk {
     }
 
     std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
-        user_pubkeys& user_pubkeys, ga_user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
+        user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
     {
         const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
         const uint32_t pointer = utxo.at("pointer");
@@ -196,7 +196,7 @@ namespace sdk {
         }
 
         const auto ga_pub_key = pubkeys.derive(subaccount, pointer);
-        const auto user_pub_key = user_pubkeys.derive(subaccount, pointer);
+        const auto user_pub_key = usr_pubkeys.derive(subaccount, pointer);
 
         if (recovery_pubkeys.have_subaccount(subaccount)) {
             // 2of3
