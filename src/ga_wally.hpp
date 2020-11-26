@@ -196,7 +196,7 @@ namespace sdk {
 
     std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family);
 
-    std::string address_from_xpub(unsigned char btc_version, const xpub_t& xpub);
+    std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key);
 
     std::string base58check_from_bytes(byte_span_t data);
 

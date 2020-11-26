@@ -392,10 +392,11 @@ namespace sdk {
         return ret;
     }
 
-    std::string address_from_xpub(unsigned char btc_version, const xpub_t& xpub)
+    std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key)
     {
         std::array<unsigned char, HASH160_LEN + 1> addr;
-        const auto hash = hash160(xpub.second);
+        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
+        const auto hash = hash160(public_key);
         addr[0] = btc_version;
         std::copy(hash.begin(), hash.end(), addr.begin() + 1);
         return base58check_from_bytes(addr);

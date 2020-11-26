@@ -329,8 +329,8 @@ namespace sdk {
                     // Compute the challenge with the master pubkey
                     m_master_xpub_bip32 = xpubs.at(0);
                     const auto btc_version = m_session.get_network_parameters().btc_version();
-                    m_challenge
-                        = m_session.get_challenge(address_from_xpub(btc_version, get_xpub(m_master_xpub_bip32)));
+                    const auto public_key = get_xpub(m_master_xpub_bip32).second;
+                    m_challenge = m_session.get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
                     const auto local_key = pbkdf2_hmac_sha512(get_xpub(xpubs.at(1)).second, PASSWORD_SALT);
                     m_session.set_local_encryption_key(local_key);
