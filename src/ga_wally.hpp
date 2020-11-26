@@ -105,7 +105,7 @@ namespace sdk {
         const wally_ext_key_ptr& parent, uint32_span_t path, uint32_t flags);
 
     wally_ext_key_ptr bip32_key_init_alloc(uint32_t version, uint32_t depth, uint32_t child_num, byte_span_t chain_code,
-        byte_span_t pub_key, byte_span_t private_key = byte_span_t(), byte_span_t hash = byte_span_t(),
+        byte_span_t public_key, byte_span_t private_key = byte_span_t(), byte_span_t hash = byte_span_t(),
         byte_span_t parent = byte_span_t());
 
     wally_ext_key_ptr bip32_key_from_seed_alloc(
@@ -122,7 +122,7 @@ namespace sdk {
     void scriptsig_multisig_from_bytes(
         byte_span_t script, byte_span_t signatures, uint32_span_t sighashes, std::vector<unsigned char>& out);
 
-    std::vector<unsigned char> scriptsig_p2pkh_from_der(byte_span_t pub_key, byte_span_t sig);
+    std::vector<unsigned char> scriptsig_p2pkh_from_der(byte_span_t public_key, byte_span_t sig);
 
     void scriptpubkey_csv_2of2_then_1_from_bytes(
         byte_span_t keys, uint32_t csv_blocks, bool optimize, std::vector<unsigned char>& out);
@@ -325,7 +325,7 @@ namespace sdk {
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
 
     xpub_t make_xpub(const ext_key* hdkey);
-    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& pub_key_hex);
+    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex);
     xpub_t make_xpub(const std::string& bip32_xpub);
     std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags);
 

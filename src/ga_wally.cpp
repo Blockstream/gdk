@@ -120,11 +120,11 @@ namespace sdk {
     }
 
     wally_ext_key_ptr bip32_key_init_alloc(uint32_t version, uint32_t depth, uint32_t child_num, byte_span_t chain_code,
-        byte_span_t pub_key, byte_span_t private_key, byte_span_t hash, byte_span_t parent)
+        byte_span_t public_key, byte_span_t private_key, byte_span_t hash, byte_span_t parent)
     {
         ext_key* p;
         GDK_VERIFY(::bip32_key_init_alloc(version, depth, child_num, chain_code.data(), chain_code.size(),
-            pub_key.data(), pub_key.size(), private_key.data(), private_key.size(), hash.data(), hash.size(),
+            public_key.data(), public_key.size(), private_key.data(), private_key.size(), hash.data(), hash.size(),
             parent.data(), parent.size(), &p));
         return wally_ext_key_ptr{ p };
     }
@@ -166,12 +166,12 @@ namespace sdk {
         out.resize(written);
     }
 
-    std::vector<unsigned char> scriptsig_p2pkh_from_der(byte_span_t pub_key, byte_span_t sig)
+    std::vector<unsigned char> scriptsig_p2pkh_from_der(byte_span_t public_key, byte_span_t sig)
     {
-        std::vector<unsigned char> out(2 + pub_key.size() + 2 + sig.size());
+        std::vector<unsigned char> out(2 + public_key.size() + 2 + sig.size());
         size_t written;
         GDK_VERIFY(wally_scriptsig_p2pkh_from_der(
-            pub_key.data(), pub_key.size(), sig.data(), sig.size(), out.data(), out.size(), &written));
+            public_key.data(), public_key.size(), sig.data(), sig.size(), out.data(), out.size(), &written));
         GDK_RUNTIME_ASSERT(written <= out.size());
         out.resize(written);
         return out;
@@ -855,13 +855,13 @@ namespace sdk {
         return satoshi;
     }
 
-    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& pub_key_hex)
+    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex)
     {
         size_t written;
         xpub_t xpub;
         GDK_VERIFY(wally_hex_to_bytes(chain_code_hex.c_str(), xpub.first.data(), xpub.first.size(), &written));
         GDK_RUNTIME_ASSERT(written == xpub.first.size());
-        GDK_VERIFY(wally_hex_to_bytes(pub_key_hex.c_str(), xpub.second.data(), xpub.second.size(), &written));
+        GDK_VERIFY(wally_hex_to_bytes(public_key_hex.c_str(), xpub.second.data(), xpub.second.size(), &written));
         GDK_RUNTIME_ASSERT(written == xpub.second.size());
         return xpub;
     }
