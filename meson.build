@@ -220,8 +220,10 @@ if swig.found()
     endif
 
     javac = add_languages('java', required : false)
-    if not javac or java_home == ''
-        message('Java not found or $JAVA_HOME not set. JNI bindings are disabled.')
+    if not javac
+        message('javac not found JNI bindings are disabled.')
+    elif java_home == ''
+        message('$JAVA_HOME not set. JNI bindings are disabled.')
     else
         java = find_program('java')
     endif
