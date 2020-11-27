@@ -184,11 +184,11 @@ if swig.found()
         'JAVA_TARGET'
     ]
     foreach v : environment_variables
-        res = run_command(python_exe, '-c', 'import os; print(os.environ["' + v + '"], end = "")')
+        res = run_command(python_exe, '-c', 'import os; print(os.getenv("' + v + '", ""))')
         if res.returncode() == 0
-            stdout = res.stdout()
+            stdout = res.stdout().strip()
             set_variable(v.to_lower(), stdout)
-            message(v + ' set to ' + stdout)
+            message(v + ' set to "' + stdout + '"')
         else
             set_variable(v.to_lower(), '')
         endif
