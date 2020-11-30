@@ -7,6 +7,9 @@
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 #pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#if !defined __APPLE__ && __clang_major__ >= 11
+#pragma clang diagnostic ignored "-Wdeprecated-copy"
+#endif
 #else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
