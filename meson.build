@@ -45,7 +45,7 @@ endif
 
 if use_gold
     if is_clang and not is_freebsd and compiler.has_link_argument('-fuse-ld=lld')
-        add_project_link_arguments(['-fuse-ld=lld', '-ldl', '-Wl,--threads'], language : 'cpp')
+        add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')
     else
         add_project_link_arguments(['-fuse-ld=gold', '-ldl'], language : 'cpp')
     endif
@@ -53,7 +53,7 @@ elif cross_android_build
     if is_darwin and not lto
         add_project_link_arguments(['-fuse-ld=bfd', '-ldl'], language : 'cpp')
     else
-        add_project_link_arguments(['-fuse-ld=lld', '-ldl', '-Wl,--threads'], language : 'cpp')
+        add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')
     endif
 endif
 
