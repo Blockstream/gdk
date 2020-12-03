@@ -25,7 +25,7 @@ namespace sdk {
         constexpr int AES_GCM_IV_SIZE = 12;
         constexpr int AES_BUFFER = 4096;
         constexpr int OPENSSL_SUCCESS = 1;
-        constexpr int VERSION = 0;
+        constexpr int VERSION = 1;
 
         static std::unique_ptr<sqlite3> get_new_memory_db()
         {
