@@ -2969,8 +2969,10 @@ namespace sdk {
 
             nlohmann::json email_config
                 = { { "enabled", f["email"] }, { "confirmed", f["email_confirmed"] }, { "data", f["email_addr"] } };
+            // FIXME: the 'sms_number' field requires an updated server so treat it as optional until all backends
+            //        have been updated
             nlohmann::json sms_config
-                = { { "enabled", f["sms"] }, { "confirmed", f["sms"] }, { "data", f["phone_number"] } };
+                = { { "enabled", f["sms"] }, { "confirmed", f["sms"] }, { "data", json_get_value(f, "sms_number") } };
             nlohmann::json phone_config
                 = { { "enabled", f["phone"] }, { "confirmed", f["phone"] }, { "data", f["phone_number"] } };
             // Return the server generated gauth URL until gauth is enabled
