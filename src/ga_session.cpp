@@ -2007,7 +2007,12 @@ namespace sdk {
         }
 
         std::string receiving_id;
-        {
+        // FIXME: remove this once all backends have been updated to accept 'sigs'
+        if (m_net_params.liquid()) {
+            wamp_call(
+                [&receiving_id](wamp_call_result result) { receiving_id = result.get().argument<std::string>(0); },
+                "com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs);
+        } else {
             wamp_call(
                 [&receiving_id](wamp_call_result result) { receiving_id = result.get().argument<std::string>(0); },
                 "com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs);
