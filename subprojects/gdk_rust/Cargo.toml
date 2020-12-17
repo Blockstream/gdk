@@ -30,7 +30,7 @@ ureq = { version = "1.0.0", features = ["json"] }
 [dev-dependencies]
 tempdir = "0.3.7"
 bitcoincore-rpc = { git="https://github.com/romanz/rust-bitcoincore-rpc", rev="637e895a0b73ffc21c8f62fa2c65b6fd1247785a" }
-electrum-client = "0.3.0-beta.1"
+electrum-client = "0.4.0-beta.1"
 elements = { version = "0.13", features = ["serde-feature"] }
 
 [profile.release]
@@ -42,4 +42,3 @@ incremental = false
 
 [patch.crates-io]
 bitcoin = { git = "https://github.com/shesek/rust-bitcoin", branch = "0.25.2-uint-serde", features = [ "use-serde" ] }
-electrum-client = { git = "https://github.com/shesek/rust-electrum-client", branch = "202011-custom-ssl-stream" }

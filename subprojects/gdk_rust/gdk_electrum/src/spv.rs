@@ -2,29 +2,24 @@ use log::warn;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use std::time::Duration;
 
 use bitcoin::blockdata::constants::{max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN};
 use bitcoin::BlockHash;
 use bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
-use electrum_client::{Client as ElectrumClient, ElectrumApi};
+use electrum_client::{Client as ElectrumClient, ConfigBuilder, ElectrumApi};
 
 use gdk_common::network::Network;
 
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
-use crate::interface::{ElectrumUrl, Timeouts};
+use crate::interface::ElectrumUrl;
 
 const INIT_CHUNK_SIZE: u32 = 5;
 const MAX_CHUNK_SIZE: u32 = 200;
 const MAX_FORK_DEPTH: u32 = DIFFCHANGE_INTERVAL * 3;
 const SERVERS_PER_ROUND: usize = 3;
 
-const TIMEOUTS: Timeouts = (
-    Duration::from_secs(2), // connect timeout
-    Duration::from_secs(4), // read timeout
-    Duration::from_secs(2), // write timeout
-);
+const TIMEOUT: u8 = 3; // connect, read and write timeout
 
 #[derive(Debug)]
 pub struct SpvCrossValidator {
@@ -145,7 +140,7 @@ pub fn spv_cross_validate(
     local_tip_hash: &BlockHash,
     server_url: &ElectrumUrl,
 ) -> Result<CrossValidationResult, CrossValidationError> {
-    let client = server_url.build_client_timeout(TIMEOUTS)?;
+    let client = server_url.build_config(ConfigBuilder::new().timeout(TIMEOUT)?)?;
     let remote_tip = client.block_headers_subscribe()?;
     let remote_tip_hash = remote_tip.header.block_hash();
     let remote_tip_height = remote_tip.height as u32;

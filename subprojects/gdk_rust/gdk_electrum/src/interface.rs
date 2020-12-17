@@ -22,16 +22,13 @@ use crate::error::*;
 use crate::store::*;
 
 use bitcoin::util::bip143::SigHashCache;
-use electrum_client::raw_client::RawClient;
-use electrum_client::Client;
+use electrum_client::{Client, ConfigBuilder};
 use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::{self, *};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
-use std::net::{TcpStream, ToSocketAddrs};
 use std::str::FromStr;
-use std::time::Duration;
 
 pub struct WalletCtx {
     pub secp: Secp256k1<All>,
@@ -52,41 +49,19 @@ pub enum ElectrumUrl {
 
 impl ElectrumUrl {
     pub fn build_client(&self) -> Result<Client, Error> {
-        match self {
-            ElectrumUrl::Tls(url, validate) => {
-                let client = RawClient::new_ssl(url.as_str(), *validate)?;
-                Ok(Client::SSL(client))
-            }
-            ElectrumUrl::Plaintext(url) => {
-                let client = RawClient::new(&url)?;
-                Ok(Client::TCP(client))
-            }
-        }
+        self.build_config(ConfigBuilder::new())
     }
 
-    pub fn build_client_timeout(&self, timeouts: Timeouts) -> Result<Client, Error> {
-        let (connect_timeout, read_timeout, write_timeout) = timeouts;
-
-        let make_stream = |url: &str| -> Result<TcpStream, Error> {
-            let mut addrs = url.to_socket_addrs()?;
-            // connect_timeout only works with a single socket address
-            let addr = addrs.next().ok_or_else(|| Error::AddrParse(url.into()))?;
-
-            let stream = TcpStream::connect_timeout(&addr, connect_timeout)?;
-            stream.set_read_timeout(Some(read_timeout))?;
-            stream.set_write_timeout(Some(write_timeout))?;
-            Ok(stream)
+    pub fn build_config(&self, config: ConfigBuilder) -> Result<Client, Error> {
+        let (url, config) = match self {
+            ElectrumUrl::Tls(url, validate) => {
+                (format!("tls://{}", url), config.validate_domain(*validate))
+            }
+            ElectrumUrl::Plaintext(url) => (format!("tcp://{}", url), config),
         };
-
-        match self {
-            ElectrumUrl::Tls(url, validate) => {
-                let stream = make_stream(&url)?;
-                let client = RawClient::new_ssl_from_stream(url.as_str(), *validate, stream)?;
-                Ok(Client::SSL(client))
-            }
-            ElectrumUrl::Plaintext(url) => Ok(Client::TCP(make_stream(url)?.into())),
-        }
+        Ok(Client::from_config(&url, config.build())?)
     }
+
     pub fn url(&self) -> &str {
         match self {
             ElectrumUrl::Tls(url, _) => url,
@@ -94,9 +69,6 @@ impl ElectrumUrl {
         }
     }
 }
-
-/// Timeouts for connect, read and write
-pub type Timeouts = (Duration, Duration, Duration);
 
 // Parse the standard <host>:<port>:<t|s> string format,
 // with an optional non-standard `:noverify` suffix to skip tls validation

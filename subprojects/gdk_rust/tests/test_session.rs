@@ -183,7 +183,7 @@ pub fn setup(
     let electrs_header = loop {
         assert!(i > 0, "1 minute without updates");
         i -= 1;
-        match RawClient::new(&electrs_url) {
+        match RawClient::new(&electrs_url, None) {
             Ok(c) => {
                 let header = c.block_headers_subscribe_raw().unwrap();
                 if header.height == 101 {
@@ -196,7 +196,7 @@ pub fn setup(
         }
         thread::sleep(Duration::from_millis(500));
     };
-    let electrs = RawClient::new(&electrs_url).unwrap();
+    let electrs = RawClient::new(&electrs_url, None).unwrap();
     info!("done creating electrs client");
 
     let mut network = Network::default();
