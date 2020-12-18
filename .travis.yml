@@ -25,7 +25,7 @@ matrix:
         - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version $(python3 --version | cut -d ' ' -f 2 | cut -d '.' -f1,2) --enable-rust
     - services:
         - docker
-      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1 /bin/bash -c "cd /gdk && ./tools/build.sh --clang --enable-rust"
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1 /bin/bash -c "cd /gdk && ./tools/format.sh && git diff --exit-code && ./tools/build.sh --clang --enable-rust"
     - services:
         - docker
       script: docker run -v $PWD:/gdk greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1 /bin/bash -c "cd /gdk && ./tools/build.sh --mingw-w64 --enable-rust"
