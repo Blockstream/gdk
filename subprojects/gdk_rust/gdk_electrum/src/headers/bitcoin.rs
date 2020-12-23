@@ -92,6 +92,7 @@ impl HeadersChain {
 
     /// write new headers to the file if checks are passed
     pub fn push(&mut self, new_headers: Vec<BlockHeader>) -> Result<(), Error> {
+        let mut curr_bits = self.tip().bits;
         let mut serialized = vec![];
         for new_header in new_headers {
             let new_height = self.height + 1;
@@ -114,6 +115,11 @@ impl HeadersChain {
                 let new_target = new_target.min(max_target(Network::Bitcoin));
 
                 if new_header.bits != BlockHeader::compact_target_from_u256(&new_target) {
+                    return Err(Error::InvalidHeaders);
+                }
+                curr_bits = new_header.bits;
+            } else {
+                if new_header.bits != curr_bits {
                     return Err(Error::InvalidHeaders);
                 }
             }
