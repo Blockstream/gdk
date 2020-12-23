@@ -148,6 +148,30 @@ namespace sdk {
             return nlohmann::json::parse(fee_json);
         }
 
+        static std::vector<uint32_t> cleanup_tx_notification(nlohmann::json& details)
+        {
+            // Convert affected subaccounts from (singular/array of)(null/number)
+            // to a sorted array of subaccounts
+            std::vector<uint32_t> affected;
+            const auto& subaccounts = details["subaccounts"];
+            if (subaccounts.is_null()) {
+                affected.push_back(0);
+            } else if (subaccounts.is_array()) {
+                for (const auto& sa : subaccounts) {
+                    if (sa.is_null()) {
+                        affected.push_back(0);
+                    } else {
+                        affected.push_back(sa.get<uint32_t>());
+                    }
+                }
+            } else {
+                affected.push_back(subaccounts.get<uint32_t>());
+            }
+            std::sort(affected.begin(), affected.end());
+            details["subaccounts"] = affected;
+            return affected;
+        }
+
         static msgpack::object_handle as_messagepack(const nlohmann::json& json)
         {
             if (json.is_null()) {
@@ -1282,7 +1306,7 @@ namespace sdk {
         return convert_amount(locker, details)["satoshi"] <= current_total;
     }
 
-    void ga_session::on_new_transaction(locker_t& locker, nlohmann::json details)
+    void ga_session::on_new_transaction(locker_t& locker, const std::vector<uint32_t>& subaccounts, nlohmann::json details)
     {
         no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
             using namespace std::chrono_literals;
@@ -1299,26 +1323,6 @@ namespace sdk {
 
             m_tx_last_notification = now;
 
-            // Convert affected subaccounts from (singular/array of)(null/number)
-            // to a sorted array of subaccounts
-            std::vector<uint32_t> affected;
-            const auto& subaccounts = details["subaccounts"];
-            if (subaccounts.is_null()) {
-                affected.push_back(0);
-            } else if (subaccounts.is_array()) {
-                for (const auto& sa : subaccounts) {
-                    if (sa.is_null()) {
-                        affected.push_back(0);
-                    } else {
-                        affected.push_back(sa.get<uint32_t>());
-                    }
-                }
-            } else {
-                affected.push_back(subaccounts.get<uint32_t>());
-            }
-            std::sort(affected.begin(), affected.end());
-            details["subaccounts"] = affected;
-
             const auto json_str = details.dump();
             if (std::find(m_tx_notifications.begin(), m_tx_notifications.end(), json_str) != m_tx_notifications.end()) {
                 GDK_LOG_SEV(log_level::debug) << "eliding notification:" << json_str;
@@ -1334,7 +1338,7 @@ namespace sdk {
                 m_tx_notifications.erase(m_tx_notifications.begin()); // pop the oldest
             }
 
-            for (auto subaccount : affected) {
+            for (auto subaccount : subaccounts) {
                 const auto p = m_subaccounts.find(subaccount);
                 // TODO: Handle other logged in sessions creating subaccounts
                 GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
@@ -1472,8 +1476,10 @@ namespace sdk {
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+                auto details = get_json_result(event);
+                std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
                 locker_t notify_locker(m_mutex);
-                on_new_transaction(notify_locker, get_json_result(event));
+                on_new_transaction(notify_locker, subaccounts, details);
             }));
 
         subscriptions.emplace_back(
@@ -1681,8 +1687,10 @@ namespace sdk {
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+                auto details = get_json_result(event);
+                std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
                 locker_t notify_locker(m_mutex);
-                on_new_transaction(notify_locker, get_json_result(event));
+                on_new_transaction(notify_locker, subaccounts, details);
             }));
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
@@ -2240,14 +2248,23 @@ namespace sdk {
 
     tx_list_cache::container_type ga_session::get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count)
     {
-        // Note: This function must not take the session lock or deadlocks will result.
-        auto&& server_get = [this, subaccount](uint32_t page_id, const std::string& start_date,
+        if (!count) {
+            return tx_list_cache::container_type();
+        }
+
+        locker_t locker(m_mutex);
+
+        auto&& server_get = [this, &locker, subaccount](uint32_t page_id, const std::string& start_date,
                                 const std::string& end_date, nlohmann::json& state_info) {
             const std::vector<std::string> date_range{ start_date, end_date };
 
             nlohmann::json txs;
-            wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
-                "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
+            {
+                // FIXME: unlocking this allows notifications to claim m_mutex
+                unique_unlock unlocker(locker);
+                wamp_call([&txs](wamp_call_result result) { txs = get_json_result(result.get()); },
+                    "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
+            }
 
             // Update block height and fiat rate in our state info
             const uint32_t block_height = txs["cur_block"];
@@ -2268,25 +2285,19 @@ namespace sdk {
 
         tx_list_cache::container_type tx_list;
         nlohmann::json state_info;
+        std::tie(tx_list, state_info) = m_tx_list_caches.get(subaccount)->get(first, count, server_get);
 
-        if (count) {
-            std::tie(tx_list, state_info) = m_tx_list_caches.get(subaccount)->get(first, count, server_get);
+        // Update our local block height from the returned results
+        // TODO: Use block_hash/height reversal to detect reorgs & uncache
+
+        if (state_info.contains("cur_block") && state_info["cur_block"] > m_block_height) {
+            m_block_height = state_info["cur_block"];
         }
 
-        {
-            // Update our local block height from the returned results
-            // TODO: Use block_hash/height reversal to detect reorgs & uncache
-            locker_t locker(m_mutex);
-
-            if (state_info.contains("cur_block") && state_info["cur_block"] > m_block_height) {
-                m_block_height = state_info["cur_block"];
-            }
-
-            // Note: fiat_value is actually the fiat exchange rate
-            if (state_info.contains("fiat_value") && !state_info["fiat_value"].is_null()) {
-                const double fiat_rate = state_info["fiat_value"];
-                update_fiat_rate(locker, std::to_string(fiat_rate));
-            }
+        // Note: fiat_value is actually the fiat exchange rate
+        if (state_info.contains("fiat_value") && !state_info["fiat_value"].is_null()) {
+            const double fiat_rate = state_info["fiat_value"];
+            update_fiat_rate(locker, std::to_string(fiat_rate));
         }
 
         return tx_list;
@@ -2300,6 +2311,7 @@ namespace sdk {
 
         if (json_get_value(details, "clear_cache", false)) {
             // Clear the tx list cache on user request
+            locker_t locker(m_mutex);
             m_tx_list_caches.purge_all();
         }
 
@@ -3400,22 +3412,23 @@ namespace sdk {
             "com.greenaddress.vault.send_raw_tx", tx_hex, as_messagepack(twofactor_data).get(),
             as_messagepack(private_data).get(), return_tx);
 
-        amount::value_type decrease = tx_details.at("limit_decrease");
+        const amount::value_type decrease = tx_details.at("limit_decrease");
+        const auto txhash_hex = tx_details["txhash"];
+        result["txhash"] = txhash_hex;
+        // Update the details with the server signed transaction, since it
+        // may be a slightly different size once signed
+        const auto tx = tx_from_hex(tx_details["tx"], flags);
+        update_tx_size_info(tx, result);
+        result["server_signed"] = true;
+
+        locker_t locker(m_mutex);
         if (decrease != 0) {
-            locker_t locker(m_mutex);
             update_spending_limits(locker, tx_details["limits"]);
         }
 
         // Notify the tx cache that a new tx is expected
-        const auto txhash_hex = tx_details["txhash"];
         m_tx_list_caches.on_new_transaction(details.at("subaccount"), { { "txhash", txhash_hex } });
 
-        // Update the details with the server signed transaction, since it
-        // may be a slightly different size once signed
-        result["txhash"] = txhash_hex;
-        const auto tx = tx_from_hex(tx_details["tx"], flags);
-        update_tx_size_info(tx, result);
-        result["server_signed"] = true;
         return result;
     }
 
@@ -3495,7 +3508,6 @@ namespace sdk {
         m_nlocktime = value;
     }
 
-    // Idempotent
     void ga_session::set_transaction_memo(
         const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
     {
@@ -3504,6 +3516,7 @@ namespace sdk {
 
         // FIXME: In future transaction memos will be stored in client authenticated blobs
         // and subject to notifications.
+        locker_t locker(m_mutex);
         m_tx_list_caches.set_transaction_memo(txhash_hex, memo, memo_type);
     }
 
