@@ -193,6 +193,8 @@ test_rust:
     - cd subprojects/gdk_rust
     - DEBUG=1 ./launch_integration_tests.sh bitcoin
     - DEBUG=1 ./launch_integration_tests.sh liquid
+    - DEBUG=1 ./launch_integration_tests.sh spv_cross_validate
+    - DEBUG=1 ./launch_integration_tests.sh spv_cross_validation_session
 
 test_osx_clang:
   extends: .osx_test
