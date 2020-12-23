@@ -31,7 +31,7 @@ fn bitcoin() {
     test_session.get_subaccount();
     let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None); // p2shwpkh
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
-    test_session.is_verified(&txid, SPVVerifyResult::InProgress);
+    test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
     test_session.send_tx(&node_bech32_address, 10_000, None, None, None); // p2wpkh
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None); // p2pkh
     test_session.send_all(&node_legacy_address, None);
@@ -80,7 +80,7 @@ fn liquid() {
     let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None);
     test_session.check_decryption(101, &[&txid]);
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
-    test_session.is_verified(&txid, SPVVerifyResult::InProgress);
+    test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
     test_session.send_tx(&node_bech32_address, 10_000, None, None, None);
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None);
