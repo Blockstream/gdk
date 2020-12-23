@@ -180,7 +180,7 @@ test_rust:
     - RUST_BACKTRACE=1 cargo test
     - cd $CI_PROJECT_DIR
     - git clone https://github.com/Blockstream/electrs electrs-elements
-    - cd electrs-elements && git checkout d6043203310168bee18e47c19772ef375b9daaee
+    - cd electrs-elements && git checkout 65e20f9e1196c0039d56307b34ea7bcfbe375b99
     - cargo install --debug --root /tmp/electrs_bitcoin --locked --path .
     - cargo install --debug --root /tmp/electrs_liquid --locked --path . --features liquid
     - cd ..
