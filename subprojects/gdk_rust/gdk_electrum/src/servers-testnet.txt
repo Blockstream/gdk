@@ -1,8 +1,8 @@
+bitcoin.cluelessperson.com:51002:s:noverify
+blockstream.info:993:s:noverify
+electrum.blockstream.info:60002:s:noverify
+testnet1.bauerj.eu:50002:s:noverify
+testnet.aranguren.org:51002:s:noverify
 testnet.hsmiths.com:53012:s:noverify
 testnet.qtornado.com:51002:s:noverify
-testnet1.bauerj.eu:50002:s:noverify
 tn.not.fyi:55002:s:noverify
-bitcoin.cluelessperson.com:51002:s:noverify
-electrum.blockstream.info:60002:s:noverify
-testnet.aranguren.org:51002:s:noverify
-blockstream.info:993:s:noverify
