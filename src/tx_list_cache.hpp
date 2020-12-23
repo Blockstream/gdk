@@ -18,7 +18,6 @@ namespace sdk {
     public:
         using container_type = std::deque<nlohmann::json>;
         using iterator = container_type::iterator;
-        using locker_t = std::unique_lock<std::mutex>;
         using get_txs_fn_t
             = std::function<container_type(uint32_t, const std::string&, const std::string&, nlohmann::json&)>;
         using get_fn_ret_t = std::pair<container_type, nlohmann::json>;
@@ -32,10 +31,9 @@ namespace sdk {
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
     private:
-        void remove_mempool_txs(const locker_t& locker);
-        void remove_forked_txs(const locker_t& locker, uint32_t block_height);
+        void remove_mempool_txs();
+        void remove_forked_txs(uint32_t block_height);
 
-        std::mutex m_mutex;
         bool m_is_front_dirty = true; // Whether we need to fetch the newest txs from the server
         std::string m_oldest_txhash; // The txhash of the final server result, once returned
         container_type m_tx_cache;
@@ -52,9 +50,6 @@ namespace sdk {
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
     private:
-        using locker_t = std::unique_lock<std::mutex>;
-
-        std::mutex m_mutex;
         std::map<uint32_t, std::shared_ptr<tx_list_cache>> m_caches;
     };
 

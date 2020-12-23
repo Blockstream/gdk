@@ -17,7 +17,6 @@ namespace sdk {
 
     using container_type = tx_list_cache::container_type;
     using value_type = tx_list_cache::container_type::value_type;
-    using locker_t = tx_list_cache::locker_t;
     using iterator = tx_list_cache::iterator;
     using get_txs_fn_t = tx_list_cache::get_txs_fn_t;
 
@@ -63,9 +62,8 @@ namespace sdk {
         static constexpr size_t TXS_PER_PAGE = 30u; // Number of txs per page the server returns
 
         // Find the last instance of a cache item matching predicate 'fn'
-        template <typename FN> static iterator find_last_of(const locker_t& locker, container_type& cache, const FN& fn)
+        template <typename FN> static iterator find_last_of(container_type& cache, const FN& fn)
         {
-            GDK_RUNTIME_ASSERT(locker.owns_lock());
             auto last = cache.end();
             for (auto i = cache.begin(); i != cache.end(); ++i) {
                 if (fn(*i)) {
@@ -97,10 +95,9 @@ namespace sdk {
                 txs.end());
         }
 
-        static void dump_cache(const locker_t& locker, const container_type& cache, const std::string& message)
+        static void dump_cache(const container_type& cache, const std::string& message)
         {
 #if 0 // Change to 1 for cache dumping
-            GDK_RUNTIME_ASSERT(locker.owns_lock());
             std::ostringstream os;
             os << message << ':';
             if (cache.empty()) {
@@ -113,17 +110,14 @@ namespace sdk {
             }
             GDK_LOG_SEV(cache_log_level) << os.str();
 #else
-            (void)locker;
             (void)cache;
             (void)message;
 #endif
         }
 
-        static auto fetch_txs(const locker_t& locker, const value_type* start_tx, const value_type* end_tx,
-            nlohmann::json& state_info, get_txs_fn_t get_txs)
+        static auto fetch_txs(
+            const value_type* start_tx, const value_type* end_tx, nlohmann::json& state_info, get_txs_fn_t get_txs)
         {
-            GDK_RUNTIME_ASSERT(locker.owns_lock());
-
             const std::string start_at = start_tx ? json_get_value(*start_tx, "created_at") : std::string();
             const std::string start_date = start_tx ? get_query_date(start_at, 0) : std::string();
             const std::string end_at = end_tx ? json_get_value(*end_tx, "created_at") : std::string();
@@ -182,15 +176,12 @@ namespace sdk {
     {
         const auto move_iter = std::make_move_iterator<iterator>;
 
-        // Code is not optimized for concurrent gets on one subaccount
-        locker_t locker{ m_mutex };
-
         const uint32_t required_cache_size = first + count;
         nlohmann::json state_info = { { "cur_block", 0u }, { "fiat_value", nullptr }, { "have_more_results", false } };
         container_type page_txs;
         bool is_last_page;
 
-        dump_cache(locker, m_tx_cache, "before get");
+        dump_cache(m_tx_cache, "before get");
 
         if (m_is_front_dirty) {
             // Load any new txs we need from the server
@@ -208,7 +199,7 @@ namespace sdk {
                 // B) Have loaded up to 'required_cache_size' items (if our cache is empty)
                 const value_type* start_tx = m_tx_cache.empty() ? nullptr : &m_tx_cache.front();
                 const value_type* end_tx = txs.empty() ? nullptr : &txs.back();
-                std::tie(page_txs, is_last_page) = fetch_txs(locker, start_tx, end_tx, state_info, get_txs);
+                std::tie(page_txs, is_last_page) = fetch_txs(start_tx, end_tx, state_info, get_txs);
 
                 // Add the loaded txs to our collection
                 txs.insert(txs.end(), move_iter(page_txs.begin()), move_iter(page_txs.end()));
@@ -239,7 +230,7 @@ namespace sdk {
             // We need to load more txs from the server to fulfill the callers
             // request, and we have more txs available to fetch.
             const value_type* end_tx = &m_tx_cache.back();
-            std::tie(page_txs, is_last_page) = fetch_txs(locker, nullptr, end_tx, state_info, get_txs);
+            std::tie(page_txs, is_last_page) = fetch_txs(nullptr, end_tx, state_info, get_txs);
 
             // Add the loaded txs to the end of the tx cache.
             m_tx_cache.insert(m_tx_cache.end(), move_iter(page_txs.begin()), move_iter(page_txs.end()));
@@ -261,7 +252,7 @@ namespace sdk {
         const size_t remaining = std::distance(start, m_tx_cache.end());
         const auto finish = start + std::min<size_t>(count, remaining);
 
-        dump_cache(locker, m_tx_cache, " after get");
+        dump_cache(m_tx_cache, " after get");
         return std::make_pair(container_type{ start, finish }, state_info);
     }
 
@@ -269,7 +260,6 @@ namespace sdk {
     {
         (void)ga_block_height;
         const uint32_t diverged = details["diverged_count"];
-        locker_t locker{ m_mutex };
         if (diverged) {
             GDK_LOG_SEV(log_level::info) << "chain reorg detected, clearing cache...";
             // TODO: Delete only outdated blocks
@@ -277,25 +267,24 @@ namespace sdk {
             m_is_front_dirty = true;
             m_oldest_txhash.clear();
         } else {
-            remove_mempool_txs(locker);
+            remove_mempool_txs();
         }
     }
 
     void tx_list_cache::on_new_transaction(const nlohmann::json& details)
     {
-        locker_t locker{ m_mutex };
         auto p = find_last_of(
-            locker, m_tx_cache, [&details](const auto& tx) -> bool { return tx["txhash"] == details["txhash"]; });
+            m_tx_cache, [&details](const auto& tx) -> bool { return tx["txhash"] == details["txhash"]; });
         if (p != m_tx_cache.end() && json_get_value((*p), "block_height", 0) != 0) {
             // We have been notified of a confirmed tx we already had cached as confirmed.
             // Either the tx was reorged or the server is re-processing txs; either way
             // remove all cached txs from the block the tx was originally in onwards, along
             // with any mempool txs.
-            remove_forked_txs(locker, json_get_value((*p), "block_height", 0));
+            remove_forked_txs(json_get_value((*p), "block_height", 0));
         } else {
             // We havent seen this tx yet, or we've been re-notified of a mempool tx.
             // Remove any mempool txs this tx could be double spending/replacing
-            remove_mempool_txs(locker);
+            remove_mempool_txs();
         }
         // Whether we removed any cached txs or not, there is a new tx we don't have,
         // so the front of the cache needs refreshing
@@ -306,7 +295,6 @@ namespace sdk {
         const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
     {
         (void)memo_type;
-        locker_t locker{ m_mutex };
         for (auto& tx : m_tx_cache) {
             if (tx["txhash"] == txhash_hex) {
                 tx["memo"] = memo;
@@ -315,13 +303,12 @@ namespace sdk {
         }
     }
 
-    void tx_list_cache::remove_mempool_txs(const locker_t& locker)
+    void tx_list_cache::remove_mempool_txs()
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_LOG_SEV(cache_log_level) << "remove_mempool_txs";
-        dump_cache(locker, m_tx_cache, "before remove_mempool_txs");
+        dump_cache(m_tx_cache, "before remove_mempool_txs");
         auto p = find_last_of(
-            locker, m_tx_cache, [](const auto& tx) -> bool { return json_get_value(tx, "block_height", 0) == 0; });
+            m_tx_cache, [](const auto& tx) -> bool { return json_get_value(tx, "block_height", 0) == 0; });
         if (p != m_tx_cache.end()) {
             m_tx_cache.erase(m_tx_cache.begin(), std::next(p));
             // We removed some tx, so the front of the cache needs refreshing
@@ -332,39 +319,29 @@ namespace sdk {
             // the txhash of the last item the server would return yet.
             m_oldest_txhash.clear();
         }
-        dump_cache(locker, m_tx_cache, "after remove_mempool_txs");
+        dump_cache(m_tx_cache, "after remove_mempool_txs");
     }
 
-    void tx_list_cache::remove_forked_txs(const locker_t& locker, uint32_t block_height)
+    void tx_list_cache::remove_forked_txs(uint32_t block_height)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_LOG_SEV(cache_log_level) << "remove_forked_txs";
-        dump_cache(locker, m_tx_cache, "before remove_forked_txs");
-        auto p = find_last_of(locker, m_tx_cache, [block_height](const auto& tx) -> bool {
+        dump_cache(m_tx_cache, "before remove_forked_txs");
+        auto p = find_last_of(m_tx_cache, [block_height](const auto& tx) -> bool {
             const uint32_t bh = json_get_value(tx, "block_height", 0);
             return bh == 0 || bh >= block_height;
         });
         if (p != m_tx_cache.end()) {
             m_tx_cache.erase(m_tx_cache.begin(), std::next(p));
         }
-        dump_cache(locker, m_tx_cache, "after remove_forked_txs");
+        dump_cache(m_tx_cache, "after remove_forked_txs");
     }
 
-    void tx_list_caches::purge_all()
-    {
-        locker_t locker{ m_mutex };
-        m_caches.clear();
-    }
+    void tx_list_caches::purge_all() { m_caches.clear(); }
 
-    void tx_list_caches::purge(uint32_t subaccount)
-    {
-        locker_t locker{ m_mutex };
-        m_caches.erase(subaccount);
-    }
+    void tx_list_caches::purge(uint32_t subaccount) { m_caches.erase(subaccount); }
 
     std::shared_ptr<tx_list_cache> tx_list_caches::get(uint32_t subaccount)
     {
-        locker_t locker{ m_mutex };
         std::shared_ptr<tx_list_cache>& cache = m_caches[subaccount];
         if (cache.get() == nullptr) {
             cache.reset(new tx_list_cache());
@@ -375,7 +352,6 @@ namespace sdk {
     void tx_list_caches::on_new_block(uint32_t ga_block_height, const nlohmann::json& details)
     {
         GDK_LOG_SEV(cache_log_level) << "on_new_block:" << details.dump();
-        locker_t locker{ m_mutex };
         for (auto& cache : m_caches) {
             cache.second->on_new_block(ga_block_height, details);
         }
@@ -390,12 +366,7 @@ namespace sdk {
     void tx_list_caches::set_transaction_memo(
         const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
     {
-        std::map<uint32_t, std::shared_ptr<tx_list_cache>> caches;
-        {
-            locker_t locker{ m_mutex };
-            caches = m_caches;
-        }
-        for (auto& cache : caches) {
+        for (auto& cache : m_caches) {
             cache.second->set_transaction_memo(txhash_hex, memo, memo_type);
         }
     }
