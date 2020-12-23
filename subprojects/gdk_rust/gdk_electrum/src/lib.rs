@@ -153,8 +153,8 @@ fn notify_fee(notif: NativeNotif, fees: &[FeeEstimate]) {
     notify(notif, data);
 }
 fn notify_updated_txs(notif: NativeNotif) {
-    // This is used as a signal to trigger syncina via get_transactions, the transaction
-    // list conttained here is ignored and can be just a mock.
+    // This is used as a signal to trigger syncing via get_transactions, the transaction
+    // list contained here is ignored and can be just a mock.
     let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[0]}});
     notify(notif, mockup_json);
 }
