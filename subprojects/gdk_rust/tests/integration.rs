@@ -190,7 +190,7 @@ fn spv_cross_validate() {
 // Test high-level session management, background validation and transaction status
 #[test]
 fn spv_cross_validation_session() {
-    let (mut test_session1, test_session2) = setup_forking_sessions(true);
+    let (mut test_session1, mut test_session2) = setup_forking_sessions(true);
 
     // Send a payment to session1
     let ap = test_session1.session.get_receive_address(&serde_json::Value::Null).unwrap();
@@ -260,6 +260,9 @@ fn spv_cross_validation_session() {
     let txitem = test_session1.get_tx_from_list(&txid);
     assert_eq!(txitem.block_height, 135);
     assert_eq!(txitem.spv_verified, "verified");
+
+    test_session1.stop();
+    test_session2.stop();
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
