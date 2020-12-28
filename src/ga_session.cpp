@@ -2086,8 +2086,7 @@ namespace sdk {
         std::string fiat_rate;
         {
             unique_unlock unlocker(locker);
-            wamp_call(
-                [&fiat_rate](boost::future<autobahn::wamp_call_result> result) {
+            wamp_call([&fiat_rate](wamp_call_result result) {
                     fiat_rate = result.get().argument<std::string>(0);
                 },
                 "com.greenaddress.login.set_pricing_source_v2", currency, exchange);
