@@ -123,12 +123,17 @@ namespace sdk {
             return repr;
         }
 
-        template <typename T> static nlohmann::json get_json_result(const T& result)
+        template <typename T> static nlohmann::json wamp_cast_json(const T& result)
         {
             const auto obj = result.template argument<msgpack::object>(0);
             std::stringstream ss;
             ss << obj;
             return nlohmann::json::parse(ss.str());
+        }
+
+        template <typename T = std::string> inline T wamp_cast(const autobahn::wamp_call_result& result)
+        {
+            return result.template argument<T>(0);
         }
 
         static nlohmann::json get_fees_as_json(const autobahn::wamp_event& event)
@@ -172,7 +177,7 @@ namespace sdk {
             return affected;
         }
 
-        static msgpack::object_handle as_messagepack(const nlohmann::json& json)
+        static msgpack::object_handle mp_cast(const nlohmann::json& json)
         {
             if (json.is_null()) {
                 return msgpack::object_handle();
@@ -903,10 +908,7 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::fetch_nlocktime_json()
-    {
-        return get_json_result(wamp_call("com.greenaddress.txs.upcoming_nlocktime"));
-    }
+    nlohmann::json ga_session::fetch_nlocktime_json() { return wamp_cast_json(wamp_call("txs.upcoming_nlocktime")); }
 
     nlohmann::json ga_session::validate_asset_domain_name(__attribute__((unused)) const nlohmann::json& params)
     {
@@ -1044,17 +1046,15 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
         const auto user_agent = get_user_agent(supports_csv, m_user_agent);
-        auto result = wamp_call(
-            "com.greenaddress.login.register", master_pub_key_hex, master_chain_code_hex, user_agent, gait_path_hex);
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+        auto result = wamp_call("login.register", master_pub_key_hex, master_chain_code_hex, user_agent, gait_path_hex);
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
     }
 
     // Idempotent
     std::string ga_session::get_challenge(const std::string& address)
     {
         const bool nlocktime_support = true;
-        auto result = wamp_call("com.greenaddress.login.get_trezor_challenge", address, nlocktime_support);
-        return result.argument<std::string>(0);
+        return wamp_cast(wamp_call("login.get_trezor_challenge", address, nlocktime_support));
     }
 
     void ga_session::upload_confidential_addresses(
@@ -1062,9 +1062,9 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(confidential_addresses.size() > 0);
 
-        auto result = wamp_call(
-            "com.greenaddress.txs.upload_authorized_assets_confidential_address", subaccount, confidential_addresses);
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+        auto result
+            = wamp_call("txs.upload_authorized_assets_confidential_address", subaccount, confidential_addresses);
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
         // subtract from the required_ca
         locker_t locker(m_mutex);
@@ -1421,10 +1421,10 @@ namespace sdk {
     void ga_session::push_appearance_to_server(ga_session::locker_t& locker) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const auto appearance = as_messagepack(m_login_data["appearance"]);
+        const auto appearance = mp_cast(m_login_data["appearance"]);
 
         unique_unlock unlocker(locker);
-        wamp_call("com.greenaddress.login.set_appearance", appearance.get());
+        wamp_call("login.set_appearance", appearance.get());
     }
 
     void ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
@@ -1454,9 +1454,8 @@ namespace sdk {
             const auto user_agent = get_user_agent(get_signer().supports_arbitrary_scripts(), m_user_agent);
 
             unique_unlock unlocker(locker);
-            auto result
-                = wamp_call("com.greenaddress.login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
-            login_data = get_json_result(result);
+            auto result = wamp_call("login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
+            login_data = wamp_cast_json(result);
         }
 
         if (login_data.is_boolean()) {
@@ -1470,7 +1469,7 @@ namespace sdk {
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                auto details = get_json_result(event);
+                auto details = wamp_cast_json(event);
                 std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
                 locker_t notify_locker(m_mutex);
                 on_new_transaction(notify_locker, subaccounts, details);
@@ -1479,7 +1478,7 @@ namespace sdk {
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.blocks", [this](const autobahn::wamp_event& event) {
                 locker_t notify_locker(m_mutex);
-                on_new_block(notify_locker, get_json_result(event));
+                on_new_block(notify_locker, wamp_cast_json(event));
             }));
 
         subscriptions.emplace_back(
@@ -1563,8 +1562,7 @@ namespace sdk {
         const auto challenge_arg = get_signer().get_challenge();
         {
             unique_unlock unlocker(locker);
-            auto result = wamp_call("com.greenaddress.login.get_challenge", challenge_arg);
-            challenge = result.argument<std::string>(0);
+            challenge = wamp_cast(wamp_call("login.get_challenge", challenge_arg));
         }
 
         const auto hexder_path = sign_challenge(locker, challenge);
@@ -1664,8 +1662,7 @@ namespace sdk {
     {
         const std::map<std::string, std::string> args = { { "username", username }, { "password", password } };
         const auto user_agent = get_user_agent(true, m_user_agent);
-        nlohmann::json login_data
-            = get_json_result(wamp_call("com.greenaddress.login.watch_only_v2", "custom", args, user_agent));
+        nlohmann::json login_data = wamp_cast_json(wamp_call("login.watch_only_v2", "custom", args, user_agent));
 
         if (login_data.is_boolean()) {
             throw login_error(res::id_login_failed);
@@ -1680,7 +1677,7 @@ namespace sdk {
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                auto details = get_json_result(event);
+                auto details = wamp_cast_json(event);
                 std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
                 locker_t notify_locker(m_mutex);
                 on_new_transaction(notify_locker, subaccounts, details);
@@ -1738,8 +1735,7 @@ namespace sdk {
         const auto system_message_id = m_system_message_id;
         {
             unique_unlock unlocker(locker);
-            auto result = wamp_call("com.greenaddress.login.get_system_message", system_message_id);
-            details = get_json_result(result);
+            details = wamp_cast_json(wamp_call("login.get_system_message", system_message_id));
         }
 
         // Note the inconsistency with login_data key "next_system_message_id":
@@ -1786,8 +1782,8 @@ namespace sdk {
         const auto ack_id = m_system_message_ack_id;
         {
             unique_unlock unlocker(locker);
-            auto result = wamp_call("com.greenaddress.login.ack_system_message", ack_id, message_hash_hex, sig_der_hex);
-            GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+            auto result = wamp_call("login.ack_system_message", ack_id, message_hash_hex, sig_der_hex);
+            GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
         }
 
         m_system_message_ack = std::string();
@@ -1814,21 +1810,19 @@ namespace sdk {
     // Idempotent
     bool ga_session::set_watch_only(const std::string& username, const std::string& password)
     {
-        auto result = wamp_call("com.greenaddress.addressbook.sync_custom", username, password);
-        return result.argument<bool>(0);
+        return wamp_cast<bool>(wamp_call("addressbook.sync_custom", username, password));
     }
 
     std::string ga_session::get_watch_only_username()
     {
-        auto result = wamp_call("com.greenaddress.addressbook.get_sync_status");
-        return json_get_value(get_json_result(result), "username");
+        auto result = wamp_cast_json(wamp_call("addressbook.get_sync_status"));
+        return json_get_value(result, "username");
     }
 
     // Idempotent
     bool ga_session::remove_account(const nlohmann::json& twofactor_data)
     {
-        auto result = wamp_call("com.greenaddress.login.remove_account", as_messagepack(twofactor_data).get());
-        return result.argument<bool>(0);
+        return wamp_cast<bool>(wamp_call("login.remove_account", mp_cast(twofactor_data).get()));
     }
 
     nlohmann::json ga_session::get_subaccounts()
@@ -1853,8 +1847,7 @@ namespace sdk {
     nlohmann::json ga_session::get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs)
     {
         if (!m_net_params.liquid()) {
-            nlohmann::json balance
-                = get_json_result(wamp_call("com.greenaddress.txs.get_balance", subaccount, num_confs));
+            auto balance = wamp_cast_json(wamp_call("txs.get_balance", subaccount, num_confs));
             // TODO: Make sure another session didn't change fiat currency
             {
                 locker_t locker(m_mutex);
@@ -1930,8 +1923,7 @@ namespace sdk {
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         GDK_RUNTIME_ASSERT_MSG(subaccount != 0, "Main subaccount name cannot be changed");
-        auto result = wamp_call("com.greenaddress.txs.rename_subaccount", subaccount, new_name);
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.rename_subaccount", subaccount, new_name)));
 
         locker_t locker(m_mutex);
         const auto p = m_subaccounts.find(subaccount);
@@ -2019,11 +2011,11 @@ namespace sdk {
         // FIXME: remove this once all backends have been updated to accept 'sigs'
         autobahn::wamp_call_result result;
         if (m_net_params.liquid()) {
-            result = wamp_call("com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs);
+            result = wamp_call("txs.create_subaccount_v2", subaccount, name, type, xpubs);
         } else {
-            result = wamp_call("com.greenaddress.txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs);
+            result = wamp_call("txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs);
         }
-        std::string receiving_id = result.argument<std::string>(0);
+        const std::string receiving_id = wamp_cast(result);
 
         locker_t locker(m_mutex);
         constexpr bool has_txs = false;
@@ -2042,14 +2034,13 @@ namespace sdk {
     template <typename T>
     void ga_session::change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data)
     {
-        auto result
-            = wamp_call("com.greenaddress.login.change_settings", key, value, as_messagepack(twofactor_data).get());
-        GDK_RUNTIME_ASSERT(result.template argument<bool>(0));
+        auto result = wamp_call("login.change_settings", key, value, mp_cast(twofactor_data).get());
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
     }
 
     void ga_session::change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        change_settings("tx_limits", as_messagepack(details).get(), twofactor_data);
+        change_settings("tx_limits", mp_cast(details).get(), twofactor_data);
         locker_t locker(m_mutex);
         update_spending_limits(locker, details);
     }
@@ -2068,8 +2059,7 @@ namespace sdk {
         std::string fiat_rate;
         {
             unique_unlock unlocker(locker);
-            auto result = wamp_call("com.greenaddress.login.set_pricing_source_v2", currency, exchange);
-            fiat_rate = result.argument<std::string>(0);
+            fiat_rate = wamp_cast(wamp_call("login.set_pricing_source_v2", currency, exchange));
         }
 
         m_fiat_source = exchange;
@@ -2241,9 +2231,9 @@ namespace sdk {
             {
                 // FIXME: unlocking this allows notifications to claim m_mutex
                 unique_unlock unlocker(locker);
-                auto result = wamp_call(
-                    "com.greenaddress.txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
-                txs = get_json_result(result);
+                auto result
+                    = wamp_call("txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
+                txs = wamp_cast_json(result);
             }
 
             // Update block height and fiat rate in our state info
@@ -2726,9 +2716,9 @@ namespace sdk {
         nlohmann::json utxos;
         (void)all_coins;
         // FIXME: Pass all_coins when Liquid and BTC backend are updated
-        auto result = wamp_call("com.greenaddress.txs.get_all_unspent_outputs", num_confs, subaccount, "any");
+        auto result = wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any");
         if (result.number_of_arguments() != 0) {
-            utxos = get_json_result(result);
+            utxos = wamp_cast_json(result);
         }
         return utxos;
     }
@@ -2752,9 +2742,9 @@ namespace sdk {
         const auto script_hash_hex = electrum_script_hash_hex(script_bytes);
 
         nlohmann::json utxos;
-        auto result = wamp_call("com.greenaddress.vault.get_utxos_for_script_hash", script_hash_hex);
+        auto result = wamp_call("vault.get_utxos_for_script_hash", script_hash_hex);
         if (result.number_of_arguments() != 0) {
-            utxos = get_json_result(result);
+            utxos = wamp_cast_json(result);
         }
 
         for (auto& utxo : utxos) {
@@ -2772,16 +2762,14 @@ namespace sdk {
     nlohmann::json ga_session::set_unspent_outputs_status(
         const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        auto result = wamp_call("com.greenaddress.vault.set_utxo_status", as_messagepack(details).get(),
-            as_messagepack(twofactor_data).get());
-        return get_json_result(result);
+        auto result = wamp_call("vault.set_utxo_status", mp_cast(details).get(), mp_cast(twofactor_data).get());
+        return wamp_cast_json(result);
     }
 
     // Idempotent
     nlohmann::json ga_session::get_transaction_details(const std::string& txhash) const
     {
-        auto result = wamp_call("com.greenaddress.txs.get_raw_output", txhash);
-        std::string tx_data = result.argument<std::string>(0);
+        const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
 
         const uint32_t flags = WALLY_TX_FLAG_USE_WITNESS | (m_net_params.liquid() ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
         const auto tx = tx_from_hex(tx_data, flags);
@@ -2798,8 +2786,7 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT_MSG(is_known, "Unknown address type");
 
-        auto result = wamp_call("com.greenaddress.vault.fund", subaccount, true, addr_type);
-        nlohmann::json address = get_json_result(result);
+        auto address = wamp_cast_json(wamp_call("vault.fund", subaccount, true, addr_type));
         json_rename_key(address, "addr_type", "address_type");
         GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
 
@@ -2895,7 +2882,7 @@ namespace sdk {
     // Idempotent
     nlohmann::json ga_session::get_available_currencies() const
     {
-        return get_json_result(wamp_call("com.greenaddress.login.available_currencies"));
+        return wamp_cast_json(wamp_call("login.available_currencies"));
     }
 
     nlohmann::json ga_session::get_hw_device() const
@@ -2966,8 +2953,7 @@ namespace sdk {
             nlohmann::json f;
             {
                 unique_unlock unlocker(locker);
-                auto result = wamp_call("com.greenaddress.twofactor.get_config");
-                f = get_json_result(result);
+                f = wamp_cast_json(wamp_call("twofactor.get_config"));
             }
             json_add_if_missing(f, "email_addr", std::string(), true);
 
@@ -3041,7 +3027,7 @@ namespace sdk {
 
         {
             unique_unlock unlocker(locker);
-            wamp_call("com.greenaddress.twofactor.set_email", email, as_messagepack(twofactor_data).get());
+            wamp_call("twofactor.set_email", email, mp_cast(twofactor_data).get());
         }
         // FIXME: update data only after activate?
         m_twofactor_config["email"]["data"] = email;
@@ -3054,7 +3040,7 @@ namespace sdk {
 
         {
             unique_unlock unlocker(locker);
-            wamp_call("com.greenaddress.twofactor.activate_email", code);
+            wamp_call("twofactor.activate_email", code);
         }
         m_twofactor_config["email"]["confirmed"] = true;
     }
@@ -3065,10 +3051,10 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        const std::string api_method = "com.greenaddress.twofactor.init_enable_" + method;
+        const std::string api_method = "twofactor.init_enable_" + method;
         {
             unique_unlock unlocker(locker);
-            wamp_call(api_method, data, as_messagepack(twofactor_data).get());
+            wamp_call(api_method, data, mp_cast(twofactor_data).get());
         }
         m_twofactor_config[method]["data"] = data;
     }
@@ -3080,7 +3066,7 @@ namespace sdk {
 
         {
             unique_unlock unlocker(locker);
-            wamp_call("com.greenaddress.twofactor.enable_" + method, code);
+            wamp_call("twofactor.enable_" + method, code);
         }
         // Update our local 2fa config
         const std::string masked; // TODO: Use a real masked value
@@ -3095,7 +3081,7 @@ namespace sdk {
 
         {
             unique_unlock unlocker(locker);
-            wamp_call("com.greenaddress.twofactor.enable_gauth", code, as_messagepack(twofactor_data).get());
+            wamp_call("twofactor.enable_gauth", code, mp_cast(twofactor_data).get());
         }
         // Update our local 2fa config
         m_twofactor_config["gauth"] = { { "enabled", true }, { "confirmed", true }, { "data", MASKED_GAUTH_SEED } };
@@ -3107,10 +3093,10 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        const std::string api_method = "com.greenaddress.twofactor.disable_" + method;
+        const std::string api_method = "twofactor.disable_" + method;
         {
             unique_unlock unlocker(locker);
-            wamp_call(api_method, as_messagepack(twofactor_data).get());
+            wamp_call(api_method, mp_cast(twofactor_data).get());
         }
         // If the call succeeds it means the method was previously enabled, hence
         // for email the email address is still confirmed even though 2fa is disabled.
@@ -3128,43 +3114,35 @@ namespace sdk {
     void ga_session::auth_handler_request_code(
         const std::string& method, const std::string& action, const nlohmann::json& twofactor_data)
     {
-        const std::string api_method = "com.greenaddress.twofactor.request_" + method;
-        wamp_call(api_method, action, as_messagepack(twofactor_data).get());
+        wamp_call("twofactor.request_" + method, action, mp_cast(twofactor_data).get());
     }
 
     // Idempotent
     std::string ga_session::auth_handler_request_proxy_code(
         const std::string& action, const nlohmann::json& twofactor_data)
     {
-        const std::string api_method = "com.greenaddress.twofactor.request_proxy";
-        nlohmann::json state;
-        auto result = wamp_call(api_method, action, as_messagepack(twofactor_data).get());
-        return get_json_result(result);
+        auto result = wamp_call("twofactor.request_proxy", action, mp_cast(twofactor_data).get());
+        return wamp_cast_json(result);
     }
 
     // Idempotent
     nlohmann::json ga_session::reset_twofactor(const std::string& email)
     {
-        const std::string api_method = "com.greenaddress.twofactor.request_reset";
-        auto result = wamp_call(api_method, email);
-        return get_json_result(result);
+        return wamp_cast_json(wamp_call("twofactor.request_reset", email));
     }
 
     // Idempotent
     nlohmann::json ga_session::confirm_twofactor_reset(
         const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
     {
-        const std::string api_method = "com.greenaddress.twofactor.confirm_reset";
-        auto result = wamp_call(api_method, email, is_dispute, as_messagepack(twofactor_data).get());
-        return get_json_result(result);
+        auto result = wamp_call("twofactor.confirm_reset", email, is_dispute, mp_cast(twofactor_data).get());
+        return wamp_cast_json(result);
     }
 
     // Idempotent
     nlohmann::json ga_session::cancel_twofactor_reset(const nlohmann::json& twofactor_data)
     {
-        const std::string api_method = "com.greenaddress.twofactor.cancel_reset";
-        auto result = wamp_call(api_method, as_messagepack(twofactor_data).get());
-        return get_json_result(result);
+        return wamp_cast_json(wamp_call("twofactor.cancel_reset", mp_cast(twofactor_data).get()));
     }
 
     // Idempotent
@@ -3179,8 +3157,7 @@ namespace sdk {
 
         // Ask the server to create a new PIN identifier and PIN password
         constexpr bool return_password = true;
-        auto result = wamp_call("com.greenaddress.pin.set_pin_login", pin, device_id, return_password);
-        std::string pin_info = result.argument<std::string>(0);
+        const std::string pin_info = wamp_cast(wamp_call("pin.set_pin_login", pin, device_id, return_password));
 
         std::vector<std::string> id_and_password;
         boost::algorithm::split(id_and_password, pin_info, boost::is_any_of(";"));
@@ -3204,15 +3181,13 @@ namespace sdk {
 
     void ga_session::disable_all_pin_logins()
     {
-        auto result = wamp_call("com.greenaddress.pin.remove_all_pin_logins");
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("pin.remove_all_pin_logins")));
     }
 
     // Idempotent
     std::vector<unsigned char> ga_session::get_pin_password(const std::string& pin, const std::string& pin_identifier)
     {
-        auto result = wamp_call("com.greenaddress.pin.get_password", pin, pin_identifier);
-        std::string password = result.argument<std::string>(0);
+        std::string password = wamp_cast(wamp_call("pin.get_password", pin, pin_identifier));
         return std::vector<unsigned char>(password.begin(), password.end());
     }
 
@@ -3356,9 +3331,8 @@ namespace sdk {
         }
 
         constexpr bool return_tx = true;
-        auto ret = wamp_call("com.greenaddress.vault.send_raw_tx", tx_hex, as_messagepack(twofactor_data).get(),
-            as_messagepack(private_data).get(), return_tx);
-        nlohmann::json tx_details = get_json_result(ret);
+        auto tx_details = wamp_cast_json(wamp_call(
+            "vault.send_raw_tx", tx_hex, mp_cast(twofactor_data).get(), mp_cast(private_data).get(), return_tx));
 
         const amount::value_type decrease = tx_details.at("limit_decrease");
         const auto txhash_hex = tx_details["txhash"];
@@ -3383,8 +3357,7 @@ namespace sdk {
     // Idempotent
     std::string ga_session::broadcast_transaction(const std::string& tx_hex)
     {
-        auto result = wamp_call("com.greenaddress.vault.broadcast_raw_tx", tx_hex);
-        return result.argument<std::string>(0);
+        return wamp_cast(wamp_call("vault.broadcast_raw_tx", tx_hex));
     }
 
     void ga_session::sign_input(
@@ -3402,11 +3375,7 @@ namespace sdk {
     }
 
     // Idempotent
-    void ga_session::send_nlocktimes()
-    {
-        auto result = wamp_call("com.greenaddress.txs.send_nlocktime");
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
-    }
+    void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.send_nlocktime"))); }
 
     nlohmann::json ga_session::get_expired_deposits(const nlohmann::json& deposit_details)
     {
@@ -3432,8 +3401,8 @@ namespace sdk {
         // This not only saves a server round trip in case of bad value, but
         // also ensures that the value is recoverable.
         GDK_RUNTIME_ASSERT(std::find(m_csv_buckets.begin(), m_csv_buckets.end(), value) != m_csv_buckets.end());
-        auto result = wamp_call("com.greenaddress.login.set_csvtime", value, as_messagepack(twofactor_data).get());
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+        auto result = wamp_call("login.set_csvtime", value, mp_cast(twofactor_data).get());
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
         m_csv_blocks = value;
     }
@@ -3441,8 +3410,8 @@ namespace sdk {
     void ga_session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
         const uint32_t value = locktime_details.at("value");
-        auto result = wamp_call("com.greenaddress.login.set_nlocktime", value, as_messagepack(twofactor_data).get());
-        GDK_RUNTIME_ASSERT(result.argument<bool>(0));
+        auto result = wamp_call("login.set_nlocktime", value, mp_cast(twofactor_data).get());
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
         locker_t locker(m_mutex);
         m_nlocktime = value;
@@ -3451,7 +3420,7 @@ namespace sdk {
     void ga_session::set_transaction_memo(
         const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
     {
-        wamp_call("com.greenaddress.txs.change_memo", txhash_hex, memo, memo_type);
+        wamp_call("txs.change_memo", txhash_hex, memo, memo_type);
 
         // FIXME: In future transaction memos will be stored in client authenticated blobs
         // and subject to notifications.

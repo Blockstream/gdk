@@ -434,7 +434,8 @@ namespace sdk {
             constexpr uint32_t timeout_secs = 10;
             autobahn::wamp_call_options call_options;
             call_options.set_timeout(std::chrono::seconds(timeout_secs));
-            auto fn = m_session->call(method_name, std::make_tuple(std::forward<Args>(args)...), call_options);
+            const std::string prefix{"com.greenaddress."};
+            auto fn = m_session->call(prefix + method_name, std::make_tuple(std::forward<Args>(args)...), call_options);
             return wamp_process_call(fn, timeout_secs);
         }
 
