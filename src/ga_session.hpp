@@ -35,7 +35,6 @@ namespace sdk {
     using transport = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_config>;
     using transport_tls = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_tls_config>;
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
-    using wamp_call_result = boost::future<autobahn::wamp_call_result>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
 
     class exponential_backoff {
@@ -356,7 +355,8 @@ namespace sdk {
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
         void call_notification_handler(locker_t& locker, nlohmann::json* details) GDK_REQUIRES(m_mutex);
 
-        void on_new_transaction(locker_t& locker, const std::vector<uint32_t>& subaccounts, nlohmann::json details) GDK_REQUIRES(m_mutex);
+        void on_new_transaction(locker_t& locker, const std::vector<uint32_t>& subaccounts, nlohmann::json details)
+            GDK_REQUIRES(m_mutex);
         void on_new_block(locker_t& locker, nlohmann::json details) GDK_REQUIRES(m_mutex);
         void on_new_fees(locker_t& locker, const nlohmann::json& details) GDK_REQUIRES(m_mutex);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange)
@@ -428,18 +428,18 @@ namespace sdk {
         void disconnect();
         void unsubscribe();
 
-        template <typename F, typename... Args>
-        void wamp_call(F&& body, const std::string& method_name, Args&&... args) const
+        template <typename... Args>
+        autobahn::wamp_call_result wamp_call(const std::string& method_name, Args&&... args) const
         {
             constexpr uint32_t timeout_secs = 10;
             autobahn::wamp_call_options call_options;
             call_options.set_timeout(std::chrono::seconds(timeout_secs));
-            auto fn = m_session->call(method_name, std::make_tuple(std::forward<Args>(args)...), call_options)
-                          .then(boost::launch::async, std::forward<F>(body));
-            wamp_process_call(fn, timeout_secs);
+            auto fn = m_session->call(method_name, std::make_tuple(std::forward<Args>(args)...), call_options);
+            return wamp_process_call(fn, timeout_secs);
         }
 
-        void wamp_process_call(boost::future<void>& call_fn, uint32_t timeout_secs) const;
+        autobahn::wamp_call_result wamp_process_call(
+            boost::future<autobahn::wamp_call_result>& fn, uint32_t timeout_secs) const;
 
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
 
