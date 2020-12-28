@@ -72,6 +72,11 @@ namespace sdk {
         {
         }
 
+        explicit annotated_unique_lock(mutex_type& mutex, std::defer_lock_t t)
+            : m_lock{ mutex, t }
+        {
+        }
+
         ~annotated_unique_lock() GDK_RELEASE() = default;
 
         void lock() GDK_ACQUIRE() { m_lock.lock(); }
