@@ -428,12 +428,22 @@ namespace sdk {
         void disconnect();
         void unsubscribe();
 
+        // Make a background WAMP call and return its result to the current thread.
+        // The session mutex must not be held when calling this function.
         template <typename... Args>
         autobahn::wamp_call_result wamp_call(const std::string& method_name, Args&&... args) const
         {
             const std::string method{ m_wamp_call_prefix + method_name };
             auto fn = m_session->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
             return wamp_process_call(fn);
+        }
+
+        // Make a WAMP call on a currently locked session.
+        template <typename... Args>
+        autobahn::wamp_call_result wamp_call(locker_t& locker, const std::string& method_name, Args&&... args) const
+        {
+            unique_unlock unlocker(locker);
+            return wamp_call(method_name, std::forward<Args>(args)...);
         }
 
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;

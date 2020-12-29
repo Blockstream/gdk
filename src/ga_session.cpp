@@ -1427,9 +1427,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const auto appearance = mp_cast(m_login_data["appearance"]);
-
-        unique_unlock unlocker(locker);
-        wamp_call("login.set_appearance", appearance.get());
+        wamp_call(locker, "login.set_appearance", appearance.get());
     }
 
     void ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
@@ -1454,14 +1452,10 @@ namespace sdk {
         // TODO: If no device id is given, generate one, update our settings and
         // call the storage interface to store the settings (once storage/caching is implemented)
         std::string id = device_id.empty() ? "fake_dev_id" : device_id;
-        nlohmann::json login_data;
-        {
-            const auto user_agent = get_user_agent(get_signer().supports_arbitrary_scripts(), m_user_agent);
+        const auto user_agent = get_user_agent(get_signer().supports_arbitrary_scripts(), m_user_agent);
 
-            unique_unlock unlocker(locker);
-            auto result = wamp_call("login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
-            login_data = wamp_cast_json(result);
-        }
+        auto result = wamp_call(locker, "login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
+        nlohmann::json login_data = wamp_cast_json(result);
 
         if (login_data.is_boolean()) {
             throw login_error(res::id_login_failed);
@@ -1563,12 +1557,8 @@ namespace sdk {
         set_local_encryption_key(locker, key, is_hw_wallet);
 
         // TODO: Unify normal and trezor logins
-        std::string challenge;
         const auto challenge_arg = get_signer().get_challenge();
-        {
-            unique_unlock unlocker(locker);
-            challenge = wamp_cast(wamp_call("login.get_challenge", challenge_arg));
-        }
+        std::string challenge = wamp_cast(wamp_call(locker, "login.get_challenge", challenge_arg));
 
         const auto hexder_path = sign_challenge(locker, challenge);
         m_mnemonic = mnemonic;
@@ -1736,12 +1726,8 @@ namespace sdk {
         }
 
         // Get the next message to ack
-        nlohmann::json details;
         const auto system_message_id = m_system_message_id;
-        {
-            unique_unlock unlocker(locker);
-            details = wamp_cast_json(wamp_call("login.get_system_message", system_message_id));
-        }
+        nlohmann::json details = wamp_cast_json(wamp_call(locker, "login.get_system_message", system_message_id));
 
         // Note the inconsistency with login_data key "next_system_message_id":
         // We don't rename the key as we don't expose the details JSON to callers
@@ -1785,11 +1771,8 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const auto ack_id = m_system_message_ack_id;
-        {
-            unique_unlock unlocker(locker);
-            auto result = wamp_call("login.ack_system_message", ack_id, message_hash_hex, sig_der_hex);
-            GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
-        }
+        auto result = wamp_call(locker, "login.ack_system_message", ack_id, message_hash_hex, sig_der_hex);
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
         m_system_message_ack = std::string();
     }
@@ -2061,11 +2044,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        std::string fiat_rate;
-        {
-            unique_unlock unlocker(locker);
-            fiat_rate = wamp_cast(wamp_call("login.set_pricing_source_v2", currency, exchange));
-        }
+        std::string fiat_rate = wamp_cast(wamp_call(locker, "login.set_pricing_source_v2", currency, exchange));
 
         m_fiat_source = exchange;
         m_fiat_currency = currency;
@@ -2232,14 +2211,10 @@ namespace sdk {
                                 const std::string& end_date, nlohmann::json& state_info) {
             const std::vector<std::string> date_range{ start_date, end_date };
 
-            nlohmann::json txs;
-            {
-                // FIXME: unlocking this allows notifications to claim m_mutex
-                unique_unlock unlocker(locker);
-                auto result
-                    = wamp_call("txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
-                txs = wamp_cast_json(result);
-            }
+            // FIXME: unlocking this allows notifications to claim m_mutex
+            auto result
+                = wamp_call(locker, "txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
+            nlohmann::json txs = wamp_cast_json(result);
 
             // Update block height and fiat rate in our state info
             const uint32_t block_height = txs["cur_block"];
@@ -2955,11 +2930,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         if (m_twofactor_config.is_null() || reset_cached) {
-            nlohmann::json f;
-            {
-                unique_unlock unlocker(locker);
-                f = wamp_cast_json(wamp_call("twofactor.get_config"));
-            }
+            nlohmann::json f = wamp_cast_json(wamp_call(locker, "twofactor.get_config"));
             json_add_if_missing(f, "email_addr", std::string(), true);
 
             nlohmann::json email_config
@@ -3030,10 +3001,7 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        {
-            unique_unlock unlocker(locker);
-            wamp_call("twofactor.set_email", email, mp_cast(twofactor_data).get());
-        }
+        wamp_call(locker, "twofactor.set_email", email, mp_cast(twofactor_data).get());
         // FIXME: update data only after activate?
         m_twofactor_config["email"]["data"] = email;
     }
@@ -3043,24 +3011,19 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        {
-            unique_unlock unlocker(locker);
-            wamp_call("twofactor.activate_email", code);
-        }
+        wamp_call(locker, "twofactor.activate_email", code);
         m_twofactor_config["email"]["confirmed"] = true;
     }
 
     void ga_session::init_enable_twofactor(
         const std::string& method, const std::string& data, const nlohmann::json& twofactor_data)
     {
+        const std::string api_method = "twofactor.init_enable_" + method;
+
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        const std::string api_method = "twofactor.init_enable_" + method;
-        {
-            unique_unlock unlocker(locker);
-            wamp_call(api_method, data, mp_cast(twofactor_data).get());
-        }
+        wamp_call(locker, api_method, data, mp_cast(twofactor_data).get());
         m_twofactor_config[method]["data"] = data;
     }
 
@@ -3069,10 +3032,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        {
-            unique_unlock unlocker(locker);
-            wamp_call("twofactor.enable_" + method, code);
-        }
+        wamp_call(locker, "twofactor.enable_" + method, code);
+
         // Update our local 2fa config
         const std::string masked; // TODO: Use a real masked value
         m_twofactor_config[method] = { { "enabled", true }, { "confirmed", true }, { "data", masked } };
@@ -3084,10 +3045,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        {
-            unique_unlock unlocker(locker);
-            wamp_call("twofactor.enable_gauth", code, mp_cast(twofactor_data).get());
-        }
+        wamp_call(locker, "twofactor.enable_gauth", code, mp_cast(twofactor_data).get());
+
         // Update our local 2fa config
         m_twofactor_config["gauth"] = { { "enabled", true }, { "confirmed", true }, { "data", MASKED_GAUTH_SEED } };
         set_enabled_twofactor_methods(locker, m_twofactor_config);
@@ -3098,11 +3057,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        const std::string api_method = "twofactor.disable_" + method;
-        {
-            unique_unlock unlocker(locker);
-            wamp_call(api_method, mp_cast(twofactor_data).get());
-        }
+        wamp_call(locker, "twofactor.disable_" + method, mp_cast(twofactor_data).get());
+
         // If the call succeeds it means the method was previously enabled, hence
         // for email the email address is still confirmed even though 2fa is disabled.
         const bool confirmed = method == "email";
@@ -3406,7 +3362,7 @@ namespace sdk {
         // This not only saves a server round trip in case of bad value, but
         // also ensures that the value is recoverable.
         GDK_RUNTIME_ASSERT(std::find(m_csv_buckets.begin(), m_csv_buckets.end(), value) != m_csv_buckets.end());
-        auto result = wamp_call("login.set_csvtime", value, mp_cast(twofactor_data).get());
+        auto result = wamp_call(locker, "login.set_csvtime", value, mp_cast(twofactor_data).get());
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
         m_csv_blocks = value;
