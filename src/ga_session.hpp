@@ -431,16 +431,12 @@ namespace sdk {
         template <typename... Args>
         autobahn::wamp_call_result wamp_call(const std::string& method_name, Args&&... args) const
         {
-            constexpr uint32_t timeout_secs = 10;
-            autobahn::wamp_call_options call_options;
-            call_options.set_timeout(std::chrono::seconds(timeout_secs));
-            const std::string prefix{"com.greenaddress."};
-            auto fn = m_session->call(prefix + method_name, std::make_tuple(std::forward<Args>(args)...), call_options);
-            return wamp_process_call(fn, timeout_secs);
+            const std::string method{ m_wamp_call_prefix + method_name };
+            auto fn = m_session->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
+            return wamp_process_call(fn);
         }
 
-        autobahn::wamp_call_result wamp_process_call(
-            boost::future<autobahn::wamp_call_result>& fn, uint32_t timeout_secs) const;
+        autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
 
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
 
@@ -536,6 +532,8 @@ namespace sdk {
         const std::string m_electrum_url;
         const bool m_electrum_tls;
         const bool m_spv_enabled;
+        autobahn::wamp_call_options m_wamp_call_options;
+        const std::string m_wamp_call_prefix;
     };
 
 } // namespace sdk

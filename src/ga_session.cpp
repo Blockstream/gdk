@@ -338,7 +338,12 @@ namespace sdk {
         , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
         , m_spv_enabled(
               net_params.value("spv_enabled", network_parameters::get(net_params.at("name")).at("spv_enabled")))
+        , m_wamp_call_options()
+        , m_wamp_call_prefix("com.greenaddress.")
     {
+        constexpr uint32_t wamp_timeout_secs = 10;
+        m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
+
         const auto log_level = net_params.value("log_level", "none");
         m_log_level = log_level == "none"
             ? logging_levels::none
@@ -583,11 +588,11 @@ namespace sdk {
         return ctx;
     }
 
-    autobahn::wamp_call_result ga_session::wamp_process_call(
-        boost::future<autobahn::wamp_call_result>& fn, uint32_t timeout_secs) const
+    autobahn::wamp_call_result ga_session::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const
     {
+        const auto ms = boost::chrono::milliseconds(m_wamp_call_options.timeout().count());
         for (;;) {
-            const auto status = fn.wait_for(boost::chrono::seconds(timeout_secs));
+            const auto status = fn.wait_for(ms);
             if (status == boost::future_status::timeout && !is_connected()) {
                 throw timeout_error{};
             }
