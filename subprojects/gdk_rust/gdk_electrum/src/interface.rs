@@ -55,7 +55,7 @@ impl ElectrumUrl {
     pub fn build_config(&self, config: ConfigBuilder) -> Result<Client, Error> {
         let (url, config) = match self {
             ElectrumUrl::Tls(url, validate) => {
-                (format!("tls://{}", url), config.validate_domain(*validate))
+                (format!("ssl://{}", url), config.validate_domain(*validate))
             }
             ElectrumUrl::Plaintext(url) => (format!("tcp://{}", url), config),
         };
