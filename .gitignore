@@ -16,6 +16,8 @@ target/debug
 /subprojects/gdk_rust/gdk_rpc/target
 !subprojects/*meson*
 !subprojects/*wrap*
+*.orig
+*.rej
 *.swp
 *.class
 *.so
