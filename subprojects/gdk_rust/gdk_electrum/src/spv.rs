@@ -277,16 +277,16 @@ fn get_fork_branch(
             ensure!(target < sensible_target_threshold, CrossValidationError::UnsensibleTarget);
 
             // Verify retargets. Doing this as we go along backwards requires keeping around some state.
-            match (is_retarget, is_period_last, is_period_first, &mut curr_retarget) {
-                (true, _, _, curr_retarget) => {
-                    *curr_retarget = Some((height, header.clone(), None))
-                }
-                (_, true, _, Some(curr_retarget)) => curr_retarget.2 = Some(header.clone()),
-                (_, _, true, Some((_, retarget_block, period_last))) => {
+            if is_retarget {
+                curr_retarget = Some((height, header.clone(), None));
+            } else if let Some(retarget) = &mut curr_retarget {
+                if is_period_last {
+                    retarget.2 = Some(header.clone());
+                } else if is_period_first {
+                    let (_, retarget_block, period_last) = retarget;
                     verify_retarget(&retarget_block, &header, &period_last.unwrap())?; // period_last must exists if we got here
                     curr_retarget = None;
                 }
-                _ => (),
             }
 
             total_fork_work = total_fork_work + header.work();
