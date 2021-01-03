@@ -490,7 +490,7 @@ namespace sdk {
         boost::asio::deadline_timer m_ping_timer;
 
         network_control_context m_network_control;
-        boost::asio::thread_pool m_pool{ 4 };
+        boost::asio::thread_pool m_pool;
 
         GA_notification_handler m_notification_handler GDK_GUARDED_BY(m_mutex);
         void* m_notification_context GDK_PT_GUARDED_BY(m_mutex);

@@ -106,6 +106,7 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
+        static const uint32_t DEFAULT_THREADPOOL_SIZE = 4; // Number of asio pool threads
 
         static const std::string ZEROS(64, '0');
 
@@ -320,6 +321,8 @@ namespace sdk {
         , m_io()
         , m_controller(m_io)
         , m_ping_timer(m_io)
+        , m_network_control()
+        , m_pool(DEFAULT_THREADPOOL_SIZE)
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
