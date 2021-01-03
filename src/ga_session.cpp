@@ -126,6 +126,9 @@ namespace sdk {
 
         template <typename T> static nlohmann::json wamp_cast_json(const T& result)
         {
+            if (!result.number_of_arguments()) {
+                return nlohmann::json();
+            }
             const auto obj = result.template argument<msgpack::object>(0);
             std::stringstream ss;
             ss << obj;
@@ -2699,11 +2702,7 @@ namespace sdk {
         nlohmann::json utxos;
         (void)all_coins;
         // FIXME: Pass all_coins when Liquid and BTC backend are updated
-        auto result = wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any");
-        if (result.number_of_arguments() != 0) {
-            utxos = wamp_cast_json(result);
-        }
-        return utxos;
+        return wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any"));
     }
 
     // Idempotent
@@ -2724,12 +2723,7 @@ namespace sdk {
         const auto script_bytes = scriptpubkey_p2pkh_from_hash160(hash160(public_key_bytes));
         const auto script_hash_hex = electrum_script_hash_hex(script_bytes);
 
-        nlohmann::json utxos;
-        auto result = wamp_call("vault.get_utxos_for_script_hash", script_hash_hex);
-        if (result.number_of_arguments() != 0) {
-            utxos = wamp_cast_json(result);
-        }
-
+        auto utxos = wamp_cast_json(wamp_call("vault.get_utxos_for_script_hash", script_hash_hex));
         for (auto& utxo : utxos) {
             utxo["private_key"] = b2h(private_key_bytes);
             utxo["compressed"] = compressed;
