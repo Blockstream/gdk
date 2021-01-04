@@ -27,7 +27,7 @@ pip3 install --user meson
 xcode-select --install
 ```
 
-Install rust dependencies:
+Install rust dependencies (Optional):
 
   1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
@@ -36,13 +36,13 @@ Install rust dependencies:
   3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios
 x86_64-apple-ios`
 
-You may also need to change your PATH environment variable to add $HOME/Library/Python/3.6/bin
+You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.6/bin`
 
 If you want to target Android you will need to download the NDK and set the ANDROID_NDK env variable to the directory you uncompress it to, for example
 
 `export ANDROID_NDK=$HOME/Downloads/ndk`
 
-or you can add it to your bash profile ~/.bash_profile
+or you can add it to your bash profile `~/.bash_profile`
 
 JAVA bindings can be built by installing swig as explained above and setting JAVA_HOME to the location of the JDK.
 
@@ -97,12 +97,6 @@ if you want to change it for example to ndk armeabi-v7a:
 
 ### Extra build options
 
-#### Disable LTO
-
-By default builds use link time optimisation. It can be disabled when invoking build.sh. For example
-
-`tools/build.sh --lto=false --clang`
-
 #### Debug builds
 
 By default the build type is release. A debug build can specified as
@@ -114,6 +108,17 @@ or
 `tools/build.sh --buildtype=debugoptimized --clang`
 
 for a debug optimized build.
+
+#### Rust-Electrum support
+
+Pass `--enable-rust` to build the rust-electrum single signature support as used
+by e.g. [Aqua](https://github.com/Blockstream/aqua_ios).
+
+#### Disable LTO
+
+By default builds use link time optimisation. It can be disabled when invoking build.sh. For example
+
+`tools/build.sh --lto=false --clang`
 
 #### Clang Analyzer
 
