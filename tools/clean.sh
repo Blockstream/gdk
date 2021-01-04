@@ -16,7 +16,7 @@ elif [ "$1" = "all" ]; then
   # Clean everything, including the downloaded package tars
   rm -fr build-*
   clean_meson
-  find subprojects/ -maxdepth 1 -mindepth 1 -not -name '*meson*' -not -name '*wrap*' | xargs rm -rf --
+  find subprojects/ -maxdepth 1 -mindepth 1 -not -name '*meson*' -not -name '*wrap*' -not -path '*gdk_rust*' | xargs rm -rf --
 else
   # By default clean everything except the downloaded package tars
   rm -fr build-*
