@@ -8,7 +8,6 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <mutex>
 
 #include <nlohmann/json.hpp>
 
