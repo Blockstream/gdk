@@ -2002,19 +2002,12 @@ namespace sdk {
             recovery_pub_key = b2h(recovery_xpub.second);
         }
 
-        // FIXME: remove this once all backends have been updated to accept 'sigs'
-        autobahn::wamp_call_result result;
-        if (m_net_params.liquid()) {
-            result = wamp_call("txs.create_subaccount_v2", subaccount, name, type, xpubs);
-        } else {
-            result = wamp_call("txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs);
-        }
-        const std::string receiving_id = wamp_cast(result);
+        const auto recv_id = wamp_cast(wamp_call("txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs));
 
         locker_t locker(m_mutex);
         constexpr bool has_txs = false;
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
-        nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, receiving_id, recovery_pub_key,
+        nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
             recovery_chain_code, recovery_bip32_xpub, type, amount(), has_txs, 0);
 
         if (type == "2of3") {
