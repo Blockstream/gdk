@@ -2699,10 +2699,7 @@ namespace sdk {
     // Idempotent
     nlohmann::json ga_session::get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins)
     {
-        nlohmann::json utxos;
-        (void)all_coins;
-        // FIXME: Pass all_coins when Liquid and BTC backend are updated
-        return wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any"));
+        return wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
     }
 
     // Idempotent
