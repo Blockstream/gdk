@@ -1138,10 +1138,10 @@ namespace sdk {
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
                 pub_key_t login_pubkey;
                 if (get_signer().get_hw_device().empty()) {
-                    login_pubkey = get_signer().get_xpub(LOGIN_PATH).second;
+                    login_pubkey = get_signer().get_xpub(signer::LOGIN_PATH).second;
                 } else {
                     wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
-                    ext_key derived = bip32_public_key_from_parent_path(*parent, LOGIN_PATH);
+                    ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
                     memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
                 }
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
@@ -1557,8 +1557,8 @@ namespace sdk {
         m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, get_signer().get_xpub());
 
         // Cache local encryption key
-        const auto pwd_xpub = get_signer().get_xpub(PASSWORD_PATH);
-        const auto key = pbkdf2_hmac_sha512(pwd_xpub.second, PASSWORD_SALT);
+        const auto pwd_xpub = get_signer().get_xpub(signer::PASSWORD_PATH);
+        const auto key = pbkdf2_hmac_sha512(pwd_xpub.second, signer::PASSWORD_SALT);
         constexpr bool is_hw_wallet = false;
         set_local_encryption_key(locker, key, is_hw_wallet);
 

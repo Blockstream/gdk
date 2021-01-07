@@ -10,11 +10,6 @@
 
 namespace ga {
 namespace sdk {
-    inline const std::array<uint32_t, 1> LOGIN_PATH{ { 0x4741b11e } };
-    inline const std::array<uint32_t, 1> PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
-    inline const std::array<unsigned char, 8> PASSWORD_SALT = {
-        { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'
-    };
     class network_parameters;
 
     // Enum to represent the "level" of support for Liquid on an HW
@@ -29,6 +24,11 @@ namespace sdk {
     //
     class signer {
     public:
+        static const std::array<uint32_t, 1> LOGIN_PATH;
+        static const std::array<uint32_t, 1> PASSWORD_PATH;
+        static const std::array<unsigned char, 8> PASSWORD_SALT;
+        static const std::array<unsigned char, 8> BLOB_SALT;
+
         explicit signer(const network_parameters& net_params);
 
         signer(const signer&) = delete;

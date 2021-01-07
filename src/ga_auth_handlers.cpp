@@ -282,7 +282,7 @@ namespace sdk {
             m_state = state_type::resolve_code;
             set_data("get_xpubs");
             auto paths = get_paths_json();
-            paths.emplace_back(PASSWORD_PATH);
+            paths.emplace_back(signer::PASSWORD_PATH);
             m_twofactor_data["paths"] = paths;
         }
     }
@@ -332,14 +332,15 @@ namespace sdk {
                     const auto public_key = get_xpub(m_master_xpub_bip32).second;
                     m_challenge = m_session.get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
-                    const auto local_key = pbkdf2_hmac_sha512(get_xpub(xpubs.at(1)).second, PASSWORD_SALT);
+                    const auto local_xpub = get_xpub(xpubs.at(1));
+                    const auto local_key = pbkdf2_hmac_sha512(local_xpub.second, signer::PASSWORD_SALT);
                     constexpr bool is_hw_wallet = true;
                     m_session.set_local_encryption_key(local_key, is_hw_wallet);
 
                     // Ask the caller to sign the challenge
                     set_data("sign_message");
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
-                    m_twofactor_data["path"] = LOGIN_PATH;
+                    m_twofactor_data["path"] = signer::LOGIN_PATH;
                     return state_type::resolve_code;
                 }
                 // Register the xpub for each of our subaccounts
@@ -490,7 +491,7 @@ namespace sdk {
                 // sign recovery key with login key
                 const auto message = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-                m_details["recovery_key_sig"] = b2h(m_session.sign_hash(LOGIN_PATH, message_hash));
+                m_details["recovery_key_sig"] = b2h(m_session.sign_hash(signer::LOGIN_PATH, message_hash));
             }
 
             m_result = m_session.create_subaccount(m_details, m_subaccount);
@@ -512,7 +513,7 @@ namespace sdk {
                     // ask the caller to sign recovery key with login key
                     set_data("sign_message");
                     m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
-                    m_twofactor_data["path"] = LOGIN_PATH;
+                    m_twofactor_data["path"] = signer::LOGIN_PATH;
                     return state_type::resolve_code;
                 }
                 m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
