@@ -43,7 +43,6 @@ use elements::confidential::{self, Asset, Nonce};
 use gdk_common::{ElementsNetwork, NetworkId};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -348,8 +347,10 @@ impl Session<Error> for ElectrumSession {
         )
         .ok_or(Error::InvalidMnemonic)?;
         let secp = Secp256k1::new();
-        let xprv =
+
+        let master_xprv =
             ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
+        let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
 
         // BIP44: m / purpose' / coin_type' / account' / change / address_index
         // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin as defined in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
@@ -374,7 +375,6 @@ impl Session<Error> for ElectrumSession {
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
         let wallet_id = self.network.unique_id(&xpub);
-        let sync_interval = self.network.sync_interval.unwrap_or(7);
 
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
@@ -392,7 +392,7 @@ impl Session<Error> for ElectrumSession {
             Ok(wallet) => wallet.store.clone(),
             Err(_) => Arc::new(RwLock::new(StoreMeta::new(
                 &path,
-                xpub,
+                master_xpub,
                 master_blinding.clone(),
                 self.network.id(),
             )?)),
@@ -416,6 +416,8 @@ impl Session<Error> for ElectrumSession {
                 };
             });
         }
+
+        let sync_interval = self.network.sync_interval.unwrap_or(7);
 
         if self.network.spv_enabled.unwrap_or(false) {
             let checker = match self.network.id() {
@@ -523,8 +525,8 @@ impl Session<Error> for ElectrumSession {
                 store,
                 mnemonic.clone(),
                 self.network.clone(),
-                xprv,
-                xpub,
+                master_xprv,
+                master_xpub,
                 master_blinding,
             )?;
 

@@ -17,6 +17,7 @@ use gdk_common::network::{ElementsNetwork, Network, NetworkId};
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig};
 use gdk_common::wally::*;
 
+use crate::account::{Account, AccountNum};
 use crate::error::*;
 use crate::store::*;
 
@@ -25,6 +26,7 @@ use electrum_client::{Client, ConfigBuilder};
 use elements::confidential::{Asset, Nonce, Value};
 use gdk_common::be::{self, *};
 use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -34,10 +36,14 @@ pub struct WalletCtx {
     pub network: Network,
     pub mnemonic: Mnemonic,
     pub store: Store,
-    pub xprv: ExtendedPrivKey,
-    pub xpub: ExtendedPubKey,
+    pub master_xprv: ExtendedPrivKey,
+    pub master_xpub: ExtendedPubKey,
     pub master_blinding: Option<MasterBlindingKey>,
+    pub accounts: HashMap<AccountNum, Account>,
     pub change_max_deriv: u32,
+
+    pub xprv: ExtendedPrivKey, // @shesek to be removed
+    pub xpub: ExtendedPubKey,  // @shesek to be removed
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -95,24 +101,50 @@ impl WalletCtx {
         store: Store,
         mnemonic: Mnemonic,
         network: Network,
-        xprv: ExtendedPrivKey,
-        xpub: ExtendedPubKey,
+        master_xprv: ExtendedPrivKey,
+        master_xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         Ok(WalletCtx {
+            // @shesek to be removed
+            xprv: master_xprv.clone(),
+            xpub: master_xpub.clone(),
+
             mnemonic,
             store,
             network, // TODO: from db
             secp: Secp256k1::gen_new(),
-            xprv,
-            xpub,
+            master_xprv,
+            master_xpub,
             master_blinding,
+            accounts: Default::default(),
             change_max_deriv: 0,
         })
     }
 
     pub fn get_mnemonic(&self) -> &Mnemonic {
         &self.mnemonic
+    }
+
+    pub fn get_account(&self, account_num: AccountNum) -> Option<&Account> {
+        self.accounts.get(&account_num)
+    }
+
+    pub fn iter_accounts(&self) -> impl Iterator<Item = &Account> {
+        self.accounts.values()
+    }
+
+    pub fn make_account(&mut self, account_num: AccountNum) -> Result<&Account, Error> {
+        Ok(match self.accounts.entry(account_num) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(Account::new(
+                self.network.clone(),
+                &self.master_xprv,
+                self.master_blinding.clone(),
+                self.store.clone(),
+                account_num,
+            )?),
+        })
     }
 
     fn derive_address(&self, xpub: &ExtendedPubKey, path: [u32; 2]) -> Result<BEAddress, Error> {
