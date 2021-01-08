@@ -14,7 +14,7 @@ use log::{info, warn};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -32,23 +32,8 @@ pub struct RawCache {
     /// account-specific information (transactions, scripts, history, indexes, unblinded)
     pub accounts: HashMap<AccountNum, RawAccountCache>,
 
-    /// contains all my tx and all prevouts (@shesek to be removed)
-    pub all_txs: BETransactions,
-
-    /// contains all my script up to an empty batch of BATCHSIZE
-    pub paths: HashMap<BEScript, DerivationPath>,
-
-    /// inverse of `paths`
-    pub scripts: HashMap<DerivationPath, BEScript>,
-
-    /// contains only my wallet txs with the relative heights (None if unconfirmed)
-    pub heights: HashMap<BETxid, Option<u32>>,
-
     /// contains headers at the height of my txs (used to show tx timestamps)
     pub headers: HashMap<u32, BEBlockHeader>,
-
-    /// unblinded values (only for liquid)
-    pub unblinded: HashMap<elements::OutPoint, Unblinded>,
 
     /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
     pub txs_verif: HashMap<BETxid, SPVVerifyResult>,
@@ -58,9 +43,6 @@ pub struct RawCache {
 
     /// height and hash of tip of the blockchain
     pub tip: (u32, BEBlockHash),
-
-    /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
-    pub indexes: Indexes,
 
     /// registry assets last modified, used when making the http request
     pub assets_last_modified: String,
@@ -299,6 +281,10 @@ impl StoreMeta {
             .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
     }
 
+    pub fn account_nums(&self) -> HashSet<AccountNum> {
+        self.cache.accounts.keys().copied().collect()
+    }
+
     pub fn read_asset_icons(&self) -> Result<Option<Value>, Error> {
         self.read("asset_icons")
     }
@@ -356,7 +342,13 @@ impl StoreMeta {
     }
 
     pub fn spv_verification_status(&self, txid: &BETxid) -> SPVVerifyResult {
-        if let Some(height) = self.cache.heights.get(txid).unwrap_or(&None) {
+        // @shesek TODO support mult account
+        let acc_store = match self.account_store(0usize.into()) {
+            Ok(store) => store,
+            Err(_) => return SPVVerifyResult::NotVerified,
+        };
+
+        if let Some(height) = acc_store.heights.get(txid).unwrap_or(&None) {
             match &self.cache.cross_validation_result {
                 Some(CrossValidationResult::Invalid(inv)) if *height > inv.common_ancestor => {
                     // Report an SPV validation failure if the transaction was confirmed after the forking point
