@@ -282,7 +282,7 @@ namespace sdk {
             m_state = state_type::resolve_code;
             set_data("get_xpubs");
             auto paths = get_paths_json();
-            paths.emplace_back(signer::PASSWORD_PATH);
+            paths.emplace_back(signer::CLIENT_SECRET_PATH);
             m_twofactor_data["paths"] = paths;
         }
     }

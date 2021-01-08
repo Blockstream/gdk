@@ -14,7 +14,7 @@ namespace sdk {
     } // namespace
 
     const std::array<uint32_t, 1> signer::LOGIN_PATH{ { 0x4741b11e } };
-    const std::array<uint32_t, 1> signer::PASSWORD_PATH{ { harden(0x70617373) } }; // 'pass'
+    const std::array<uint32_t, 1> signer::CLIENT_SECRET_PATH{ { harden(0x70617373) } }; // 'pass'
     const std::array<unsigned char, 8> signer::PASSWORD_SALT = {
         { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'
     };

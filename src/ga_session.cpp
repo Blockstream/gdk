@@ -1559,7 +1559,7 @@ namespace sdk {
         m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, get_signer().get_xpub());
 
         // Cache local encryption key
-        const auto pwd_xpub = get_signer().get_xpub(signer::PASSWORD_PATH);
+        const auto pwd_xpub = get_signer().get_xpub(signer::CLIENT_SECRET_PATH);
         constexpr bool is_hw_wallet = false;
         set_local_encryption_keys(locker, pwd_xpub.second, is_hw_wallet);
 

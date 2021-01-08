@@ -25,7 +25,7 @@ namespace sdk {
     class signer {
     public:
         static const std::array<uint32_t, 1> LOGIN_PATH;
-        static const std::array<uint32_t, 1> PASSWORD_PATH;
+        static const std::array<uint32_t, 1> CLIENT_SECRET_PATH;
         static const std::array<unsigned char, 8> PASSWORD_SALT;
         static const std::array<unsigned char, 8> BLOB_SALT;
 
