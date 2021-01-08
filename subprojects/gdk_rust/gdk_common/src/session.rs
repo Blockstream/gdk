@@ -35,7 +35,7 @@ pub trait Session<E> {
     fn send_transaction(&mut self, tx_detail_signed: &TransactionMeta) -> Result<String, E>;
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, E>;
     fn get_receive_address(&self, addr_details: &Value) -> Result<AddressPointer, E>;
-    fn get_mnemonic(&self) -> Result<&Mnemonic, E>;
+    fn get_mnemonic(&self) -> Result<Mnemonic, E>;
     fn get_available_currencies(&self) -> Result<Value, E>;
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Settings, E>;

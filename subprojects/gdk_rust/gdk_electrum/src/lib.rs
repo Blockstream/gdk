@@ -44,8 +44,8 @@ use gdk_common::{ElementsNetwork, NetworkId};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread;
 use std::time::{Duration, Instant};
+use std::{sync, thread};
 
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
@@ -114,7 +114,7 @@ pub struct ElectrumSession {
     pub data_root: String,
     pub network: Network,
     pub url: ElectrumUrl,
-    pub wallet: Option<WalletCtx>,
+    pub wallet: Option<Arc<RwLock<WalletCtx>>>,
     pub notify: NativeNotif,
     pub closer: Closer,
     pub state: State,
@@ -201,12 +201,16 @@ impl ElectrumSession {
         }
     }
 
-    pub fn get_wallet(&self) -> Result<&WalletCtx, Error> {
-        self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))
+    pub fn get_wallet(&self) -> Result<sync::RwLockReadGuard<WalletCtx>, Error> {
+        let wallet =
+            self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
+        Ok(wallet.read().unwrap())
     }
 
-    pub fn get_wallet_mut(&mut self) -> Result<&mut WalletCtx, Error> {
-        self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))
+    pub fn get_wallet_mut(&mut self) -> Result<sync::RwLockWriteGuard<WalletCtx>, Error> {
+        let wallet =
+            self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
+        Ok(wallet.write().unwrap())
     }
 }
 
@@ -530,7 +534,7 @@ impl Session<Error> for ElectrumSession {
                 master_blinding,
             )?;
 
-            self.wallet = Some(wallet);
+            self.wallet = Some(Arc::new(RwLock::new(wallet)));
         }
         info!("login STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
 
@@ -722,8 +726,8 @@ impl Session<Error> for ElectrumSession {
         //TODO better implement default
     }
 
-    fn get_mnemonic(&self) -> Result<&Mnemonic, Error> {
-        self.get_wallet().map(|wallet| wallet.get_mnemonic())
+    fn get_mnemonic(&self) -> Result<Mnemonic, Error> {
+        self.get_wallet().map(|wallet| wallet.get_mnemonic().clone())
     }
 
     fn get_settings(&self) -> Result<Settings, Error> {
@@ -798,7 +802,8 @@ impl Session<Error> for ElectrumSession {
                 }
             }
 
-            let mut store_write = self.get_wallet()?.store.write()?;
+            let wallet = self.get_wallet()?;
+            let mut store_write = wallet.store.write()?;
             if let Value::Object(_) = icons {
                 store_write.write_asset_icons(&icons)?;
                 store_write.cache.icons_last_modified = icons_last_modified;
