@@ -1,19 +1,27 @@
+use std::cmp::Ordering;
 use std::fmt;
 
-use log::debug;
+use log::{debug, info, trace};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use bitcoin::{Transaction, Script};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::{Address, PublicKey, Script, Transaction, Txid};
 
+use gdk_common::wally::{asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key};
+
+use gdk_common::be::{BEAddress, BEScript, BEScriptConvert, ScriptBatch, Utxos};
+use gdk_common::error::fn_err;
+use gdk_common::model::{
+    AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
+    SPVVerifyResult, TransactionMeta,
+};
+use gdk_common::scripts::p2shwpkh_script;
 use gdk_common::wally::MasterBlindingKey;
 use gdk_common::{ElementsNetwork, Network, NetworkId};
-use gdk_common::model::{AddressPointer, CreateTransaction, TransactionMeta, Balances, GetTransactionsOpt};
-use gdk_common::be::{BEAddress, Utxos};
 
 use crate::error::Error;
-use crate::store::Store;
+use crate::store::{Store, BATCH_SIZE};
 
 lazy_static! {
     static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
@@ -27,6 +35,7 @@ pub struct Account {
     path: DerivationPath,
     xpub: ExtendedPubKey,
     xprv: ExtendedPrivKey,
+    chains: [ExtendedPubKey; 2],
     network: Network,
     store: Store,
     // liquid only
@@ -48,27 +57,61 @@ impl Account {
         let xprv = master_xprv.derive_priv(&EC, &path)?;
         let xpub = ExtendedPubKey::from_private(&EC, &xprv);
 
+        // cache internal/external chains
+        let chains = [xpub.ckd_pub(&EC, 0.into())?, xpub.ckd_pub(&EC, 1.into())?];
+
         Ok(Self {
             network,
             account_num,
             path,
             xpub,
             xprv,
+            chains,
             store,
             master_blinding,
         })
     }
 
-    fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
-        unimplemented!()
+    pub fn num(&self) -> AccountNum {
+        self.account_num
     }
 
-    pub fn get_address(&self) -> Result<AddressPointer, Error> {
-        unimplemented!()
+    pub fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
+        let chain_xpub = self.chains[is_change as usize];
+        let derived = chain_xpub.ckd_pub(&EC, index.into())?;
+
+        match self.network.id() {
+            NetworkId::Bitcoin(network) => {
+                Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network).unwrap()))
+            }
+            NetworkId::Elements(network) => {
+                let master_blinding_key = self
+                    .master_blinding
+                    .as_ref()
+                    .expect("we are in elements but master blinding is None");
+
+                let address = liquid_address(&derived.public_key, master_blinding_key, network);
+                Ok(BEAddress::Elements(address))
+            }
+        }
+    }
+
+    pub fn get_next_address(&self) -> Result<AddressPointer, Error> {
+        let pointer = {
+            let store = &mut self.store.write()?;
+            let acc_store = store.account_store_mut(self.account_num)?;
+            acc_store.indexes.external += 1;
+            acc_store.indexes.external
+        };
+        let address = self.derive_address(false, pointer)?.to_string();
+        Ok(AddressPointer {
+            address,
+            pointer,
+        })
     }
 
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
-      unimplemented!()
+        unimplemented!()
     }
 
     pub fn utxos(&self) -> Result<Utxos, Error> {
@@ -110,6 +153,31 @@ impl Account {
     fn blind_tx(&self, tx: &mut elements::Transaction) -> Result<(), Error> {
         unimplemented!()
     }
+
+    pub fn get_script_batch(&self, is_change: bool, batch: u32) -> Result<ScriptBatch, Error> {
+        let store = self.store.read()?;
+        let acc_store = store.account_store(self.account_num)?;
+
+        let mut result = ScriptBatch::default();
+        result.cached = true;
+
+        let chain_xpub = &self.chains[is_change as usize];
+
+        let start = batch * BATCH_SIZE;
+        let end = start + BATCH_SIZE;
+        for j in start..end {
+            let path = DerivationPath::from(&[(is_change as u32).into(), j.into()][..]);
+            let script = acc_store.scripts.get(&path).cloned().map_or_else(
+                || -> Result<BEScript, Error> {
+                    result.cached = false;
+                    Ok(self.derive_address(is_change, j)?.script_pubkey())
+                },
+                Ok,
+            )?;
+            result.value.push((script, path));
+        }
+        Ok(result)
+    }
 }
 
 impl fmt::Display for AccountNum {
@@ -130,6 +198,12 @@ impl From<usize> for AccountNum {
 impl Into<u32> for AccountNum {
     fn into(self) -> u32 {
         self.0
+    }
+}
+
+impl AccountNum {
+    pub fn as_u32(self) -> u32 {
+        self.into()
     }
 }
 
@@ -154,10 +228,28 @@ fn get_coin_type(network: &Network) -> u32 {
             bitcoin::Network::Bitcoin => 0,
             bitcoin::Network::Testnet => 1,
             bitcoin::Network::Regtest => 1,
+            bitcoin::Network::Signet => 1,
         },
         NetworkId::Elements(elements_network) => match elements_network {
             ElementsNetwork::Liquid => 1776,
             ElementsNetwork::ElementsRegtest => 1,
         },
     }
+}
+
+fn liquid_address(
+    public_key: &PublicKey,
+    master_blinding_key: &MasterBlindingKey,
+    net: ElementsNetwork,
+) -> elements::Address {
+    let script = p2shwpkh_script(public_key).into_elements();
+    let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
+    let blinding_pub = ec_public_key_from_private_key(blinding_key);
+
+    let addr_params = match net {
+        ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
+        ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
+    };
+
+    elements::Address::p2shwpkh(public_key, Some(blinding_pub), addr_params)
 }

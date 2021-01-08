@@ -5,7 +5,6 @@ use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
 use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, Transaction};
 use elements::AddressParams;
@@ -16,11 +15,7 @@ use gdk_common::be::{
 use gdk_common::be::{BETxidConvert, ScriptBatch, Unblinded};
 use gdk_common::error::fn_err;
 use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
-use gdk_common::scripts::p2shwpkh_script;
-use gdk_common::wally::{
-    asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
-};
-use gdk_common::{ElementsNetwork, NetworkId};
+use gdk_common::NetworkId;
 use log::{info, trace, warn};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
@@ -29,7 +24,6 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
@@ -119,12 +113,9 @@ pub struct RawStore {
 pub struct StoreMeta {
     pub cache: RawCache,
     pub store: RawStore,
-    master_blinding: Option<MasterBlindingKey>,
-    secp: Secp256k1<All>,
     id: NetworkId,
     path: PathBuf,
     cipher: Aes256GcmSiv,
-    first_deriv: [ExtendedPubKey; 2],
 }
 
 impl Drop for StoreMeta {
@@ -202,7 +193,6 @@ impl StoreMeta {
     pub fn new<P: AsRef<Path>>(
         path: P,
         xpub: ExtendedPubKey,
-        master_blinding: Option<MasterBlindingKey>,
         id: NetworkId,
     ) -> Result<StoreMeta, Error> {
         let mut enc_key_data = vec![];
@@ -218,22 +208,13 @@ impl StoreMeta {
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
-        let secp = Secp256k1::new();
-
-        let first_deriv = [
-            xpub.derive_pub(&secp, &[ChildNumber::from(0)])?,
-            xpub.derive_pub(&secp, &[ChildNumber::from(1)])?,
-        ];
 
         Ok(StoreMeta {
             cache,
             store,
-            master_blinding,
             id,
             cipher,
-            secp,
             path,
-            first_deriv,
         })
     }
 
@@ -342,72 +323,6 @@ impl StoreMeta {
     /// it is stored out of the encrypted area since it's public info
     pub fn write_asset_registry(&self, asset_registry: &Value) -> Result<(), Error> {
         self.write("asset_registry", asset_registry)
-    }
-
-    pub fn get_script_batch(&self, int_or_ext: u32, batch: u32) -> Result<ScriptBatch, Error> {
-        let mut result = ScriptBatch::default();
-        result.cached = true;
-
-        let first_deriv = &self.first_deriv[int_or_ext as usize];
-
-        let start = batch * BATCH_SIZE;
-        let end = start + BATCH_SIZE;
-        for j in start..end {
-            let path = DerivationPath::from_str(&format!("m/{}/{}", int_or_ext, j))?;
-            let opt_script = self.cache.scripts.get(&path);
-            let script = match opt_script {
-                Some(script) => script.clone(),
-                None => {
-                    result.cached = false;
-                    let second_path = [ChildNumber::from(j)];
-                    let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
-                    // Note we are using regtest here because we are not interested in the address, only in script construction
-                    let script: BEScript = match self.id {
-                        NetworkId::Bitcoin(network) => {
-                            let address =
-                                Address::p2shwpkh(&second_deriv.public_key, network).unwrap();
-                            trace!("{}/{} {}", int_or_ext as u32, j, address);
-                            address.script_pubkey().into()
-                        }
-                        NetworkId::Elements(network) => {
-                            let params = match network {
-                                ElementsNetwork::Liquid => &AddressParams::LIQUID,
-                                ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
-                            };
-
-                            let script = p2shwpkh_script(&second_deriv.public_key).into_elements();
-                            let blinding_key = asset_blinding_key_to_ec_private_key(
-                                self.master_blinding.as_ref().ok_or_else(fn_err(
-                                    "missing master blinding in elements session",
-                                ))?,
-                                &script,
-                            );
-                            let public_key = ec_public_key_from_private_key(blinding_key);
-                            let blinder = Some(public_key);
-
-                            let address = elements::Address::p2shwpkh(
-                                &second_deriv.public_key,
-                                blinder,
-                                params,
-                            );
-                            trace!(
-                                "{}/{} blinded address {}  blinder {:?}",
-                                int_or_ext as u32,
-                                j,
-                                address,
-                                blinder
-                            );
-                            assert_eq!(script, address.script_pubkey());
-                            address.script_pubkey().into()
-                        }
-                    };
-
-                    script
-                }
-            };
-            result.value.push((script, path));
-        }
-        Ok(result)
     }
 
     pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {

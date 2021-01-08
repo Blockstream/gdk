@@ -147,37 +147,8 @@ impl WalletCtx {
         })
     }
 
-    fn derive_address(&self, xpub: &ExtendedPubKey, path: [u32; 2]) -> Result<BEAddress, Error> {
-        let path: Vec<ChildNumber> = path
-            .iter()
-            .map(|x| ChildNumber::Normal {
-                index: *x,
-            })
-            .collect();
-        let derived = xpub.derive_pub(&self.secp, &path)?;
-        match self.network.id() {
-            NetworkId::Bitcoin(network) => {
-                Ok(BEAddress::Bitcoin(Address::p2shwpkh(&derived.public_key, network).unwrap()))
-            }
-            NetworkId::Elements(network) => {
-                let master_blinding_key = self
-                    .master_blinding
-                    .as_ref()
-                    .expect("we are in elements but master blinding is None");
-                let script = p2shwpkh_script(&derived.public_key).into_elements();
-                let blinding_key =
-                    asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
-                let public_key = ec_public_key_from_private_key(blinding_key);
-                let blinder = Some(public_key);
-                let addr = elements::Address::p2shwpkh(
-                    &derived.public_key,
-                    blinder,
-                    address_params(network),
-                );
-
-                Ok(BEAddress::Elements(addr))
-            }
-        }
+    fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
+        self.get_account(0usize.into()).unwrap().derive_address(is_change, index)
     }
 
     pub fn get_settings(&self) -> Result<Settings, Error> {
@@ -618,7 +589,7 @@ impl WalletCtx {
         ); // Vec<Change> asset, value
         for (i, change) in changes.iter().enumerate() {
             let change_index = store_read.cache.indexes.internal + i as u32 + 1;
-            let change_address = self.derive_address(&self.xpub, [1, change_index])?.to_string();
+            let change_address = self.derive_address(true, change_index)?.to_string();
             info!(
                 "adding change to {} of {} asset {:?}",
                 &change_address, change.satoshi, change.asset
@@ -985,16 +956,8 @@ impl WalletCtx {
     }
 
     pub fn get_address(&self) -> Result<AddressPointer, Error> {
-        let pointer = {
-            let store = &mut self.store.write()?.cache;
-            store.indexes.external += 1;
-            store.indexes.external
-        };
-        let address = self.derive_address(&self.xpub, [0, pointer])?.to_string();
-        Ok(AddressPointer {
-            address,
-            pointer,
-        })
+        // @shesek TODO multi-account support
+        self.get_account(0usize.into()).unwrap().get_next_address()
     }
 
     pub fn get_asset_icons(&self) -> Result<Option<serde_json::Value>, Error> {

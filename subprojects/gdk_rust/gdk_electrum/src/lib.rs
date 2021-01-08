@@ -40,13 +40,14 @@ use gdk_common::wally::{
 };
 
 use elements::confidential::{self, Asset, Nonce};
-use gdk_common::{ElementsNetwork, NetworkId};
+use gdk_common::NetworkId;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 use std::{sync, thread};
 
+use crate::account::AccountNum;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
@@ -70,10 +71,11 @@ const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughl
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
-pub struct Syncer {
-    pub store: Store,
-    pub master_blinding: Option<MasterBlindingKey>,
-    pub network: Network,
+struct Syncer {
+    wallet: Arc<RwLock<WalletCtx>>,
+    store: Store,
+    master_blinding: Option<MasterBlindingKey>,
+    network: Network,
 }
 
 pub struct Tipper {
@@ -151,10 +153,11 @@ fn notify_fee(notif: NativeNotif, fees: &[FeeEstimate]) {
     let data = json!({"fees":fees,"event":"fees"});
     notify(notif, data);
 }
-fn notify_updated_txs(notif: NativeNotif) {
+fn notify_updated_txs(notif: NativeNotif, account_num: AccountNum) {
     // This is used as a signal to trigger syncing via get_transactions, the transaction
     // list contained here is ignored and can be just a mock.
-    let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[0]}});
+    let mockup_json =
+        json!({"event":"transaction","transaction":{"subaccounts":[account_num.as_u32()]}});
     notify(notif, mockup_json);
 }
 
@@ -356,35 +359,13 @@ impl Session<Error> for ElectrumSession {
             ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
         let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
 
-        // BIP44: m / purpose' / coin_type' / account' / change / address_index
-        // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin as defined in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-        // slip44 suggest 1 for every testnet, so we are using it also for regtest
-        let coin_type: u32 = match self.network.id() {
-            NetworkId::Bitcoin(bitcoin_network) => match bitcoin_network {
-                bitcoin::Network::Bitcoin => 0,
-                bitcoin::Network::Testnet
-                | bitcoin::Network::Regtest
-                | bitcoin::Network::Signet => 1,
-            },
-            NetworkId::Elements(elements_network) => match elements_network {
-                ElementsNetwork::Liquid => 1776,
-                ElementsNetwork::ElementsRegtest => 1,
-            },
-        };
-        // since we use P2WPKH-nested-in-P2SH it is 49 https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
-        let path_string = format!("m/49'/{}'/0'", coin_type);
-        info!("Using derivation path {}/0|1/*", path_string);
-        let path = DerivationPath::from_str(&path_string)?;
-        let xprv = xprv.derive_priv(&secp, &path)?;
-        let xpub = ExtendedPubKey::from_private(&secp, &xprv);
-
-        let wallet_id = self.network.unique_id(&xpub);
-
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
         } else {
             None
         };
+
+        let wallet_id = self.network.unique_id(&master_xpub);
 
         let mut path: PathBuf = self.data_root.as_str().into();
         if !path.exists() {
@@ -394,12 +375,7 @@ impl Session<Error> for ElectrumSession {
         info!("Store root path: {:?}", path);
         let store = match self.get_wallet() {
             Ok(wallet) => wallet.store.clone(),
-            Err(_) => Arc::new(RwLock::new(StoreMeta::new(
-                &path,
-                master_xpub,
-                master_blinding.clone(),
-                self.network.id(),
-            )?)),
+            Err(_) => Arc::new(RwLock::new(StoreMeta::new(&path, master_xpub, self.network.id())?)),
         };
 
         let estimates = store.read()?.fee_estimates().clone();
@@ -502,7 +478,8 @@ impl Session<Error> for ElectrumSession {
                         if round % CROSS_VALIDATION_RATE == 0 {
                             let status_changed = headers.cross_validate();
                             if status_changed {
-                                notify_updated_txs(notify_headers.clone());
+                                // TODO account number
+                                notify_updated_txs(notify_headers.clone(), 0u32.into());
                             }
                         }
 
@@ -513,9 +490,26 @@ impl Session<Error> for ElectrumSession {
             self.closer.handles.push(headers_handle);
         }
 
+        let wallet = match &self.wallet {
+            Some(wallet) => wallet.clone(),
+            None => {
+                let wallet = Arc::new(RwLock::new(WalletCtx::new(
+                    store.clone(),
+                    mnemonic.clone(),
+                    self.network.clone(),
+                    master_xprv,
+                    master_xpub,
+                    master_blinding.clone(),
+                )?));
+                self.wallet = Some(wallet.clone());
+                wallet
+            }
+        };
+
         let syncer = Syncer {
+            wallet: wallet.clone(),
             store: store.clone(),
-            master_blinding: master_blinding.clone(),
+            master_blinding,
             network: self.network.clone(),
         };
 
@@ -524,18 +518,6 @@ impl Session<Error> for ElectrumSession {
             network: self.network.clone(),
         };
 
-        if self.wallet.is_none() {
-            let wallet = WalletCtx::new(
-                store,
-                mnemonic.clone(),
-                self.network.clone(),
-                master_xprv,
-                master_xpub,
-                master_blinding,
-            )?;
-
-            self.wallet = Some(Arc::new(RwLock::new(wallet)));
-        }
         info!("login STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
 
         let notify_blocks = self.notify.clone();
@@ -577,10 +559,10 @@ impl Session<Error> for ElectrumSession {
             loop {
                 match syncer_url.build_client() {
                     Ok(client) => match syncer.sync(&client) {
-                        Ok(new_txs) => {
-                            if new_txs {
+                        Ok(updated_accounts) => {
+                            for account_num in updated_accounts {
                                 info!("there are new transactions");
-                                notify_updated_txs(notify_txs.clone());
+                                notify_updated_txs(notify_txs.clone(), account_num);
                             }
                         }
                         Err(e) => warn!("Error during sync, {:?}", e),
@@ -1054,9 +1036,16 @@ struct DownloadTxResult {
 }
 
 impl Syncer {
-    pub fn sync(&self, client: &Client) -> Result<bool, Error> {
+    pub fn sync(&self, client: &Client) -> Result<HashSet<AccountNum>, Error> {
         debug!("start sync");
         let start = Instant::now();
+
+        let mut history_txs_id = HashSet::<BETxid>::new();
+        let wallet = self.wallet.read().unwrap();
+        let mut updated_accounts = HashSet::new();
+
+        // XXX the for loop is intentionally unindented for saner diff
+        for account in wallet.iter_accounts() {
 
         let mut history_txs_id = HashSet::<BETxid>::new();
         let mut heights_set = HashSet::new();
@@ -1069,7 +1058,7 @@ impl Syncer {
         for i in wallet_chains {
             let mut batch_count = 0;
             loop {
-                let batch = self.store.read()?.get_script_batch(i, batch_count)?;
+                let batch = account.get_script_batch(i == 1, batch_count)?;
                 // convert the BEScript into bitcoin::Script for electrum-client
                 let b_scripts =
                     batch.value.iter().map(|e| e.0.clone().into_bitcoin()).collect::<Vec<_>>();
@@ -1124,10 +1113,12 @@ impl Syncer {
         let headers = self.download_headers(&heights_set, &client)?;
 
         let store_read = self.store.read()?;
-        let store_indexes = store_read.cache.indexes.clone();
+        let acc_store = store_read.account_store(account.num())?;
+        let store_indexes = acc_store.indexes.clone();
         let txs_heights_changed = txid_height
             .iter()
-            .any(|(txid, height)| store_read.cache.heights.get(txid) != Some(height));
+            .any(|(txid, height)| acc_store.heights.get(txid) != Some(height));
+        drop(acc_store);
         drop(store_read);
 
         let changed = if !new_txs.txs.is_empty()
@@ -1143,9 +1134,10 @@ impl Syncer {
                 txid_height
             );
             let mut store_write = self.store.write()?;
-            store_write.cache.indexes = last_used;
-            store_write.cache.all_txs.extend(new_txs.txs.into_iter());
-            store_write.cache.unblinded.extend(new_txs.unblinds);
+            let acc_store = store_write.account_store_mut(account.num())?;
+            acc_store.indexes = last_used;
+            acc_store.all_txs.extend(new_txs.txs.into_iter());
+            acc_store.unblinded.extend(new_txs.unblinds);
             store_write.cache.headers.extend(headers);
 
             // height map is used for the live list of transactions, since due to reorg or rbf tx
@@ -1156,13 +1148,16 @@ impl Syncer {
             store_write.cache.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
             store_write.cache.paths.extend(scripts.into_iter());
             store_write.flush()?;
+
+            updated_accounts.insert(account.num());
             true
         } else {
             false
         };
-        trace!("changes:{} elapsed {}", changed, start.elapsed().as_millis());
+        trace!("changes for {}: {} elapsed {}", account.num(), changed, start.elapsed().as_millis());
+        }
 
-        Ok(changed)
+        Ok(updated_accounts)
     }
 
     fn download_headers(
