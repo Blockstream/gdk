@@ -1,3 +1,4 @@
+use crate::account::AccountNum;
 use crate::spv::CrossValidationResult;
 use crate::Error;
 use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
@@ -7,7 +8,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use bitcoin::{Address, Transaction};
-use elements::{AddressParams, OutPoint};
+use elements::AddressParams;
 use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEOutPoint, BEScript, BEScriptConvert, BETransaction,
     BETransactions, BETxid,
@@ -40,7 +41,10 @@ pub type Store = Arc<RwLock<StoreMeta>>;
 /// It is fully reconstructable from xpub and data from electrum server (plus master blinding for elements)
 #[derive(Default, Serialize, Deserialize)]
 pub struct RawCache {
-    /// contains all my tx and all prevouts
+    /// account-specific information (transactions, scripts, history, indexes, unblinded)
+    pub accounts: HashMap<AccountNum, RawAccountCache>,
+
+    /// contains all my tx and all prevouts (@shesek to be removed)
     pub all_txs: BETransactions,
 
     /// contains all my script up to an empty batch of BATCHSIZE
@@ -56,7 +60,7 @@ pub struct RawCache {
     pub headers: HashMap<u32, BEBlockHeader>,
 
     /// unblinded values (only for liquid)
-    pub unblinded: HashMap<OutPoint, Unblinded>,
+    pub unblinded: HashMap<elements::OutPoint, Unblinded>,
 
     /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
     pub txs_verif: HashMap<BETxid, SPVVerifyResult>,
@@ -78,6 +82,27 @@ pub struct RawCache {
 
     /// the result of the last spv cross-validation execution
     pub cross_validation_result: Option<CrossValidationResult>,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct RawAccountCache {
+    /// contains all my tx and all prevouts
+    pub all_txs: BETransactions,
+
+    /// contains all my script up to an empty batch of BATCHSIZE
+    pub paths: HashMap<BEScript, DerivationPath>,
+
+    /// inverse of `paths`
+    pub scripts: HashMap<DerivationPath, BEScript>,
+
+    /// contains only my wallet txs with the relative heights (None if unconfirmed)
+    pub heights: HashMap<BETxid, Option<u32>>,
+
+    /// unblinded values (only for liquid)
+    pub unblinded: HashMap<elements::OutPoint, Unblinded>,
+
+    /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
+    pub indexes: Indexes,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
@@ -280,6 +305,23 @@ impl StoreMeta {
         file.write(&vec)?;
         info!("end write {} bytes to {}", vec.len(), name);
         Ok(())
+    }
+
+    pub fn account_store(&self, account_num: AccountNum) -> Result<&RawAccountCache, Error> {
+        self.cache
+            .accounts
+            .get(&account_num)
+            .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
+    }
+
+    pub fn account_store_mut(
+        &mut self,
+        account_num: AccountNum,
+    ) -> Result<&mut RawAccountCache, Error> {
+        self.cache
+            .accounts
+            .get_mut(&account_num)
+            .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
     }
 
     pub fn read_asset_icons(&self) -> Result<Option<Value>, Error> {
