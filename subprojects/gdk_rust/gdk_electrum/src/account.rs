@@ -26,7 +26,7 @@ use gdk_common::be::{
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
-    AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
+    AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
     SPVVerifyResult, TransactionMeta,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig};
@@ -62,7 +62,7 @@ impl Account {
         store: Store,
         account_num: AccountNum,
     ) -> Result<Self, Error> {
-        let path = get_account_path(account_num, &network)?;
+        let path = get_account_derivation(account_num, &network)?;
 
         debug!("Using derivation path {} for account {}", path, account_num);
 
@@ -86,6 +86,21 @@ impl Account {
 
     pub fn num(&self) -> AccountNum {
         self.account_num
+    }
+
+    pub fn info(&self) -> Result<AccountInfo, Error> {
+        let txs = self.list_tx(&GetTransactionsOpt {
+            count: 1,
+            ..Default::default()
+        })?;
+
+        Ok(AccountInfo {
+            account_num: self.account_num.into(),
+            type_: "electrum".into(),
+            name: "Single sig wallet".into(),
+            has_transactions: !txs.is_empty(),
+            satoshi: self.balance()?,
+        })
     }
 
     pub fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
@@ -504,7 +519,10 @@ impl AccountNum {
     }
 }
 
-fn get_account_path(account_num: AccountNum, network: &Network) -> Result<DerivationPath, Error> {
+fn get_account_derivation(
+    account_num: AccountNum,
+    network: &Network,
+) -> Result<DerivationPath, Error> {
     let coin_type = get_coin_type(network);
     let purpose = 49; // P2SH-P2WPKH
                       // BIP44: m / purpose' / coin_type' / account' / change / address_index

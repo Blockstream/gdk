@@ -293,7 +293,11 @@ pub struct TxListItem {
     pub transaction_weight: usize,
 }
 
-pub struct Subaccount {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccountInfo {
+    #[serde(rename = "pointer")]
+    pub account_num: u32,
+    #[serde(rename = "type")]
     pub type_: String,
     pub name: String,
     pub has_transactions: bool,

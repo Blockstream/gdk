@@ -605,32 +605,15 @@ impl Session<Error> for ElectrumSession {
         Ok(result)
     }
 
-    fn get_subaccounts(&self) -> Result<Vec<Subaccount>, Error> {
-        // TODO configurable confs?
-        let index = 0;
-        let confs = 0;
-        let subaccount_fake = self.get_subaccount(index, confs)?;
-
-        Ok(vec![subaccount_fake])
+    fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, Error> {
+        let wallet = self.get_wallet()?;
+        wallet.iter_accounts().map(|a| a.info()).collect()
     }
 
-    fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<Subaccount, Error> {
-        if index != 0 {
-            return Err(Error::InvalidSubaccount(index));
-        }
-        let balance = self.get_balance(num_confs, Some(index))?;
-        let mut opt = GetTransactionsOpt::default();
-        opt.count = 1;
-        let txs = self.get_transactions(&opt)?;
-
-        let subaccounts_fake = Subaccount {
-            type_: "electrum".into(),
-            name: "Single sig wallet".into(),
-            has_transactions: !txs.0.is_empty(),
-            satoshi: balance,
-        };
-
-        Ok(subaccounts_fake)
+    fn get_subaccount(&self, index: u32, _num_confs: u32) -> Result<AccountInfo, Error> {
+        // TODO num_confs is ignored
+        let wallet = self.get_wallet()?;
+        wallet.get_account(index.into())?.info()
     }
 
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {

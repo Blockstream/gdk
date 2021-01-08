@@ -82,11 +82,11 @@ pub fn txs_result_value(txs: &TxsResult) -> Value {
     Value::Array(txs.0.iter().map(txitem_value).collect())
 }
 
-pub fn subaccounts_value(subaccounts: &[Subaccount]) -> Value {
+pub fn subaccounts_value(subaccounts: &[AccountInfo]) -> Value {
     Value::Array(subaccounts.iter().map(subaccount_value).collect())
 }
 
-pub fn subaccount_value(subaccount: &Subaccount) -> Value {
+pub fn subaccount_value(subaccount: &AccountInfo) -> Value {
     json!({
         "type": subaccount.type_,
         "pointer": 0,
