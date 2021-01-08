@@ -23,7 +23,6 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
-use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
@@ -1040,7 +1039,6 @@ impl Syncer {
         debug!("start sync");
         let start = Instant::now();
 
-        let mut history_txs_id = HashSet::<BETxid>::new();
         let wallet = self.wallet.read().unwrap();
         let mut updated_accounts = HashSet::new();
 

@@ -3,24 +3,18 @@ use crate::spv::CrossValidationResult;
 use crate::Error;
 use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
-use bitcoin::hashes::sha256;
-use bitcoin::hashes::Hash;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
-use bitcoin::{Address, Transaction};
-use elements::AddressParams;
-use gdk_common::be::{
-    BEBlockHash, BEBlockHeader, BEOutPoint, BEScript, BEScriptConvert, BETransaction,
-    BETransactions, BETxid,
-};
-use gdk_common::be::{BETxidConvert, ScriptBatch, Unblinded};
-use gdk_common::error::fn_err;
+use bitcoin::hashes::{sha256, Hash};
+use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
+use bitcoin::Transaction;
+use gdk_common::be::{BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactions, BETxid};
+use gdk_common::be::{BETxidConvert, Unblinded};
 use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::NetworkId;
-use log::{info, trace, warn};
+use log::{info, warn};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -325,36 +319,6 @@ impl StoreMeta {
         self.write("asset_registry", asset_registry)
     }
 
-    pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {
-        match self.cache.all_txs.get(&txid.into_be()) {
-            Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
-            _ => Err(Error::Generic("expected bitcoin tx".to_string())),
-        }
-    }
-
-    pub fn get_liquid_tx(&self, txid: &elements::Txid) -> Result<elements::Transaction, Error> {
-        match self.cache.all_txs.get(&txid.into_be()) {
-            Some(BETransaction::Elements(tx)) => Ok(tx.clone()),
-            _ => Err(Error::Generic("expected liquid tx".to_string())),
-        }
-    }
-
-    pub fn spent(&self) -> Result<HashSet<BEOutPoint>, Error> {
-        let mut result = HashSet::new();
-        for tx in self.cache.all_txs.values() {
-            let outpoints: Vec<BEOutPoint> = match tx {
-                BETransaction::Bitcoin(tx) => {
-                    tx.input.iter().map(|i| BEOutPoint::Bitcoin(i.previous_output)).collect()
-                }
-                BETransaction::Elements(tx) => {
-                    tx.input.iter().map(|i| BEOutPoint::Elements(i.previous_output)).collect()
-                }
-            };
-            result.extend(outpoints.into_iter());
-        }
-        Ok(result)
-    }
-
     pub fn fee_estimates(&self) -> Vec<FeeEstimate> {
         if self.cache.fee_estimates.is_empty() {
             let min_fee = match self.id {
@@ -370,6 +334,7 @@ impl StoreMeta {
     pub fn insert_memo(&mut self, txid: BETxid, memo: &str) -> Result<(), Error> {
         // Coerced into a bitcoin::Txid to retain database compatibility
         let txid = txid.into_bitcoin();
+        // @shesek TODO per account
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
@@ -403,12 +368,26 @@ impl StoreMeta {
             SPVVerifyResult::Unconfirmed
         }
     }
-}
 
-impl StoreMeta {
     pub fn export_cache(&self) -> Result<RawCache, Error> {
         self.flush_cache()?;
         RawCache::try_new(&self.path, &self.cipher)
+    }
+}
+
+impl RawAccountCache {
+    pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {
+        match self.all_txs.get(&txid.into_be()) {
+            Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
+            _ => Err(Error::Generic("expected bitcoin tx".to_string())),
+        }
+    }
+
+    pub fn get_liquid_tx(&self, txid: &elements::Txid) -> Result<elements::Transaction, Error> {
+        match self.all_txs.get(&txid.into_be()) {
+            Some(BETransaction::Elements(tx)) => Ok(tx.clone()),
+            _ => Err(Error::Generic("expected liquid tx".to_string())),
+        }
     }
 }
 
