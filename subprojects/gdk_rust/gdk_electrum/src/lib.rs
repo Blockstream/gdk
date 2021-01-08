@@ -649,11 +649,12 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
+        let txid = BETxid::from_hex(txid, self.network.id())?;
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        let txid = BETxid::from_hex(txid, self.network.id())?;
-        self.get_wallet()?.store.write()?.insert_memo(txid, memo)?;
+        // @shesek TODO support multi account
+        self.get_wallet()?.store.write()?.insert_memo(0usize.into(), txid, memo)?;
 
         Ok(())
     }

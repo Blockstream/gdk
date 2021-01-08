@@ -158,8 +158,7 @@ impl Account {
                     });
                 }
             }
-            // @shesek FIXME per-account memos
-            let memo = store.get_memo(tx_id).map(|s| s.to_string());
+            let memo = store.get_memo(self.account_num, tx_id).cloned();
 
             let create_transaction = CreateTransaction {
                 addressees,
@@ -447,9 +446,8 @@ impl Account {
         }
 
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
-            // @shesek TODO per-account memos
             let txid = BETxid::from_hex(&betx.txid, self.network.id())?;
-            store_write.insert_memo(txid, memo)?;
+            store_write.insert_memo(self.account_num, txid, memo)?;
         }
 
         Ok(betx)
