@@ -47,7 +47,7 @@ pub struct RawCache {
     pub paths: HashMap<BEScript, DerivationPath>,
 
     /// inverse of `paths`
-    pub scripts: HashMap<DerivationPath, BEScript>, // TODO use DerivationPath once Hash gets merged
+    pub scripts: HashMap<DerivationPath, BEScript>,
 
     /// contains only my wallet txs with the relative heights (None if unconfirmed)
     pub heights: HashMap<BETxid, Option<u32>>,
@@ -306,7 +306,6 @@ impl StoreMeta {
         let mut result = ScriptBatch::default();
         result.cached = true;
 
-        //TODO cache m/0 and m/1
         let first_deriv = &self.first_deriv[int_or_ext as usize];
 
         let start = batch * BATCH_SIZE;
