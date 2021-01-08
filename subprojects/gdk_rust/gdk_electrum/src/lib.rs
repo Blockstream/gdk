@@ -12,6 +12,7 @@ extern crate gdk_common;
 use log::{debug, info, trace, warn};
 use serde_json::Value;
 
+pub mod account;
 pub mod error;
 pub mod headers;
 pub mod interface;
