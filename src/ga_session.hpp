@@ -198,7 +198,7 @@ namespace sdk {
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         std::string get_blinding_key_for_script(const std::string& script_hex);
-        void set_local_encryption_key(byte_span_t key, bool is_hw_wallet);
+        void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
         std::string extract_confidential_address(const std::string& blinded_address);
         nlohmann::json get_balance(const nlohmann::json& details);
@@ -380,7 +380,8 @@ namespace sdk {
         std::shared_ptr<nlocktime_t> update_nlocktime_info();
         virtual nlohmann::json fetch_nlocktime_json();
 
-        void set_local_encryption_key(locker_t& locker, byte_span_t key, bool is_hw_wallet) GDK_REQUIRES(m_mutex);
+        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
+            GDK_REQUIRES(m_mutex);
 
         bool connect_with_tls() const;
 
@@ -496,8 +497,8 @@ namespace sdk {
         void* m_notification_context GDK_PT_GUARDED_BY(m_mutex);
 
         nlohmann::json m_login_data GDK_GUARDED_BY(m_mutex);
-        boost::optional<std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>> m_local_encryption_key GDK_GUARDED_BY(
-            m_mutex);
+        boost::optional<pbkdf2_hmac512_t> m_local_encryption_key GDK_GUARDED_BY(m_mutex);
+        boost::optional<pbkdf2_hmac512_t> m_blob_key GDK_GUARDED_BY(m_mutex);
         std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_twofactor_config GDK_GUARDED_BY(m_mutex);

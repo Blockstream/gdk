@@ -751,6 +751,7 @@ namespace sdk {
 
             m_signer.reset();
             m_local_encryption_key = boost::none;
+            m_blob_key = boost::none;
             m_tx_list_caches.purge_all();
             // FIXME: securely destroy all held data
             // TODO: pass in whether we are disconnecting in order to reconnect,
@@ -1504,20 +1505,20 @@ namespace sdk {
         //#endif
     }
 
-    void ga_session::set_local_encryption_key(byte_span_t key, bool is_hw_wallet)
+    void ga_session::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet)
     {
         locker_t locker(m_mutex);
-        set_local_encryption_key(locker, key, is_hw_wallet);
+        set_local_encryption_keys(locker, public_key, is_hw_wallet);
     }
 
-    void ga_session::set_local_encryption_key(ga_session::locker_t& locker, byte_span_t key, bool is_hw_wallet)
+    void ga_session::set_local_encryption_keys(
+        ga_session::locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(key.size() == PBKDF2_HMAC_SHA512_LEN);
         GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
-        auto tmp = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>();
-        std::copy(key.begin(), key.end(), tmp.begin());
-        m_local_encryption_key = tmp;
+        GDK_RUNTIME_ASSERT(m_blob_key == boost::none);
+        m_local_encryption_key = pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT);
+        m_blob_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
         m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
         m_nlocktimes.reset();
     }
@@ -1530,6 +1531,7 @@ namespace sdk {
             m_user_pubkeys.reset();
             m_mnemonic.clear();
             m_local_encryption_key = boost::none;
+            m_blob_key = boost::none;
         } catch (const std::exception& ex) {
         }
     }
@@ -1558,9 +1560,8 @@ namespace sdk {
 
         // Cache local encryption key
         const auto pwd_xpub = get_signer().get_xpub(signer::PASSWORD_PATH);
-        const auto key = pbkdf2_hmac_sha512(pwd_xpub.second, signer::PASSWORD_SALT);
         constexpr bool is_hw_wallet = false;
-        set_local_encryption_key(locker, key, is_hw_wallet);
+        set_local_encryption_keys(locker, pwd_xpub.second, is_hw_wallet);
 
         // TODO: Unify normal and trezor logins
         const auto challenge_arg = get_signer().get_challenge();

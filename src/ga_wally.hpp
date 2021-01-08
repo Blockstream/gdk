@@ -49,6 +49,7 @@ namespace sdk {
 
     using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
     using chain_code_t = std::array<unsigned char, 32>;
+    using pbkdf2_hmac512_t = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>;
     using pub_key_t = std::array<unsigned char, EC_PUBLIC_KEY_LEN>;
     using priv_key_t = std::array<unsigned char, EC_PRIVATE_KEY_LEN>;
     using xpub_t = std::pair<chain_code_t, pub_key_t>;
@@ -81,8 +82,7 @@ namespace sdk {
 
     std::array<unsigned char, HMAC_SHA512_LEN> hmac_sha512(byte_span_t key, byte_span_t data);
 
-    std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> pbkdf2_hmac_sha512(
-        byte_span_t password, byte_span_t salt, uint32_t cost = 2048);
+    pbkdf2_hmac512_t pbkdf2_hmac_sha512(byte_span_t password, byte_span_t salt, uint32_t cost = 2048);
 
     // PBKDF2-HMAC-SHA512, truncated to 256 bits
     std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN> pbkdf2_hmac_sha512_256(

@@ -56,11 +56,10 @@ namespace sdk {
         return ret;
     }
 
-    std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> pbkdf2_hmac_sha512(
-        byte_span_t password, byte_span_t salt, uint32_t cost)
+    pbkdf2_hmac512_t pbkdf2_hmac_sha512(byte_span_t password, byte_span_t salt, uint32_t cost)
     {
         const int32_t flags = 0;
-        std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN> ret;
+        pbkdf2_hmac512_t ret;
         GDK_VERIFY(wally_pbkdf2_hmac_sha512(
             password.data(), password.size(), salt.data(), salt.size(), flags, cost, ret.data(), ret.size()));
         return ret;
