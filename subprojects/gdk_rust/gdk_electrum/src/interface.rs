@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressPointer, Balances, CreateTransaction, GetTransactionsOpt, Settings, TransactionMeta,
+    AddressPointer, Balances, CreateTransaction, GetTransactionsOpt, GetUnspentOpt, Settings,
+    TransactionMeta,
 };
 use gdk_common::network::Network;
 use gdk_common::wally::*;
@@ -145,28 +146,30 @@ impl WalletCtx {
         self.get_account(opt.subaccount.into())?.list_tx(opt)
     }
 
-    pub fn utxos(&self) -> Result<Utxos, Error> {
-        // @shesek TODO support multiple accounts
-        self.get_account(0usize.into())?.utxos()
+    pub fn utxos(&self, opt: &GetUnspentOpt) -> Result<Utxos, Error> {
+        // TODO does not support the `num_confs` and `all_coins` options
+        self.get_account(opt.subaccount.into())?.utxos()
     }
 
-    pub fn balance(&self) -> Result<Balances, Error> {
-        // @shesek TODO support multiple accounts
-        self.get_account(0usize.into())?.balance()
+    pub fn balance(&self, account_num: AccountNum) -> Result<Balances, Error> {
+        self.get_account(account_num)?.balance()
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
-        self.get_account(0usize.into())?.create_tx(request)
+        // @shesek XXX how to handle missing subaccount?
+        let account_num = request.subaccount.unwrap_or(0);
+        self.get_account(account_num.into())?.create_tx(request)
     }
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        // @shesek TODO support multiple accounts
-        self.get_account(0usize.into())?.sign(request)
+        // @shesek XXX how to handle missing subaccount (or create_transaction)?
+        let account_num =
+            request.create_transaction.as_ref().and_then(|c| c.subaccount).unwrap_or(0);
+        self.get_account(account_num.into())?.sign(request)
     }
 
-    pub fn get_address(&self) -> Result<AddressPointer, Error> {
-        // @shesek TODO multi-account support
-        self.get_account(0usize.into())?.get_next_address()
+    pub fn get_next_address(&self, account_num: AccountNum) -> Result<AddressPointer, Error> {
+        self.get_account(account_num)?.get_next_address()
     }
 
     pub fn get_asset_icons(&self) -> Result<Option<serde_json::Value>, Error> {

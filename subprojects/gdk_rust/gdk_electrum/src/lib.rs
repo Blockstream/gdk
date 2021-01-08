@@ -582,12 +582,11 @@ impl Session<Error> for ElectrumSession {
         Ok(vec![])
     }
 
-    fn get_receive_address(&self, addr_details: &Value) -> Result<AddressPointer, Error> {
-        debug!("get_receive_address {:?}", addr_details);
-        let w = self.get_wallet()?;
-        let a = w.get_address()?;
-        debug!("get_address {:?}", a);
-        Ok(a)
+    fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
+        debug!("get_receive_address {:?}", opt);
+        let address = self.get_wallet()?.get_next_address(opt.subaccount.into())?;
+        debug!("get_address {:?}", address);
+        Ok(address)
     }
 
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
@@ -644,17 +643,18 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, _num_confs: u32, _subaccount: Option<u32>) -> Result<Balances, Error> {
-        self.get_wallet()?.balance()
+    fn get_balance(&self, _num_confs: u32, account_num: Option<u32>) -> Result<Balances, Error> {
+        // TODO num_confs is currently ignored
+        // XXX how to handle missing subaccount?
+        self.get_wallet()?.balance(account_num.unwrap_or(0).into())
     }
 
-    fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
+    fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        // @shesek TODO support multi account
-        self.get_wallet()?.store.write()?.insert_memo(0usize.into(), txid, memo)?;
+        self.get_wallet()?.store.write()?.insert_memo(account_num.into(), txid, memo)?;
 
         Ok(())
     }
@@ -845,10 +845,9 @@ impl Session<Error> for ElectrumSession {
         Ok(status)
     }
 
-    fn get_unspent_outputs(&self, _details: &Value) -> Result<GetUnspentOutputs, Error> {
+    fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
-
-        for (outpoint, info) in self.get_wallet()?.utxos()?.iter() {
+        for (outpoint, info) in self.get_wallet()?.utxos(opt)?.iter() {
             let cur = UnspentOutput::new(outpoint, info);
             (*unspent_outputs.entry(info.asset.clone()).or_insert(vec![])).push(cur);
         }

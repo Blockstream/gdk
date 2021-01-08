@@ -344,9 +344,12 @@ impl StoreMeta {
         self.store.settings.clone()
     }
 
-    pub fn spv_verification_status(&self, txid: &BETxid) -> SPVVerifyResult {
-        // @shesek TODO support mult account
-        let acc_store = match self.account_store(0usize.into()) {
+    pub fn spv_verification_status(
+        &self,
+        account_num: AccountNum,
+        txid: &BETxid,
+    ) -> SPVVerifyResult {
+        let acc_store = match self.account_store(account_num.into()) {
             Ok(store) => store,
             Err(_) => return SPVVerifyResult::NotVerified,
         };

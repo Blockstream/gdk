@@ -403,17 +403,16 @@ where
 
         "get_receive_address" => {
             let a = session
-                .get_receive_address(input)
+                .get_receive_address(&serde_json::from_value(input.clone())?)
                 .map(|x| serde_json::to_value(&x).unwrap())
                 .map_err(Into::into);
             info!("gdk_rust get_receive_address returning {:?}", a);
             a
         }
 
-        "get_mnemonic" => session
-            .get_mnemonic()
-            .map(|m| Value::String(m.clone().get_mnemonic_str()))
-            .map_err(Into::into),
+        "get_mnemonic" => {
+            session.get_mnemonic().map(|m| Value::String(m.get_mnemonic_str())).map_err(Into::into)
+        }
 
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
@@ -430,9 +429,10 @@ where
             .refresh_assets(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
-        "get_unspent_outputs" => {
-            session.get_unspent_outputs(input).map(|v| json!(v)).map_err(Into::into)
-        }
+        "get_unspent_outputs" => session
+            .get_unspent_outputs(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),

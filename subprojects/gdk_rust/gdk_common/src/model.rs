@@ -131,6 +131,19 @@ pub struct GetTransactionsOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GetUnspentOpt {
+    pub subaccount: u32,
+    pub num_confs: Option<usize>, // unused
+    pub all_coins: Option<usize>, // unused
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GetAddressOpt {
+    pub subaccount: u32,
+    pub address_type: Option<String>, // unused
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVVerifyTx {
     pub txid: String,
     pub height: u32,

@@ -193,7 +193,7 @@ impl Account {
             };
 
             let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
-                store.spv_verification_status(tx_id)
+                store.spv_verification_status(self.num(), tx_id)
             } else {
                 SPVVerifyResult::Disabled
             };
@@ -562,6 +562,13 @@ pub fn create_tx(
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
     info!("create_tx {:?}", request);
+
+    // @shesek XXX how to handle missing subaccount/create_transaction?
+    let subaccount = request.subaccount.unwrap_or(0);
+    if subaccount != account.num().as_u32() {
+        return Err(Error::InvalidSubaccount(subaccount));
+    }
+
     let network = &account.network;
 
     // TODO put checks into CreateTransaction::validate, add check asset_tag are valid asset hex
@@ -608,11 +615,6 @@ pub fn create_tx(
 
     if request.addressees.is_empty() {
         return Err(Error::EmptyAddressees);
-    }
-
-    let subaccount = request.subaccount.unwrap_or(0);
-    if subaccount != 0 {
-        return Err(Error::InvalidSubaccount(subaccount));
     }
 
     if !request.previous_transaction.is_empty() {

@@ -28,13 +28,13 @@ pub trait Session<E> {
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
     fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<Balances, E>;
-    fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), E>;
+    fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), E>;
     fn create_transaction(&mut self, details: &mut CreateTransaction)
         -> Result<TransactionMeta, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &TransactionMeta) -> Result<TransactionMeta, E>;
     fn send_transaction(&mut self, tx_detail_signed: &TransactionMeta) -> Result<String, E>;
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, E>;
-    fn get_receive_address(&self, addr_details: &Value) -> Result<AddressPointer, E>;
+    fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, E>;
     fn get_mnemonic(&self) -> Result<Mnemonic, E>;
     fn get_available_currencies(&self) -> Result<Value, E>;
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
@@ -44,5 +44,5 @@ pub trait Session<E> {
     fn block_status(&self) -> Result<(u32, BEBlockHash), E>;
     fn tx_status(&self) -> Result<u64, E>;
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, E>;
-    fn get_unspent_outputs(&self, details: &Value) -> Result<GetUnspentOutputs, E>;
+    fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, E>;
 }
