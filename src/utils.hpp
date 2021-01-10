@@ -85,6 +85,10 @@ namespace sdk {
     std::string aes_cbc_encrypt(
         const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& plaintext);
 
+    // FIXME: Export base64 encode/decode from wally and use those functions
+    std::string base64_from_bytes(const byte_span_t& bytes);
+    std::vector<unsigned char> base64_to_bytes(const std::string& input);
+
 } // namespace sdk
 } // namespace ga
 

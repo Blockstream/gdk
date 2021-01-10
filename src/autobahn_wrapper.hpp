@@ -46,7 +46,6 @@
 #pragma clang diagnostic pop
 #endif
 
-#include <websocketpp/base64/base64.hpp>
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio_client.hpp>
 

@@ -31,6 +31,7 @@
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
 #include "bcrypt.h"
 #endif
+#include <websocketpp/base64/base64.hpp>
 
 namespace ga {
 namespace sdk {
@@ -409,6 +410,20 @@ namespace sdk {
         return std::string("greenaddress.it      2of3 v") + std::to_string(version) + ' ' + xpub + ' '
             + std::to_string(subaccount);
     }
+
+    std::string base64_from_bytes(const byte_span_t& bytes)
+    {
+        return websocketpp::base64_encode(bytes.data(), bytes.size());
+    }
+
+    std::vector<unsigned char> base64_to_bytes(const std::string& input)
+    {
+        // FIXME: Use wally to eliminate memory copies here
+        const std::string bytes_string = websocketpp::base64_decode(input);
+        const auto bytes_span = ustring_span(bytes_string);
+        return std::vector<unsigned char>(bytes_span.begin(), bytes_span.end());
+    }
+
 } // namespace sdk
 } // namespace ga
 

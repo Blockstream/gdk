@@ -1,6 +1,7 @@
 #include "http_client.hpp"
 #include "assertion.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
 
@@ -163,7 +164,7 @@ namespace sdk {
             if (m_accept == "json") {
                 body["body"] = nlohmann::json::parse(m_response.body());
             } else if (m_accept == "base64") {
-                body["body"] = websocketpp::base64_encode(m_response.body());
+                body["body"] = base64_from_bytes(ustring_span(m_response.body()));
             } else {
                 body["body"] = m_response.body();
             }

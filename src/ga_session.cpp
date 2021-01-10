@@ -3118,7 +3118,7 @@ namespace sdk {
         // Note the use of base64 here is to remain binary compatible with
         // old GreenBits installs.
         const auto salt = get_random_bytes<16>();
-        const auto salt_b64 = websocketpp::base64_encode(salt.data(), salt.size());
+        const auto salt_b64 = base64_from_bytes(salt);
         const auto key = pbkdf2_hmac_sha512_256(ustring_span(password), ustring_span(salt_b64));
 
         // FIXME: secure string
