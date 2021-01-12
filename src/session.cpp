@@ -25,7 +25,7 @@ namespace ga {
 namespace sdk {
     namespace {
 
-        static std::atomic_bool init_done = false;
+        static std::atomic_bool init_done{ false };
         static nlohmann::json global_config;
 
         void log_exception(const char* preamble, const std::exception& e)
@@ -69,8 +69,11 @@ namespace sdk {
             reconnect();
             throw reconnect_error();
         } catch (const login_error& e) {
-            if (session_ptr p = m_impl.load(); p) {
-                p->on_failed_login();
+            {
+                session_ptr p = m_impl.load();
+                if (p) {
+                    p->on_failed_login();
+                }
             }
             std::rethrow_exception(std::current_exception());
         } catch (const autobahn::network_error& e) {
