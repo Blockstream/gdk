@@ -41,8 +41,8 @@ namespace sdk {
             uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb);
 
     private:
-        static inline std::mutex s_inst_mutex;
-        static inline std::weak_ptr<tor_controller> s_inst;
+        static std::mutex s_inst_mutex;
+        static std::weak_ptr<tor_controller> s_inst;
         std::unique_ptr<tor_controller_impl> m_ctrl;
         std::mutex m_ctrl_mutex;
 

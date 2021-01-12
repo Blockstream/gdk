@@ -37,6 +37,9 @@ using namespace std::chrono_literals;
 
 namespace ga {
 namespace sdk {
+    std::mutex tor_controller::s_inst_mutex;
+    std::weak_ptr<tor_controller> tor_controller::s_inst;
+
     static std::string read_file(std::string fname)
     {
         std::FILE* fp = std::fopen(fname.c_str(), "rb");
