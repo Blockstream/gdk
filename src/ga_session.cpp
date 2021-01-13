@@ -140,6 +140,15 @@ namespace sdk {
             return result.template argument<T>(0);
         }
 
+        template <typename T = std::string>
+        inline boost::optional<T> wamp_cast_nil(const autobahn::wamp_call_result& result)
+        {
+            if (result.template argument<msgpack::object>(0).is_nil()) {
+                return boost::none;
+            }
+            return result.template argument<T>(0);
+        }
+
         static nlohmann::json get_fees_as_json(const autobahn::wamp_event& event)
         {
             const auto obj = event.argument<msgpack::object>(0);
@@ -2044,11 +2053,11 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        std::string fiat_rate = wamp_cast(wamp_call(locker, "login.set_pricing_source_v2", currency, exchange));
+        auto fiat_rate = wamp_cast_nil(wamp_call(locker, "login.set_pricing_source_v2", currency, exchange));
 
         m_fiat_source = exchange;
         m_fiat_currency = currency;
-        update_fiat_rate(locker, fiat_rate);
+        update_fiat_rate(locker, fiat_rate.get_value_or(std::string()));
     }
 
     bool ga_session::unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset)
