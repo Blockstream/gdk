@@ -1854,8 +1854,9 @@ namespace sdk {
             auto balance = wamp_cast_json(wamp_call("txs.get_balance", subaccount, num_confs));
             // TODO: Make sure another session didn't change fiat currency
             {
+                // Update our exchange rate from the results
                 locker_t locker(m_mutex);
-                update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
+                update_fiat_rate(locker, json_get_value(balance, "fiat_exchange"));
             }
             const std::string satoshi_str = json_get_value(balance, "satoshi");
             const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
