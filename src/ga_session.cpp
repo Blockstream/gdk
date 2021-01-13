@@ -1069,7 +1069,7 @@ namespace sdk {
         }
         m_fiat_source = login_data["exchange"];
         m_fiat_currency = login_data["fiat_currency"];
-        update_fiat_rate(locker, login_data["fiat_exchange"]);
+        update_fiat_rate(locker, json_get_value(login_data, "fiat_exchange"));
 
         const uint32_t block_height = m_login_data["block_height"];
         m_block_height = block_height;
@@ -1825,8 +1825,9 @@ namespace sdk {
                 "com.greenaddress.txs.get_balance", subaccount, num_confs);
             // TODO: Make sure another session didn't change fiat currency
             {
+                // Update our exchange rate from the results
                 locker_t locker(m_mutex);
-                update_fiat_rate(locker, balance["fiat_exchange"]); // Note: key name is wrong from the server!
+                update_fiat_rate(locker, json_get_value(balance, "fiat_exchange"));
             }
             const std::string satoshi_str = json_get_value(balance, "satoshi");
             const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
@@ -2052,7 +2053,10 @@ namespace sdk {
             unique_unlock unlocker(locker);
             wamp_call(
                 [&fiat_rate](boost::future<autobahn::wamp_call_result> result) {
-                    fiat_rate = result.get().argument<std::string>(0);
+                    auto res = result.get();
+                    if (!res.argument<msgpack::object>(0).is_nil()) {
+                        fiat_rate = res.argument<std::string>(0);
+                    }
                 },
                 "com.greenaddress.login.set_pricing_source_v2", currency, exchange);
         }
