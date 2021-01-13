@@ -1120,7 +1120,7 @@ namespace sdk {
         }
         m_fiat_source = login_data["exchange"];
         m_fiat_currency = login_data["fiat_currency"];
-        update_fiat_rate(locker, login_data["fiat_exchange"]);
+        update_fiat_rate(locker, json_get_value(login_data, "fiat_exchange"));
 
         const uint32_t block_height = m_login_data["block_height"];
         m_block_height = block_height;
