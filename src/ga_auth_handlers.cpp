@@ -1124,6 +1124,15 @@ namespace sdk {
                     m_twofactor_data = { { "address", data } };
                 } else {
                     m_action = "disable_2fa";
+                    if (m_methods.size() > 1) {
+                        // If disabling 'method_to_update' will leave other methods enabled, insist
+                        // the disable action is confirmed using one of the remaining methods to
+                        // prevent the user accidentally leaving the wallet with 2fa enabled that they
+                        // can't access
+                        const auto being_disabled = std::find(m_methods.begin(), m_methods.end(), method_to_update);
+                        GDK_RUNTIME_ASSERT(being_disabled != m_methods.end());
+                        m_methods.erase(being_disabled);
+                    }
                     m_twofactor_data = { { "method", method_to_update } };
                 }
             }
