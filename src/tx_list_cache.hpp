@@ -27,7 +27,6 @@ namespace sdk {
 
         void on_new_block(uint32_t ga_block_height, const nlohmann::json& details);
         void on_new_transaction(const nlohmann::json& details);
-        void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
     private:
         void remove_mempool_txs();
@@ -46,7 +45,6 @@ namespace sdk {
 
         void on_new_block(uint32_t ga_block_height, const nlohmann::json& details);
         void on_new_transaction(uint32_t subaccount, const nlohmann::json& details);
-        void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
 
     private:
         std::map<uint32_t, std::shared_ptr<tx_list_cache>> m_caches;

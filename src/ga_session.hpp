@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "amount.hpp"
+#include "client_blob.hpp"
 #include "ga_cache.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
@@ -330,6 +331,9 @@ namespace sdk {
         void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context)
             GDK_REQUIRES(m_mutex);
 
+        void load_client_blob(locker_t& locker, bool encache) GDK_REQUIRES(m_mutex);
+        bool save_client_blob(locker_t& locker, const std::string& old_hmac, bool encache) GDK_REQUIRES(m_mutex);
+        void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data) GDK_REQUIRES(m_mutex);
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json get_appearance() const;
@@ -539,6 +543,8 @@ namespace sdk {
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
         cache m_cache GDK_GUARDED_BY(m_mutex);
+        client_blob m_blob GDK_GUARDED_BY(m_mutex);
+        std::string m_blob_hmac GDK_GUARDED_BY(m_mutex);
         const std::string m_user_agent;
 
         const std::string m_electrum_url;

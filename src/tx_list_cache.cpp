@@ -291,18 +291,6 @@ namespace sdk {
         m_is_front_dirty = true;
     }
 
-    void tx_list_cache::set_transaction_memo(
-        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
-    {
-        (void)memo_type;
-        for (auto& tx : m_tx_cache) {
-            if (tx["txhash"] == txhash_hex) {
-                tx["memo"] = memo;
-                break; // Each tx can only appear once per subaccount
-            }
-        }
-    }
-
     void tx_list_cache::remove_mempool_txs()
     {
         GDK_LOG_SEV(cache_log_level) << "remove_mempool_txs";
@@ -361,14 +349,6 @@ namespace sdk {
     {
         GDK_LOG_SEV(cache_log_level) << "on_new_transaction:" << details.dump();
         get(subaccount)->on_new_transaction(details);
-    }
-
-    void tx_list_caches::set_transaction_memo(
-        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
-    {
-        for (auto& cache : m_caches) {
-            cache.second->set_transaction_memo(txhash_hex, memo, memo_type);
-        }
     }
 
 } // namespace sdk

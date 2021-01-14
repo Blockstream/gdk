@@ -353,6 +353,8 @@ namespace sdk {
         , m_watch_only(true)
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
+        , m_blob()
+        , m_blob_hmac()
         , m_cache(m_net_params, net_params.at("name"))
         , m_user_agent(std::string(GDK_COMMIT) + " " + net_params.value("user_agent", ""))
         , m_electrum_url(
@@ -768,6 +770,7 @@ namespace sdk {
             m_signer.reset();
             m_local_encryption_key = boost::none;
             m_blob_key = boost::none;
+            m_blob_hmac.clear();
             m_tx_list_caches.purge_all();
             // FIXME: securely destroy all held data
             // TODO: pass in whether we are disconnecting in order to reconnect,
@@ -1164,7 +1167,9 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
             }
 
-            insert_subaccount(locker, subaccount, sa["name"], sa["receiving_id"], recovery_pub_key, recovery_chain_code,
+            // Get the subaccount name (empty in watch-only mode)
+            const std::string sa_name = m_blob.get_subaccount_name(subaccount);
+            insert_subaccount(locker, subaccount, sa_name, sa["receiving_id"], recovery_pub_key, recovery_chain_code,
                 recovery_xpub, type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0));
 
             if (subaccount > m_next_subaccount) {
@@ -1483,6 +1488,47 @@ namespace sdk {
         if (login_data.is_boolean()) {
             throw login_error(res::id_login_failed);
         }
+
+        const std::string server_hmac = login_data["client_blob_hmac"];
+        if (client_blob::is_zero_hmac(server_hmac)) {
+            // No client blob: create one, save it to the server and cache it
+            // Subaccount names
+            for (const auto& sa : login_data["subaccounts"]) {
+                m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"));
+            }
+            // Tx memos
+            nlohmann::json tx_memos = wamp_cast_json(wamp_call(locker, "txs.get_memos"));
+            for (const auto& m : tx_memos["bip70"].items()) {
+                m_blob.set_tx_memo(m.key(), m.value());
+            }
+            for (const auto& m : tx_memos["memos"].items()) {
+                m_blob.set_tx_memo(m.key(), m.value());
+            }
+            // If the save fails due to a race, m_blob_hmac will be empty below
+            save_client_blob(locker, server_hmac, true);
+        }
+
+        if (m_blob_hmac.empty()) {
+            // Load our client blob from from the cache if we have one
+            const auto cached = m_cache.get_key_value("client_blob");
+            if (cached) {
+                const auto& db_blob = cached.value();
+                std::string db_hmac = client_blob::compute_hmac(m_blob_key.get(), db_blob);
+                if (db_hmac == server_hmac) {
+                    // Cached blob is current, load it
+                    m_blob.load(db_blob);
+                    m_blob_hmac = server_hmac;
+                }
+            }
+        }
+
+        if (m_blob_hmac.empty()) {
+            // No cached blob, or our cached blob is out of date:
+            // Load the latest blob from the server and cache it
+            load_client_blob(locker, true);
+        }
+        GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
+
         constexpr bool watch_only = false;
         update_login_data(locker, login_data, root_xpub_bip32, watch_only);
 
@@ -1519,6 +1565,51 @@ namespace sdk {
             push_appearance_to_server(locker);
         }
         //#endif
+    }
+
+    void ga_session::load_client_blob(ga_session::locker_t& locker, bool encache)
+    {
+        // Load the latest blob from the server
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        auto ret = wamp_cast_json(wamp_call(locker, "login.get_client_blob", 0));
+        const auto server_blob = base64_to_bytes(ret["blob"]);
+        // Verify the servers hmac
+        auto server_hmac = client_blob::compute_hmac(m_blob_key.get(), server_blob);
+        GDK_RUNTIME_ASSERT_MSG(server_hmac == ret["hmac"], "Bad server client blob");
+        // FIXME: Check the version in the blob is greater than ours
+        m_blob.load(server_blob);
+
+        if (encache) {
+            encache_client_blob(locker, server_blob);
+        }
+        m_blob_hmac = server_hmac;
+    }
+
+    bool ga_session::save_client_blob(ga_session::locker_t& locker, const std::string& old_hmac, bool encache)
+    {
+        // Generate our encrypted blob + hmac, store on the server, cache locally
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        const auto saved{ m_blob.save(m_blob_key.get()) };
+        const auto blob_b64{ base64_from_bytes(saved.first) };
+
+        auto result = wamp_call(locker, "login.set_client_blob", blob_b64, 0, saved.second, old_hmac);
+        if (!wamp_cast<bool>(result)) {
+            // Raced with another update on the server, caller should try again
+            return false;
+        }
+        if (encache) {
+            encache_client_blob(locker, saved.first);
+        }
+        m_blob_hmac = saved.second;
+        return true;
+    }
+
+    void ga_session::encache_client_blob(ga_session::locker_t& locker, const std::vector<unsigned char>& data)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        m_cache.upsert_key_value("client_blob", data);
+        m_cache.save_db(m_local_encryption_key.get());
     }
 
     void ga_session::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet)
@@ -1935,13 +2026,24 @@ namespace sdk {
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         GDK_RUNTIME_ASSERT_MSG(subaccount != 0, "Main subaccount name cannot be changed");
-        GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.rename_subaccount", subaccount, new_name)));
 
         locker_t locker(m_mutex);
         const auto p = m_subaccounts.find(subaccount);
-        if (p != m_subaccounts.end()) {
-            p->second["name"] = new_name;
+        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        const std::string old_name = json_get_value(p->second, "name");
+        if (old_name == new_name) {
+            return;
         }
+
+        while (true) {
+            m_blob.set_subaccount_name(subaccount, new_name);
+            if (save_client_blob(locker, m_blob_hmac, true)) {
+                break;
+            }
+            // Save failed: Re-load current blob from the server and re-try
+            load_client_blob(locker, false);
+        }
+        m_subaccounts.find(subaccount)->second["name"] = new_name;
     }
 
     nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,
@@ -2283,6 +2385,13 @@ namespace sdk {
         }
 
         tx_list_cache::container_type tx_list = get_raw_transactions(subaccount, first, count);
+        {
+            // Set tx memos in the returned txs from the blob cache
+            locker_t locker(m_mutex);
+            for (auto& tx_details : tx_list) {
+                tx_details["memo"] = m_blob.get_tx_memo(tx_details["txhash"]);
+            }
+        }
 
         const auto datadir = gdk_config().value("datadir", std::string{});
         const auto path = datadir + "/state";
@@ -2292,7 +2401,6 @@ namespace sdk {
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
             // TODO: Server should set subaccount to null if this is a spend from multiple subaccounts
             json_add_if_missing(tx_details, "has_payment_request", false);
-            json_add_if_missing(tx_details, "memo", std::string());
             const std::string fee_str = tx_details["fee"];
             const amount::value_type fee = strtoull(fee_str.c_str(), nullptr, 10);
             tx_details["fee"] = fee;
@@ -3396,12 +3504,17 @@ namespace sdk {
     void ga_session::set_transaction_memo(
         const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
     {
-        wamp_call("txs.change_memo", txhash_hex, memo, memo_type);
-
-        // FIXME: In future transaction memos will be stored in client authenticated blobs
-        // and subject to notifications.
+        (void)memo_type; // FIXME: Remove
         locker_t locker(m_mutex);
-        m_tx_list_caches.set_transaction_memo(txhash_hex, memo, memo_type);
+
+        while (true) {
+            m_blob.set_tx_memo(txhash_hex, memo);
+            if (save_client_blob(locker, m_blob_hmac, true)) {
+                break;
+            }
+            // Save failed: Re-load current blob from the server and re-try
+            load_client_blob(locker, false);
+        }
     }
 
 } // namespace sdk

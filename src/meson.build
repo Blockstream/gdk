@@ -4,6 +4,7 @@ cpp_headers = [
            'auth_handler.hpp',
            'autobahn_wrapper.hpp',
            'boost_wrapper.hpp',
+           'client_blob.hpp',
            'containers.hpp',
            'exception.hpp',
            'ga_auth_handlers.hpp',
@@ -31,6 +32,7 @@ cpp_headers = [
 cpp_sources = [
            'amount.cpp',
            'assertion.cpp',
+           'client_blob.cpp',
            'containers.cpp',
            'exception.cpp',
            'ffi_c.cpp',
