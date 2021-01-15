@@ -89,6 +89,11 @@ namespace sdk {
     std::string base64_from_bytes(const byte_span_t& bytes);
     std::vector<unsigned char> base64_to_bytes(const std::string& input);
 
+    // Return prefix followed by compressed `bytes`
+    std::vector<unsigned char> compress(const byte_span_t& prefix, const byte_span_t& bytes);
+    // Return decompressed `bytes` (prefix is assumed removed by the caller)
+    std::vector<unsigned char> decompress(const byte_span_t& bytes);
+
 } // namespace sdk
 } // namespace ga
 

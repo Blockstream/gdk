@@ -27,6 +27,7 @@
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
+#include <zlib/zlib.h>
 
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
 #include "bcrypt.h"
@@ -422,6 +423,49 @@ namespace sdk {
         const std::string bytes_string = websocketpp::base64_decode(input);
         const auto bytes_span = ustring_span(bytes_string);
         return std::vector<unsigned char>(bytes_span.begin(), bytes_span.end());
+    }
+
+    std::vector<unsigned char> compress(const byte_span_t& prefix, const byte_span_t& bytes)
+    {
+        const size_t prefix_len = prefix.size();
+        const size_t bytes_len = bytes.size();
+        uLongf compressed_len = compressBound(bytes_len);
+
+        std::vector<unsigned char> result;
+        // Initialise result with supplied prefix bytes and decompressed length
+        result.resize(prefix_len + sizeof(uint32_t) + compressed_len);
+        std::copy(prefix.begin(), prefix.end(), result.begin());
+        result[prefix_len + 0] = (unsigned char)(bytes_len >> 0);
+        result[prefix_len + 1] = (unsigned char)(bytes_len >> 8);
+        result[prefix_len + 2] = (unsigned char)(bytes_len >> 16);
+        result[prefix_len + 3] = (unsigned char)(bytes_len >> 24);
+        // Add the compressed data
+        int z_result = compress2(result.data() + prefix_len + sizeof(uint32_t), &compressed_len, bytes.data(),
+            bytes_len, Z_BEST_COMPRESSION);
+        if (z_result != Z_OK) {
+            GDK_RUNTIME_ASSERT(false);
+        }
+        // Shrink result to the actual compressed size and return it
+        result.resize(prefix_len + sizeof(uint32_t) + compressed_len);
+        return result;
+    }
+
+    std::vector<unsigned char> decompress(const byte_span_t& bytes)
+    {
+        constexpr size_t minimum_compressed_size = 11;
+        const size_t bytes_len = bytes.size();
+        GDK_RUNTIME_ASSERT(bytes_len >= sizeof(uint32_t) + minimum_compressed_size);
+        uLong compressed_len = bytes_len - sizeof(uint32_t);
+        uLongf decompressed_len
+            = (uint32_t)bytes[0] << 0 | (uint32_t)bytes[1] << 8 | (uint32_t)bytes[2] << 16 | (uint32_t)bytes[3] << 24;
+
+        std::vector<unsigned char> result;
+        result.resize(decompressed_len);
+        int z_result = uncompress2(result.data(), &decompressed_len, bytes.data() + sizeof(uint32_t), &compressed_len);
+        if (z_result != Z_OK || compressed_len + sizeof(uint32_t) != bytes_len) {
+            GDK_RUNTIME_ASSERT(false);
+        }
+        return result;
     }
 
 } // namespace sdk

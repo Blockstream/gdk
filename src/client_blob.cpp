@@ -7,7 +7,7 @@
 // FIXME:
 // - Use smarter (binary) serialisation with versioning
 // - Store user version in blob to prevent server old blob replay
-// - Compress and encrypt binary blob data when loading/storing
+// - Encrypt binary blob data when loading/storing
 // - Serialize memos so they compress better
 
 namespace ga {
@@ -18,6 +18,9 @@ namespace sdk {
 
         constexpr uint32_t SA_NAMES = 0; // Subaccount names
         constexpr uint32_t TX_MEMOS = 1; // Transaction memos
+
+        // blob prefix: 1 byte version, 3 reserved bytes
+        static const std::array<unsigned char, 4> PREFIX{ 1, 0, 0, 0 };
     } // namespace
 
     client_blob::client_blob()
@@ -54,14 +57,23 @@ namespace sdk {
         return base64_from_bytes(hmac_sha256(key, data));
     }
 
-    void client_blob::load(const byte_span_t& data) { m_data = nlohmann::json::parse(data.begin(), data.end()); }
+    void client_blob::load(const byte_span_t& data)
+    {
+        const size_t data_len = data.size();
+        GDK_RUNTIME_ASSERT(data_len > PREFIX.size());
+        // Only one fixed prefix value is currently allowed, check we match it
+        GDK_RUNTIME_ASSERT(memcmp(data.data(), PREFIX.data(), PREFIX.size()) == 0);
+
+        const auto decompressed = decompress(data.subspan(PREFIX.size()));
+        m_data = nlohmann::json::parse(decompressed.begin(), decompressed.end());
+    }
 
     std::pair<std::vector<unsigned char>, std::string> client_blob::save(const pbkdf2_hmac512_t& key) const
     {
         const std::string data = m_data.dump();
-        const auto data_span = ustring_span(data);
-        return std::make_pair(
-            std::vector<unsigned char>(data_span.begin(), data_span.end()), compute_hmac(key, data_span));
+        auto compressed = compress(PREFIX, ustring_span(data));
+        auto hmac = compute_hmac(key, compressed);
+        return std::make_pair(std::move(compressed), std::move(hmac));
     }
 
 } // namespace sdk
