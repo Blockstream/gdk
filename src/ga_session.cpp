@@ -880,9 +880,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(data["body"].is_object(), "expected JSON");
         locker_t locker(m_mutex);
         m_cache.upsert_key_value(type, nlohmann::json::to_msgpack(data));
-        if (m_local_encryption_key) {
-            m_cache.save_db(m_local_encryption_key.get());
-        }
+        m_cache.save_db();
         return data;
     }
 
@@ -1609,7 +1607,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         m_cache.upsert_key_value("client_blob", data);
-        m_cache.save_db(m_local_encryption_key.get());
+        m_cache.save_db();
     }
 
     void ga_session::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet)
@@ -2311,9 +2309,7 @@ namespace sdk {
 
         if (updated_cache) {
             locker_t locker(m_mutex);
-            if (m_local_encryption_key) {
-                m_cache.save_db(m_local_encryption_key.get());
-            }
+            m_cache.save_db();
         }
         return utxos;
     }

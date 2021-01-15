@@ -37,14 +37,17 @@ namespace sdk {
         void upsert_key_value(const std::string& key, byte_span_t value);
         void clear_key_value(const std::string& key);
 
-        void save_db(byte_span_t encryption_key);
+        void save_db();
         void load_db(byte_span_t encryption_key, const uint32_t type);
 
     private:
-        uint32_t m_type = 0;
-        bool m_require_write = false;
         const std::string m_network_name;
         const bool m_is_liquid;
+        uint32_t m_type; // Set on first call to load_db
+        std::string m_data_dir; // Set on first call to load_db
+        std::string m_db_name; // Set on first call to load_db
+        std::array<unsigned char, SHA256_LEN> m_encryption_key; // Set on first call to load_db
+        bool m_require_write;
         std::unique_ptr<sqlite3> m_db;
         std::unique_ptr<sqlite3_stmt> m_stmt_liquid_blinding_nonce_has;
         std::unique_ptr<sqlite3_stmt> m_stmt_liquid_blinding_nonce_search;

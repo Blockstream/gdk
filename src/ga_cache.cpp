@@ -169,33 +169,24 @@ namespace sdk {
             return out;
         }
 
-        static boost::optional<std::string> get_persistent_storage_file(
-            byte_span_t encryption_key, const std::string& network, const uint32_t type, const int version = VERSION)
+        static std::string get_persistent_storage_file(
+            const std::string& data_dir, const std::string& db_name, int version = VERSION)
         {
-            const auto datadir = gdk_config().value("datadir", std::string{});
-            if (datadir.empty()) {
-                GDK_LOG_SEV(log_level::info) << "datadir not set - thus no get_persistent_storage_file available";
-                return boost::none;
-            }
-            const auto network_span = ustring_span(network);
-            const auto intermediate = hmac_sha512(encryption_key, network_span);
-            const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&type), 4);
-            const auto unique_db = b2h(gsl::make_span(hmac_sha512(intermediate, type_span).data(), 16));
-            return datadir + "/" + std::to_string(version) + unique_db + ".sqliteaesgcm";
+            return data_dir + '/' + std::to_string(version) + db_name + ".sqliteaesgcm";
         }
 
-        static void clean_up_old_db(byte_span_t encryption_key, const uint32_t type, const std::string& network)
+        static void clean_up_old_db(const std::string& data_dir, const std::string& db_name)
         {
-            const auto exist = [](const auto& path) {
-                const std::ifstream f(path.get(), f.in | f.binary);
-                return f.is_open();
-            };
             for (int version = 0; version < VERSION; ++version) {
-                const auto path = get_persistent_storage_file(encryption_key, network, type, version);
-                if (path && exist(path)) {
-                    GDK_LOG_SEV(log_level::info) << "Deleting old version " << version << " db file " << path.get();
-                    unlink(path->c_str());
+                const auto path = get_persistent_storage_file(data_dir, db_name, version);
+                {
+                    const std::ifstream f(path, f.in | f.binary);
+                    if (!f.is_open()) {
+                        continue;
+                    }
                 }
+                GDK_LOG_SEV(log_level::info) << "Deleting old version " << version << " db file " << path;
+                unlink(path.c_str());
             }
         }
 
@@ -246,6 +237,11 @@ namespace sdk {
     cache::cache(const network_parameters& net_params, const std::string& network_name)
         : m_network_name(network_name)
         , m_is_liquid(net_params.liquid())
+        , m_type(0)
+        , m_data_dir()
+        , m_db_name()
+        , m_encryption_key()
+        , m_require_write(false)
         , m_db(get_db())
         , m_stmt_liquid_blinding_nonce_has(get_stmt(
               m_is_liquid, m_db, "SELECT 1 FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2 LIMIT 1;"))
@@ -266,15 +262,9 @@ namespace sdk {
     {
     }
 
-    void cache::save_db(byte_span_t encryption_key)
+    void cache::save_db()
     {
-        GDK_RUNTIME_ASSERT(!encryption_key.empty());
-        if (!m_require_write) {
-            return;
-        }
-        const auto path = get_persistent_storage_file(encryption_key, m_network_name, m_type);
-        if (!path) {
-            GDK_LOG_SEV(log_level::info) << "datadir not set, db won't be saved to file";
+        if (m_db_name.empty() || !m_require_write) {
             return;
         }
         sqlite3_int64 db_size;
@@ -283,31 +273,39 @@ namespace sdk {
         if (db == nullptr || db_size < 1) {
             return;
         }
-        const auto key = sha256(encryption_key);
         const auto data = gsl::make_span(reinterpret_cast<const unsigned char*>(db), db_size);
-        openssl_encrypt(key, data, path.get());
+        const auto path = get_persistent_storage_file(m_data_dir, m_db_name);
+        openssl_encrypt(m_encryption_key, data, path);
         m_require_write = false;
     }
 
     void cache::load_db(byte_span_t encryption_key, const uint32_t type)
     {
         GDK_RUNTIME_ASSERT(!encryption_key.empty());
-        clean_up_old_db(encryption_key, type, m_network_name);
-        const auto path = get_persistent_storage_file(encryption_key, m_network_name, type);
-        if (!path) {
-            GDK_LOG_SEV(log_level::info) << "datadir not set, db won't be restored from file";
+
+        m_data_dir = gdk_config().value("datadir", std::string{});
+        if (m_data_dir.empty()) {
+            GDK_LOG_SEV(log_level::info) << "datadir not set - thus no get_persistent_storage_file available";
             return;
         }
+
         m_type = type;
-        auto plaintext = [&encryption_key, &path]() -> boost::optional<std::vector<unsigned char>> {
-            try {
-                return openssl_decrypt(sha256(encryption_key), path.get());
-            } catch (const std::exception& ex) {
-                GDK_LOG_SEV(log_level::info) << "Bad decryption for file " << path.get() << " error " << ex.what();
-                unlink(path->c_str());
-                return boost::none;
-            }
-        }();
+        const auto intermediate = hmac_sha512(encryption_key, ustring_span(m_network_name));
+        // Note: the line below means the file name is endian dependant
+        const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&type), sizeof(m_type));
+        m_db_name = b2h(gsl::make_span(hmac_sha512(intermediate, type_span).data(), 16));
+        m_encryption_key = sha256(encryption_key);
+
+        clean_up_old_db(m_data_dir, m_db_name);
+        const auto path = get_persistent_storage_file(m_data_dir, m_db_name);
+
+        boost::optional<std::vector<unsigned char>> plaintext;
+        try {
+            plaintext = openssl_decrypt(m_encryption_key, path);
+        } catch (const std::exception& ex) {
+            GDK_LOG_SEV(log_level::info) << "Bad decryption for file " << path << " error " << ex.what();
+            unlink(path.c_str());
+        }
 
         if (!plaintext) {
             return;
@@ -318,8 +316,8 @@ namespace sdk {
             tmpdb.get(), "main", plaintext->data(), plaintext->size(), plaintext->size(), SQLITE_DESERIALIZE_READONLY);
 
         if (rc != SQLITE_OK) {
-            GDK_LOG_SEV(log_level::info) << "Bad sqlite3_deserialize for file " << path.get() << " RC " << rc;
-            unlink(path->c_str());
+            GDK_LOG_SEV(log_level::info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
+            unlink(path.c_str());
             return;
         }
 
@@ -328,7 +326,7 @@ namespace sdk {
         const auto _backup_finish
             = gsl::finally([backup] { GDK_RUNTIME_ASSERT(sqlite3_backup_finish(backup) == SQLITE_OK); });
         GDK_RUNTIME_ASSERT(sqlite3_backup_step(backup, -1) == SQLITE_DONE);
-        GDK_LOG_SEV(log_level::info) << "sqlite loaded correctly " << path.get();
+        GDK_LOG_SEV(log_level::info) << "sqlite loaded correctly " << path;
     }
 
     void cache::clear_key_value(const std::string& key)
