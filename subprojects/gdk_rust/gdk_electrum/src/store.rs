@@ -82,6 +82,9 @@ pub struct RawStore {
     /// wallet settings
     settings: Option<Settings>,
 
+    /// account names
+    account_names: HashMap<AccountNum, String>,
+
     /// transaction memos
     memos: HashMap<AccountNum, HashMap<bitcoin::Txid, String>>,
 }
@@ -342,6 +345,14 @@ impl StoreMeta {
 
     pub fn get_settings(&self) -> Option<Settings> {
         self.store.settings.clone()
+    }
+
+    pub fn get_account_name(&self, account_num: AccountNum) -> Option<&String> {
+        self.store.account_names.get(&account_num)
+    }
+
+    pub fn set_account_name(&mut self, account_num: AccountNum, name: String) {
+        self.store.account_names.insert(account_num, name);
     }
 
     pub fn spv_verification_status(

@@ -89,6 +89,8 @@ impl Account {
     }
 
     pub fn info(&self) -> Result<AccountInfo, Error> {
+        let name = self.store.read()?.get_account_name(self.account_num).cloned();
+
         let txs = self.list_tx(&GetTransactionsOpt {
             count: 1,
             ..Default::default()
@@ -97,10 +99,16 @@ impl Account {
         Ok(AccountInfo {
             account_num: self.account_num.into(),
             type_: "electrum".into(),
-            name: "Single sig wallet".into(),
+            name: name.unwrap_or("Single sig wallet".into()),
             has_transactions: !txs.is_empty(),
             satoshi: self.balance()?,
         })
+    }
+
+    pub fn set_name(&self, name: String) -> Result<(), Error> {
+        let mut store_write = self.store.write()?;
+        store_write.set_account_name(self.account_num, name.clone());
+        Ok(())
     }
 
     pub fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
