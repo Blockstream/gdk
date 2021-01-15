@@ -818,13 +818,16 @@ impl Session<Error> for ElectrumSession {
     fn tx_status(&self) -> Result<u64, Error> {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
-        let txs = self.get_wallet()?.list_tx(&opt)?;
         let mut hasher = DefaultHasher::new();
-        for tx in txs.iter() {
-            std::hash::Hash::hash(&tx.txid, &mut hasher);
+        let wallet = self.get_wallet()?;
+        for account in wallet.iter_accounts() {
+            let txs = account.list_tx(&opt)?;
+            for tx in txs.iter() {
+                std::hash::Hash::hash(&tx.txid, &mut hasher);
+            }
         }
         let status = hasher.finish();
-        info!("txs.len={} status={}", txs.len(), status);
+        info!("txs status={}", status);
         Ok(status)
     }
 
