@@ -120,13 +120,13 @@ namespace sdk {
             write_all(AES_GCM_TAG_SIZE);
         }
 
-        static boost::optional<std::vector<unsigned char>> openssl_decrypt(byte_span_t key, const std::string& path)
+        static std::vector<unsigned char> openssl_decrypt(byte_span_t key, const std::string& path)
         {
             GDK_RUNTIME_ASSERT(!key.empty());
             std::ifstream f(path, f.in | f.binary);
             if (!f.is_open()) {
                 GDK_LOG_SEV(log_level::info) << "Load db, no file or bad file " << path;
-                return boost::none;
+                return std::vector<unsigned char>();
             }
 
             f.seekg(0, f.end);
@@ -299,7 +299,7 @@ namespace sdk {
         clean_up_old_db(m_data_dir, m_db_name);
         const auto path = get_persistent_storage_file(m_data_dir, m_db_name);
 
-        boost::optional<std::vector<unsigned char>> plaintext;
+        std::vector<unsigned char> plaintext;
         try {
             plaintext = openssl_decrypt(m_encryption_key, path);
         } catch (const std::exception& ex) {
@@ -307,13 +307,13 @@ namespace sdk {
             unlink(path.c_str());
         }
 
-        if (!plaintext) {
+        if (plaintext.empty()) {
             return;
         }
 
         const auto tmpdb = get_new_memory_db();
         const int rc = sqlite3_deserialize(
-            tmpdb.get(), "main", plaintext->data(), plaintext->size(), plaintext->size(), SQLITE_DESERIALIZE_READONLY);
+            tmpdb.get(), "main", plaintext.data(), plaintext.size(), plaintext.size(), SQLITE_DESERIALIZE_READONLY);
 
         if (rc != SQLITE_OK) {
             GDK_LOG_SEV(log_level::info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
