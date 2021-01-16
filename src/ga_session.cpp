@@ -842,21 +842,23 @@ namespace sdk {
 
     nlohmann::json ga_session::refresh_http_data(const std::string& type, bool refresh)
     {
-        const auto cached_value = [this, &type] {
-            locker_t locker(m_mutex);
-            return m_cache.get_key_value(type);
-        }();
-
-        std::string last_modified;
         nlohmann::json cached_data = nlohmann::json::object();
-        if (cached_value) {
-            try {
-                cached_data = nlohmann::json::from_msgpack(cached_value->begin(), cached_value->end());
-                last_modified = cached_data.at("headers").at("last-modified");
-            } catch (const std::exception& e) {
-                GDK_LOG_SEV(log_level::warning) << "Error reading cached json: " << e.what();
-                cached_data = nlohmann::json::object();
-            }
+        std::string last_modified;
+
+        {
+            locker_t locker(m_mutex);
+            m_cache.get_key_value(type, { [&cached_data, &last_modified](const auto& db_blob) {
+                if (!db_blob) {
+                    return;
+                }
+                try {
+                    cached_data = nlohmann::json::from_msgpack(db_blob->begin(), db_blob->end());
+                    last_modified = cached_data.at("headers").at("last-modified");
+                } catch (const std::exception& e) {
+                    GDK_LOG_SEV(log_level::warning) << "Error reading cached json: " << e.what();
+                    cached_data = nlohmann::json::object();
+                }
+            } });
         }
 
         if (!refresh) {
@@ -874,6 +876,7 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT_MSG(!data.contains("error"), "error during refresh");
         if (data.value("not_modified", false)) {
+            // Our cached copy is up to date, return it
             return cached_data;
         }
 
@@ -1508,16 +1511,16 @@ namespace sdk {
 
         if (m_blob_hmac.empty()) {
             // Load our client blob from from the cache if we have one
-            const auto cached = m_cache.get_key_value("client_blob");
-            if (cached) {
-                const auto& db_blob = cached.value();
-                std::string db_hmac = client_blob::compute_hmac(m_blob_key.get(), db_blob);
-                if (db_hmac == server_hmac) {
-                    // Cached blob is current, load it
-                    m_blob.load(db_blob);
-                    m_blob_hmac = server_hmac;
+            m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) GDK_REQUIRES(m_mutex) {
+                if (db_blob) {
+                    std::string db_hmac = client_blob::compute_hmac(m_blob_key.get(), *db_blob);
+                    if (db_hmac == server_hmac) {
+                        // Cached blob is current, load it
+                        m_blob.load(*db_blob);
+                        m_blob_hmac = server_hmac;
+                    }
                 }
-            }
+            } });
         }
 
         if (m_blob_hmac.empty()) {

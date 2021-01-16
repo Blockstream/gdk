@@ -210,6 +210,25 @@ namespace sdk {
             return result;
         }
 
+        static void get_blob(std::unique_ptr<sqlite3_stmt>& stmt, int column, const cache::get_key_value_fn& callback)
+        {
+            const int rc = sqlite3_step(stmt.get());
+            if (rc == SQLITE_DONE) {
+                callback(boost::none);
+                return;
+            }
+            GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
+
+            const auto res = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), column));
+            const auto len = sqlite3_column_bytes(stmt.get(), column);
+            try {
+                callback(gsl::make_span(res, len));
+            } catch (const std::exception& ex) {
+                GDK_LOG_SEV(log_level::error) << "Blob callback exception: " << ex.what();
+            }
+            step_final(stmt);
+        }
+
         static void bind_blob(std::unique_ptr<sqlite3_stmt>& stmt, int column, byte_span_t blob)
         {
             GDK_RUNTIME_ASSERT(
@@ -338,13 +357,13 @@ namespace sdk {
         step_final(m_stmt_key_value_delete);
     }
 
-    boost::optional<std::vector<unsigned char>> cache::get_key_value(const std::string& key)
+    void cache::get_key_value(const std::string& key, const cache::get_key_value_fn& callback)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
         const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_key_value_search); });
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_search, 1, key_span);
-        return get_blob(m_stmt_key_value_search, 0);
+        get_blob(m_stmt_key_value_search, 0, callback);
     }
 
     bool cache::has_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script)
