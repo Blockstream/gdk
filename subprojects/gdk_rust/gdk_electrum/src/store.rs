@@ -267,14 +267,14 @@ impl StoreMeta {
         Ok(())
     }
 
-    pub fn account_store(&self, account_num: AccountNum) -> Result<&RawAccountCache, Error> {
+    pub fn account_cache(&self, account_num: AccountNum) -> Result<&RawAccountCache, Error> {
         self.cache
             .accounts
             .get(&account_num)
             .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
     }
 
-    pub fn account_store_mut(
+    pub fn account_cache_mut(
         &mut self,
         account_num: AccountNum,
     ) -> Result<&mut RawAccountCache, Error> {
@@ -360,7 +360,7 @@ impl StoreMeta {
         account_num: AccountNum,
         txid: &BETxid,
     ) -> SPVVerifyResult {
-        let acc_store = match self.account_store(account_num.into()) {
+        let acc_store = match self.account_cache(account_num.into()) {
             Ok(store) => store,
             Err(_) => return SPVVerifyResult::NotVerified,
         };

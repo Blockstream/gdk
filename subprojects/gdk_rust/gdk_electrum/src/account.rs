@@ -134,7 +134,7 @@ impl Account {
     pub fn get_next_address(&self) -> Result<AddressPointer, Error> {
         let pointer = {
             let store = &mut self.store.write()?;
-            let acc_store = store.account_store_mut(self.account_num)?;
+            let acc_store = store.account_cache_mut(self.account_num)?;
             acc_store.indexes.external += 1;
             acc_store.indexes.external
         };
@@ -147,7 +147,7 @@ impl Account {
 
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
         let store = self.store.read()?;
-        let acc_store = store.account_store(self.account_num)?;
+        let acc_store = store.account_cache(self.account_num)?;
 
         let mut txs = vec![];
         let mut my_txids: Vec<(&BETxid, &Option<u32>)> = acc_store.heights.iter().collect();
@@ -252,7 +252,7 @@ impl Account {
     pub fn utxos(&self) -> Result<Utxos, Error> {
         info!("start utxos");
         let store_read = self.store.read()?;
-        let acc_store = store_read.account_store(self.account_num)?;
+        let acc_store = store_read.account_cache(self.account_num)?;
 
         let mut utxos = vec![];
         let spent = self.spent()?;
@@ -339,7 +339,7 @@ impl Account {
 
     fn spent(&self) -> Result<HashSet<BEOutPoint>, Error> {
         let store_read = self.store.read()?;
-        let acc_store = store_read.account_store(self.account_num)?;
+        let acc_store = store_read.account_cache(self.account_num)?;
         let mut result = HashSet::new();
         for tx in acc_store.all_txs.values() {
             let outpoints: Vec<BEOutPoint> = match tx {
@@ -380,7 +380,7 @@ impl Account {
         info!("sign");
         let be_tx = BETransaction::deserialize(&hex::decode(&request.hex)?, self.network.id())?;
         let store_read = self.store.read()?;
-        let acc_store = store_read.account_store(self.account_num)?;
+        let acc_store = store_read.account_cache(self.account_num)?;
 
         let mut betx: TransactionMeta = match be_tx {
             BETransaction::Bitcoin(tx) => {
@@ -457,7 +457,7 @@ impl Account {
         drop(acc_store);
         drop(store_read);
         let mut store_write = self.store.write()?;
-        let mut acc_store = store_write.account_store_mut(self.account_num)?;
+        let mut acc_store = store_write.account_cache_mut(self.account_num)?;
 
         let changes_used = request.changes_used.unwrap_or(0);
         if changes_used > 0 {
@@ -478,7 +478,7 @@ impl Account {
 
     pub fn get_script_batch(&self, is_change: bool, batch: u32) -> Result<ScriptBatch, Error> {
         let store = self.store.read()?;
-        let acc_store = store.account_store(self.account_num)?;
+        let acc_store = store.account_cache(self.account_num)?;
 
         let mut result = ScriptBatch::default();
         result.cached = true;
@@ -735,7 +735,7 @@ pub fn create_tx(
 
     // STEP 2) add utxos until tx outputs are covered (including fees) or fail
     let store_read = account.store.read()?;
-    let acc_store = store_read.account_store(account.num())?;
+    let acc_store = store_read.account_cache(account.num())?;
     let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
     loop {
         let mut needs = tx.needs(
@@ -918,7 +918,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
     info!("blind_tx {}", tx.txid());
 
     let store_read = account.store.read()?;
-    let acc_store = store_read.account_store(account.num())?;
+    let acc_store = store_read.account_cache(account.num())?;
 
     let mut input_assets = vec![];
     let mut input_abfs = vec![];

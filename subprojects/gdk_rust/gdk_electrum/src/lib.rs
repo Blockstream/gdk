@@ -922,7 +922,7 @@ impl Headers {
 
         for account_num in account_nums {
             let store_read = self.store.read()?;
-            let acc_store = store_read.account_store(account_num)?;
+            let acc_store = store_read.account_cache(account_num)?;
 
             // find unconfirmed transactions that were previously confirmed and had
             // their SPV validation cached, to be cleared below
@@ -1104,7 +1104,7 @@ impl Syncer {
             let headers = self.download_headers(account.num(), &heights_set, &client)?;
 
             let store_read = self.store.read()?;
-            let acc_store = store_read.account_store(account.num())?;
+            let acc_store = store_read.account_cache(account.num())?;
             let store_indexes = acc_store.indexes.clone();
             let txs_heights_changed = txid_height
                 .iter()
@@ -1127,7 +1127,7 @@ impl Syncer {
                 let mut store_write = self.store.write()?;
                 store_write.cache.headers.extend(headers);
 
-                let mut acc_store = store_write.account_store_mut(account.num())?;
+                let mut acc_store = store_write.account_cache_mut(account.num())?;
                 acc_store.indexes = last_used;
                 acc_store.all_txs.extend(new_txs.txs.into_iter());
                 acc_store.unblinded.extend(new_txs.unblinds);
@@ -1165,7 +1165,7 @@ impl Syncer {
     ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
         let heights_in_db: HashSet<u32> = {
             let store_read = self.store.read()?;
-            let acc_store = store_read.account_store(account_num)?;
+            let acc_store = store_read.account_cache(account_num)?;
             iter::once(0).chain(acc_store.heights.iter().filter_map(|(_, h)| *h)).collect()
         };
 
@@ -1201,7 +1201,7 @@ impl Syncer {
         let mut unblinds = vec![];
 
         let mut txs_in_db =
-            self.store.read()?.account_store(account_num)?.all_txs.keys().cloned().collect();
+            self.store.read()?.account_cache(account_num)?.all_txs.keys().cloned().collect();
         // BETxid has to be converted into bitcoin::Txid for rust-electrum-client
         let txs_to_download: Vec<bitcoin::Txid> =
             history_txs_id.difference(&txs_in_db).map(BETxidConvert::into_bitcoin).collect();
@@ -1223,7 +1223,7 @@ impl Syncer {
                     for (i, output) in tx.output.iter().enumerate() {
                         let be_script = output.script_pubkey.clone().into_be();
                         let store_read = self.store.read()?;
-                        let acc_store = store_read.account_store(account_num)?;
+                        let acc_store = store_read.account_cache(account_num)?;
                         // could be the searched script it's not yet in the store, because created in the current run, thus it's searched also in the `scripts`
                         if acc_store.paths.contains_key(&be_script)
                             || scripts.contains_key(&be_script)
