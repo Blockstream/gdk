@@ -182,7 +182,6 @@ impl WalletCtx {
 
 #[cfg(test)]
 mod test {
-    use crate::interface::p2shwpkh_script_sig;
     use bitcoin::consensus::deserialize;
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
@@ -192,6 +191,7 @@ mod test {
     use bitcoin::util::key::PublicKey;
     use bitcoin::Script;
     use bitcoin::{Address, Network, Transaction};
+    use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
     fn p2pkh_hex(pk: &str) -> (PublicKey, Script) {

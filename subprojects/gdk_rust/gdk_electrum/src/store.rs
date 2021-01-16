@@ -402,7 +402,8 @@ impl RawAccountCache {
 
 #[cfg(test)]
 mod tests {
-    use crate::store::StoreMeta;
+    use super::*;
+    use bitcoin::hashes::hex::FromHex;
     use bitcoin::util::bip32::ExtendedPubKey;
     use bitcoin::Network;
     use gdk_common::{be::BETxid, NetworkId};
@@ -421,11 +422,17 @@ mod tests {
         )
         .unwrap();
 
-        let mut store = StoreMeta::new(&dir, xpub, None, id).unwrap();
-        store.cache.heights.insert(txid, Some(1));
-        drop(store);
+        let id = NetworkId::Bitcoin(Network::Testnet);
+        let account_num = AccountNum(0);
 
-        let store = StoreMeta::new(&dir, xpub, None, id).unwrap();
-        assert_eq!(store.cache.heights.get(&txid), Some(&Some(1)));
+        {
+            let mut store = StoreMeta::new(&dir, xpub, id).unwrap();
+            let acc_cache = store.account_cache_mut(account_num).unwrap();
+            acc_cache.heights.insert(txid, Some(1));
+        }
+
+        let store = StoreMeta::new(&dir, xpub, id).unwrap();
+        let acc_cache = store.account_cache(account_num).unwrap();
+        assert_eq!(acc_cache.heights.get(&txid), Some(&Some(1)));
     }
 }

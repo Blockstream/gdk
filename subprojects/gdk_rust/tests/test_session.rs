@@ -311,10 +311,10 @@ impl TestSession {
         assert_eq!(settings, new_settings);
     }
 
-    /// fund the gdk session with satoshis from the node, if on liquid issue `assets_to_issue` assets
+    /// fund the gdk session (account #0) with satoshis from the node, if on liquid issue `assets_to_issue` assets
     pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) -> Vec<String> {
         let initial_satoshis = self.balance_gdk(None);
-        let ap = self.session.get_receive_address(&Value::Null).unwrap();
+        let ap = self.get_receive_address(0);
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
         self.wait_tx_status_change();
         self.list_tx_contains(&funding_tx, &vec![], false);
@@ -439,8 +439,8 @@ impl TestSession {
 
     pub fn test_set_get_memo(&mut self, txid: &str, old: &str, new: &str) {
         assert_eq!(self.get_tx_from_list(txid).memo, old);
-        assert!(self.session.set_transaction_memo(txid, &"a".repeat(1025)).is_err());
-        assert!(self.session.set_transaction_memo(txid, new).is_ok());
+        assert!(self.session.set_transaction_memo(0, txid, &"a".repeat(1025)).is_err());
+        assert!(self.session.set_transaction_memo(0, txid, new).is_ok());
         assert_eq!(self.get_tx_from_list(txid).memo, new);
     }
 
@@ -457,7 +457,7 @@ impl TestSession {
         self.list_tx_contains(&txid, &[address], true);
     }
 
-    pub fn get_tx_from_list(&mut self, txid: &str) -> TxListItem {
+    pub fn get_tx_from_list(&self, txid: &str) -> TxListItem {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let list = self.session.get_transactions(&opt).unwrap().0;
@@ -489,6 +489,14 @@ impl TestSession {
             assert_eq!(a, b, "tx does not contain recipient addresses");
         }
         assert_eq!(tx.user_signed, user_signed);
+    }
+
+    pub fn get_receive_address(&self, subaccount: u32) -> AddressPointer {
+        let addr_opt = GetAddressOpt {
+            subaccount,
+            address_type: None,
+        };
+        self.session.get_receive_address(&addr_opt).unwrap()
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
@@ -544,7 +552,7 @@ impl TestSession {
 
     pub fn send_tx_to_unconf(&mut self) {
         let init_sat = self.balance_gdk(None);
-        let ap = self.session.get_receive_address(&Value::Null).unwrap();
+        let ap = self.get_receive_address(0);
         let unconf_address = to_unconfidential(ap.address);
         self.node_sendtoaddress(&unconf_address, 10_000, None);
         self.wait_tx_status_change();
@@ -559,7 +567,7 @@ impl TestSession {
         assert_eq!(init_sat, 0);
 
         let utxo_satoshi = 100_000;
-        let ap = self.session.get_receive_address(&Value::Null).unwrap();
+        let ap = self.get_receive_address(0);
         self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
         self.wait_tx_status_change();
         self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
@@ -914,7 +922,12 @@ impl TestSession {
 
     /// check `get_unspent_outputs` contains the `expected_amounts` for the given `asset`
     pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) -> GetUnspentOutputs {
-        let outputs = self.session.get_unspent_outputs(&Value::Null).unwrap();
+        let utxo_opt = GetUnspentOpt {
+            subaccount: 0,
+            num_confs: None,
+            all_coins: None,
+        };
+        let outputs = self.session.get_unspent_outputs(&utxo_opt).unwrap();
         dbg!(&outputs);
         let option = outputs.0.get(asset);
         assert!(option.is_some());
@@ -937,8 +950,9 @@ impl TestSession {
     pub fn check_decryption(&mut self, tip: u32, txids: &[&str]) {
         let cache = self.session.export_cache().unwrap();
         assert_eq!(cache.tip.0, tip);
+        let account0 = cache.accounts.get(&0u32.into()).expect("default account");
         for txid in txids {
-            assert!(cache
+            assert!(account0
                 .all_txs
                 .get(&BETxid::from_hex(txid, self.network.id()).unwrap())
                 .is_some())
@@ -946,7 +960,8 @@ impl TestSession {
     }
 
     pub fn get_spv_cross_validation(&self) -> Option<spv::CrossValidationResult> {
-        let store = self.session.get_wallet().unwrap().store.read().unwrap();
+        let wallet = self.session.get_wallet().unwrap();
+        let store = wallet.store.read().unwrap();
         store.cache.cross_validation_result.clone()
     }
 
@@ -964,7 +979,7 @@ impl TestSession {
     }
 
     /// wait for the spv validation status of a transaction to change (max 1 min)
-    pub fn wait_tx_spv_change(&mut self, txid: &str, wait_for: &str) {
+    pub fn wait_tx_spv_change(&self, txid: &str, wait_for: &str) {
         for _ in 0..120 {
             if self.get_tx_from_list(txid).spv_verified == wait_for {
                 return;

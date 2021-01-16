@@ -193,7 +193,7 @@ fn spv_cross_validation_session() {
     let (mut test_session1, mut test_session2) = setup_forking_sessions(true);
 
     // Send a payment to session1
-    let ap = test_session1.session.get_receive_address(&serde_json::Value::Null).unwrap();
+    let ap = test_session1.get_receive_address(0);
     let txid = test_session1.node_sendtoaddress(&ap.address, 999999, None);
     test_session1.wait_tx_status_change();
     let txitem = test_session1.get_tx_from_list(&txid);
