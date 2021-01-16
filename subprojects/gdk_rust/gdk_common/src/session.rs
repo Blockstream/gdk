@@ -25,6 +25,7 @@ pub trait Session<E> {
     ) -> Result<Vec<Notification>, E>;
     fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, E>;
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<AccountInfo, E>;
+    fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, E>;
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
     fn get_balance(&self, num_confs: u32, subaccount: Option<u32>) -> Result<Balances, E>;

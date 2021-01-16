@@ -72,6 +72,8 @@ impl Account {
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&EC, 0.into())?, xpub.ckd_pub(&EC, 1.into())?];
 
+        store.write().unwrap().make_account_cache(account_num);
+
         Ok(Self {
             network,
             account_num,

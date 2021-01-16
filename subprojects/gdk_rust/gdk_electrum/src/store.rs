@@ -284,6 +284,10 @@ impl StoreMeta {
             .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
     }
 
+    pub fn make_account_cache(&mut self, account_num: AccountNum) -> &mut RawAccountCache {
+        self.cache.accounts.entry(account_num).or_default()
+    }
+
     pub fn account_nums(&self) -> HashSet<AccountNum> {
         self.cache.accounts.keys().copied().collect()
     }

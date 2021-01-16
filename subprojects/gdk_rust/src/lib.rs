@@ -22,7 +22,7 @@ use std::os::raw::c_char;
 use std::sync::Once;
 use std::time::{Duration, SystemTime};
 
-use gdk_common::model::{GDKRUST_json, GetTransactionsOpt, SPVVerifyTx};
+use gdk_common::model::{CreateAccountOpt, GDKRUST_json, GetTransactionsOpt, SPVVerifyTx};
 use gdk_common::session::Session;
 
 use crate::error::Error;
@@ -374,6 +374,14 @@ where
         }
 
         "get_subaccount" => get_subaccount(session, input),
+
+        "create_subaccount" => {
+            let opt: CreateAccountOpt = serde_json::from_value(input.clone())?;
+            session
+                .create_subaccount(opt)
+                .map(|x| serialize::subaccount_value(&x))
+                .map_err(Into::into)
+        }
 
         "get_transactions" => {
             let opt: GetTransactionsOpt = serde_json::from_value(input.clone())?;

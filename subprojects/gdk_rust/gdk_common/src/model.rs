@@ -144,6 +144,11 @@ pub struct GetAddressOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct CreateAccountOpt {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVVerifyTx {
     pub txid: String,
     pub height: u32,

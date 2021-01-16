@@ -616,6 +616,12 @@ impl Session<Error> for ElectrumSession {
         wallet.get_account(index.into())?.info()
     }
 
+    fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
+        let mut wallet = self.get_wallet_mut()?;
+        let account = wallet.create_account(opt)?;
+        account.info()
+    }
+
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
         let txs = self.get_wallet()?.list_tx(opt)?.iter().map(make_txlist_item).collect();
 

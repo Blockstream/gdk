@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressPointer, Balances, CreateTransaction, GetTransactionsOpt, GetUnspentOpt, Settings,
+    AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetTransactionsOpt, GetUnspentOpt, Settings,
     TransactionMeta,
 };
 use gdk_common::network::Network;
@@ -91,9 +91,9 @@ impl WalletCtx {
         master_xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
-        Ok(WalletCtx {
+        let mut wallet = WalletCtx {
             mnemonic,
-            store,
+            store: store.clone(),
             network, // TODO: from db
             secp: Secp256k1::gen_new(),
             master_xprv,
@@ -101,7 +101,12 @@ impl WalletCtx {
             master_blinding,
             accounts: Default::default(),
             change_max_deriv: 0,
-        })
+        };
+        for account_num in store.read()?.account_nums() {
+            wallet._ensure_account(account_num)?;
+        }
+        wallet._ensure_account(AccountNum(0))?;
+        Ok(wallet)
     }
 
     pub fn get_mnemonic(&self) -> &Mnemonic {
@@ -116,7 +121,14 @@ impl WalletCtx {
         self.accounts.values()
     }
 
-    pub fn make_account(&mut self, account_num: AccountNum) -> Result<&Account, Error> {
+    pub fn create_account(&mut self, opt: CreateAccountOpt) -> Result<&Account, Error> {
+        let next_num = self.accounts.keys().map(|n| n.as_u32()).max().map_or(0, |i| i + 1);
+        let account = self._ensure_account(next_num.into())?;
+        account.set_name(opt.name)?;
+        Ok(account)
+    }
+
+    fn _ensure_account(&mut self, account_num: AccountNum) -> Result<&mut Account, Error> {
         Ok(match self.accounts.entry(account_num) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => entry.insert(Account::new(
