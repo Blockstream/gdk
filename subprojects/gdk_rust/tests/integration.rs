@@ -1,4 +1,7 @@
-use gdk_common::model::{RefreshAssets, SPVVerifyResult};
+use gdk_common::model::{
+    AddressAmount, CreateAccountOpt, CreateTransaction, GetAddressOpt, RefreshAssets,
+    SPVVerifyResult,
+};
 use gdk_common::session::Session;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
@@ -123,6 +126,73 @@ fn liquid() {
     test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 304
     test_session.refresh_assets(&RefreshAssets::new(true, false, true)); // check partial request
     test_session.refresh_assets(&RefreshAssets::new(false, true, false)); // check local read
+
+    test_session.stop();
+}
+
+#[test]
+fn subaccounts() {
+    let electrs_exec = env::var("ELECTRS_EXEC")
+        .expect("env ELECTRS_EXEC pointing to electrs executable is required");
+    let node_exec = env::var("BITCOIND_EXEC")
+        .expect("env BITCOIND_EXEC pointing to elementsd executable is required");
+    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
+    let debug = env::var("DEBUG").is_ok();
+
+    let mut test_session = test_session::setup(false, debug, &electrs_exec, &node_exec, 0, |_| ());
+
+    assert!(test_session.session.get_subaccount(0, 0).is_ok());
+    assert!(test_session.session.get_subaccount(1, 0).is_err());
+
+    // Create subaccounts
+    let account1 = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Account 1".into(),
+        })
+        .unwrap();
+    let account2 = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Account 2".into(),
+        })
+        .unwrap();
+    assert_eq!(account1.account_num, 1);
+    assert_eq!(account1.name, "Account 1");
+    assert_eq!(account2.account_num, 2);
+    assert_eq!(account2.name, "Account 2");
+    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2");
+
+    // Send some to account #1
+    let acc1_address = test_session.get_receive_address(1);
+    test_session.node_sendtoaddress(&acc1_address.address, 99876, None);
+    test_session.wait_tx_status_change();
+    assert_eq!(test_session.account_btc_balance(1), 99876);
+    assert_eq!(test_session.account_btc_balance(2), 0);
+
+    // Send some to account #2
+    let acc2_address = test_session.get_receive_address(2);
+    test_session.node_sendtoaddress(&acc2_address.address, 67899, None);
+    test_session.wait_tx_status_change();
+    assert_eq!(test_session.account_btc_balance(1), 99876);
+    assert_eq!(test_session.account_btc_balance(2), 67899);
+
+    // Send all from account #2 to account #1
+    let mut create_opt = CreateTransaction::default();
+    create_opt.subaccount = Some(2);
+    create_opt.fee_rate = Some(1000);
+    create_opt.send_all = Some(true);
+    create_opt.addressees.push(AddressAmount {
+        address: test_session.get_receive_address(1).address,
+        satoshi: 0,
+        asset_tag: Some("btc".into()),
+    });
+    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
+    let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
+    test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_tx_status_change();
+    assert_eq!(test_session.account_btc_balance(1), 167636);
+    assert_eq!(test_session.account_btc_balance(2), 0);
 
     test_session.stop();
 }

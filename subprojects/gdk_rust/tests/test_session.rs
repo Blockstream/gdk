@@ -873,6 +873,10 @@ impl TestSession {
         }
     }
 
+    pub fn account_btc_balance(&self, account_num: u32) -> u64 {
+        *self.session.get_balance(0, Some(account_num)).unwrap().get("btc").unwrap() as u64
+    }
+
     pub fn spv_verify_tx(&self, txid: &str, height: u32) {
         let temp_dir = TempDir::new("electrum_integration_tests").unwrap();
         let temp_dir_str = format!("{}", &temp_dir.path().display());
