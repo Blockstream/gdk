@@ -126,7 +126,7 @@ pub struct CreateTransaction {
 pub struct GetTransactionsOpt {
     pub first: usize,
     pub count: usize,
-    pub subaccount: usize,
+    pub subaccount: u32,
     pub num_confs: Option<usize>,
 }
 

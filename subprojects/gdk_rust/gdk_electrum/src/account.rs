@@ -512,11 +512,6 @@ impl From<u32> for AccountNum {
         AccountNum(num)
     }
 }
-impl From<usize> for AccountNum {
-    fn from(num: usize) -> Self {
-        AccountNum(num as u32)
-    }
-}
 impl Into<u32> for AccountNum {
     fn into(self) -> u32 {
         self.0
