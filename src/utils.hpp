@@ -85,6 +85,11 @@ namespace sdk {
     std::string aes_cbc_encrypt(
         const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& plaintext);
 
+    size_t aes_gcm_decrypt_get_length(byte_span_t cyphertext);
+    size_t aes_gcm_decrypt(byte_span_t key, byte_span_t cyphertext, gsl::span<unsigned char> plaintext);
+    size_t aes_gcm_encrypt_get_length(byte_span_t plaintext);
+    size_t aes_gcm_encrypt(byte_span_t key, byte_span_t plaintext, gsl::span<unsigned char> cyphertext);
+
     // FIXME: Export base64 encode/decode from wally and use those functions
     std::string base64_from_bytes(byte_span_t bytes);
     std::vector<unsigned char> base64_to_bytes(const std::string& input);

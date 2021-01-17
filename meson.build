@@ -309,6 +309,12 @@ endforeach
 
 
 if get_option('enable-tests')
+    test('test aes_gcm',
+         executable('test_aes_gcm', 'tests/test_aes_gcm.cpp',
+                    link_with: libga.get_static_lib(),
+                    dependencies: dependencies
+        ))
+
     test('test networks',
          executable('test_networks', 'tests/test_networks.cpp',
                     link_with: libga.get_static_lib(),

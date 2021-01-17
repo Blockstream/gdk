@@ -27,6 +27,7 @@
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
+#include <openssl/evp.h>
 #include <zlib/zlib.h>
 
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
@@ -463,6 +464,70 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(false);
         }
         return result;
+    }
+
+#define OPENSSL_VERIFY(x) GDK_RUNTIME_ASSERT((x) == 1)
+
+    namespace {
+        constexpr int AES_GCM_TAG_SIZE = 16;
+        constexpr int AES_GCM_IV_SIZE = 12;
+    } // namespace
+    using evp_ctx_ptr = const std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_CIPHER_CTX_free)>;
+
+    size_t aes_gcm_encrypt_get_length(byte_span_t plaintext)
+    {
+        GDK_RUNTIME_ASSERT(!plaintext.empty());
+        return AES_GCM_IV_SIZE + AES_GCM_TAG_SIZE + plaintext.size();
+    }
+
+    size_t aes_gcm_encrypt(byte_span_t key, byte_span_t plaintext, gsl::span<unsigned char> cyphertext)
+    {
+        GDK_RUNTIME_ASSERT(key.size() == SHA256_LEN);
+        GDK_RUNTIME_ASSERT(static_cast<size_t>(cyphertext.size()) == aes_gcm_encrypt_get_length(plaintext));
+
+        std::array<unsigned char, AES_GCM_IV_SIZE> iv;
+        get_random_bytes(iv.size(), iv.data(), iv.size());
+        std::copy(iv.begin(), iv.end(), cyphertext.begin());
+        unsigned char* out = cyphertext.data() + iv.size();
+
+        evp_ctx_ptr ctx{ EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free };
+        OPENSSL_VERIFY(EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, key.data(), iv.data()));
+        int n;
+        OPENSSL_VERIFY(EVP_EncryptUpdate(ctx.get(), out, &n, plaintext.data(), plaintext.size()));
+        out += n;
+        OPENSSL_VERIFY(EVP_EncryptFinal_ex(ctx.get(), out, &n));
+        out += n;
+        OPENSSL_VERIFY(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, AES_GCM_TAG_SIZE, out));
+        out += AES_GCM_TAG_SIZE;
+        return out - cyphertext.data(); // Return the number of bytes written
+    }
+
+    size_t aes_gcm_decrypt_get_length(byte_span_t cyphertext)
+    {
+        const size_t len = cyphertext.size();
+        GDK_RUNTIME_ASSERT(len > AES_GCM_IV_SIZE + AES_GCM_TAG_SIZE);
+        return len - AES_GCM_IV_SIZE - AES_GCM_TAG_SIZE;
+    }
+
+    size_t aes_gcm_decrypt(byte_span_t key, byte_span_t cyphertext, gsl::span<unsigned char> plaintext)
+    {
+        GDK_RUNTIME_ASSERT(key.size() == SHA256_LEN);
+        const size_t plaintext_size = aes_gcm_decrypt_get_length(cyphertext);
+        GDK_RUNTIME_ASSERT(static_cast<size_t>(plaintext.size()) == plaintext_size);
+
+        const byte_span_t iv(cyphertext.data(), AES_GCM_IV_SIZE);
+        auto tag = const_cast<unsigned char*>(cyphertext.data()) + iv.size() + plaintext_size;
+        const unsigned char* in = cyphertext.data() + iv.size();
+        unsigned char* out = plaintext.data();
+
+        evp_ctx_ptr ctx{ EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free };
+
+        OPENSSL_VERIFY(EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, key.data(), iv.data()));
+        OPENSSL_VERIFY(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, AES_GCM_TAG_SIZE, tag));
+        int n, n_final;
+        OPENSSL_VERIFY(EVP_DecryptUpdate(ctx.get(), out, &n, in, plaintext_size));
+        OPENSSL_VERIFY(EVP_DecryptFinal_ex(ctx.get(), out, &n_final));
+        return n + n_final;
     }
 
 } // namespace sdk
