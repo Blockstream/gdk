@@ -37,7 +37,7 @@ use crate::store::{Store, BATCH_SIZE};
 
 // The number of account types, including these reserved for future use.
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
-const NUM_RESERVED_ACCOUNT_TYPES: u32 = 8;
+const NUM_RESERVED_ACCOUNT_TYPES: u32 = 16;
 
 lazy_static! {
     static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
@@ -1160,17 +1160,17 @@ mod test {
         test_derivation(2, ScriptType::P2pkh, "m/44'/1'/0'");
 
         // reserved for future use, currently rejected
-        for n in 3..=7 {
+        for n in 3..=15 {
             test_derivation_fails(n);
         }
 
-        test_derivation(8, ScriptType::P2shP2wpkh, "m/49'/1'/1'");
-        test_derivation(9, ScriptType::P2wpkh, "m/84'/1'/1'");
-        test_derivation(10, ScriptType::P2pkh, "m/44'/1'/1'");
-        test_derivation_fails(11);
+        test_derivation(16, ScriptType::P2shP2wpkh, "m/49'/1'/1'");
+        test_derivation(17, ScriptType::P2wpkh, "m/84'/1'/1'");
+        test_derivation(18, ScriptType::P2pkh, "m/44'/1'/1'");
+        test_derivation_fails(19);
 
-        test_derivation(80, ScriptType::P2shP2wpkh, "m/49'/1'/10'");
-        test_derivation(81, ScriptType::P2wpkh, "m/84'/1'/10'");
-        test_derivation(82, ScriptType::P2pkh, "m/44'/1'/10'");
+        test_derivation(160, ScriptType::P2shP2wpkh, "m/49'/1'/10'");
+        test_derivation(161, ScriptType::P2wpkh, "m/84'/1'/10'");
+        test_derivation(162, ScriptType::P2pkh, "m/44'/1'/10'");
     }
 }

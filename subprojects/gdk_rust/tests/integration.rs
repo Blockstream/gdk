@@ -211,7 +211,7 @@ fn subaccounts() {
     assert_eq!(test_session.balance_account(2, None), 1000);
 
     // Should use the next available P2PKH account numbers, skipping over used and reserved numbers
-    for expected_pkh_num in &[10u32, 18] {
+    for expected_pkh_num in &[18u32, 34] {
         let account = test_session
             .session
             .create_subaccount(CreateAccountOpt {
