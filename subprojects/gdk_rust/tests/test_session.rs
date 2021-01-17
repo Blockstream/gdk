@@ -266,6 +266,7 @@ pub fn setup(
     }
 }
 
+// NOTE: Methods that don't accept an explicit account number operate on account #0
 impl TestSession {
     /// wait gdk session block status to change (max 1 min)
     pub fn wait_tx_status_change(&mut self) {
@@ -341,9 +342,18 @@ impl TestSession {
 
     /// send all of the balance of the  tx from the gdk session to the specified address
     pub fn send_all(&mut self, address: &str, asset_tag: Option<String>) {
+        self.send_all_from_account(0, address, asset_tag);
+    }
+    pub fn send_all_from_account(
+        &mut self,
+        subaccount: u32,
+        address: &str,
+        asset_tag: Option<String>,
+    ) -> String {
         //let init_sat = self.balance_gdk();
         //let init_sat_addr = self.balance_addr(address);
         let mut create_opt = CreateTransaction::default();
+        create_opt.subaccount = Some(subaccount);
         let fee_rate = 1000;
         create_opt.fee_rate = Some(fee_rate);
         create_opt.addressees.push(AddressAmount {
@@ -356,14 +366,15 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
 
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
-        self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx_status_change();
+        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
+        self.wait_account_tx(subaccount, &txid);
         //let end_sat_addr = self.balance_addr(address);
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
-        assert_eq!(self.balance_gdk(asset_tag), 0);
+        assert_eq!(self.balance_account(subaccount, asset_tag), 0);
 
         assert!(tx.create_transaction.unwrap().send_all.unwrap());
         assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
+        txid
     }
 
     /// send a tx from the gdk session to the specified address
@@ -434,6 +445,32 @@ impl TestSession {
 
         self.list_tx_contains(&txid, &vec![address.to_string()], true);
 
+        txid
+    }
+
+    pub fn send_tx_from(
+        &mut self,
+        subaccount: u32,
+        address: &str,
+        satoshi: u64,
+        asset: Option<String>,
+    ) -> String {
+        let mut create_opt = CreateTransaction::default();
+        create_opt.subaccount = Some(subaccount);
+        let fee_rate = match self.network.id() {
+            NetworkId::Elements(_) => 100,
+            NetworkId::Bitcoin(_) => 1000,
+        };
+        create_opt.fee_rate = Some(fee_rate);
+        create_opt.addressees.push(AddressAmount {
+            address: address.to_string(),
+            satoshi,
+            asset_tag: asset.clone().or(self.asset_tag()),
+        });
+        let tx = self.session.create_transaction(&mut create_opt).unwrap();
+        let signed_tx = self.session.sign_transaction(&tx).unwrap();
+        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
+        self.wait_account_tx(subaccount, &txid);
         txid
     }
 
@@ -854,15 +891,18 @@ impl TestSession {
         }
     }
 
-    /// balance in satoshi (or liquid satoshi) of the gdk session
+    /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
     fn balance_gdk_all(&self) -> Balances {
         self.session.get_balance(0, None).unwrap()
     }
 
-    /// balance in satoshi (or liquid satoshi) of the gdk session
+    /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
     fn balance_gdk(&self, asset: Option<String>) -> u64 {
-        let balance = self.session.get_balance(0, None).unwrap();
-        info!("balance: {:?}", balance);
+        self.balance_account(0, asset)
+    }
+
+    pub fn balance_account(&self, account_num: u32, asset: Option<String>) -> u64 {
+        let balance = self.session.get_balance(0, Some(account_num)).unwrap();
         match self.network_id {
             NetworkId::Elements(_) => {
                 let asset =
@@ -871,10 +911,6 @@ impl TestSession {
             }
             NetworkId::Bitcoin(_) => *balance.get("btc").unwrap() as u64,
         }
-    }
-
-    pub fn account_btc_balance(&self, account_num: u32) -> u64 {
-        *self.session.get_balance(0, Some(account_num)).unwrap().get("btc").unwrap() as u64
     }
 
     pub fn spv_verify_tx(&self, txid: &str, height: u32) {
@@ -991,6 +1027,21 @@ impl TestSession {
             thread::sleep(Duration::from_millis(500));
         }
         panic!("1 minute with no tx spv change");
+    }
+
+    /// wait for the txid to show up in the given account
+    pub fn wait_account_tx(&self, subaccount: u32, txid: &str) {
+        let mut opt = GetTransactionsOpt::default();
+        opt.subaccount = subaccount;
+        opt.count = 100;
+        for _ in 0..120 {
+            let txs = self.session.get_transactions(&opt).unwrap().0;
+            if txs.iter().any(|tx| tx.txhash == txid) {
+                return;
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        panic!("tx {} did not show up in account {} after 1 minute", txid, subaccount);
     }
 }
 fn node_sendtoaddress(

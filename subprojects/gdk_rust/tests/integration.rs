@@ -1,7 +1,4 @@
-use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, GetAddressOpt, RefreshAssets,
-    SPVVerifyResult,
-};
+use gdk_common::model::{CreateAccountOpt, RefreshAssets, SPVVerifyResult};
 use gdk_common::session::Session;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
@@ -163,36 +160,48 @@ fn subaccounts() {
     assert_eq!(account2.name, "Account 2");
     assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2");
 
-    // Send some to account #1
+    let acc0_address = test_session.get_receive_address(0);
     let acc1_address = test_session.get_receive_address(1);
-    test_session.node_sendtoaddress(&acc1_address.address, 99876, None);
+    let acc2_address = test_session.get_receive_address(2);
+
+    assert!(acc0_address.address.starts_with("2")); // P2SH-P2WSH
+    assert!(acc1_address.address.starts_with("bcrt1")); // Native Bech32 P2WPKH
+    assert!(acc2_address.address.starts_with(&['m', 'n'][..])); // Legacy P2PKH
+
+    // Send some to account #1
+    test_session.node_sendtoaddress(&acc1_address.address, 98766, None);
     test_session.wait_tx_status_change();
-    assert_eq!(test_session.account_btc_balance(1), 99876);
-    assert_eq!(test_session.account_btc_balance(2), 0);
+    assert_eq!(test_session.balance_account(0, None), 0);
+    assert_eq!(test_session.balance_account(1, None), 98766);
+    assert_eq!(test_session.balance_account(2, None), 0);
 
     // Send some to account #2
-    let acc2_address = test_session.get_receive_address(2);
     test_session.node_sendtoaddress(&acc2_address.address, 67899, None);
     test_session.wait_tx_status_change();
-    assert_eq!(test_session.account_btc_balance(1), 99876);
-    assert_eq!(test_session.account_btc_balance(2), 67899);
+    assert_eq!(test_session.balance_account(0, None), 0);
+    assert_eq!(test_session.balance_account(1, None), 98766);
+    assert_eq!(test_session.balance_account(2, None), 67899);
 
-    // Send all from account #2 to account #1
-    let mut create_opt = CreateTransaction::default();
-    create_opt.subaccount = Some(2);
-    create_opt.fee_rate = Some(1000);
-    create_opt.send_all = Some(true);
-    create_opt.addressees.push(AddressAmount {
-        address: test_session.get_receive_address(1).address,
-        satoshi: 0,
-        asset_tag: Some("btc".into()),
-    });
-    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
-    let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
-    test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
-    test_session.wait_tx_status_change();
-    assert_eq!(test_session.account_btc_balance(1), 167636);
-    assert_eq!(test_session.account_btc_balance(2), 0);
+    // Send all from account #2 to account #1 (p2pkh -> p2wpkh)
+    let txid =
+        test_session.send_all_from_account(2, &test_session.get_receive_address(1).address, None);
+    test_session.wait_account_tx(1, &txid);
+    assert_eq!(test_session.balance_account(0, None), 0);
+    assert_eq!(test_session.balance_account(1, None), 166470);
+    assert_eq!(test_session.balance_account(2, None), 0);
+
+    // Send from account #1 to account #0 (p2wpkh -> p2sh-p2wpkh)
+    let txid = test_session.send_tx_from(1, &acc0_address.address, 11555, None);
+    test_session.wait_account_tx(0, &txid);
+    assert_eq!(test_session.balance_account(0, None), 11555);
+    assert_eq!(test_session.balance_account(1, None), 154771);
+
+    // Send from account #0 to account #2 (p2sh-p2wpkh -> p2pkh)
+    let txid =
+        test_session.send_tx_from(0, &test_session.get_receive_address(2).address, 1000, None);
+    test_session.wait_account_tx(2, &txid);
+    assert_eq!(test_session.balance_account(0, None), 10385);
+    assert_eq!(test_session.balance_account(2, None), 1000);
 
     test_session.stop();
 }
