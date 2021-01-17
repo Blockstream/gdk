@@ -4,10 +4,11 @@ use std::convert::TryInto;
 use std::fmt;
 use std::str::FromStr;
 
-use log::{debug, info, trace};
+use log::{info, trace};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+use bitcoin::blockdata::script;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -15,10 +16,6 @@ use bitcoin::util::bip143::SigHashCache;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{PublicKey, SigHashType};
 use elements::confidential::Value;
-
-use gdk_common::wally::{
-    asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
-};
 
 use gdk_common::be::{
     BEAddress, BEOutPoint, BEScript, BEScriptConvert, BETransaction, BETxid, ScriptBatch, UTXOInfo,
@@ -29,11 +26,18 @@ use gdk_common::model::{
     AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
     SPVVerifyResult, TransactionMeta,
 };
-use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig};
+use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig, ScriptType};
+use gdk_common::wally::{
+    asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
+};
 use gdk_common::{ElementsNetwork, Network, NetworkId};
 
 use crate::error::Error;
 use crate::store::{Store, BATCH_SIZE};
+
+// The number of account types, including these reserved for future use.
+// Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
+const NUM_RESERVED_ACCOUNT_TYPES: u32 = 8;
 
 lazy_static! {
     static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
@@ -44,6 +48,7 @@ pub struct AccountNum(pub u32);
 
 pub struct Account {
     account_num: AccountNum,
+    script_type: ScriptType,
     path: DerivationPath,
     xpub: ExtendedPubKey,
     xprv: ExtendedPrivKey,
@@ -62,9 +67,7 @@ impl Account {
         store: Store,
         account_num: AccountNum,
     ) -> Result<Self, Error> {
-        let path = get_account_derivation(account_num, &network)?;
-
-        debug!("Using derivation path {} for account {}", path, account_num);
+        let (script_type, path) = get_account_derivation(account_num, network.id())?;
 
         let xprv = master_xprv.derive_priv(&EC, &path)?;
         let xpub = ExtendedPubKey::from_private(&EC, &xprv);
@@ -74,9 +77,12 @@ impl Account {
 
         store.write().unwrap().make_account_cache(account_num);
 
+        info!("initialized account #{} path={} type={:?}", account_num, path, script_type);
+
         Ok(Self {
             network,
             account_num,
+            script_type,
             path,
             xpub,
             xprv,
@@ -118,16 +124,22 @@ impl Account {
         let derived = chain_xpub.ckd_pub(&EC, index.into())?;
 
         match self.network.id() {
-            NetworkId::Bitcoin(network) => Ok(BEAddress::Bitcoin(
-                bitcoin::Address::p2shwpkh(&derived.public_key, network).unwrap(),
-            )),
+            NetworkId::Bitcoin(network) => {
+                let address = bitcoin_address(&derived.public_key, self.script_type, network);
+                Ok(BEAddress::Bitcoin(address))
+            }
             NetworkId::Elements(network) => {
                 let master_blinding_key = self
                     .master_blinding
                     .as_ref()
                     .expect("we are in elements but master blinding is None");
 
-                let address = elements_address(&derived.public_key, master_blinding_key, network);
+                let address = elements_address(
+                    &derived.public_key,
+                    master_blinding_key,
+                    self.script_type,
+                    network,
+                );
                 Ok(BEAddress::Elements(address))
             }
         }
@@ -403,8 +415,14 @@ impl Account {
                         i, prev_output, derivation_path
                     );
 
-                    let (script_sig, witness) =
-                        internal_sign_bitcoin(&tx, i, &self.xprv, &derivation_path, out.value);
+                    let (script_sig, witness) = internal_sign_bitcoin(
+                        &tx,
+                        i,
+                        &self.xprv,
+                        &derivation_path,
+                        out.value,
+                        self.script_type,
+                    );
 
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;
@@ -526,21 +544,30 @@ impl AccountNum {
 
 fn get_account_derivation(
     account_num: AccountNum,
-    network: &Network,
-) -> Result<DerivationPath, Error> {
-    let coin_type = get_coin_type(network);
-    let purpose = 49; // P2SH-P2WPKH
-                      // BIP44: m / purpose' / coin_type' / account' / change / address_index
-    let path: DerivationPath =
-        format!("m/{}'/{}'/{}'", purpose, coin_type, account_num).parse().unwrap();
+    network_id: NetworkId,
+) -> Result<(ScriptType, DerivationPath), Error> {
+    let coin_type = get_coin_type(network_id);
+    let (script_type, purpose) = match account_num.0 % NUM_RESERVED_ACCOUNT_TYPES {
+        0 => (ScriptType::P2shP2wpkh, 49),
+        1 => (ScriptType::P2wpkh, 84),
+        2 => (ScriptType::P2pkh, 44),
+        _ => return Err(Error::InvalidSubaccount(account_num.into())),
+    };
+    let bip32_account_num = account_num.0 / NUM_RESERVED_ACCOUNT_TYPES;
 
-    Ok(path)
+    // BIP44: m / purpose' / coin_type' / account' / change / address_index
+    let path: DerivationPath =
+        format!("m/{}'/{}'/{}'", purpose, coin_type, bip32_account_num).parse().unwrap();
+
+    info!("derivation path for account {}: {}", account_num, path);
+
+    Ok((script_type, path))
 }
 
-fn get_coin_type(network: &Network) -> u32 {
+fn get_coin_type(network_id: NetworkId) -> u32 {
     // coin_type = 0 bitcoin, 1 testnet, 1776 liquid bitcoin as defined in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
     // slip44 suggest 1 for every testnet, so we are using it also for regtest
-    match network.id() {
+    match network_id {
         NetworkId::Bitcoin(bitcoin_network) => match bitcoin_network {
             bitcoin::Network::Bitcoin => 0,
             bitcoin::Network::Testnet => 1,
@@ -554,18 +581,36 @@ fn get_coin_type(network: &Network) -> u32 {
     }
 }
 
+fn bitcoin_address(
+    public_key: &PublicKey,
+    script_type: ScriptType,
+    net: bitcoin::Network,
+) -> bitcoin::Address {
+    use bitcoin::Address;
+    match script_type {
+        ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, net).expect("no compressed keys"),
+        ScriptType::P2wpkh => Address::p2wpkh(public_key, net).expect("no compressed keys"),
+        ScriptType::P2pkh => Address::p2pkh(public_key, net),
+    }
+}
+
 fn elements_address(
     public_key: &PublicKey,
     master_blinding_key: &MasterBlindingKey,
+    script_type: ScriptType,
     net: ElementsNetwork,
 ) -> elements::Address {
+    use elements::Address;
     let script = p2shwpkh_script(public_key).into_elements();
     let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
     let blinding_pub = ec_public_key_from_private_key(blinding_key);
-
     let addr_params = elements_address_params(net);
 
-    elements::Address::p2shwpkh(public_key, Some(blinding_pub), addr_params)
+    match script_type {
+        ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, Some(blinding_pub), addr_params),
+        ScriptType::P2wpkh => Address::p2wpkh(public_key, Some(blinding_pub), addr_params),
+        ScriptType::P2pkh => Address::p2pkh(public_key, Some(blinding_pub), addr_params),
+    }
 }
 
 fn elements_address_params(net: ElementsNetwork) -> &'static elements::AddressParams {
@@ -707,7 +752,7 @@ pub fn create_tx(
             dummy_tx
                 .add_output(&out.address, out.satoshi, out.asset_tag.clone())
                 .map_err(|_| Error::InvalidAddress)?;
-            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
             total_amount_utxos.checked_sub(estimated_fee).ok_or_else(|| Error::InsufficientFunds)?
         } else {
             total_amount_utxos
@@ -741,6 +786,7 @@ pub fn create_tx(
             network.policy_asset.clone(),
             &acc_store.all_txs,
             &acc_store.unblinded,
+            account.script_type,
         ); // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
         info!("needs: {:?}", needs);
         if needs.is_empty() {
@@ -785,6 +831,7 @@ pub fn create_tx(
     let estimated_fee = tx.estimated_fee(
         fee_rate,
         tx.estimated_changes(send_all, &acc_store.all_txs, &acc_store.unblinded),
+        account.script_type,
     );
     let changes = tx.changes(
         estimated_fee,
@@ -842,23 +889,37 @@ fn internal_sign_bitcoin(
     xprv: &ExtendedPrivKey,
     path: &DerivationPath,
     value: u64,
+    script_type: ScriptType,
 ) -> (bitcoin::Script, Vec<Vec<u8>>) {
     let xprv = xprv.derive_priv(&EC, &path).unwrap();
     let private_key = &xprv.private_key;
     let public_key = &PublicKey::from_private_key(&EC, private_key);
-    let witness_script = p2pkh_script(public_key);
+    let script_code = p2pkh_script(public_key);
 
-    let hash =
-        SigHashCache::new(tx).signature_hash(input_index, &witness_script, value, SigHashType::All);
+    let hash = if script_type.is_segwit() {
+        SigHashCache::new(tx).signature_hash(input_index, &script_code, value, SigHashType::All)
+    } else {
+        tx.signature_hash(input_index, &script_code, SigHashType::All as u32)
+    };
 
     let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
     let signature = EC.sign(&message, &private_key.key);
 
     let mut signature = signature.serialize_der().to_vec();
     signature.push(SigHashType::All as u8);
+    let pk = public_key.to_bytes();
 
-    let script_sig = p2shwpkh_script_sig(public_key);
-    let witness = vec![signature, public_key.to_bytes()];
+    let (script_sig, witness) = match script_type {
+        ScriptType::P2shP2wpkh => (p2shwpkh_script_sig(public_key), vec![signature, pk]),
+        ScriptType::P2wpkh => (bitcoin::Script::new(), vec![signature, pk]),
+        ScriptType::P2pkh => (
+            script::Builder::new()
+                .push_slice(signature.as_slice())
+                .push_slice(pk.as_slice())
+                .into_script(),
+            vec![],
+        ),
+    };
     info!(
         "added size len: script_sig:{} witness:{}",
         script_sig.len(),
@@ -1055,4 +1116,42 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const NETWORK: NetworkId = NetworkId::Bitcoin(bitcoin::Network::Regtest);
+
+    fn test_derivation(account_num: u32, expected_type: ScriptType, expected_path: &str) {
+        let (script_type, path) = get_account_derivation(AccountNum(account_num), NETWORK).unwrap();
+        assert_eq!(script_type, expected_type);
+        assert_eq!(path.to_string(), expected_path);
+    }
+
+    fn test_derivation_fails(account_num: u32) {
+        assert!(get_account_derivation(AccountNum(account_num), NETWORK).is_err());
+    }
+
+    #[test]
+    fn account_derivation() {
+        test_derivation(0, ScriptType::P2shP2wpkh, "m/49'/1'/0'");
+        test_derivation(1, ScriptType::P2wpkh, "m/84'/1'/0'");
+        test_derivation(2, ScriptType::P2pkh, "m/44'/1'/0'");
+
+        // reserved for future use, currently rejected
+        for n in 3..=7 {
+            test_derivation_fails(n);
+        }
+
+        test_derivation(8, ScriptType::P2shP2wpkh, "m/49'/1'/1'");
+        test_derivation(9, ScriptType::P2wpkh, "m/84'/1'/1'");
+        test_derivation(10, ScriptType::P2pkh, "m/44'/1'/1'");
+        test_derivation_fails(11);
+
+        test_derivation(80, ScriptType::P2shP2wpkh, "m/49'/1'/10'");
+        test_derivation(81, ScriptType::P2wpkh, "m/84'/1'/10'");
+        test_derivation(82, ScriptType::P2pkh, "m/44'/1'/10'");
+    }
 }

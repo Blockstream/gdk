@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetTransactionsOpt, GetUnspentOpt, Settings,
-    TransactionMeta,
+    AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetTransactionsOpt,
+    GetUnspentOpt, Settings, TransactionMeta,
 };
 use gdk_common::network::Network;
 use gdk_common::wally::*;
