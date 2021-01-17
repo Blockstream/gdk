@@ -1517,7 +1517,7 @@ namespace sdk {
                     std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
-                        m_blob.load(*db_blob);
+                        m_blob.load(*m_blob_aes_key, *db_blob);
                         m_blob_hmac = server_hmac;
                     }
                 }
@@ -1579,7 +1579,7 @@ namespace sdk {
         auto server_hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
         GDK_RUNTIME_ASSERT_MSG(server_hmac == ret["hmac"], "Bad server client blob");
         // FIXME: Check the version in the blob is greater than ours
-        m_blob.load(server_blob);
+        m_blob.load(*m_blob_aes_key, server_blob);
 
         if (encache) {
             encache_client_blob(locker, server_blob);
@@ -1592,7 +1592,7 @@ namespace sdk {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        const auto saved{ m_blob.save(*m_blob_hmac_key) };
+        const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
         const auto blob_b64{ base64_from_bytes(saved.first) };
 
         auto result = wamp_call(locker, "login.set_client_blob", blob_b64, 0, saved.second, old_hmac);
