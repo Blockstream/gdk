@@ -412,10 +412,7 @@ namespace sdk {
             + std::to_string(subaccount);
     }
 
-    std::string base64_from_bytes(const byte_span_t& bytes)
-    {
-        return websocketpp::base64_encode(bytes.data(), bytes.size());
-    }
+    std::string base64_from_bytes(byte_span_t bytes) { return websocketpp::base64_encode(bytes.data(), bytes.size()); }
 
     std::vector<unsigned char> base64_to_bytes(const std::string& input)
     {
@@ -425,7 +422,7 @@ namespace sdk {
         return std::vector<unsigned char>(bytes_span.begin(), bytes_span.end());
     }
 
-    std::vector<unsigned char> compress(const byte_span_t& prefix, const byte_span_t& bytes)
+    std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes)
     {
         const size_t prefix_len = prefix.size();
         const size_t bytes_len = bytes.size();
@@ -450,7 +447,7 @@ namespace sdk {
         return result;
     }
 
-    std::vector<unsigned char> decompress(const byte_span_t& bytes)
+    std::vector<unsigned char> decompress(byte_span_t bytes)
     {
         constexpr size_t minimum_compressed_size = 11;
         const size_t bytes_len = bytes.size();
