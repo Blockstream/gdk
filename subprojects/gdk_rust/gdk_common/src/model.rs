@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::error::Error;
+use crate::scripts::ScriptType;
 use bitcoin::hashes::core::fmt::Formatter;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -143,9 +144,11 @@ pub struct GetAddressOpt {
     pub address_type: Option<String>, // unused
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateAccountOpt {
     pub name: String,
+    #[serde(rename = "type")]
+    pub script_type: ScriptType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -303,7 +306,7 @@ pub struct AccountInfo {
     #[serde(rename = "pointer")]
     pub account_num: u32,
     #[serde(rename = "type")]
-    pub type_: String,
+    pub script_type: ScriptType,
     pub name: String,
     pub has_transactions: bool,
     pub satoshi: Balances,

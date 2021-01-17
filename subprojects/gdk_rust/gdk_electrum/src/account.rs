@@ -106,7 +106,7 @@ impl Account {
 
         Ok(AccountInfo {
             account_num: self.account_num.into(),
-            type_: "electrum".into(),
+            script_type: self.script_type,
             name: name.unwrap_or("Single sig wallet".into()),
             has_transactions: !txs.is_empty(),
             satoshi: self.balance()?,
@@ -540,6 +540,20 @@ impl AccountNum {
     pub fn as_u32(self) -> u32 {
         self.into()
     }
+}
+
+// Find the first unused account number for the given script type
+pub fn get_next_account_num(existing: HashSet<&AccountNum>, script_type: ScriptType) -> AccountNum {
+    let first_index = match script_type {
+        ScriptType::P2shP2wpkh => 0,
+        ScriptType::P2wpkh => 1,
+        ScriptType::P2pkh => 2,
+    };
+    (first_index..)
+        .step_by(NUM_RESERVED_ACCOUNT_TYPES as usize)
+        .map(AccountNum)
+        .find(|n| !existing.contains(n))
+        .unwrap()
 }
 
 fn get_account_derivation(

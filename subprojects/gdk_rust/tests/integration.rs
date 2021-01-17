@@ -1,4 +1,5 @@
 use gdk_common::model::{CreateAccountOpt, RefreshAssets, SPVVerifyResult};
+use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
@@ -146,20 +147,26 @@ fn subaccounts() {
         .session
         .create_subaccount(CreateAccountOpt {
             name: "Account 1".into(),
+            script_type: ScriptType::P2wpkh,
         })
         .unwrap();
     let account2 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
             name: "Account 2".into(),
+            script_type: ScriptType::P2pkh,
         })
         .unwrap();
     assert_eq!(account1.account_num, 1);
     assert_eq!(account1.name, "Account 1");
+    assert_eq!(account1.script_type, ScriptType::P2wpkh);
     assert_eq!(account2.account_num, 2);
     assert_eq!(account2.name, "Account 2");
+    assert_eq!(account2.script_type, ScriptType::P2pkh);
+    assert_eq!(test_session.session.get_subaccount(1, 0).unwrap().script_type, ScriptType::P2wpkh);
     assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2");
 
+    // Get addresses & check they match the expected types
     let acc0_address = test_session.get_receive_address(0);
     let acc1_address = test_session.get_receive_address(1);
     let acc2_address = test_session.get_receive_address(2);
@@ -202,6 +209,18 @@ fn subaccounts() {
     test_session.wait_account_tx(2, &txid);
     assert_eq!(test_session.balance_account(0, None), 10385);
     assert_eq!(test_session.balance_account(2, None), 1000);
+
+    // Should use the next available P2PKH account numbers, skipping over used and reserved numbers
+    for expected_pkh_num in &[10u32, 18] {
+        let account = test_session
+            .session
+            .create_subaccount(CreateAccountOpt {
+                name: "Account 3".into(),
+                script_type: ScriptType::P2pkh,
+            })
+            .unwrap();
+        assert_eq!(account.account_num, *expected_pkh_num);
+    }
 
     test_session.stop();
 }
