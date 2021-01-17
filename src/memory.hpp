@@ -8,10 +8,19 @@
 #include <vector>
 
 #include "assertion.hpp"
+#include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
 
 namespace ga {
 namespace sdk {
+    template <std::size_t N> inline std::array<unsigned char, N> make_byte_array(byte_span_t bytes)
+    {
+        GDK_RUNTIME_ASSERT(bytes.size() == N);
+        std::array<unsigned char, N> ret;
+        std::copy(bytes.begin(), bytes.end(), ret.data());
+        return ret;
+    }
+
     template <typename T, typename U, typename V> inline void init_container(T& dst, const U& arg1, const V& arg2)
     {
         GDK_RUNTIME_ASSERT(arg1.data() && arg2.data());

@@ -30,11 +30,11 @@ namespace sdk {
         void set_tx_memo(const std::string& txhash_hex, const std::string& memo);
         std::string get_tx_memo(const std::string& txhash_hex) const;
 
-        void load(const byte_span_t& data);
-        std::pair<std::vector<unsigned char>, std::string> save(const pbkdf2_hmac512_t& key) const;
+        void load(byte_span_t data);
+        std::pair<std::vector<unsigned char>, std::string> save(const std::array<unsigned char, 32>& key) const;
 
         static bool is_zero_hmac(const std::string& hmac);
-        static std::string compute_hmac(const pbkdf2_hmac512_t& key, const byte_span_t& data);
+        static std::string compute_hmac(const std::array<unsigned char, 32>& key, byte_span_t data);
 
     private:
         nlohmann::json m_data;

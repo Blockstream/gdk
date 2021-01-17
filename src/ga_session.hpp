@@ -503,7 +503,8 @@ namespace sdk {
 
         nlohmann::json m_login_data GDK_GUARDED_BY(m_mutex);
         boost::optional<pbkdf2_hmac512_t> m_local_encryption_key GDK_GUARDED_BY(m_mutex);
-        boost::optional<pbkdf2_hmac512_t> m_blob_key GDK_GUARDED_BY(m_mutex);
+        boost::optional<std::array<unsigned char, 32>> m_blob_aes_key GDK_GUARDED_BY(m_mutex);
+        boost::optional<std::array<unsigned char, 32>> m_blob_hmac_key GDK_GUARDED_BY(m_mutex);
         std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_twofactor_config GDK_GUARDED_BY(m_mutex);

@@ -769,7 +769,8 @@ namespace sdk {
 
             m_signer.reset();
             m_local_encryption_key = boost::none;
-            m_blob_key = boost::none;
+            m_blob_aes_key = boost::none;
+            m_blob_hmac_key = boost::none;
             m_blob_hmac.clear();
             m_tx_list_caches.purge_all();
             // FIXME: securely destroy all held data
@@ -1513,7 +1514,7 @@ namespace sdk {
             // Load our client blob from from the cache if we have one
             m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) GDK_REQUIRES(m_mutex) {
                 if (db_blob) {
-                    std::string db_hmac = client_blob::compute_hmac(m_blob_key.get(), *db_blob);
+                    std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
                         m_blob.load(*db_blob);
@@ -1575,7 +1576,7 @@ namespace sdk {
         auto ret = wamp_cast_json(wamp_call(locker, "login.get_client_blob", 0));
         const auto server_blob = base64_to_bytes(ret["blob"]);
         // Verify the servers hmac
-        auto server_hmac = client_blob::compute_hmac(m_blob_key.get(), server_blob);
+        auto server_hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
         GDK_RUNTIME_ASSERT_MSG(server_hmac == ret["hmac"], "Bad server client blob");
         // FIXME: Check the version in the blob is greater than ours
         m_blob.load(server_blob);
@@ -1591,7 +1592,7 @@ namespace sdk {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        const auto saved{ m_blob.save(m_blob_key.get()) };
+        const auto saved{ m_blob.save(*m_blob_hmac_key) };
         const auto blob_b64{ base64_from_bytes(saved.first) };
 
         auto result = wamp_call(locker, "login.set_client_blob", blob_b64, 0, saved.second, old_hmac);
@@ -1624,9 +1625,13 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
-        GDK_RUNTIME_ASSERT(m_blob_key == boost::none);
+        GDK_RUNTIME_ASSERT(m_blob_aes_key == boost::none);
+        GDK_RUNTIME_ASSERT(m_blob_hmac_key == boost::none);
         m_local_encryption_key = pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT);
-        m_blob_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+        auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+        auto tmp_span = gsl::make_span(tmp_key);
+        m_blob_aes_key.emplace(sha256(tmp_span.subspan(SHA256_LEN)));
+        m_blob_hmac_key.emplace(make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
         m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
         m_nlocktimes.reset();
     }
@@ -1639,7 +1644,8 @@ namespace sdk {
             m_user_pubkeys.reset();
             m_mnemonic.clear();
             m_local_encryption_key = boost::none;
-            m_blob_key = boost::none;
+            m_blob_aes_key = boost::none;
+            m_blob_hmac_key = boost::none;
         } catch (const std::exception& ex) {
         }
     }

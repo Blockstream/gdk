@@ -52,12 +52,12 @@ namespace sdk {
 
     bool client_blob::is_zero_hmac(const std::string& hmac) { return hmac == ZERO_HMAC_BASE64; }
 
-    std::string client_blob::compute_hmac(const pbkdf2_hmac512_t& key, const byte_span_t& data)
+    std::string client_blob::compute_hmac(const std::array<unsigned char, 32>& key, byte_span_t data)
     {
         return base64_from_bytes(hmac_sha256(key, data));
     }
 
-    void client_blob::load(const byte_span_t& data)
+    void client_blob::load(byte_span_t data)
     {
         const size_t data_len = data.size();
         GDK_RUNTIME_ASSERT(data_len > PREFIX.size());
@@ -68,7 +68,7 @@ namespace sdk {
         m_data = nlohmann::json::parse(decompressed.begin(), decompressed.end());
     }
 
-    std::pair<std::vector<unsigned char>, std::string> client_blob::save(const pbkdf2_hmac512_t& key) const
+    std::pair<std::vector<unsigned char>, std::string> client_blob::save(const std::array<unsigned char, 32>& key) const
     {
         const std::string data = m_data.dump();
         auto compressed = compress(PREFIX, ustring_span(data));
