@@ -450,8 +450,14 @@ impl Account {
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .clone();
 
-                    let (script_sig, witness) =
-                        internal_sign_elements(&tx, i, &self.xprv, &derivation_path, out.value);
+                    let (script_sig, witness) = internal_sign_elements(
+                        &tx,
+                        i,
+                        &self.xprv,
+                        &derivation_path,
+                        out.value,
+                        self.script_type,
+                    );
 
                     tx.input[i].script_sig = script_sig;
                     tx.input[i].witness.script_witness = witness;
@@ -922,26 +928,8 @@ fn internal_sign_bitcoin(
 
     let mut signature = signature.serialize_der().to_vec();
     signature.push(SigHashType::All as u8);
-    let pk = public_key.to_bytes();
 
-    let (script_sig, witness) = match script_type {
-        ScriptType::P2shP2wpkh => (p2shwpkh_script_sig(public_key), vec![signature, pk]),
-        ScriptType::P2wpkh => (bitcoin::Script::new(), vec![signature, pk]),
-        ScriptType::P2pkh => (
-            script::Builder::new()
-                .push_slice(signature.as_slice())
-                .push_slice(pk.as_slice())
-                .into_script(),
-            vec![],
-        ),
-    };
-    info!(
-        "added size len: script_sig:{} witness:{}",
-        script_sig.len(),
-        witness.iter().map(|v| v.len()).sum::<usize>()
-    );
-
-    (script_sig, witness)
+    prepare_input(&public_key, signature, script_type)
 }
 
 fn internal_sign_elements(
@@ -950,6 +938,7 @@ fn internal_sign_elements(
     xprv: &ExtendedPrivKey,
     path: &DerivationPath,
     value: Value,
+    script_type: ScriptType,
 ) -> (elements::Script, Vec<Vec<u8>>) {
     use gdk_common::wally::tx_get_elements_signature_hash;
 
@@ -964,21 +953,36 @@ fn internal_sign_elements(
         &script_code,
         &value,
         SigHashType::All.as_u32(),
-        true, // segwit
+        script_type.is_segwit(),
     );
     let message = secp256k1::Message::from_slice(&sighash[..]).unwrap();
     let signature = EC.sign(&message, &private_key.key);
     let mut signature = signature.serialize_der().to_vec();
     signature.push(SigHashType::All as u8);
 
-    let script_sig = p2shwpkh_script_sig(public_key).into_elements();
-    let witness = vec![signature, public_key.to_bytes()];
-    info!(
-        "added size len: script_sig:{} witness:{}",
-        script_sig.len(),
-        witness.iter().map(|v| v.len()).sum::<usize>()
-    );
-    (script_sig, witness)
+    let (script_sig, witness) = prepare_input(&public_key, signature, script_type);
+    (script_sig.into_elements(), witness)
+}
+
+// Get the input's script sig and witness data
+fn prepare_input(
+    public_key: &PublicKey,
+    signature: Vec<u8>,
+    script_type: ScriptType,
+) -> (bitcoin::Script, Vec<Vec<u8>>) {
+    let pk = public_key.to_bytes();
+
+    match script_type {
+        ScriptType::P2shP2wpkh => (p2shwpkh_script_sig(public_key), vec![signature, pk]),
+        ScriptType::P2wpkh => (bitcoin::Script::new(), vec![signature, pk]),
+        ScriptType::P2pkh => (
+            script::Builder::new()
+                .push_slice(signature.as_slice())
+                .push_slice(pk.as_slice())
+                .into_script(),
+            vec![],
+        ),
+    }
 }
 
 fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Error> {
