@@ -766,7 +766,8 @@ pub fn create_tx(
             dummy_tx
                 .add_output(&out.address, out.satoshi, out.asset_tag.clone())
                 .map_err(|_| Error::InvalidAddress)?;
-            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 3; // estimating 3 satoshi more as estimating less would later result in InsufficientFunds
+            // estimating 2 satoshi more as estimating less would later result in InsufficientFunds
+            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 2;
             total_amount_utxos.checked_sub(estimated_fee).ok_or_else(|| Error::InsufficientFunds)?
         } else {
             total_amount_utxos

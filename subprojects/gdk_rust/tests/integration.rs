@@ -194,14 +194,14 @@ fn subaccounts() {
         test_session.send_all_from_account(2, &test_session.get_receive_address(1).address, None);
     test_session.wait_account_tx(1, &txid);
     assert_eq!(test_session.balance_account(0, None), 0);
-    assert_eq!(test_session.balance_account(1, None), 166470);
+    assert_eq!(test_session.balance_account(1, None), 166471);
     assert_eq!(test_session.balance_account(2, None), 0);
 
     // Send from account #1 to account #0 (p2wpkh -> p2sh-p2wpkh)
     let txid = test_session.send_tx_from(1, &acc0_address.address, 11555, None);
     test_session.wait_account_tx(0, &txid);
     assert_eq!(test_session.balance_account(0, None), 11555);
-    assert_eq!(test_session.balance_account(1, None), 154771);
+    assert_eq!(test_session.balance_account(1, None), 154772);
 
     // Send from account #0 to account #2 (p2sh-p2wpkh -> p2pkh)
     let txid =
