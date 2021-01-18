@@ -21,6 +21,12 @@ namespace sdk {
         return ret;
     }
 
+    template <typename T> void bzero_and_free(std::vector<T>& data)
+    {
+        wally_bzero(data.data(), data.size());
+        std::vector<T>().swap(data);
+    }
+
     template <typename T, typename U, typename V> inline void init_container(T& dst, const U& arg1, const V& arg2)
     {
         GDK_RUNTIME_ASSERT(arg1.data() && arg2.data());

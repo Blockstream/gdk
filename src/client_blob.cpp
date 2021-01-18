@@ -5,9 +5,7 @@
 #include "utils.hpp"
 
 // FIXME:
-// - Use smarter (binary) serialisation with versioning
 // - Store user version in blob to prevent server old blob replay
-// - Serialize memos so they compress better
 
 namespace ga {
 namespace sdk {
@@ -58,6 +56,7 @@ namespace sdk {
 
     void client_blob::load(byte_span_t key, byte_span_t data)
     {
+        // Decrypt the encrypted data
         std::vector<unsigned char> decrypted(aes_gcm_decrypt_get_length(data));
         GDK_RUNTIME_ASSERT(decrypted.size() > PREFIX.size());
         GDK_RUNTIME_ASSERT(aes_gcm_decrypt(key, data, decrypted) == decrypted.size());
@@ -65,17 +64,34 @@ namespace sdk {
         // Only one fixed prefix value is currently allowed, check we match it
         GDK_RUNTIME_ASSERT(memcmp(decrypted.data(), PREFIX.data(), PREFIX.size()) == 0);
 
+        // Decompress the compressed representation excluding PREFIX
         const auto decompressed = decompress(gsl::make_span(decrypted).subspan(PREFIX.size()));
-        m_data = nlohmann::json::parse(decompressed.begin(), decompressed.end());
+
+        // Clear and free the decrypted representation immediately
+        bzero_and_free(decrypted);
+
+        // Load our blob data from the uncompressed data in msgpack format
+        m_data = nlohmann::json::from_msgpack(decompressed.begin(), decompressed.end());
     }
 
     std::pair<std::vector<unsigned char>, std::string> client_blob::save(byte_span_t key, byte_span_t hmac_key) const
     {
-        const std::string data = m_data.dump();
-        auto compressed = compress(PREFIX, ustring_span(data));
+        // Dump out data to msgpack format and compress it, prepending PREFIX
+        auto msgpack_data{ nlohmann::json::to_msgpack(m_data) };
+        auto compressed{ compress(PREFIX, msgpack_data) };
+
+        // Clear and free the uncompressed representation immediately
+        bzero_and_free(msgpack_data);
+
+        // Encrypt the compressed representation
         std::vector<unsigned char> encrypted(aes_gcm_encrypt_get_length(compressed));
         GDK_RUNTIME_ASSERT(aes_gcm_encrypt(key, compressed, encrypted) == encrypted.size());
-        auto hmac = compute_hmac(hmac_key, encrypted);
+
+        // Clear and free the compressed representation immediately
+        bzero_and_free(compressed);
+
+        // Compute hmac of the final representation and return it with the encrypted data
+        auto hmac{ compute_hmac(hmac_key, encrypted) };
         return std::make_pair(std::move(encrypted), std::move(hmac));
     }
 
