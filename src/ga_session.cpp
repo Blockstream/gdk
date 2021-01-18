@@ -2058,18 +2058,8 @@ namespace sdk {
         if (old_name == new_name) {
             return;
         }
-
-        while (true) {
-            if (!m_blob_obsoleted) {
-                // Our blob is up to date as far as we know; try to update
-                m_blob.set_subaccount_name(subaccount, new_name);
-                if (save_client_blob(locker, m_blob_hmac, true)) {
-                    break;
-                }
-            }
-            // Save failed: Re-load current blob from the server and re-try
-            load_client_blob(locker, false);
-        }
+        update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name));
+        // Look up our subaccount again as iterators may have been invalidated
         m_subaccounts.find(subaccount)->second["name"] = new_name;
     }
 
@@ -2149,7 +2139,8 @@ namespace sdk {
             recovery_pub_key = b2h(recovery_xpub.second);
         }
 
-        const auto recv_id = wamp_cast(wamp_call("txs.create_subaccount_v2", subaccount, name, type, xpubs, sigs));
+        const auto recv_id
+            = wamp_cast(wamp_call("txs.create_subaccount_v2", subaccount, std::string(), type, xpubs, sigs));
 
         locker_t locker(m_mutex);
         constexpr bool has_txs = false;
@@ -2161,7 +2152,27 @@ namespace sdk {
             subaccount_details["recovery_mnemonic"] = recovery_mnemonic;
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
+        if (!name.empty()) {
+            update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, name));
+        }
         return subaccount_details;
+    }
+
+    void ga_session::update_blob(locker_t& locker, std::function<void()> update_fn)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        while (true) {
+            if (!m_blob_obsoleted) {
+                // Our blob is current with the server; try to update
+                update_fn();
+                constexpr bool encache = true;
+                if (save_client_blob(locker, m_blob_hmac, encache)) {
+                    break;
+                }
+            }
+            // Save failed: Re-load current blob from the server and re-try
+            load_client_blob(locker, false);
+        }
     }
 
     // Idempotent
@@ -3534,18 +3545,7 @@ namespace sdk {
     {
         (void)memo_type; // FIXME: Remove
         locker_t locker(m_mutex);
-
-        while (true) {
-            if (!m_blob_obsoleted) {
-                // Our blob is up to date as far as we know; try to update
-                m_blob.set_tx_memo(txhash_hex, memo);
-                if (save_client_blob(locker, m_blob_hmac, true)) {
-                    break;
-                }
-            }
-            // Save failed: Re-load current blob from the server and re-try
-            load_client_blob(locker, false);
-        }
+        update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
     }
 
 } // namespace sdk
