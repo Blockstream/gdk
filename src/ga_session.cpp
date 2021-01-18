@@ -355,6 +355,7 @@ namespace sdk {
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_blob()
         , m_blob_hmac()
+        , m_blob_obsoleted(false)
         , m_cache(m_net_params, net_params.at("name"))
         , m_user_agent(std::string(GDK_COMMIT) + " " + net_params.value("user_agent", ""))
         , m_electrum_url(
@@ -772,6 +773,7 @@ namespace sdk {
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
             m_blob_hmac.clear();
+            m_blob_obsoleted = false;
             m_tx_list_caches.purge_all();
             // FIXME: securely destroy all held data
             // TODO: pass in whether we are disconnecting in order to reconnect,
@@ -1546,6 +1548,18 @@ namespace sdk {
             }));
 
         subscriptions.emplace_back(
+            subscribe(locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+                auto details = wamp_cast_json(event);
+                locker_t notify_locker(m_mutex);
+                // Check the hmac as we will be notified of our own changes
+                // when more than one session is logged in at a time.
+                if (m_blob_hmac != json_get_value(details, "hmac")) {
+                    // Another session has updated our client blob, mark it dirty.
+                    m_blob_obsoleted = true;
+                }
+            }));
+
+        subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.blocks", [this](const autobahn::wamp_event& event) {
                 locker_t notify_locker(m_mutex);
                 on_new_block(notify_locker, wamp_cast_json(event));
@@ -1585,6 +1599,7 @@ namespace sdk {
             encache_client_blob(locker, server_blob);
         }
         m_blob_hmac = server_hmac;
+        m_blob_obsoleted = false; // Blob is now current with the servers view
     }
 
     bool ga_session::save_client_blob(ga_session::locker_t& locker, const std::string& old_hmac, bool encache)
@@ -1604,6 +1619,7 @@ namespace sdk {
             encache_client_blob(locker, saved.first);
         }
         m_blob_hmac = saved.second;
+        m_blob_obsoleted = false; // Blob is now current with the servers view
         return true;
     }
 
@@ -1646,6 +1662,7 @@ namespace sdk {
             m_local_encryption_key = boost::none;
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
+            m_blob_obsoleted = false; // Blob will be reloaded if needed when login succeeds
         } catch (const std::exception& ex) {
         }
     }
@@ -2043,9 +2060,12 @@ namespace sdk {
         }
 
         while (true) {
-            m_blob.set_subaccount_name(subaccount, new_name);
-            if (save_client_blob(locker, m_blob_hmac, true)) {
-                break;
+            if (!m_blob_obsoleted) {
+                // Our blob is up to date as far as we know; try to update
+                m_blob.set_subaccount_name(subaccount, new_name);
+                if (save_client_blob(locker, m_blob_hmac, true)) {
+                    break;
+                }
             }
             // Save failed: Re-load current blob from the server and re-try
             load_client_blob(locker, false);
@@ -2393,6 +2413,9 @@ namespace sdk {
         {
             // Set tx memos in the returned txs from the blob cache
             locker_t locker(m_mutex);
+            if (m_blob_obsoleted) {
+                load_client_blob(locker, true);
+            }
             for (auto& tx_details : tx_list) {
                 tx_details["memo"] = m_blob.get_tx_memo(tx_details["txhash"]);
             }
@@ -3513,9 +3536,12 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         while (true) {
-            m_blob.set_tx_memo(txhash_hex, memo);
-            if (save_client_blob(locker, m_blob_hmac, true)) {
-                break;
+            if (!m_blob_obsoleted) {
+                // Our blob is up to date as far as we know; try to update
+                m_blob.set_tx_memo(txhash_hex, memo);
+                if (save_client_blob(locker, m_blob_hmac, true)) {
+                    break;
+                }
             }
             // Save failed: Re-load current blob from the server and re-try
             load_client_blob(locker, false);

@@ -503,8 +503,11 @@ namespace sdk {
 
         nlohmann::json m_login_data GDK_GUARDED_BY(m_mutex);
         boost::optional<pbkdf2_hmac512_t> m_local_encryption_key GDK_GUARDED_BY(m_mutex);
+        client_blob m_blob GDK_GUARDED_BY(m_mutex);
+        std::string m_blob_hmac GDK_GUARDED_BY(m_mutex);
         boost::optional<std::array<unsigned char, 32>> m_blob_aes_key GDK_GUARDED_BY(m_mutex);
         boost::optional<std::array<unsigned char, 32>> m_blob_hmac_key GDK_GUARDED_BY(m_mutex);
+        bool m_blob_obsoleted GDK_GUARDED_BY(m_mutex);
         std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_twofactor_config GDK_GUARDED_BY(m_mutex);
@@ -544,8 +547,6 @@ namespace sdk {
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
         cache m_cache GDK_GUARDED_BY(m_mutex);
-        client_blob m_blob GDK_GUARDED_BY(m_mutex);
-        std::string m_blob_hmac GDK_GUARDED_BY(m_mutex);
         const std::string m_user_agent;
 
         const std::string m_electrum_url;
