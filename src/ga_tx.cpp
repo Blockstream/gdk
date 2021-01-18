@@ -202,8 +202,16 @@ namespace sdk {
                 addressees.reserve(outputs.size());
                 uint32_t i = 0, change_index = NO_CHANGE_INDEX;
 
+                const auto& net_params = session.get_network_parameters();
                 for (const auto& output : outputs) {
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
+                    if (is_relevant) {
+                        // Validate address is owned by the wallet
+                        const auto witness_script = session.output_script_from_utxo(output);
+                        const std::string address
+                            = get_address_from_script(net_params, witness_script, output.at("address_type"));
+                        GDK_RUNTIME_ASSERT(output["address"] == address);
+                    }
                     if (is_relevant && change_index == NO_CHANGE_INDEX) {
                         // Change output.
                         change_index = i;
