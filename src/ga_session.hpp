@@ -277,7 +277,7 @@ namespace sdk {
 
         bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
         void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
-        std::array<unsigned char, 32> get_blinding_nonce(const std::string& pubkey, const std::string& script);
+        std::vector<unsigned char> get_blinding_nonce(const std::string& pubkey, const std::string& script);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;

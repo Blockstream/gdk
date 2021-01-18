@@ -2762,20 +2762,14 @@ namespace sdk {
         return answer;
     }
 
-    std::array<unsigned char, 32> ga_session::get_blinding_nonce(const std::string& pubkey, const std::string& script)
+    std::vector<unsigned char> ga_session::get_blinding_nonce(const std::string& pubkey, const std::string& script)
     {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         locker_t locker(m_mutex);
 
-        const auto data = m_cache.get_liquid_blinding_nonce(h2b(pubkey), h2b(script));
-        GDK_RUNTIME_ASSERT(data != boost::none);
-
-        std::array<unsigned char, 32> answer;
-
-        GDK_RUNTIME_ASSERT(data->size() == 32);
-        std::copy(data->begin(), data->end(), answer.begin());
-
-        return answer;
+        const auto nonce = m_cache.get_liquid_blinding_nonce(h2b(pubkey), h2b(script));
+        GDK_RUNTIME_ASSERT(nonce != boost::none);
+        return nonce.get();
     }
 
     bool ga_session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
