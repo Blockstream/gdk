@@ -826,7 +826,7 @@ impl Session<Error> for ElectrumSession {
         opt.count = 100;
         let mut hasher = DefaultHasher::new();
         let wallet = self.get_wallet()?;
-        for account in wallet.iter_accounts() {
+        for account in wallet.iter_accounts_sorted() {
             let txs = account.list_tx(&opt)?;
             for tx in txs.iter() {
                 std::hash::Hash::hash(&tx.txid, &mut hasher);

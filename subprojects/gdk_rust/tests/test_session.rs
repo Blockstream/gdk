@@ -270,6 +270,7 @@ pub fn setup(
 impl TestSession {
     /// wait gdk session block status to change (max 1 min)
     pub fn wait_tx_status_change(&mut self) {
+        self.tx_status = self.session.tx_status().unwrap();
         for _ in 0..120 {
             if let Ok(new_status) = self.session.tx_status() {
                 if self.tx_status != new_status {

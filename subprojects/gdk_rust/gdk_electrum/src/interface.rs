@@ -121,6 +121,12 @@ impl WalletCtx {
         self.accounts.values()
     }
 
+    pub fn iter_accounts_sorted(&self) -> impl Iterator<Item = &Account> {
+        let mut accounts = self.accounts.iter().collect::<Vec<_>>();
+        accounts.sort_unstable_by(|(a_num, _), (b_num, _)| a_num.cmp(b_num));
+        accounts.into_iter().map(|(_, account)| account)
+    }
+
     pub fn create_account(&mut self, opt: CreateAccountOpt) -> Result<&Account, Error> {
         // Get the next available account number for the given script type.
         // The script type is later derived from the account number.
