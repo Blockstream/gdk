@@ -309,6 +309,8 @@ namespace sdk {
             }
             return user_agent;
         }
+
+        static inline void check_tx_memo(const std::string& memo) { GDK_RUNTIME_ASSERT(memo.size() <= 1024); }
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -3431,6 +3433,9 @@ namespace sdk {
         // We must have a tx and it must be signed by the user
         GDK_RUNTIME_ASSERT(result.find("transaction") != result.end());
         GDK_RUNTIME_ASSERT(json_get_value(result, "user_signed", false));
+        // Check memo is storable
+        const std::string memo = json_get_value(result, "memo");
+        check_tx_memo(memo);
 
         // FIXME: test weight and return error in create_transaction, not here
         const std::string tx_hex = result.at("transaction");
@@ -3440,7 +3445,6 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(tx_get_weight(unsigned_tx) < MAX_TX_WEIGHT);
 
         nlohmann::json private_data;
-        const std::string memo = json_get_value(result, "memo");
         // FIXME: social_destination/social_destination_type/payreq if BIP70
 
         const auto blinding_nonces_p = result.find("blinding_nonces");
@@ -3541,6 +3545,7 @@ namespace sdk {
     void ga_session::set_transaction_memo(
         const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
     {
+        check_tx_memo(memo);
         (void)memo_type; // FIXME: Remove
         locker_t locker(m_mutex);
         update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
