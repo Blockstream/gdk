@@ -88,7 +88,7 @@ if infer.found()
 endif
 
 commit_id = vcs_tag('commit_id', input : 'version.h.in', output : 'version.h',
-                    command : ['git', '-C', meson.source_root(), 'rev-parse', 'HEAD'])
+                    command : ['git', '-C', meson.source_root(), 'rev-parse', '--short', 'HEAD'])
 sources += commit_id
 
 dependencies = subproject_deps + library_deps

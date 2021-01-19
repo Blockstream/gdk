@@ -90,8 +90,8 @@ namespace sdk {
 
     namespace {
         static const std::string SOCKS5("socks5://");
-        static const std::string USER_AGENT("[v2,sw,csv,csv_opt]");
-        static const std::string USER_AGENT_NO_CSV("[v2,sw]");
+        static const std::string USER_AGENT_CAPS("[v2,sw,csv,csv_opt]");
+        static const std::string USER_AGENT_CAPS_NO_CSV("[v2,sw]");
         // TODO: The server should return these
         static const std::vector<std::string> ALL_2FA_METHODS = { { "email" }, { "sms" }, { "phone" }, { "gauth" } };
 
@@ -299,8 +299,15 @@ namespace sdk {
 
         std::string get_user_agent(bool supports_csv, const std::string& version)
         {
-            const auto& user_agent = supports_csv ? USER_AGENT : USER_AGENT_NO_CSV;
-            return user_agent + version;
+            constexpr auto max_len = 64;
+            const auto& caps = supports_csv ? USER_AGENT_CAPS : USER_AGENT_CAPS_NO_CSV;
+            auto user_agent = caps + version;
+            if (user_agent.size() > max_len) {
+                GDK_LOG_SEV(log_level::warning)
+                    << "Truncating user agent string, exceeds max length (" << max_len << ")";
+                user_agent = user_agent.substr(0, max_len);
+            }
+            return user_agent;
         }
     } // namespace
 
@@ -347,7 +354,7 @@ namespace sdk {
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_cache(m_net_params, net_params.at("name"))
-        , m_user_agent(net_params.value("user_agent", GDK_COMMIT))
+        , m_user_agent(std::string(GDK_COMMIT) + " " + net_params.value("user_agent", ""))
         , m_electrum_url(
               net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))
         , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
