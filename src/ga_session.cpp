@@ -2159,13 +2159,16 @@ namespace sdk {
         return subaccount_details;
     }
 
-    void ga_session::update_blob(locker_t& locker, std::function<void()> update_fn)
+    void ga_session::update_blob(locker_t& locker, std::function<bool()> update_fn)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         while (true) {
             if (!m_blob_obsoleted) {
                 // Our blob is current with the server; try to update
-                update_fn();
+                if (!update_fn()) {
+                    // The update was a no-op; nothing to do
+                    return;
+                }
                 constexpr bool encache = true;
                 if (save_client_blob(locker, m_blob_hmac, encache)) {
                     break;

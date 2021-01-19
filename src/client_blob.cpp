@@ -38,10 +38,13 @@ namespace sdk {
 
     uint64_t client_blob::get_user_version() const { return m_data[USER_VERSION]; }
 
-    void client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name)
+    bool client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name)
     {
-        json_add_non_default(m_data[SA_NAMES], std::to_string(subaccount), name);
-        increment_version(m_data);
+        bool changed = json_add_non_default(m_data[SA_NAMES], std::to_string(subaccount), name);
+        if (changed) {
+            increment_version(m_data);
+        }
+        return changed;
     }
 
     std::string client_blob::get_subaccount_name(uint32_t subaccount) const
@@ -49,10 +52,13 @@ namespace sdk {
         return json_get_value(m_data[SA_NAMES], std::to_string(subaccount));
     }
 
-    void client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)
+    bool client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)
     {
-        json_add_non_default(m_data[TX_MEMOS], txhash_hex, memo);
-        increment_version(m_data);
+        bool changed = json_add_non_default(m_data[TX_MEMOS], txhash_hex, memo);
+        if (changed) {
+            increment_version(m_data);
+        }
+        return changed;
     }
 
     std::string client_blob::get_tx_memo(const std::string& txhash_hex) const

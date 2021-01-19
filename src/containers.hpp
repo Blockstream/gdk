@@ -25,8 +25,9 @@ namespace sdk {
 
     // Set a value to a JSON object if it is non-default, otherwise remove any existing value.
     // This saves space storing the value if a default value is returned when its fetched.
+    // Returns true if the JSON object was changed.
     template <typename T = std::string>
-    void json_add_non_default(
+    bool json_add_non_default(
         nlohmann::json& data, const std::string& key, const T& value, const T& default_value = T())
     {
         const bool is_default = value == default_value;
@@ -35,14 +36,19 @@ namespace sdk {
         if (is_default) {
             if (found) {
                 data.erase(p); // Remove existing value
+                return true;
             }
-        } else {
-            if (found) {
-                *p = value; // Overwrite existing value
-            } else {
-                data[key] = value; // Insert new value
-            }
+            return false;
         }
+        if (found) {
+            if (*p == value) {
+                return false;
+            }
+            *p = value; // Overwrite existing value
+            return true;
+        }
+        data[key] = value; // Insert new value
+        return true;
     }
 
     // Get a value if present and not null, otherwise return a default value

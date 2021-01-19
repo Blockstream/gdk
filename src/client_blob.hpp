@@ -27,10 +27,10 @@ namespace sdk {
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
 
-        void set_subaccount_name(uint32_t subaccount, const std::string& name);
+        bool set_subaccount_name(uint32_t subaccount, const std::string& name);
         std::string get_subaccount_name(uint32_t subaccount) const;
 
-        void set_tx_memo(const std::string& txhash_hex, const std::string& memo);
+        bool set_tx_memo(const std::string& txhash_hex, const std::string& memo);
         std::string get_tx_memo(const std::string& txhash_hex) const;
 
         void load(byte_span_t key, byte_span_t data);

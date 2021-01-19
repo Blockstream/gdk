@@ -334,7 +334,7 @@ namespace sdk {
         void load_client_blob(locker_t& locker, bool encache) GDK_REQUIRES(m_mutex);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac, bool encache) GDK_REQUIRES(m_mutex);
         void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data) GDK_REQUIRES(m_mutex);
-        void update_blob(locker_t& locker, std::function<void()> update_fn) GDK_REQUIRES(m_mutex);
+        void update_blob(locker_t& locker, std::function<bool()> update_fn) GDK_REQUIRES(m_mutex);
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json get_appearance() const;
