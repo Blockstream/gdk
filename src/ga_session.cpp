@@ -3438,9 +3438,6 @@ namespace sdk {
 
         nlohmann::json private_data;
         const std::string memo = json_get_value(result, "memo");
-        if (!memo.empty()) {
-            private_data["memo"] = memo;
-        }
         // FIXME: social_destination/social_destination_type/payreq if BIP70
 
         const auto blinding_nonces_p = result.find("blinding_nonces");
@@ -3462,6 +3459,9 @@ namespace sdk {
         result["server_signed"] = true;
 
         locker_t locker(m_mutex);
+        if (!memo.empty()) {
+            update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+        }
         if (decrease != 0) {
             update_spending_limits(locker, tx_details["limits"]);
         }
