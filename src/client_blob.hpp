@@ -24,6 +24,9 @@ namespace sdk {
         client_blob(client_blob&&) = delete;
         client_blob& operator=(client_blob&&) = delete;
 
+        void set_user_version(uint64_t version);
+        uint64_t get_user_version() const;
+
         void set_subaccount_name(uint32_t subaccount, const std::string& name);
         std::string get_subaccount_name(uint32_t subaccount) const;
 

@@ -1508,6 +1508,8 @@ namespace sdk {
             for (const auto& m : tx_memos["memos"].items()) {
                 m_blob.set_tx_memo(m.key(), m.value());
             }
+            m_blob.set_user_version(1); // Initial version
+
             // If the save fails due to a race, m_blob_hmac will be empty below
             save_client_blob(locker, server_hmac, true);
         }
@@ -1592,7 +1594,6 @@ namespace sdk {
         // Verify the servers hmac
         auto server_hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
         GDK_RUNTIME_ASSERT_MSG(server_hmac == ret["hmac"], "Bad server client blob");
-        // FIXME: Check the version in the blob is greater than ours
         m_blob.load(*m_blob_aes_key, server_blob);
 
         if (encache) {

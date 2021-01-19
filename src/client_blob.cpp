@@ -4,20 +4,26 @@
 #include "memory.hpp"
 #include "utils.hpp"
 
-// FIXME:
-// - Store user version in blob to prevent server old blob replay
-
 namespace ga {
 namespace sdk {
 
     namespace {
         static const std::string ZERO_HMAC_BASE64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
-        constexpr uint32_t SA_NAMES = 0; // Subaccount names
-        constexpr uint32_t TX_MEMOS = 1; // Transaction memos
+        // Types of data stored in the client blob
+        constexpr uint32_t USER_VERSION = 0; // User incremented version number
+        constexpr uint32_t SA_NAMES = 1; // Subaccount names
+        constexpr uint32_t TX_MEMOS = 2; // Transaction memos
 
         // blob prefix: 1 byte version, 3 reserved bytes
         static const std::array<unsigned char, 4> PREFIX{ 1, 0, 0, 0 };
+
+        static void increment_version(nlohmann::json& data)
+        {
+            auto& p = data[USER_VERSION];
+            uint64_t version = p;
+            p = version + 1;
+        }
     } // namespace
 
     client_blob::client_blob()
@@ -25,11 +31,17 @@ namespace sdk {
     {
         m_data[SA_NAMES] = nlohmann::json();
         m_data[TX_MEMOS] = nlohmann::json();
+        m_data[USER_VERSION] = static_cast<uint64_t>(0);
     }
+
+    void client_blob::set_user_version(uint64_t version) { m_data[USER_VERSION] = version; }
+
+    uint64_t client_blob::get_user_version() const { return m_data[USER_VERSION]; }
 
     void client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name)
     {
         json_add_non_default(m_data[SA_NAMES], std::to_string(subaccount), name);
+        increment_version(m_data);
     }
 
     std::string client_blob::get_subaccount_name(uint32_t subaccount) const
@@ -40,6 +52,7 @@ namespace sdk {
     void client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)
     {
         json_add_non_default(m_data[TX_MEMOS], txhash_hex, memo);
+        increment_version(m_data);
     }
 
     std::string client_blob::get_tx_memo(const std::string& txhash_hex) const
@@ -71,7 +84,18 @@ namespace sdk {
         bzero_and_free(decrypted);
 
         // Load our blob data from the uncompressed data in msgpack format
-        m_data = nlohmann::json::from_msgpack(decompressed.begin(), decompressed.end());
+        auto new_data = nlohmann::json::from_msgpack(decompressed.begin(), decompressed.end());
+
+        // Check that the new blob has a higher version number:
+        // This check prevents the server maliciously returning an old blob
+        const uint64_t new_version = new_data[USER_VERSION];
+        const uint64_t current_version = get_user_version();
+        GDK_LOG_SEV(log_level::info) << "Load blob ver " << new_version << " over " << current_version;
+        // Allow to load a v1 blob over a v1 blob for initial creation races
+        const bool is_newer = new_version > current_version || (current_version == 1 && new_version == 1);
+        GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");
+
+        m_data.swap(new_data);
     }
 
     std::pair<std::vector<unsigned char>, std::string> client_blob::save(byte_span_t key, byte_span_t hmac_key) const
