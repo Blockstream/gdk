@@ -100,6 +100,63 @@ namespace sdk {
             return amount(utxo.at("satoshi"));
         }
 
+        std::array<unsigned char, SHA256_LEN> get_script_hash(
+            const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
+        {
+            const amount::value_type v = utxo.at("satoshi");
+            const amount satoshi{ v };
+            const auto type = script_type(utxo.at("script_type"));
+            const auto script = h2b(utxo.at("prevout_script"));
+
+            const uint32_t flags = is_segwit_script_type(type) ? WALLY_TX_FLAG_USE_WITNESS : 0;
+
+            return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
+        }
+
+        static ecdsa_sig_t ec_sig_from_witness(const wally_tx_ptr& tx, size_t input_index, size_t item_index)
+        {
+            constexpr bool has_sighash = true;
+            const auto& witness = tx->inputs[input_index].witness;
+            const auto& witness_item = witness->items[item_index];
+            GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
+            const auto der_sig = gsl::make_span(witness_item.witness, witness_item.witness_len);
+            return ec_sig_from_der(der_sig, has_sighash);
+        }
+
+        std::vector<ecdsa_sig_t> get_signatures_from_input(
+            const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, bool is_liquid)
+        {
+            GDK_RUNTIME_ASSERT(index < tx->num_inputs);
+            // TODO: handle backup paths:
+            // - 2of3 p2sh, backup key signing
+            // - 2of3 p2wsh, backup key signing
+            // - 2of2 csv, csv path
+            const auto type = script_type(utxo.at("script_type"));
+            if (!is_segwit_script_type(type)) {
+                // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
+                // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
+                const auto input = tx->inputs[index];
+                return get_sigs_from_multisig_script_sig(gsl::make_span(input.script, input.script_len));
+            }
+            // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
+            // 2of2 csv:   witness stack: <ga_sig> <user_sig> <redeem_script>
+            // 2of3 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
+            const auto& witness = tx->inputs[index].witness;
+            GDK_RUNTIME_ASSERT(witness != nullptr && witness->num_items > 2);
+
+            auto user_sig = ec_sig_from_witness(tx, index, witness->num_items - 2);
+            auto ga_sig = ec_sig_from_witness(tx, index, witness->num_items - 3);
+
+            // Liquid outputs:
+            // 2of2 csv:   witness stack: <user_sig> <ga_sig> <redeem_script> (not optimized)
+            // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script> (no recovery)
+            if (is_liquid && type == script_type::ga_redeem_p2sh_p2wsh_csv_fortified) {
+                std::swap(user_sig, ga_sig);
+            }
+
+            return std::vector<ecdsa_sig_t>({ ga_sig, user_sig });
+        }
+
         static void calculate_input_subtype(nlohmann::json& utxo, const wally_tx_ptr& tx, size_t i)
         {
             // Calculate the subtype of a tx input we wish to present as a utxo.
@@ -275,6 +332,8 @@ namespace sdk {
                         utxo["txhash"] = b2h_rev(tx->inputs[i].txhash);
                         utxo["pt_idx"] = tx->inputs[i].index;
                         calculate_input_subtype(utxo, tx, i);
+                        const auto script = session.output_script_from_utxo(utxo);
+                        utxo["prevout_script"] = b2h(script);
                         used_utxos_map.emplace(i, utxo);
                     }
                     GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx->num_inputs);
@@ -289,6 +348,18 @@ namespace sdk {
                     result["memo"] = prev_tx["memo"];
                 }
                 // FIXME: Carry over payment request details?
+
+                // Verify the transaction signatures to prevent outputs
+                // from being modified.
+                uint32_t vin = 0;
+                for (const auto& input : result["old_used_utxos"]) {
+                    const auto sigs = get_signatures_from_input(input, tx, vin, net_params.liquid());
+                    const auto pubkeys = session.pubkeys_from_utxo(input);
+                    const auto script_hash = get_script_hash(input, tx, vin);
+                    GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(0), script_hash, sigs.at(0))); // ga
+                    GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(1), script_hash, sigs.at(1))); // user
+                    ++vin;
+                }
             } else {
                 // For CPFP construct a tx spending an input from prev_tx
                 // to a wallet change address. Since this is exactly what

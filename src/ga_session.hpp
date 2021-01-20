@@ -303,6 +303,7 @@ namespace sdk {
         liquid_support_level hw_liquid_support() const;
 
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
+        std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
         ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash);
 

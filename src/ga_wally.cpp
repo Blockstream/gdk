@@ -234,6 +234,32 @@ namespace sdk {
         return csv_blocks;
     }
 
+    std::vector<ecdsa_sig_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
+    {
+        constexpr bool has_sighash = true;
+        size_t offset = 0;
+        size_t push_len = 0;
+        // OP_0 <ga_sig> <user_sig> <redeem_script>
+
+        GDK_RUNTIME_ASSERT(script_sig.at(offset) == OP_0);
+        ++offset;
+
+        push_len = script_sig.at(offset);
+        GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
+        ++offset;
+        GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
+        const ecdsa_sig_t ga_sig = ec_sig_from_der(script_sig.subspan(offset, push_len), has_sighash);
+        offset += push_len;
+
+        push_len = script_sig.at(offset);
+        GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
+        ++offset;
+        GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
+        const ecdsa_sig_t user_sig = ec_sig_from_der(script_sig.subspan(offset, push_len), has_sighash);
+
+        return std::vector<ecdsa_sig_t>({ ga_sig, user_sig });
+    }
+
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out)
     {
         GDK_RUNTIME_ASSERT(!out.empty());

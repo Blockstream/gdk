@@ -3246,6 +3246,16 @@ namespace sdk {
             m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }
 
+    std::vector<pub_key_t> ga_session::pubkeys_from_utxo(const nlohmann::json& utxo)
+    {
+        const uint32_t subaccount = utxo.at("subaccount");
+        const uint32_t pointer = utxo.at("pointer");
+        locker_t locker(m_mutex);
+        // TODO: consider returning the recovery key (2of3) as well
+        return std::vector<pub_key_t>(
+            { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
+    }
+
     ecdsa_sig_t ga_session::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
     {
         locker_t locker(m_mutex);
