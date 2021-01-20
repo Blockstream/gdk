@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::fmt;
 use std::str::FromStr;
 
-use log::{info, trace};
+use log::{debug, info, trace};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -33,6 +33,7 @@ use gdk_common::wally::{
 use gdk_common::{ElementsNetwork, Network, NetworkId};
 
 use crate::error::Error;
+use crate::interface::ElectrumUrl;
 use crate::store::{Store, BATCH_SIZE};
 
 // The number of account types, including these reserved for future use.
@@ -120,29 +121,13 @@ impl Account {
     }
 
     pub fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
-        let chain_xpub = self.chains[is_change as usize];
-        let derived = chain_xpub.ckd_pub(&EC, index.into())?;
-
-        match self.network.id() {
-            NetworkId::Bitcoin(network) => {
-                let address = bitcoin_address(&derived.public_key, self.script_type, network);
-                Ok(BEAddress::Bitcoin(address))
-            }
-            NetworkId::Elements(network) => {
-                let master_blinding_key = self
-                    .master_blinding
-                    .as_ref()
-                    .expect("we are in elements but master blinding is None");
-
-                let address = elements_address(
-                    &derived.public_key,
-                    master_blinding_key,
-                    self.script_type,
-                    network,
-                );
-                Ok(BEAddress::Elements(address))
-            }
-        }
+        derive_address(
+            &self.chains[is_change as usize],
+            index,
+            self.script_type,
+            self.network.id(),
+            self.master_blinding.as_ref(),
+        )
     }
 
     pub fn get_next_address(&self) -> Result<AddressPointer, Error> {
@@ -550,12 +535,7 @@ impl AccountNum {
 
 // Find the first unused account number for the given script type
 pub fn get_next_account_num(existing: HashSet<&AccountNum>, script_type: ScriptType) -> AccountNum {
-    let first_index = match script_type {
-        ScriptType::P2shP2wpkh => 0,
-        ScriptType::P2wpkh => 1,
-        ScriptType::P2pkh => 2,
-    };
-    (first_index..)
+    (script_type.first_account_num()..)
         .step_by(NUM_RESERVED_ACCOUNT_TYPES as usize)
         .map(AccountNum)
         .find(|n| !existing.contains(n))
@@ -601,6 +581,31 @@ fn get_coin_type(network_id: NetworkId) -> u32 {
     }
 }
 
+fn derive_address(
+    xpub: &ExtendedPubKey,
+    index: u32,
+    script_type: ScriptType,
+    network_id: NetworkId,
+    master_blinding: Option<&MasterBlindingKey>,
+) -> Result<BEAddress, Error> {
+    let child_key = xpub.ckd_pub(&EC, index.into())?;
+    match network_id {
+        NetworkId::Bitcoin(network) => {
+            let address = bitcoin_address(&child_key.public_key, script_type, network);
+            Ok(BEAddress::Bitcoin(address))
+        }
+        NetworkId::Elements(network) => {
+            let address = elements_address(
+                &child_key.public_key,
+                master_blinding.expect("we are in elements but master blinding is None"),
+                script_type,
+                network,
+            );
+            Ok(BEAddress::Elements(address))
+        }
+    }
+}
+
 fn bitcoin_address(
     public_key: &PublicKey,
     script_type: ScriptType,
@@ -638,6 +643,56 @@ fn elements_address_params(net: ElementsNetwork) -> &'static elements::AddressPa
         ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
         ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
     }
+}
+
+// Discover all the available accounts as per BIP 44:
+// https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Account_discovery
+pub fn discover_accounts(
+    master_xprv: &ExtendedPrivKey,
+    network_id: NetworkId,
+    electrum_url: &ElectrumUrl,
+    master_blinding: Option<&MasterBlindingKey>,
+) -> Result<Vec<AccountNum>, Error> {
+    use electrum_client::ElectrumApi;
+
+    // build our own client so that the subscriptions are dropped at the end
+    let client = electrum_url.build_client()?;
+
+    // the batch size is the effective gap limit for our purposes. in reality it is a lower bound.
+    let gap_limit = BATCH_SIZE;
+    let num_types = NUM_RESERVED_ACCOUNT_TYPES as usize;
+    let mut discovered_accounts: Vec<AccountNum> = vec![];
+
+    for script_type in ScriptType::types() {
+        debug!("discovering script type {:?}", script_type);
+        'next_account: for num in (script_type.first_account_num()..).step_by(num_types) {
+            let account_num = AccountNum(num);
+            let (_, path) = get_account_derivation(account_num, network_id).unwrap();
+            let recv_xprv = master_xprv.derive_priv(&EC, &path.child(0.into()))?;
+            let recv_xpub = ExtendedPubKey::from_private(&EC, &recv_xprv);
+            for child_code in 0..gap_limit {
+                let script = derive_address(
+                    &recv_xpub,
+                    child_code,
+                    *script_type,
+                    network_id,
+                    master_blinding,
+                )
+                .unwrap()
+                .script_pubkey();
+                if client.script_subscribe(&script)?.is_some() {
+                    debug!("found account {:?} #{}", script_type, account_num);
+                    discovered_accounts.push(account_num);
+                    continue 'next_account;
+                }
+            }
+            debug!("no activity found for account {:?} #{}", script_type, account_num);
+            break;
+        }
+    }
+    info!("discovered accounts: {:?}", discovered_accounts);
+
+    Ok(discovered_accounts)
 }
 
 fn random32() -> Vec<u8> {

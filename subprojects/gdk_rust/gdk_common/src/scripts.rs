@@ -8,12 +8,14 @@ use bitcoin::{Address, Network, PublicKey, Script};
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ScriptType {
     #[serde(rename(serialize = "p2sh-p2wpkh"))]
-    P2shP2wpkh,
+    P2shP2wpkh = 0,
     #[serde(rename(serialize = "p2wpkh"))]
-    P2wpkh,
+    P2wpkh = 1,
     #[serde(rename(serialize = "p2pkh"))]
-    P2pkh,
+    P2pkh = 2,
 }
+
+const TYPES: [ScriptType; 3] = [ScriptType::P2shP2wpkh, ScriptType::P2wpkh, ScriptType::P2pkh];
 
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script
@@ -35,6 +37,14 @@ pub fn p2shwpkh_script_sig(public_key: &PublicKey) -> Script {
 }
 
 impl ScriptType {
+    pub fn types() -> &'static [ScriptType] {
+        &TYPES
+    }
+
+    pub fn first_account_num(self) -> u32 {
+        self as u32
+    }
+
     pub fn is_segwit(self) -> bool {
         matches!(self, ScriptType::P2wpkh | ScriptType::P2shP2wpkh)
     }

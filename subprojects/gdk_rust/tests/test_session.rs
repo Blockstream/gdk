@@ -268,6 +268,10 @@ pub fn setup(
 
 // NOTE: Methods that don't accept an explicit account number operate on account #0
 impl TestSession {
+    pub fn network(&self) -> &Network {
+        &self.network
+    }
+
     /// wait gdk session block status to change (max 1 min)
     pub fn wait_tx_status_change(&mut self) {
         self.tx_status = self.session.tx_status().unwrap();

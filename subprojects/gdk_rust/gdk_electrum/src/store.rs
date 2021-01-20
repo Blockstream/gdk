@@ -52,6 +52,9 @@ pub struct RawCache {
 
     /// the result of the last spv cross-validation execution
     pub cross_validation_result: Option<CrossValidationResult>,
+
+    /// whether BIP 44 account recovery was already run for this wallet
+    pub accounts_recovered: bool,
 }
 
 #[derive(Default, Serialize, Deserialize)]

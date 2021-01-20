@@ -10,7 +10,7 @@ use gdk_common::model::{
 use gdk_common::network::Network;
 use gdk_common::wally::*;
 
-use crate::account::{get_next_account_num, Account, AccountNum};
+use crate::account::{discover_accounts, get_next_account_num, Account, AccountNum};
 use crate::error::*;
 use crate::store::*;
 
@@ -135,6 +135,19 @@ impl WalletCtx {
         let account = self._ensure_account(next_num.into())?;
         account.set_name(opt.name)?;
         Ok(account)
+    }
+
+    pub fn recover_accounts(&mut self, electrum_url: &ElectrumUrl) -> Result<(), Error> {
+        let account_nums = discover_accounts(
+            &self.master_xprv,
+            self.network.id(),
+            electrum_url,
+            self.master_blinding.as_ref(),
+        )?;
+        for account_num in account_nums {
+            self._ensure_account(account_num)?;
+        }
+        Ok(())
     }
 
     fn _ensure_account(&mut self, account_num: AccountNum) -> Result<&mut Account, Error> {

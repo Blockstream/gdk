@@ -3,10 +3,12 @@ use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::spv;
+use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
+use std::collections::HashMap;
 use std::{env, path};
+use tempdir::TempDir;
 
 mod test_session;
 use test_session::TestSession;
@@ -215,13 +217,48 @@ fn subaccounts() {
         let account = test_session
             .session
             .create_subaccount(CreateAccountOpt {
-                name: "Account 3".into(),
+                name: "Account".into(),
                 script_type: ScriptType::P2pkh,
             })
             .unwrap();
         assert_eq!(account.account_num, *expected_pkh_num);
     }
 
+    // Fund the second p2pkh account, skipping over one address
+    test_session.get_receive_address(18);
+    let txid =
+        test_session.send_tx_from(0, &test_session.get_receive_address(18).address, 6666, None);
+    test_session.wait_account_tx(18, &txid);
+
+    // Start a new session, using the same mnemonic and electrum server, but
+    // with a brand new database -- unaware of our subaccounts.
+    let mut new_session = {
+        let network = test_session.network().clone();
+        let url = determine_electrum_url_from_net(&network).unwrap();
+        let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
+        let db_root = format!("{}", db_root_dir.path().display());
+        ElectrumSession::create_session(network, &db_root, url)
+    };
+    let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
+    new_session.login(&mnemonic, None).unwrap();
+
+    // Allow some time for the new session to catch up
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
+    // Check all the accounts were properly recovered
+    let subaccounts = new_session.get_subaccounts().unwrap();
+    let mut balances = subaccounts
+        .into_iter()
+        .map(|mut subaccount| (subaccount.account_num, subaccount.satoshi.remove("btc").unwrap()))
+        .collect::<HashMap<_, _>>();
+    info!("recovered subaccounts: {:?}", balances);
+    assert_eq!(balances.remove(&0).unwrap(), 3549);
+    assert_eq!(balances.remove(&1).unwrap(), 154772);
+    assert_eq!(balances.remove(&2).unwrap(), 1000);
+    assert_eq!(balances.remove(&18).unwrap(), 6666);
+    assert!(balances.is_empty());
+
+    new_session.disconnect().unwrap();
     test_session.stop();
 }
 
