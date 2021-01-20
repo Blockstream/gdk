@@ -226,7 +226,7 @@ class Session(object):
     def set_nlocktime(self, locktime_details):
         return Call(set_nlocktime(self.session_obj, self._to_json(locktime_details)))
 
-    def set_transaction_memo(self, txhash_hex, memo, memo_type):
+    def set_transaction_memo(self, txhash_hex, memo, memo_type=0):
         return set_transaction_memo(self.session_obj, txhash_hex, memo, memo_type)
 
     def get_fee_estimates(self):

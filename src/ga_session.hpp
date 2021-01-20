@@ -258,7 +258,7 @@ namespace sdk {
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
         void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
 
-        void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
+        void set_transaction_memo(const std::string& txhash_hex, const std::string& memo);
 
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 

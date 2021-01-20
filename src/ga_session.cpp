@@ -3542,11 +3542,9 @@ namespace sdk {
         m_nlocktime = value;
     }
 
-    void ga_session::set_transaction_memo(
-        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
+    void ga_session::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
     {
         check_tx_memo(memo);
-        (void)memo_type; // FIXME: Remove
         locker_t locker(m_mutex);
         update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
     }

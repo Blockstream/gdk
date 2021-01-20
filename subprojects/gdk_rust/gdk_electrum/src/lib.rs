@@ -644,11 +644,7 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet()?.balance()
     }
 
-    fn set_transaction_memo(&self, txid: &str, memo: &str, memo_type: u32) -> Result<(), Error> {
-        if memo_type != 0 {
-            // GA_MEMO_USER == 0
-            return Err(Error::Generic("Only memo_type GA_MEMO_USER(0) is supported".into()));
-        }
+    fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
         let txid = Txid::from_hex(txid)?;
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));

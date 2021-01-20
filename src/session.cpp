@@ -847,12 +847,11 @@ namespace sdk {
         });
     }
 
-    void session::set_transaction_memo(
-        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
+    void session::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
     {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->set_transaction_memo(txhash_hex, memo, memo_type);
+            p->set_transaction_memo(txhash_hex, memo);
         });
     }
 

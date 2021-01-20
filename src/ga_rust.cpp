@@ -445,13 +445,11 @@ namespace sdk {
         throw std::runtime_error("set_nlocktime not implemented");
     }
 
-    void ga_rust::set_transaction_memo(
-        const std::string& txhash_hex, const std::string& memo, const std::string& memo_type)
+    void ga_rust::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
     {
         auto details = nlohmann::json{
             { "txid", txhash_hex },
             { "memo", memo },
-            { "memo_type", memo_type },
         };
 
         call_session("set_transaction_memo", details);

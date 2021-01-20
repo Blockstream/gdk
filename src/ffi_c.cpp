@@ -259,9 +259,8 @@ GDK_DEFINE_C_FUNCTION_3(GA_set_nlocktime, struct GA_session*, session, const GA_
 
 GDK_DEFINE_C_FUNCTION_4(GA_set_transaction_memo, struct GA_session*, session, const char*, txhash_hex, const char*,
     memo, uint32_t, memo_type, {
-        GDK_RUNTIME_ASSERT(memo_type == GA_MEMO_USER || memo_type == GA_MEMO_BIP70);
-        const std::string memo_type_str = memo_type == GA_MEMO_USER ? "user" : "payreq";
-        session->set_transaction_memo(txhash_hex, memo, memo_type_str);
+        GDK_RUNTIME_ASSERT(memo_type == 0);
+        session->set_transaction_memo(txhash_hex, memo);
     })
 
 GDK_DEFINE_C_FUNCTION_3(

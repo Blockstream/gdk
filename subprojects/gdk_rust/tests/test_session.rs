@@ -426,9 +426,8 @@ impl TestSession {
 
     pub fn test_set_get_memo(&mut self, txid: &str, old: &str, new: &str) {
         assert_eq!(self.get_tx_from_list(txid).memo, old);
-        assert!(self.session.set_transaction_memo(txid, new, 1).is_err());
-        assert!(self.session.set_transaction_memo(txid, &"a".repeat(1025), 0).is_err());
-        assert!(self.session.set_transaction_memo(txid, new, 0).is_ok());
+        assert!(self.session.set_transaction_memo(txid, &"a".repeat(1025)).is_err());
+        assert!(self.session.set_transaction_memo(txid, new).is_ok());
         assert_eq!(self.get_tx_from_list(txid).memo, new);
     }
 

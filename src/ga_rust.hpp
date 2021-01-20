@@ -150,7 +150,7 @@ namespace sdk {
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
         void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
 
-        void set_transaction_memo(const std::string& txhash_hex, const std::string& memo, const std::string& memo_type);
+        void set_transaction_memo(const std::string& txhash_hex, const std::string& memo);
 
         nlohmann::json get_fee_estimates();
 

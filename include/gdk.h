@@ -51,10 +51,6 @@ struct GA_auth_handler;
 /** A notification handler */
 typedef void (*GA_notification_handler)(void* context, const GA_json* details);
 
-/** Values for transaction memo type */
-#define GA_MEMO_USER 0
-#define GA_MEMO_BIP70 1
-
 /**
  * Set the global configuration and run one-time initialization code. This function must
  * be called once and only once before calling any other functions. When used in a
@@ -477,7 +473,7 @@ GDK_API int GA_set_nlocktime(
  * :param session: The session to use.
  * :param txhash_hex: The transaction hash to associate the memo with.
  * :param memo: The memo to set.
- * :param memo_type: The type of memo to set, either GA_MEMO_USER or GA_MEMO_BIP70.
+ * :param memo_type: Unused, pass 0.
  */
 GDK_API int GA_set_transaction_memo(
     struct GA_session* session, const char* txhash_hex, const char* memo, uint32_t memo_type);
