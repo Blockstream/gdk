@@ -1,6 +1,7 @@
 use gdk_common::model::{CreateAccountOpt, RefreshAssets, SPVVerifyResult};
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
+use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
@@ -212,23 +213,41 @@ fn subaccounts() {
     assert_eq!(test_session.balance_account(0, None), 10385);
     assert_eq!(test_session.balance_account(2, None), 1000);
 
-    // Should use the next available P2PKH account numbers, skipping over used and reserved numbers
-    for expected_pkh_num in &[18u32, 34] {
-        let account = test_session
-            .session
-            .create_subaccount(CreateAccountOpt {
-                name: "Account".into(),
-                script_type: ScriptType::P2pkh,
-            })
-            .unwrap();
-        assert_eq!(account.account_num, *expected_pkh_num);
-    }
+    // Should use the next available P2PKH account number, skipping over used and reserved numbers
+    let account3 = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Second PKPH".into(),
+            script_type: ScriptType::P2pkh,
+        })
+        .unwrap();
+    assert_eq!(account3.account_num, 18);
 
-    // Fund the second p2pkh account, skipping over one address
+    // Should fail - the second P2PKH account is still inactive
+    let err = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Won't work".into(),
+            script_type: ScriptType::P2pkh,
+        })
+        .unwrap_err();
+    assert!(matches!(err, Error::AccountGapsDisallowed));
+
+    // Fund the second P2PKH account, skipping over one address
     test_session.get_receive_address(18);
     let txid =
         test_session.send_tx_from(0, &test_session.get_receive_address(18).address, 6666, None);
     test_session.wait_account_tx(18, &txid);
+
+    // Should now work
+    let account4 = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Third PKPH".into(),
+            script_type: ScriptType::P2pkh,
+        })
+        .unwrap();
+    assert_eq!(account4.account_num, 34);
 
     // Start a new session, using the same mnemonic and electrum server, but
     // with a brand new database -- unaware of our subaccounts.

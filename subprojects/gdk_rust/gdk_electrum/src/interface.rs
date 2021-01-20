@@ -10,7 +10,7 @@ use gdk_common::model::{
 use gdk_common::network::Network;
 use gdk_common::wally::*;
 
-use crate::account::{discover_accounts, get_next_account_num, Account, AccountNum};
+use crate::account::{discover_accounts, get_last_next_account_nums, Account, AccountNum};
 use crate::error::*;
 use crate::store::*;
 
@@ -130,9 +130,16 @@ impl WalletCtx {
     pub fn create_account(&mut self, opt: CreateAccountOpt) -> Result<&Account, Error> {
         // Get the next available account number for the given script type.
         // The script type is later derived from the account number.
-        let next_num = get_next_account_num(self.accounts.keys().collect(), opt.script_type);
+        let (last_account, next_account) =
+            get_last_next_account_nums(self.accounts.keys().collect(), opt.script_type);
 
-        let account = self._ensure_account(next_num.into())?;
+        if let Some(last_account) = last_account {
+            if !self.accounts.get(&last_account).unwrap().has_transactions() {
+                bail!(Error::AccountGapsDisallowed);
+            }
+        }
+
+        let account = self._ensure_account(next_account.into())?;
         account.set_name(opt.name)?;
         Ok(account)
     }

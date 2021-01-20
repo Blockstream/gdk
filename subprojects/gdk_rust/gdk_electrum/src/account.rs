@@ -100,16 +100,11 @@ impl Account {
     pub fn info(&self) -> Result<AccountInfo, Error> {
         let name = self.store.read()?.get_account_name(self.account_num).cloned();
 
-        let txs = self.list_tx(&GetTransactionsOpt {
-            count: 1,
-            ..Default::default()
-        })?;
-
         Ok(AccountInfo {
             account_num: self.account_num.into(),
             script_type: self.script_type,
             name: name.unwrap_or("Single sig wallet".into()),
-            has_transactions: !txs.is_empty(),
+            has_transactions: self.has_transactions(),
             satoshi: self.balance()?,
         })
     }
@@ -369,6 +364,12 @@ impl Account {
         Ok(result)
     }
 
+    pub fn has_transactions(&self) -> bool {
+        let store_read = self.store.read().unwrap();
+        let acc_store = store_read.account_cache(self.account_num).unwrap();
+        !acc_store.heights.is_empty()
+    }
+
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
         create_tx(self, request)
     }
@@ -533,13 +534,21 @@ impl AccountNum {
     }
 }
 
-// Find the first unused account number for the given script type
-pub fn get_next_account_num(existing: HashSet<&AccountNum>, script_type: ScriptType) -> AccountNum {
-    (script_type.first_account_num()..)
+/// Return the last (if any) and next account numbers for the given script type
+pub fn get_last_next_account_nums(
+    existing: HashSet<&AccountNum>,
+    script_type: ScriptType,
+) -> (Option<AccountNum>, AccountNum) {
+    let first_account_num = script_type.first_account_num();
+    let last_account = (first_account_num..)
         .step_by(NUM_RESERVED_ACCOUNT_TYPES as usize)
         .map(AccountNum)
-        .find(|n| !existing.contains(n))
-        .unwrap()
+        .take_while(|n| existing.contains(n))
+        .last();
+    let next_account = AccountNum(
+        last_account.map_or(first_account_num, |last| last.as_u32() + NUM_RESERVED_ACCOUNT_TYPES),
+    );
+    (last_account, next_account)
 }
 
 fn get_account_derivation(

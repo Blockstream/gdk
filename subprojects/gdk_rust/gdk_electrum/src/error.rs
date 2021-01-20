@@ -17,6 +17,7 @@ pub enum Error {
     AssetEmpty,
     InvalidHeaders,
     InvalidSubaccount(u32),
+    AccountGapsDisallowed,
     SendAll,
     PinError,
     AddrParse(String),
@@ -51,6 +52,9 @@ impl Display for Error {
             Error::EmptyAddressees => write!(f, "addressees cannot be empty"),
             Error::AssetEmpty => write!(f, "asset_tag cannot be empty in liquid"),
             Error::InvalidSubaccount(sub) => write!(f, "invalid subaccount {}", sub),
+            Error::AccountGapsDisallowed => {
+                write!(f, "cannot create a new subaccount while the last one is unused")
+            }
             Error::UnknownCall => write!(f, "unknown call"),
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
             Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),
