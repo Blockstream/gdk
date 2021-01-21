@@ -57,6 +57,7 @@ std::vector<unsigned char> output_script_for_address(
         return scriptpubkey_p2pkh_from_hash160(script_hash);
     }
 
+    error = res::id_invalid_address;
     return std::vector<unsigned char>();
 }
 
