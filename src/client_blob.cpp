@@ -43,7 +43,7 @@ namespace sdk {
 
     bool client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name)
     {
-        bool changed = json_add_non_default(m_data[SA_NAMES], std::to_string(subaccount), name);
+        const bool changed = json_add_non_default(m_data[SA_NAMES], std::to_string(subaccount), name);
         if (changed) {
             increment_version(m_data);
         }
@@ -57,7 +57,8 @@ namespace sdk {
 
     bool client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)
     {
-        bool changed = json_add_non_default(m_data[TX_MEMOS], txhash_hex, memo);
+        const std::string trimmed = boost::algorithm::trim_copy(memo);
+        const bool changed = json_add_non_default(m_data[TX_MEMOS], txhash_hex, trimmed);
         if (changed) {
             increment_version(m_data);
         }
