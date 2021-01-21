@@ -41,6 +41,13 @@ namespace sdk {
             }
             return paths;
         }
+
+        static const auto& get_sized_array(const nlohmann::json& json, const char* key, size_t size)
+        {
+            const auto& value = json.at(key);
+            GDK_RUNTIME_ASSERT(value.is_array() && value.size() == size);
+            return value;
+        }
     } // namespace
 
     //
@@ -646,35 +653,25 @@ namespace sdk {
             m_result = m_session.sign_transaction(m_tx_details);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            const auto& signatures = args.at("signatures");
             const auto& inputs = m_twofactor_data["signing_inputs"];
+            const auto& signatures = get_sized_array(args, "signatures", inputs.size());
             const auto& outputs = m_twofactor_data["transaction_outputs"];
+            const auto& transaction_details = m_twofactor_data["transaction"];
             const uint32_t flags = m_session.get_network_parameters().liquid()
                 ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS)
                 : 0;
-            const auto tx = tx_from_hex(m_twofactor_data["transaction"].at("transaction"), flags);
-
-            GDK_RUNTIME_ASSERT(signatures.is_array() && signatures.size() == inputs.size());
+            const auto tx = tx_from_hex(transaction_details.at("transaction"), flags);
 
             if (m_session.get_network_parameters().liquid()) {
-                GDK_RUNTIME_ASSERT(
-                    args.at("asset_commitments").is_array() && args.at("asset_commitments").size() == outputs.size());
-                GDK_RUNTIME_ASSERT(
-                    args.at("value_commitments").is_array() && args.at("value_commitments").size() == outputs.size());
-                GDK_RUNTIME_ASSERT(
-                    args.at("assetblinders").is_array() && args.at("assetblinders").size() == outputs.size());
-                GDK_RUNTIME_ASSERT(
-                    args.at("amountblinders").is_array() && args.at("amountblinders").size() == outputs.size());
-
-                const auto& asset_commitments = args.at("asset_commitments");
-                const auto& value_commitments = args.at("value_commitments");
-                const auto& abfs = args.at("assetblinders");
-                const auto& vbfs = args.at("amountblinders");
+                const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
+                const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
+                const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
+                const auto& vbfs = get_sized_array(args, "amountblinders", outputs.size());
 
                 size_t i = 0;
                 for (const auto& out : outputs) {
                     if (!out.at("is_fee")) {
-                        m_session.blind_output(m_twofactor_data["transaction"], tx, i, out, asset_commitments[i],
+                        m_session.blind_output(transaction_details, tx, i, out, asset_commitments[i],
                             value_commitments[i], abfs[i], vbfs[i]);
                     }
                     ++i;
