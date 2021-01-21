@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
-#include <openssl/evp.h>
 #include <vector>
 
 #include "assertion.hpp"
@@ -11,21 +10,11 @@
 #include "session.hpp"
 #include "utils.hpp"
 
-namespace std {
-template <> struct default_delete<EVP_CIPHER_CTX> {
-    void operator()(EVP_CIPHER_CTX* ptr) const { ::EVP_CIPHER_CTX_free(ptr); }
-};
-} // namespace std
-
 namespace ga {
 namespace sdk {
 
     namespace {
 
-        constexpr int AES_GCM_TAG_SIZE = 16;
-        constexpr int AES_GCM_IV_SIZE = 12;
-        constexpr int AES_BUFFER = 4096;
-        constexpr int OPENSSL_SUCCESS = 1;
         constexpr int VERSION = 1;
 
         static std::unique_ptr<sqlite3> get_new_memory_db()
@@ -76,51 +65,23 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(rc2 == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt.get())));
         }
 
-        static void openssl_encrypt(byte_span_t key, byte_span_t data, const std::string& path)
+        static void save_db_file(byte_span_t key, byte_span_t data, const std::string& path)
         {
             GDK_RUNTIME_ASSERT(!key.empty() && !data.empty());
             std::ofstream f(path, f.out | f.binary);
-            if (!f.is_open()) {
-                return;
-            }
-            std::array<unsigned char, AES_BUFFER> buff;
-            get_random_bytes(AES_GCM_IV_SIZE, buff.data(), AES_GCM_IV_SIZE);
-            const auto ctx = std::unique_ptr<EVP_CIPHER_CTX>(EVP_CIPHER_CTX_new());
-            int rc = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, key.data(), buff.data());
-            GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-            const auto write_all = [&f, &buff](const size_t total) {
-                const size_t initial = f.tellp();
-                size_t written = 0;
-                while (written != total) {
-                    f.write(reinterpret_cast<const char*>(&buff[written]), total - written);
-                    const size_t current = f.tellp();
-                    written = current - initial;
+            if (f.is_open()) {
+                const size_t encrypted_len = aes_gcm_encrypt_get_length(data);
+                std::vector<unsigned char> cyphertext(encrypted_len);
+                GDK_RUNTIME_ASSERT(aes_gcm_encrypt(key, data, cyphertext) == encrypted_len);
+
+                for (size_t written = 0; written != encrypted_len; written = f.tellp()) {
+                    auto p = reinterpret_cast<const char*>(&cyphertext[written]);
+                    f.write(p, encrypted_len - written);
                 }
-            };
-            write_all(AES_GCM_IV_SIZE);
-            int out_len1 = 0;
-            int written = 0;
-
-            const int total = data.size();
-
-            while (written != total) {
-                const int towrite = total - written > AES_BUFFER ? AES_BUFFER : total - written;
-                rc = EVP_EncryptUpdate(ctx.get(), buff.data(), &out_len1, data.data() + written, towrite);
-                GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-                write_all(out_len1);
-                written += out_len1;
             }
-
-            int out_len2 = 0;
-            rc = EVP_EncryptFinal_ex(ctx.get(), buff.data(), &out_len2);
-            GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-            write_all(out_len2);
-            rc = EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, AES_GCM_TAG_SIZE, buff.data());
-            GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-            write_all(AES_GCM_TAG_SIZE);
         }
 
-        static std::vector<unsigned char> openssl_decrypt(byte_span_t key, const std::string& path)
+        static std::vector<unsigned char> load_db_file(byte_span_t key, const std::string& path)
         {
             GDK_RUNTIME_ASSERT(!key.empty());
             std::ifstream f(path, f.in | f.binary);
@@ -130,43 +91,20 @@ namespace sdk {
             }
 
             f.seekg(0, f.end);
-            std::vector<unsigned char> out(f.tellg());
+            std::vector<unsigned char> cyphertext(f.tellg());
             f.seekg(0, f.beg);
 
-            std::array<unsigned char, AES_BUFFER> buff;
-            const auto read_all = [&f, &buff](const size_t total) {
-                size_t read = 0;
-                while (read != total) {
-                    f.read(reinterpret_cast<char*>(&buff[read]), total - read);
-                    read += f.gcount();
-                }
-            };
-            read_all(AES_GCM_IV_SIZE);
-            const auto ctx = std::unique_ptr<EVP_CIPHER_CTX>(EVP_CIPHER_CTX_new());
-            int rc = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, key.data(), buff.data());
-            GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-            int out_len1 = out.size();
-            const int total = out.size() - AES_GCM_IV_SIZE - AES_GCM_TAG_SIZE;
-            int read = 0;
-            int written = 0;
-            while (read != total) {
-                const int toread = total - read > AES_BUFFER ? AES_BUFFER : total - read;
-                read_all(toread);
-                rc = EVP_DecryptUpdate(ctx.get(), out.data() + written, &out_len1, buff.data(), toread);
-                GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-                read += toread;
-                written += out_len1;
+            size_t read = 0;
+            while (read != cyphertext.size()) {
+                auto p = reinterpret_cast<char*>(&cyphertext[read]);
+                f.read(p, cyphertext.size() - read);
+                read += f.gcount();
             }
 
-            read_all(AES_GCM_TAG_SIZE);
-
-            rc = EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, AES_GCM_TAG_SIZE, buff.data());
-            GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-
-            int out_len2 = out.size() - out_len1;
-            rc = EVP_DecryptFinal_ex(ctx.get(), out.data() + out_len1, &out_len2);
-            GDK_RUNTIME_ASSERT(rc == OPENSSL_SUCCESS);
-            return out;
+            const size_t decrypted_len = aes_gcm_decrypt_get_length(cyphertext);
+            std::vector<unsigned char> plaintext(decrypted_len);
+            GDK_RUNTIME_ASSERT(aes_gcm_decrypt(key, cyphertext, plaintext) == decrypted_len);
+            return plaintext;
         }
 
         static std::string get_persistent_storage_file(
@@ -294,7 +232,7 @@ namespace sdk {
         }
         const auto data = gsl::make_span(reinterpret_cast<const unsigned char*>(db), db_size);
         const auto path = get_persistent_storage_file(m_data_dir, m_db_name);
-        openssl_encrypt(m_encryption_key, data, path);
+        save_db_file(m_encryption_key, data, path);
         m_require_write = false;
     }
 
@@ -320,7 +258,7 @@ namespace sdk {
 
         std::vector<unsigned char> plaintext;
         try {
-            plaintext = openssl_decrypt(m_encryption_key, path);
+            plaintext = load_db_file(m_encryption_key, path);
         } catch (const std::exception& ex) {
             GDK_LOG_SEV(log_level::info) << "Bad decryption for file " << path << " error " << ex.what();
             unlink(path.c_str());
