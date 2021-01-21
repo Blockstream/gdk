@@ -10,7 +10,7 @@ use gdk_common::model::{
 use gdk_common::network::Network;
 use gdk_common::wally::*;
 
-use crate::account::{discover_accounts, get_last_next_account_nums, Account, AccountNum};
+use crate::account::{discover_accounts, get_last_next_account_nums, Account};
 use crate::error::*;
 use crate::store::*;
 
@@ -28,7 +28,7 @@ pub struct WalletCtx {
     pub master_xprv: ExtendedPrivKey,
     pub master_xpub: ExtendedPubKey,
     pub master_blinding: Option<MasterBlindingKey>,
-    pub accounts: HashMap<AccountNum, Account>,
+    pub accounts: HashMap<u32, Account>,
     pub change_max_deriv: u32,
 }
 
@@ -105,7 +105,7 @@ impl WalletCtx {
         for account_num in store.read()?.account_nums() {
             wallet._ensure_account(account_num)?;
         }
-        wallet._ensure_account(AccountNum(0))?;
+        wallet._ensure_account(0)?;
         Ok(wallet)
     }
 
@@ -113,8 +113,8 @@ impl WalletCtx {
         &self.mnemonic
     }
 
-    pub fn get_account(&self, account_num: AccountNum) -> Result<&Account, Error> {
-        self.accounts.get(&account_num).ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
+    pub fn get_account(&self, account_num: u32) -> Result<&Account, Error> {
+        self.accounts.get(&account_num).ok_or_else(|| Error::InvalidSubaccount(account_num))
     }
 
     pub fn iter_accounts(&self) -> impl Iterator<Item = &Account> {
@@ -131,7 +131,7 @@ impl WalletCtx {
         // Get the next available account number for the given script type.
         // The script type is later derived from the account number.
         let (last_account, next_account) =
-            get_last_next_account_nums(self.accounts.keys().collect(), opt.script_type);
+            get_last_next_account_nums(self.accounts.keys().copied().collect(), opt.script_type);
 
         if let Some(last_account) = last_account {
             if !self.accounts.get(&last_account).unwrap().has_transactions() {
@@ -139,7 +139,7 @@ impl WalletCtx {
             }
         }
 
-        let account = self._ensure_account(next_account.into())?;
+        let account = self._ensure_account(next_account)?;
         account.set_name(opt.name)?;
         Ok(account)
     }
@@ -157,7 +157,7 @@ impl WalletCtx {
         Ok(())
     }
 
-    fn _ensure_account(&mut self, account_num: AccountNum) -> Result<&mut Account, Error> {
+    fn _ensure_account(&mut self, account_num: u32) -> Result<&mut Account, Error> {
         Ok(match self.accounts.entry(account_num) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => entry.insert(Account::new(
@@ -184,32 +184,32 @@ impl WalletCtx {
     }
 
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
-        self.get_account(opt.subaccount.into())?.list_tx(opt)
+        self.get_account(opt.subaccount)?.list_tx(opt)
     }
 
     pub fn utxos(&self, opt: &GetUnspentOpt) -> Result<Utxos, Error> {
         // TODO does not support the `num_confs` and `all_coins` options
-        self.get_account(opt.subaccount.into())?.utxos()
+        self.get_account(opt.subaccount)?.utxos()
     }
 
-    pub fn balance(&self, account_num: AccountNum) -> Result<Balances, Error> {
+    pub fn balance(&self, account_num: u32) -> Result<Balances, Error> {
         self.get_account(account_num)?.balance()
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
         // @shesek XXX how to handle missing subaccount?
         let account_num = request.subaccount.unwrap_or(0);
-        self.get_account(account_num.into())?.create_tx(request)
+        self.get_account(account_num)?.create_tx(request)
     }
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
         // @shesek XXX how to handle missing subaccount (or create_transaction)?
         let account_num =
             request.create_transaction.as_ref().and_then(|c| c.subaccount).unwrap_or(0);
-        self.get_account(account_num.into())?.sign(request)
+        self.get_account(account_num)?.sign(request)
     }
 
-    pub fn get_next_address(&self, account_num: AccountNum) -> Result<AddressPointer, Error> {
+    pub fn get_next_address(&self, account_num: u32) -> Result<AddressPointer, Error> {
         self.get_account(account_num)?.get_next_address()
     }
 

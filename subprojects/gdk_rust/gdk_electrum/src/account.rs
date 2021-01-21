@@ -1,12 +1,10 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
-use std::fmt;
 use std::str::FromStr;
 
 use log::{debug, info, trace};
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 
 use bitcoin::blockdata::script;
 use bitcoin::hashes::Hash;
@@ -44,11 +42,8 @@ lazy_static! {
     static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct AccountNum(pub u32);
-
 pub struct Account {
-    account_num: AccountNum,
+    account_num: u32,
     script_type: ScriptType,
     path: DerivationPath,
     xpub: ExtendedPubKey,
@@ -66,7 +61,7 @@ impl Account {
         master_xprv: &ExtendedPrivKey,
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
-        account_num: AccountNum,
+        account_num: u32,
     ) -> Result<Self, Error> {
         let (script_type, path) = get_account_derivation(account_num, network.id())?;
 
@@ -93,7 +88,7 @@ impl Account {
         })
     }
 
-    pub fn num(&self) -> AccountNum {
+    pub fn num(&self) -> u32 {
         self.account_num
     }
 
@@ -101,7 +96,7 @@ impl Account {
         let name = self.store.read()?.get_account_name(self.account_num).cloned();
 
         Ok(AccountInfo {
-            account_num: self.account_num.into(),
+            account_num: self.account_num,
             script_type: self.script_type,
             name: name.unwrap_or("Single sig wallet".into()),
             has_transactions: self.has_transactions(),
@@ -512,57 +507,33 @@ impl Account {
     }
 }
 
-impl fmt::Display for AccountNum {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl From<u32> for AccountNum {
-    fn from(num: u32) -> Self {
-        AccountNum(num)
-    }
-}
-impl Into<u32> for AccountNum {
-    fn into(self) -> u32 {
-        self.0
-    }
-}
-
-impl AccountNum {
-    pub fn as_u32(self) -> u32 {
-        self.into()
-    }
-}
-
 /// Return the last (if any) and next account numbers for the given script type
 pub fn get_last_next_account_nums(
-    existing: HashSet<&AccountNum>,
+    existing: HashSet<u32>,
     script_type: ScriptType,
-) -> (Option<AccountNum>, AccountNum) {
+) -> (Option<u32>, u32) {
     let first_account_num = script_type.first_account_num();
     let last_account = (first_account_num..)
         .step_by(NUM_RESERVED_ACCOUNT_TYPES as usize)
-        .map(AccountNum)
         .take_while(|n| existing.contains(n))
         .last();
-    let next_account = AccountNum(
-        last_account.map_or(first_account_num, |last| last.as_u32() + NUM_RESERVED_ACCOUNT_TYPES),
-    );
+    let next_account =
+        last_account.map_or(first_account_num, |last| last + NUM_RESERVED_ACCOUNT_TYPES);
     (last_account, next_account)
 }
 
 fn get_account_derivation(
-    account_num: AccountNum,
+    account_num: u32,
     network_id: NetworkId,
 ) -> Result<(ScriptType, DerivationPath), Error> {
     let coin_type = get_coin_type(network_id);
-    let (script_type, purpose) = match account_num.0 % NUM_RESERVED_ACCOUNT_TYPES {
+    let (script_type, purpose) = match account_num % NUM_RESERVED_ACCOUNT_TYPES {
         0 => (ScriptType::P2shP2wpkh, 49),
         1 => (ScriptType::P2wpkh, 84),
         2 => (ScriptType::P2pkh, 44),
-        _ => return Err(Error::InvalidSubaccount(account_num.into())),
+        _ => return Err(Error::InvalidSubaccount(account_num)),
     };
-    let bip32_account_num = account_num.0 / NUM_RESERVED_ACCOUNT_TYPES;
+    let bip32_account_num = account_num / NUM_RESERVED_ACCOUNT_TYPES;
 
     // BIP44: m / purpose' / coin_type' / account' / change / address_index
     let path: DerivationPath =
@@ -661,7 +632,7 @@ pub fn discover_accounts(
     network_id: NetworkId,
     electrum_url: &ElectrumUrl,
     master_blinding: Option<&MasterBlindingKey>,
-) -> Result<Vec<AccountNum>, Error> {
+) -> Result<Vec<u32>, Error> {
     use electrum_client::ElectrumApi;
 
     // build our own client so that the subscriptions are dropped at the end
@@ -670,12 +641,11 @@ pub fn discover_accounts(
     // the batch size is the effective gap limit for our purposes. in reality it is a lower bound.
     let gap_limit = BATCH_SIZE;
     let num_types = NUM_RESERVED_ACCOUNT_TYPES as usize;
-    let mut discovered_accounts: Vec<AccountNum> = vec![];
+    let mut discovered_accounts: Vec<u32> = vec![];
 
     for script_type in ScriptType::types() {
         debug!("discovering script type {:?}", script_type);
-        'next_account: for num in (script_type.first_account_num()..).step_by(num_types) {
-            let account_num = AccountNum(num);
+        'next_account: for account_num in (script_type.first_account_num()..).step_by(num_types) {
             let (_, path) = get_account_derivation(account_num, network_id).unwrap();
             let recv_xprv = master_xprv.derive_priv(&EC, &path.child(0.into()))?;
             let recv_xpub = ExtendedPubKey::from_private(&EC, &recv_xprv);
@@ -689,7 +659,7 @@ pub fn discover_accounts(
                 )
                 .unwrap()
                 .script_pubkey();
-                if client.script_subscribe(&script)?.is_some() {
+                if client.script_subscribe(&script.into_bitcoin())?.is_some() {
                     debug!("found account {:?} #{}", script_type, account_num);
                     discovered_accounts.push(account_num);
                     continue 'next_account;
@@ -717,7 +687,7 @@ pub fn create_tx(
 
     // @shesek XXX how to handle missing subaccount/create_transaction?
     let subaccount = request.subaccount.unwrap_or(0);
-    if subaccount != account.num().as_u32() {
+    if subaccount != account.num() {
         return Err(Error::InvalidSubaccount(subaccount));
     }
 
@@ -1208,13 +1178,13 @@ mod test {
     const NETWORK: NetworkId = NetworkId::Bitcoin(bitcoin::Network::Regtest);
 
     fn test_derivation(account_num: u32, expected_type: ScriptType, expected_path: &str) {
-        let (script_type, path) = get_account_derivation(AccountNum(account_num), NETWORK).unwrap();
+        let (script_type, path) = get_account_derivation(account_num, NETWORK).unwrap();
         assert_eq!(script_type, expected_type);
         assert_eq!(path.to_string(), expected_path);
     }
 
     fn test_derivation_fails(account_num: u32) {
-        assert!(get_account_derivation(AccountNum(account_num), NETWORK).is_err());
+        assert!(get_account_derivation(account_num, NETWORK).is_err());
     }
 
     #[test]

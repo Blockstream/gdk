@@ -995,7 +995,7 @@ impl TestSession {
     pub fn check_decryption(&mut self, tip: u32, txids: &[&str]) {
         let cache = self.session.export_cache().unwrap();
         assert_eq!(cache.tip.0, tip);
-        let account0 = cache.accounts.get(&0u32.into()).expect("default account");
+        let account0 = cache.accounts.get(&0).expect("default account");
         for txid in txids {
             assert!(account0
                 .all_txs

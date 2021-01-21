@@ -46,7 +46,6 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 use std::{iter, sync, thread};
 
-use crate::account::AccountNum;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
@@ -152,11 +151,10 @@ fn notify_fee(notif: NativeNotif, fees: &[FeeEstimate]) {
     let data = json!({"fees":fees,"event":"fees"});
     notify(notif, data);
 }
-fn notify_updated_txs(notif: NativeNotif, account_num: AccountNum) {
+fn notify_updated_txs(notif: NativeNotif, account_num: u32) {
     // This is used as a signal to trigger syncing via get_transactions, the transaction
     // list contained here is ignored and can be just a mock.
-    let mockup_json =
-        json!({"event":"transaction","transaction":{"subaccounts":[account_num.as_u32()]}});
+    let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[account_num]}});
     notify(notif, mockup_json);
 }
 
@@ -590,7 +588,7 @@ impl Session<Error> for ElectrumSession {
 
     fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
         debug!("get_receive_address {:?}", opt);
-        let address = self.get_wallet()?.get_next_address(opt.subaccount.into())?;
+        let address = self.get_wallet()?.get_next_address(opt.subaccount)?;
         debug!("get_address {:?}", address);
         Ok(address)
     }
@@ -616,10 +614,10 @@ impl Session<Error> for ElectrumSession {
         wallet.iter_accounts().map(|a| a.info()).collect()
     }
 
-    fn get_subaccount(&self, index: u32, _num_confs: u32) -> Result<AccountInfo, Error> {
+    fn get_subaccount(&self, account_num: u32, _num_confs: u32) -> Result<AccountInfo, Error> {
         // TODO num_confs is ignored
         let wallet = self.get_wallet()?;
-        wallet.get_account(index.into())?.info()
+        wallet.get_account(account_num)?.info()
     }
 
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
@@ -641,7 +639,7 @@ impl Session<Error> for ElectrumSession {
     fn get_balance(&self, _num_confs: u32, account_num: Option<u32>) -> Result<Balances, Error> {
         // TODO num_confs is currently ignored
         // XXX how to handle missing subaccount?
-        self.get_wallet()?.balance(account_num.unwrap_or(0).into())
+        self.get_wallet()?.balance(account_num.unwrap_or(0))
     }
 
     fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), Error> {
@@ -649,7 +647,7 @@ impl Session<Error> for ElectrumSession {
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        self.get_wallet()?.store.write()?.insert_memo(account_num.into(), txid, memo)?;
+        self.get_wallet()?.store.write()?.insert_memo(account_num, txid, memo)?;
 
         Ok(())
     }
@@ -1042,7 +1040,8 @@ struct DownloadTxResult {
 }
 
 impl Syncer {
-    pub fn sync(&self, client: &Client) -> Result<HashSet<AccountNum>, Error> {
+    /// Sync the wallet, return the set of updated accounts
+    pub fn sync(&self, client: &Client) -> Result<HashSet<u32>, Error> {
         debug!("start sync");
         let start = Instant::now();
 
@@ -1171,7 +1170,7 @@ impl Syncer {
 
     fn download_headers(
         &self,
-        account_num: AccountNum,
+        account_num: u32,
         heights_set: &HashSet<u32>,
         client: &Client,
     ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
@@ -1204,7 +1203,7 @@ impl Syncer {
 
     fn download_txs(
         &self,
-        account_num: AccountNum,
+        account_num: u32,
         history_txs_id: &HashSet<BETxid>,
         scripts: &HashMap<BEScript, DerivationPath>,
         client: &Client,

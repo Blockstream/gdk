@@ -1,4 +1,3 @@
-use crate::account::AccountNum;
 use crate::spv::CrossValidationResult;
 use crate::Error;
 use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
@@ -30,7 +29,7 @@ pub type Store = Arc<RwLock<StoreMeta>>;
 #[derive(Default, Serialize, Deserialize)]
 pub struct RawCache {
     /// account-specific information (transactions, scripts, history, indexes, unblinded)
-    pub accounts: HashMap<AccountNum, RawAccountCache>,
+    pub accounts: HashMap<u32, RawAccountCache>,
 
     /// contains headers at the height of my txs (used to show tx timestamps)
     pub headers: HashMap<u32, BEBlockHeader>,
@@ -86,10 +85,10 @@ pub struct RawStore {
     settings: Option<Settings>,
 
     /// account names
-    account_names: HashMap<AccountNum, String>,
+    account_names: HashMap<u32, String>,
 
-    /// transaction memos
-    memos: HashMap<AccountNum, HashMap<bitcoin::Txid, String>>,
+    /// transaction memos (account_num -> txid -> memo)
+    memos: HashMap<u32, HashMap<bitcoin::Txid, String>>,
 }
 
 pub struct StoreMeta {
@@ -270,28 +269,22 @@ impl StoreMeta {
         Ok(())
     }
 
-    pub fn account_cache(&self, account_num: AccountNum) -> Result<&RawAccountCache, Error> {
-        self.cache
-            .accounts
-            .get(&account_num)
-            .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
+    pub fn account_cache(&self, account_num: u32) -> Result<&RawAccountCache, Error> {
+        self.cache.accounts.get(&account_num).ok_or_else(|| Error::InvalidSubaccount(account_num))
     }
 
-    pub fn account_cache_mut(
-        &mut self,
-        account_num: AccountNum,
-    ) -> Result<&mut RawAccountCache, Error> {
+    pub fn account_cache_mut(&mut self, account_num: u32) -> Result<&mut RawAccountCache, Error> {
         self.cache
             .accounts
             .get_mut(&account_num)
-            .ok_or_else(|| Error::InvalidSubaccount(account_num.into()))
+            .ok_or_else(|| Error::InvalidSubaccount(account_num))
     }
 
-    pub fn make_account_cache(&mut self, account_num: AccountNum) -> &mut RawAccountCache {
+    pub fn make_account_cache(&mut self, account_num: u32) -> &mut RawAccountCache {
         self.cache.accounts.entry(account_num).or_default()
     }
 
-    pub fn account_nums(&self) -> HashSet<AccountNum> {
+    pub fn account_nums(&self) -> HashSet<u32> {
         self.cache.accounts.keys().copied().collect()
     }
 
@@ -327,12 +320,7 @@ impl StoreMeta {
         }
     }
 
-    pub fn insert_memo(
-        &mut self,
-        account_num: AccountNum,
-        txid: BETxid,
-        memo: &str,
-    ) -> Result<(), Error> {
+    pub fn insert_memo(&mut self, account_num: u32, txid: BETxid, memo: &str) -> Result<(), Error> {
         // Coerced into a bitcoin::Txid to retain database compatibility
         let txid = txid.into_bitcoin();
         self.store.memos.entry(account_num).or_default().insert(txid, memo.to_string());
@@ -340,7 +328,7 @@ impl StoreMeta {
         Ok(())
     }
 
-    pub fn get_memo(&self, account_num: AccountNum, txid: &BETxid) -> Option<&String> {
+    pub fn get_memo(&self, account_num: u32, txid: &BETxid) -> Option<&String> {
         self.store.memos.get(&account_num).and_then(|a| a.get(&txid.into_bitcoin()))
     }
 
@@ -354,20 +342,16 @@ impl StoreMeta {
         self.store.settings.clone()
     }
 
-    pub fn get_account_name(&self, account_num: AccountNum) -> Option<&String> {
+    pub fn get_account_name(&self, account_num: u32) -> Option<&String> {
         self.store.account_names.get(&account_num)
     }
 
-    pub fn set_account_name(&mut self, account_num: AccountNum, name: String) {
+    pub fn set_account_name(&mut self, account_num: u32, name: String) {
         self.store.account_names.insert(account_num, name);
     }
 
-    pub fn spv_verification_status(
-        &self,
-        account_num: AccountNum,
-        txid: &BETxid,
-    ) -> SPVVerifyResult {
-        let acc_store = match self.account_cache(account_num.into()) {
+    pub fn spv_verification_status(&self, account_num: u32, txid: &BETxid) -> SPVVerifyResult {
+        let acc_store = match self.account_cache(account_num) {
             Ok(store) => store,
             Err(_) => return SPVVerifyResult::NotVerified,
         };
@@ -430,16 +414,15 @@ mod tests {
         .unwrap();
 
         let id = NetworkId::Bitcoin(Network::Testnet);
-        let account_num = AccountNum(0);
 
         {
             let mut store = StoreMeta::new(&dir, xpub, id).unwrap();
-            let acc_cache = store.account_cache_mut(account_num).unwrap();
+            let acc_cache = store.account_cache_mut(0).unwrap();
             acc_cache.heights.insert(txid, Some(1));
         }
 
         let store = StoreMeta::new(&dir, xpub, id).unwrap();
-        let acc_cache = store.account_cache(account_num).unwrap();
+        let acc_cache = store.account_cache(0).unwrap();
         assert_eq!(acc_cache.heights.get(&txid), Some(&Some(1)));
     }
 }
