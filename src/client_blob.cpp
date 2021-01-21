@@ -29,9 +29,12 @@ namespace sdk {
     client_blob::client_blob()
         : m_data()
     {
-        m_data[SA_NAMES] = nlohmann::json();
-        m_data[TX_MEMOS] = nlohmann::json();
         m_data[USER_VERSION] = static_cast<uint64_t>(0);
+        // Pre-create top level json objects for future cached items,
+        // allowing later additions to be checked for without special cases
+        for (uint32_t i = SA_NAMES; i < 32u; ++i) {
+            m_data[i] = nlohmann::json();
+        }
     }
 
     void client_blob::set_user_version(uint64_t version) { m_data[USER_VERSION] = version; }
