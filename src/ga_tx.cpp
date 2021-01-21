@@ -693,24 +693,22 @@ namespace sdk {
                     if (include_fee) {
                         // add fee output so is also part of size calculations
                         if (is_liquid) {
+                            constexpr amount::value_type dummy_amount = 1;
                             if (!have_fee_output) {
                                 if (send_all && addressees_p->at(0).value("asset_tag", "btc") == asset_tag) {
                                     // the output commitment will be corrected below. this is a placeholder for the
                                     // blinding.
-                                    set_tx_output_commitment(net_params, tx, 0, asset_tag, 1);
+                                    set_tx_output_commitment(net_params, tx, 0, asset_tag, dummy_amount);
                                 }
-                                add_tx_fee_output(net_params, tx, 1);
+                                fee_index = add_tx_fee_output(net_params, tx, dummy_amount);
                                 have_fee_output = true;
-                                fee_index = tx->num_outputs - 1;
                             }
                             update_tx_info(net_params, tx, result);
-                            std::vector<nlohmann::json> used_utxos
-                                = json_get_value(result, "used_utxos", std::vector<nlohmann::json>{});
-                            used_utxos.insert(
-                                used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
-                            result["used_utxos"] = used_utxos;
-                            const auto fee_tx = tx_from_hex(blind_ga_transaction(session, result)["transaction"],
-                                tx_flags(is_liquid));
+                            std::vector<nlohmann::json> used{ json_get_value<decltype(used)>(result, "used_utxos") };
+                            used.insert(used.end(), current_used_utxos.begin(), current_used_utxos.end());
+                            result["used_utxos"] = used;
+                            const auto blinded = blind_ga_transaction(session, result);
+                            const auto fee_tx = tx_from_hex(blinded["transaction"], tx_flags(is_liquid));
                             fee = get_tx_fee(fee_tx, min_fee_rate, user_fee_rate);
                         } else {
                             fee = get_tx_fee(tx, min_fee_rate, user_fee_rate);

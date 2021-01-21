@@ -279,13 +279,13 @@ namespace sdk {
         return amount(satoshi);
     }
 
-    amount add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
+    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
     {
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
         auto asset_bytes = h2b_rev(net_params.policy_asset());
         asset_bytes.insert(asset_bytes.begin(), 0x1);
         tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
-        return amount{ satoshi };
+        return tx->num_outputs - 1;
     }
 
     void set_tx_output_commitment(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,

@@ -70,7 +70,8 @@ namespace sdk {
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi = 0, const std::string& asset_tag = {});
 
-    amount add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi = 0);
+    // Add a fee output to a tx, returns the index in tx->outputs
+    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi);
 
     void set_tx_output_commitment(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,
         const std::string& asset_tag, amount::value_type satoshi);
