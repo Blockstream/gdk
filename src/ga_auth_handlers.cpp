@@ -657,10 +657,8 @@ namespace sdk {
             const auto& signatures = get_sized_array(args, "signatures", inputs.size());
             const auto& outputs = m_twofactor_data["transaction_outputs"];
             const auto& transaction_details = m_twofactor_data["transaction"];
-            const uint32_t flags = m_session.get_network_parameters().liquid()
-                ? (WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS)
-                : 0;
-            const auto tx = tx_from_hex(transaction_details.at("transaction"), flags);
+            const bool is_liquid = m_session.get_network_parameters().liquid();
+            const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
             if (m_session.get_network_parameters().liquid()) {
                 const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());

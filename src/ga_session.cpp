@@ -2461,8 +2461,7 @@ namespace sdk {
                 // on the hash of the confirmed transaction.
                 // Once caching is implemented this info can be populated up
                 // front so callers can always expect it.
-                const auto tx = tx_from_hex(
-                    tx_data, WALLY_TX_FLAG_USE_WITNESS | (m_net_params.liquid() ? WALLY_TX_FLAG_USE_ELEMENTS : 0));
+                const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.liquid()));
 
                 update_tx_info(m_net_params, tx, tx_details);
             } else {
@@ -2903,8 +2902,7 @@ namespace sdk {
     {
         const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
 
-        const uint32_t flags = WALLY_TX_FLAG_USE_WITNESS | (m_net_params.liquid() ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
-        const auto tx = tx_from_hex(tx_data, flags);
+        const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.liquid()));
         nlohmann::json ret = { { "txhash", txhash } };
         update_tx_info(m_net_params, tx, ret);
         return ret;
@@ -3440,7 +3438,7 @@ namespace sdk {
         // FIXME: test weight and return error in create_transaction, not here
         const std::string tx_hex = result.at("transaction");
         const size_t MAX_TX_WEIGHT = 400000;
-        const uint32_t flags = WALLY_TX_FLAG_USE_WITNESS | (details.at("liquid") ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
+        const uint32_t flags = tx_flags(details.at("liquid"));
         const auto unsigned_tx = tx_from_hex(tx_hex, flags);
         GDK_RUNTIME_ASSERT(tx_get_weight(unsigned_tx) < MAX_TX_WEIGHT);
 

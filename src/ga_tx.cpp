@@ -710,7 +710,7 @@ namespace sdk {
                                 used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
                             result["used_utxos"] = used_utxos;
                             const auto fee_tx = tx_from_hex(blind_ga_transaction(session, result)["transaction"],
-                                WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS);
+                                tx_flags(is_liquid));
                             fee = get_tx_fee(fee_tx, min_fee_rate, user_fee_rate);
                         } else {
                             fee = get_tx_fee(tx, min_fee_rate, user_fee_rate);
@@ -1010,8 +1010,7 @@ namespace sdk {
     nlohmann::json sign_ga_transaction(ga_session& session, const nlohmann::json& details)
     {
         const auto inputs = get_ga_signing_inputs(details);
-        const auto tx = tx_from_hex(details.at("transaction"),
-            WALLY_TX_FLAG_USE_WITNESS | (details.at("liquid") ? WALLY_TX_FLAG_USE_ELEMENTS : 0));
+        const auto tx = tx_from_hex(details.at("transaction"), tx_flags(details.at("liquid")));
 
         size_t i = 0;
         for (const auto& utxo : inputs) {
@@ -1036,7 +1035,8 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(false, error);
         }
 
-        const auto tx = tx_from_hex(details.at("transaction"), WALLY_TX_FLAG_USE_WITNESS | WALLY_TX_FLAG_USE_ELEMENTS);
+        constexpr bool is_liquid = true;
+        const auto tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
 
         const auto num_inputs = details.at("used_utxos").size();
 

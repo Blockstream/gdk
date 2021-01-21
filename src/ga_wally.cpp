@@ -725,6 +725,11 @@ namespace sdk {
     //
     // Transactions
     //
+    uint32_t tx_flags(bool is_liquid)
+    {
+        return WALLY_TX_FLAG_USE_WITNESS | (is_liquid ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
+    }
+
     bool tx_is_elements(const wally_tx_ptr& tx)
     {
         size_t written;

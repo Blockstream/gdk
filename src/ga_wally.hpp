@@ -276,6 +276,8 @@ namespace sdk {
     //
     // Transactions
     //
+    GA_USE_RESULT uint32_t tx_flags(bool is_liquid);
+
     GA_USE_RESULT bool tx_is_elements(const wally_tx_ptr& tx);
 
     GA_USE_RESULT size_t tx_get_length(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
