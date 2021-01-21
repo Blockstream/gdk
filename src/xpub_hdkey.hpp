@@ -17,7 +17,7 @@ namespace sdk {
     //
     class xpub_hdkey final {
     public:
-        xpub_hdkey(bool is_main_net, const xpub_t& xpub, gsl::span<const uint32_t> path = empty_span<uint32_t>());
+        xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path = empty_span<uint32_t>());
 
         xpub_hdkey(const xpub_hdkey&) = default;
         xpub_hdkey& operator=(const xpub_hdkey&) = default;
@@ -69,7 +69,7 @@ namespace sdk {
     //
     class ga_pubkeys final : public detail::xpub_hdkeys_base {
     public:
-        ga_pubkeys(const network_parameters& net_params, gsl::span<const uint32_t> gait_path);
+        ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path);
 
         ga_pubkeys(const ga_pubkeys&) = default;
         ga_pubkeys& operator=(const ga_pubkeys&) = default;

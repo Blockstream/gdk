@@ -149,8 +149,7 @@ namespace sdk {
     }
 
     static std::vector<unsigned char> output_script(const network_parameters& net_params, const pub_key_t& ga_pub_key,
-        const pub_key_t& user_pub_key, gsl::span<const unsigned char> backup_pub_key, script_type type,
-        uint32_t subtype)
+        const pub_key_t& user_pub_key, byte_span_t backup_pub_key, script_type type, uint32_t subtype)
     {
         const bool is_2of3 = !backup_pub_key.empty();
 

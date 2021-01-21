@@ -12,7 +12,7 @@ namespace sdk {
             's', '.', 'i', 't', ' ', 'H', 'D', ' ', 'w', 'a', 'l', 'l', 'e', 't', ' ', 'p', 'a', 't', 'h' };
     } // namespace
 
-    xpub_hdkey::xpub_hdkey(bool is_main_net, const xpub_t& xpub, gsl::span<const uint32_t> path)
+    xpub_hdkey::xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path)
     {
         const uint32_t version = is_main_net ? BIP32_VER_MAIN_PUBLIC : BIP32_VER_TEST_PUBLIC;
         wally_ext_key_ptr master = bip32_key_init_alloc(version, 0, 0, xpub.first, xpub.second);
@@ -55,7 +55,7 @@ namespace sdk {
         }
     } // namespace detail
 
-    ga_pubkeys::ga_pubkeys(const network_parameters& net_params, gsl::span<const uint32_t> gait_path)
+    ga_pubkeys::ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
         : detail::xpub_hdkeys_base(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
     {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(gait_path.size()) == m_gait_path.size());

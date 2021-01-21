@@ -3403,7 +3403,7 @@ namespace sdk {
             { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
     }
 
-    ecdsa_sig_t ga_session::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
+    ecdsa_sig_t ga_session::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         locker_t locker(m_mutex);
         return get_signer().sign_hash(path, hash);

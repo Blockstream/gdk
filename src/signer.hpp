@@ -54,11 +54,11 @@ namespace sdk {
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
         // hardware. Use xpub_hdkeys_base to quickly derive from the resulting key.
-        virtual xpub_t get_xpub(gsl::span<const uint32_t> path = empty_span<uint32_t>()) = 0;
-        virtual std::string get_bip32_xpub(gsl::span<const uint32_t> path) = 0;
+        virtual xpub_t get_xpub(uint32_span_t path = empty_span<uint32_t>()) = 0;
+        virtual std::string get_bip32_xpub(uint32_span_t path) = 0;
 
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
-        virtual ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) = 0;
+        virtual ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) = 0;
 
         virtual priv_key_t get_blinding_key_from_script(byte_span_t script);
 
@@ -87,10 +87,10 @@ namespace sdk {
 
         std::string get_challenge() override;
 
-        xpub_t get_xpub(gsl::span<const uint32_t> path = empty_span<uint32_t>()) override;
-        std::string get_bip32_xpub(gsl::span<const uint32_t> path) override;
+        xpub_t get_xpub(uint32_span_t path = empty_span<uint32_t>()) override;
+        std::string get_bip32_xpub(uint32_span_t path) override;
 
-        ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) override;
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
     };
 
     //
@@ -113,10 +113,10 @@ namespace sdk {
 
         std::string get_challenge() override;
 
-        xpub_t get_xpub(gsl::span<const uint32_t> path = empty_span<uint32_t>()) override;
-        std::string get_bip32_xpub(gsl::span<const uint32_t> path) override;
+        xpub_t get_xpub(uint32_span_t path = empty_span<uint32_t>()) override;
+        std::string get_bip32_xpub(uint32_span_t path) override;
 
-        ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) override;
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
         priv_key_t get_blinding_key_from_script(byte_span_t script) override;
 
     private:
@@ -146,10 +146,10 @@ namespace sdk {
 
         std::string get_challenge() override;
 
-        xpub_t get_xpub(gsl::span<const uint32_t> path = empty_span<uint32_t>()) override;
-        std::string get_bip32_xpub(gsl::span<const uint32_t> path) override;
+        xpub_t get_xpub(uint32_span_t path = empty_span<uint32_t>()) override;
+        std::string get_bip32_xpub(uint32_span_t path) override;
 
-        ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash) override;
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
         priv_key_t get_blinding_key_from_script(byte_span_t script) override;
 
     private:

@@ -306,7 +306,7 @@ namespace sdk {
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
-        ecdsa_sig_t sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash);
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
 
         std::string asset_id_from_string(const std::string& tag)
         {

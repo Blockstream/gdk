@@ -6,7 +6,7 @@ namespace ga {
 namespace sdk {
 
     namespace {
-        static wally_ext_key_ptr derive(const wally_ext_key_ptr& hdkey, gsl::span<const uint32_t> path)
+        static wally_ext_key_ptr derive(const wally_ext_key_ptr& hdkey, uint32_span_t path)
         {
             // FIXME: Private keys should be derived into mlocked memory
             return bip32_key_from_parent_path_alloc(hdkey, path, BIP32_FLAG_KEY_PRIVATE | BIP32_FLAG_SKIP_HASH);
@@ -84,21 +84,21 @@ namespace sdk {
         __builtin_unreachable();
     }
 
-    xpub_t watch_only_signer::get_xpub(gsl::span<const uint32_t> path)
+    xpub_t watch_only_signer::get_xpub(uint32_span_t path)
     {
         (void)path;
         GDK_RUNTIME_ASSERT(false);
         __builtin_unreachable();
     }
 
-    std::string watch_only_signer::get_bip32_xpub(gsl::span<const uint32_t> path)
+    std::string watch_only_signer::get_bip32_xpub(uint32_span_t path)
     {
         (void)path;
         GDK_RUNTIME_ASSERT(false);
         __builtin_unreachable();
     }
 
-    ecdsa_sig_t watch_only_signer::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
+    ecdsa_sig_t watch_only_signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         (void)path;
         (void)hash;
@@ -161,7 +161,7 @@ namespace sdk {
         return base58check_from_bytes(vpkh);
     }
 
-    xpub_t software_signer::get_xpub(gsl::span<const uint32_t> path)
+    xpub_t software_signer::get_xpub(uint32_span_t path)
     {
         wally_ext_key_ptr derived;
         ext_key* hdkey = m_master_key.get();
@@ -172,7 +172,7 @@ namespace sdk {
         return make_xpub(hdkey);
     }
 
-    std::string software_signer::get_bip32_xpub(gsl::span<const uint32_t> path)
+    std::string software_signer::get_bip32_xpub(uint32_span_t path)
     {
         wally_ext_key_ptr derived;
         wally_ext_key_ptr* hdkey = &m_master_key;
@@ -183,7 +183,7 @@ namespace sdk {
         return base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
     }
 
-    ecdsa_sig_t software_signer::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
+    ecdsa_sig_t software_signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         wally_ext_key_ptr derived = derive(m_master_key, path);
         return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
@@ -224,21 +224,21 @@ namespace sdk {
         return std::string();
     }
 
-    xpub_t hardware_signer::get_xpub(gsl::span<const uint32_t> path)
+    xpub_t hardware_signer::get_xpub(uint32_span_t path)
     {
         (void)path;
         GDK_RUNTIME_ASSERT(false);
         return xpub_t();
     }
 
-    std::string hardware_signer::get_bip32_xpub(gsl::span<const uint32_t> path)
+    std::string hardware_signer::get_bip32_xpub(uint32_span_t path)
     {
         (void)path;
         GDK_RUNTIME_ASSERT(false);
         return std::string();
     }
 
-    ecdsa_sig_t hardware_signer::sign_hash(gsl::span<const uint32_t> path, gsl::span<const unsigned char> hash)
+    ecdsa_sig_t hardware_signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         (void)path;
         (void)hash;
