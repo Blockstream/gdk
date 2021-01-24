@@ -4,24 +4,20 @@
 
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
-#include "sqlite3/sqlite3.h"
 #include <boost/optional.hpp>
 #include <nlohmann/json.hpp>
 
-namespace std {
-template <> struct default_delete<struct sqlite3> {
-    void operator()(struct sqlite3* ptr) const { sqlite3_close(ptr); }
-};
-template <> struct default_delete<struct sqlite3_stmt> {
-    void operator()(struct sqlite3_stmt* ptr) const { sqlite3_finalize(ptr); }
-};
-} // namespace std
+struct sqlite3;
+struct sqlite3_stmt;
 
 namespace ga {
 namespace sdk {
     class network_parameters;
 
     struct cache final {
+        using sqlite3_ptr = std::shared_ptr<struct ::sqlite3>;
+        using sqlite3_stmt_ptr = std::shared_ptr<struct ::sqlite3_stmt>;
+
         cache(const network_parameters& net_params, const std::string& network_name);
 
         bool has_liquid_output(byte_span_t txhash, const uint32_t vout);
@@ -49,16 +45,16 @@ namespace sdk {
         std::string m_db_name; // Set on first call to load_db
         std::array<unsigned char, SHA256_LEN> m_encryption_key; // Set on first call to load_db
         bool m_require_write;
-        std::unique_ptr<sqlite3> m_db;
-        std::unique_ptr<sqlite3_stmt> m_stmt_liquid_blinding_nonce_has;
-        std::unique_ptr<sqlite3_stmt> m_stmt_liquid_blinding_nonce_search;
-        std::unique_ptr<sqlite3_stmt> m_stmt_liquid_blinding_nonce_insert;
-        std::unique_ptr<sqlite3_stmt> m_stmt_liquid_output_has;
-        std::unique_ptr<sqlite3_stmt> m_stmt_liquid_output_search;
-        std::unique_ptr<sqlite3_stmt> m_stmt_liquid_output_insert;
-        std::unique_ptr<sqlite3_stmt> m_stmt_key_value_upsert;
-        std::unique_ptr<sqlite3_stmt> m_stmt_key_value_search;
-        std::unique_ptr<sqlite3_stmt> m_stmt_key_value_delete;
+        sqlite3_ptr m_db;
+        sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_has;
+        sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_search;
+        sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_insert;
+        sqlite3_stmt_ptr m_stmt_liquid_output_has;
+        sqlite3_stmt_ptr m_stmt_liquid_output_search;
+        sqlite3_stmt_ptr m_stmt_liquid_output_insert;
+        sqlite3_stmt_ptr m_stmt_key_value_upsert;
+        sqlite3_stmt_ptr m_stmt_key_value_search;
+        sqlite3_stmt_ptr m_stmt_key_value_delete;
     };
 
 } // namespace sdk

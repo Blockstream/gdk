@@ -8,6 +8,7 @@
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "session.hpp"
+#include "sqlite3/sqlite3.h"
 #include "utils.hpp"
 
 namespace ga {
@@ -17,12 +18,12 @@ namespace sdk {
 
         constexpr int VERSION = 1;
 
-        static std::unique_ptr<sqlite3> get_new_memory_db()
+        static cache::sqlite3_ptr get_new_memory_db()
         {
             sqlite3* tmpdb = nullptr;
             const int rc = sqlite3_open(":memory:", &tmpdb);
             GDK_RUNTIME_ASSERT(rc == SQLITE_OK);
-            return std::unique_ptr<sqlite3>(tmpdb);
+            return cache::sqlite3_ptr{ tmpdb, [](sqlite3* p) { sqlite3_free(p); } };
         }
 
         static auto get_db()
@@ -47,17 +48,17 @@ namespace sdk {
             return db;
         }
 
-        static auto get_stmt(bool enable, std::unique_ptr<sqlite3>& db, const char* statement)
+        static cache::sqlite3_stmt_ptr get_stmt(bool enable, cache::sqlite3_ptr& db, const char* statement)
         {
-            sqlite3_stmt* tmpstmt = nullptr;
+            sqlite3_stmt* stmt = nullptr;
             if (enable) {
-                int rc = sqlite3_prepare_v3(db.get(), statement, -1, SQLITE_PREPARE_PERSISTENT, &tmpstmt, NULL);
+                int rc = sqlite3_prepare_v3(db.get(), statement, -1, SQLITE_PREPARE_PERSISTENT, &stmt, NULL);
                 GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(db.get()));
             }
-            return tmpstmt;
+            return cache::sqlite3_stmt_ptr{ stmt, [](sqlite3_stmt* p) { sqlite3_finalize(p); } };
         }
 
-        static void stmt_check_clean(std::unique_ptr<sqlite3_stmt>& stmt)
+        static void stmt_check_clean(cache::sqlite3_stmt_ptr& stmt)
         {
             const int rc = sqlite3_clear_bindings(stmt.get());
             GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt.get())));
@@ -128,12 +129,12 @@ namespace sdk {
             }
         }
 
-        static auto step_final(std::unique_ptr<sqlite3_stmt>& stmt)
+        static auto step_final(cache::sqlite3_stmt_ptr& stmt)
         {
             GDK_RUNTIME_ASSERT(sqlite3_step(stmt.get()) == SQLITE_DONE);
         }
 
-        static boost::optional<std::vector<unsigned char>> get_blob(std::unique_ptr<sqlite3_stmt>& stmt, int column)
+        static boost::optional<std::vector<unsigned char>> get_blob(cache::sqlite3_stmt_ptr& stmt, int column)
         {
             const int rc = sqlite3_step(stmt.get());
             if (rc == SQLITE_DONE) {
@@ -148,7 +149,7 @@ namespace sdk {
             return result;
         }
 
-        static void get_blob(std::unique_ptr<sqlite3_stmt>& stmt, int column, const cache::get_key_value_fn& callback)
+        static void get_blob(cache::sqlite3_stmt_ptr& stmt, int column, const cache::get_key_value_fn& callback)
         {
             const int rc = sqlite3_step(stmt.get());
             if (rc == SQLITE_DONE) {
@@ -167,19 +168,19 @@ namespace sdk {
             step_final(stmt);
         }
 
-        static void bind_blob(std::unique_ptr<sqlite3_stmt>& stmt, int column, byte_span_t blob)
+        static void bind_blob(cache::sqlite3_stmt_ptr& stmt, int column, byte_span_t blob)
         {
             GDK_RUNTIME_ASSERT(
                 sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) == SQLITE_OK);
         }
 
-        static void bind_liquid_blinding(std::unique_ptr<sqlite3_stmt>& stmt, byte_span_t pubkey, byte_span_t script)
+        static void bind_liquid_blinding(cache::sqlite3_stmt_ptr& stmt, byte_span_t pubkey, byte_span_t script)
         {
             bind_blob(stmt, 1, pubkey);
             bind_blob(stmt, 2, script);
         }
 
-        static bool has_result(std::unique_ptr<sqlite3_stmt>& stmt)
+        static bool has_result(cache::sqlite3_stmt_ptr& stmt)
         {
             const int rc = sqlite3_step(stmt.get());
             if (rc == SQLITE_DONE) {
