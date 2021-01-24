@@ -58,12 +58,27 @@ namespace sdk {
             return cache::sqlite3_stmt_ptr{ stmt, [](sqlite3_stmt* p) { sqlite3_finalize(p); } };
         }
 
-        static void stmt_check_clean(cache::sqlite3_stmt_ptr& stmt)
+        static void db_log_error(sqlite3* db) noexcept
         {
-            const int rc = sqlite3_clear_bindings(stmt.get());
-            GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt.get())));
-            const int rc2 = sqlite3_reset(stmt.get());
-            GDK_RUNTIME_ASSERT_MSG(rc2 == SQLITE_OK, sqlite3_errmsg(sqlite3_db_handle(stmt.get())));
+            try {
+                GDK_LOG_SEV(log_level::error) << "DB error: " << sqlite3_errmsg(db);
+            } catch (const std::exception&) {
+            }
+        }
+
+        static void stmt_check_clean(cache::sqlite3_stmt_ptr& stmt) noexcept
+        {
+            if (sqlite3_clear_bindings(stmt.get()) != SQLITE_OK) {
+                db_log_error(sqlite3_db_handle(stmt.get()));
+            }
+            if (sqlite3_reset(stmt.get()) != SQLITE_OK) {
+                db_log_error(sqlite3_db_handle(stmt.get()));
+            }
+        }
+
+        static auto stmt_clean(cache::sqlite3_stmt_ptr& stmt)
+        {
+            return gsl::finally([&stmt] { stmt_check_clean(stmt); });
         }
 
         static void save_db_file(byte_span_t key, byte_span_t data, const std::string& path)
@@ -281,16 +296,18 @@ namespace sdk {
 
         auto backup = sqlite3_backup_init(m_db.get(), "main", tmpdb.get(), "main");
         GDK_RUNTIME_ASSERT(backup);
-        const auto _backup_finish
-            = gsl::finally([backup] { GDK_RUNTIME_ASSERT(sqlite3_backup_finish(backup) == SQLITE_OK); });
-        GDK_RUNTIME_ASSERT(sqlite3_backup_step(backup, -1) == SQLITE_DONE);
+        bool backup_ok = sqlite3_backup_step(backup, -1) == SQLITE_DONE;
+        if (sqlite3_backup_finish(backup) != SQLITE_OK) {
+            db_log_error(m_db.get());
+        };
+        GDK_RUNTIME_ASSERT(backup_ok);
         GDK_LOG_SEV(log_level::info) << "sqlite loaded correctly " << path;
     }
 
     void cache::clear_key_value(const std::string& key)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_key_value_delete); });
+        const auto _{ stmt_clean(m_stmt_key_value_delete) };
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_delete, 1, key_span);
         step_final(m_stmt_key_value_delete);
@@ -299,7 +316,7 @@ namespace sdk {
     void cache::get_key_value(const std::string& key, const cache::get_key_value_fn& callback)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_key_value_search); });
+        const auto _{ stmt_clean(m_stmt_key_value_search) };
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_search, 1, key_span);
         get_blob(m_stmt_key_value_search, 0, callback);
@@ -311,7 +328,7 @@ namespace sdk {
         if (!m_stmt_liquid_blinding_nonce_has) {
             return false;
         }
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquid_blinding_nonce_has); });
+        const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_has) };
         bind_liquid_blinding(m_stmt_liquid_blinding_nonce_has, pubkey, script);
         return has_result(m_stmt_liquid_blinding_nonce_has);
     }
@@ -320,7 +337,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_search.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquid_blinding_nonce_search); });
+        const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_search) };
         bind_liquid_blinding(m_stmt_liquid_blinding_nonce_search, pubkey, script);
         return get_blob(m_stmt_liquid_blinding_nonce_search, 0);
     }
@@ -331,7 +348,7 @@ namespace sdk {
         if (!m_stmt_liquid_blinding_nonce_has) {
             return false;
         }
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquid_output_has); });
+        const auto _{ stmt_clean(m_stmt_liquid_output_has) };
         bind_blob(m_stmt_liquid_output_has, 1, txhash);
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquid_output_has.get(), 2, vout) == SQLITE_OK);
         return has_result(m_stmt_liquid_output_has);
@@ -341,7 +358,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!txhash.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_output_search.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquid_output_search); });
+        const auto _{ stmt_clean(m_stmt_liquid_output_search) };
         bind_blob(m_stmt_liquid_output_search, 1, txhash);
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquid_output_search.get(), 2, vout) == SQLITE_OK);
         const int rc = sqlite3_step(m_stmt_liquid_output_search.get());
@@ -371,7 +388,7 @@ namespace sdk {
     void cache::upsert_key_value(const std::string& key, byte_span_t value)
     {
         GDK_RUNTIME_ASSERT(!key.empty() && !value.empty());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_key_value_upsert); });
+        const auto _{ stmt_clean(m_stmt_key_value_upsert) };
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_upsert, 1, key_span);
         bind_blob(m_stmt_key_value_upsert, 2, value);
@@ -383,7 +400,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty() && !nonce.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_insert.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquid_blinding_nonce_insert); });
+        const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_insert) };
         bind_liquid_blinding(m_stmt_liquid_blinding_nonce_insert, pubkey, script);
         bind_blob(m_stmt_liquid_blinding_nonce_insert, 3, nonce);
         step_final(m_stmt_liquid_blinding_nonce_insert);
@@ -394,7 +411,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!txhash.empty() && !utxo.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_output_insert.get());
-        const auto _stmt_clean = gsl::finally([this] { stmt_check_clean(m_stmt_liquid_output_insert); });
+        const auto _{ stmt_clean(m_stmt_liquid_output_insert) };
 
         // cache values are stored in byte order not display order (reversed)
         bind_blob(m_stmt_liquid_output_insert, 1, txhash);
