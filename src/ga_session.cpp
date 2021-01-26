@@ -1652,6 +1652,8 @@ namespace sdk {
         m_blob_aes_key.emplace(sha256(tmp_span.subspan(SHA256_LEN)));
         m_blob_hmac_key.emplace(make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
         m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
+        // Save the cache in case we carried forward data from a previous version
+        m_cache.save_db(); // No-op if unchanged
         m_nlocktimes.reset();
     }
 

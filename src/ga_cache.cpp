@@ -17,6 +17,7 @@ namespace sdk {
     namespace {
 
         constexpr int VERSION = 1;
+        constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
 
         static cache::sqlite3_ptr get_new_memory_db()
         {
@@ -265,7 +266,7 @@ namespace sdk {
               "INSERT INTO LiquidOutput (txid, vout, assetid, satoshi, abf, vbf) VALUES (?1, ?2, ?3, ?4, ?5, ?6);"))
         , m_stmt_key_value_upsert(get_stmt(
               true, m_db, "INSERT INTO KeyValue(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value=?2;"))
-        , m_stmt_key_value_search(get_stmt(true, m_db, "SELECT value FROM KeyValue WHERE key = ?1;"))
+        , m_stmt_key_value_search(get_stmt(true, m_db, KV_SELECT))
         , m_stmt_key_value_delete(get_stmt(true, m_db, "DELETE FROM KeyValue WHERE key = ?1;"))
     {
     }
@@ -306,8 +307,27 @@ namespace sdk {
 
         const auto path = get_persistent_storage_file(m_data_dir, m_db_name, VERSION);
         if (!load_db_impl(m_encryption_key, path, m_db)) {
-            // Failed to load the latest version. See if VERSION - 1 exists;
-            // if so try to carry forward our client blob from it.
+            // Failed to load the latest version.
+            if (VERSION > 1) {
+                // Try to carry forward our client blob from the previous version
+                try {
+                    const auto prev_path = get_persistent_storage_file(m_data_dir, m_db_name, VERSION - 1);
+                    auto db{ get_db() };
+                    if (load_db_impl(m_encryption_key, prev_path, db)) {
+                        auto stmt{ get_stmt(true, db, KV_SELECT) };
+                        const auto _{ stmt_clean(stmt) };
+                        const char* blob_key = "client_blob";
+                        bind_blob(stmt, 1, ustring_span(blob_key));
+                        auto prev_blob = get_blob(stmt, 0);
+                        if (prev_blob) {
+                            upsert_key_value(blob_key, prev_blob.get());
+                        }
+                        GDK_LOG_SEV(log_level::info) << "Copied client blob from previous version";
+                    }
+                } catch (const std::exception&) {
+                    // Ignore errors; fetch blob from server or recreate instead
+                }
+            }
 
             // Clean up old versions only on initial DB creation
             clean_up_old_db(m_data_dir, m_db_name);
