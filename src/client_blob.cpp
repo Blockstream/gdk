@@ -88,13 +88,15 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(memcmp(decrypted.data(), PREFIX.data(), PREFIX.size()) == 0);
 
         // Decompress the compressed representation excluding PREFIX
-        const auto decompressed = decompress(gsl::make_span(decrypted).subspan(PREFIX.size()));
+        auto decompressed = decompress(gsl::make_span(decrypted).subspan(PREFIX.size()));
 
         // Clear and free the decrypted representation immediately
         bzero_and_free(decrypted);
 
         // Load our blob data from the uncompressed data in msgpack format
         auto new_data = nlohmann::json::from_msgpack(decompressed.begin(), decompressed.end());
+        // Clear and free the decompressed representation immediately
+        bzero_and_free(decompressed);
 
         // Check that the new blob has a higher version number:
         // This check prevents the server maliciously returning an old blob

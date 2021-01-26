@@ -310,7 +310,10 @@ namespace sdk {
             return user_agent;
         }
 
-        static inline void check_tx_memo(const std::string& memo) { GDK_RUNTIME_ASSERT(memo.size() <= 1024); }
+        static inline void check_tx_memo(const std::string& memo)
+        {
+            GDK_RUNTIME_ASSERT_MSG(memo.size() <= 1024, "Transaction memo too long");
+        }
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -348,7 +351,7 @@ namespace sdk {
         , m_notification_context(nullptr)
         , m_blob()
         , m_blob_hmac()
-        , m_blob_obsoleted(false)
+        , m_blob_outdated(false)
         , m_min_fee_rate(DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
@@ -775,7 +778,7 @@ namespace sdk {
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
             m_blob_hmac.clear();
-            m_blob_obsoleted = false;
+            m_blob_outdated = false;
             m_tx_list_caches.purge_all();
             // FIXME: securely destroy all held data
             // TODO: pass in whether we are disconnecting in order to reconnect,
@@ -1513,14 +1516,14 @@ namespace sdk {
             m_blob.set_user_version(1); // Initial version
 
             // If the save fails due to a race, m_blob_hmac will be empty below
-            save_client_blob(locker, server_hmac, true);
+            save_client_blob(locker, server_hmac);
         }
 
         if (m_blob_hmac.empty()) {
             // Load our client blob from from the cache if we have one
             m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) GDK_REQUIRES(m_mutex) {
                 if (db_blob) {
-                    std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
+                    const std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
                         m_blob.load(*m_blob_aes_key, *db_blob);
@@ -1559,7 +1562,7 @@ namespace sdk {
                 // when more than one session is logged in at a time.
                 if (m_blob_hmac != json_get_value(details, "hmac")) {
                     // Another session has updated our client blob, mark it dirty.
-                    m_blob_obsoleted = true;
+                    m_blob_outdated = true;
                 }
             }));
 
@@ -1590,6 +1593,7 @@ namespace sdk {
     void ga_session::load_client_blob(ga_session::locker_t& locker, bool encache)
     {
         // Load the latest blob from the server
+        GDK_LOG_SEV(log_level::info) << "Fetching client blob from server";
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         auto ret = wamp_cast_json(wamp_call(locker, "login.get_client_blob", 0));
         const auto server_blob = base64_to_bytes(ret["blob"]);
@@ -1602,10 +1606,10 @@ namespace sdk {
             encache_client_blob(locker, server_blob);
         }
         m_blob_hmac = server_hmac;
-        m_blob_obsoleted = false; // Blob is now current with the servers view
+        m_blob_outdated = false; // Blob is now current with the servers view
     }
 
-    bool ga_session::save_client_blob(ga_session::locker_t& locker, const std::string& old_hmac, bool encache)
+    bool ga_session::save_client_blob(ga_session::locker_t& locker, const std::string& old_hmac)
     {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1616,13 +1620,13 @@ namespace sdk {
         auto result = wamp_call(locker, "login.set_client_blob", blob_b64, 0, saved.second, old_hmac);
         if (!wamp_cast<bool>(result)) {
             // Raced with another update on the server, caller should try again
+            GDK_LOG_SEV(log_level::info) << "Save client blob race, retrying";
             return false;
         }
-        if (encache) {
-            encache_client_blob(locker, saved.first);
-        }
+        // Blob has been saved on the server, cache it locally
+        encache_client_blob(locker, saved.first);
         m_blob_hmac = saved.second;
-        m_blob_obsoleted = false; // Blob is now current with the servers view
+        m_blob_outdated = false; // Blob is now current with the servers view
         return true;
     }
 
@@ -1667,7 +1671,7 @@ namespace sdk {
             m_local_encryption_key = boost::none;
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
-            m_blob_obsoleted = false; // Blob will be reloaded if needed when login succeeds
+            m_blob_outdated = false; // Blob will be reloaded if needed when login succeeds
         } catch (const std::exception& ex) {
         }
     }
@@ -2167,18 +2171,18 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         while (true) {
-            if (!m_blob_obsoleted) {
+            if (!m_blob_outdated) {
                 // Our blob is current with the server; try to update
                 if (!update_fn()) {
                     // The update was a no-op; nothing to do
                     return;
                 }
-                constexpr bool encache = true;
-                if (save_client_blob(locker, m_blob_hmac, encache)) {
+                if (save_client_blob(locker, m_blob_hmac)) {
                     break;
                 }
             }
-            // Save failed: Re-load current blob from the server and re-try
+            // Our blob was known to be outdated, or saving to the server failed:
+            // Re-load the up-to-date blob from the server and re-try
             load_client_blob(locker, false);
         }
     }
@@ -2432,7 +2436,7 @@ namespace sdk {
         {
             // Set tx memos in the returned txs from the blob cache
             locker_t locker(m_mutex);
-            if (m_blob_obsoleted) {
+            if (m_blob_outdated) {
                 load_client_blob(locker, true);
             }
             for (auto& tx_details : tx_list) {

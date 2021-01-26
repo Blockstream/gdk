@@ -332,7 +332,7 @@ namespace sdk {
             GDK_REQUIRES(m_mutex);
 
         void load_client_blob(locker_t& locker, bool encache) GDK_REQUIRES(m_mutex);
-        bool save_client_blob(locker_t& locker, const std::string& old_hmac, bool encache) GDK_REQUIRES(m_mutex);
+        bool save_client_blob(locker_t& locker, const std::string& old_hmac) GDK_REQUIRES(m_mutex);
         void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data) GDK_REQUIRES(m_mutex);
         void update_blob(locker_t& locker, std::function<bool()> update_fn) GDK_REQUIRES(m_mutex);
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
@@ -508,7 +508,7 @@ namespace sdk {
         std::string m_blob_hmac GDK_GUARDED_BY(m_mutex);
         boost::optional<std::array<unsigned char, 32>> m_blob_aes_key GDK_GUARDED_BY(m_mutex);
         boost::optional<std::array<unsigned char, 32>> m_blob_hmac_key GDK_GUARDED_BY(m_mutex);
-        bool m_blob_obsoleted GDK_GUARDED_BY(m_mutex);
+        bool m_blob_outdated GDK_GUARDED_BY(m_mutex);
         std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);
         nlohmann::json m_twofactor_config GDK_GUARDED_BY(m_mutex);
