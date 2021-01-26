@@ -124,7 +124,7 @@ namespace sdk {
         }
 
         static std::string get_persistent_storage_file(
-            const std::string& data_dir, const std::string& db_name, int version = VERSION)
+            const std::string& data_dir, const std::string& db_name, int version)
         {
             return data_dir + '/' + std::to_string(version) + db_name + ".sqliteaesgcm";
         }
@@ -142,6 +142,41 @@ namespace sdk {
                 GDK_LOG_SEV(log_level::info) << "Deleting old version " << version << " db file " << path;
                 unlink(path.c_str());
             }
+        }
+
+        static bool load_db_impl(byte_span_t key, const std::string& path, cache::sqlite3_ptr& db)
+        {
+            std::vector<unsigned char> plaintext;
+            try {
+                plaintext = load_db_file(key, path);
+            } catch (const std::exception& ex) {
+                GDK_LOG_SEV(log_level::info) << "Bad decryption for file " << path << " error " << ex.what();
+                unlink(path.c_str());
+            }
+
+            if (plaintext.empty()) {
+                return false;
+            }
+
+            const auto tmpdb = get_new_memory_db();
+            const int rc = sqlite3_deserialize(
+                tmpdb.get(), "main", plaintext.data(), plaintext.size(), plaintext.size(), SQLITE_DESERIALIZE_READONLY);
+
+            if (rc != SQLITE_OK) {
+                GDK_LOG_SEV(log_level::info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
+                unlink(path.c_str());
+                return false;
+            }
+
+            auto backup = sqlite3_backup_init(db.get(), "main", tmpdb.get(), "main");
+            bool ok = backup != nullptr && sqlite3_backup_step(backup, -1) == SQLITE_DONE;
+            ok = ok && sqlite3_backup_finish(backup) == SQLITE_OK;
+            if (!ok) {
+                db_log_error(db.get());
+                return false;
+            }
+            GDK_LOG_SEV(log_level::info) << path << " loaded correctly";
+            return true;
         }
 
         static auto step_final(cache::sqlite3_stmt_ptr& stmt)
@@ -247,7 +282,7 @@ namespace sdk {
             return;
         }
         const auto data = gsl::make_span(reinterpret_cast<const unsigned char*>(db), db_size);
-        const auto path = get_persistent_storage_file(m_data_dir, m_db_name);
+        const auto path = get_persistent_storage_file(m_data_dir, m_db_name, VERSION);
         save_db_file(m_encryption_key, data, path);
         m_require_write = false;
     }
@@ -269,39 +304,14 @@ namespace sdk {
         m_db_name = b2h(gsl::make_span(hmac_sha512(intermediate, type_span).data(), 16));
         m_encryption_key = sha256(encryption_key);
 
-        clean_up_old_db(m_data_dir, m_db_name);
-        const auto path = get_persistent_storage_file(m_data_dir, m_db_name);
+        const auto path = get_persistent_storage_file(m_data_dir, m_db_name, VERSION);
+        if (!load_db_impl(m_encryption_key, path, m_db)) {
+            // Failed to load the latest version. See if VERSION - 1 exists;
+            // if so try to carry forward our client blob from it.
 
-        std::vector<unsigned char> plaintext;
-        try {
-            plaintext = load_db_file(m_encryption_key, path);
-        } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::info) << "Bad decryption for file " << path << " error " << ex.what();
-            unlink(path.c_str());
+            // Clean up old versions only on initial DB creation
+            clean_up_old_db(m_data_dir, m_db_name);
         }
-
-        if (plaintext.empty()) {
-            return;
-        }
-
-        const auto tmpdb = get_new_memory_db();
-        const int rc = sqlite3_deserialize(
-            tmpdb.get(), "main", plaintext.data(), plaintext.size(), plaintext.size(), SQLITE_DESERIALIZE_READONLY);
-
-        if (rc != SQLITE_OK) {
-            GDK_LOG_SEV(log_level::info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
-            unlink(path.c_str());
-            return;
-        }
-
-        auto backup = sqlite3_backup_init(m_db.get(), "main", tmpdb.get(), "main");
-        GDK_RUNTIME_ASSERT(backup);
-        bool backup_ok = sqlite3_backup_step(backup, -1) == SQLITE_DONE;
-        if (sqlite3_backup_finish(backup) != SQLITE_OK) {
-            db_log_error(m_db.get());
-        };
-        GDK_RUNTIME_ASSERT(backup_ok);
-        GDK_LOG_SEV(log_level::info) << "sqlite loaded correctly " << path;
     }
 
     void cache::clear_key_value(const std::string& key)
