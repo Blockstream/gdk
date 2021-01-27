@@ -10,6 +10,9 @@ try:
 except NameError:
     basestring = str
 
+# Unused: Provided for back compatibility only
+GA_MEMO_USER = 0
+GA_MEMO_BIP70 = 1
 
 class Call(object):
     """Handler class to process a call potentally requiring twofactor.
