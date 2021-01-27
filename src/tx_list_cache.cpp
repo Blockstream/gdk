@@ -104,13 +104,29 @@ namespace sdk {
                 os << "(empty)";
             }
             for (const auto& tx : cache) {
-                os << "(<" << json_get_value(tx, "block_height", 0)
-                   << "> " << json_get_value(tx, "created_at")
-                   << " {" << json_get_value(tx, "txhash") << "}),";
+                os << "(<" << json_get_value(tx, "block_height", 0) << "> " << json_get_value(tx, "created_at") << " {"
+                   << json_get_value(tx, "txhash") << "}),";
             }
             GDK_LOG_SEV(cache_log_level) << os.str();
 #else
             (void)cache;
+            (void)message;
+#endif
+        }
+
+        static void check_for_duplicates(
+            const container_type& existing, const container_type& to_add, const char* message)
+        {
+#ifndef NDEBUG
+            for (const auto& tx_to_add : to_add) {
+                const auto txhash_hex = json_get_value(tx_to_add, "txhash");
+                auto tx_eq = [&txhash_hex](const value_type& tx) { return tx["txhash"] == txhash_hex; };
+                auto p = std::find_if(existing.begin(), existing.end(), tx_eq);
+                GDK_RUNTIME_ASSERT_MSG(p == existing.end(), message);
+            }
+#else
+            (void)existing;
+            (void)to_add;
             (void)message;
 #endif
         }
@@ -136,6 +152,7 @@ namespace sdk {
                 }
                 page_tx_count = tmp.size();
                 filter_replaced_by(tmp);
+                check_for_duplicates(page_txs, tmp, "fetch_txs: Duplicate detected");
                 page_txs.insert(
                     page_txs.end(), std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
                 ++page;
@@ -202,6 +219,7 @@ namespace sdk {
                 std::tie(page_txs, is_last_page) = fetch_txs(start_tx, end_tx, state_info, get_txs);
 
                 // Add the loaded txs to our collection
+                check_for_duplicates(txs, page_txs, "cache:get newest (inner): Duplicate detected");
                 txs.insert(txs.end(), move_iter(page_txs.begin()), move_iter(page_txs.end()));
             } while (!is_last_page && m_tx_cache.empty() && txs.size() < required_cache_size);
 
@@ -211,6 +229,7 @@ namespace sdk {
                 m_oldest_txhash = txs.empty() ? "none" : txs.back()["txhash"];
             }
             // Add all loaded txs to the start of the tx cache.
+            check_for_duplicates(m_tx_cache, txs, "cache:get newest (outer): Duplicate detected");
             m_tx_cache.insert(m_tx_cache.begin(), move_iter(txs.begin()), move_iter(txs.end()));
 
             // Avoid reloading new txs until we are dirtied again by a new tx/block.
@@ -233,6 +252,7 @@ namespace sdk {
             std::tie(page_txs, is_last_page) = fetch_txs(nullptr, end_tx, state_info, get_txs);
 
             // Add the loaded txs to the end of the tx cache.
+            check_for_duplicates(m_tx_cache, page_txs, "cache:get oldest: Duplicate detected");
             m_tx_cache.insert(m_tx_cache.end(), move_iter(page_txs.begin()), move_iter(page_txs.end()));
 
             if (is_last_page) {
