@@ -130,7 +130,7 @@ namespace sdk {
             size_t page_tx_count;
             container_type page_txs;
             do {
-                container_type tmp{ get_txs(page, start_date, end_date, state_info) };
+                container_type tmp(get_txs(page, start_date, end_date, state_info));
                 if (!tmp.empty()) {
                     latest_end_at = json_get_value(tmp.front(), "created_at");
                 }
