@@ -198,6 +198,12 @@ public class Session {
         return TwoFactorCall(optr: optr!)
     }
 
+    fileprivate func voidFuncToJsonWrapper(fun call: (_: OpaquePointer, _: UnsafeMutablePointer<OpaquePointer?>) -> Int32) throws -> [String: Any]? {
+        var result: OpaquePointer? = nil
+        try callWrapper(fun: call(session!, &result))
+        return try convertOpaqueJsonToDict(o: result!)
+    }
+
     public func connect(netParams: [String:Any]) throws {
         var netParamsJson: OpaquePointer = try convertDictToJSON(dict: netParams)
         defer {
@@ -327,9 +333,7 @@ public class Session {
     }
 
     public func getAvailableCurrencies() throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_available_currencies(session, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+        return try voidFuncToJsonWrapper(fun: GA_get_available_currencies)
     }
 
     public func setPin(mnemonic: String, pin: String, device: String) throws -> [String: Any]? {
@@ -343,9 +347,7 @@ public class Session {
     }
 
     public func getTwoFactorConfig() throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_twofactor_config(session, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+        return try voidFuncToJsonWrapper(fun: GA_get_twofactor_config)
     }
 
     public func convertAmount(input: [String: Any]) throws -> [String: Any]? {
@@ -404,6 +406,10 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
+    public func getSettings() throws -> [String: Any]? {
+        return try voidFuncToJsonWrapper(fun: GA_get_settings)
+    }
+
     public func changeSettings(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_change_settings)
     }
@@ -445,9 +451,7 @@ public class Session {
     }
 
     public func getFeeEstimates() throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_fee_estimates(session, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+        return try voidFuncToJsonWrapper(fun: GA_get_fee_estimates)
     }
 
     public func getMnemonicPassphrase(password: String) throws -> String {
