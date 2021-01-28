@@ -197,15 +197,15 @@ impl WalletCtx {
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
-        // @shesek XXX how to handle missing subaccount?
-        let account_num = request.subaccount.unwrap_or(0);
-        self.get_account(account_num)?.create_tx(request)
+        self.get_account(request.subaccount)?.create_tx(request)
     }
 
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        // @shesek XXX how to handle missing subaccount (or create_transaction)?
-        let account_num =
-            request.create_transaction.as_ref().and_then(|c| c.subaccount).unwrap_or(0);
+        let account_num = request
+            .create_transaction
+            .as_ref()
+            .ok_or_else(|| Error::Generic("Cannot sign without tx data".into()))?
+            .subaccount;
         self.get_account(account_num)?.sign(request)
     }
 

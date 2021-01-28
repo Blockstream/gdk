@@ -366,6 +366,9 @@ impl Account {
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
+        if request.subaccount != self.account_num {
+            return Err(Error::InvalidSubaccount(request.subaccount));
+        }
         create_tx(self, request)
     }
 
@@ -684,12 +687,6 @@ pub fn create_tx(
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
     info!("create_tx {:?}", request);
-
-    // @shesek XXX how to handle missing subaccount/create_transaction?
-    let subaccount = request.subaccount.unwrap_or(0);
-    if subaccount != account.num() {
-        return Err(Error::InvalidSubaccount(subaccount));
-    }
 
     let network = &account.network;
 

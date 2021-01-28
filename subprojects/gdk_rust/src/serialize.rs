@@ -227,7 +227,10 @@ where
 {
     let num_confs = input["num_confs"].as_u64().unwrap_or(0);
 
-    let subaccount = input["subaccount"].as_u64().map(|x| x as u32);
+    let subaccount = input["subaccount"]
+        .as_u64()
+        .ok_or_else(|| Error::Other("get_balance: missing subaccount".into()))?
+        as u32;
 
     let bal = session.get_balance(num_confs as u32, subaccount).map_err(Into::into)?;
 

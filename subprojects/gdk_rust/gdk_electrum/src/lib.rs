@@ -636,10 +636,9 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, _num_confs: u32, account_num: Option<u32>) -> Result<Balances, Error> {
+    fn get_balance(&self, _num_confs: u32, account_num: u32) -> Result<Balances, Error> {
         // TODO num_confs is currently ignored
-        // XXX how to handle missing subaccount?
-        self.get_wallet()?.balance(account_num.unwrap_or(0))
+        self.get_wallet()?.balance(account_num)
     }
 
     fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), Error> {

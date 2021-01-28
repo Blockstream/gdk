@@ -358,7 +358,7 @@ impl TestSession {
         //let init_sat = self.balance_gdk();
         //let init_sat_addr = self.balance_addr(address);
         let mut create_opt = CreateTransaction::default();
-        create_opt.subaccount = Some(subaccount);
+        create_opt.subaccount = subaccount;
         let fee_rate = 1000;
         create_opt.fee_rate = Some(fee_rate);
         create_opt.addressees.push(AddressAmount {
@@ -461,7 +461,7 @@ impl TestSession {
         asset: Option<String>,
     ) -> String {
         let mut create_opt = CreateTransaction::default();
-        create_opt.subaccount = Some(subaccount);
+        create_opt.subaccount = subaccount;
         let fee_rate = match self.network.id() {
             NetworkId::Elements(_) => 100,
             NetworkId::Bitcoin(_) => 1000,
@@ -664,12 +664,12 @@ impl TestSession {
             Err(Error::InsufficientFunds)
         ));
 
-        create_opt.subaccount = Some(1);
+        create_opt.subaccount = 99;
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidSubaccount(1))
+            Err(Error::InvalidSubaccount(99))
         ));
-        create_opt.subaccount = None;
+        create_opt.subaccount = 0;
 
         create_opt.previous_transaction.insert("txhash".into(), "something".into());
         assert!(matches!(self.session.create_transaction(&mut create_opt), Err(Error::Generic(_))));
@@ -898,7 +898,7 @@ impl TestSession {
 
     /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
     fn balance_gdk_all(&self) -> Balances {
-        self.session.get_balance(0, None).unwrap()
+        self.session.get_balance(0, 0).unwrap()
     }
 
     /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
@@ -907,7 +907,7 @@ impl TestSession {
     }
 
     pub fn balance_account(&self, account_num: u32, asset: Option<String>) -> u64 {
-        let balance = self.session.get_balance(0, Some(account_num)).unwrap();
+        let balance = self.session.get_balance(account_num, 0).unwrap();
         match self.network_id {
             NetworkId::Elements(_) => {
                 let asset =
