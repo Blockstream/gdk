@@ -66,6 +66,10 @@ namespace sdk {
     // Compute the fee for a tx
     amount get_tx_fee(const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate);
 
+    // Get scriptpubkey from address (address is expected to be valid)
+    std::vector<unsigned char> scriptpubkey_from_address(
+        const network_parameters& net_params, const std::string& address);
+
     // Add an output to a tx given its address
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi = 0, const std::string& asset_tag = {});

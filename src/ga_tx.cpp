@@ -256,11 +256,21 @@ namespace sdk {
                 // Compute addressees and any change details from the old tx
                 std::vector<nlohmann::json> addressees;
                 const auto& outputs = prev_tx.at("outputs");
+                GDK_RUNTIME_ASSERT(tx->num_outputs == outputs.size());
                 addressees.reserve(outputs.size());
                 uint32_t i = 0, change_index = NO_CHANGE_INDEX;
 
                 const auto& net_params = session.get_network_parameters();
                 for (const auto& output : outputs) {
+                    if (!output.at("address").empty()) {
+                        // Validate address matches the transaction scriptpubkey
+                        const auto spk_from_address = scriptpubkey_from_address(net_params, output["address"]);
+                        const auto& o = tx->outputs[i];
+                        const auto spk_from_tx = gsl::make_span(o.script, o.script_len);
+                        GDK_RUNTIME_ASSERT(static_cast<size_t>(spk_from_tx.size()) == spk_from_address.size());
+                        GDK_RUNTIME_ASSERT(
+                            std::equal(spk_from_address.begin(), spk_from_address.end(), spk_from_tx.begin()));
+                    }
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
                     if (is_relevant) {
                         // Validate address is owned by the wallet

@@ -263,6 +263,15 @@ namespace sdk {
         return amount(rounded_fee);
     }
 
+    std::vector<unsigned char> scriptpubkey_from_address(
+        const network_parameters& net_params, const std::string& address)
+    {
+        std::string error;
+        std::vector<unsigned char> script = output_script_for_address(net_params, address, error);
+        GDK_RUNTIME_ASSERT(error.empty());
+        return script;
+    }
+
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi, const std::string& asset_tag)
     {
