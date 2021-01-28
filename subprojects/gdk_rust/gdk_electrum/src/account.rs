@@ -92,7 +92,7 @@ impl Account {
         self.account_num
     }
 
-    pub fn info(&self) -> Result<AccountInfo, Error> {
+    pub fn info(&self, num_confs: u32) -> Result<AccountInfo, Error> {
         let name = self.store.read()?.get_account_name(self.account_num).cloned();
 
         Ok(AccountInfo {
@@ -100,7 +100,7 @@ impl Account {
             script_type: self.script_type,
             name: name.unwrap_or("Single sig wallet".into()),
             has_transactions: self.has_transactions(),
-            satoshi: self.balance()?,
+            satoshi: self.balance(num_confs)?,
         })
     }
 
@@ -138,8 +138,15 @@ impl Account {
         let store = self.store.read()?;
         let acc_store = store.account_cache(self.account_num)?;
 
+        let tip_height = store.cache.tip.0;
+        let num_confs = opt.num_confs.unwrap_or(0);
+
         let mut txs = vec![];
-        let mut my_txids: Vec<(&BETxid, &Option<u32>)> = acc_store.heights.iter().collect();
+        let mut my_txids: Vec<(&BETxid, &Option<u32>)> = acc_store
+            .heights
+            .iter()
+            .filter(|(_, height)| num_confs <= height.map_or(0, |height| tip_height - height + 1))
+            .collect();
         my_txids.sort_by(|a, b| {
             let height_cmp = b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX));
             match height_cmp {
@@ -238,14 +245,20 @@ impl Account {
         Ok(txs)
     }
 
-    pub fn utxos(&self) -> Result<Utxos, Error> {
+    pub fn utxos(&self, num_confs: u32) -> Result<Utxos, Error> {
         info!("start utxos");
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
 
+        let tip_height = store_read.cache.tip.0;
+
         let mut utxos = vec![];
         let spent = self.spent()?;
         for (tx_id, height) in acc_store.heights.iter() {
+            if num_confs > height.map_or(0, |height| tip_height - height + 1) {
+                continue;
+            }
+
             let tx = acc_store
                 .all_txs
                 .get(tx_id)
@@ -344,7 +357,7 @@ impl Account {
         Ok(result)
     }
 
-    pub fn balance(&self) -> Result<Balances, Error> {
+    pub fn balance(&self, num_confs: u32) -> Result<Balances, Error> {
         info!("start balance");
         let mut result = HashMap::new();
         match self.network.id() {
@@ -353,7 +366,7 @@ impl Account {
                 result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0)
             }
         };
-        for (_, info) in self.utxos()?.iter() {
+        for (_, info) in self.utxos(num_confs)?.iter() {
             *result.entry(info.asset.clone()).or_default() += info.value as i64;
         }
         Ok(result)
@@ -777,7 +790,7 @@ pub fn create_tx(
     info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
     let utxos = match &request.utxos {
-        None => account.utxos()?,
+        None => account.utxos(request.num_confs.unwrap_or(0))?,
         Some(utxos) => utxos.try_into()?,
     };
     info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);

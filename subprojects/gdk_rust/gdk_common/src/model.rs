@@ -121,6 +121,8 @@ pub struct CreateTransaction {
     pub previous_transaction: HashMap<String, Value>,
     pub memo: Option<String>,
     pub utxos: Option<GetUnspentOutputs>,
+    /// Minimum number of confirmations for coin selection
+    pub num_confs: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -128,13 +130,13 @@ pub struct GetTransactionsOpt {
     pub first: usize,
     pub count: usize,
     pub subaccount: u32,
-    pub num_confs: Option<usize>,
+    pub num_confs: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetUnspentOpt {
     pub subaccount: u32,
-    pub num_confs: Option<usize>, // unused
+    pub num_confs: Option<u32>,
     pub all_coins: Option<usize>, // unused
 }
 

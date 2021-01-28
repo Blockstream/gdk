@@ -232,7 +232,7 @@ where
         .ok_or_else(|| Error::Other("get_balance: missing subaccount".into()))?
         as u32;
 
-    let bal = session.get_balance(num_confs as u32, subaccount).map_err(Into::into)?;
+    let bal = session.get_balance(subaccount, num_confs as u32).map_err(Into::into)?;
 
     Ok(balance_result_value(&bal))
 }

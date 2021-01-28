@@ -611,19 +611,18 @@ impl Session<Error> for ElectrumSession {
 
     fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, Error> {
         let wallet = self.get_wallet()?;
-        wallet.iter_accounts().map(|a| a.info()).collect()
+        wallet.iter_accounts().map(|a| a.info(0)).collect()
     }
 
-    fn get_subaccount(&self, account_num: u32, _num_confs: u32) -> Result<AccountInfo, Error> {
-        // TODO num_confs is ignored
+    fn get_subaccount(&self, account_num: u32, num_confs: u32) -> Result<AccountInfo, Error> {
         let wallet = self.get_wallet()?;
-        wallet.get_account(account_num)?.info()
+        wallet.get_account(account_num)?.info(num_confs)
     }
 
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let mut wallet = self.get_wallet_mut()?;
         let account = wallet.create_account(opt)?;
-        account.info()
+        account.info(0)
     }
 
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
@@ -636,9 +635,8 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, _num_confs: u32, account_num: u32) -> Result<Balances, Error> {
-        // TODO num_confs is currently ignored
-        self.get_wallet()?.balance(account_num)
+    fn get_balance(&self, account_num: u32, num_confs: u32) -> Result<Balances, Error> {
+        self.get_wallet()?.balance(account_num, num_confs)
     }
 
     fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), Error> {
