@@ -52,12 +52,12 @@ fn bitcoin() {
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
-    let mut utxos = test_session.utxo("btc", vec![149741, 96697489]);
+    let mut utxos = test_session.utxo("btc", vec![149739, 96697483]);
     test_session.check_decryption(103, &[&txid]);
 
-    utxos.0.get_mut("btc").unwrap().retain(|e| e.satoshi == 149741); // we want to use the smallest utxo
+    utxos.0.get_mut("btc").unwrap().retain(|e| e.satoshi == 149739); // we want to use the smallest utxo
     test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos));
-    test_session.utxo("btc", vec![139573, 96697489]); // the smallest utxo has been spent
+    test_session.utxo("btc", vec![139569, 96697483]); // the smallest utxo has been spent
                                                       // TODO add a test with external UTXO
 
     test_session.stop();
