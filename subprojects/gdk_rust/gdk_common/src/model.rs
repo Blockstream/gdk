@@ -153,6 +153,12 @@ pub struct CreateAccountOpt {
     pub script_type: ScriptType,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RenameAccountOpt {
+    pub subaccount: u32,
+    pub new_name: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVVerifyTx {
     pub txid: String,

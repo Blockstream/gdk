@@ -1,4 +1,4 @@
-use gdk_common::model::{CreateAccountOpt, RefreshAssets, SPVVerifyResult};
+use gdk_common::model::{CreateAccountOpt, RefreshAssets, RenameAccountOpt, SPVVerifyResult};
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
 use gdk_electrum::error::Error;
@@ -168,6 +168,16 @@ fn subaccounts() {
     assert_eq!(account2.script_type, ScriptType::P2pkh);
     assert_eq!(test_session.session.get_subaccount(1, 0).unwrap().script_type, ScriptType::P2wpkh);
     assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2");
+
+    // Rename subaccount
+    test_session
+        .session
+        .rename_subaccount(RenameAccountOpt {
+            subaccount: 2,
+            new_name: "Account 2@".into(),
+        })
+        .unwrap();
+    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2@");
 
     // Get addresses & check they match the expected types
     let acc0_address = test_session.get_receive_address(0);

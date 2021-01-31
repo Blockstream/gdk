@@ -140,8 +140,12 @@ impl WalletCtx {
         }
 
         let account = self._ensure_account(next_account)?;
-        account.set_name(opt.name)?;
+        account.set_name(&opt.name)?;
         Ok(account)
+    }
+
+    pub fn rename_account(&mut self, account_num: u32, new_name: &str) -> Result<(), Error> {
+        self.get_account(account_num)?.set_name(new_name)
     }
 
     pub fn recover_accounts(&mut self, electrum_url: &ElectrumUrl) -> Result<(), Error> {

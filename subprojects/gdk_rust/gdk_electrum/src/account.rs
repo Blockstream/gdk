@@ -104,9 +104,9 @@ impl Account {
         })
     }
 
-    pub fn set_name(&self, name: String) -> Result<(), Error> {
+    pub fn set_name(&self, name: &str) -> Result<(), Error> {
         let mut store_write = self.store.write()?;
-        store_write.set_account_name(self.account_num, name.clone());
+        store_write.set_account_name(self.account_num, name.to_string());
         Ok(())
     }
 
