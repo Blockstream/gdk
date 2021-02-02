@@ -4,7 +4,7 @@
 
 #include <mutex>
 
-#if defined(__clang__) && (!defined(SWIG)) && (!defined(__FreeBSD__))
+#if 0 // defined(__clang__) && (!defined(SWIG)) && (!defined(__FreeBSD__))
 #define GDK_THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
 #else
 #define GDK_THREAD_ANNOTATION_ATTRIBUTE__(x) // no-op
