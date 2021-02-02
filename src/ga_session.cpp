@@ -110,6 +110,9 @@ namespace sdk {
 
         static const std::string ZEROS(64, '0');
 
+        // Multi-call categories
+        constexpr uint32_t MC_TX_CACHE = 0x1; // Call affects the tx cache
+
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
         {
@@ -361,6 +364,7 @@ namespace sdk {
         , m_watch_only(true)
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
+        , m_multi_call_category(0)
         , m_cache(m_net_params, net_params.at("name"))
         , m_user_agent(std::string(GDK_COMMIT) + " " + net_params.value("user_agent", ""))
         , m_electrum_url(
@@ -1243,11 +1247,6 @@ namespace sdk {
 
         // Notify the caller of the current fees
         on_new_fees(locker, m_login_data["fee_estimates"]);
-
-        // Notify the caller of their current block
-        on_new_block(locker,
-            nlohmann::json({ { "block_height", block_height }, { "block_hash", m_login_data["block_hash"] },
-                { "diverged_count", 0 } }));
     }
 
     void ga_session::update_fiat_rate(ga_session::locker_t& locker, const std::string& rate_str)
@@ -1341,9 +1340,39 @@ namespace sdk {
         return convert_amount(locker, details)["satoshi"] <= current_total;
     }
 
-    void ga_session::on_new_transaction(
-        locker_t& locker, const std::vector<uint32_t>& subaccounts, nlohmann::json details)
+    std::unique_ptr<ga_session::locker_t> ga_session::get_multi_call_locker(uint32_t category_flags, bool wait_for_lock)
     {
+        std::unique_ptr<locker_t> locker{ new locker_t(m_mutex, std::defer_lock) };
+        for (;;) {
+            locker->lock();
+            if (!(m_multi_call_category & category_flags)) {
+                // No multi calls of this category are in progress.
+                // Exit the loop with the locker locked
+                break;
+            }
+            // Unlock and sleep to allow other threads to make progress
+            locker->unlock();
+            std::this_thread::sleep_for(1ms);
+            if (!wait_for_lock) {
+                // Exit the loop with the locker unlocked
+                break;
+            }
+            // Continue around loop to try again
+        }
+        return locker;
+    }
+
+    void ga_session::on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details)
+    {
+        auto locker_p{ get_multi_call_locker(MC_TX_CACHE, false) };
+        auto& locker = *locker_p;
+
+        if (!locker.owns_lock()) {
+            // Try again: 'post' this to allow the competing thread to proceed.
+            asio::post(m_pool, [this, subaccounts, details] { on_new_transaction(subaccounts, details); });
+            return;
+        }
+
         no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
             using namespace std::chrono_literals;
 
@@ -1411,8 +1440,17 @@ namespace sdk {
         });
     }
 
-    void ga_session::on_new_block(locker_t& locker, nlohmann::json details)
+    void ga_session::on_new_block(nlohmann::json details)
     {
+        auto locker_p{ get_multi_call_locker(MC_TX_CACHE, false) };
+        auto& locker = *locker_p;
+
+        if (!locker.owns_lock()) {
+            // Try again: 'post' this to allow the competing thread to proceed.
+            asio::post(m_pool, [this, details] { on_new_block(details); });
+            return;
+        }
+
         no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             json_rename_key(details, "count", "block_height");
@@ -1550,8 +1588,7 @@ namespace sdk {
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
                 auto details = wamp_cast_json(event);
                 std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
-                locker_t notify_locker(m_mutex);
-                on_new_transaction(notify_locker, subaccounts, details);
+                on_new_transaction(subaccounts, details);
             }));
 
         subscriptions.emplace_back(
@@ -1566,11 +1603,8 @@ namespace sdk {
                 }
             }));
 
-        subscriptions.emplace_back(
-            subscribe(locker, "com.greenaddress.blocks", [this](const autobahn::wamp_event& event) {
-                locker_t notify_locker(m_mutex);
-                on_new_block(notify_locker, wamp_cast_json(event));
-            }));
+        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
+            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.fee_estimates", [this](const autobahn::wamp_event& event) {
@@ -1588,6 +1622,13 @@ namespace sdk {
             push_appearance_to_server(locker);
         }
         //#endif
+
+        // Notify the caller of their current block
+        const uint32_t block_height = m_block_height;
+        const auto block_hash = m_login_data["block_hash"];
+        locker.unlock();
+        on_new_block(nlohmann::json(
+            { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } }));
     }
 
     void ga_session::load_client_blob(ga_session::locker_t& locker, bool encache)
@@ -1821,11 +1862,17 @@ namespace sdk {
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
                 auto details = wamp_cast_json(event);
                 std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
-                locker_t notify_locker(m_mutex);
-                on_new_transaction(notify_locker, subaccounts, details);
+                on_new_transaction(subaccounts, details);
             }));
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
+
+        // Notify the caller of their current block
+        const uint32_t block_height = m_block_height;
+        const auto block_hash = m_login_data["block_hash"];
+        locker.unlock();
+        on_new_block(nlohmann::json(
+            { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } }));
     }
 
     void ga_session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
@@ -2374,13 +2421,17 @@ namespace sdk {
             return tx_list_cache::container_type();
         }
 
-        locker_t locker(m_mutex);
+        auto locker_p{ get_multi_call_locker(MC_TX_CACHE, true) };
+        auto& locker = *locker_p;
+
+        // Mark for other threads that a tx cache affecting call is running
+        m_multi_call_category |= MC_TX_CACHE;
+        const auto cleanup = gsl::finally([this]() GDK_REQUIRES(m_mutex) { m_multi_call_category &= ~MC_TX_CACHE; });
 
         auto&& server_get = [this, &locker, subaccount](uint32_t page_id, const std::string& start_date,
                                 const std::string& end_date, nlohmann::json& state_info) {
             const std::vector<std::string> date_range{ start_date, end_date };
 
-            // FIXME: unlocking this allows notifications to claim m_mutex
             auto result
                 = wamp_call(locker, "txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
             nlohmann::json txs = wamp_cast_json(result);

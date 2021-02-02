@@ -361,9 +361,9 @@ namespace sdk {
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
         void call_notification_handler(locker_t& locker, nlohmann::json* details) GDK_REQUIRES(m_mutex);
 
-        void on_new_transaction(locker_t& locker, const std::vector<uint32_t>& subaccounts, nlohmann::json details)
-            GDK_REQUIRES(m_mutex);
-        void on_new_block(locker_t& locker, nlohmann::json details) GDK_REQUIRES(m_mutex);
+        std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
+        void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
+        void on_new_block(nlohmann::json details);
         void on_new_fees(locker_t& locker, const nlohmann::json& details) GDK_REQUIRES(m_mutex);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange)
             GDK_REQUIRES(m_mutex);
@@ -542,6 +542,7 @@ namespace sdk {
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
 
+        uint32_t m_multi_call_category GDK_GUARDED_BY(m_mutex);
         tx_list_caches m_tx_list_caches GDK_GUARDED_BY(m_mutex);
         std::shared_ptr<nlocktime_t> m_nlocktimes GDK_GUARDED_BY(m_mutex);
 
