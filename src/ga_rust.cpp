@@ -511,7 +511,6 @@ namespace sdk {
 
     const network_parameters& ga_rust::get_network_parameters() const { return m_netparams; }
 
-    signer& ga_rust::get_signer() { throw std::runtime_error("get_signer not implemented"); }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
     user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rust::get_recovery_pubkeys()

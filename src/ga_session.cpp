@@ -1022,6 +1022,7 @@ namespace sdk {
         ga_session::locker_t& locker, const std::string& challenge)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
         auto path_bytes = get_random_bytes<8>();
 
@@ -1031,7 +1032,7 @@ namespace sdk {
 
         const auto challenge_hash = uint256_to_base256(challenge);
 
-        return { sig_to_der_hex(get_signer().sign_hash(path, challenge_hash)), b2h(path_bytes) };
+        return { sig_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
     }
 
     nlohmann::json ga_session::set_fee_estimates(ga_session::locker_t& locker, const nlohmann::json& fee_estimates)
@@ -1153,6 +1154,7 @@ namespace sdk {
         locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32, bool watch_only)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
         m_login_data = login_data;
 
@@ -1200,8 +1202,8 @@ namespace sdk {
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
                 pub_key_t login_pubkey;
-                if (get_signer().get_hw_device().empty()) {
-                    login_pubkey = get_signer().get_xpub(signer::LOGIN_PATH).second;
+                if (m_signer->get_hw_device().empty()) {
+                    login_pubkey = m_signer->get_xpub(signer::LOGIN_PATH).second;
                 } else {
                     wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
                     ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
@@ -1406,7 +1408,7 @@ namespace sdk {
             return;
         }
 
-        no_std_exception_escape([&]()  {
+        no_std_exception_escape([&]() {
             using namespace std::chrono_literals;
 
             GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1484,7 +1486,7 @@ namespace sdk {
             return;
         }
 
-        no_std_exception_escape([&]()  {
+        no_std_exception_escape([&]() {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             json_rename_key(details, "count", "block_height");
             details["initial_timestamp"] = m_earliest_block_time;
@@ -1509,7 +1511,7 @@ namespace sdk {
 
     void ga_session::on_new_fees(locker_t& locker, const nlohmann::json& details)
     {
-        no_std_exception_escape([&]()  {
+        no_std_exception_escape([&]() {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             auto new_estimates = set_fee_estimates(locker, details);
 
@@ -1560,7 +1562,7 @@ namespace sdk {
         // TODO: If no device id is given, generate one, update our settings and
         // call the storage interface to store the settings (once storage/caching is implemented)
         std::string id = device_id.empty() ? "fake_dev_id" : device_id;
-        const auto user_agent = get_user_agent(get_signer().supports_arbitrary_scripts(), m_user_agent);
+        const auto user_agent = get_user_agent(m_signer->supports_arbitrary_scripts(), m_user_agent);
 
         auto result = wamp_call(locker, "login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
         nlohmann::json login_data = wamp_cast_json(result);
@@ -1598,7 +1600,7 @@ namespace sdk {
 
         if (m_blob_hmac.empty()) {
             // Load our client blob from from the cache if we have one
-            m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob)  {
+            m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) {
                 if (db_blob) {
                     const std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
                     if (db_hmac == server_hmac) {
@@ -1782,15 +1784,15 @@ namespace sdk {
         m_signer = std::make_unique<software_signer>(m_net_params, mnemonic);
 
         // Create our local user keys repository
-        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, get_signer().get_xpub());
+        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, m_signer->get_xpub());
 
         // Cache local encryption key
-        const auto pwd_xpub = get_signer().get_xpub(signer::CLIENT_SECRET_PATH);
+        const auto pwd_xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);
         constexpr bool is_hw_wallet = false;
         set_local_encryption_keys(locker, pwd_xpub.second, is_hw_wallet);
 
         // TODO: Unify normal and trezor logins
-        const auto challenge_arg = get_signer().get_challenge();
+        const auto challenge_arg = m_signer->get_challenge();
         std::string challenge = wamp_cast(wamp_call(locker, "login.get_challenge", challenge_arg));
 
         const auto hexder_path = sign_challenge(locker, challenge);
@@ -1994,9 +1996,10 @@ namespace sdk {
 
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(message == m_system_message_ack);
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
         const auto hash = format_bitcoin_message_hash(ustring_span(info.first));
-        const auto sig_der_hex = sig_to_der_hex(get_signer().sign_hash(info.second, hash));
+        const auto sig_der_hex = sig_to_der_hex(m_signer->sign_hash(info.second, hash));
 
         ack_system_message(locker, info.first, sig_der_hex);
     }
@@ -2176,6 +2179,7 @@ namespace sdk {
         amount satoshi, bool has_txs, uint32_t required_ca)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
         GDK_RUNTIME_ASSERT(m_subaccounts.find(subaccount) == m_subaccounts.end());
         GDK_RUNTIME_ASSERT(type == "2of2" || type == "2of3" || type == "2of2_no_recovery");
@@ -2192,7 +2196,7 @@ namespace sdk {
             // Add user and recovery pubkeys for the subaccount
             if (m_user_pubkeys != nullptr && !m_user_pubkeys->have_subaccount(subaccount)) {
                 const uint32_t path[2] = { harden(3), harden(subaccount) };
-                m_user_pubkeys->add_subaccount(subaccount, get_signer().get_xpub(path));
+                m_user_pubkeys->add_subaccount(subaccount, m_signer->get_xpub(path));
             }
 
             if (m_recovery_pubkeys != nullptr && !recovery_chain_code.empty()) {
@@ -2215,9 +2219,11 @@ namespace sdk {
     {
         const uint32_t path[2] = { harden(3), harden(subaccount) };
 
+        // FIXME: pass locker throughout subaccount creation
         const auto xpub = [this, &path] {
             locker_t locker(m_mutex);
-            return get_signer().get_bip32_xpub(path);
+            GDK_RUNTIME_ASSERT(m_signer != nullptr);
+            return m_signer->get_bip32_xpub(path);
         }();
         return create_subaccount(details, subaccount, xpub);
     }
@@ -2353,13 +2359,14 @@ namespace sdk {
 
         const auto blinding_key = [this, &extra_commitment]() -> boost::optional<std::array<unsigned char, 32>> {
             locker_t locker(m_mutex);
+            GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
-            if (!get_signer().get_hw_device().empty()) {
+            if (!m_signer->get_hw_device().empty()) {
                 return boost::none;
             }
 
             // if it's software signer, fetch the blinding key immediately
-            return get_signer().get_blinding_key_from_script(extra_commitment);
+            return m_signer->get_blinding_key_from_script(extra_commitment);
         }();
 
         try {
@@ -2475,7 +2482,7 @@ namespace sdk {
 
         // Mark for other threads that a tx cache affecting call is running
         m_multi_call_category |= MC_TX_CACHE;
-        const auto cleanup = gsl::finally([this]()  { m_multi_call_category &= ~MC_TX_CACHE; });
+        const auto cleanup = gsl::finally([this]() { m_multi_call_category &= ~MC_TX_CACHE; });
 
         auto&& server_get = [this, &locker, subaccount](uint32_t page_id, const std::string& start_date,
                                 const std::string& end_date, nlohmann::json& state_info) {
@@ -3109,8 +3116,8 @@ namespace sdk {
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
     {
         locker_t locker(m_mutex);
-        const auto public_key = get_signer().get_public_key_from_blinding_key(h2b(script_hex));
-        return b2h(public_key);
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return b2h(m_signer->get_public_key_from_blinding_key(h2b(script_hex)));
     }
 
     nlohmann::json ga_session::get_balance(const nlohmann::json& details)
@@ -3135,7 +3142,8 @@ namespace sdk {
     nlohmann::json ga_session::get_hw_device() const
     {
         locker_t locker(m_mutex);
-        return get_signer().get_hw_device();
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return m_signer->get_hw_device();
     }
 
 #if 1
@@ -3418,19 +3426,6 @@ namespace sdk {
     }
 
     // Post-login idempotent
-    signer& ga_session::get_signer()
-    {
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return *m_signer;
-    };
-
-    const signer& ga_session::get_signer() const
-    {
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return *m_signer;
-    };
-
-    // Post-login idempotent
     ga_pubkeys& ga_session::get_ga_pubkeys()
     {
         GDK_RUNTIME_ASSERT(m_ga_pubkeys != nullptr);
@@ -3490,13 +3485,15 @@ namespace sdk {
     bool ga_session::supports_low_r() const
     {
         locker_t locker(m_mutex);
-        return get_signer().supports_low_r();
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return m_signer->supports_low_r();
     }
 
     liquid_support_level ga_session::hw_liquid_support() const
     {
         locker_t locker(m_mutex);
-        return get_signer().supports_liquid();
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return m_signer->supports_liquid();
     }
 
     std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
@@ -3519,7 +3516,8 @@ namespace sdk {
     ecdsa_sig_t ga_session::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         locker_t locker(m_mutex);
-        return get_signer().sign_hash(path, hash);
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return m_signer->sign_hash(path, hash);
     }
 
     nlohmann::json ga_session::create_transaction(const nlohmann::json& details)

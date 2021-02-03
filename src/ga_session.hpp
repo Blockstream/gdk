@@ -290,8 +290,6 @@ namespace sdk {
 
         void emit_notification(std::string event, nlohmann::json details);
 
-        signer& get_signer();
-        const signer& get_signer() const;
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
@@ -340,8 +338,8 @@ namespace sdk {
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const;
         void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
-        void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
-            bool watch_only);
+        void update_login_data(
+            locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32, bool watch_only);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;
@@ -365,8 +363,8 @@ namespace sdk {
         void on_new_fees(locker_t& locker, const nlohmann::json& details);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
-        void remap_appearance_settings(ga_session::locker_t& locker, const nlohmann::json& src_json,
-            nlohmann::json& dst_json, bool from_settings);
+        void remap_appearance_settings(
+            ga_session::locker_t& locker, const nlohmann::json& src_json, nlohmann::json& dst_json, bool from_settings);
 
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
