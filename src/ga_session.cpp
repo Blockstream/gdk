@@ -1406,7 +1406,7 @@ namespace sdk {
             return;
         }
 
-        no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
+        no_std_exception_escape([&]()  {
             using namespace std::chrono_literals;
 
             GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1484,7 +1484,7 @@ namespace sdk {
             return;
         }
 
-        no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
+        no_std_exception_escape([&]()  {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             json_rename_key(details, "count", "block_height");
             details["initial_timestamp"] = m_earliest_block_time;
@@ -1509,7 +1509,7 @@ namespace sdk {
 
     void ga_session::on_new_fees(locker_t& locker, const nlohmann::json& details)
     {
-        no_std_exception_escape([&]() GDK_REQUIRES(m_mutex) {
+        no_std_exception_escape([&]()  {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             auto new_estimates = set_fee_estimates(locker, details);
 
@@ -1598,7 +1598,7 @@ namespace sdk {
 
         if (m_blob_hmac.empty()) {
             // Load our client blob from from the cache if we have one
-            m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) GDK_REQUIRES(m_mutex) {
+            m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob)  {
                 if (db_blob) {
                     const std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
                     if (db_hmac == server_hmac) {
@@ -2475,7 +2475,7 @@ namespace sdk {
 
         // Mark for other threads that a tx cache affecting call is running
         m_multi_call_category |= MC_TX_CACHE;
-        const auto cleanup = gsl::finally([this]() GDK_REQUIRES(m_mutex) { m_multi_call_category &= ~MC_TX_CACHE; });
+        const auto cleanup = gsl::finally([this]()  { m_multi_call_category &= ~MC_TX_CACHE; });
 
         auto&& server_get = [this, &locker, subaccount](uint32_t page_id, const std::string& start_date,
                                 const std::string& end_date, nlohmann::json& state_info) {

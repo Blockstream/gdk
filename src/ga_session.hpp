@@ -134,7 +134,7 @@ namespace sdk {
     class ga_session final : public session_common {
     public:
         using transport_t = boost::variant<std::shared_ptr<transport>, std::shared_ptr<transport_tls>>;
-        using locker_t = annotated_unique_lock<annotated_mutex>;
+        using locker_t = std::unique_lock<std::mutex>;
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using ping_fail_t = std::function<void()>;
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
@@ -209,7 +209,7 @@ namespace sdk {
         bool is_watch_only() const;
 
         nlohmann::json get_twofactor_config(bool reset_cached);
-        nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false) GDK_REQUIRES(m_mutex);
+        nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false);
         std::vector<std::string> get_all_twofactor_methods();
         std::vector<std::string> get_enabled_twofactor_methods();
 
@@ -290,11 +290,11 @@ namespace sdk {
 
         void emit_notification(std::string event, nlohmann::json details);
 
-        signer& get_signer() GDK_REQUIRES(m_mutex);
-        const signer& get_signer() const GDK_REQUIRES(m_mutex);
-        ga_pubkeys& get_ga_pubkeys() GDK_REQUIRES(m_mutex);
-        user_pubkeys& get_user_pubkeys() GDK_REQUIRES(m_mutex);
-        ga_user_pubkeys& get_recovery_pubkeys() GDK_REQUIRES(m_mutex);
+        signer& get_signer();
+        const signer& get_signer() const;
+        ga_pubkeys& get_ga_pubkeys();
+        user_pubkeys& get_user_pubkeys();
+        ga_user_pubkeys& get_recovery_pubkeys();
         bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
@@ -325,33 +325,31 @@ namespace sdk {
             const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
 
         void authenticate(locker_t& locker, const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
-            GDK_REQUIRES(m_mutex);
-        void login(locker_t& locker, const std::string& mnemonic) GDK_REQUIRES(m_mutex);
-        void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context)
-            GDK_REQUIRES(m_mutex);
+            const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device);
+        void login(locker_t& locker, const std::string& mnemonic);
+        void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context);
 
-        void load_client_blob(locker_t& locker, bool encache) GDK_REQUIRES(m_mutex);
-        bool save_client_blob(locker_t& locker, const std::string& old_hmac) GDK_REQUIRES(m_mutex);
-        void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data) GDK_REQUIRES(m_mutex);
-        void update_blob(locker_t& locker, std::function<bool()> update_fn) GDK_REQUIRES(m_mutex);
+        void load_client_blob(locker_t& locker, bool encache);
+        bool save_client_blob(locker_t& locker, const std::string& old_hmac);
+        void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data);
+        void update_blob(locker_t& locker, std::function<bool()> update_fn);
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json get_appearance() const;
         bool subaccount_allows_csv(uint32_t subaccount) const;
         const std::string& get_default_address_type(uint32_t) const;
-        void push_appearance_to_server(locker_t& locker) const GDK_REQUIRES(m_mutex);
-        void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config) GDK_REQUIRES(m_mutex);
+        void push_appearance_to_server(locker_t& locker) const;
+        void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
         void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
-            bool watch_only) GDK_REQUIRES(m_mutex);
-        void update_fiat_rate(locker_t& locker, const std::string& rate_str) GDK_REQUIRES(m_mutex);
-        void update_spending_limits(locker_t& locker, const nlohmann::json& limits) GDK_REQUIRES(m_mutex);
-        nlohmann::json get_spending_limits(locker_t& locker) const GDK_REQUIRES(m_mutex);
-        nlohmann::json get_subaccount(locker_t& locker, uint32_t subaccount) GDK_REQUIRES(m_mutex);
+            bool watch_only);
+        void update_fiat_rate(locker_t& locker, const std::string& rate_str);
+        void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
+        nlohmann::json get_spending_limits(locker_t& locker) const;
+        nlohmann::json get_subaccount(locker_t& locker, uint32_t subaccount);
         nlohmann::json get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs);
-        nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const GDK_REQUIRES(m_mutex);
-        nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const GDK_REQUIRES(m_mutex);
-        nlohmann::json get_settings(locker_t& locker) GDK_REQUIRES(m_mutex);
+        nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
+        nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
+        nlohmann::json get_settings(locker_t& locker);
         virtual nlohmann::json get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins);
         bool unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
         nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
@@ -359,35 +357,32 @@ namespace sdk {
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
-        void call_notification_handler(locker_t& locker, nlohmann::json* details) GDK_REQUIRES(m_mutex);
+        void call_notification_handler(locker_t& locker, nlohmann::json* details);
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
         void on_new_block(nlohmann::json details);
-        void on_new_fees(locker_t& locker, const nlohmann::json& details) GDK_REQUIRES(m_mutex);
-        void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange)
-            GDK_REQUIRES(m_mutex);
+        void on_new_fees(locker_t& locker, const nlohmann::json& details);
+        void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
         void remap_appearance_settings(ga_session::locker_t& locker, const nlohmann::json& src_json,
-            nlohmann::json& dst_json, bool from_settings) GDK_REQUIRES(m_mutex);
+            nlohmann::json& dst_json, bool from_settings);
 
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
             const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
-            amount satoshi, bool has_txs, uint32_t required_ca) GDK_REQUIRES(m_mutex);
+            amount satoshi, bool has_txs, uint32_t required_ca);
 
-        std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge)
-            GDK_REQUIRES(m_mutex);
+        std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge);
 
-        nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates) GDK_REQUIRES(m_mutex);
+        nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
         std::shared_ptr<nlocktime_t> update_nlocktime_info();
         virtual nlohmann::json fetch_nlocktime_json();
 
-        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
-            GDK_REQUIRES(m_mutex);
+        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet);
 
         bool connect_with_tls() const;
 
@@ -479,7 +474,7 @@ namespace sdk {
         // process (e.g. the user is logged in twice in different apps)
         //
         // ** Under no circumstances must this mutex ever be made recursive **
-        mutable annotated_mutex m_mutex;
+        mutable std::mutex m_mutex;
         const network_parameters m_net_params;
         std::string m_proxy;
         const bool m_use_tor;
@@ -489,7 +484,7 @@ namespace sdk {
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
         transport_t m_transport;
         wamp_session_ptr m_session;
-        std::vector<autobahn::wamp_subscription> m_subscriptions GDK_GUARDED_BY(m_mutex);
+        std::vector<autobahn::wamp_subscription> m_subscriptions;
         heartbeat_t m_heartbeat_handler;
         ping_fail_t m_ping_fail_handler;
 
@@ -499,39 +494,39 @@ namespace sdk {
         network_control_context m_network_control;
         boost::asio::thread_pool m_pool;
 
-        GA_notification_handler m_notification_handler GDK_GUARDED_BY(m_mutex);
-        void* m_notification_context GDK_PT_GUARDED_BY(m_mutex);
+        GA_notification_handler m_notification_handler;
+        void* m_notification_context;
 
-        nlohmann::json m_login_data GDK_GUARDED_BY(m_mutex);
-        boost::optional<pbkdf2_hmac512_t> m_local_encryption_key GDK_GUARDED_BY(m_mutex);
-        client_blob m_blob GDK_GUARDED_BY(m_mutex);
-        std::string m_blob_hmac GDK_GUARDED_BY(m_mutex);
-        boost::optional<std::array<unsigned char, 32>> m_blob_aes_key GDK_GUARDED_BY(m_mutex);
-        boost::optional<std::array<unsigned char, 32>> m_blob_hmac_key GDK_GUARDED_BY(m_mutex);
-        bool m_blob_outdated GDK_GUARDED_BY(m_mutex);
-        std::array<uint32_t, 32> m_gait_path GDK_GUARDED_BY(m_mutex);
-        nlohmann::json m_limits_data GDK_GUARDED_BY(m_mutex);
-        nlohmann::json m_twofactor_config GDK_GUARDED_BY(m_mutex);
+        nlohmann::json m_login_data;
+        boost::optional<pbkdf2_hmac512_t> m_local_encryption_key;
+        client_blob m_blob;
+        std::string m_blob_hmac;
+        boost::optional<std::array<unsigned char, 32>> m_blob_aes_key;
+        boost::optional<std::array<unsigned char, 32>> m_blob_hmac_key;
+        bool m_blob_outdated;
+        std::array<uint32_t, 32> m_gait_path;
+        nlohmann::json m_limits_data;
+        nlohmann::json m_twofactor_config;
         std::string m_mnemonic;
-        amount::value_type m_min_fee_rate GDK_GUARDED_BY(m_mutex);
-        std::string m_fiat_source GDK_GUARDED_BY(m_mutex);
-        std::string m_fiat_rate GDK_GUARDED_BY(m_mutex);
-        std::string m_fiat_currency GDK_GUARDED_BY(m_mutex);
-        uint64_t m_earliest_block_time GDK_GUARDED_BY(m_mutex);
-        uint64_t m_nlocktime GDK_GUARDED_BY(m_mutex);
-        uint32_t m_csv_blocks GDK_GUARDED_BY(m_mutex);
-        std::vector<uint32_t> m_csv_buckets GDK_GUARDED_BY(m_mutex);
+        amount::value_type m_min_fee_rate;
+        std::string m_fiat_source;
+        std::string m_fiat_rate;
+        std::string m_fiat_currency;
+        uint64_t m_earliest_block_time;
+        uint64_t m_nlocktime;
+        uint32_t m_csv_blocks;
+        std::vector<uint32_t> m_csv_buckets;
 
         nlohmann::json m_assets;
 
-        std::map<uint32_t, nlohmann::json> m_subaccounts GDK_GUARDED_BY(m_mutex); // Includes 0 for main
-        std::unique_ptr<ga_pubkeys> m_ga_pubkeys GDK_PT_GUARDED_BY(m_mutex);
-        std::unique_ptr<user_pubkeys> m_user_pubkeys GDK_PT_GUARDED_BY(m_mutex);
-        std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys GDK_PT_GUARDED_BY(m_mutex);
-        uint32_t m_next_subaccount GDK_GUARDED_BY(m_mutex);
-        std::vector<uint32_t> m_fee_estimates GDK_GUARDED_BY(m_mutex);
-        uint32_t m_block_height GDK_GUARDED_BY(m_mutex);
-        std::unique_ptr<signer> m_signer GDK_PT_GUARDED_BY(m_mutex);
+        std::map<uint32_t, nlohmann::json> m_subaccounts; // Includes 0 for main
+        std::unique_ptr<ga_pubkeys> m_ga_pubkeys;
+        std::unique_ptr<user_pubkeys> m_user_pubkeys;
+        std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys;
+        uint32_t m_next_subaccount;
+        std::vector<uint32_t> m_fee_estimates;
+        uint32_t m_block_height;
+        std::unique_ptr<signer> m_signer;
 
         uint32_t m_system_message_id; // Next system message
         uint32_t m_system_message_ack_id; // Currently returned message id to ack
@@ -542,13 +537,13 @@ namespace sdk {
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
 
-        uint32_t m_multi_call_category GDK_GUARDED_BY(m_mutex);
-        tx_list_caches m_tx_list_caches GDK_GUARDED_BY(m_mutex);
-        std::shared_ptr<nlocktime_t> m_nlocktimes GDK_GUARDED_BY(m_mutex);
+        uint32_t m_multi_call_category;
+        tx_list_caches m_tx_list_caches;
+        std::shared_ptr<nlocktime_t> m_nlocktimes;
 
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
-        cache m_cache GDK_GUARDED_BY(m_mutex);
+        cache m_cache;
         const std::string m_user_agent;
 
         const std::string m_electrum_url;

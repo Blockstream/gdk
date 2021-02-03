@@ -55,7 +55,7 @@ namespace sdk {
         }
     }
 
-    template <typename F> void no_std_exception_escape(F&& fn) noexcept GDK_NO_THREAD_SAFETY_ANALYSIS
+    template <typename F> void no_std_exception_escape(F&& fn) noexcept
     {
         try {
             fn();
