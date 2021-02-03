@@ -2537,8 +2537,7 @@ namespace sdk {
             tx_details["outputs"] = outputs;
             tx_details.erase("eps");
 
-            GDK_RUNTIME_ASSERT((is_liquid && unique_asset_ids.size() > 0)
-                || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
+            GDK_RUNTIME_ASSERT(is_liquid || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
 
             // TODO: improve the detection of tx type.
             bool net_positive = false;
@@ -2560,7 +2559,13 @@ namespace sdk {
             const bool is_confirmed = tx_block_height != 0;
 
             std::vector<std::string> addressees;
-            if (net_positive) {
+            if (is_liquid && unique_asset_ids.empty()) {
+                // Failed to unblind all relevant inputs and outputs. This
+                // might be a spam transaction.
+                tx_details["type"] = "unblindable";
+                tx_details["can_rbf"] = false;
+                tx_details["can_cpfp"] = false;
+            } else if (net_positive) {
                 for (auto& ep : tx_details["inputs"]) {
                     std::string addressee;
                     if (!json_get_value(ep, "is_relevant", false)) {
