@@ -2009,10 +2009,12 @@ namespace sdk {
         nlohmann::json balance({ { "btc", 0 } });
         for (const auto& item : utxos.items()) {
             const auto& key = item.key();
-            const auto& item_utxos = item.value();
-            const int64_t satoshi
-                = accumulate_if(item_utxos, [](auto utxo) { return utxo.find("error") == utxo.end(); });
-            balance[key] = satoshi;
+            if (key != "error") {
+                const auto& item_utxos = item.value();
+                const amount::value_type satoshi
+                    = accumulate_if(item_utxos, [](const auto& utxo) { return !utxo.contains("error"); });
+                balance[key] = satoshi;
+            }
         }
 
         return balance;
