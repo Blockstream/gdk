@@ -714,7 +714,7 @@ namespace sdk {
                                 have_fee_output = true;
                             }
                             update_tx_info(net_params, tx, result);
-                            std::vector<nlohmann::json> used{ json_get_value<decltype(used)>(result, "used_utxos") };
+                            std::vector<nlohmann::json> used = json_get_value<decltype(used)>(result, "used_utxos");
                             used.insert(used.end(), current_used_utxos.begin(), current_used_utxos.end());
                             result["used_utxos"] = used;
                             const auto blinded = blind_ga_transaction(session, result);
