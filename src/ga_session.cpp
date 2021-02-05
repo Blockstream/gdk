@@ -113,6 +113,14 @@ namespace sdk {
         // Multi-call categories
         constexpr uint32_t MC_TX_CACHE = 0x1; // Call affects the tx cache
 
+        // Transaction notification fields that we know about.
+        // If we see a notification with fields other than these, we ignore
+        // it so we don't process it incorrectly (forward compatibility).
+        // Fields under the TXN_OPTIONAL key are exempt from this check.
+        static const std::string TXN_OPTIONAL("optional");
+        static const std::array<const std::string, 4> TX_NTFY_FIELDS
+            = { "subaccounts", "txhash", "value", TXN_OPTIONAL };
+
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
         {
@@ -169,6 +177,18 @@ namespace sdk {
             return nlohmann::json::parse(fee_json);
         }
 
+        static bool ignore_tx_notification(const nlohmann::json& details)
+        {
+            for (const auto& item : details.items()) {
+                const std::string key = item.key();
+                if (std::find(TX_NTFY_FIELDS.begin(), TX_NTFY_FIELDS.end(), key) == TX_NTFY_FIELDS.end()) {
+                    GDK_LOG_SEV(log_level::info) << "Ignoring tx notification: unknown field " << item.key();
+                    return true; // Skip this notification as we don't understand it
+                }
+            }
+            return false; // All fields are known, process the notification
+        }
+
         static std::vector<uint32_t> cleanup_tx_notification(nlohmann::json& details)
         {
             // Convert affected subaccounts from (singular/array of)(null/number)
@@ -190,6 +210,16 @@ namespace sdk {
             }
             std::sort(affected.begin(), affected.end());
             details["subaccounts"] = affected;
+
+            // Move TXN_OPTIONAL fields to the top level
+            auto optional_p = details.find(TXN_OPTIONAL);
+            if (optional_p != details.end()) {
+                for (auto& item : optional_p->items()) {
+                    std::swap(details[item.key()], item.value());
+                }
+                details.erase(optional_p);
+            }
+
             return affected;
         }
 
@@ -1587,8 +1617,10 @@ namespace sdk {
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
                 auto details = wamp_cast_json(event);
-                std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
-                on_new_transaction(subaccounts, details);
+                if (!ignore_tx_notification(details)) {
+                    std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
+                    on_new_transaction(subaccounts, details);
+                }
             }));
 
         subscriptions.emplace_back(
@@ -1861,8 +1893,10 @@ namespace sdk {
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
                 auto details = wamp_cast_json(event);
-                std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
-                on_new_transaction(subaccounts, details);
+                if (!ignore_tx_notification(details)) {
+                    std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
+                    on_new_transaction(subaccounts, details);
+                }
             }));
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
