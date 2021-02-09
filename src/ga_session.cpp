@@ -1566,9 +1566,13 @@ namespace sdk {
             throw login_error(res::id_login_failed);
         }
 
+        const bool is_wallet_locked = json_get_value(login_data, "reset_2fa_active", false);
         const std::string server_hmac = login_data["client_blob_hmac"];
-        if (client_blob::is_zero_hmac(server_hmac)) {
-            // No client blob: create one, save it to the server and cache it
+        bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+
+        if (!is_wallet_locked && !is_blob_on_server) {
+            // No client blob: create one, save it to the server and cache it,
+            // but only if the wallet isn't locked for a two factor reset.
             // Subaccount names
             for (const auto& sa : login_data["subaccounts"]) {
                 m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"));
@@ -1583,8 +1587,10 @@ namespace sdk {
             }
             m_blob.set_user_version(1); // Initial version
 
-            // If the save fails due to a race, m_blob_hmac will be empty below
+            // If this save fails due to a race, m_blob_hmac will be empty below
             save_client_blob(locker, server_hmac);
+            // Our blob was enabled, either by us or another login we raced with
+            is_blob_on_server = true;
         }
 
         if (m_blob_hmac.empty()) {
@@ -1601,12 +1607,16 @@ namespace sdk {
             } });
         }
 
-        if (m_blob_hmac.empty()) {
-            // No cached blob, or our cached blob is out of date:
-            // Load the latest blob from the server and cache it
-            load_client_blob(locker, true);
+        if (is_blob_on_server) {
+            // The server has a blob for this wallet. If we havent got an
+            // up to date copy of it loaded yet, do so.
+            if (m_blob_hmac.empty()) {
+                // No cached blob, or our cached blob is out of date:
+                // Load the latest blob from the server and cache it
+                load_client_blob(locker, true);
+            }
+            GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
         }
-        GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
 
         constexpr bool watch_only = false;
         update_login_data(locker, login_data, root_xpub_bip32, watch_only);
@@ -2144,6 +2154,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(subaccount != 0, "Main subaccount name cannot be changed");
 
         locker_t locker(m_mutex);
+        GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
+
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         const std::string old_name = json_get_value(p->second, "name");
@@ -3640,6 +3652,7 @@ namespace sdk {
     {
         check_tx_memo(memo);
         locker_t locker(m_mutex);
+        GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
         update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
     }
 
