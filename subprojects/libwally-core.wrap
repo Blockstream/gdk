@@ -1,10 +1,10 @@
 [wrap-file]
-directory = libwally-core-5776668e5dfa70f6c2d2ec8beaef319ba37beade
+directory = wallycore-0.8.2
 
-source_url = https://github.com/ElementsProject/libwally-core/archive/5776668e5dfa70f6c2d2ec8beaef319ba37beade.tar.gz
-source_filename = libwally-core-5776668e5dfa70f6c2d2ec8beaef319ba37beade.tar.gz
-source_hash = 1fc7226658d36dc15a4fe76f30c01057635a2247536280aa4c466c84b329a08e
+source_url = https://github.com/ElementsProject/libwally-core/releases/download/release_0.8.2/wallycore-0.8.2.tar.gz
+source_filename = wallycore-0.8.2.tar.gz
+source_hash = 40490aafd9ad7b205b3870f538f70147a610e4c5009606cbf2c3a60fcee09df4
 
-patch_url = file:./subprojects/libwally-core-meson/libwally-core-meson-1fc7226658d36dc15a4fe76f30c01057635a2247536280aa4c466c84b329a08e.tar
-patch_filename = libwally-core-meson-1fc7226658d36dc15a4fe76f30c01057635a2247536280aa4c466c84b329a08e.tar
-patch_hash = 5a0e2ed71471f0d03c71fa66004ae3051ba67d0b85918cb2adf7318dbdefb0db
+patch_url = file:./subprojects/libwally-core-meson/libwally-core-meson-f12b900e905ad04219f6b9e1598e1190706ff00a75f63964ab4a90182fb5ef3b.tar
+patch_filename = wallycore-meson-f12b900e905ad04219f6b9e1598e1190706ff00a75f63964ab4a90182fb5ef3b.tar
+patch_hash = 8a7d71f39d2428feeaf2ee7e9c93c740915fff91134b1a14d6df77944e2eb646
