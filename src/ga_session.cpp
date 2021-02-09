@@ -1210,8 +1210,11 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
             }
 
-            // Get the subaccount name (empty in watch-only mode)
-            const std::string sa_name = m_blob.get_subaccount_name(subaccount);
+            // Get the subaccount name. Use the server provided value if
+            // its present (i.e. no client blob enabled yet, or watch-only)
+            const std::string svr_sa_name = json_get_value(sa, "name");
+            const std::string blob_sa_name = m_blob.get_subaccount_name(subaccount);
+            const std::string& sa_name = svr_sa_name.empty() ? blob_sa_name : svr_sa_name;
             insert_subaccount(locker, subaccount, sa_name, sa["receiving_id"], recovery_pub_key, recovery_chain_code,
                 recovery_xpub, type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0));
 
@@ -2539,7 +2542,11 @@ namespace sdk {
                 load_client_blob(locker, true);
             }
             for (auto& tx_details : tx_list) {
-                tx_details["memo"] = m_blob.get_tx_memo(tx_details["txhash"]);
+                // Get the tx memo. Use the server provided value if
+                // its present (i.e. no client blob enabled yet, or watch-only)
+                const std::string svr_memo = json_get_value(tx_details, "memo");
+                const std::string blob_memo = m_blob.get_tx_memo(tx_details["txhash"]);
+                tx_details["memo"] = svr_memo.empty() ? blob_memo : svr_memo;
             }
         }
 
