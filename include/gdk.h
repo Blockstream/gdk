@@ -61,6 +61,16 @@ typedef void (*GA_notification_handler)(void* context, const GA_json* details);
  */
 GDK_API int GA_init(const GA_json* config);
 
+#ifndef SWIG
+/**
+ * Get the error details associated with the last error on the current thread, if any.
+ *
+ * :param output: Destination for the output :ref:`error-details` JSON.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ */
+GDK_API int GA_get_thread_error_details(GA_json** output);
+#endif
+
 /**
  * Create a new session.
  *

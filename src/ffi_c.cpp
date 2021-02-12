@@ -3,6 +3,7 @@
 
 #include "amount.hpp"
 #include "assertion.hpp"
+#include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_auth_handlers.hpp"
 #include "include/gdk.h"
@@ -11,6 +12,10 @@
 #include "utils.hpp"
 
 namespace {
+
+static boost::thread_specific_ptr<nlohmann::json> g_thread_error;
+
+static void set_thread_error(const char* what) { g_thread_error.reset(new nlohmann::json({ { "details", what } })); }
 
 template <typename Arg>
 static typename std::enable_if_t<!std::is_pointer<Arg>::value> assert_pointer_args(
@@ -32,18 +37,25 @@ template <typename... Args> static void assert_invoke_args(Args&&... args)
 template <typename F, typename... Args> static auto c_invoke(F&& f, Args&&... args)
 {
     try {
+        g_thread_error.reset();
         assert_invoke_args(std::forward<Args>(args)...);
         f(std::forward<Args>(args)...);
+        g_thread_error.reset();
         return GA_OK;
     } catch (const ga::sdk::login_error& e) {
+        set_thread_error(e.what());
         return GA_NOT_AUTHORIZED;
     } catch (const autobahn::no_session_error& e) {
+        set_thread_error(e.what());
         return GA_SESSION_LOST;
     } catch (const ga::sdk::reconnect_error& e) {
+        set_thread_error(e.what());
         return GA_RECONNECT;
     } catch (const ga::sdk::timeout_error& e) {
+        set_thread_error(e.what());
         return GA_TIMEOUT;
     } catch (const std::exception& e) {
+        set_thread_error(e.what());
         return GA_ERROR;
     }
     __builtin_unreachable();
@@ -147,6 +159,18 @@ int GA_init(const GA_json* config)
     try {
         GDK_RUNTIME_ASSERT(config);
         return ga::sdk::init(*json_cast(config));
+    } catch (const std::exception& e) {
+        return GA_ERROR;
+    }
+}
+
+int GA_get_thread_error_details(GA_json** output)
+{
+    try {
+        GDK_RUNTIME_ASSERT(output);
+        nlohmann::json* p = g_thread_error.get();
+        *json_cast(output) = p ? new nlohmann::json(*p) : new nlohmann::json();
+        return GA_OK;
     } catch (const std::exception& e) {
         return GA_ERROR;
     }

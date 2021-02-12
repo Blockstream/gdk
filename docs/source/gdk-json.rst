@@ -92,7 +92,7 @@ Subaccount JSON
      "recovery_xpub": "",
      "type": "2of2"
    }
-  
+
 
 
 .. _subaccount-list:
@@ -1130,7 +1130,7 @@ Deposit Details JSON
 
 .. _assets-params-data:
 
-Assets params JSON
+Assets Params JSON
 ------------------
 
 .. code-block:: json
@@ -1139,4 +1139,16 @@ Assets params JSON
       "assets":True,
       "icons":True,
       "refresh":True
+   }
+
+
+.. _error-details:
+
+Error Details JSON
+------------------
+
+.. code-block:: json
+
+   {
+      "details":"assertion failure: ../src/ga_session.cpp:rename_subaccount:2166:Unknown subaccount"
    }

@@ -31,20 +31,38 @@ del swig_import_helper
 #include "../../include/gdk.h"
 #include <limits.h>
 
+static int gdk_throw(int result, const char* default_message)
+{
+    GA_json *details = NULL;
+    char *text = NULL;
+
+    /* TODO: We could create a custom exception here with all details */
+    if (GA_get_thread_error_details(&details) == GA_OK) {
+        GA_convert_json_value_to_string(details, "details", &text);
+    }
+    PyErr_SetString(PyExc_RuntimeError, text && *text ? text : default_message);
+    GA_destroy_json(details);
+    GA_destroy_string(text);
+    return result;
+}
+
 static int check_result(int result)
 {
     switch (result) {
     case GA_OK:
         break;
     case GA_ERROR:
-        PyErr_SetString(PyExc_RuntimeError, "Failed");
-        break;
+        return gdk_throw(result, "Failed");
+    case GA_RECONNECT:
+        return gdk_throw(result, "Connection Error");
+    case GA_SESSION_LOST:
+        return gdk_throw(result, "Session Lost");
+    case GA_TIMEOUT:
+        return gdk_throw(result, "Operation Timed Out");
     case GA_NOT_AUTHORIZED:
-        PyErr_SetString(PyExc_RuntimeError, "Not Authorized");
-        break;
-    default: /* FIXME */
-        PyErr_SetString(PyExc_RuntimeError, "Connection Error");
-        break;
+        return gdk_throw(result, "Not Authorized");
+    default:
+        return gdk_throw(result, "Internal Error");
     }
     return result;
 }

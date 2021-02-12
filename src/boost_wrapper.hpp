@@ -61,6 +61,7 @@
 #define BOOST_STACKTRACE_USE_BACKTRACE
 #include <boost/stacktrace.hpp>
 #endif
+#include <boost/thread/tss.hpp>
 #include <boost/variant.hpp>
 
 #if __clang__

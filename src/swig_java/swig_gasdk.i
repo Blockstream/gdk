@@ -94,13 +94,21 @@ LOCALFUNC unsigned char* malloc_or_throw(JNIEnv *jenv, size_t len) {
 LOCALFUNC int check_result(JNIEnv *jenv, int result, const char* msg)
 {
     char buffer[60];
-    snprintf(buffer, 60, "GDK_ERROR_CODE %d %s", result, msg);
-    switch (result) {
-    case GA_OK:
-        break;
-    default:
-        SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, buffer);
-        break;
+    GA_json *details = NULL;
+    char *text = NULL;
+
+    if (result != GA_OK) {
+        /* TODO: We could create a custom exception here with all details */
+        if (GA_get_thread_error_details(&details) == GA_OK) {
+            GA_convert_json_value_to_string(details, "details", &text);
+        }
+        if (!text || !*text) {
+            snprintf(buffer, sizeof(buffer), "GDK_ERROR_CODE %d %s", result, msg);
+        }
+        SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException,
+                                text && *text ? text : buffer);
+        GA_destroy_json(details);
+        GA_destroy_string(text);
     }
     return result;
 }
