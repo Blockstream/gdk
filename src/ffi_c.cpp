@@ -4,6 +4,7 @@
 #include "amount.hpp"
 #include "assertion.hpp"
 #include "boost_wrapper.hpp"
+#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_auth_handlers.hpp"
 #include "include/gdk.h"
@@ -79,12 +80,7 @@ template <typename T> static void json_convert(const nlohmann::json& json, const
 {
     GDK_RUNTIME_ASSERT(path);
     GDK_RUNTIME_ASSERT(value);
-    const auto v = json[path];
-    if (v.is_null()) {
-        *value = T();
-    } else {
-        *value = v;
-    }
+    *value = ga::sdk::json_get_value<T>(json, path);
 }
 
 static struct GA_auth_handler* auth_cast(ga::sdk::auth_handler* call)
@@ -415,6 +411,9 @@ GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_bool, const GA_json*, json, con
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_string, const GA_json*, json, const char*, path, char**, output, {
     std::string v;
+    if (output) {
+        *output = nullptr;
+    }
     json_convert(*json_cast(json), path, &v);
     *output = to_c_string(v);
 })

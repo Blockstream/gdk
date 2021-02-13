@@ -315,6 +315,12 @@ if get_option('enable-tests')
                     dependencies: dependencies
         ))
 
+    test('test json',
+         executable('test_json', 'tests/test_json.cpp',
+                    link_with: libga.get_static_lib(),
+                    dependencies: dependencies
+        ))
+
     test('test networks',
          executable('test_networks', 'tests/test_networks.cpp',
                     link_with: libga.get_static_lib(),
