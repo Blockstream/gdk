@@ -2806,7 +2806,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_notification_handler != nullptr);
         // Note: notification recipient must destroy the passed JSON
-        const auto details_c = reinterpret_cast<const GA_json*>(details);
+        const auto details_c = reinterpret_cast<GA_json*>(details);
         {
             GA_notification_handler handler = m_notification_handler;
             void* context = m_notification_context;

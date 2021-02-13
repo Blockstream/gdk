@@ -49,7 +49,7 @@ typedef struct GA_json GA_json;
 struct GA_auth_handler;
 
 /** A notification handler */
-typedef void (*GA_notification_handler)(void* context, const GA_json* details);
+typedef void (*GA_notification_handler)(void* context, GA_json* details);
 
 /**
  * Set the global configuration and run one-time initialization code. This function must

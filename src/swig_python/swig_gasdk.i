@@ -102,7 +102,7 @@ static int python_string_to_GA_json(PyObject* in, struct GA_json** out)
     return result;
 }
 
-static void notification_handler(void* context_p, const GA_json* details)
+static void notification_handler(void* context_p, GA_json* details)
 {
     PyObject* session_capsule = (PyObject*) context_p;
     PyObject* handler = NULL;
@@ -114,7 +114,7 @@ static void notification_handler(void* context_p, const GA_json* details)
     if (details) {
         if (GA_convert_json_to_string(details, &json_cstring) != GA_OK)
             return;
-        GA_destroy_json((GA_json*) details);
+        GA_destroy_json(details);
     }
 
     SWIG_PYTHON_THREAD_BEGIN_BLOCK;

@@ -177,7 +177,7 @@ typedef struct notification_context
 } notify_t;
 
 /* Call any registered notification handler */
-LOCALFUNC void notification_handler(void* context_p, const GA_json* details)
+LOCALFUNC void notification_handler(void* context_p, GA_json* details)
 {
     JNIEnv *jenv;
     notify_t* n = (notify_t*) context_p;

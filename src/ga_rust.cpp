@@ -232,7 +232,7 @@ namespace sdk {
     {
         // "new" needed because we want that to be on the heap. the notif handler will free it
         nlohmann::json* converted_heap = new nlohmann::json(gdkrust_json::from_serde(json));
-        const GA_json* as_ptr = reinterpret_cast<const GA_json*>(converted_heap);
+        GA_json* as_ptr = reinterpret_cast<GA_json*>(converted_heap);
 
         ga_rust* self = static_cast<ga_rust*>(self_context);
         if (self->m_ga_notif_handler) {
@@ -242,8 +242,8 @@ namespace sdk {
 
     void ga_rust::emit_notification(std::string event, nlohmann::json details)
     {
-        const nlohmann::json* heap_json = new nlohmann::json({ { "event", event }, { event, details } });
-        const GA_json* as_ptr = reinterpret_cast<const GA_json*>(heap_json);
+        nlohmann::json* heap_json = new nlohmann::json({ { "event", event }, { event, details } });
+        GA_json* as_ptr = reinterpret_cast<GA_json*>(heap_json);
 
         if (m_ga_notif_handler) {
             m_ga_notif_handler(m_ga_notif_context, as_ptr);
