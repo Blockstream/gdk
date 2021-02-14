@@ -89,7 +89,7 @@ if infer.found()
                    command : [infer, '--keep-going', '-a', 'checkers', '--compilation-database', 'compile_commands.json'], depends : fix_compile_commands)
 endif
 
-commit_id = vcs_tag('commit_id', input : 'version.h.in', output : 'version.h',
+commit_id = vcs_tag(input : 'version.h.in', output : 'version.h',
                     command : ['git', '-C', meson.source_root(), 'rev-parse', '--short', 'HEAD'])
 sources += commit_id
 
