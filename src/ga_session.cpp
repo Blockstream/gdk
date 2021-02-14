@@ -984,7 +984,7 @@ namespace sdk {
     // Idempotent
     nlohmann::json ga_session::fetch_nlocktime_json() { return wamp_cast_json(wamp_call("txs.upcoming_nlocktime")); }
 
-    nlohmann::json ga_session::validate_asset_domain_name(__attribute__((unused)) const nlohmann::json& params)
+    nlohmann::json ga_session::validate_asset_domain_name(const nlohmann::json& params)
     {
         boost::format format_str{ "Authorize linking the domain name %1% to the Liquid asset %2%\n" };
         boost::format target_str{ "/.well-known/liquid-asset-proof-%1%" };
