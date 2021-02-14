@@ -2585,14 +2585,8 @@ namespace sdk {
                 update_tx_info(m_net_params, tx, tx_details);
             } else {
                 tx_details["transaction_size"] = tx_size;
-                if (tx_details.find("vsize") == tx_details.end() || tx_details["vsize"].is_null()) {
-                    // FIXME: Can be removed once the backend is upgraded and DB back populated
-                    tx_details["transaction_vsize"] = tx_size;
-                    tx_details["transaction_weight"] = tx_size * 4;
-                } else {
-                    tx_details["transaction_weight"] = tx_details["vsize"].get<uint32_t>() * 4;
-                    json_rename_key(tx_details, "vsize", "transaction_vsize");
-                }
+                tx_details["transaction_weight"] = tx_details["vsize"].get<uint32_t>() * 4;
+                json_rename_key(tx_details, "vsize", "transaction_vsize");
             }
             // Compute fee in satoshi/kb, with the best integer accuracy we can
             const uint32_t tx_vsize = tx_details["transaction_vsize"];
