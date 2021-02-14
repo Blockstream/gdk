@@ -27,7 +27,7 @@ cd "${MESON_BUILD_ROOT}/libwally-core"
 
 ${SED} -i 's/\"wallycore\"/\"greenaddress\"/' ${MESON_BUILD_ROOT}/libwally-core/src/swig_java/swig.i
 
-CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements"
+CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests"
 CONFIGURE_ARGS="${CONFIGURE_ARGS} --enable-ecmult-static-precomputation"
 CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${MESON_BUILD_ROOT}/libwally-core/build"
 
