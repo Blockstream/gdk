@@ -3032,6 +3032,21 @@ namespace sdk {
         return ret;
     }
 
+    static script_type set_addr_script_type(nlohmann::json& address, const std::string& addr_type)
+    {
+        // Add the script type, to allow addresses to be used interchangeably with utxos
+        script_type addr_script_type;
+        if (addr_type == address_type::csv) {
+            addr_script_type = script_type::ga_p2sh_p2wsh_csv_fortified_out;
+        } else if (addr_type == address_type::p2wsh) {
+            addr_script_type = script_type::ga_p2sh_p2wsh_fortified_out;
+        } else {
+            addr_script_type = script_type::ga_p2sh_fortified_out;
+        }
+        address["script_type"] = addr_script_type;
+        return addr_script_type;
+    }
+
     nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
     {
         std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
@@ -3044,16 +3059,7 @@ namespace sdk {
         json_rename_key(address, "addr_type", "address_type");
         GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
 
-        // Add the script type, to allow addresses to be used interchangeably with utxos
-        script_type addr_script_type;
-        if (addr_type == address_type::csv) {
-            addr_script_type = script_type::ga_p2sh_p2wsh_csv_fortified_out;
-        } else if (addr_type == address_type::p2wsh) {
-            addr_script_type = script_type::ga_p2sh_p2wsh_fortified_out;
-        } else {
-            addr_script_type = script_type::ga_p2sh_fortified_out;
-        }
-        address["script_type"] = addr_script_type;
+        const script_type addr_script_type = set_addr_script_type(address, addr_type);
 
         const auto server_script = h2b(address["script"]);
         const auto server_address = get_address_from_script(m_net_params, server_script, addr_type);
@@ -3071,7 +3077,7 @@ namespace sdk {
             address["blinding_script_hash"] = b2h(script_hash);
         }
 
-        if (!m_watch_only) {
+        if (!is_watch_only()) {
             // Compute the address locally to verify the servers data
             const auto script = output_script_from_utxo(address);
             const auto user_address = get_address_from_script(m_net_params, script, addr_type);
