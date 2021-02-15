@@ -328,6 +328,10 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_receive_address)
     }
 
+    public func getPreviousAddresses(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_previous_addresses)
+    }
+
     public func getBalance(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_balance)
     }

@@ -263,6 +263,11 @@ namespace sdk {
         return call_session("get_receive_address", details);
     }
 
+    nlohmann::json ga_rust::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
+    {
+        throw std::runtime_error("get_previous_addresses not implemented");
+    }
+
     nlohmann::json ga_rust::get_subaccounts() { return call_session("get_subaccounts", nlohmann::json{}); }
 
     nlohmann::json ga_rust::get_subaccount(uint32_t subaccount)

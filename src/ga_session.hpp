@@ -198,6 +198,7 @@ namespace sdk {
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(uint32_t subaccount, const std::string& addr_type_);
         nlohmann::json get_receive_address(const nlohmann::json& details);
+        nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
         std::string get_blinding_key_for_script(const std::string& script_hex);
         void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);
@@ -377,6 +378,7 @@ namespace sdk {
 
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
+        void update_address_info(nlohmann::json& address, bool is_historic);
         std::shared_ptr<nlocktime_t> update_nlocktime_info();
         virtual nlohmann::json fetch_nlocktime_json();
 

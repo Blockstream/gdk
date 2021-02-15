@@ -82,6 +82,7 @@ namespace sdk {
         virtual void set_notification_handler(GA_notification_handler handler, void* context) = 0;
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
+        virtual nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer) = 0;
         virtual nlohmann::json get_subaccounts() = 0;
         virtual nlohmann::json get_subaccount(uint32_t subaccount) = 0;
         virtual void rename_subaccount(uint32_t subaccount, const std::string& new_name) = 0;

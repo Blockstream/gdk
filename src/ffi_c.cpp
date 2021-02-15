@@ -313,6 +313,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, con
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::get_receive_address_call(*session, *json_cast(details))); });
 
+GDK_DEFINE_C_FUNCTION_3(GA_get_previous_addresses, struct GA_session*, session, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(new ga::sdk::get_previous_addresses_call(*session, *json_cast(details))); });
+
 GDK_DEFINE_C_FUNCTION_3(GA_get_balance, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
     call, { *call = auth_cast(new ga::sdk::get_balance_call(*session, *json_cast(details))); });
 

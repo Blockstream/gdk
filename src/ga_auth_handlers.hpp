@@ -94,6 +94,18 @@ namespace sdk {
         const nlohmann::json m_details;
     };
 
+    class get_previous_addresses_call : public auth_handler {
+    public:
+        get_previous_addresses_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+        state_type set_address_to_blind();
+
+        const nlohmann::json m_details;
+        size_t m_index;
+    };
+
     class create_transaction_call : public auth_handler {
     public:
         create_transaction_call(session& session, const nlohmann::json& details);

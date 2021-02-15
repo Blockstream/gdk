@@ -738,6 +738,79 @@ namespace sdk {
         return state_type::done;
     }
 
+    //
+    // Get previous addresses
+    //
+    get_previous_addresses_call::get_previous_addresses_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "get_receive_address")
+        , m_details(details)
+        , m_index(0)
+    {
+        if (m_state == state_type::error) {
+            return;
+        }
+
+        try {
+            const uint32_t subaccount = json_get_value(details, "subaccount", 0);
+            const uint32_t last_pointer = json_get_value(details, "last_pointer", 0);
+            if (last_pointer == 1) {
+                // Prevent a server call if the user iterates until empty results
+                m_result = { { "subaccount", subaccount }, { "list", nlohmann::json::array() }, { "last_pointer", 1 } };
+                m_state = state_type::done;
+                return; // Nothing further to do
+            }
+            // Fetch the list of previous addresses from the server
+            m_result = m_session.get_previous_addresses(subaccount, last_pointer);
+            if (!m_session.is_liquid() || m_result["list"].empty()) {
+                if (m_result["list"].empty()) {
+                    // FIXME: The server returns 0 if there are no addresses generated
+                    m_result["last_pointer"] = 1;
+                }
+                m_state = state_type::done;
+                return; // Nothing further to do
+            }
+            // Otherwise, start iterating to get the blinding keys for each address
+            m_state = set_address_to_blind();
+        } catch (const std::exception& e) {
+            set_error(e.what());
+            return;
+        }
+    }
+
+    auth_handler::state_type get_previous_addresses_call::set_address_to_blind()
+    {
+        const auto& current = m_result["list"][m_index];
+        m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", current } };
+        // Ask the HW to provide the blinding key or process directly if no HW
+        return m_hw_device.empty() ? state_type::make_call : state_type::resolve_code;
+    }
+
+    auth_handler::state_type get_previous_addresses_call::call_impl()
+    {
+        auto& current = m_result["list"][m_index];
+        std::string pub_blinding_key;
+
+        if (m_hw_device.empty()) {
+            // Get the key from our software signer
+            pub_blinding_key = m_session.get_blinding_key_for_script(current.at("blinding_script_hash"));
+        } else {
+            // Use the response from the HW
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            pub_blinding_key = args.at("blinding_key");
+        }
+
+        // Blind the address
+        auto& address = current.at("address");
+        address = m_session.blind_address(address, pub_blinding_key);
+
+        ++m_index; // Move to the next address
+        if (m_index == m_result["list"].size()) {
+            // All addresses have been blinded
+            return state_type::done;
+        }
+        return set_address_to_blind();
+    }
+
     static bool cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
     {
         GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());

@@ -182,6 +182,9 @@ class Session(object):
     def get_receive_address(self, details={}):
         return Call(get_receive_address(self.session_obj, self._to_json(details)))
 
+    def get_previous_addresses(self, details={'subaccount': 0, 'last_pointer': 0}):
+        return Call(get_previous_addresses(self.session_obj, self._to_json(details)))
+
     def get_unspent_outputs(self, details={'subaccount': 0, 'num_confs': 1}):
         return Call(get_unspent_outputs(self.session_obj, self._to_json(details)))
 

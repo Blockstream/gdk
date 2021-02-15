@@ -79,6 +79,7 @@ namespace sdk {
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
+        nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
         std::string get_blinding_key_for_script(const std::string& script_hex);
         void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
         std::string blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex);

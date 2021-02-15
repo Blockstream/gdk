@@ -299,6 +299,21 @@ GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* detai
 GDK_API int GA_get_receive_address(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
+ * Get a page of addresses previously generated for a subaccount.
+ *
+ * :param session: The session to use.
+ * :param details: :ref:`previous-addresses-request` detailing the previous addresses to fetch.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`previous-addresses`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: Iteration of all addresses is complete when the results 'last_pointer'
+ *|     value equals 1.
+ */
+GDK_API int GA_get_previous_addresses(
+    struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Get the user's unspent transaction outputs.
  *
  * :param session: The session to use.

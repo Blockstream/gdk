@@ -493,6 +493,14 @@ namespace sdk {
         });
     }
 
+    nlohmann::json session::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->get_previous_addresses(subaccount, last_pointer);
+        });
+    }
+
     std::string session::get_blinding_key_for_script(const std::string& script_hex)
     {
         return exception_wrapper([&] {

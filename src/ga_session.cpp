@@ -3041,22 +3041,60 @@ namespace sdk {
         return addr_script_type;
     }
 
-    nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
+    void ga_session::update_address_info(nlohmann::json& address, bool is_historic)
     {
-        std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
-        const bool is_known
-            = addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv;
+        bool watch_only;
+        uint32_t csv_blocks;
+        std::vector<uint32_t> csv_buckets;
+        {
+            locker_t locker(m_mutex);
+            watch_only = m_watch_only;
+            csv_blocks = m_csv_blocks;
+            csv_buckets = is_historic ? m_csv_buckets : std::vector<uint32_t>();
+        }
 
-        GDK_RUNTIME_ASSERT_MSG(is_known, "Unknown address type");
-
-        auto address = wamp_cast_json(wamp_call("vault.fund", subaccount, true, addr_type));
+        json_rename_key(address, "ad", "address"); // Returned by wamp call get_my_addresses
+        json_add_if_missing(address, "branch", 1); // FIXME: Remove when all servers updated
         json_rename_key(address, "addr_type", "address_type");
-        GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
 
+        const std::string addr_type = address["address_type"];
         const script_type addr_script_type = set_addr_script_type(address, addr_type);
 
+        if (!address.contains("script") && !watch_only) {
+            // FIXME: get_my_addresses doesn't return script yet. This is
+            // inefficient until the server is updated.
+            address["script"] = b2h(output_script_from_utxo(address));
+        }
         const auto server_script = h2b(address["script"]);
         const auto server_address = get_address_from_script(m_net_params, server_script, addr_type);
+
+        if (!watch_only) {
+            // Compute the address locally to verify the servers data
+            const auto script = output_script_from_utxo(address);
+            const auto user_address = get_address_from_script(m_net_params, script, addr_type);
+            GDK_RUNTIME_ASSERT(server_address == user_address);
+            if (address.contains("address")) {
+                GDK_RUNTIME_ASSERT(user_address == address["address"]);
+            }
+        }
+        address["address"] = server_address;
+
+        if (addr_type == address_type::csv) {
+            // Make sure the csv value used is in our csv buckets. If isn't,
+            // coins held in such scripts may not be recoverable.
+            uint32_t addr_csv_blocks = get_csv_blocks_from_csv_redeem_script(server_script);
+            if (is_historic) {
+                // For historic addresses only check csvtime is in our bucket
+                // list, since the user may have changed their settings.
+                GDK_RUNTIME_ASSERT(
+                    std::find(csv_buckets.begin(), csv_buckets.end(), addr_csv_blocks) != csv_buckets.end());
+            } else {
+                // For new addresses, ensure that the csvtime is the users
+                // current csv_blocks setting. This also ensures it is
+                // one of the bucket values as a side effect.
+                GDK_RUNTIME_ASSERT(addr_csv_blocks == csv_blocks);
+            }
+        }
 
         if (m_net_params.liquid()) {
             // we treat the script as a segwit wrapped script, which is the only supported type on Liquid at the moment
@@ -3069,29 +3107,36 @@ namespace sdk {
 
             const auto script_hash = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
             address["blinding_script_hash"] = b2h(script_hash);
+            // We will add the blinding key later
         }
+    }
 
-        if (!is_watch_only()) {
-            // Compute the address locally to verify the servers data
-            const auto script = output_script_from_utxo(address);
-            const auto user_address = get_address_from_script(m_net_params, script, addr_type);
-            GDK_RUNTIME_ASSERT(server_address == user_address);
-        }
+    nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
+    {
+        const std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
+        GDK_RUNTIME_ASSERT_MSG(
+            addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv,
+            "Unknown address type");
 
-        if (addr_type == address_type::csv) {
-            uint32_t csv_blocks = get_csv_blocks_from_csv_redeem_script(server_script);
-            // This not only ensures that the csvtime is the one that was set
-            // by the user, but, more importantly, ensures that the csvtime is
-            // among the csv buckets. If it wasn't, coins held by such scripts
-            // may not be recoverable.
-            locker_t locker(m_mutex);
-            GDK_RUNTIME_ASSERT(csv_blocks == m_csv_blocks);
-        }
-
-        // Only scriptpubkey, we will add the blinding key later
-        address["address"] = server_address;
-
+        constexpr bool return_pointer = true;
+        auto address = wamp_cast_json(wamp_call("vault.fund", subaccount, return_pointer, addr_type));
+        update_address_info(address, false);
+        GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
         return address;
+    }
+
+    nlohmann::json ga_session::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
+    {
+        auto addresses = wamp_cast_json(wamp_call("addressbook.get_my_addresses", subaccount, last_pointer));
+        uint32_t seen_pointer = 0;
+
+        for (auto& address : addresses) {
+            address["subaccount"] = subaccount;
+            update_address_info(address, true);
+            json_rename_key(address, "num_tx", "tx_count");
+            seen_pointer = address["pointer"];
+        }
+        return nlohmann::json{ { "subaccount", subaccount }, { "last_pointer", seen_pointer }, { "list", addresses } };
     }
 
     nlohmann::json ga_session::get_receive_address(const nlohmann::json& details)
