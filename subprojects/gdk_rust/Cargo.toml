@@ -40,5 +40,6 @@ opt-level = 'z'
 codegen-units = 1
 incremental = false
 
+# required for https://github.com/rust-bitcoin/rust-bitcoin/pull/511 (merged but unreleased)
 [patch.crates-io]
-bitcoin = { git = "https://github.com/shesek/rust-bitcoin", branch = "0.25.2-uint-serde", features = [ "use-serde" ] }
+bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", rev = "5bd61967b231939626dd847fd82cc5da33052dc1", features = [ "use-serde" ] }
