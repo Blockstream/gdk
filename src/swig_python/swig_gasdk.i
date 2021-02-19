@@ -207,9 +207,17 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
 }
 %typemap (in) const struct NAME * {
     $1 = $input == Py_None ? NULL : PyCapsule_GetPointer($input, "struct NAME *");
+    if (PyErr_Occurred()) {
+        PyErr_Clear();
+        %argument_fail(-1, "(NAME)", $symname, $argnum);
+    }
 }
 %typemap (in) struct  NAME * {
     $1 = $input == Py_None ? NULL : PyCapsule_GetPointer($input, "struct NAME *");
+    if (PyErr_Occurred()) {
+        PyErr_Clear();
+        %argument_fail(-1, "(NAME)", $symname, $argnum);
+    }
 }
 %typemap(argout) struct NAME ** {
    if (*$1 != NULL) {
