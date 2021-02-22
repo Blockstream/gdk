@@ -332,10 +332,12 @@ namespace sdk {
             }
         }
 
-        // Convert uppercase bech32 alphanumeric strings to lowercase
+        // Convert uppercase b(l)ech32 alphanumeric strings to lowercase
         // Only convert all uppercase strings, BIP-173 specifically disallows mixed case strings
         const std::string bech32_prefix = net_params.bech32_prefix() + "1";
-        if (boost::istarts_with(address, bech32_prefix) && isupper(address)) {
+        if ((boost::istarts_with(address, bech32_prefix)
+                || (net_params.liquid() && boost::istarts_with(address, net_params.blech32_prefix() + "1")))
+            && isupper(address)) {
             boost::to_lower(address);
             addressee["address"] = address;
         }
