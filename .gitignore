@@ -35,3 +35,4 @@ docs/build
 /tor
 *~
 target/
+gdk-python/
