@@ -154,7 +154,7 @@ namespace sdk {
         if (is_invalid_code) {
             // The caller entered the wrong code
             // FIXME: Error if the methods time limit is up or we are rate limited
-            if (m_method != "gauth" && --m_attempts_remaining == 0) {
+            if (m_method != "gauth" && m_method != "telegram" && --m_attempts_remaining == 0) {
                 // No more attempts left, caller should try the action again
                 set_error(res::id_invalid_twofactor_code);
             } else {
@@ -196,7 +196,7 @@ namespace sdk {
                 // Caller should resolve the code the user has entered
                 status["method"] = m_method;
                 status["auth_data"] = m_auth_data;
-                if (m_method != "gauth") {
+                if (m_method != "gauth" && m_method != "telegram") {
                     status["attempts_remaining"] = m_attempts_remaining;
                 }
             }
