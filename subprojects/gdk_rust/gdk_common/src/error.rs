@@ -38,6 +38,7 @@ impl_error!(&str);
 impl_error!(bitcoin::util::base58::Error);
 //impl_error!(sled::Error);
 impl_error!(bitcoin::hashes::error::Error);
+impl_error!(bitcoin::hashes::hex::Error);
 impl_error!(bitcoin::consensus::encode::Error);
 impl_error!(bitcoin::util::bip32::Error);
 impl_error!(std::array::TryFromSliceError);

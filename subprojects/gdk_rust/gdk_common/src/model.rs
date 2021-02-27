@@ -1,6 +1,6 @@
 use crate::be::{AssetId, BEOutPoint, BETransaction, UTXOInfo, Utxos};
-use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::{Network, Script, Txid};
+use bitcoin::hashes::hex::FromHex;
+use bitcoin::Network;
 use core::mem::transmute;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -458,12 +458,15 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
         let mut utxos = vec![];
         for (asset, v) in unspent_outputs.0.iter() {
             for e in v {
-                let txid = Txid::from_hex(&e.txhash).unwrap(); // FIXME
                 let outpoint = match &asset[..] {
-                    "btc" => BEOutPoint::new_bitcoin(txid, e.pt_idx),
-                    _ => BEOutPoint::new_elements(txid, e.pt_idx),
+                    "btc" => BEOutPoint::new_bitcoin(bitcoin::Txid::from_hex(&e.txhash)?, e.pt_idx),
+                    _ => BEOutPoint::new_elements(elements::Txid::from_hex(&e.txhash)?, e.pt_idx),
                 };
-                let script = Script::from(hex::decode(&e.scriptpubkey_hex)?);
+                let script_raw = hex::decode(&e.scriptpubkey_hex)?;
+                let script = match outpoint {
+                    BEOutPoint::Bitcoin(_) => bitcoin::Script::from(script_raw).into(),
+                    BEOutPoint::Elements(_) => elements::Script::from(script_raw).into(),
+                };
                 let height = match e.block_height {
                     0 => None,
                     n => Some(n),

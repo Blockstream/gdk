@@ -2,11 +2,11 @@ use crate::determine_electrum_url_from_net;
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
-use ::bitcoin::hashes::{hex::FromHex, sha256, sha256d, Hash};
-use ::bitcoin::{TxMerkleNode, Txid};
+use ::bitcoin::hashes::{sha256, sha256d, Hash};
 use aes_gcm_siv::aead::{generic_array::GenericArray, Aead, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
 use electrum_client::{ElectrumApi, GetMerkleRes};
+use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
 use gdk_common::NetworkId;
 use log::{info, warn};
@@ -29,7 +29,11 @@ pub enum ChainOrVerifier {
 }
 
 /// compute the merkle root from the merkle path of a tx in electrum format (note the hash.reverse())
-fn compute_merkle_root(txid: &Txid, merkle: GetMerkleRes) -> Result<TxMerkleNode, Error> {
+fn compute_merkle_root<T, N>(txid: &T, merkle: GetMerkleRes) -> Result<N, Error>
+where
+    T: Hash<Inner = [u8; 32]>, // bitcoin::Txid or elements::Txid
+    N: Hash<Inner = [u8; 32]>, // bitcoin::TxMerkleNode or elements::TxMerkleNode
+{
     let mut pos = merkle.pos;
     let mut current = txid.into_inner();
 
@@ -47,7 +51,7 @@ fn compute_merkle_root(txid: &Txid, merkle: GetMerkleRes) -> Result<TxMerkleNode
         pos /= 2;
     }
 
-    Ok(TxMerkleNode::from_slice(&current)?)
+    Ok(N::from_slice(&current)?)
 }
 
 lazy_static! {
@@ -59,7 +63,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
     info!("spv_verify_tx {:?}", input);
-    let txid = Txid::from_hex(&input.txid)?;
+    let txid = BETxid::from_hex(&input.txid, input.network.id())?;
 
     let mut cache: VerifiedCache =
         VerifiedCache::new(&input.path, input.network.id(), &input.encryption_key)?;
@@ -78,15 +82,16 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             let mut chain = HeadersChain::new(path, bitcoin_network)?;
 
             if input.height <= chain.height() {
+                let btxid = txid.ref_bitcoin().unwrap();
                 info!("chain height ({}) enough to verify, downloading proof", chain.height());
-                let proof = match client.transaction_get_merkle(&txid, input.height as usize) {
+                let proof = match client.transaction_get_merkle(btxid, input.height as usize) {
                     Ok(proof) => proof,
                     Err(e) => {
                         warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
                         return Ok(SPVVerifyResult::NotVerified);
                     }
                 };
-                if chain.verify_tx_proof(&txid, input.height, proof).is_ok() {
+                if chain.verify_tx_proof(btxid, input.height, proof).is_ok() {
                     cache.write(&txid)?;
                     Ok(SPVVerifyResult::Verified)
                 } else {
@@ -110,17 +115,18 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             }
         }
         NetworkId::Elements(elements_network) => {
-            let proof = match client.transaction_get_merkle(&txid, input.height as usize) {
-                Ok(proof) => proof,
-                Err(e) => {
-                    warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
-                    return Ok(SPVVerifyResult::NotVerified);
-                }
-            };
+            let proof =
+                match client.transaction_get_merkle(&txid.into_bitcoin(), input.height as usize) {
+                    Ok(proof) => proof,
+                    Err(e) => {
+                        warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
+                        return Ok(SPVVerifyResult::NotVerified);
+                    }
+                };
             let verifier = Verifier::new(elements_network);
             let header_bytes = client.block_header_raw(input.height as usize)?;
             let header: elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
-            if verifier.verify_tx_proof(&txid, proof, &header).is_ok() {
+            if verifier.verify_tx_proof(txid.ref_elements().unwrap(), proof, &header).is_ok() {
                 cache.write(&txid)?;
                 Ok(SPVVerifyResult::Verified)
             } else {
@@ -131,7 +137,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
 }
 
 struct VerifiedCache {
-    set: HashSet<Txid>,
+    set: HashSet<BETxid>,
     filepath: PathBuf,
     cipher: Aes256GcmSiv,
 }
@@ -158,7 +164,7 @@ impl VerifiedCache {
     fn read_and_decrypt(
         filepath: &mut PathBuf,
         cipher: &Aes256GcmSiv,
-    ) -> Result<HashSet<Txid>, Error> {
+    ) -> Result<HashSet<BETxid>, Error> {
         let mut file = File::open(&filepath)?;
         let mut nonce_bytes = [0u8; 12]; // 96 bits
         file.read_exact(&mut nonce_bytes)?;
@@ -169,11 +175,11 @@ impl VerifiedCache {
         Ok(serde_cbor::from_slice(&plaintext)?)
     }
 
-    fn contains(&self, txid: &Txid) -> Result<bool, Error> {
+    fn contains(&self, txid: &BETxid) -> Result<bool, Error> {
         Ok(self.set.contains(txid))
     }
 
-    fn write(&mut self, txid: &Txid) -> Result<(), Error> {
+    fn write(&mut self, txid: &BETxid) -> Result<(), Error> {
         self.set.insert(txid.clone());
         self.flush()
     }

@@ -22,10 +22,9 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
-use bitcoin::hashes::{hex::FromHex, sha256, Hash};
+use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{BlockHash, Script, Txid};
 
 use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
@@ -357,8 +356,9 @@ impl Session<Error> for ElectrumSession {
         let coin_type: u32 = match self.network.id() {
             NetworkId::Bitcoin(bitcoin_network) => match bitcoin_network {
                 bitcoin::Network::Bitcoin => 0,
-                bitcoin::Network::Testnet => 1,
-                bitcoin::Network::Regtest => 1,
+                bitcoin::Network::Testnet
+                | bitcoin::Network::Regtest
+                | bitcoin::Network::Signet => 1,
             },
             NetworkId::Elements(elements_network) => match elements_network {
                 ElementsNetwork::Liquid => 1776,
@@ -662,10 +662,10 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
-        let txid = Txid::from_hex(txid)?;
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
+        let txid = BETxid::from_hex(txid, self.network.id())?;
         self.get_wallet()?.store.write()?.insert_memo(txid, memo)?;
 
         Ok(())
@@ -837,7 +837,7 @@ impl Session<Error> for ElectrumSession {
         Ok(Value::Object(map))
     }
 
-    fn block_status(&self) -> Result<(u32, BlockHash), Error> {
+    fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
         let tip = self.get_wallet()?.get_tip()?;
         info!("tip={:?}", tip);
         Ok(tip)
@@ -947,7 +947,7 @@ impl Headers {
 
         // find unconfirmed transactions that were previously confirmed and had
         // their SPV validation cached, to be cleared below
-        let remove_proof: Vec<Txid> = store_read
+        let remove_proof: Vec<BETxid> = store_read
             .cache
             .heights
             .iter()
@@ -956,7 +956,7 @@ impl Headers {
             .collect();
 
         // find confirmed transactions with no SPV validation cache
-        let needs_proof: Vec<(Txid, u32)> = store_read
+        let needs_proof: Vec<(BETxid, u32)> = store_read
             .cache
             .heights
             .iter()
@@ -968,26 +968,29 @@ impl Headers {
 
         let mut txs_verified = HashMap::new();
         for (txid, height) in needs_proof {
-            let verified = match client.transaction_get_merkle(&txid, height as usize) {
-                Ok(proof) => match &self.checker {
-                    ChainOrVerifier::Chain(chain) => {
-                        chain.verify_tx_proof(&txid, height, proof).is_ok()
-                    }
-                    ChainOrVerifier::Verifier(verifier) => {
-                        if let Some(BEBlockHeader::Elements(header)) =
-                            self.store.read()?.cache.headers.get(&height)
-                        {
-                            verifier.verify_tx_proof(&txid, proof, &header).is_ok()
-                        } else {
-                            false
+            let verified =
+                match client.transaction_get_merkle(&txid.into_bitcoin(), height as usize) {
+                    Ok(proof) => match &self.checker {
+                        ChainOrVerifier::Chain(chain) => chain
+                            .verify_tx_proof(txid.ref_bitcoin().unwrap(), height, proof)
+                            .is_ok(),
+                        ChainOrVerifier::Verifier(verifier) => {
+                            if let Some(BEBlockHeader::Elements(header)) =
+                                self.store.read()?.cache.headers.get(&height)
+                            {
+                                verifier
+                                    .verify_tx_proof(txid.ref_elements().unwrap(), proof, &header)
+                                    .is_ok()
+                            } else {
+                                false
+                            }
                         }
+                    },
+                    Err(e) => {
+                        warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
+                        false
                     }
-                },
-                Err(e) => {
-                    warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
-                    false
-                }
-            };
+                };
 
             if verified {
                 info!("proof for {} verified!", txid);
@@ -1039,7 +1042,7 @@ impl Headers {
 
 #[derive(Default)]
 struct DownloadTxResult {
-    txs: Vec<(Txid, BETransaction)>,
+    txs: Vec<(BETxid, BETransaction)>,
     unblinds: Vec<(elements::OutPoint, Unblinded)>,
 }
 
@@ -1048,9 +1051,9 @@ impl Syncer {
         debug!("start sync");
         let start = Instant::now();
 
-        let mut history_txs_id = HashSet::new();
+        let mut history_txs_id = HashSet::<BETxid>::new();
         let mut heights_set = HashSet::new();
-        let mut txid_height = HashMap::new();
+        let mut txid_height = HashMap::<BETxid, _>::new();
         let mut scripts = HashMap::new();
 
         let mut last_used = Indexes::default();
@@ -1060,8 +1063,11 @@ impl Syncer {
             let mut batch_count = 0;
             loop {
                 let batch = self.store.read()?.get_script_batch(i, batch_count)?;
+                // convert the BEScript into bitcoin::Script for electrum-client
+                let b_scripts =
+                    batch.value.iter().map(|e| e.0.clone().into_bitcoin()).collect::<Vec<_>>();
                 let result: Vec<Vec<GetHistoryRes>> =
-                    client.batch_script_get_history(batch.value.iter().map(|e| &e.0))?;
+                    client.batch_script_get_history(b_scripts.iter())?;
                 if !batch.cached {
                     scripts.extend(batch.value);
                 }
@@ -1086,6 +1092,8 @@ impl Syncer {
                     break;
                 }
 
+                let net = self.network.id();
+
                 for el in flattened {
                     // el.height = -1 means unconfirmed with unconfirmed parents
                     // el.height =  0 means unconfirmed with confirmed parents
@@ -1093,12 +1101,12 @@ impl Syncer {
                     let height = el.height.max(0);
                     heights_set.insert(height as u32);
                     if height == 0 {
-                        txid_height.insert(el.tx_hash, None);
+                        txid_height.insert(el.tx_hash.into_net(net), None);
                     } else {
-                        txid_height.insert(el.tx_hash, Some(height as u32));
+                        txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
                     }
 
-                    history_txs_id.insert(el.tx_hash);
+                    history_txs_id.insert(el.tx_hash.into_net(net));
                 }
 
                 batch_count += 1;
@@ -1123,7 +1131,7 @@ impl Syncer {
         {
             info!(
                 "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
-                new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<Txid>>(),
+                new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
                 headers,
                 txid_height
             );
@@ -1181,17 +1189,19 @@ impl Syncer {
 
     fn download_txs(
         &self,
-        history_txs_id: &HashSet<Txid>,
-        scripts: &HashMap<Script, DerivationPath>,
+        history_txs_id: &HashSet<BETxid>,
+        scripts: &HashMap<BEScript, DerivationPath>,
         client: &Client,
     ) -> Result<DownloadTxResult, Error> {
         let mut txs = vec![];
         let mut unblinds = vec![];
 
         let mut txs_in_db = self.store.read()?.cache.all_txs.keys().cloned().collect();
-        let txs_to_download: Vec<&Txid> = history_txs_id.difference(&txs_in_db).collect();
+        // BETxid has to be converted into bitcoin::Txid for rust-electrum-client
+        let txs_to_download: Vec<bitcoin::Txid> =
+            history_txs_id.difference(&txs_in_db).map(BETxidConvert::into_bitcoin).collect();
         if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
+            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download.iter())?;
             let mut txs_downloaded: Vec<BETransaction> = vec![];
             for vec in txs_bytes_downloaded {
                 let tx = BETransaction::deserialize(&vec, self.network.id())?;
@@ -1206,9 +1216,10 @@ impl Syncer {
                 if let BETransaction::Elements(tx) = &tx {
                     info!("compute OutPoint Unblinded");
                     for (i, output) in tx.output.iter().enumerate() {
+                        let be_script = output.script_pubkey.clone().into_be();
                         // could be the searched script it's not yet in the store, because created in the current run, thus it's searched also in the `scripts`
-                        if self.store.read()?.cache.paths.contains_key(&output.script_pubkey)
-                            || scripts.contains_key(&output.script_pubkey)
+                        if self.store.read()?.cache.paths.contains_key(&be_script)
+                            || scripts.contains_key(&be_script)
                         {
                             let vout = i as u32;
                             let outpoint = elements::OutPoint {
@@ -1232,10 +1243,14 @@ impl Syncer {
                 txs.push((txid, tx));
             }
 
-            let txs_to_download: Vec<&Txid> =
-                previous_txs_to_download.difference(&txs_in_db).collect();
+            let txs_to_download: Vec<bitcoin::Txid> = previous_txs_to_download
+                .difference(&txs_in_db)
+                .map(BETxidConvert::into_bitcoin)
+                .collect();
+
             if !txs_to_download.is_empty() {
-                let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download)?;
+                let txs_bytes_downloaded =
+                    client.batch_transaction_get_raw(txs_to_download.iter())?;
                 for vec in txs_bytes_downloaded {
                     let mut tx = BETransaction::deserialize(&vec, self.network.id())?;
                     tx.strip_witness();

@@ -5,8 +5,6 @@ use crate::wally::asset_surjectionproof_size;
 use crate::{ElementsNetwork, NetworkId};
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
-use bitcoin::hash_types::Txid;
-use bitcoin::Script;
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
@@ -85,10 +83,10 @@ impl BETransaction {
         assert_eq!(self.txid(), before_hash, "hash doesn't match after stripping witness");
     }
 
-    pub fn txid(&self) -> Txid {
+    pub fn txid(&self) -> BETxid {
         match self {
-            Self::Bitcoin(tx) => tx.txid(),
-            Self::Elements(tx) => tx.txid(),
+            Self::Bitcoin(tx) => tx.txid().into(),
+            Self::Elements(tx) => tx.txid().into(),
         }
     }
 
@@ -103,10 +101,10 @@ impl BETransaction {
         }
     }
 
-    pub fn previous_output_txids(&self) -> Vec<Txid> {
+    pub fn previous_output_txids(&self) -> Vec<BETxid> {
         match self {
-            Self::Bitcoin(tx) => tx.input.iter().map(|i| i.previous_output.txid).collect(),
-            Self::Elements(tx) => tx.input.iter().map(|i| i.previous_output.txid).collect(),
+            Self::Bitcoin(tx) => tx.input.iter().map(|i| i.previous_output.txid.into()).collect(),
+            Self::Elements(tx) => tx.input.iter().map(|i| i.previous_output.txid.into()).collect(),
         }
     }
 
@@ -141,28 +139,31 @@ impl BETransaction {
         }
     }
 
-    pub fn output_script(&self, vout: u32) -> Script {
+    pub fn output_script(&self, vout: u32) -> BEScript {
         match self {
-            Self::Bitcoin(tx) => tx.output[vout as usize].script_pubkey.clone(),
-            Self::Elements(tx) => tx.output[vout as usize].script_pubkey.clone(),
+            Self::Bitcoin(tx) => BEScript::Bitcoin(tx.output[vout as usize].script_pubkey.clone()),
+            Self::Elements(tx) => {
+                BEScript::Elements(tx.output[vout as usize].script_pubkey.clone())
+            }
         }
     }
 
     pub fn output_address(&self, vout: u32, network: NetworkId) -> Option<String> {
-        match network {
-            NetworkId::Bitcoin(network) => {
-                let script = self.output_script(vout);
-                bitcoin::Address::from_script(&script, network).map(|a| a.to_string())
+        match (self, network) {
+            (BETransaction::Bitcoin(tx), NetworkId::Bitcoin(net)) => {
+                let script = &tx.output[vout as usize].script_pubkey;
+                bitcoin::Address::from_script(script, net).map(|a| a.to_string())
             }
-            NetworkId::Elements(network) => {
+            (BETransaction::Elements(tx), NetworkId::Elements(net)) => {
                 // Note we are returning the unconfidential address, because recipient blinding pub key is not in the transaction
-                let script = self.output_script(vout);
-                let params = match network {
+                let script = &tx.output[vout as usize].script_pubkey;
+                let params = match net {
                     ElementsNetwork::Liquid => &AddressParams::LIQUID,
                     ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
                 };
-                elements::Address::from_script(&script, None, params).map(|a| a.to_string())
+                elements::Address::from_script(script, None, params).map(|a| a.to_string())
             }
+            _ => panic!("Invalid BETransaction and NetworkId combination"),
         }
     }
 
@@ -502,7 +503,7 @@ impl BETransaction {
             (BEOutPoint::Bitcoin(outpoint), BETransaction::Bitcoin(tx)) => {
                 let new_in = bitcoin::TxIn {
                     previous_output: outpoint,
-                    script_sig: Script::default(),
+                    script_sig: bitcoin::Script::default(),
                     sequence: 0xffff_fffd, // nSequence is disabled, nLocktime is enabled, RBF is signaled.
                     witness: vec![],
                 };
@@ -513,7 +514,7 @@ impl BETransaction {
                     previous_output: outpoint,
                     is_pegin: false,
                     has_issuance: false,
-                    script_sig: Script::default(),
+                    script_sig: elements::Script::default(),
                     sequence: 0xffff_fffe, // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
                     asset_issuance: Default::default(),
                     witness: TxInWitness::default(),
@@ -580,12 +581,12 @@ impl BETransaction {
 
     pub fn is_redeposit(
         &self,
-        all_scripts: &HashMap<Script, DerivationPath>,
+        all_scripts: &HashMap<BEScript, DerivationPath>,
         all_txs: &BETransactions,
     ) -> bool {
         match self {
             Self::Bitcoin(tx) => {
-                let previous_scripts: Vec<Script> = tx
+                let previous_scripts: Vec<BEScript> = tx
                     .input
                     .iter()
                     .filter_map(|i| {
@@ -595,10 +596,13 @@ impl BETransaction {
 
                 previous_scripts.len() == tx.input.len()
                     && previous_scripts.iter().all(|i| all_scripts.contains_key(i))
-                    && tx.output.iter().all(|o| all_scripts.contains_key(&o.script_pubkey))
+                    && tx
+                        .output
+                        .iter()
+                        .all(|o| all_scripts.contains_key(&o.script_pubkey.clone().into()))
             }
             Self::Elements(tx) => {
-                let previous_scripts: Vec<Script> = tx
+                let previous_scripts: Vec<BEScript> = tx
                     .input
                     .iter()
                     .filter_map(|i| {
@@ -612,7 +616,7 @@ impl BETransaction {
                         .output
                         .iter()
                         .filter(|o| !o.is_fee())
-                        .all(|o| all_scripts.contains_key(&o.script_pubkey))
+                        .all(|o| all_scripts.contains_key(&o.script_pubkey.clone().into()))
             }
         }
     }
@@ -620,7 +624,7 @@ impl BETransaction {
     pub fn my_balance_changes(
         &self,
         all_txs: &BETransactions,
-        all_scripts: &HashMap<Script, DerivationPath>,
+        all_scripts: &HashMap<BEScript, DerivationPath>,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Balances {
         match self {
@@ -641,7 +645,7 @@ impl BETransaction {
                 let my_in: i64 = tx
                     .output
                     .iter()
-                    .filter(|o| all_scripts.contains_key(&o.script_pubkey))
+                    .filter(|o| all_scripts.contains_key(&o.script_pubkey.clone().into()))
                     .map(|o| o.value as i64)
                     .sum();
                 result.insert("btc".to_string(), my_in - my_out);
@@ -702,10 +706,10 @@ fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {
 }
 
 #[derive(Default, Serialize, Deserialize)]
-pub struct BETransactions(HashMap<Txid, BETransaction>);
+pub struct BETransactions(HashMap<BETxid, BETransaction>);
 
 impl Deref for BETransactions {
-    type Target = HashMap<Txid, BETransaction>;
+    type Target = HashMap<BETxid, BETransaction>;
     fn deref(&self) -> &<Self as Deref>::Target {
         &self.0
     }
@@ -716,7 +720,7 @@ impl DerefMut for BETransactions {
     }
 }
 impl BETransactions {
-    pub fn get_previous_output_script_pubkey(&self, outpoint: &BEOutPoint) -> Option<Script> {
+    pub fn get_previous_output_script_pubkey(&self, outpoint: &BEOutPoint) -> Option<BEScript> {
         self.0.get(&outpoint.txid()).map(|tx| tx.output_script(outpoint.vout()))
     }
     pub fn get_previous_output_value(
@@ -733,7 +737,7 @@ impl BETransactions {
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Option<String> {
         self.0
-            .get(&outpoint.txid)
+            .get(&outpoint.txid.into())
             .map(|tx| tx.output_asset_hex(outpoint.vout, &all_unblinded).unwrap())
     }
 }

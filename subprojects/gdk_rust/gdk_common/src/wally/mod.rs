@@ -102,7 +102,7 @@ pub fn bip39_mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Option<[u8; B
 pub fn tx_get_elements_signature_hash(
     tx: &elements::Transaction,
     index: usize,
-    script_code: &bitcoin::Script,
+    script_code: &elements::Script,
     value: &elements::confidential::Value,
     sighash: u32,
     segwit: bool,
@@ -128,7 +128,7 @@ pub fn tx_get_elements_signature_hash(
     let value = elements::encode::serialize(value);
     let mut out = [0u8; sha256d::Hash::LEN];
 
-    let (script_ptr, script_len) = if script_code == &bitcoin::Script::default() {
+    let (script_ptr, script_len) = if script_code == &elements::Script::default() {
         (ptr::null(), 0)
     } else {
         (script_code.as_bytes().as_ptr(), script_code.as_bytes().len())
@@ -191,7 +191,7 @@ pub fn confidential_addr_from_addr(
 
 pub fn asset_blinding_key_to_ec_private_key(
     master_blinding_key: &MasterBlindingKey,
-    script_pubkey: &bitcoin::Script,
+    script_pubkey: &elements::Script,
 ) -> secp256k1::SecretKey {
     let mut out = [0; 32];
     let ret = unsafe {
@@ -214,7 +214,7 @@ pub fn asset_unblind(
     priv_key: secp256k1::SecretKey,
     proof: Vec<u8>,
     commitment: Vec<u8>,
-    extra: bitcoin::Script,
+    extra: elements::Script,
     generator: Vec<u8>,
 ) -> Result<([u8; 32], [u8; 32], [u8; 32], u64), crate::error::Error> {
     let pub_key = pub_key.serialize();
@@ -257,7 +257,7 @@ pub fn asset_unblind_with_nonce(
     nonce: Vec<u8>,
     proof: Vec<u8>,
     commitment: Vec<u8>,
-    extra: bitcoin::Script,
+    extra: elements::Script,
     generator: Vec<u8>,
 ) -> ([u8; 32], [u8; 32], [u8; 32], u64) {
     let mut asset_out = [0; 32];
@@ -378,7 +378,7 @@ pub fn asset_rangeproof(
     abf: [u8; 32],
     vbf: [u8; 32],
     commitment: Value,
-    extra: &bitcoin::Script,
+    extra: &elements::Script,
     generator: Asset,
     min_value: u64,
     exp: i32,
@@ -487,7 +487,7 @@ pub fn read_str(s: *const c_char) -> String {
 mod tests {
     use super::*;
     use bitcoin::secp256k1;
-    use bitcoin::Script;
+    use elements::Script;
     use hex;
     use std::str::FromStr;
 

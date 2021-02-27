@@ -140,7 +140,7 @@ pub fn spv_cross_validate(
     local_tip_hash: &BlockHash,
     server_url: &ElectrumUrl,
 ) -> Result<CrossValidationResult, CrossValidationError> {
-    let client = server_url.build_config(ConfigBuilder::new().timeout(TIMEOUT)?)?;
+    let client = server_url.build_config(ConfigBuilder::new().timeout(Some(TIMEOUT))?)?;
     let remote_tip = client.block_headers_subscribe()?;
     let remote_tip_hash = remote_tip.header.block_hash();
     let remote_tip_height = remote_tip.height as u32;
@@ -396,7 +396,7 @@ pub fn get_cross_servers(network: &Network) -> Result<Vec<ElectrumUrl>, Error> {
         _ => Ok(match net {
             bitcoin::Network::Bitcoin => SERVER_LIST_MAINNET.clone(),
             bitcoin::Network::Testnet => SERVER_LIST_TESTNET.clone(),
-            bitcoin::Network::Regtest => vec![],
+            bitcoin::Network::Regtest | bitcoin::Network::Signet => vec![],
         }),
     }?;
 

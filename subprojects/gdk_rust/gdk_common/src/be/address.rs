@@ -1,4 +1,4 @@
-use bitcoin::Script;
+use super::BEScript;
 
 #[derive(Debug)]
 pub enum BEAddress {
@@ -7,10 +7,10 @@ pub enum BEAddress {
 }
 
 impl BEAddress {
-    pub fn script_pubkey(&self) -> Script {
+    pub fn script_pubkey(&self) -> BEScript {
         match self {
-            BEAddress::Bitcoin(addr) => addr.script_pubkey(),
-            BEAddress::Elements(addr) => addr.script_pubkey(),
+            BEAddress::Bitcoin(addr) => addr.script_pubkey().into(),
+            BEAddress::Elements(addr) => addr.script_pubkey().into(),
         }
     }
     pub fn blinding_pubkey(&self) -> Option<bitcoin::secp256k1::PublicKey> {

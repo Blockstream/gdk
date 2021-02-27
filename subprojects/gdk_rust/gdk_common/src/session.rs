@@ -1,3 +1,4 @@
+use crate::be::BEBlockHash;
 use crate::mnemonic::Mnemonic;
 use crate::model::*;
 use crate::password::Password;
@@ -40,7 +41,7 @@ pub trait Session<E> {
     fn get_settings(&self) -> Result<Settings, E>;
     fn change_settings(&mut self, settings: &Settings) -> Result<(), E>;
     fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, E>;
-    fn block_status(&self) -> Result<(u32, bitcoin::BlockHash), E>;
+    fn block_status(&self) -> Result<(u32, BEBlockHash), E>;
     fn tx_status(&self) -> Result<u64, E>;
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, E>;
     fn get_unspent_outputs(&self, details: &Value) -> Result<GetUnspentOutputs, E>;

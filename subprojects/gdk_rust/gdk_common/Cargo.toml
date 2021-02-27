@@ -13,6 +13,6 @@ serde_cbor = "0.11.1"
 libc = "0.2"
 hex = "0.4.0"
 rand = "0.7.3"
-bitcoin = { version = "0.25", features = ["use-serde"] }
-elements = { version = "0.13", features = ["serde-feature"] }
+bitcoin = { version = "0.26", features = ["use-serde"] }
+elements = { version = "0.16", features = ["serde-feature"] }
 

@@ -1,10 +1,9 @@
-use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::hashes::{hex::FromHex, Hash};
+use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, All, Message, Secp256k1};
 use bitcoin::util::address::{Address, Payload};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{BlockHash, PublicKey, SigHashType, Txid};
+use bitcoin::{PublicKey, SigHashType};
 use elements;
 use gdk_common::model::{AddressAmount, Balances, GetTransactionsOpt, SPVVerifyResult};
 use hex;
@@ -133,7 +132,7 @@ impl WalletCtx {
                     .master_blinding
                     .as_ref()
                     .expect("we are in elements but master blinding is None");
-                let script = p2shwpkh_script(&derived.public_key);
+                let script = p2shwpkh_script(&derived.public_key).into_elements();
                 let blinding_key =
                     asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
                 let public_key = ec_public_key_from_private_key(blinding_key);
@@ -158,7 +157,7 @@ impl WalletCtx {
         Ok(())
     }
 
-    pub fn get_tip(&self) -> Result<(u32, BlockHash), Error> {
+    pub fn get_tip(&self) -> Result<(u32, BEBlockHash), Error> {
         Ok(self.store.read()?.cache.tip)
     }
 
@@ -166,7 +165,7 @@ impl WalletCtx {
         let store_read = self.store.read()?;
 
         let mut txs = vec![];
-        let mut my_txids: Vec<(&Txid, &Option<u32>)> = store_read.cache.heights.iter().collect();
+        let mut my_txids: Vec<(&BETxid, &Option<u32>)> = store_read.cache.heights.iter().collect();
         my_txids.sort_by(|a, b| {
             let height_cmp = b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX));
             match height_cmp {
@@ -293,7 +292,7 @@ impl WalletCtx {
                         store_read
                             .cache
                             .paths
-                            .get(&output.script_pubkey)
+                            .get(&(&output.script_pubkey).into())
                             .map(|path| (vout, output, path))
                     })
                     .filter(|(outpoint, _, _)| !spent.contains(&outpoint))
@@ -303,7 +302,7 @@ impl WalletCtx {
                             UTXOInfo::new(
                                 "btc".to_string(),
                                 output.value,
-                                output.script_pubkey,
+                                output.script_pubkey.into(),
                                 height.clone(),
                                 path.clone(),
                             ),
@@ -323,7 +322,7 @@ impl WalletCtx {
                             store_read
                                 .cache
                                 .paths
-                                .get(&output.script_pubkey)
+                                .get(&(&output.script_pubkey).into())
                                 .map(|path| (vout, output, path))
                         })
                         .filter(|(outpoint, _, _)| !spent.contains(&outpoint))
@@ -342,7 +341,7 @@ impl WalletCtx {
                                         UTXOInfo::new(
                                             unblinded.asset_hex(),
                                             unblinded.value,
-                                            output.script_pubkey,
+                                            output.script_pubkey.into(),
                                             height.clone(),
                                             path.clone(),
                                         ),
@@ -642,7 +641,7 @@ impl WalletCtx {
         input_index: usize,
         path: &DerivationPath,
         value: u64,
-    ) -> (Script, Vec<Vec<u8>>) {
+    ) -> (bitcoin::Script, Vec<Vec<u8>>) {
         let xprv = self.xprv.derive_priv(&self.secp, &path).unwrap();
         let private_key = &xprv.private_key;
         let public_key = &PublicKey::from_private_key(&self.secp, private_key);
@@ -678,12 +677,12 @@ impl WalletCtx {
         input_index: usize,
         derivation_path: &DerivationPath,
         value: Value,
-    ) -> (Script, Vec<Vec<u8>>) {
+    ) -> (elements::Script, Vec<Vec<u8>>) {
         let xprv = self.xprv.derive_priv(&self.secp, &derivation_path).unwrap();
         let private_key = &xprv.private_key;
         let public_key = &PublicKey::from_private_key(&self.secp, private_key);
 
-        let script_code = p2pkh_script(public_key);
+        let script_code = p2pkh_script(public_key).into_elements();
         let sighash = tx_get_elements_signature_hash(
             &tx,
             input_index,
@@ -697,7 +696,7 @@ impl WalletCtx {
         let mut signature = signature.serialize_der().to_vec();
         signature.push(SigHashType::All as u8);
 
-        let script_sig = p2shwpkh_script_sig(public_key);
+        let script_sig = p2shwpkh_script_sig(public_key).into_elements();
         let witness = vec![signature, public_key.to_bytes()];
         info!(
             "added size len: script_sig:{} witness:{}",
@@ -723,7 +722,7 @@ impl WalletCtx {
                     let derivation_path: DerivationPath = store_read
                         .cache
                         .paths
-                        .get(&out.script_pubkey)
+                        .get(&out.script_pubkey.into())
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .clone();
                     info!(
@@ -757,7 +756,7 @@ impl WalletCtx {
                     let derivation_path: DerivationPath = store_read
                         .cache
                         .paths
-                        .get(&out.script_pubkey)
+                        .get(&out.script_pubkey.into())
                         .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
                         .clone();
 
@@ -798,7 +797,8 @@ impl WalletCtx {
         }
 
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
-            store_write.insert_memo(Txid::from_hex(&betx.txid)?, memo)?;
+            let txid = BETxid::from_hex(&betx.txid, self.network.id())?;
+            store_write.insert_memo(txid, memo)?;
         }
 
         Ok(betx)

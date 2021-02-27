@@ -6,10 +6,13 @@ use bitcoin::hashes::sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
-use bitcoin::{Address, BlockHash, Script, Transaction, Txid};
+use bitcoin::{Address, Transaction};
 use elements::{AddressParams, OutPoint};
-use gdk_common::be::{BEBlockHeader, BEOutPoint, BETransaction, BETransactions};
-use gdk_common::be::{ScriptBatch, Unblinded};
+use gdk_common::be::{
+    BEBlockHash, BEBlockHeader, BEOutPoint, BEScript, BEScriptConvert, BETransaction,
+    BETransactions, BETxid,
+};
+use gdk_common::be::{BETxidConvert, ScriptBatch, Unblinded};
 use gdk_common::error::fn_err;
 use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::scripts::p2shwpkh_script;
@@ -41,13 +44,13 @@ pub struct RawCache {
     pub all_txs: BETransactions,
 
     /// contains all my script up to an empty batch of BATCHSIZE
-    pub paths: HashMap<Script, DerivationPath>,
+    pub paths: HashMap<BEScript, DerivationPath>,
 
     /// inverse of `paths`
-    pub scripts: HashMap<DerivationPath, Script>, // TODO use DerivationPath once Hash gets merged
+    pub scripts: HashMap<DerivationPath, BEScript>, // TODO use DerivationPath once Hash gets merged
 
     /// contains only my wallet txs with the relative heights (None if unconfirmed)
-    pub heights: HashMap<Txid, Option<u32>>,
+    pub heights: HashMap<BETxid, Option<u32>>,
 
     /// contains headers at the height of my txs (used to show tx timestamps)
     pub headers: HashMap<u32, BEBlockHeader>,
@@ -56,13 +59,13 @@ pub struct RawCache {
     pub unblinded: HashMap<OutPoint, Unblinded>,
 
     /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
-    pub txs_verif: HashMap<Txid, SPVVerifyResult>,
+    pub txs_verif: HashMap<BETxid, SPVVerifyResult>,
 
     /// cached fee_estimates
     pub fee_estimates: Vec<FeeEstimate>,
 
     /// height and hash of tip of the blockchain
-    pub tip: (u32, BlockHash),
+    pub tip: (u32, BEBlockHash),
 
     /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
     pub indexes: Indexes,
@@ -85,7 +88,7 @@ pub struct RawStore {
     settings: Option<Settings>,
 
     /// transaction memos
-    memos: HashMap<Txid, String>,
+    memos: HashMap<bitcoin::Txid, String>,
 }
 
 pub struct StoreMeta {
@@ -318,12 +321,12 @@ impl StoreMeta {
                     let second_path = [ChildNumber::from(j)];
                     let second_deriv = first_deriv.derive_pub(&self.secp, &second_path)?;
                     // Note we are using regtest here because we are not interested in the address, only in script construction
-                    let script = match self.id {
+                    let script: BEScript = match self.id {
                         NetworkId::Bitcoin(network) => {
                             let address =
                                 Address::p2shwpkh(&second_deriv.public_key, network).unwrap();
                             trace!("{}/{} {}", int_or_ext as u32, j, address);
-                            address.script_pubkey()
+                            address.script_pubkey().into()
                         }
                         NetworkId::Elements(network) => {
                             let params = match network {
@@ -331,7 +334,7 @@ impl StoreMeta {
                                 ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
                             };
 
-                            let script = p2shwpkh_script(&second_deriv.public_key);
+                            let script = p2shwpkh_script(&second_deriv.public_key).into_elements();
                             let blinding_key = asset_blinding_key_to_ec_private_key(
                                 self.master_blinding.as_ref().ok_or_else(fn_err(
                                     "missing master blinding in elements session",
@@ -354,7 +357,7 @@ impl StoreMeta {
                                 blinder
                             );
                             assert_eq!(script, address.script_pubkey());
-                            address.script_pubkey()
+                            address.script_pubkey().into()
                         }
                     };
 
@@ -366,15 +369,15 @@ impl StoreMeta {
         Ok(result)
     }
 
-    pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Transaction, Error> {
-        match self.cache.all_txs.get(txid) {
+    pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {
+        match self.cache.all_txs.get(&txid.into_be()) {
             Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
             _ => Err(Error::Generic("expected bitcoin tx".to_string())),
         }
     }
 
-    pub fn get_liquid_tx(&self, txid: &Txid) -> Result<elements::Transaction, Error> {
-        match self.cache.all_txs.get(txid) {
+    pub fn get_liquid_tx(&self, txid: &elements::Txid) -> Result<elements::Transaction, Error> {
+        match self.cache.all_txs.get(&txid.into_be()) {
             Some(BETransaction::Elements(tx)) => Ok(tx.clone()),
             _ => Err(Error::Generic("expected liquid tx".to_string())),
         }
@@ -408,14 +411,17 @@ impl StoreMeta {
         }
     }
 
-    pub fn insert_memo(&mut self, txid: Txid, memo: &str) -> Result<(), Error> {
+    pub fn insert_memo(&mut self, txid: BETxid, memo: &str) -> Result<(), Error> {
+        // Coerced into a bitcoin::Txid to retain database compatibility
+        let txid = txid.into_bitcoin();
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
     }
 
-    pub fn get_memo(&self, txid: &Txid) -> Option<&String> {
-        self.store.memos.get(txid)
+    pub fn get_memo(&self, txid: &BETxid) -> Option<&String> {
+        // Coerced into a bitcoin::Txid to retain database compatibility
+        self.store.memos.get(&txid.into_bitcoin())
     }
 
     pub fn insert_settings(&mut self, settings: Option<Settings>) -> Result<(), Error> {
@@ -428,7 +434,7 @@ impl StoreMeta {
         self.store.settings.clone()
     }
 
-    pub fn spv_verification_status(&self, txid: &Txid) -> SPVVerifyResult {
+    pub fn spv_verification_status(&self, txid: &BETxid) -> SPVVerifyResult {
         if let Some(height) = self.cache.heights.get(txid).unwrap_or(&None) {
             match &self.cache.cross_validation_result {
                 Some(CrossValidationResult::Invalid(inv)) if *height > inv.common_ancestor => {
@@ -453,23 +459,24 @@ impl StoreMeta {
 #[cfg(test)]
 mod tests {
     use crate::store::StoreMeta;
-    use bitcoin::hashes::hex::FromHex;
     use bitcoin::util::bip32::ExtendedPubKey;
-    use bitcoin::{Network, Txid};
-    use gdk_common::NetworkId;
+    use bitcoin::Network;
+    use gdk_common::{be::BETxid, NetworkId};
     use std::str::FromStr;
     use tempdir::TempDir;
 
     #[test]
     fn test_db_roundtrip() {
+        let id = NetworkId::Bitcoin(Network::Testnet);
         let mut dir = TempDir::new("unit_test").unwrap().into_path();
         dir.push("store");
         let xpub = ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4YfG9CySHqKHFbaLcD7hSDyqRUtCmMKNim5fkiJtTnFeqKsRHMHSK5ddFrhqRr3Ghv1JtuWkBzikuBqKu1xCpjQ9YxoPGgqU").unwrap();
-        let txid =
-            Txid::from_hex("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
-                .unwrap();
+        let txid = BETxid::from_hex(
+            "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+            id,
+        )
+        .unwrap();
 
-        let id = NetworkId::Bitcoin(Network::Testnet);
         let mut store = StoreMeta::new(&dir, xpub, None, id).unwrap();
         store.cache.heights.insert(txid, Some(1));
         drop(store);

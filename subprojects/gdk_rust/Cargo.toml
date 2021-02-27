@@ -12,7 +12,7 @@ crate-type = ["staticlib"]
 android_log = ["android_logger"]
 
 [dependencies]
-bitcoin = { version = "0.25.2", features = [ "use-serde" ] }
+bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
 rand = "0.7.3"
 gdk-electrum = { path = "gdk_electrum", features = ["android_log"] }
 gdk-common = { path = "gdk_common" }
@@ -30,8 +30,8 @@ ureq = { version = "1.0.0", features = ["json"] }
 [dev-dependencies]
 tempdir = "0.3.7"
 bitcoincore-rpc = { git="https://github.com/romanz/rust-bitcoincore-rpc", rev="637e895a0b73ffc21c8f62fa2c65b6fd1247785a" }
-electrum-client = "0.4.0-beta.1"
-elements = { version = "0.13", features = ["serde-feature"] }
+electrum-client = "0.7.0"
+elements = { version = "0.16", features = ["serde-feature"] }
 
 [profile.release]
 lto = true

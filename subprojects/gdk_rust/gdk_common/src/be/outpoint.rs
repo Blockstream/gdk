@@ -1,4 +1,4 @@
-use bitcoin::Txid;
+use super::BETxid;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum BEOutPoint {
@@ -19,24 +19,24 @@ impl From<elements::OutPoint> for BEOutPoint {
 }
 
 impl BEOutPoint {
-    pub fn new_bitcoin(txid: Txid, vout: u32) -> Self {
+    pub fn new_bitcoin(txid: bitcoin::Txid, vout: u32) -> Self {
         BEOutPoint::Bitcoin(bitcoin::OutPoint {
             txid,
             vout,
         })
     }
 
-    pub fn new_elements(txid: Txid, vout: u32) -> Self {
+    pub fn new_elements(txid: elements::Txid, vout: u32) -> Self {
         BEOutPoint::Elements(elements::OutPoint {
             txid,
             vout,
         })
     }
 
-    pub fn txid(&self) -> bitcoin::Txid {
+    pub fn txid(&self) -> BETxid {
         match self {
-            Self::Bitcoin(outpoint) => outpoint.txid,
-            Self::Elements(outpoint) => outpoint.txid,
+            Self::Bitcoin(outpoint) => outpoint.txid.into(),
+            Self::Elements(outpoint) => outpoint.txid.into(),
         }
     }
 

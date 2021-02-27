@@ -1,11 +1,10 @@
-use bitcoin::hashes::hex::FromHex;
-use bitcoin::{self, Amount, BlockHash, Txid};
+use bitcoin::{self, Amount};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use chrono::Utc;
 use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
 use electrum_client::ElectrumApi;
 use elements;
-use gdk_common::be::{BEAddress, BETransaction, DUST_VALUE};
+use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::session::Session;
@@ -37,7 +36,7 @@ pub struct TestSession {
     electrs_header: RawClient<ElectrumPlaintextStream>,
     pub session: ElectrumSession,
     tx_status: u64,
-    block_status: (u32, BlockHash),
+    block_status: (u32, BEBlockHash),
     node_process: Child,
     electrs_process: Child,
     node_work_dir: TempDir,
@@ -939,7 +938,10 @@ impl TestSession {
         let cache = self.session.export_cache().unwrap();
         assert_eq!(cache.tip.0, tip);
         for txid in txids {
-            assert!(cache.all_txs.get(&Txid::from_hex(txid).unwrap()).is_some())
+            assert!(cache
+                .all_txs
+                .get(&BETxid::from_hex(txid, self.network.id()).unwrap())
+                .is_some())
         }
     }
 

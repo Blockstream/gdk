@@ -1,6 +1,7 @@
 use crate::NetworkId;
-use bitcoin::BlockHash;
 use serde::{Deserialize, Serialize};
+
+use super::BEBlockHash;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -31,18 +32,16 @@ impl BEBlockHeader {
         }
     }
 
-    pub fn block_hash(&self) -> BlockHash {
+    pub fn block_hash(&self) -> BEBlockHash {
         match self {
-            Self::Bitcoin(header) => header.block_hash(),
-            Self::Elements(header) => header.block_hash(),
+            Self::Bitcoin(header) => BEBlockHash::Bitcoin(header.block_hash()),
+            Self::Elements(header) => BEBlockHash::Elements(header.block_hash()),
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::be::BEBlockHeader;
-    use elements::bitcoin::Block;
     use elements::encode::deserialize;
     use elements::BlockHeader;
 
