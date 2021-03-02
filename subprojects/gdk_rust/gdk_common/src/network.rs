@@ -1,6 +1,8 @@
 use crate::be::asset_to_bin;
 use crate::be::AssetId;
 use crate::error::Error;
+use bitcoin::hashes::{sha256, Hash};
+use bitcoin::util::bip32::ExtendedPubKey;
 use elements::confidential::Asset;
 use elements::{confidential, issuance};
 use serde::{Deserialize, Serialize};
@@ -26,10 +28,13 @@ pub struct Network {
     pub ct_exponent: Option<i32>,
     pub ct_min_value: Option<u64>,
     pub spv_enabled: Option<bool>,
-    pub spv_cross_validation: Option<bool>,
-    pub spv_cross_validation_servers: Option<Vec<String>>,
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
+
+    // These fields must NOT be encoded as part of the wallet identifier
+    // to retain backwards compatibility.
+    pub spv_cross_validation: Option<bool>,
+    pub spv_cross_validation_servers: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,5 +95,39 @@ impl Network {
             .as_ref()
             .map(|s| s.to_string())
             .ok_or_else(|| Error::Generic("asset regitry url not available".into()))
+    }
+
+    // Unique wallet identifier for the given xpub on this network. Used as part of the database
+    // root path, any changes will result in the creation of a new separate database.
+    pub fn unique_id(&self, xpub: &ExtendedPubKey) -> sha256::Hash {
+        // Fields used to compute the unique identifier. Must be kept with the exact same names,
+        // data types and ordering.
+        #[derive(Debug, Deserialize)]
+        struct Network {
+            name: String,
+            network: String,
+            development: bool,
+            liquid: bool,
+            mainnet: bool,
+            tx_explorer_url: String,
+            address_explorer_url: String,
+            tls: Option<bool>,
+            electrum_url: Option<String>,
+            validate_domain: Option<bool>,
+            policy_asset: Option<String>,
+            sync_interval: Option<u32>,
+            ct_bits: Option<i32>,
+            ct_exponent: Option<i32>,
+            ct_min_value: Option<u64>,
+            spv_enabled: Option<bool>,
+            asset_registry_url: Option<String>,
+            asset_registry_onion_url: Option<String>,
+        }
+
+        let net_unique: Network =
+            serde_json::from_value(serde_json::to_value(self).unwrap()).unwrap();
+
+        let wallet_desc = format!("{}{:?}", xpub, net_unique);
+        sha256::Hash::hash(wallet_desc.as_bytes())
     }
 }

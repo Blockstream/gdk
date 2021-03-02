@@ -372,8 +372,7 @@ impl Session<Error> for ElectrumSession {
         let xprv = xprv.derive_priv(&secp, &path)?;
         let xpub = ExtendedPubKey::from_private(&secp, &xprv);
 
-        let wallet_desc = format!("{}{:?}", xpub, self.network);
-        let wallet_id = hex::encode(sha256::Hash::hash(wallet_desc.as_bytes()));
+        let wallet_id = self.network.unique_id(&xpub);
         let sync_interval = self.network.sync_interval.unwrap_or(7);
 
         let master_blinding = if self.network.liquid {
@@ -386,7 +385,7 @@ impl Session<Error> for ElectrumSession {
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
-        path.push(wallet_id);
+        path.push(hex::encode(wallet_id));
         info!("Store root path: {:?}", path);
         let store = match self.get_wallet() {
             Ok(wallet) => wallet.store.clone(),
