@@ -1044,117 +1044,120 @@ impl Syncer {
         let wallet = self.wallet.read().unwrap();
         let mut updated_accounts = HashSet::new();
 
-        // XXX the for loop is intentionally unindented for saner diff
         for account in wallet.iter_accounts() {
+            let mut history_txs_id = HashSet::<BETxid>::new();
+            let mut heights_set = HashSet::new();
+            let mut txid_height = HashMap::<BETxid, _>::new();
+            let mut scripts = HashMap::new();
 
-        let mut history_txs_id = HashSet::<BETxid>::new();
-        let mut heights_set = HashSet::new();
-        let mut txid_height = HashMap::<BETxid, _>::new();
-        let mut scripts = HashMap::new();
-
-        let mut last_used = Indexes::default();
-        let mut wallet_chains = vec![0, 1];
-        wallet_chains.shuffle(&mut thread_rng());
-        for i in wallet_chains {
-            let mut batch_count = 0;
-            loop {
-                let batch = account.get_script_batch(i == 1, batch_count)?;
-                // convert the BEScript into bitcoin::Script for electrum-client
-                let b_scripts =
-                    batch.value.iter().map(|e| e.0.clone().into_bitcoin()).collect::<Vec<_>>();
-                let result: Vec<Vec<GetHistoryRes>> =
-                    client.batch_script_get_history(b_scripts.iter())?;
-                if !batch.cached {
-                    scripts.extend(batch.value);
-                }
-                let max = result
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, v)| !v.is_empty())
-                    .map(|(i, _)| i as u32)
-                    .max();
-                if let Some(max) = max {
-                    if i == 0 {
-                        last_used.external = max + batch_count * BATCH_SIZE;
-                    } else {
-                        last_used.internal = max + batch_count * BATCH_SIZE;
+            let mut last_used = Indexes::default();
+            let mut wallet_chains = vec![0, 1];
+            wallet_chains.shuffle(&mut thread_rng());
+            for i in wallet_chains {
+                let mut batch_count = 0;
+                loop {
+                    let batch = account.get_script_batch(i == 1, batch_count)?;
+                    // convert the BEScript into bitcoin::Script for electrum-client
+                    let b_scripts =
+                        batch.value.iter().map(|e| e.0.clone().into_bitcoin()).collect::<Vec<_>>();
+                    let result: Vec<Vec<GetHistoryRes>> =
+                        client.batch_script_get_history(b_scripts.iter())?;
+                    if !batch.cached {
+                        scripts.extend(batch.value);
                     }
-                };
+                    let max = result
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, v)| !v.is_empty())
+                        .map(|(i, _)| i as u32)
+                        .max();
+                    if let Some(max) = max {
+                        if i == 0 {
+                            last_used.external = max + batch_count * BATCH_SIZE;
+                        } else {
+                            last_used.internal = max + batch_count * BATCH_SIZE;
+                        }
+                    };
 
-                let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                trace!("{}/batch({}) {:?}", i, batch_count, flattened.len());
+                    let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
+                    trace!("{}/batch({}) {:?}", i, batch_count, flattened.len());
 
-                if flattened.is_empty() {
-                    break;
-                }
-
-                let net = self.network.id();
-
-                for el in flattened {
-                    // el.height = -1 means unconfirmed with unconfirmed parents
-                    // el.height =  0 means unconfirmed with confirmed parents
-                    // but we threat those tx the same
-                    let height = el.height.max(0);
-                    heights_set.insert(height as u32);
-                    if height == 0 {
-                        txid_height.insert(el.tx_hash.into_net(net), None);
-                    } else {
-                        txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
+                    if flattened.is_empty() {
+                        break;
                     }
 
-                    history_txs_id.insert(el.tx_hash.into_net(net));
-                }
+                    let net = self.network.id();
 
-                batch_count += 1;
+                    for el in flattened {
+                        // el.height = -1 means unconfirmed with unconfirmed parents
+                        // el.height =  0 means unconfirmed with confirmed parents
+                        // but we threat those tx the same
+                        let height = el.height.max(0);
+                        heights_set.insert(height as u32);
+                        if height == 0 {
+                            txid_height.insert(el.tx_hash.into_net(net), None);
+                        } else {
+                            txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
+                        }
+
+                        history_txs_id.insert(el.tx_hash.into_net(net));
+                    }
+
+                    batch_count += 1;
+                }
             }
-        }
 
-        let new_txs = self.download_txs(&history_txs_id, &scripts, &client)?;
-        let headers = self.download_headers(&heights_set, &client)?;
+            let new_txs = self.download_txs(&history_txs_id, &scripts, &client)?;
+            let headers = self.download_headers(&heights_set, &client)?;
 
-        let store_read = self.store.read()?;
-        let acc_store = store_read.account_store(account.num())?;
-        let store_indexes = acc_store.indexes.clone();
-        let txs_heights_changed = txid_height
-            .iter()
-            .any(|(txid, height)| acc_store.heights.get(txid) != Some(height));
-        drop(acc_store);
-        drop(store_read);
+            let store_read = self.store.read()?;
+            let acc_store = store_read.account_store(account.num())?;
+            let store_indexes = acc_store.indexes.clone();
+            let txs_heights_changed = txid_height
+                .iter()
+                .any(|(txid, height)| acc_store.heights.get(txid) != Some(height));
+            drop(acc_store);
+            drop(store_read);
 
-        let changed = if !new_txs.txs.is_empty()
-            || !headers.is_empty()
-            || store_indexes != last_used
-            || !scripts.is_empty()
-            || txs_heights_changed
-        {
-            info!(
-                "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
-                new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
-                headers,
-                txid_height
+            let changed = if !new_txs.txs.is_empty()
+                || !headers.is_empty()
+                || store_indexes != last_used
+                || !scripts.is_empty()
+                || txs_heights_changed
+            {
+                info!(
+                    "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
+                    new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
+                    headers,
+                    txid_height
+                );
+                let mut store_write = self.store.write()?;
+                let acc_store = store_write.account_store_mut(account.num())?;
+                acc_store.indexes = last_used;
+                acc_store.all_txs.extend(new_txs.txs.into_iter());
+                acc_store.unblinded.extend(new_txs.unblinds);
+                store_write.cache.headers.extend(headers);
+
+                // height map is used for the live list of transactions, since due to reorg or rbf tx
+                // could disappear from the list, we clear the list and keep only the last values returned by the server
+                store_write.cache.heights.clear();
+                store_write.cache.heights.extend(txid_height.into_iter());
+
+                store_write.cache.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
+                store_write.cache.paths.extend(scripts.into_iter());
+                store_write.flush()?;
+
+                updated_accounts.insert(account.num());
+                true
+            } else {
+                false
+            };
+            trace!(
+                "changes for {}: {} elapsed {}",
+                account.num(),
+                changed,
+                start.elapsed().as_millis()
             );
-            let mut store_write = self.store.write()?;
-            let acc_store = store_write.account_store_mut(account.num())?;
-            acc_store.indexes = last_used;
-            acc_store.all_txs.extend(new_txs.txs.into_iter());
-            acc_store.unblinded.extend(new_txs.unblinds);
-            store_write.cache.headers.extend(headers);
-
-            // height map is used for the live list of transactions, since due to reorg or rbf tx
-            // could disappear from the list, we clear the list and keep only the last values returned by the server
-            store_write.cache.heights.clear();
-            store_write.cache.heights.extend(txid_height.into_iter());
-
-            store_write.cache.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
-            store_write.cache.paths.extend(scripts.into_iter());
-            store_write.flush()?;
-
-            updated_accounts.insert(account.num());
-            true
-        } else {
-            false
-        };
-        trace!("changes for {}: {} elapsed {}", account.num(), changed, start.elapsed().as_millis());
         }
 
         Ok(updated_accounts)
