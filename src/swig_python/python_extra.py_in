@@ -265,6 +265,9 @@ class Session(object):
     def twofactor_reset(self, email, is_dispute):
         return Call(twofactor_reset(self.session_obj, email, is_dispute))
 
+    def twofactor_undo_reset(self, email):
+        return Call(twofactor_undo_reset(self.session_obj, email))
+
     def twofactor_cancel_reset(self):
         return Call(twofactor_cancel_reset(self.session_obj))
 

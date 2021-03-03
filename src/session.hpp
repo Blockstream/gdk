@@ -119,9 +119,14 @@ namespace sdk {
         void auth_handler_request_code(
             const std::string& method, const std::string& action, const nlohmann::json& twofactor_data);
         std::string auth_handler_request_proxy_code(const std::string& action, const nlohmann::json& twofactor_data);
-        nlohmann::json reset_twofactor(const std::string& email);
+
+        nlohmann::json request_twofactor_reset(const std::string& email);
         nlohmann::json confirm_twofactor_reset(
             const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data);
+
+        nlohmann::json request_undo_twofactor_reset(const std::string& email);
+        nlohmann::json confirm_undo_twofactor_reset(const std::string& email, const nlohmann::json& twofactor_data);
+
         nlohmann::json cancel_twofactor_reset(const nlohmann::json& twofactor_data);
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);

@@ -688,11 +688,11 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::reset_twofactor(const std::string& email)
+    nlohmann::json session::request_twofactor_reset(const std::string& email)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->reset_twofactor(email);
+            return p->request_twofactor_reset(email);
         });
     }
 
@@ -702,6 +702,22 @@ namespace sdk {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
             return p->confirm_twofactor_reset(email, is_dispute, twofactor_data);
+        });
+    }
+
+    nlohmann::json session::request_undo_twofactor_reset(const std::string& email)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->request_undo_twofactor_reset(email);
+        });
+    }
+
+    nlohmann::json session::confirm_undo_twofactor_reset(const std::string& email, const nlohmann::json& twofactor_data)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->confirm_undo_twofactor_reset(email, twofactor_data);
         });
     }
 

@@ -1481,12 +1481,14 @@ namespace sdk {
     }
 
     //
-    // Request 2fa reset
+    // Request or undo a 2fa reset
     //
-    twofactor_reset_call::twofactor_reset_call(session& session, const std::string& email, bool is_dispute)
-        : auth_handler(session, "request_reset")
+    twofactor_reset_call::twofactor_reset_call(
+        session& session, const std::string& email, bool is_dispute, bool is_undo)
+        : auth_handler(session, is_undo ? "request_undo_reset" : "request_reset")
         , m_reset_email(email)
         , m_is_dispute(is_dispute)
+        , m_is_undo(is_undo)
         , m_confirming(false)
     {
         if (m_state != state_type::error) {
@@ -1497,16 +1499,24 @@ namespace sdk {
     auth_handler::state_type twofactor_reset_call::call_impl()
     {
         if (!m_confirming) {
-            // Request the reset
-            m_result = m_session.reset_twofactor(m_reset_email);
-            // Move on to confirming the reset email address
+            // Request the reset or undo
+            if (m_is_undo) {
+                m_result = m_session.request_undo_twofactor_reset(m_reset_email);
+            } else {
+                m_result = m_session.request_twofactor_reset(m_reset_email);
+            }
+            // Move on to confirming the reset or undo
             m_confirming = true;
             m_methods = { { "email" } };
             m_method = "email";
             return state_type::resolve_code;
         }
-        // Confirm the reset
-        m_result = m_session.confirm_twofactor_reset(m_reset_email, m_is_dispute, m_twofactor_data);
+        // Confirm the reset or undo
+        if (m_is_undo) {
+            m_result = m_session.confirm_undo_twofactor_reset(m_reset_email, m_twofactor_data);
+        } else {
+            m_result = m_session.confirm_twofactor_reset(m_reset_email, m_is_dispute, m_twofactor_data);
+        }
         return state_type::done;
     }
 

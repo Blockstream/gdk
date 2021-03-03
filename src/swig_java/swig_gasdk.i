@@ -544,6 +544,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_void__(GA_auth_handler_call)
 %returns_struct(GA_twofactor_cancel_reset, GA_auth_handler)
 %returns_struct(GA_twofactor_reset, GA_auth_handler)
+%returns_struct(GA_twofactor_undo_reset, GA_auth_handler)
 %returns_struct(GA_twofactor_change_limits, GA_auth_handler)
 %returns_struct(GA_change_settings_twofactor, GA_auth_handler)
 %returns_struct(GA_auth_handler_get_status, GA_json)

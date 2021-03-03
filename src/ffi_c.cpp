@@ -394,8 +394,17 @@ GDK_DEFINE_C_FUNCTION_4(GA_change_settings_twofactor, struct GA_session*, sessio
     })
 
 GDK_DEFINE_C_FUNCTION_4(GA_twofactor_reset, struct GA_session*, session, const char*, email, uint32_t, is_dispute,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::twofactor_reset_call(*session, email, is_dispute != GA_FALSE)); });
+    struct GA_auth_handler**, call, {
+        constexpr bool is_undo = false;
+        *call = auth_cast(new ga::sdk::twofactor_reset_call(*session, email, is_dispute != GA_FALSE, is_undo));
+    });
+
+GDK_DEFINE_C_FUNCTION_3(
+    GA_twofactor_undo_reset, struct GA_session*, session, const char*, email, struct GA_auth_handler**, call, {
+        constexpr bool is_dispute = false; // Irrelevant for undo
+        constexpr bool is_undo = true;
+        *call = auth_cast(new ga::sdk::twofactor_reset_call(*session, email, is_dispute, is_undo));
+    });
 
 GDK_DEFINE_C_FUNCTION_2(GA_twofactor_cancel_reset, struct GA_session*, session, struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::twofactor_cancel_reset_call(*session)); });

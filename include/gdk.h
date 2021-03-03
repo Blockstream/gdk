@@ -740,6 +740,21 @@ GDK_API int GA_twofactor_reset(
     struct GA_session* session, const char* email, uint32_t is_dispute, struct GA_auth_handler** call);
 
 /**
+ * Undo a request to begin the two factor authentication reset process.
+ *
+ * :param session: The session to use.
+ * :param email: The email address to cancel the reset request for. Must be
+ *|     the email previously passed to `GA_twofactor_reset`.
+ * :param call: Destination for the resulting GA_auth_handler to request the reset.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: Unlike`GA_twofactor_cancel_reset`, this call only removes the reset
+ *|     request associated with the given email. If other emails have requested
+ *|     a reset, the wallet will still remain locked following this call.
+ */
+GDK_API int GA_twofactor_undo_reset(struct GA_session* session, const char* email, struct GA_auth_handler** call);
+
+/**
  * Cancel all outstanding two factor resets and unlock the wallet for normal operation.
  *
  * :param session: The session to use.

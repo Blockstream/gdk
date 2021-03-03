@@ -267,13 +267,14 @@ namespace sdk {
 
     class twofactor_reset_call : public auth_handler {
     public:
-        twofactor_reset_call(session& session, const std::string& email, bool is_dispute);
+        twofactor_reset_call(session& session, const std::string& email, bool is_dispute, bool is_undo);
 
     private:
         state_type call_impl() override;
 
-        std::string m_reset_email;
-        bool m_is_dispute;
+        const std::string m_reset_email;
+        const bool m_is_dispute;
+        const bool m_is_undo;
         bool m_confirming;
     };
 

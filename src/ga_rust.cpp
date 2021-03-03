@@ -337,10 +337,17 @@ namespace sdk {
         return std::string{};
     }
 
-    nlohmann::json ga_rust::reset_twofactor(const std::string& email) { return nlohmann::json{}; }
+    nlohmann::json ga_rust::request_twofactor_reset(const std::string& email) { return nlohmann::json{}; }
 
     nlohmann::json ga_rust::confirm_twofactor_reset(
         const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
+    {
+        return nlohmann::json{};
+    }
+
+    nlohmann::json ga_rust::request_undo_twofactor_reset(const std::string& email) { return nlohmann::json{}; }
+
+    nlohmann::json ga_rust::confirm_undo_twofactor_reset(const std::string& email, const nlohmann::json& twofactor_data)
     {
         return nlohmann::json{};
     }

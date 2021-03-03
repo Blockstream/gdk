@@ -3422,9 +3422,15 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::reset_twofactor(const std::string& email)
+    nlohmann::json ga_session::request_twofactor_reset(const std::string& email)
     {
         return wamp_cast_json(wamp_call("twofactor.request_reset", email));
+    }
+
+    // Idempotent
+    nlohmann::json ga_session::request_undo_twofactor_reset(const std::string& email)
+    {
+        return wamp_cast_json(wamp_call("twofactor.request_undo_reset", email));
     }
 
     // Idempotent
@@ -3432,6 +3438,14 @@ namespace sdk {
         const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
     {
         auto result = wamp_call("twofactor.confirm_reset", email, is_dispute, mp_cast(twofactor_data).get());
+        return wamp_cast_json(result);
+    }
+
+    // Idempotent
+    nlohmann::json ga_session::confirm_undo_twofactor_reset(
+        const std::string& email, const nlohmann::json& twofactor_data)
+    {
+        auto result = wamp_call("twofactor.confirm_undo_reset", email, mp_cast(twofactor_data).get());
         return wamp_cast_json(result);
     }
 
