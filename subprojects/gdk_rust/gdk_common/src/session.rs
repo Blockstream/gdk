@@ -30,7 +30,7 @@ pub trait Session<E> {
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
     fn get_balance(&self, subaccount: u32, num_confs: u32) -> Result<Balances, E>;
-    fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), E>;
+    fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), E>;
     fn create_transaction(&mut self, details: &mut CreateTransaction)
         -> Result<TransactionMeta, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &TransactionMeta) -> Result<TransactionMeta, E>;

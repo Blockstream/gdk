@@ -643,12 +643,12 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet()?.balance(account_num, num_confs)
     }
 
-    fn set_transaction_memo(&self, account_num: u32, txid: &str, memo: &str) -> Result<(), Error> {
+    fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        self.get_wallet()?.store.write()?.insert_memo(account_num, txid, memo)?;
+        self.get_wallet()?.store.write()?.insert_memo(txid, memo)?;
 
         Ok(())
     }

@@ -1,4 +1,7 @@
-use gdk_common::model::{CreateAccountOpt, RefreshAssets, RenameAccountOpt, SPVVerifyResult};
+use gdk_common::model::{
+    AddressAmount, CreateAccountOpt, CreateTransaction, RefreshAssets, RenameAccountOpt,
+    SPVVerifyResult,
+};
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
 use gdk_common::Network;
@@ -271,6 +274,53 @@ fn subaccounts() {
     test_session.stop();
 }
 
+#[test]
+fn labels() {
+    // Create a session and two accounts
+    let mut test_session = setup_session(false, 0, |_| ());
+    let account1 = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Account 1".into(),
+            script_type: ScriptType::P2wpkh,
+        })
+        .unwrap();
+    let account2 = test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Account 2".into(),
+            script_type: ScriptType::P2pkh,
+        })
+        .unwrap();
+
+    // Fund account #1
+    let acc1_address = test_session.get_receive_address(account1.account_num);
+    test_session.node_sendtoaddress(&acc1_address.address, 9876543, None);
+    test_session.wait_tx_status_change();
+
+    // Send from account #1 to account #2 with a memo
+    let mut create_opt = CreateTransaction::default();
+    create_opt.subaccount = account1.account_num;
+    create_opt.addressees.push(AddressAmount {
+        address: test_session.get_receive_address(account2.account_num).address,
+        satoshi: 50000,
+        asset_tag: None,
+    });
+    create_opt.memo = Some("Foo, Bar Foo".into());
+    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
+    let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
+    let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_account_tx(account1.account_num, &txid);
+
+    // Memos should be set across all accounts
+    assert_eq!(test_session.get_tx_from_list(account1.account_num, &txid).memo, "Foo, Bar Foo");
+    assert_eq!(test_session.get_tx_from_list(account2.account_num, &txid).memo, "Foo, Bar Foo");
+
+    test_session.session.set_transaction_memo(&txid, "Bar, Foo Qux").unwrap();
+    assert_eq!(test_session.get_tx_from_list(account1.account_num, &txid).memo, "Bar, Foo Qux");
+    assert_eq!(test_session.get_tx_from_list(account2.account_num, &txid).memo, "Bar, Foo Qux");
+}
+
 // Test the low-level spv_cross_validate()
 #[test]
 fn spv_cross_validate() {
@@ -340,7 +390,7 @@ fn spv_cross_validation_session() {
     let ap = test_session1.get_receive_address(0);
     let txid = test_session1.node_sendtoaddress(&ap.address, 999999, None);
     test_session1.wait_tx_status_change();
-    let txitem = test_session1.get_tx_from_list(&txid);
+    let txitem = test_session1.get_tx_from_list(0, &txid);
     assert_eq!(txitem.block_height, 0);
     assert_eq!(txitem.spv_verified, "unconfirmed");
     info!("sent mempool tx");
@@ -349,7 +399,7 @@ fn spv_cross_validation_session() {
     test_session1.node_generate(1);
     test_session1.wait_block_status_change();
     test_session1.wait_tx_spv_change(&txid, "verified");
-    assert_eq!(test_session1.get_tx_from_list(&txid).block_height, 122);
+    assert_eq!(test_session1.get_tx_from_list(0, &txid).block_height, 122);
     info!("tx confirmed and spv validated");
 
     // Extend session2, putting session1 on a minority fork
@@ -359,14 +409,14 @@ fn spv_cross_validation_session() {
     let inv = assert_unwrap_invalid(cross_result);
     assert_eq!(inv.common_ancestor, 121);
     assert_eq!(inv.longest_height, 131);
-    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "not_longest");
+    assert_eq!(test_session1.get_tx_from_list(0, &txid).spv_verified, "not_longest");
     info!("extended session2, making session1 the minority");
 
     // Extend session1, making it the best chain
     test_session1.node_generate(11);
     let cross_result = test_session1.wait_spv_cross_validation_change(true);
     assert!(cross_result.is_valid());
-    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "verified");
+    assert_eq!(test_session1.get_tx_from_list(0, &txid).spv_verified, "verified");
     assert_eq!(test_session1.session.block_status().unwrap().0, 133);
     info!("extended session1, making session1 the majority");
 
@@ -376,7 +426,7 @@ fn spv_cross_validation_session() {
     let inv = assert_unwrap_invalid(cross_result);
     assert_eq!(inv.common_ancestor, 121);
     assert_eq!(inv.longest_height, 134);
-    assert_eq!(test_session1.get_tx_from_list(&txid).spv_verified, "not_longest");
+    assert_eq!(test_session1.get_tx_from_list(0, &txid).spv_verified, "not_longest");
     info!("extended session2, making session1 the minority (again)");
 
     // Reorg session1 into session2, pointing both to the same longest chain
@@ -384,7 +434,7 @@ fn spv_cross_validation_session() {
     test_session1.node_connect(test_session2.p2p_port);
     let cross_result = test_session1.wait_spv_cross_validation_change(true);
     assert!(cross_result.is_valid());
-    let txitem = test_session1.get_tx_from_list(&txid);
+    let txitem = test_session1.get_tx_from_list(0, &txid);
     assert_eq!(txitem.block_height, 0);
     assert_eq!(txitem.spv_verified, "unconfirmed");
     info!("reorged session1 into session2, tx is unconfirmed again");
@@ -393,7 +443,7 @@ fn spv_cross_validation_session() {
     // Cross-validation should fail, but the tx should still appear as SPV-validated
     test_session1.node_generate(1);
     test_session1.wait_tx_spv_change(&txid, "verified");
-    assert_eq!(test_session1.get_tx_from_list(&txid).block_height, 135);
+    assert_eq!(test_session1.get_tx_from_list(0, &txid).block_height, 135);
     test_session1.node_disconnect_all();
     test_session1.node_generate(5);
     test_session2.node_generate(10);
@@ -401,7 +451,7 @@ fn spv_cross_validation_session() {
     let inv = assert_unwrap_invalid(cross_result);
     assert_eq!(inv.common_ancestor, 135);
     assert_eq!(inv.longest_height, 145);
-    let txitem = test_session1.get_tx_from_list(&txid);
+    let txitem = test_session1.get_tx_from_list(0, &txid);
     assert_eq!(txitem.block_height, 135);
     assert_eq!(txitem.spv_verified, "verified");
 

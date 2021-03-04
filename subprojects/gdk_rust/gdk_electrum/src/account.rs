@@ -178,7 +178,7 @@ impl Account {
                     });
                 }
             }
-            let memo = store.get_memo(self.account_num, tx_id).cloned();
+            let memo = store.get_memo(tx_id).cloned();
 
             let create_transaction = CreateTransaction {
                 addressees,
@@ -494,7 +494,7 @@ impl Account {
 
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
             let txid = BETxid::from_hex(&betx.txid, self.network.id())?;
-            store_write.insert_memo(self.account_num, txid, memo)?;
+            store_write.insert_memo(txid, memo)?;
         }
 
         Ok(betx)

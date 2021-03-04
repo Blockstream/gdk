@@ -480,14 +480,14 @@ impl TestSession {
     }
 
     pub fn test_set_get_memo(&mut self, txid: &str, old: &str, new: &str) {
-        assert_eq!(self.get_tx_from_list(txid).memo, old);
-        assert!(self.session.set_transaction_memo(0, txid, &"a".repeat(1025)).is_err());
-        assert!(self.session.set_transaction_memo(0, txid, new).is_ok());
-        assert_eq!(self.get_tx_from_list(txid).memo, new);
+        assert_eq!(self.get_tx_from_list(0, txid).memo, old);
+        assert!(self.session.set_transaction_memo(txid, &"a".repeat(1025)).is_err());
+        assert!(self.session.set_transaction_memo(txid, new).is_ok());
+        assert_eq!(self.get_tx_from_list(0, txid).memo, new);
     }
 
     pub fn is_verified(&mut self, txid: &str, verified: SPVVerifyResult) {
-        let tx = self.get_tx_from_list(txid);
+        let tx = self.get_tx_from_list(0, txid);
         assert_eq!(tx.spv_verified, verified.to_string());
     }
 
@@ -499,8 +499,9 @@ impl TestSession {
         self.list_tx_contains(&txid, &[address], true);
     }
 
-    pub fn get_tx_from_list(&self, txid: &str) -> TxListItem {
+    pub fn get_tx_from_list(&self, subaccount: u32, txid: &str) -> TxListItem {
         let mut opt = GetTransactionsOpt::default();
+        opt.subaccount = subaccount;
         opt.count = 100;
         let list = self.session.get_transactions(&opt).unwrap().0;
         let filtered_list: Vec<TxListItem> =
@@ -510,7 +511,7 @@ impl TestSession {
     }
 
     fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {
-        let tx = self.get_tx_from_list(txid);
+        let tx = self.get_tx_from_list(0, txid);
         if !addressees.is_empty() {
             let recipients = match self.network_id {
                 NetworkId::Bitcoin(_) => addressees.to_vec(),
@@ -1026,7 +1027,7 @@ impl TestSession {
     /// wait for the spv validation status of a transaction to change (max 1 min)
     pub fn wait_tx_spv_change(&self, txid: &str, wait_for: &str) {
         for _ in 0..120 {
-            if self.get_tx_from_list(txid).spv_verified == wait_for {
+            if self.get_tx_from_list(0, txid).spv_verified == wait_for {
                 return;
             }
             thread::sleep(Duration::from_millis(500));

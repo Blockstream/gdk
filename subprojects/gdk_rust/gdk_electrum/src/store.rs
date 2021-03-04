@@ -88,7 +88,7 @@ pub struct RawStore {
     account_names: HashMap<u32, String>,
 
     /// transaction memos (account_num -> txid -> memo)
-    memos: HashMap<u32, HashMap<bitcoin::Txid, String>>,
+    memos: HashMap<bitcoin::Txid, String>,
 }
 
 pub struct StoreMeta {
@@ -320,16 +320,16 @@ impl StoreMeta {
         }
     }
 
-    pub fn insert_memo(&mut self, account_num: u32, txid: BETxid, memo: &str) -> Result<(), Error> {
+    pub fn insert_memo(&mut self, txid: BETxid, memo: &str) -> Result<(), Error> {
         // Coerced into a bitcoin::Txid to retain database compatibility
         let txid = txid.into_bitcoin();
-        self.store.memos.entry(account_num).or_default().insert(txid, memo.to_string());
+        self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
     }
 
-    pub fn get_memo(&self, account_num: u32, txid: &BETxid) -> Option<&String> {
-        self.store.memos.get(&account_num).and_then(|a| a.get(&txid.into_bitcoin()))
+    pub fn get_memo(&self, txid: &BETxid) -> Option<&String> {
+        self.store.memos.get(&txid.into_bitcoin())
     }
 
     pub fn insert_settings(&mut self, settings: Option<Settings>) -> Result<(), Error> {
