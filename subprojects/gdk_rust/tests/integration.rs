@@ -1,6 +1,7 @@
 use gdk_common::model::{CreateAccountOpt, RefreshAssets, RenameAccountOpt, SPVVerifyResult};
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
+use gdk_common::Network;
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
@@ -19,14 +20,7 @@ static MEMO2: &str = "hello memo2";
 
 #[test]
 fn bitcoin() {
-    let electrs_exec = env::var("ELECTRS_EXEC")
-        .expect("env ELECTRS_EXEC pointing to electrs executable is required");
-    let node_exec = env::var("BITCOIND_EXEC")
-        .expect("env BITCOIND_EXEC pointing to elementsd executable is required");
-    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
-    let debug = env::var("DEBUG").is_ok();
-
-    let mut test_session = test_session::setup(false, debug, &electrs_exec, &node_exec, 0, |_| ());
+    let mut test_session = setup_session(false, 0, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -65,14 +59,7 @@ fn bitcoin() {
 
 #[test]
 fn liquid() {
-    let electrs_exec = env::var("ELECTRS_LIQUID_EXEC")
-        .expect("env ELECTRS_LIQUID_EXEC pointing to electrs executable is required");
-    let node_exec = env::var("ELEMENTSD_EXEC")
-        .expect("env ELEMENTSD_EXEC pointing to elementsd executable is required");
-    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
-    let debug = env::var("DEBUG").is_ok();
-
-    let mut test_session = test_session::setup(true, debug, &electrs_exec, &node_exec, 0, |_| ());
+    let mut test_session = setup_session(true, 0, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -133,14 +120,7 @@ fn liquid() {
 
 #[test]
 fn subaccounts() {
-    let electrs_exec = env::var("ELECTRS_EXEC")
-        .expect("env ELECTRS_EXEC pointing to electrs executable is required");
-    let node_exec = env::var("BITCOIND_EXEC")
-        .expect("env BITCOIND_EXEC pointing to elementsd executable is required");
-    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
-    let debug = env::var("DEBUG").is_ok();
-
-    let mut test_session = test_session::setup(false, debug, &electrs_exec, &node_exec, 0, |_| ());
+    let mut test_session = setup_session(false, 0, |_| ());
 
     assert!(test_session.session.get_subaccount(0, 0).is_ok());
     assert!(test_session.session.get_subaccount(1, 0).is_err());
@@ -430,23 +410,14 @@ fn spv_cross_validation_session() {
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
-    let electrs_exec = env::var("ELECTRS_EXEC")
-        .expect("env ELECTRS_EXEC pointing to electrs executable is required");
-    let node_exec = env::var("BITCOIND_EXEC")
-        .expect("env BITCOIND_EXEC pointing to elementsd executable is required");
-    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
-    let debug = env::var("DEBUG").is_ok();
+    let mut test_session2 = setup_session(false, 2, |_| ());
 
-    let mut test_session2 = test_session::setup(false, debug, &electrs_exec, &node_exec, 2, |_| ());
-
-    let mut test_session1 =
-        test_session::setup(false, debug, &electrs_exec, &node_exec, 1, |network| {
-            if enable_session_cross {
-                network.spv_cross_validation = Some(true);
-                network.spv_cross_validation_servers =
-                    Some(vec![test_session2.electrs_url.clone()]);
-            }
-        });
+    let mut test_session1 = setup_session(false, 1, |network| {
+        if enable_session_cross {
+            network.spv_cross_validation = Some(true);
+            network.spv_cross_validation_servers = Some(vec![test_session2.electrs_url.clone()]);
+        }
+    });
 
     // Connect nodes and point both to the same tip
     test_session2.node_connect(test_session1.p2p_port);
@@ -461,6 +432,33 @@ fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSessi
     test_session1.node_disconnect_all();
 
     (test_session1, test_session2)
+}
+
+fn setup_session(
+    is_liquid: bool,
+    num_client: u16,
+    network_conf: impl FnOnce(&mut Network),
+) -> TestSession {
+    let electrs_exec = if !is_liquid {
+        env::var("ELECTRS_EXEC")
+            .expect("env ELECTRS_EXEC pointing to electrs executable is required")
+    } else {
+        env::var("ELECTRS_LIQUID_EXEC")
+            .expect("env ELECTRS_LIQUID_EXEC pointing to electrs executable is required")
+    };
+
+    let node_exec = if !is_liquid {
+        env::var("BITCOIND_EXEC")
+            .expect("env BITCOIND_EXEC pointing to elementsd executable is required")
+    } else {
+        env::var("ELEMENTSD_EXEC")
+            .expect("env ELEMENTSD_EXEC pointing to elementsd executable is required")
+    };
+
+    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
+    let debug = env::var("DEBUG").is_ok();
+
+    test_session::setup(false, debug, &electrs_exec, &node_exec, num_client, network_conf)
 }
 
 fn get_chain(test_session: &mut TestSession) -> HeadersChain {
