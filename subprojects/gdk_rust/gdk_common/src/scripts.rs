@@ -74,11 +74,11 @@ impl ScriptType {
     /// Returns a mock scriptPubkey with the expected size
     pub fn mock_script_pubkey(self) -> Vec<u8> {
         match self {
-            // OP_0 PUSHBYTES <20 bytes hash>
+            // OP_0 OP_PUSHBYTES <20 bytes hash>
             ScriptType::P2wpkh => vec![0u8; 22],
-            // OP_HASH160 PUSHBYTES <20 bytes hash> OP_EQUAL
+            // OP_HASH160 OP_PUSHBYTES <20 bytes hash> OP_EQUAL
             ScriptType::P2shP2wpkh => vec![0u8; 23],
-            // OP_DUP OP_HASH160 OP_PUSHBYTES_20 <20 bytes hash> OP_EQUALVERIFY OP_CHECKSIG
+            // OP_DUP OP_HASH160 OP_PUSHBYTES <20 bytes hash> OP_EQUALVERIFY OP_CHECKSIG
             ScriptType::P2pkh => vec![0u8; 25],
         }
     }
