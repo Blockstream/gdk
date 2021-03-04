@@ -48,6 +48,36 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(value.is_array() && value.size() == size);
             return value;
         }
+
+        // Whether the hw has any support for the Anti-Exfil protocol
+        static bool supports_ae_protocol(const nlohmann::json& hw_device)
+        {
+            return json_get_value(hw_device, "ae_protocol_support_level", ae_protocol_support_level::none)
+                != ae_protocol_support_level::none;
+        }
+
+        // Add anti-exfil protocol host-entropy and host-commitment to the passed json
+        static void add_ae_host_data(nlohmann::json& data)
+        {
+            // TODO: These values should be identical/re-used if the same data
+            // is being signed repeatedly (eg. being re-tried following a failure).
+            const auto host_entropy = get_random_bytes<WALLY_S2C_DATA_LEN>();
+            const auto host_commitment = ae_host_commit_from_bytes(host_entropy);
+            data["ae_host_entropy"] = b2h(host_entropy);
+            data["ae_host_commitment"] = b2h(host_commitment);
+        }
+
+        // If the hww is populated and supports the AE signing protocol, add
+        // the host-entropy and host-commitment fields to the passed json.
+        static bool add_required_ae_data(const nlohmann::json& hw_device, nlohmann::json& data)
+        {
+            const bool using_ae_protocol = supports_ae_protocol(hw_device);
+            data["use_ae_protocol"] = using_ae_protocol;
+            if (using_ae_protocol) {
+                add_ae_host_data(data);
+            }
+            return using_ae_protocol;
+        }
     } // namespace
 
     //
@@ -281,6 +311,7 @@ namespace sdk {
         : auth_handler(session, "get_xpubs", hw_device)
         , m_mnemonic(mnemonic)
         , m_password(password)
+        , m_use_ae_protocol(false)
     {
         if (m_state == state_type::error) {
             return;
@@ -351,6 +382,7 @@ namespace sdk {
                     set_data("sign_message");
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
+                    m_use_ae_protocol = add_required_ae_data(m_hw_device, m_twofactor_data);
                     return state_type::resolve_code;
                 }
                 // Register the xpub for each of our subaccounts
@@ -358,6 +390,12 @@ namespace sdk {
 
                 // fall through to the required_ca check down there...
             } else if (m_action == "sign_message") {
+                // If we are using the Anti-Exfil protocol we verify the signature
+                if (m_use_ae_protocol) {
+                    m_session.verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                        m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+                }
+
                 // Log in and set up the session
                 m_session.authenticate(args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_hw_device);
 
@@ -444,6 +482,7 @@ namespace sdk {
         : auth_handler(session, "get_xpubs")
         , m_details(details)
         , m_subaccount(0)
+        , m_use_ae_protocol(false)
         , m_remaining_ca_addrs(0)
     {
         if (m_state == state_type::error) {
@@ -467,7 +506,7 @@ namespace sdk {
             m_state = state_type::resolve_code;
             m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
 
-            std::vector<nlohmann::json> paths;
+            auto paths = get_paths_json();
             paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
             m_twofactor_data["paths"] = paths;
         }
@@ -518,16 +557,24 @@ namespace sdk {
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
             if (m_action == "get_xpubs") {
-                m_subaccount_xpub = args.at("xpubs").at(0);
+                m_master_xpub_bip32 = args.at("xpubs").at(0);
+                m_subaccount_xpub = args.at("xpubs").at(1);
                 if (type == "2of3") {
                     // ask the caller to sign recovery key with login key
                     set_data("sign_message");
                     m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
+                    m_use_ae_protocol = add_required_ae_data(m_hw_device, m_twofactor_data);
                     return state_type::resolve_code;
                 }
                 m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
             } else if (m_action == "sign_message") {
+                // If we are using the Anti-Exfil protocol we verify the signature
+                if (m_use_ae_protocol) {
+                    m_session.verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                        m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+                }
+
                 m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
                 m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
             } else if (m_action == "get_receive_address") {
@@ -558,6 +605,7 @@ namespace sdk {
     ack_system_message_call::ack_system_message_call(session& session, const std::string& msg)
         : auth_handler(session, "sign_message")
         , m_message(msg)
+        , m_use_ae_protocol(false)
     {
         if (m_state == state_type::error) {
             return;
@@ -568,10 +616,21 @@ namespace sdk {
         } else {
             try {
                 m_message_info = m_session.get_system_message_info(msg);
+                m_use_ae_protocol = supports_ae_protocol(m_hw_device);
                 m_state = state_type::resolve_code;
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
-                m_twofactor_data["message"] = m_message_info.first;
-                m_twofactor_data["path"] = m_message_info.second;
+
+                // If using Anti-Exfil protocol we need to get the root xpub
+                // Otherwise just sign the message
+                if (m_use_ae_protocol) {
+                    set_data("get_xpubs");
+                    auto paths = get_paths_json();
+                    m_twofactor_data["paths"] = paths;
+                } else {
+                    set_data("sign_message");
+                    m_twofactor_data["message"] = m_message_info.first;
+                    m_twofactor_data["path"] = m_message_info.second;
+                    add_required_ae_data(m_hw_device, m_twofactor_data);
+                }
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
@@ -584,7 +643,23 @@ namespace sdk {
             m_session.ack_system_message(m_message);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            m_session.ack_system_message(m_message_info.first, args.at("signature"));
+            if (m_action == "get_xpubs") {
+                m_master_xpub_bip32 = args.at("xpubs").at(0);
+
+                set_data("sign_message");
+                m_twofactor_data["message"] = m_message_info.first;
+                m_twofactor_data["path"] = m_message_info.second;
+                add_required_ae_data(m_hw_device, m_twofactor_data);
+                return state_type::resolve_code;
+            } else if (m_action == "sign_message") {
+                // If we are using the Anti-Exfil protocol we verify the signature
+                if (m_use_ae_protocol) {
+                    m_session.verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32,
+                        m_message_info.second, m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"),
+                        args.at("signature"));
+                }
+                m_session.ack_system_message(m_message_info.first, args.at("signature"));
+            }
         }
         return state_type::done;
     }
@@ -595,6 +670,7 @@ namespace sdk {
     sign_transaction_call::sign_transaction_call(session& session, const nlohmann::json& tx_details)
         : auth_handler(session, "sign_tx")
         , m_tx_details(tx_details)
+        , m_use_ae_protocol(false)
     {
         if (m_state == state_type::error) {
             return;
@@ -612,14 +688,23 @@ namespace sdk {
 
                 m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", tx_details } };
 
+                // We use the Anti-Exfil protocol if the hw supports it
+                m_use_ae_protocol = supports_ae_protocol(m_hw_device);
+                m_twofactor_data["use_ae_protocol"] = m_use_ae_protocol;
+
                 // We need the inputs, augmented with types, scripts and paths
-                const auto signing_inputs = get_ga_signing_inputs(tx_details);
+                auto signing_inputs = get_ga_signing_inputs(tx_details);
                 std::set<std::string> addr_types;
                 nlohmann::json prev_txs;
-                for (const auto& input : signing_inputs) {
+                for (auto& input : signing_inputs) {
                     const auto& addr_type = input.at("address_type");
                     GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
                     addr_types.insert(addr_type.get<std::string>());
+
+                    // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
+                    if (m_use_ae_protocol) {
+                        add_ae_host_data(input);
+                    }
                 }
                 if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
                     // TODO: Support mixed/batched sweep transactions with non-sweep inputs
@@ -676,6 +761,18 @@ namespace sdk {
                         m_session.blind_output(transaction_details, tx, i, out, asset_commitments[i],
                             value_commitments[i], abfs[i], vbfs[i]);
                     }
+                    ++i;
+                }
+            }
+
+            // If we are using the Anti-Exfil protocol we verify the signatures
+            // TODO: the signer-commitments should be verified as being the same for the
+            // same input data and host-entropy (eg. if retrying following failure).
+            if (m_use_ae_protocol) {
+                size_t i = 0;
+                const auto& signer_commitments = get_sized_array(args, "signer_commitments", inputs.size());
+                for (const auto& utxo : inputs) {
+                    m_session.verify_ae_signature(tx, i, utxo, signer_commitments[i], signatures[i]);
                     ++i;
                 }
             }

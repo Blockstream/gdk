@@ -441,6 +441,18 @@ namespace sdk {
         return call_session("broadcast_transaction", nlohmann::json(tx_hex)).get<std::string>();
     }
 
+    void ga_rust::verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32,
+        uint32_span_t path, const std::string& host_entropy_hex, const std::string& signer_commitment_hex,
+        const std::string& der_hex)
+    {
+        throw std::runtime_error("verify_ae_signature not implemented");
+    }
+    void ga_rust::verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
+        const std::string& der_hex, const std::string& signer_commitment_hex)
+    {
+        throw std::runtime_error("verify_ae_signature not implemented");
+    }
+
     void ga_rust::sign_input(
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
     {

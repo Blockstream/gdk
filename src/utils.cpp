@@ -413,6 +413,21 @@ namespace sdk {
             + std::to_string(subaccount);
     }
 
+    // Verify an Anti-Exfil signature wrt the passed host-entropy and signer commitment
+    // TODO: any failures here should be tracked/counted by the wallet (eg. in the client-blob)
+    // to ensure the hww is abiding by the Anti-Exfil protocol.
+    void verify_ae_signature(const pub_key_t& pubkey, byte_span_t data_hash, const std::string& host_entropy_hex,
+        const std::string& signer_commitment_hex, const std::string& der_hex, const bool has_sighash)
+    {
+        const auto host_entropy = h2b(host_entropy_hex);
+        const auto signer_commitment = h2b(signer_commitment_hex);
+        const auto sig = ec_sig_from_der(h2b(der_hex), has_sighash);
+
+        if (!ae_verify(pubkey, data_hash, host_entropy, signer_commitment, sig)) {
+            throw user_error(res::id_signature_validation_failed_if);
+        }
+    }
+
     std::string base64_from_bytes(byte_span_t bytes) { return websocketpp::base64_encode(bytes.data(), bytes.size()); }
 
     std::vector<unsigned char> base64_to_bytes(const std::string& input)

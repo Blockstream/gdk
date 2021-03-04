@@ -827,6 +827,25 @@ namespace sdk {
         });
     }
 
+    void session::verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32,
+        uint32_span_t path, const std::string& host_entropy_hex, const std::string& signer_commitment_hex,
+        const std::string& der_hex)
+    {
+        exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            p->verify_ae_signature(message, root_xpub_bip32, path, host_entropy_hex, signer_commitment_hex, der_hex);
+        });
+    }
+
+    void session::verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
+        const std::string& signer_commitment_hex, const std::string& der_hex)
+    {
+        exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            p->verify_ae_signature(tx, index, u, signer_commitment_hex, der_hex);
+        });
+    }
+
     void session::sign_input(
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
     {

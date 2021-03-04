@@ -961,6 +961,18 @@ namespace sdk {
         return result;
     }
 
+    void verify_ae_signature(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& input,
+        const std::string& signer_commitment_hex, const std::string& der_hex)
+    {
+        const auto& host_entropy_hex = input.at("ae_host_entropy");
+        const auto script_hash = get_script_hash(session.get_network_parameters().liquid(), input, tx, index);
+        const auto pubkeys = session.pubkeys_from_utxo(input);
+        const auto user_pubkey = pubkeys.at(1); // user key
+
+        constexpr bool has_sighash = true;
+        verify_ae_signature(user_pubkey, script_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
+    }
+
     void sign_input(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
         const std::string& der_hex)
     {

@@ -148,6 +148,10 @@ namespace sdk {
         std::string broadcast_transaction(const std::string& tx_hex);
 
         void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
+        void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32, uint32_span_t path,
+            const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex);
+        void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
+            const std::string& signer_commitment_hex, const std::string& der_hex);
         void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
             const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
             const std::string& assetblinder_hex, const std::string& amountblinder_hex);

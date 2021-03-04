@@ -75,6 +75,9 @@ namespace sdk {
 
     std::string format_recovery_key_message(const std::string& xpub, uint32_t subaccount, uint32_t version = 0);
 
+    void verify_ae_signature(const pub_key_t& pubkey, byte_span_t data_hash, const std::string& host_entropy_hex,
+        const std::string& signer_commitment_hex, const std::string& der_hex, bool has_sighash);
+
     // Mnemonic handling
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
