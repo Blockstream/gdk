@@ -5,6 +5,7 @@
 #define BUILD_ELEMENTS
 
 #include <wally_address.h>
+#include <wally_anti_exfil.h>
 #include <wally_bip32.h>
 #include <wally_bip38.h>
 #include <wally_bip39.h>

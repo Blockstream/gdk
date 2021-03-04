@@ -571,6 +571,23 @@ namespace sdk {
         return ret;
     }
 
+    std::vector<unsigned char> ae_host_commit_from_bytes(byte_span_t host_entropy, uint32_t flags)
+    {
+        std::vector<unsigned char> ret(WALLY_HOST_COMMITMENT_LEN);
+        GDK_VERIFY(
+            wally_ae_host_commit_from_bytes(host_entropy.data(), host_entropy.size(), flags, ret.data(), ret.size()));
+        return ret;
+    }
+
+    bool ae_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t host_entropy,
+        byte_span_t signer_commitment, byte_span_t sig, uint32_t flags)
+    {
+        return wally_ae_verify(public_key.data(), public_key.size(), message_hash.data(), message_hash.size(),
+                   host_entropy.data(), host_entropy.size(), signer_commitment.data(), signer_commitment.size(), flags,
+                   sig.data(), sig.size())
+            == WALLY_OK;
+    }
+
     //
     // Elements
     //
