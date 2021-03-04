@@ -307,6 +307,7 @@ namespace sdk {
         std::string get_recovery_xpub(uint32_t subaccount);
         bool supports_low_r() const;
         liquid_support_level hw_liquid_support() const;
+        ae_protocol_support_level ae_protocol_support() const;
 
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);

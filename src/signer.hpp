@@ -19,6 +19,13 @@ namespace sdk {
         full // Everything is done on the HW
     };
 
+    // Enum to indicate whether AE-protocol signatures are supported/mandatory
+    enum class ae_protocol_support_level : uint32_t {
+        none, // AE signing protocol is not supported, only vanilla EC sigs
+        optional, // Both AE and vanilla EC sigs are supported
+        mandatory // AE protocol mandatory, vanilla EC sigs not supported
+    };
+
     //
     // Interface to signing and deriving privately derived xpub keys
     //
@@ -48,6 +55,9 @@ namespace sdk {
 
         // Returns the level of liquid support
         virtual liquid_support_level supports_liquid() const;
+
+        // Returns how this signer supports the Anti-Exfil protocol
+        virtual ae_protocol_support_level ae_protocol_support() const;
 
         virtual nlohmann::json get_hw_device() const;
 
@@ -84,6 +94,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
         liquid_support_level supports_liquid() const override;
+        ae_protocol_support_level ae_protocol_support() const override;
 
         std::string get_challenge() override;
 
@@ -110,6 +121,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
         liquid_support_level supports_liquid() const override;
+        ae_protocol_support_level ae_protocol_support() const override;
 
         std::string get_challenge() override;
 
@@ -141,6 +153,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
         liquid_support_level supports_liquid() const override;
+        ae_protocol_support_level ae_protocol_support() const override;
 
         nlohmann::json get_hw_device() const override;
 
