@@ -45,14 +45,14 @@ lazy_static! {
 pub struct Account {
     account_num: u32,
     script_type: ScriptType,
-    path: DerivationPath,
-    xpub: ExtendedPubKey,
     xprv: ExtendedPrivKey,
     chains: [ExtendedPubKey; 2],
     network: Network,
     store: Store,
     // elements only
     master_blinding: Option<MasterBlindingKey>,
+    _path: DerivationPath,
+    _xpub: ExtendedPubKey,
 }
 
 impl Account {
@@ -79,12 +79,13 @@ impl Account {
             network,
             account_num,
             script_type,
-            path,
-            xpub,
             xprv,
             chains,
             store,
             master_blinding,
+            // currently unused, but seems useful to have around
+            _path: path,
+            _xpub: xpub,
         })
     }
 
