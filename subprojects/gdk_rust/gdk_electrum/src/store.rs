@@ -183,12 +183,14 @@ impl StoreMeta {
         let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
         let key = GenericArray::from_slice(&key_bytes);
         let cipher = Aes256GcmSiv::new(&key);
-        let cache = RawCache::new(path.as_ref(), &cipher);
+        let mut cache = RawCache::new(path.as_ref(), &cipher);
         let store = RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
+
+        cache.accounts.entry(0).or_default();
 
         Ok(StoreMeta {
             cache,
