@@ -193,6 +193,7 @@ namespace sdk {
         nlohmann::json get_subaccount(uint32_t subaccount);
         nlohmann::json get_cached_subaccount(uint32_t subaccount) const;
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
+        void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
         uint32_t get_next_subaccount();
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);

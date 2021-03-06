@@ -273,8 +273,21 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, s
  * :param subaccount: The value of "pointer" from :ref:`subaccount-list` or
  *|                   :ref:`subaccount-detail` for the subaccount to rename.
  * :param new_name: New name for the subaccount.
+ *
+ * .. note:: This call is deprecated and will be removed in a future release. Use
+ *|          `GA_update_subaccount` to rename subaccounts.
  */
 GDK_API int GA_rename_subaccount(struct GA_session* session, uint32_t subaccount, const char* new_name);
+
+/**
+ * Update subaccount information.
+ *
+ * :param session: The session to use.
+ * :param details: :ref:`subaccount-update` giving the details to update.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_update_subaccount(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get a page of the user's transaction history.

@@ -90,6 +90,7 @@ namespace sdk {
         nlohmann::json get_subaccount(uint32_t subaccount);
 
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
+        void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
 
         nlohmann::json get_balance(const nlohmann::json& details);
 

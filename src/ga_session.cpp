@@ -2168,12 +2168,26 @@ namespace sdk {
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         const std::string old_name = json_get_value(p->second, "name");
-        if (old_name == new_name) {
-            return;
+        if (old_name != new_name) {
+            update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name));
+            // Look up our subaccount again as iterators may have been invalidated
+            m_subaccounts.find(subaccount)->second["name"] = new_name;
         }
-        update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name));
-        // Look up our subaccount again as iterators may have been invalidated
-        m_subaccounts.find(subaccount)->second["name"] = new_name;
+    }
+
+    void ga_session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
+    {
+        locker_t locker(m_mutex);
+        GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
+
+        const auto p = m_subaccounts.find(subaccount);
+        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        const bool old_hidden = json_get_value(p->second, "hidden", false);
+        if (old_hidden != is_hidden) {
+            update_blob(locker, std::bind(&client_blob::set_subaccount_hidden, &m_blob, subaccount, is_hidden));
+            // Look up our subaccount again as iterators may have been invalidated
+            m_subaccounts.find(subaccount)->second["hidden"] = is_hidden;
+        }
     }
 
     nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,

@@ -216,6 +216,16 @@ namespace sdk {
         bool m_enabling;
     };
 
+    class update_subaccount_call : public auth_handler {
+    public:
+        update_subaccount_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+    };
+
     class change_limits_call : public auth_handler {
     public:
         change_limits_call(session& session, const nlohmann::json& details);

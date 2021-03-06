@@ -445,6 +445,14 @@ namespace sdk {
         });
     }
 
+    void session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
+    {
+        exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            p->set_subaccount_hidden(subaccount, is_hidden);
+        });
+    }
+
     nlohmann::json session::get_settings()
     {
         return exception_wrapper([&] {

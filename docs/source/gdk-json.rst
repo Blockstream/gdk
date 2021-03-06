@@ -96,6 +96,25 @@ Subaccount JSON
 
 
 
+.. _subaccount-update:
+
+Subaccount Update JSON
+----------------------
+
+.. code-block:: json
+
+   {
+     "subaccount": 1,
+     "hidden": true,
+     "name": "New name"
+   }
+
+:subaccount: The subaccount to update.
+:hidden: If present, updates whether the subaccount will be marked hidden.
+:name: If present, updates the name of the subaccount.
+
+
+
 .. _subaccount-list:
 
 Subaccounts list JSON

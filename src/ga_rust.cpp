@@ -280,6 +280,11 @@ namespace sdk {
         throw std::runtime_error("rename_subaccount not implemented");
     }
 
+    void ga_rust::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
+    {
+        throw std::runtime_error("set_subaccount_hidden not implemented");
+    }
+
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
     {
         throw std::runtime_error("get_subaccount_root_path not implemented");

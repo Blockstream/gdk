@@ -1278,6 +1278,31 @@ namespace sdk {
     }
 
     //
+    // Update subaccount
+    //
+    update_subaccount_call::update_subaccount_call(session& session, const nlohmann::json& details)
+        : auth_handler(session, "update_subaccount")
+        , m_details(details)
+    {
+        if (m_state != state_type::error) {
+            m_state = state_type::make_call;
+        }
+    }
+
+    auth_handler::state_type update_subaccount_call::call_impl()
+    {
+        nlohmann::json::const_iterator p;
+        const uint32_t subaccount = m_details.value("subaccount", 0);
+        if ((p = m_details.find("name")) != m_details.end()) {
+            m_session.rename_subaccount(subaccount, p.value());
+        }
+        if ((p = m_details.find("hidden")) != m_details.end()) {
+            m_session.set_subaccount_hidden(subaccount, p.value());
+        }
+        return state_type::done;
+    }
+
+    //
     // Change limits
     //
     change_limits_call::change_limits_call(session& session, const nlohmann::json& details)
