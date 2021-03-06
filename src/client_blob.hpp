@@ -30,6 +30,9 @@ namespace sdk {
         bool set_subaccount_name(uint32_t subaccount, const std::string& name);
         std::string get_subaccount_name(uint32_t subaccount) const;
 
+        bool set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
+        bool get_subaccount_hidden(uint32_t subaccount) const;
+
         bool set_tx_memo(const std::string& txhash_hex, const std::string& memo);
         std::string get_tx_memo(const std::string& txhash_hex) const;
 

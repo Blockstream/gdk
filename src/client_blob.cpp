@@ -14,15 +14,18 @@ namespace sdk {
         constexpr uint32_t USER_VERSION = 0; // User incremented version number
         constexpr uint32_t SA_NAMES = 1; // Subaccount names
         constexpr uint32_t TX_MEMOS = 2; // Transaction memos
+        constexpr uint32_t SA_HIDDEN = 3; // Subaccounts that are hidden
 
         // blob prefix: 1 byte version, 3 reserved bytes
         static const std::array<unsigned char, 4> PREFIX{ 1, 0, 0, 0 };
 
-        static void increment_version(nlohmann::json& data)
+        // Increment the blob version number. Returns true as the blob has changed.
+        static bool increment_version(nlohmann::json& data)
         {
             auto& p = data[USER_VERSION];
             uint64_t version = p;
             p = version + 1;
+            return true;
         }
     } // namespace
 
@@ -43,11 +46,9 @@ namespace sdk {
 
     bool client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name)
     {
-        const bool changed = json_add_non_default(m_data[SA_NAMES], std::to_string(subaccount), name);
-        if (changed) {
-            increment_version(m_data);
-        }
-        return changed;
+        const std::string subaccount_str(std::to_string(subaccount));
+        const bool changed = json_add_non_default(m_data[SA_NAMES], subaccount_str, name);
+        return changed ? increment_version(m_data) : changed;
     }
 
     std::string client_blob::get_subaccount_name(uint32_t subaccount) const
@@ -55,14 +56,23 @@ namespace sdk {
         return json_get_value(m_data[SA_NAMES], std::to_string(subaccount));
     }
 
+    bool client_blob::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
+    {
+        const std::string subaccount_str(std::to_string(subaccount));
+        const bool changed = json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden);
+        return changed ? increment_version(m_data) : changed;
+    }
+
+    bool client_blob::get_subaccount_hidden(uint32_t subaccount) const
+    {
+        return json_get_value(m_data[SA_HIDDEN], std::to_string(subaccount), false);
+    }
+
     bool client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)
     {
         const std::string trimmed = boost::algorithm::trim_copy(memo);
         const bool changed = json_add_non_default(m_data[TX_MEMOS], txhash_hex, trimmed);
-        if (changed) {
-            increment_version(m_data);
-        }
-        return changed;
+        return changed ? increment_version(m_data) : changed;
     }
 
     std::string client_blob::get_tx_memo(const std::string& txhash_hex) const

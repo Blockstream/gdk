@@ -84,6 +84,7 @@ Subaccount JSON
        "btc": 2034469
        },
      "has_transactions": true,
+     "hidden": false,
      "name": "",
      "pointer": 0,
      "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
@@ -108,6 +109,7 @@ Subaccounts list JSON
          "btc": 2034469
          },
        "has_transactions": true,
+       "hidden": false,
        "name": "",
        "pointer": 0,
        "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
@@ -121,6 +123,7 @@ Subaccounts list JSON
          "btc": 977907
          },
        "has_transactions": true,
+       "hidden": false,
        "name": "Nuovo",
        "pointer": 1,
        "receiving_id": "GA36xH9spaXv3HCUcjbh7UEPxf1f6t",
