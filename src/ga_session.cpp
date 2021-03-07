@@ -1232,9 +1232,10 @@ namespace sdk {
         const std::string satoshi_str = login_data["satoshi"];
         const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
         const bool has_txs = json_get_value(m_login_data, "has_txs", false);
+        const std::string sa_name = m_blob.get_subaccount_name(0);
         const bool is_hidden = m_blob.get_subaccount_hidden(0);
-        insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(),
-            std::string(), "2of2", satoshi, has_txs, 0, is_hidden);
+        insert_subaccount(locker, 0, sa_name, m_login_data["receiving_id"], std::string(), std::string(), std::string(),
+            "2of2", satoshi, has_txs, 0, is_hidden);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -2160,8 +2161,6 @@ namespace sdk {
 
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
-        GDK_RUNTIME_ASSERT_MSG(subaccount != 0, "Main subaccount name cannot be changed");
-
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
 
