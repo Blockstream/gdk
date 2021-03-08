@@ -29,6 +29,9 @@ namespace sdk {
 
         static auto get_db()
         {
+            // Verify thread safety in the event that sqlite has been upgraded
+            GDK_RUNTIME_ASSERT(sqlite3_threadsafe());
+
             auto db = get_new_memory_db();
             const auto exec_check = [&db](const char* sql) {
                 char* err_msg = nullptr;
