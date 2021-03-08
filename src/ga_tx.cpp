@@ -100,17 +100,29 @@ namespace sdk {
             return amount(utxo.at("satoshi"));
         }
 
-        std::array<unsigned char, SHA256_LEN> get_script_hash(
-            const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
+        static std::array<unsigned char, SHA256_LEN> get_script_hash(
+            const bool is_liquid, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
         {
             const amount::value_type v = utxo.at("satoshi");
-            const amount satoshi{ v };
             const auto type = script_type(utxo.at("script_type"));
             const auto script = h2b(utxo.at("prevout_script"));
 
             const uint32_t flags = is_segwit_script_type(type) ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
-            return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
+            if (!is_liquid) {
+                const amount satoshi{ v };
+                return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
+            }
+
+            // Liquid case - has a value-commitment in place of a satoshi value
+            std::vector<unsigned char> ct_value;
+            if (!utxo.value("commitment", std::string{}).empty()) {
+                ct_value = h2b(utxo.at("commitment"));
+            } else {
+                const auto value = tx_confidential_value_from_satoshi(v);
+                ct_value.assign(std::begin(value), std::end(value));
+            }
+            return tx_get_elements_signature_hash(tx, index, script, ct_value, WALLY_SIGHASH_ALL, flags);
         }
 
         static ecdsa_sig_t ec_sig_from_witness(const wally_tx_ptr& tx, size_t input_index, size_t item_index)
@@ -365,7 +377,7 @@ namespace sdk {
                 for (const auto& input : result["old_used_utxos"]) {
                     const auto sigs = get_signatures_from_input(input, tx, vin, net_params.liquid());
                     const auto pubkeys = session.pubkeys_from_utxo(input);
-                    const auto script_hash = get_script_hash(input, tx, vin);
+                    const auto script_hash = get_script_hash(net_params.liquid(), input, tx, vin);
                     GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(0), script_hash, sigs.at(0))); // ga
                     GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(1), script_hash, sigs.at(1))); // user
                     ++vin;
@@ -902,30 +914,13 @@ namespace sdk {
             const auto txhash = u.at("txhash");
             const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
             const uint32_t pointer = json_get_value(u, "pointer", 0u);
-            const amount::value_type v = u.at("satoshi");
-            const amount satoshi{ v };
             const auto type = script_type(u.at("script_type"));
+            const auto script = h2b(u.at("prevout_script"));
             const std::string private_key = json_get_value(u, "private_key");
 
-            const auto script = h2b(u.at("prevout_script"));
-
             std::array<unsigned char, SHA256_LEN> tx_hash;
-
-            const uint32_t flags = is_segwit_script_type(type) ? WALLY_TX_FLAG_USE_WITNESS : 0;
-
             const auto& net_params = session.get_network_parameters();
-            if (!net_params.liquid()) {
-                tx_hash = tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
-            } else {
-                std::vector<unsigned char> ct_value(WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN);
-                if (!u.value("commitment", std::string{}).empty()) {
-                    ct_value = h2b(u.at("commitment"));
-                } else {
-                    const auto value = tx_confidential_value_from_satoshi(v);
-                    std::copy(std::begin(value), std::end(value), ct_value.begin());
-                }
-                tx_hash = tx_get_elements_signature_hash(tx, index, script, ct_value, WALLY_SIGHASH_ALL, flags);
-            }
+            tx_hash = get_script_hash(net_params.liquid(), u, tx, index);
 
             if (!private_key.empty()) {
                 const auto private_key_bytes = h2b(private_key);
