@@ -508,7 +508,7 @@ fn setup_session(
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    test_session::setup(false, debug, &electrs_exec, &node_exec, num_client, network_conf)
+    test_session::setup(is_liquid, debug, &electrs_exec, &node_exec, num_client, network_conf)
 }
 
 fn get_chain(test_session: &mut TestSession) -> HeadersChain {
