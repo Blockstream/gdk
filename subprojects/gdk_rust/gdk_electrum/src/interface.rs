@@ -102,7 +102,8 @@ impl WalletCtx {
             accounts: Default::default(),
             change_max_deriv: 0,
         };
-        for account_num in store.read()?.account_nums() {
+        let account_nums = store.read()?.account_nums();
+        for account_num in account_nums {
             wallet._ensure_account(account_num)?;
         }
         wallet._ensure_account(0)?;
