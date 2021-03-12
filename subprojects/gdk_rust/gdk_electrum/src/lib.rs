@@ -30,7 +30,7 @@ use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
-use gdk_common::network::Network;
+use gdk_common::network::{aqua_unique_id_and_xpub, Network};
 use gdk_common::password::Password;
 use gdk_common::session::Session;
 use gdk_common::wally::{
@@ -356,23 +356,47 @@ impl Session<Error> for ElectrumSession {
             ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
         let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
 
+        // xpub from an unusual path to derive the encryption key for the db
+        let db_path: DerivationPath = format!("m/{}'", 0x70617373).parse().unwrap(); // "pass"
+        let db_xprv = master_xprv.derive_priv(&secp, &db_path).unwrap();
+        let db_xpub = ExtendedPubKey::from_private(&secp, &db_xprv);
+
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
         } else {
             None
         };
 
-        let wallet_id = self.network.unique_id(&master_xpub);
+        let wallet_id = self.network.unique_id(&db_xpub);
+        let (aqua_wallet_id, fallback_xpub) =
+            match aqua_unique_id_and_xpub(&master_xprv, self.network.id()) {
+                Ok((id, xpub)) => (Some(id), Some(xpub)),
+                Err(_) => (None, None),
+            };
 
         let mut path: PathBuf = self.data_root.as_str().into();
+        let mut fpath = path.clone();
+        let mut fallback_path = None;
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
+        } else {
+            if let Some(id) = aqua_wallet_id {
+                fpath.push(hex::encode(id));
+                info!("Fallback store root path: {:?}", fpath);
+                fallback_path = Some(fpath.as_path());
+            }
         }
         path.push(hex::encode(wallet_id));
         info!("Store root path: {:?}", path);
         let store = match self.get_wallet() {
             Ok(wallet) => wallet.store.clone(),
-            Err(_) => Arc::new(RwLock::new(StoreMeta::new(&path, master_xpub, self.network.id())?)),
+            Err(_) => Arc::new(RwLock::new(StoreMeta::new(
+                &path,
+                db_xpub,
+                fallback_path,
+                fallback_xpub,
+                self.network.id(),
+            )?)),
         };
 
         let estimates = store.read()?.fee_estimates().clone();
