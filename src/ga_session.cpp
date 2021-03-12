@@ -3297,8 +3297,8 @@ namespace sdk {
             nlohmann::json twofactor_config
                 = { { "all_methods", ALL_2FA_METHODS }, { "email", email_config }, { "sms", sms_config },
                       { "phone", phone_config }, { "gauth", gauth_config }, { "twofactor_reset", reset_status } };
-            set_enabled_twofactor_methods(locker, twofactor_config);
             std::swap(m_twofactor_config, twofactor_config);
+            set_enabled_twofactor_methods(locker);
         }
         nlohmann::json ret = m_twofactor_config;
 
@@ -3306,20 +3306,19 @@ namespace sdk {
         return ret;
     }
 
-    // Nominally idempotent, but called on m_twofactor_config so needs locking
-    void ga_session::set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config)
+    void ga_session::set_enabled_twofactor_methods(locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         std::vector<std::string> enabled_methods;
         enabled_methods.reserve(ALL_2FA_METHODS.size());
         for (const auto& m : ALL_2FA_METHODS) {
-            if (json_get_value(config[m], "enabled", false)) {
+            if (json_get_value(m_twofactor_config[m], "enabled", false)) {
                 enabled_methods.emplace_back(m);
             }
         }
-        config["enabled_methods"] = enabled_methods;
-        config["any_enabled"] = !enabled_methods.empty();
+        m_twofactor_config["enabled_methods"] = enabled_methods;
+        m_twofactor_config["any_enabled"] = !enabled_methods.empty();
     }
 
     std::vector<std::string> ga_session::get_all_twofactor_methods()
@@ -3375,7 +3374,7 @@ namespace sdk {
         // Update our local 2fa config
         const std::string masked; // TODO: Use a real masked value
         m_twofactor_config[method] = { { "enabled", true }, { "confirmed", true }, { "data", masked } };
-        set_enabled_twofactor_methods(locker, m_twofactor_config);
+        set_enabled_twofactor_methods(locker);
     }
 
     void ga_session::enable_gauth(const std::string& code, const nlohmann::json& twofactor_data)
@@ -3387,7 +3386,7 @@ namespace sdk {
 
         // Update our local 2fa config
         m_twofactor_config["gauth"] = { { "enabled", true }, { "confirmed", true }, { "data", MASKED_GAUTH_SEED } };
-        set_enabled_twofactor_methods(locker, m_twofactor_config);
+        set_enabled_twofactor_methods(locker);
     }
 
     void ga_session::disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data)
@@ -3406,7 +3405,7 @@ namespace sdk {
 
         // Update our local 2fa config
         m_twofactor_config[method] = { { "enabled", false }, { "confirmed", confirmed }, { "data", masked } };
-        set_enabled_twofactor_methods(locker, m_twofactor_config);
+        set_enabled_twofactor_methods(locker);
     }
 
     // Idempotent

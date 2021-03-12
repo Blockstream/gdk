@@ -344,7 +344,7 @@ namespace sdk {
         bool subaccount_allows_csv(uint32_t subaccount) const;
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const;
-        void set_enabled_twofactor_methods(locker_t& locker, nlohmann::json& config);
+        void set_enabled_twofactor_methods(locker_t& locker);
         void update_login_data(
             locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32, bool watch_only);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
