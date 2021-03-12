@@ -3270,40 +3270,46 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         if (m_twofactor_config.is_null() || reset_cached) {
-            nlohmann::json f = wamp_cast_json(wamp_call(locker, "twofactor.get_config"));
-            json_add_if_missing(f, "email_addr", std::string(), true);
-
-            nlohmann::json email_config
-                = { { "enabled", f["email"] }, { "confirmed", f["email_confirmed"] }, { "data", f["email_addr"] } };
-            nlohmann::json sms_config
-                = { { "enabled", f["sms"] }, { "confirmed", f["sms"] }, { "data", f["sms_number"] } };
-            nlohmann::json phone_config
-                = { { "enabled", f["phone"] }, { "confirmed", f["phone"] }, { "data", f["phone_number"] } };
-            // Return the server generated gauth URL until gauth is enabled
-            // (after being enabled, the server will no longer return it)
-            const bool gauth_enabled = f["gauth"];
-            std::string gauth_data = MASKED_GAUTH_SEED;
-            if (!gauth_enabled) {
-                gauth_data = f["gauth_url"];
-            }
-            nlohmann::json gauth_config
-                = { { "enabled", gauth_enabled }, { "confirmed", gauth_enabled }, { "data", gauth_data } };
-
-            const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
-            const auto& disputed = m_login_data["reset_2fa_disputed"];
-            nlohmann::json reset_status
-                = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
-
-            nlohmann::json twofactor_config
-                = { { "all_methods", ALL_2FA_METHODS }, { "email", email_config }, { "sms", sms_config },
-                      { "phone", phone_config }, { "gauth", gauth_config }, { "twofactor_reset", reset_status } };
-            std::swap(m_twofactor_config, twofactor_config);
-            set_enabled_twofactor_methods(locker);
+            const auto config = wamp_cast_json(wamp_call(locker, "twofactor.get_config"));
+            set_twofactor_config(locker, config);
         }
         nlohmann::json ret = m_twofactor_config;
 
         ret["limits"] = get_spending_limits(locker);
         return ret;
+    }
+
+    void ga_session::set_twofactor_config(locker_t& locker, const nlohmann::json& config)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        const auto email_addr = json_get_value(config, "email_addr");
+        nlohmann::json email_config
+            = { { "enabled", config["email"] }, { "confirmed", config["email_confirmed"] }, { "data", email_addr } };
+        nlohmann::json sms_config
+            = { { "enabled", config["sms"] }, { "confirmed", config["sms"] }, { "data", config["sms_number"] } };
+        nlohmann::json phone_config
+            = { { "enabled", config["phone"] }, { "confirmed", config["phone"] }, { "data", config["phone_number"] } };
+        // Return the server generated gauth URL until gauth is enabled
+        // (after being enabled, the server will no longer return it)
+        const bool gauth_enabled = config["gauth"];
+        std::string gauth_data = MASKED_GAUTH_SEED;
+        if (!gauth_enabled) {
+            gauth_data = config["gauth_url"];
+        }
+        nlohmann::json gauth_config
+            = { { "enabled", gauth_enabled }, { "confirmed", gauth_enabled }, { "data", gauth_data } };
+
+        const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
+        const auto& disputed = m_login_data["reset_2fa_disputed"];
+        nlohmann::json reset_status
+            = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+
+        nlohmann::json twofactor_config
+            = { { "all_methods", ALL_2FA_METHODS }, { "email", email_config }, { "sms", sms_config },
+                  { "phone", phone_config }, { "gauth", gauth_config }, { "twofactor_reset", reset_status } };
+        std::swap(m_twofactor_config, twofactor_config);
+        set_enabled_twofactor_methods(locker);
     }
 
     void ga_session::set_enabled_twofactor_methods(locker_t& locker)
@@ -3369,12 +3375,19 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        wamp_call(locker, "twofactor.enable_" + method, code);
-
-        // Update our local 2fa config
-        const std::string masked; // TODO: Use a real masked value
-        m_twofactor_config[method] = { { "enabled", true }, { "confirmed", true }, { "data", masked } };
-        set_enabled_twofactor_methods(locker);
+        auto config = wamp_cast_json(wamp_call(locker, "twofactor.enable_" + method, code));
+        if (!config.is_boolean()) {
+            if (!config.contains("gauth_url")) {
+                // Copy over the existing gauth value until gauth is sorted out
+                // TODO: Fix gauth so the user passes the secret
+                config["gauth_url"] = json_get_value(m_twofactor_config["gauth"], "data", MASKED_GAUTH_SEED);
+            }
+            set_twofactor_config(locker, config);
+        } else {
+            // FIXME: Remove when all backends are updated
+            m_twofactor_config[method] = { { "enabled", true }, { "confirmed", true }, { "data", std::string() } };
+            set_enabled_twofactor_methods(locker);
+        }
     }
 
     void ga_session::enable_gauth(const std::string& code, const nlohmann::json& twofactor_data)
@@ -3382,11 +3395,15 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        wamp_call(locker, "twofactor.enable_gauth", code, mp_cast(twofactor_data).get());
-
-        // Update our local 2fa config
-        m_twofactor_config["gauth"] = { { "enabled", true }, { "confirmed", true }, { "data", MASKED_GAUTH_SEED } };
-        set_enabled_twofactor_methods(locker);
+        const auto config
+            = wamp_cast_json(wamp_call(locker, "twofactor.enable_gauth", code, mp_cast(twofactor_data).get()));
+        if (!config.is_boolean()) {
+            set_twofactor_config(locker, config);
+        } else {
+            // FIXME: Remove when all backends are updated
+            m_twofactor_config["gauth"] = { { "enabled", true }, { "confirmed", true }, { "data", MASKED_GAUTH_SEED } };
+            set_enabled_twofactor_methods(locker);
+        }
     }
 
     void ga_session::disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data)
