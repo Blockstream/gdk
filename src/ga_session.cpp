@@ -96,7 +96,6 @@ namespace sdk {
         static const std::vector<std::string> ALL_2FA_METHODS = { { "email" }, { "sms" }, { "phone" }, { "gauth" } };
 
         static const std::string MASKED_GAUTH_SEED("***");
-
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
         static const uint32_t NUM_FEE_ESTIMATES = 25; // Min fee followed by blocks 1-24
 
@@ -3413,15 +3412,13 @@ namespace sdk {
 
         wamp_call(locker, "twofactor.disable_" + method, mp_cast(twofactor_data).get());
 
+        // Update our local 2fa config
+        auto& config = m_twofactor_config[method];
+        config["enabled"] = false;
         // If the call succeeds it means the method was previously enabled, hence
         // for email the email address is still confirmed even though 2fa is disabled.
         const bool confirmed = method == "email";
-
-        const std::string masked
-            = method == "gauth" ? MASKED_GAUTH_SEED : std::string(); // TODO: Use a real masked value
-
-        // Update our local 2fa config
-        m_twofactor_config[method] = { { "enabled", false }, { "confirmed", confirmed }, { "data", masked } };
+        config["confirmed"] = confirmed;
         set_enabled_twofactor_methods(locker);
     }
 
