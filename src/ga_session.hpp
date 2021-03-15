@@ -351,7 +351,7 @@ namespace sdk {
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;
         nlohmann::json get_subaccount(locker_t& locker, uint32_t subaccount);
-        nlohmann::json get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs);
+        nlohmann::json get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs, bool confidential);
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker);

@@ -655,7 +655,15 @@ Balance Details JSON
 
 .. code-block:: json
 
-  {"subaccount":4,"num_confs":0}
+  {
+    "subaccount":4,
+    "num_confs":0,
+    "confidential": false
+  }
+
+:subaccount: The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to get the balance for.
+:num_confs: Number of confirmations needed to include an output in the balance.
+:confidential: If true, include only confidential outputs in the balance. Default false.
 
 
 

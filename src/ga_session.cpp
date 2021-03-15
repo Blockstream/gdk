@@ -2080,7 +2080,8 @@ namespace sdk {
         return get_subaccount(locker, subaccount);
     }
 
-    nlohmann::json ga_session::get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs)
+    nlohmann::json ga_session::get_subaccount_balance_from_server(
+        uint32_t subaccount, uint32_t num_confs, bool confidential)
     {
         if (!m_net_params.liquid()) {
             auto balance = wamp_cast_json(wamp_call("txs.get_balance", subaccount, num_confs));
@@ -2094,7 +2095,8 @@ namespace sdk {
             const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", satoshi } };
         }
-        const auto utxos = get_unspent_outputs({ { "subaccount", subaccount }, { "num_confs", num_confs } });
+        const auto utxos = get_unspent_outputs(
+            { { "subaccount", subaccount }, { "num_confs", num_confs }, { "confidential", confidential } });
 
         const auto accumulate_if = [](const auto& utxos, auto pred) {
             return std::accumulate(
@@ -2141,7 +2143,7 @@ namespace sdk {
         if (p_satoshi == details.end() || m_net_params.liquid()) {
             const auto satoshi = [this, &locker, subaccount] {
                 unique_unlock unlocker{ locker };
-                return get_subaccount_balance_from_server(subaccount, 0);
+                return get_subaccount_balance_from_server(subaccount, 0, false);
             }();
 
             // m_subaccounts is no longer guaranteed to be valid after the call above.
@@ -3186,13 +3188,14 @@ namespace sdk {
     {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
+        const uint32_t confidential = json_get_value(details, "confidential", false);
 
         if (num_confs == 0 && !m_net_params.liquid()) {
             // The subaccount details contains the confs=0 balance
             return get_subaccount(subaccount)["satoshi"];
         }
         // Anything other than confs=0 needs to be fetched from the server
-        return get_subaccount_balance_from_server(subaccount, num_confs);
+        return get_subaccount_balance_from_server(subaccount, num_confs, confidential);
     }
 
     // Idempotent
