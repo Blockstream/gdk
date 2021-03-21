@@ -33,8 +33,6 @@ namespace sdk {
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
-    using transport = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_config>;
-    using transport_tls = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_tls_config>;
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
 
@@ -133,7 +131,7 @@ namespace sdk {
 
     class ga_session final : public session_common {
     public:
-        using transport_t = boost::variant<std::shared_ptr<transport>, std::shared_ptr<transport_tls>>;
+        using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
         using locker_t = std::unique_lock<std::mutex>;
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using ping_fail_t = std::function<void()>;
@@ -403,41 +401,11 @@ namespace sdk {
         context_ptr tls_init_handler_impl(
             const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins);
 
-        template <typename T>
-        std::enable_if_t<std::is_same<T, client>::value> set_tls_init_handler(const std::string& host_name);
-        template <typename T>
-        std::enable_if_t<std::is_same<T, client_tls>::value> set_tls_init_handler(const std::string& host_name);
-        template <typename T> void make_client();
-        template <typename T> void make_transport();
+        void make_client();
+        void make_transport();
 
-        template <typename T> bool is_transport_connected() const
-        {
-            const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
-            return transport != nullptr && transport->is_connected();
-        }
-
-        template <typename T> void disconnect_transport() const;
-
-        template <typename T> bool ping() const
-        {
-            bool expect_pong = false;
-            no_std_exception_escape([this, &expect_pong] {
-                if (is_transport_connected<T>()) {
-                    const auto transport = boost::get<std::shared_ptr<T>>(m_transport);
-                    GDK_RUNTIME_ASSERT(transport != nullptr);
-                    expect_pong = transport->ping(std::string{});
-                }
-            });
-            return expect_pong;
-        }
-
-        template <typename T, typename U> bool set_socket_option(U option) const
-        {
-            bool ret = false;
-            no_std_exception_escape(
-                [this, &ret, option] { ret = boost::get<std::shared_ptr<T>>(m_transport)->set_socket_option(option); });
-            return ret;
-        }
+        void disconnect_transport() const;
+        bool ping() const;
 
         void set_socket_options();
         void start_ping_timer();

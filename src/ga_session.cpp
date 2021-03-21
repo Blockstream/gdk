@@ -86,6 +86,9 @@ namespace sdk {
         using transport_type = websocketpp::transport::asio::endpoint<websocketpp_gdk_tls_config::transport_config>;
     };
 
+    using transport = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_config>;
+    using transport_tls = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_tls_config>;
+
     gdk_logger_t& websocket_boost_logger::m_log = gdk_logger::get();
 
     namespace {
@@ -232,25 +235,6 @@ namespace sdk {
         }
 
         inline auto sig_to_der_hex(const ecdsa_sig_t& signature) { return b2h(ec_sig_to_der(signature)); }
-
-        template <typename T>
-        void connect_to_endpoint(const wamp_session_ptr& session, const ga_session::transport_t& transport)
-        {
-            std::array<boost::future<void>, 3> futures;
-            futures[0] = boost::get<std::shared_ptr<T>>(transport)->connect().then(
-                boost::launch::deferred, [&](boost::future<void> connected) {
-                    connected.get();
-                    futures[1] = session->start().then(boost::launch::deferred, [&](boost::future<void> started) {
-                        started.get();
-                        futures[2] = session->join("realm1").then(
-                            boost::launch::deferred, [&](boost::future<uint64_t> joined) { joined.get(); });
-                    });
-                });
-
-            for (auto&& f : futures) {
-                f.get();
-            }
-        }
 
         static amount::value_type get_limit_total(const nlohmann::json& details)
         {
@@ -418,7 +402,7 @@ namespace sdk {
                                            : m_log_level == logging_levels::info ? log_level::severity_level::info
                                                                                  : log_level::severity_level::fatal));
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
-        connect_with_tls() ? make_client<client_tls>() : make_client<client>();
+        make_client();
     }
 
     ga_session::~ga_session()
@@ -429,11 +413,7 @@ namespace sdk {
         });
     }
 
-    bool ga_session::is_connected() const
-    {
-        const bool tls = connect_with_tls();
-        return tls ? is_transport_connected<transport_tls>() : is_transport_connected<transport>();
-    }
+    bool ga_session::is_connected() const { return m_transport && m_transport->is_connected(); }
 
     std::string ga_session::get_tor_socks5()
     {
@@ -475,8 +455,11 @@ namespace sdk {
     void ga_session::set_socket_options()
     {
         auto set_option = [this](auto option) {
-            const bool tls = connect_with_tls();
-            GDK_RUNTIME_ASSERT(tls ? set_socket_option<transport_tls>(option) : set_socket_option<transport>(option));
+            if (connect_with_tls()) {
+                GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport_tls>(m_transport)->set_socket_option(option));
+            } else {
+                GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport>(m_transport)->set_socket_option(option));
+            }
         };
 
         boost::asio::ip::tcp::no_delay no_delay(true);
@@ -503,42 +486,35 @@ namespace sdk {
     {
         m_session = std::make_shared<autobahn::wamp_session>(m_io, m_log_level == logging_levels::debug);
 
-        const bool tls = connect_with_tls();
-        tls ? make_transport<transport_tls>() : make_transport<transport>();
-        tls ? connect_to_endpoint<transport_tls>(m_session, m_transport)
-            : connect_to_endpoint<transport>(m_session, m_transport);
-
+        make_transport();
+        m_transport->connect().get();
+        m_session->start().get();
+        m_session->join("realm1").get();
         set_socket_options();
         start_ping_timer();
     }
 
-    template <typename T>
-    std::enable_if_t<std::is_same<T, client>::value> ga_session::set_tls_init_handler(
-        __attribute__((unused)) const std::string& host_name)
+    void ga_session::make_client()
     {
-    }
-    template <typename T>
-    std::enable_if_t<std::is_same<T, client_tls>::value> ga_session::set_tls_init_handler(const std::string& host_name)
-    {
-        boost::get<std::unique_ptr<T>>(m_client)->set_tls_init_handler(
+        if (!connect_with_tls()) {
+            m_client = std::make_unique<client>();
+            boost::get<std::unique_ptr<client>>(m_client)->init_asio(&m_io);
+            return;
+        }
+
+        m_client = std::make_unique<client_tls>();
+        boost::get<std::unique_ptr<client_tls>>(m_client)->init_asio(&m_io);
+        const auto host_name = websocketpp::uri(m_net_params.gait_wamp_url()).get_host();
+
+        boost::get<std::unique_ptr<client_tls>>(m_client)->set_tls_init_handler(
             [this, host_name](const websocketpp::connection_hdl) {
                 return tls_init_handler_impl(
                     host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins());
             });
     }
 
-    template <typename T> void ga_session::make_client()
+    void ga_session::make_transport()
     {
-        m_client = std::make_unique<T>();
-        boost::get<std::unique_ptr<T>>(m_client)->init_asio(&m_io);
-        set_tls_init_handler<T>(websocketpp::uri(m_net_params.gait_wamp_url()).get_host());
-    }
-
-    template <typename T> void ga_session::make_transport()
-    {
-        using client_type
-            = std::unique_ptr<std::conditional_t<std::is_same<T, transport_tls>::value, client_tls, client>>;
-
         if (m_use_tor && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
             m_proxy
@@ -559,27 +535,47 @@ namespace sdk {
             proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
-        boost::get<client_type>(m_client)->set_pong_timeout_handler(m_heartbeat_handler);
-        m_transport = std::make_shared<T>(
-            *boost::get<client_type>(m_client), server, m_proxy, m_log_level == logging_levels::debug);
-        boost::get<std::shared_ptr<T>>(m_transport)
-            ->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
+        const bool is_debug_enabled = m_log_level == logging_levels::debug;
+        if (connect_with_tls()) {
+            auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
+            clnt.set_pong_timeout_handler(m_heartbeat_handler);
+            m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, is_debug_enabled);
+        } else {
+            auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
+            clnt.set_pong_timeout_handler(m_heartbeat_handler);
+            m_transport = std::make_shared<transport>(clnt, server, m_proxy, is_debug_enabled);
+        }
+        m_transport->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }
 
-    template <typename T> void ga_session::disconnect_transport() const
+    void ga_session::disconnect_transport() const
     {
-        auto transport = boost::get<std::shared_ptr<T>>(m_transport);
-        if (!transport) {
+        if (!m_transport) {
             return;
         }
 
         no_std_exception_escape([&] {
-            const auto status = transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+            const auto status = m_transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
             if (status != boost::future_status::ready) {
                 GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
             }
         });
-        no_std_exception_escape([&] { transport->detach(); });
+        no_std_exception_escape([&] { m_transport->detach(); });
+    }
+
+    bool ga_session::ping() const
+    {
+        bool expect_pong = false;
+        no_std_exception_escape([this, &expect_pong] {
+            if (is_connected()) {
+                if (connect_with_tls()) {
+                    expect_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
+                } else {
+                    expect_pong = std::static_pointer_cast<transport>(m_transport)->ping(std::string());
+                }
+            }
+        });
+        return expect_pong;
     }
 
     context_ptr ga_session::tls_init_handler_impl(
@@ -671,9 +667,8 @@ namespace sdk {
         if (ec == boost::asio::error::operation_aborted) {
             return;
         }
-        const bool tls = connect_with_tls();
-        const bool expect_pong = tls ? ping<transport_tls>() : ping<transport>();
-        if (!expect_pong) {
+
+        if (!ping()) {
             GDK_RUNTIME_ASSERT(m_ping_fail_handler != nullptr);
             m_ping_fail_handler();
         }
@@ -833,7 +828,7 @@ namespace sdk {
                 GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
             }
         });
-        connect_with_tls() ? disconnect_transport<transport_tls>() : disconnect_transport<transport>();
+        disconnect_transport();
     }
 
     nlohmann::json ga_session::http_request(nlohmann::json params)
