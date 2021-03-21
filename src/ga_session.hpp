@@ -36,28 +36,19 @@ namespace sdk {
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
 
-    template <class T> struct flag_type {
+    struct flag_type {
 
-        flag_type() { flag.second = flag.first.get_future(); }
+        flag_type() { m_flag.second = m_flag.first.get_future(); }
 
-        template <bool is_void = std::is_void<T>::value> std::enable_if_t<is_void> set() { flag.first.set_value(); }
+        void set() { m_flag.first.set_value(); }
 
-        template <bool is_void = std::is_void<T>::value> void set(std::enable_if_t<!is_void, T> v)
-        {
-            flag.first.set_value(v);
-        }
+        std::future_status wait(std::chrono::seconds secs = 0s) const { return m_flag.second.wait_for(secs); }
 
-        T get() { return flag.second.get(); }
-
-        std::future_status wait(std::chrono::seconds secs = 0s) const { return flag.second.wait_for(secs); }
-
-        std::pair<std::promise<T>, std::future<T>> flag;
+        std::pair<std::promise<void>, std::future<void>> m_flag;
     };
 
     class network_control_context final {
     public:
-        using flag_t = flag_type<void>;
-
         network_control_context() = default;
         ~network_control_context() = default;
 
@@ -77,7 +68,7 @@ namespace sdk {
 
         bool reconnecting() const { return m_reconnect_flag; }
 
-        void reset_exit() { m_exit_flag = flag_t{}; }
+        void reset_exit() { m_exit_flag = flag_type{}; }
         void set_exit() { m_exit_flag.set(); }
         bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
 
@@ -87,7 +78,7 @@ namespace sdk {
         void reset() { reset_exit(); }
 
     private:
-        flag_t m_exit_flag;
+        flag_type m_exit_flag;
         std::atomic_bool m_reconnect_flag{ false };
         std::atomic_bool m_enabled{ true };
     };
