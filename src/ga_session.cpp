@@ -162,6 +162,35 @@ namespace sdk {
             return result.template argument<T>(0);
         }
 
+        class exponential_backoff {
+        public:
+            explicit exponential_backoff(std::chrono::seconds limit = 300s)
+                : m_limit(limit)
+            {
+            }
+
+            std::chrono::seconds backoff(uint32_t n)
+            {
+                m_elapsed += m_waiting;
+                const auto v
+                    = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(n, uint32_t{ 31 }));
+                std::random_device rd;
+                std::uniform_int_distribution<uint32_t> d(v / 2, v);
+                m_waiting = std::chrono::seconds(d(rd));
+                return m_waiting;
+            }
+
+            bool limit_reached() const { return m_elapsed >= m_limit; }
+            std::chrono::seconds elapsed() const { return m_elapsed; }
+            std::chrono::seconds waiting() const { return m_waiting; }
+
+        private:
+            const std::chrono::seconds m_limit;
+            std::chrono::seconds m_elapsed{ 0s };
+            std::chrono::seconds m_waiting{ 0s };
+        };
+
+
         static nlohmann::json get_fees_as_json(const autobahn::wamp_event& event)
         {
             const auto obj = event.argument<msgpack::object>(0);
