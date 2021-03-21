@@ -396,8 +396,6 @@ namespace sdk {
 
         void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet);
 
-        bool connect_with_tls() const;
-
         context_ptr tls_init_handler_impl(
             const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins);
 
@@ -461,6 +459,7 @@ namespace sdk {
         std::string m_proxy;
         const bool m_use_tor;
         const bool m_has_network_proxy;
+        const bool m_is_tls_connection;
 
         boost::asio::io_context m_io;
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;

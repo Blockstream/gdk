@@ -358,6 +358,7 @@ namespace sdk {
         , m_proxy(socksify(net_params.value("proxy", std::string{})))
         , m_use_tor(net_params.value("use_tor", false))
         , m_has_network_proxy(!m_proxy.empty())
+        , m_is_tls_connection(boost::algorithm::starts_with(m_net_params.get_connection_string(m_use_tor), "wss://"))
         , m_io()
         , m_controller(m_io)
         , m_ping_timer(m_io)
@@ -447,15 +448,10 @@ namespace sdk {
         }
     }
 
-    bool ga_session::connect_with_tls() const
-    {
-        return boost::algorithm::starts_with(m_net_params.get_connection_string(m_use_tor), "wss://");
-    }
-
     void ga_session::set_socket_options()
     {
         auto set_option = [this](auto option) {
-            if (connect_with_tls()) {
+            if (m_is_tls_connection) {
                 GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport_tls>(m_transport)->set_socket_option(option));
             } else {
                 GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport>(m_transport)->set_socket_option(option));
@@ -496,7 +492,7 @@ namespace sdk {
 
     void ga_session::make_client()
     {
-        if (!connect_with_tls()) {
+        if (!m_is_tls_connection) {
             m_client = std::make_unique<client>();
             boost::get<std::unique_ptr<client>>(m_client)->init_asio(&m_io);
             return;
@@ -536,7 +532,7 @@ namespace sdk {
         }
         GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
         const bool is_debug_enabled = m_log_level == logging_levels::debug;
-        if (connect_with_tls()) {
+        if (m_is_tls_connection) {
             auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
             clnt.set_pong_timeout_handler(m_heartbeat_handler);
             m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, is_debug_enabled);
@@ -568,7 +564,7 @@ namespace sdk {
         bool expect_pong = false;
         no_std_exception_escape([this, &expect_pong] {
             if (is_connected()) {
-                if (connect_with_tls()) {
+                if (m_is_tls_connection) {
                     expect_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
                 } else {
                     expect_pong = std::static_pointer_cast<transport>(m_transport)->ping(std::string());
