@@ -8,13 +8,22 @@ namespace sdk {
 
         const std::string id_1030_minutes{ "id_1030_minutes" }; // ~ 10-30 Minutes
         const std::string id_12_confirmations{ "id_12_confirmations" }; // 1/2 confirmations
+        const std::string id_12_months_51840_blocks{ "id_12_months_51840_blocks" }; // 12 months (51840 blocks)
+        const std::string id_15_months_65535_blocks{ "id_15_months_65535_blocks" }; // 15 months (65535 blocks)
         const std::string id_1d_2s_ago{ "id_1d_2s_ago" }; // %1$d %2$s ago
         const std::string id_1d_minutes{ "id_1d_minutes" }; // %1$d minutes
         const std::string id_1s_blocks_left_2d{ "id_1s_blocks_left_2d" }; // %1$s blocks left %2$d
         const std::string id_1s_twofactor_set_up{ "id_1s_twofactor_set_up" }; // %1$s Two-Factor set up
         const std::string id_2_hours{ "id_2_hours" }; // ~ 2 Hours
+        const std::string id_2of3_account{ "id_2of3_account" }; // 2of3 Account
         const std::string id_4_hours{ "id_4_hours" }; // ~ 4 Hours
         const std::string id_5_seconds_minimum{ "id_5_seconds_minimum" }; // 5 seconds minimum
+        const std::string id_6_months_25920_blocks{ "id_6_months_25920_blocks" }; // 6 months (25920 blocks)
+        const std::string id_a_2of3_account_requires_two_out{
+            "id_a_2of3_account_requires_two_out"
+        }; // A 2of3 account requires two out of three signatures to spend coins. The third signature is from a backup
+           // key known only to you. This gives you the security benefits of a standard account, while still allowing
+           // you to move your coins independently at any point in time.
         const std::string id_a_new_transaction_has_just{
             "id_a_new_transaction_has_just"
         }; // A new transaction has just arrived in your wallet.
@@ -31,6 +40,7 @@ namespace sdk {
         const std::string id_account_id{ "id_account_id" }; // Account ID
         const std::string id_account_name{ "id_account_name" }; // Account Name
         const std::string id_account_type{ "id_account_type" }; // Account Type
+        const std::string id_accounts_summary{ "id_accounts_summary" }; // Accounts summary
         const std::string id_action_canceled{ "id_action_canceled" }; // Action canceled
         const std::string id_add_a_note_only_you_can_see_it{
             "id_add_a_note_only_you_can_see_it"
@@ -55,6 +65,7 @@ namespace sdk {
         const std::string id_advanced{ "id_advanced" }; // ADVANCED
         const std::string id_advanced_network_settings{ "id_advanced_network_settings" }; // Advanced network settings
         const std::string id_all{ "id_all" }; // All
+        const std::string id_all_wallets{ "id_all_wallets" }; // All wallets
         const std::string id_allows_you_to_quickly_check{
             "id_allows_you_to_quickly_check"
         }; // Allows you to quickly check your balance, receive funds or sweep a paper wallet. You can\'t send funds in
@@ -68,15 +79,26 @@ namespace sdk {
         const std::string id_asset_details{ "id_asset_details" }; // Asset Details
         const std::string id_asset_id{ "id_asset_id" }; // Asset ID
         const std::string id_asset_name{ "id_asset_name" }; // Asset Name
+        const std::string id_assets{ "id_assets" }; // Assets
         const std::string id_attempts_remaining_d{ "id_attempts_remaining_d" }; // Attempts remaining: %d
+        const std::string id_authenticator_app{ "id_authenticator_app" }; // Authenticator app
+        const std::string id_authenticator_qr_code{ "id_authenticator_qr_code" }; // Authenticator QR Code
+        const std::string id_authenticator_secret_key{ "id_authenticator_secret_key" }; // Authenticator secret key
         const std::string id_auto_logout_timeout{ "id_auto_logout_timeout" }; // Auto logout timeout
         const std::string id_autolock_after{ "id_autolock_after" }; // Autolock After
         const std::string id_back{ "id_back" }; // Back
+        const std::string id_backup_the_recovery_mnemonic{
+            "id_backup_the_recovery_mnemonic"
+        }; // Backup the recovery mnemonic and recovery xpub to recover funds from your 2of3 account.
+        const std::string id_backup_your_mnemonic_before{
+            "id_backup_your_mnemonic_before"
+        }; // Backup your mnemonic before removing the wallet from this device.
         const std::string id_be_aware_other_apps_can_read_or{
             "id_be_aware_other_apps_can_read_or"
         }; // Be aware, other apps can read or change the clipboard
         const std::string id_bitcoin_denomination{ "id_bitcoin_denomination" }; // Bitcoin denomination
         const std::string id_bitcoin_wallet{ "id_bitcoin_wallet" }; // Bitcoin wallet.
+        const std::string id_bitcoin_wallets{ "id_bitcoin_wallets" }; // Bitcoin wallets
         const std::string id_block{ "id_block" }; // block
         const std::string id_block_d{ "id_block_d" }; // Block %d
         const std::string id_block_height_1d{ "id_block_height_1d" }; // Block height: %1$d
@@ -86,6 +108,7 @@ namespace sdk {
             "id_blockstream_does_not_have"
         }; // Blockstream does not have access to your wallet backup and will not be able to help you in case you lose
            // it
+        const std::string id_blockstream_store{ "id_blockstream_store" }; // Blockstream Store
         const std::string id_btchip_is_not_set_up_please_set{
             "id_btchip_is_not_set_up_please_set"
         }; // BTChip is not set up. Please set it up using a desktop client to be able to use it.
@@ -95,34 +118,71 @@ namespace sdk {
         const std::string id_call{ "id_call" }; // Call
         const std::string id_camera_problem{ "id_camera_problem" }; // Camera problem
         const std::string id_cancel{ "id_cancel" }; // Cancel
+        const std::string id_cancel_a_reset_to_unlock_your{
+            "id_cancel_a_reset_to_unlock_your"
+        }; // Cancel a reset to unlock your wallet if you recovered access to an old Two-Factor Authentication method.
         const std::string id_cancel_twofactor_reset{ "id_cancel_twofactor_reset" }; // Cancel Two-Factor reset
         const std::string id_cannot_remove_enabled_network{
             "id_cannot_remove_enabled_network"
         }; // Cannot remove enabled network, please disable it first
         const std::string id_cant_connect_to_this_url{ "id_cant_connect_to_this_url" }; // Can\'t connect to this URL
         const std::string id_change{ "id_change" }; // CHANGE
+        const std::string id_change_address{ "id_change_address" }; // Change address
         const std::string id_change_pin{ "id_change_pin" }; // Change PIN
+        const std::string id_check_your_backup{ "id_check_your_backup" }; // Check your backup
         const std::string id_choose{ "id_choose" }; // Choose
+        const std::string id_choose_a_name_for_your_new{
+            "id_choose_a_name_for_your_new"
+        }; // Choose a name for your new Blockstream Green wallet.
         const std::string id_choose_method_to_authorize_the{
             "id_choose_method_to_authorize_the"
         }; // Choose method to authorize the action
+        const std::string id_choose_this_version_to_connect{
+            "id_choose_this_version_to_connect"
+        }; // Choose this version to connect to your Blockstream Jade with both a usb cable and wireless
+        const std::string id_choose_this_version_to_disable{
+            "id_choose_this_version_to_disable"
+        }; // Choose this version to disable all radio connections on your Blockstream Jade. This will make your
+           // Blockstream Jade incompatible with iOS devices
         const std::string id_choose_twofactor_authentication{
             "id_choose_twofactor_authentication"
         }; // Choose Two-Factor authentication method
         const std::string id_choose_your_network{ "id_choose_your_network" }; // Choose Your Network
         const std::string id_clear{ "id_clear" }; // CLEAR
+        const std::string id_click_to_copy{ "id_click_to_copy" }; // Click to copy
+        const std::string id_click_to_receive_an_email_with{
+            "id_click_to_receive_an_email_with"
+        }; // Click to receive an email with your encrypted recovery data.
+        const std::string id_communication_timed_out_make{
+            "id_communication_timed_out_make"
+        }; // Communication timed out. Make sure the device is powered on and try again.
         const std::string id_completed{ "id_completed" }; // Completed
         const std::string id_confidential{ "id_confidential" }; // Confidential
+        const std::string id_confirm_action{ "id_confirm_action" }; // Confirm action
+        const std::string id_confirm_by_typing_the_wallet{
+            "id_confirm_by_typing_the_wallet"
+        }; // Confirm by typing the wallet name
         const std::string id_confirm_code{ "id_confirm_code" }; // Confirm Code
         const std::string id_confirm_passphrase{ "id_confirm_passphrase" }; // Confirm passphrase
+        const std::string id_confirm_transaction{ "id_confirm_transaction" }; // Confirm transaction
         const std::string id_confirm_transaction_details_on{
             "id_confirm_transaction_details_on"
         }; // Confirm transaction details on your harware wallet
+        const std::string id_confirm_update_on_your_jade{
+            "id_confirm_update_on_your_jade"
+        }; // Confirm update on your Jade
         const std::string id_confirmation_in_d_blocks{ "id_confirmation_in_d_blocks" }; // Confirmation in %d blocks
         const std::string id_congratulations{ "id_congratulations" }; // Congratulations!
         const std::string id_connect_hardware_wallet{ "id_connect_hardware_wallet" }; // Connect hardware wallet
         const std::string id_connect_through_a_proxy{ "id_connect_through_a_proxy" }; // Connect through a proxy
         const std::string id_connect_with_tor{ "id_connect_with_tor" }; // Connect with Tor
+        const std::string id_connect_your_jade_to_use_it{
+            "id_connect_your_jade_to_use_it"
+        }; // Connect your Jade to use it with Green
+        const std::string id_connect_your_ledger_to_use_it{
+            "id_connect_your_ledger_to_use_it"
+        }; // Connect your Ledger to use it in Green
+        const std::string id_connected_to_jade{ "id_connected_to_jade" }; // Connected to Jade
         const std::string id_connecting_to_a_trusted_node{
             "id_connecting_to_a_trusted_node"
         }; // Connecting to a trusted node through Tor requires enabling proxy settings in the app before logging in and
@@ -131,16 +191,24 @@ namespace sdk {
         const std::string id_connecting_to_tor_onion_nodes{
             "id_connecting_to_tor_onion_nodes"
         }; // Connecting to Tor (.onion) nodes allows maximum privacy and security. Press "OK" to continue.
+        const std::string id_connection{ "id_connection" }; // Connection
         const std::string id_connection_failed{ "id_connection_failed" }; // Connection failed
+        const std::string id_connection_to_device_failed{
+            "id_connection_to_device_failed"
+        }; // Connection to device failed! Move closer to the device and try again.
         const std::string id_contact_support_at_s_or_visit_s{
             "id_contact_support_at_s_or_visit_s"
         }; // Contact support at %s or visit %s
         const std::string id_continue{ "id_continue" }; // Continue
         const std::string id_copied_to_clipboard{ "id_copied_to_clipboard" }; // Copied to clipboard
+        const std::string id_copy_address{ "id_copy_address" }; // Copy address
         const std::string id_copy_details{ "id_copy_details" }; // Copy details
         const std::string id_copy_raw_transaction{ "id_copy_raw_transaction" }; // Copy raw transaction
         const std::string id_copy_to_clipboard{ "id_copy_to_clipboard" }; // Copy To Clipboard
         const std::string id_copy_transaction_id{ "id_copy_transaction_id" }; // Copy transaction ID
+        const std::string id_copy_unblinding_data{ "id_copy_unblinding_data" }; // Copy unblinding data
+        const std::string id_copy_uri{ "id_copy_uri" }; // Copy URI
+        const std::string id_copy_xpub{ "id_copy_xpub" }; // Copy xpub
         const std::string id_create{ "id_create" }; // Create
         const std::string id_create_a_pin_to_access_your{
             "id_create_a_pin_to_access_your"
@@ -151,6 +219,7 @@ namespace sdk {
         const std::string id_create_new_wallet{ "id_create_new_wallet" }; // Create New Wallet
         const std::string id_create_temporary_wallet{ "id_create_temporary_wallet" }; // Create temporary wallet
         const std::string id_currency{ "id_currency" }; // Currency
+        const std::string id_current_version{ "id_current_version" }; // Current version
         const std::string id_custom{ "id_custom" }; // Custom
         const std::string id_custom_network_added_enable_it{
             "id_custom_network_added_enable_it"
@@ -159,6 +228,9 @@ namespace sdk {
         const std::string id_custom_network_with_this_name{
             "id_custom_network_with_this_name"
         }; // Custom network with this name already present
+        const std::string id_customize_2fa_expiration_of{
+            "id_customize_2fa_expiration_of"
+        }; // Customize 2FA expiration of your coins
         const std::string id_d6_confirmations{ "id_d6_confirmations" }; // %d/6 confirmations
         const std::string id_d_asset_in_this_account{ "id_d_asset_in_this_account" }; // %d asset in this account
         const std::string id_d_assets{ "id_d_assets" }; // %d assets
@@ -178,7 +250,9 @@ namespace sdk {
            // "OK" to continue.
         const std::string id_denomination{ "id_denomination" }; // Denomination
         const std::string id_deposit{ "id_deposit" }; // Deposit
+        const std::string id_devices{ "id_devices" }; // Devices
         const std::string id_disable{ "id_disable" }; // Disable
+        const std::string id_disable_s_twofactor{ "id_disable_s_twofactor" }; // Disable %s Two-Factor Authentication
         const std::string id_disabled{ "id_disabled" }; // Disabled
         const std::string id_displays_the_progress_of_spv{
             "id_displays_the_progress_of_spv"
@@ -206,6 +280,9 @@ namespace sdk {
         const std::string id_enable_custom_networks_debug{
             "id_enable_custom_networks_debug"
         }; // Enable custom networks debug options
+        const std::string id_enable_email_notifications_to{
+            "id_enable_email_notifications_to"
+        }; // Enable email notifications to change nlocktime
         const std::string id_enable_face_id{ "id_enable_face_id" }; // Enable Face ID
         const std::string id_enable_or_change_your_pin_to{
             "id_enable_or_change_your_pin_to"
@@ -240,6 +317,7 @@ namespace sdk {
         const std::string id_enter_new_email{ "id_enter_new_email" }; // Enter new email
         const std::string id_enter_phone_number{ "id_enter_phone_number" }; // Enter phone number
         const std::string id_enter_pin{ "id_enter_pin" }; // Enter PIN
+        const std::string id_enter_pin_on_jade{ "id_enter_pin_on_jade" }; // Enter PIN on Jade
         const std::string id_enter_the_matching_words{ "id_enter_the_matching_words" }; // Enter The Matching Words
         const std::string id_enter_the_pin_for_your_hardware{
             "id_enter_the_pin_for_your_hardware"
@@ -263,12 +341,16 @@ namespace sdk {
         const std::string id_error_passphrases_do_not_match{
             "id_error_passphrases_do_not_match"
         }; // Error: passphrases do not match
+        const std::string id_establishing_session{ "id_establishing_session" }; // Establishing session
         const std::string id_estimated_blocks_until{
             "id_estimated_blocks_until"
         }; // Estimated blocks until confirmation: %d
         const std::string id_example_89014283334011612858333{
             "id_example_89014283334011612858333"
         }; // Example: 8.90.14.2:8333,40.116.12.85:8333
+        const std::string id_export_transactions_to_csv_file{
+            "id_export_transactions_to_csv_file"
+        }; // Export transactions to CSV file
         const std::string id_face_id{ "id_face_id" }; // Face ID
         const std::string id_fast{ "id_fast" }; // Fast
         const std::string id_fee{ "id_fee" }; // Fee
@@ -285,9 +367,14 @@ namespace sdk {
         }; // Fee rate must be at least %s satoshi/vbyte.
         const std::string id_fee_rate_s{ "id_fee_rate_s" }; // Fee rate: %s
         const std::string id_fee_s__s{ "id_fee_s__s" }; // Fee: %s / %s
+        const std::string id_fees_are_too_low{ "id_fees_are_too_low" }; // Fees are too low
+        const std::string id_fetching_new_firmware{ "id_fetching_new_firmware" }; // Fetching new firmware
+        const std::string id_firmware{ "id_firmware" }; // Firmware
+        const std::string id_firmware_update{ "id_firmware_update" }; // Firmware update
+        const std::string id_firmware_update_completed{ "id_firmware_update_completed" }; // Firmware update completed
+        const std::string id_for_investors{ "id_for_investors" }; // For investors
         const std::string id_for_long_term_storage{ "id_for_long_term_storage" }; // For long term storage
         const std::string id_for_most_users{ "id_for_most_users" }; // For most users
-        const std::string id_for_securities_investors{ "id_for_securities_investors" }; // For securities investors
         const std::string id_from{ "id_from" }; // FROM
         const std::string id_funds_received_in_this{
             "id_funds_received_in_this"
@@ -295,16 +382,12 @@ namespace sdk {
         const std::string id_general{ "id_general" }; // General
         const std::string id_generate_new_address{ "id_generate_new_address" }; // Generate New Address
         const std::string id_get_code{ "id_get_code" }; // Get Code
+        const std::string id_get_jade{ "id_get_jade" }; // Get Jade
         const std::string id_go_to_account{ "id_go_to_account" }; // Go to Account
         const std::string id_go_to_receive_to_get_your{
             "id_go_to_receive_to_get_your"
         }; // Go to Receive to get your Account ID.
         const std::string id_go_to_wallet{ "id_go_to_wallet" }; // Go to Wallet
-        const std::string id_google_auth{ "id_google_auth" }; // Google Auth
-        const std::string id_google_authenticator{ "id_google_authenticator" }; // Google Authenticator
-        const std::string id_google_authenticator_qr_code{
-            "id_google_authenticator_qr_code"
-        }; // Google Authenticator QR Code:
         const std::string id_green_is_a_noncustodial_wallet{
             "id_green_is_a_noncustodial_wallet"
         }; // Green is a non-custodial wallet
@@ -320,6 +403,9 @@ namespace sdk {
         const std::string id_green_uses_biometric{
             "id_green_uses_biometric"
         }; // Green uses biometric authentication to allow easy access to the wallet
+        const std::string id_green_uses_bluetooth_for{
+            "id_green_uses_bluetooth_for"
+        }; // Green uses Bluetooth for communication with hardware wallets
         const std::string id_green_uses_bluetooth_to_connect{
             "id_green_uses_bluetooth_to_connect"
         }; // Green uses Bluetooth to connect to hardware wallets
@@ -334,6 +420,7 @@ namespace sdk {
         const std::string id_help{ "id_help" }; // Help
         const std::string id_here{ "id_here" }; // here
         const std::string id_hex{ "id_hex" }; // HEX
+        const std::string id_hide_assets{ "id_hide_assets" }; // Hide assets
         const std::string id_high{ "id_high" }; // High
         const std::string id_hold_your_nfc_tag_close_to_the{
             "id_hold_your_nfc_tag_close_to_the"
@@ -348,12 +435,16 @@ namespace sdk {
         const std::string id_i_secured_the_mnemonic_and_i{
             "id_i_secured_the_mnemonic_and_i"
         }; // I secured the mnemonic and I have read the ToS
+        const std::string id_id{ "id_id" }; // ID
         const std::string id_incoming{ "id_incoming" }; // Incoming
         const std::string id_inconsistent_data_provided_for{
             "id_inconsistent_data_provided_for"
-        }; // Inconsistent data provided for enabling gauth
+        }; // Inconsistent data provided for enabling Authenticator 2FA
         const std::string id_increase_fee{ "id_increase_fee" }; // Increase fee
         const std::string id_information_not_available{ "id_information_not_available" }; // Information not available.
+        const std::string id_initialized{ "id_initialized" }; // Initialized
+        const std::string id_initializing_tor{ "id_initializing_tor" }; // Initializing Tor…
+        const std::string id_install_version_s{ "id_install_version_s" }; // Install version: %s?
         const std::string id_insufficient_funds{ "id_insufficient_funds" }; // Insufficient funds
         const std::string id_insufficient_lbtc_for_fees{
             "id_insufficient_lbtc_for_fees"
@@ -378,6 +469,7 @@ namespace sdk {
         const std::string id_invalid_phone_number_format{
             "id_invalid_phone_number_format"
         }; // Invalid phone number format
+        const std::string id_invalid_pin{ "id_invalid_pin" }; // Invalid PIN
         const std::string id_invalid_pin_remaining_attempts{
             "id_invalid_pin_remaining_attempts"
         }; // Invalid PIN. Remaining attempts: %1$d.
@@ -391,34 +483,35 @@ namespace sdk {
         const std::string id_invalid_replacement_fee_rate{
             "id_invalid_replacement_fee_rate"
         }; // Invalid replacement fee rate
+        const std::string id_invalid_status_check_that_your{
+            "id_invalid_status_check_that_your"
+        }; // Invalid status. Check that your device is unlocked and try again.
         const std::string id_invalid_twofactor_code{ "id_invalid_twofactor_code" }; // Invalid Two-Factor code
         const std::string id_invalid_url{ "id_invalid_url" }; // Invalid URL
         const std::string id_is_a_noncustodial{ "id_is_a_noncustodial" }; // is a non-custodial
         const std::string id_issuer{ "id_issuer" }; // Issuer
+        const std::string id_jade_unlocked{ "id_jade_unlocked" }; // Jade unlocked
         const std::string id_label{ "id_label" }; // LABEL
         const std::string id_last_attempt_if_failed_you_will{
             "id_last_attempt_if_failed_you_will"
         }; // Last attempt: if failed, you will have to restore your wallet using the 24-words mnemonic.
         const std::string id_last_ping_1d_ms{ "id_last_ping_1d_ms" }; // Last ping: %1$d ms
         const std::string id_later{ "id_later" }; // LATER
+        const std::string id_lbtc_has_no_issuer_and_is{
+            "id_lbtc_has_no_issuer_and_is"
+        }; // L-BTC has no issuer and is instead created on the network via a peg-in.
         const std::string id_learn_more_about_s{ "id_learn_more_about_s" }; // Learn more about %s.
         const std::string id_ledger_dashboard_detected{
             "id_ledger_dashboard_detected"
         }; // Ledger Dashboard detected, please open the correct app to access.
+        const std::string id_ledger_devices{ "id_ledger_devices" }; // Ledger devices
         const std::string id_ledger_supports_a_limited_set{
             "id_ledger_supports_a_limited_set"
-        }; // Ledger supports a limited set of assets: check our documentation before receiving assets other than L-BTC
-           // or USDt.
+        }; // Ledger supports a limited set of assets: tap here to check the list.
         const std::string id_lets_get_you_set_up{ "id_lets_get_you_set_up" }; // Let\'s get you set up.
         const std::string id_liquid_securities{ "id_liquid_securities" }; // Liquid Securities
-        const std::string id_liquid_securities_account{ "id_liquid_securities_account" }; // Liquid Securities Account
-        const std::string id_liquid_securities_account_is{
-            "id_liquid_securities_account_is"
-        }; // Liquid securities account is only available on Liquid.
-        const std::string id_liquid_securities_accounts_are{
-            "id_liquid_securities_accounts_are"
-        }; // Liquid securities accounts are only available on Liquid wallets. You will be required to get authorization
-           // from the issuer to receive a Liquid Security.
+        const std::string id_liquid_wallets{ "id_liquid_wallets" }; // Liquid wallets
+        const std::string id_loading{ "id_loading" }; // Loading
         const std::string id_loading_transactions{ "id_loading_transactions" }; // Loading transactions…
         const std::string id_log_in{ "id_log_in" }; // Log In
         const std::string id_log_in_into_your_s_wallet{ "id_log_in_into_your_s_wallet" }; // Log in into your %s wallet
@@ -427,22 +520,35 @@ namespace sdk {
             "id_log_in_via_watchonly_to_receive"
         }; // Log in via Watch-only to receive funds and check balance.
         const std::string id_log_out{ "id_log_out" }; // Log out
+        const std::string id_logged_in_wallets{ "id_logged_in_wallets" }; // Logged in wallets
         const std::string id_logging_in{ "id_logging_in" }; // Logging in…
+        const std::string id_login{ "id_login" }; // Login
         const std::string id_login_failed{ "id_login_failed" }; // Login Failed
         const std::string id_login_options{ "id_login_options" }; // Login options
+        const std::string id_logout{ "id_logout" }; // Logout
         const std::string id_logout_and_switch{ "id_logout_and_switch" }; // Logout and Switch
         const std::string id_look_at_the_device_for_the{
             "id_look_at_the_device_for_the"
         }; // Look at the device for the number positions
         const std::string id_low{ "id_low" }; // Low
         const std::string id_main_account{ "id_main_account" }; // Main Account
+        const std::string id_make_sure_you_made_a_proper{
+            "id_make_sure_you_made_a_proper"
+        }; // Make sure you made a proper backup of your wallet mnemonic.
         const std::string id_malleated{ "id_malleated" }; // malleated
+        const std::string id_managed_assets{ "id_managed_assets" }; // Managed Assets
+        const std::string id_managed_assets_account{ "id_managed_assets_account" }; // Managed Assets Account
+        const std::string id_managed_assets_accounts_are{
+            "id_managed_assets_accounts_are"
+        }; // Managed assets accounts are only available on Liquid wallets. You may be required to provide your account
+           // ID to issuers to receive a Managed Asset.
         const std::string id_medium{ "id_medium" }; // Medium
         const std::string id_memo{ "id_memo" }; // Memo
         const std::string id_minute{ "id_minute" }; // minute
         const std::string id_minutes{ "id_minutes" }; // minutes
         const std::string id_mnemonic{ "id_mnemonic" }; // Mnemonic
         const std::string id_mnemonic_not_available{ "id_mnemonic_not_available" }; // Mnemonic not available
+        const std::string id_model{ "id_model" }; // Model
         const std::string id_month{ "id_month" }; // month
         const std::string id_months{ "id_months" }; // months
         const std::string id_multiple_assets{ "id_multiple_assets" }; // Multiple Assets
@@ -456,9 +562,16 @@ namespace sdk {
         const std::string id_new_accounts_functionality{
             "id_new_accounts_functionality"
         }; // New accounts functionality coming soon!
+        const std::string id_new_fee{ "id_new_fee" }; // New fee
         const std::string id_new_incoming_transaction_in{
             "id_new_incoming_transaction_in"
         }; // New incoming transaction in account %s (%s).
+        const std::string id_new_jade_firmware_available{
+            "id_new_jade_firmware_available"
+        }; // New Jade Firmware Available
+        const std::string id_new_jade_firmware_required{
+            "id_new_jade_firmware_required"
+        }; // New Jade Firmware Required
         const std::string id_new_outgoing_transaction_from{
             "id_new_outgoing_transaction_from"
         }; // New outgoing transaction from account %s (%s).
@@ -469,11 +582,13 @@ namespace sdk {
         const std::string id_new_transaction_involving{
             "id_new_transaction_involving"
         }; // New transaction involving accounts %s.
+        const std::string id_new_version{ "id_new_version" }; // New version
         const std::string id_next{ "id_next" }; // Next
         const std::string id_nfc_logo{ "id_nfc_logo" }; // NFC Logo
         const std::string id_nfc_tags_written{ "id_nfc_tags_written" }; // NFC TAGs Written:
         const std::string id_no_amount_specified{ "id_no_amount_specified" }; // No amount specified
         const std::string id_no_attempts_remaining{ "id_no_attempts_remaining" }; // No attempts remaining
+        const std::string id_no_more_assets{ "id_no_more_assets" }; // No more assets.
         const std::string id_no_peers_connected{ "id_no_peers_connected" }; // No Peers Connected
         const std::string id_no_pin_provided_exiting{ "id_no_pin_provided_exiting" }; // No PIN provided, exiting.
         const std::string id_no_recipients{ "id_no_recipients" }; // No recipients
@@ -487,10 +602,14 @@ namespace sdk {
         const std::string id_nonconfidential_addresses_not{
             "id_nonconfidential_addresses_not"
         }; // Non-confidential addresses not supported
+        const std::string id_noradio_firmware{ "id_noradio_firmware" }; // No-radio firmware
         const std::string id_normal{ "id_normal" }; // Normal
+        const std::string id_not_a_valid_email_address{ "id_not_a_valid_email_address" }; // Not a valid email address
+        const std::string id_not_a_valid_phone_number{ "id_not_a_valid_phone_number" }; // Not a valid phone number
         const std::string id_not_connected_connecting_in_ds_{
             "id_not_connected_connecting_in_ds_"
         }; // Not connected. Connecting in %ds …
+        const std::string id_not_initialized{ "id_not_initialized" }; // Not initialized
         const std::string id_notifications{ "id_notifications" }; // Notifications
         const std::string id_now{ "id_now" }; // Now
         const std::string id_ok{ "id_ok" }; // Ok
@@ -507,6 +626,14 @@ namespace sdk {
         }; // Only connect to trusted node(s) for SPV
         const std::string id_only_this_time{ "id_only_this_time" }; // Only this time
         const std::string id_operation_failure{ "id_operation_failure" }; // Operation failure
+        const std::string id_optimal_if_you_rarely_spend{
+            "id_optimal_if_you_rarely_spend"
+        }; // Optimal if you rarely spend coins. Wallet coins will require two-factor reactivation every 455 days to
+           // remain protected by two-factor authentication
+        const std::string id_optimal_if_you_spend_coins{
+            "id_optimal_if_you_spend_coins"
+        }; // Optimal if you spend coins every 6 months. Wallet coins will require two-factor reactivation every 6
+           // months to remain protected by two-factor authentication.
         const std::string id_optional{ "id_optional" }; // Optional
         const std::string id_optional_memo{ "id_optional_memo" }; // Optional memo
         const std::string id_optional_password{ "id_optional_password" }; // Optional password
@@ -554,6 +681,9 @@ namespace sdk {
         const std::string id_please_follow_the_instructions{
             "id_please_follow_the_instructions"
         }; // Please follow the instructions on your hardware wallet
+        const std::string id_please_hold_on_while_your{
+            "id_please_hold_on_while_your"
+        }; // Please hold on while your address is being generated
         const std::string id_please_provide_your_1s{ "id_please_provide_your_1s" }; // Please provide your %1$s.
         const std::string id_please_provide_your_1s_code{
             "id_please_provide_your_1s_code"
@@ -574,17 +704,23 @@ namespace sdk {
             "id_please_set_and_enable_socks5"
         }; // Please set and enable SOCKS5 proxy and port to use Tor
         const std::string id_please_tap_card{ "id_please_tap_card" }; // Please tap card
+        const std::string id_please_verify_that_the_address{
+            "id_please_verify_that_the_address"
+        }; // Please verify that the address shown on your hardware wallet matches the one on your phone.
+        const std::string id_please_wait_until_your_ledger{
+            "id_please_wait_until_your_ledger"
+        }; // Please wait until your Ledger displays the address to validate it. This could take up to 20 seconds.
         const std::string id_precision{ "id_precision" }; // Precision
+        const std::string id_previous_fee{ "id_previous_fee" }; // Previous fee
         const std::string id_privacy_policy{ "id_privacy_policy" }; // Privacy Policy
         const std::string id_problem_with_key_1s{ "id_problem_with_key_1s" }; // Problem with key %1$s
-        const std::string id_provide_this_id_to_the_issuer{
-            "id_provide_this_id_to_the_issuer"
-        }; // Provide this ID to the issuer to get authorization to receive a Liquid Security.
-        const std::string id_providing_an_email_enables{
-            "id_providing_an_email_enables"
-        }; // Providing an email enables notifications and transaction recovery.
+        const std::string id_provide_this_id_to_the_asset{
+            "id_provide_this_id_to_the_asset"
+        }; // Provide this ID to the asset issuer if requested.
         const std::string id_proxy_settings{ "id_proxy_settings" }; // PROXY SETTINGS
         const std::string id_qr_scanner{ "id_qr_scanner" }; // QR Scanner
+        const std::string id_radio_firmware{ "id_radio_firmware" }; // Radio firmware
+        const std::string id_read_more_at_our_s{ "id_read_more_at_our_s" }; // Read more at our %s
         const std::string id_receive{ "id_receive" }; // Receive
         const std::string id_receive_email_notifications_for{
             "id_receive_email_notifications_for"
@@ -592,10 +728,12 @@ namespace sdk {
         const std::string id_received{ "id_received" }; // Received
         const std::string id_received_on{ "id_received_on" }; // Received on
         const std::string id_recipient{ "id_recipient" }; // Recipient
+        const std::string id_recipient_address{ "id_recipient_address" }; // Recipient address
         const std::string id_recovery{ "id_recovery" }; // Recovery
         const std::string id_recovery_and_notifications{
             "id_recovery_and_notifications"
         }; // Recovery and Notifications
+        const std::string id_recovery_mnemonic{ "id_recovery_mnemonic" }; // Recovery mnemonic
         const std::string id_recovery_transaction_emails{
             "id_recovery_transaction_emails"
         }; // Recovery transaction emails
@@ -604,11 +742,18 @@ namespace sdk {
         }; // Recovery transaction request sent
         const std::string id_recovery_transactions{ "id_recovery_transactions" }; // Recovery transactions
         const std::string id_recovery_words{ "id_recovery_words" }; // Recovery words
+        const std::string id_recovery_xpub{ "id_recovery_xpub" }; // Recovery xpub
+        const std::string id_redeem_your_deposited_funds{
+            "id_redeem_your_deposited_funds"
+        }; // Redeem your deposited funds without Blockstream Green signature after a pre-defined period of time.
         const std::string id_redeposited{ "id_redeposited" }; // Redeposited
         const std::string id_reference_exchange_rate{ "id_reference_exchange_rate" }; // Reference exchange rate
         const std::string id_refresh{ "id_refresh" }; // Refresh
         const std::string id_remember_me{ "id_remember_me" }; // Remember me
+        const std::string id_remove{ "id_remove" }; // Remove
         const std::string id_remove_custom_network{ "id_remove_custom_network" }; // Remove custom network
+        const std::string id_remove_wallet{ "id_remove_wallet" }; // Remove wallet
+        const std::string id_rename_account{ "id_rename_account" }; // Rename account
         const std::string id_replaceable{ "id_replaceable" }; // replaceable
         const std::string id_request_amount{ "id_request_amount" }; // REQUEST AMOUNT
         const std::string id_request_failed{ "id_request_failed" }; // Request Failed
@@ -627,23 +772,32 @@ namespace sdk {
         }; // Resetting your Two-Factor takes 12 months minimum. If you are sure you have lost your Two-Factor, please
            // provide a new email address below to receive the reset.
         const std::string id_restore{ "id_restore" }; // Restore
+        const std::string id_restore_a_blockstream_green{
+            "id_restore_a_blockstream_green"
+        }; // Restore a Blockstream Green wallet using your 24 words mnemonic backup. You can find it in the settings of
+           // any Blockstream Green app.
         const std::string id_restore_green_wallet{ "id_restore_green_wallet" }; // Restore Green Wallet
         const std::string id_restore_temporary_wallet{ "id_restore_temporary_wallet" }; // Restore temporary wallet
         const std::string id_review{ "id_review" }; // Review
         const std::string id_review_account_information{
             "id_review_account_information"
         }; // Review account information
+        const std::string id_review_output_s{ "id_review_output_s" }; // Review output %s
         const std::string id_s_blocks_left{ "id_s_blocks_left" }; // %s blocks left
         const std::string id_s_from_s{ "id_s_from_s" }; // %s from %s
         const std::string id_s_network{ "id_s_network" }; // %s network
         const std::string id_save{ "id_save" }; // Save
+        const std::string id_save_a_summary_of_your_accounts{
+            "id_save_a_summary_of_your_accounts"
+        }; // Save a summary of your accounts to speed up recovery in case you need to use our recovery tool.
         const std::string id_save_your_mnemonic{ "id_save_your_mnemonic" }; // Save your mnemonic
         const std::string id_scan_a_qr_code_for_spv_pairing{
             "id_scan_a_qr_code_for_spv_pairing"
         }; // Scan a QR code for SPV pairing
-        const std::string id_scan_the_qr_code_in_google{
-            "id_scan_the_qr_code_in_google"
-        }; // Scan the QR Code in Google Authenticator:
+        const std::string id_scan_qr_code{ "id_scan_qr_code" }; // Scan QR code
+        const std::string id_scan_the_qr_code_with_an{
+            "id_scan_the_qr_code_with_an"
+        }; // Scan the QR Code with an Authenticator app
         const std::string id_scan_to_send_here{ "id_scan_to_send_here" }; // Scan to send here
         const std::string id_screen_lock{ "id_screen_lock" }; // Screen Lock
         const std::string id_search{ "id_search" }; // Search
@@ -658,13 +812,18 @@ namespace sdk {
             "id_select_a_fiat_currency_and"
         }; // Select a fiat currency and bitcoin denomination to show amounts in your wallet
         const std::string id_select_account{ "id_select_account" }; // Select Account
+        const std::string id_select_an_app_on_s{ "id_select_an_app_on_s" }; // Select an app on %s
         const std::string id_select_asset{ "id_select_asset" }; // Select asset
         const std::string id_select_duration_of_twofactor{
             "id_select_duration_of_twofactor"
         }; // Select duration of Two-Factor Authentication protection for your coins. The new option applies to newly
            // received coins.
         const std::string id_select_network{ "id_select_network" }; // Select network
+        const std::string id_select_the_s_app_on_your_ledger{
+            "id_select_the_s_app_on_your_ledger"
+        }; // Select the %s app on your Ledger and retry.
         const std::string id_select_word_number_d{ "id_select_word_number_d" }; // Select word number %d
+        const std::string id_select_your_jade_to_login{ "id_select_your_jade_to_login" }; // Select your Jade to login
         const std::string id_send{ "id_send" }; // Send
         const std::string id_send_all_funds{ "id_send_all_funds" }; // Send All Funds
         const std::string id_send_all_requires_a_single{
@@ -675,6 +834,7 @@ namespace sdk {
         const std::string id_sending_request{ "id_sending_request" }; // Sending Request…
         const std::string id_sent{ "id_sent" }; // Sent
         const std::string id_sent_to{ "id_sent_to" }; // Sent to
+        const std::string id_set_2fa_expiry{ "id_set_2fa_expiry" }; // Set 2FA expiry
         const std::string id_set_a_limit_to_spend_without{
             "id_set_a_limit_to_spend_without"
         }; // Set a limit to spend without two-factor authentication
@@ -687,6 +847,8 @@ namespace sdk {
         }; // Set an email address to receive transaction notifications
         const std::string id_set_an_email_for_recovery{ "id_set_an_email_for_recovery" }; // Set an email for recovery
         const std::string id_set_custom_fee_rate{ "id_set_custom_fee_rate" }; // Set custom fee rate
+        const std::string id_set_locktime{ "id_set_locktime" }; // Set Locktime
+        const std::string id_set_timelock{ "id_set_timelock" }; // Set timelock
         const std::string id_set_twofactor_threshold{ "id_set_twofactor_threshold" }; // Set Two-Factor threshold
         const std::string id_set_up_a_passcode_for_your_ios{
             "id_set_up_a_passcode_for_your_ios"
@@ -694,6 +856,10 @@ namespace sdk {
         const std::string id_set_up_a_screen_lock_for_your{
             "id_set_up_a_screen_lock_for_your"
         }; // Set up a screen lock for your Android device to unlock your wallet using Android screen lock
+        const std::string id_set_up_an_email_to_get{
+            "id_set_up_an_email_to_get"
+        }; // Set up an email to get pre-signed transactions for recovery. Email notifications contain your encrypted
+           // recovery data.
         const std::string id_set_up_credentials_to_access_in{
             "id_set_up_credentials_to_access_in"
         }; // Set up credentials to access in watch-only mode to receive coins without putting your private keys at
@@ -706,18 +872,29 @@ namespace sdk {
         const std::string id_set_up_watchonly_credentials{
             "id_set_up_watchonly_credentials"
         }; // Set up watch-only credentials for this wallet
+        const std::string id_set_wallet_name{ "id_set_wallet_name" }; // Set wallet name
         const std::string id_setting_updated{ "id_setting_updated" }; // Setting updated
         const std::string id_settings{ "id_settings" }; // Settings
+        const std::string id_setup_jade{ "id_setup_jade" }; // Setup Jade
         const std::string id_setup_pin{ "id_setup_pin" }; // Setup PIN
         const std::string id_setup_pin_and_s{ "id_setup_pin_and_s" }; // Setup PIN and %s
         const std::string id_share{ "id_share" }; // Share
         const std::string id_share_address{ "id_share_address" }; // Share Address
+        const std::string id_share_nonconfidential{ "id_share_nonconfidential" }; // Share non-confidential transaction
+        const std::string id_share_unblinding_data{ "id_share_unblinding_data" }; // Share unblinding data
+        const std::string id_show_all_assets{ "id_show_all_assets" }; // Show all assets
         const std::string id_show_bitcoin_amounts_in{ "id_show_bitcoin_amounts_in" }; // Show bitcoin amounts in
         const std::string id_show_coins_with_expiring{
             "id_show_coins_with_expiring"
         }; // Show coins with expiring Two-Factor authentication protection.
         const std::string id_show_fiat{ "id_show_fiat" }; // Show fiat
         const std::string id_show_my_wallet_backup{ "id_show_my_wallet_backup" }; // Show my wallet backup
+        const std::string id_show_qr_code{ "id_show_qr_code" }; // Show QR code
+        const std::string id_signature_validation_failed_if{
+            "id_signature_validation_failed_if"
+        }; // Signature validation failed. If this error is unexpected and has happened repeatedly, it is possible the
+           // hardware wallet is faulty or has been compromised. It could be leaking your keys, which could lead to loss
+           // of funds. Please consider replacing the hardware wallet.
         const std::string id_signup_in_progress{ "id_signup_in_progress" }; // Signup in progress
         const std::string id_simplified_payment_verification{
             "id_simplified_payment_verification"
@@ -757,7 +934,12 @@ namespace sdk {
         const std::string id_start_a_2fa_reset_process_if{
             "id_start_a_2fa_reset_process_if"
         }; // Start a 2FA reset process if you lost access to all your two-factor authentication methods.
+        const std::string id_start_receiving_funds_and_set{
+            "id_start_receiving_funds_and_set"
+        }; // Start receiving funds and set an email to receive recovery data for your wallet
+        const std::string id_status{ "id_status" }; // Status
         const std::string id_support{ "id_support" }; // Support
+        const std::string id_support_page{ "id_support_page" }; // Support Page
         const std::string id_sweep{ "id_sweep" }; // Sweep
         const std::string id_sweep_from_paper_wallet{ "id_sweep_from_paper_wallet" }; // Sweep From Paper Wallet
         const std::string id_sweep_into_s{ "id_sweep_into_s" }; // Sweep into %s
@@ -767,6 +949,7 @@ namespace sdk {
             "id_syou_need_ton1_reset_greens"
         }; // %s.You need to:\n1. Reset Green\'s Face/TouchID login,\n2. Log in with PIN,\n3. Re-activate Face/TouchID
            // from Green Settings.
+        const std::string id_system_location{ "id_system_location" }; // System location
         const std::string id_system_message{ "id_system_message" }; // System Message
         const std::string id_tap_on_the_card_to_view{
             "id_tap_on_the_card_to_view"
@@ -779,9 +962,12 @@ namespace sdk {
         }; // Tap to scan a QR code and connect to a node for SPV
         const std::string id_terms_of_service{ "id_terms_of_service" }; // Terms of service
         const std::string id_terms_of_use{ "id_terms_of_use" }; // Terms of Use
+        const std::string id_testnet_wallets{ "id_testnet_wallets" }; // Testnet wallets
         const std::string id_thank_you_for_downloading_green{
             "id_thank_you_for_downloading_green"
         }; // Thank you for downloading Green! Please leave us a review when you get a chance
+        const std::string id_the_address_is_valid{ "id_the_address_is_valid" }; // The address is valid.
+        const std::string id_the_addresses_dont_match{ "id_the_addresses_dont_match" }; // The addresses don\'t match.
         const std::string id_the_asset_registry_is_currently{
             "id_the_asset_registry_is_currently"
         }; // The asset registry is currently unavailable: proceed carefully since asset amounts might be shown with a
@@ -789,9 +975,15 @@ namespace sdk {
         const std::string id_the_camera_has_a_problem_you{
             "id_the_camera_has_a_problem_you"
         }; // The camera has a problem. You probably need to restart the device.
+        const std::string id_the_default_value_is_90_days_if{
+            "id_the_default_value_is_90_days_if"
+        }; // The default value is 90 days. If you set an email, you will receive an updated copy of your recovery data.
         const std::string id_the_easier_safer_and_faster{
             "id_the_easier_safer_and_faster"
         }; // the easier, safer and faster wallet
+        const std::string id_the_email_will_also_be_used_to{
+            "id_the_email_will_also_be_used_to"
+        }; // The email will also be used to receive recovery data and transaction notifications
         const std::string id_the_hardware_wallet_you_are{
             "id_the_hardware_wallet_you_are"
         }; // The hardware wallet you are using is not yet supported
@@ -799,6 +991,10 @@ namespace sdk {
             "id_the_network_selected_on_the"
         }; // The network selected on the Green app is different from the one selected on the hardware wallet. Select
            // the same network on both devices.
+        const std::string id_the_new_email_will_be_used_for{
+            "id_the_new_email_will_be_used_for"
+        }; // The new email will be used for Two-Factor Authentication when the reset is complete. The reset takes 12
+           // months plus any remaining timelock.
         const std::string id_the_password_cant_be_empty{
             "id_the_password_cant_be_empty"
         }; // The password can\'t be empty
@@ -853,12 +1049,18 @@ namespace sdk {
         const std::string id_transaction_status{ "id_transaction_status" }; // Transaction status
         const std::string id_transactions{ "id_transactions" }; // Transactions
         const std::string id_try_now{ "id_try_now" }; // Try now
+        const std::string id_turn_on_bluetooth_to_connect{
+            "id_turn_on_bluetooth_to_connect"
+        }; // Turn on bluetooth to connect your hardware wallet.
         const std::string id_two_factor_authentication{ "id_two_factor_authentication" }; // TWO FACTOR AUTHENTICATION
         const std::string id_twofactor{ "id_twofactor" }; // TWO-FACTOR
         const std::string id_twofactor_authentication{ "id_twofactor_authentication" }; // Two-Factor authentication
         const std::string id_twofactor_authentication_expiry{
             "id_twofactor_authentication_expiry"
         }; // Two-Factor authentication expiry
+        const std::string id_twofactor_expiration_period{
+            "id_twofactor_expiration_period"
+        }; // Two-Factor expiration period
         const std::string id_twofactor_protection_does_not{
             "id_twofactor_protection_does_not"
         }; // Two-Factor protection does not expire on this account, enable 2 separate Two-Factor methods as backup in
@@ -876,7 +1078,11 @@ namespace sdk {
         const std::string id_unknown{ "id_unknown" }; // Unknown
         const std::string id_unknown_bip21_parameter{ "id_unknown_bip21_parameter" }; // Unknown bip21 parameter
         const std::string id_unknown_custom{ "id_unknown_custom" }; // Unknown (Custom)
+        const std::string id_unknown_firmware{ "id_unknown_firmware" }; // Unknown firmware
+        const std::string id_unlock_jade_to_continue{ "id_unlock_jade_to_continue" }; // Unlock Jade to continue
+        const std::string id_update{ "id_update" }; // Update
         const std::string id_updated{ "id_updated" }; // updated
+        const std::string id_uploading_firmware{ "id_uploading_firmware" }; // Uploading firmware
         const std::string id_use_android_screen_lock_to_log{
             "id_use_android_screen_lock_to_log"
         }; // Use Android screen lock to log in
@@ -885,6 +1091,9 @@ namespace sdk {
         }; // User not found or invalid password
         const std::string id_username{ "id_username" }; // Username
         const std::string id_username_not_available{ "id_username_not_available" }; // Username not available
+        const std::string id_value_must_be_between_144_and{
+            "id_value_must_be_between_144_and"
+        }; // Value must be between 144 and 200000
         const std::string id_verify_your_pin{ "id_verify_your_pin" }; // Verify Your PIN
         const std::string id_version{ "id_version" }; // Version
         const std::string id_version_1s{ "id_version_1s" }; // Version: %1$s
@@ -893,8 +1102,15 @@ namespace sdk {
         const std::string id_visit_s_for_further_information{
             "id_visit_s_for_further_information"
         }; // Visit %s for further information about the software
+        const std::string id_visit_the_blockstream_help{
+            "id_visit_the_blockstream_help"
+        }; // Visit the Blockstream Help Center
         const std::string id_waiting_for_transaction{ "id_waiting_for_transaction" }; // Waiting for transaction…
         const std::string id_wallet_backup{ "id_wallet_backup" }; // Wallet Backup
+        const std::string id_wallet_coins_will_require{
+            "id_wallet_coins_will_require"
+        }; // Wallet coins will require two-factor reactivation once a year to remain protected by two-factor
+           // authentication.
         const std::string id_wallet_creation_failed{ "id_wallet_creation_failed" }; // Wallet creation failed
         const std::string id_wallets{ "id_wallets" }; // Wallets
         const std::string id_warning{ "id_warning" }; // Warning!
@@ -914,9 +1130,6 @@ namespace sdk {
         const std::string id_warning_wallet_locked_by{
             "id_warning_wallet_locked_by"
         }; // WARNING: Wallet locked by Two-Factor dispute. Contact support for more information.
-        const std::string id_warning_wallet_locked_for{
-            "id_warning_wallet_locked_for"
-        }; // WARNING: Wallet locked for Two-Factor reset in %d days. Contact support for more information.
         const std::string id_warning_watchonly_credentials{
             "id_warning_watchonly_credentials"
         }; // Warning: Watch-only credentials will be saved on your device
@@ -979,6 +1192,9 @@ namespace sdk {
         const std::string id_you_will_need_to_reenter_your{
             "id_you_will_need_to_reenter_your"
         }; // You will need to re-enter your mnemonic to login again if you do not set up a PIN. Press "OK" to continue.
+        const std::string id_your_favourite_exchange_rate_is{
+            "id_your_favourite_exchange_rate_is"
+        }; // Your favourite exchange rate is not available at the moment. You can change it from settings.
         const std::string id_your_green_wallet_is_now_ready{
             "id_your_green_wallet_is_now_ready"
         }; // Your Green wallet is now ready to use.
@@ -1005,6 +1221,9 @@ namespace sdk {
         }; // Your wallet backup is made of 24 words, also known as your mnemonic. Make sure you have a backup and keep
            // it safe. Anyone who finds it can steal your money. You can use it to restore your Blockstream Green wallet
            // on another device in case yours is lost, damaged or stolen.
+        const std::string id_your_wallet_is_locked_for_a{
+            "id_your_wallet_is_locked_for_a"
+        }; // Your wallet is locked for a Two-Factor Authentication reset. The reset will be completed in %d days.
         const std::string id_your_wallet_is_not_yet_fully{
             "id_your_wallet_is_not_yet_fully"
         }; // Your wallet is not yet fully secured.\nPlease enable Two-Factor authentication.
