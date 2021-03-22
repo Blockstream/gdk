@@ -404,19 +404,24 @@ namespace sdk {
         return b;
     }
 
-    event_loop_controller::event_loop_controller(boost::asio::io_context& io)
-        : m_work_guard(boost::asio::make_work_guard(io))
-    {
-        m_run_thread = std::thread([&] { io.run(); });
-    }
+    struct event_loop_controller {
+        explicit event_loop_controller(boost::asio::io_context& io)
+            : m_work_guard(boost::asio::make_work_guard(io))
+        {
+            m_run_thread = std::thread([&] { io.run(); });
+        }
 
-    void event_loop_controller::reset()
-    {
-        no_std_exception_escape([this] {
-            m_work_guard.reset();
-            m_run_thread.join();
-        });
-    }
+        void reset()
+        {
+            no_std_exception_escape([this] {
+                m_work_guard.reset();
+                m_run_thread.join();
+            });
+        }
+
+        std::thread m_run_thread;
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+    };
 
     ga_session::ga_session(const nlohmann::json& net_params)
         : m_net_params(network_parameters{ network_parameters::get(net_params.at("name")) })
@@ -425,7 +430,7 @@ namespace sdk {
         , m_has_network_proxy(!m_proxy.empty())
         , m_is_tls_connection(boost::algorithm::starts_with(m_net_params.get_connection_string(m_use_tor), "wss://"))
         , m_io()
-        , m_controller(m_io)
+        , m_controller(new event_loop_controller(m_io))
         , m_ping_timer(m_io)
         , m_network_control(new network_control_context())
         , m_pool(DEFAULT_THREADPOOL_SIZE)
@@ -475,7 +480,7 @@ namespace sdk {
     {
         no_std_exception_escape([this] {
             reset();
-            m_controller.reset();
+            m_controller->reset();
         });
     }
 

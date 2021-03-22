@@ -31,20 +31,12 @@ namespace sdk {
     struct websocketpp_gdk_tls_config;
     struct tor_controller;
     struct network_control_context;
+    struct event_loop_controller;
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
-
-    struct event_loop_controller {
-        explicit event_loop_controller(boost::asio::io_context& io);
-
-        void reset();
-
-        std::thread m_run_thread;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
-    };
 
     class ga_session final : public session_common {
     public:
@@ -386,7 +378,7 @@ namespace sdk {
         heartbeat_t m_heartbeat_handler;
         ping_fail_t m_ping_fail_handler;
 
-        event_loop_controller m_controller;
+        std::unique_ptr<event_loop_controller> m_controller;
         boost::asio::deadline_timer m_ping_timer;
 
         std::unique_ptr<network_control_context> m_network_control;
