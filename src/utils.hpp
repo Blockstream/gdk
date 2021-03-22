@@ -59,10 +59,15 @@ namespace sdk {
     {
         try {
             fn();
+        } catch (const boost::exception& e) {
+            try {
+                GDK_LOG_SEV(log_level::info) << "ignoring exception:" << diagnostic_information(e);
+            } catch (const std::exception&) {
+            }
         } catch (const std::exception& e) {
             try {
                 const auto what = e.what();
-                GDK_LOG_SEV(log_level::debug) << "ignoring exception:" << what;
+                GDK_LOG_SEV(log_level::info) << "ignoring exception:" << what;
             } catch (const std::exception&) {
             }
         }
