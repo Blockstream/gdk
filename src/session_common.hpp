@@ -19,7 +19,6 @@ namespace sdk {
     class ga_session;
     class ga_pubkeys;
     class ga_user_pubkeys;
-    class network_control_context;
     using ping_fail_t = std::function<void()>;
     class signer;
     class user_pubkeys;

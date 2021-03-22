@@ -30,58 +30,12 @@ namespace sdk {
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
     struct tor_controller;
+    struct network_control_context;
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
-
-    struct flag_type {
-
-        flag_type() { m_flag.second = m_flag.first.get_future(); }
-
-        void set() { m_flag.first.set_value(); }
-
-        std::future_status wait(std::chrono::seconds secs = 0s) const { return m_flag.second.wait_for(secs); }
-
-        std::pair<std::promise<void>, std::future<void>> m_flag;
-    };
-
-    class network_control_context final {
-    public:
-        network_control_context() = default;
-        ~network_control_context() = default;
-
-        network_control_context(const network_control_context& context) = delete;
-        network_control_context& operator=(const network_control_context& context) = delete;
-        network_control_context(network_control_context&& context) = delete;
-        network_control_context& operator=(network_control_context&& context) = delete;
-
-        bool set_reconnect(bool reconnect)
-        {
-            bool r = m_reconnect_flag;
-            if (r && reconnect) {
-                return false;
-            }
-            return m_reconnect_flag.compare_exchange_strong(r, reconnect);
-        }
-
-        bool reconnecting() const { return m_reconnect_flag; }
-
-        void reset_exit() { m_exit_flag = flag_type{}; }
-        void set_exit() { m_exit_flag.set(); }
-        bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
-
-        void set_enabled(bool v) { m_enabled = v; }
-        bool is_enabled() const { return m_enabled; }
-
-        void reset() { reset_exit(); }
-
-    private:
-        flag_type m_exit_flag;
-        std::atomic_bool m_reconnect_flag{ false };
-        std::atomic_bool m_enabled{ true };
-    };
 
     struct event_loop_controller {
         explicit event_loop_controller(boost::asio::io_context& io);
@@ -435,7 +389,7 @@ namespace sdk {
         event_loop_controller m_controller;
         boost::asio::deadline_timer m_ping_timer;
 
-        network_control_context m_network_control;
+        std::unique_ptr<network_control_context> m_network_control;
         boost::asio::thread_pool m_pool;
 
         GA_notification_handler m_notification_handler;

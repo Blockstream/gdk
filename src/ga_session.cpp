@@ -89,6 +89,43 @@ namespace sdk {
     using transport = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_config>;
     using transport_tls = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_tls_config>;
 
+    struct flag_type {
+        flag_type() { m_flag.second = m_flag.first.get_future(); }
+
+        void set() { m_flag.first.set_value(); }
+
+        std::future_status wait(std::chrono::seconds secs = 0s) const { return m_flag.second.wait_for(secs); }
+
+        std::pair<std::promise<void>, std::future<void>> m_flag;
+    };
+
+    struct network_control_context {
+        bool set_reconnect(bool reconnect)
+        {
+            bool r = m_reconnect_flag;
+            if (r && reconnect) {
+                return false;
+            }
+            return m_reconnect_flag.compare_exchange_strong(r, reconnect);
+        }
+
+        bool reconnecting() const { return m_reconnect_flag; }
+
+        void reset_exit() { m_exit_flag = flag_type{}; }
+        void set_exit() { m_exit_flag.set(); }
+        bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
+
+        void set_enabled(bool v) { m_enabled = v; }
+        bool is_enabled() const { return m_enabled; }
+
+        void reset() { reset_exit(); }
+
+    private:
+        flag_type m_exit_flag;
+        std::atomic_bool m_reconnect_flag{ false };
+        std::atomic_bool m_enabled{ true };
+    };
+
     gdk_logger_t& websocket_boost_logger::m_log = gdk_logger::get();
 
     namespace {
@@ -189,7 +226,6 @@ namespace sdk {
             std::chrono::seconds m_elapsed{ 0s };
             std::chrono::seconds m_waiting{ 0s };
         };
-
 
         static nlohmann::json get_fees_as_json(const autobahn::wamp_event& event)
         {
@@ -391,7 +427,7 @@ namespace sdk {
         , m_io()
         , m_controller(m_io)
         , m_ping_timer(m_io)
-        , m_network_control()
+        , m_network_control(new network_control_context())
         , m_pool(DEFAULT_THREADPOOL_SIZE)
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
@@ -720,7 +756,7 @@ namespace sdk {
     {
         GDK_LOG_NAMED_SCOPE("try_reconnect");
 
-        if (!m_network_control.is_enabled()) {
+        if (!m_network_control->is_enabled()) {
             GDK_LOG_SEV(log_level::info) << "reconnect is disabled. backing off...";
             return;
         }
@@ -732,13 +768,13 @@ namespace sdk {
             return;
         }
 
-        if (!m_network_control.set_reconnect(true)) {
+        if (!m_network_control->set_reconnect(true)) {
             GDK_LOG_SEV(log_level::info) << "reconnect in progress. backing off...";
             return;
         }
 
         m_ping_timer.cancel();
-        m_network_control.reset();
+        m_network_control->reset();
 
         boost::asio::post(m_pool, [this] {
             const auto thread_id = std::this_thread::get_id();
@@ -753,7 +789,7 @@ namespace sdk {
                     { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } };
                 emit_notification("network", network_status);
 
-                if (!m_network_control.retrying(backoff_time)) {
+                if (!m_network_control->retrying(backoff_time)) {
                     GDK_LOG_SEV(log_level::info)
                         << "reconnect thread " << std::hex << thread_id << " exiting on request.";
                     break;
@@ -766,7 +802,7 @@ namespace sdk {
                 }
             }
 
-            m_network_control.set_reconnect(false);
+            m_network_control->set_reconnect(false);
 
             if (!is_connected()) {
                 start_ping_timer();
@@ -776,14 +812,14 @@ namespace sdk {
 
     void ga_session::stop_reconnect()
     {
-        if (m_network_control.reconnecting()) {
-            m_network_control.set_exit();
+        if (m_network_control->reconnecting()) {
+            m_network_control->set_exit();
         }
     }
 
     void ga_session::reconnect_hint(bool enable, bool restart)
     {
-        m_network_control.set_enabled(enable);
+        m_network_control->set_enabled(enable);
         if (restart) {
             stop_reconnect();
         }
