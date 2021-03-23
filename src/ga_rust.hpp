@@ -82,12 +82,12 @@ namespace sdk {
 
         void set_email(const std::string& email, const nlohmann::json& twofactor_data);
         void activate_email(const std::string& code);
-        void init_enable_twofactor(
+        nlohmann::json init_enable_twofactor(
             const std::string& method, const std::string& data, const nlohmann::json& twofactor_data);
         void enable_gauth(const std::string& code, const nlohmann::json& twofactor_data);
         void enable_twofactor(const std::string& method, const std::string& code);
         void disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data);
-        void auth_handler_request_code(
+        nlohmann::json auth_handler_request_code(
             const std::string& method, const std::string& action, const nlohmann::json& twofactor_data);
         std::string auth_handler_request_proxy_code(const std::string& action, const nlohmann::json& twofactor_data);
 

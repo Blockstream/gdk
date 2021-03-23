@@ -71,6 +71,7 @@ namespace sdk {
         nlohmann::json m_twofactor_data; // Actual data to send along with any call
         auth_handler::state_type m_state; // Current state
         uint32_t m_attempts_remaining;
+        nlohmann::json m_auth_data;
 
     private:
         void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);

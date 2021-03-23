@@ -556,12 +556,12 @@ namespace sdk {
         });
     }
 
-    void session::init_enable_twofactor(
+    nlohmann::json session::init_enable_twofactor(
         const std::string& method, const std::string& data, const nlohmann::json& twofactor_data)
     {
-        exception_wrapper([&] {
+        return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->init_enable_twofactor(method, data, twofactor_data);
+            return p->init_enable_twofactor(method, data, twofactor_data);
         });
     }
 
@@ -589,12 +589,12 @@ namespace sdk {
         });
     }
 
-    void session::auth_handler_request_code(
+    nlohmann::json session::auth_handler_request_code(
         const std::string& method, const std::string& action, const nlohmann::json& twofactor_data)
     {
-        exception_wrapper([&] {
+        return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->auth_handler_request_code(method, action, twofactor_data);
+            return p->auth_handler_request_code(method, action, twofactor_data);
         });
     }
 
