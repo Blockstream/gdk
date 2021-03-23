@@ -78,6 +78,7 @@ namespace sdk {
         std::string m_error; // Error details if any
         nlohmann::json m_result; // Result of any successful action
         nlohmann::json m_twofactor_data; // Actual data to send along with any call
+        nlohmann::json m_auth_data;
         auth_handler::state_type m_state; // Current state
         uint32_t m_attempts_remaining;
         bool m_is_hw_action;

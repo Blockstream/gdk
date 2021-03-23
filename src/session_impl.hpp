@@ -99,13 +99,13 @@ namespace sdk {
 
         virtual void set_email(const std::string& email, const nlohmann::json& twofactor_data) = 0;
         virtual void activate_email(const std::string& code) = 0;
-        virtual void init_enable_twofactor(
+        virtual nlohmann::json init_enable_twofactor(
             const std::string& method, const std::string& data, const nlohmann::json& twofactor_data)
             = 0;
         virtual void enable_gauth(const std::string& code, const nlohmann::json& twofactor_data) = 0;
         virtual void enable_twofactor(const std::string& method, const std::string& code) = 0;
         virtual void disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data) = 0;
-        virtual void auth_handler_request_code(
+        virtual nlohmann::json auth_handler_request_code(
             const std::string& method, const std::string& action, const nlohmann::json& twofactor_data)
             = 0;
         virtual std::string auth_handler_request_proxy_code(

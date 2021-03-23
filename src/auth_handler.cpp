@@ -100,7 +100,7 @@ namespace sdk {
 
         // For gauth request code is a no-op
         if (method != "gauth") {
-            m_session.auth_handler_request_code(method, m_action, m_twofactor_data);
+            m_auth_data = m_session.auth_handler_request_code(method, m_action, m_twofactor_data);
         }
 
         m_method = method;
@@ -187,6 +187,7 @@ namespace sdk {
             } else {
                 // Caller should resolve the code the user has entered
                 status["method"] = m_method;
+                status["auth_data"] = m_auth_data;
                 if (m_method != "gauth") {
                     status["attempts_remaining"] = m_attempts_remaining;
                 }
