@@ -164,6 +164,10 @@ namespace sdk {
                 details = remap_ga_server_error(details);
                 set_error(details.second.empty() ? e.what() : details.second);
             }
+        } catch (const user_error& e) {
+            // Just set the undecorated error string as it should be an id for a
+            // translatable string resource, displayed as appropriate by the client.
+            set_error(e.what());
         } catch (const std::exception& e) {
             set_error(m_action + std::string(" exception:") + e.what());
         }
