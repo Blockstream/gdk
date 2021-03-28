@@ -188,8 +188,16 @@ namespace sdk {
         }
     }
 
-    session::session() = default;
-    session::~session() = default;
+    session::session()
+    {
+        // Expanded for debugging purposes
+    }
+
+    session::~session()
+    {
+        // Expanded for debugging purposes
+        disconnect();
+    }
 
     void session::reconnect()
     {
