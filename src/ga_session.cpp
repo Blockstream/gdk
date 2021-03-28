@@ -616,17 +616,15 @@ namespace sdk {
 
     void ga_session::disconnect_transport() const
     {
-        if (!m_transport) {
-            return;
+        if (m_transport) {
+            no_std_exception_escape([&] {
+                const auto status = m_transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                if (status != boost::future_status::ready) {
+                    GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
+                }
+            });
+            no_std_exception_escape([&] { m_transport->detach(); });
         }
-
-        no_std_exception_escape([&] {
-            const auto status = m_transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
-            if (status != boost::future_status::ready) {
-                GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
-            }
-        });
-        no_std_exception_escape([&] { m_transport->detach(); });
     }
 
     bool ga_session::ping() const
@@ -882,18 +880,20 @@ namespace sdk {
 
         m_ping_timer.cancel();
 
-        no_std_exception_escape([this] {
-            const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
-            if (status != boost::future_status::ready) {
-                GDK_LOG_SEV(log_level::info) << "future not ready on leave session";
-            }
-        });
-        no_std_exception_escape([this] {
-            const auto status = m_session->stop().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
-            if (status != boost::future_status::ready) {
-                GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
-            }
-        });
+        if (m_session) {
+            no_std_exception_escape([this] {
+                const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                if (status != boost::future_status::ready) {
+                    GDK_LOG_SEV(log_level::info) << "future not ready on leave session";
+                }
+            });
+            no_std_exception_escape([this] {
+                const auto status = m_session->stop().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                if (status != boost::future_status::ready) {
+                    GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
+                }
+            });
+        }
         disconnect_transport();
     }
 
