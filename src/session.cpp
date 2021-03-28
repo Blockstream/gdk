@@ -127,7 +127,7 @@ namespace sdk {
             auto impl = get_impl();
             GDK_RUNTIME_ASSERT_MSG(!impl, "session already connected");
 
-            boost::shared_ptr<session_common> session;
+            session_ptr session_p;
             const auto list = ga::sdk::network_parameters::get_all();
             const auto network_name = net_params.value("name", "");
 
@@ -148,31 +148,40 @@ namespace sdk {
 
             GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
             if (network.value("server_type", "") == "green") {
-                session = boost::make_shared<ga_session>(network);
+                session_p = boost::make_shared<ga_session>(network);
 #ifdef BUILD_GDK_RUST
             } else if (network.value("server_type", "") == "electrum") {
                 GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
                 network["state_dir"] = std::string(gdk_config().at("datadir")) + "/state";
-                session = boost::make_shared<ga_rust>(network);
+                session_p = boost::make_shared<ga_rust>(network);
 #endif
             } else {
                 GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
             }
 
-            GDK_RUNTIME_ASSERT(session != nullptr);
-            session->set_ping_fail_handler([this] {
-                GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
-                reconnect();
+            GDK_RUNTIME_ASSERT(session_p != nullptr);
+            boost::weak_ptr<session_common> weak_session = session_p;
+            session_p->set_ping_fail_handler([weak_session] {
+                if (auto p = weak_session.lock()) {
+                    GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
+                    p->try_reconnect();
+                } else {
+                    GDK_LOG_SEV(log_level::info) << "ping failure ignored on dead session";
+                }
             });
-            session->set_heartbeat_timeout_handler([this](websocketpp::connection_hdl, const std::string&) {
-                GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
-                reconnect();
+            session_p->set_heartbeat_timeout_handler([weak_session](websocketpp::connection_hdl, const std::string&) {
+                if (auto p = weak_session.lock()) {
+                    GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
+                    p->try_reconnect();
+                } else {
+                    GDK_LOG_SEV(log_level::info) << "pong timeout ignored on dead session";
+                }
             });
-            session->set_notification_handler(m_notification_handler, m_notification_context);
+            session_p->set_notification_handler(m_notification_handler, m_notification_context);
 
-            session_ptr p;
-            GDK_RUNTIME_ASSERT_MSG(m_impl.compare_exchange_strong(p, session), "unable to allocate session");
-            session->connect();
+            session_ptr empty;
+            GDK_RUNTIME_ASSERT_MSG(m_impl.compare_exchange_strong(empty, session_p), "unable to allocate session");
+            session_p->connect();
         } catch (const std::exception& ex) {
             log_exception("exception on connect:", ex);
             std::rethrow_exception(std::current_exception());
