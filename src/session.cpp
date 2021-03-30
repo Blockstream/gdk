@@ -997,8 +997,13 @@ namespace sdk {
     nlohmann::json session::convert_amount(const nlohmann::json& amount_json)
     {
         return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->convert_amount(amount_json);
+            auto p = get_impl();
+            if (p) {
+                return p->convert_amount(amount_json);
+            }
+            // The session is not connected. Conversion to fiat will
+            // be attempted using any provided fallback fiat values.
+            return amount::convert(amount_json, std::string(), std::string());
         });
     }
 
