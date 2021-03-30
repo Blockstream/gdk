@@ -27,7 +27,7 @@ namespace sdk {
         static const conversion_type COIN_VALUE_DECIMAL_MBTC("100000");
         static const conversion_type COIN_VALUE_DECIMAL_UBTC("100");
         static const std::vector<std::string> NON_SATOSHI_KEYS{ "btc", "mbtc", "ubtc", "bits", "sats", "fiat",
-            "fiat_currency", "fiat_rate" };
+            "fiat_currency", "fiat_rate", "is_current" };
 
         template <typename T> static std::string fmt(const T& fiat, size_t dp = 2)
         {
@@ -63,8 +63,17 @@ namespace sdk {
             throw user_error(res::id_no_amount_specified);
         }
 
-        const conversion_type COIN_VALUE_WITH_PRECISION(std::pow(10, precision));
+        // If either the fiat rate or currency is not available, use any provided values
+        // from the amount json instead and indicate that the conversion is out of date
+        const std::string old_fiat_rate = amount_json.value("fiat_rate", std::string());
+        const std::string& fiat_rate_used(fiat_rate.empty() ? old_fiat_rate : fiat_rate);
 
+        const std::string old_fiat_ccy = amount_json.value("fiat_currency", std::string());
+        const std::string& fiat_ccy_used(fiat_currency.empty() ? old_fiat_ccy : fiat_currency);
+
+        const bool is_current = !fiat_rate.empty() && !fiat_currency.empty();
+
+        const conversion_type COIN_VALUE_WITH_PRECISION(std::pow(10, precision));
         int64_t satoshi;
 
         // Compute satoshi from our input
@@ -86,11 +95,11 @@ namespace sdk {
             const std::string asset_str = *asset_p;
             satoshi = (conversion_type(asset_str) * COIN_VALUE_WITH_PRECISION).convert_to<value_type>();
         } else {
-            if (fiat_rate.empty()) {
+            if (fiat_rate_used.empty()) {
                 throw user_error(res::id_your_favourite_exchange_rate_is);
             }
             const std::string fiat_str = *fiat_p;
-            const conversion_type btc_decimal = conversion_type(fiat_str) / conversion_type(fiat_rate);
+            const conversion_type btc_decimal = conversion_type(fiat_str) / conversion_type(fiat_rate_used);
             satoshi = (btc_type(btc_decimal) * COIN_VALUE_DECIMAL).convert_to<value_type>();
         }
         if (satoshi < 0) {
@@ -110,13 +119,14 @@ namespace sdk {
         const std::string ubtc = fmt(btc_type(satoshi_conv / COIN_VALUE_DECIMAL_UBTC), 2);
         const std::string sats = std::to_string(satoshi);
 
-        nlohmann::json result
-            = { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc }, { "bits", ubtc },
-                  { "sats", sats }, { "fiat", nullptr }, { "fiat_currency", fiat_currency }, { "fiat_rate", nullptr } };
+        nlohmann::json result = { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc },
+            { "bits", ubtc }, { "sats", sats }, { "fiat", nullptr }, { "fiat_currency", fiat_ccy_used },
+            { "fiat_rate", nullptr }, { "is_current", is_current } };
 
-        if (!fiat_rate.empty()) {
-            result["fiat_rate"] = fiat_rate;
-            result["fiat"] = fmt(fiat_type(conversion_type(fiat_rate) * conversion_type(satoshi) / COIN_VALUE_DECIMAL));
+        if (!fiat_rate_used.empty()) {
+            result["fiat_rate"] = fiat_rate_used;
+            result["fiat"]
+                = fmt(fiat_type(conversion_type(fiat_rate_used) * conversion_type(satoshi) / COIN_VALUE_DECIMAL));
         }
 
         if (have_asset_info) {
