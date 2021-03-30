@@ -395,8 +395,8 @@ GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** cu
  * Convert Fiat to BTC and vice-versa.
  *
  * :param session: The session to use.
- * :param value_details: :ref:`convert` giving the value to convert.
- * :param output: Destination for the converted values :ref:`balance-data`.
+ * :param value_details: :ref:`convert-amount` giving the value to convert.
+ * :param output: Destination for the converted values :ref:`amount-data`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_details, GA_json** output);

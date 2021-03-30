@@ -1093,10 +1093,17 @@ Reconnect hint JSON
    { "tor_sleep_hint" : "sleep" }
 
 
-.. _convert:
 
-Convert data JSON
+.. _convert-amount:
+
+Convert Amount JSON
 -----------------
+
+Amounts to convert are passed with a single key containing the unit value
+to convert, returning all possible conversion values for that value.
+See :ref:`amount-data` for the list of unit values available.
+
+For example, to convert satoshi into all available units:
 
 .. code-block:: json
 
@@ -1104,12 +1111,28 @@ Convert data JSON
     "satoshi": 1120
   }
 
+If `"fiat_currency"` and `"fiat_rate"` members are provided, the fiat
+conversion will fall back on these values if no fiat rates are available.
+Callers can check the `"is_current"` member in the result :ref:`amount-data`
+to determine if the fall back values were used.
+
+For example, to convert bits into all available units, with a fiat
+conversion fallback:
+
+.. code-block:: json
+
+  {
+    "bits": "20344.69",
+    "fiat_currency": "USD",
+    "fiat_rate": "42161.22"
+  }
 
 
-.. _balance-data:
 
-Balance data JSON
------------------
+.. _amount-data:
+
+Amount JSON
+-----------
 
 .. code-block:: json
 
@@ -1124,8 +1147,12 @@ Balance data JSON
     "sats": "2034469",
     "subaccount": 0,
     "ubtc": "20344.69"
+    "is_current": true
   }
 
+:fiat_currency: Set to the users fiat currency if available, otherwise an empty string.
+:fiat_rate: Set to the users fiat exchange rate if available, otherwise `null`.
+:is_current: `true` if the `"fiat_currency"` and `"fiat_rate"` members are current.
 
 
 .. _currencies:
