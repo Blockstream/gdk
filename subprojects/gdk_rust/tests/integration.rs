@@ -1,6 +1,6 @@
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, RefreshAssets, RenameAccountOpt,
-    SPVVerifyResult,
+    AccountSettings, AddressAmount, CreateAccountOpt, CreateTransaction, RefreshAssets,
+    RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -144,15 +144,31 @@ fn subaccounts() {
         })
         .unwrap();
     assert_eq!(account1.account_num, 1);
-    assert_eq!(account1.name, "Account 1");
+    assert_eq!(account1.settings.name, "Account 1");
     assert_eq!(account1.script_type, ScriptType::P2wpkh);
+    assert_eq!(account1.settings.hidden, false);
     assert_eq!(account2.account_num, 2);
-    assert_eq!(account2.name, "Account 2");
+    assert_eq!(account2.settings.name, "Account 2");
     assert_eq!(account2.script_type, ScriptType::P2pkh);
+    assert_eq!(account2.settings.hidden, false);
     assert_eq!(test_session.session.get_subaccount(1, 0).unwrap().script_type, ScriptType::P2wpkh);
-    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2");
+    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().settings.name, "Account 2");
 
-    // Rename subaccount
+    // Update subaccount settings
+    test_session
+        .session
+        .update_subaccount(UpdateAccountOpt {
+            subaccount: 2,
+            hidden: Some(true),
+            ..Default::default()
+        })
+        .unwrap();
+    let acc2 = test_session.session.get_subaccount(2, 0).unwrap();
+    assert_eq!(acc2.settings.hidden, true);
+    // update_subaccount should not affect unspecified fields
+    assert_eq!(acc2.settings.name, "Account 2");
+
+    // Rename subaccount (deprecated in favor of update_subaccount)
     test_session
         .session
         .rename_subaccount(RenameAccountOpt {
@@ -160,7 +176,7 @@ fn subaccounts() {
             new_name: "Account 2@".into(),
         })
         .unwrap();
-    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().name, "Account 2@");
+    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().settings.name, "Account 2@");
 
     // Get addresses & check they match the expected types
     let acc0_address = test_session.get_receive_address(0);

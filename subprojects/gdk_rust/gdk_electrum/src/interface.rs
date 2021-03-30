@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
     AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetTransactionsOpt,
-    GetUnspentOpt, Settings, TransactionMeta,
+    GetUnspentOpt, Settings, TransactionMeta, UpdateAccountOpt,
 };
 use gdk_common::network::Network;
 use gdk_common::wally::*;
@@ -147,6 +147,10 @@ impl WalletCtx {
 
     pub fn rename_account(&mut self, account_num: u32, new_name: &str) -> Result<(), Error> {
         self.get_account(account_num)?.set_name(new_name)
+    }
+
+    pub fn update_account(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
+        self.get_account(opt.subaccount)?.set_settings(opt)
     }
 
     pub fn recover_accounts(&mut self, electrum_url: &ElectrumUrl) -> Result<(), Error> {

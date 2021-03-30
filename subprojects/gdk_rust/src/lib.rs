@@ -24,6 +24,7 @@ use std::time::{Duration, SystemTime};
 
 use gdk_common::model::{
     CreateAccountOpt, GDKRUST_json, GetTransactionsOpt, RenameAccountOpt, SPVVerifyTx,
+    UpdateAccountOpt,
 };
 use gdk_common::session::Session;
 
@@ -387,6 +388,10 @@ where
         "rename_subaccount" => {
             let opt: RenameAccountOpt = serde_json::from_value(input.clone())?;
             session.rename_subaccount(opt).map(|_| json!(true)).map_err(Into::into)
+        }
+        "update_subaccount" => {
+            let opt: UpdateAccountOpt = serde_json::from_value(input.clone())?;
+            session.update_subaccount(opt).map(|_| json!(true)).map_err(Into::into)
         }
 
         "get_transactions" => {

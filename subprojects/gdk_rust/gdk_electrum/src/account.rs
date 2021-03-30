@@ -22,7 +22,7 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
-    SPVVerifyResult, TransactionMeta,
+    SPVVerifyResult, TransactionMeta, UpdateAccountOpt,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::wally::{
@@ -94,21 +94,36 @@ impl Account {
     }
 
     pub fn info(&self, num_confs: u32) -> Result<AccountInfo, Error> {
-        let name = self.store.read()?.get_account_name(self.account_num).cloned();
+        let settings = self.store.read()?.get_account_settings(self.account_num).cloned();
 
         Ok(AccountInfo {
             account_num: self.account_num,
             script_type: self.script_type,
-            name: name.unwrap_or("Single sig wallet".into()),
+            settings: settings.unwrap_or_default(),
             has_transactions: self.has_transactions(),
             satoshi: self.balance(num_confs)?,
         })
     }
 
-    pub fn set_name(&self, name: &str) -> Result<(), Error> {
+    pub fn set_settings(&self, opt: UpdateAccountOpt) -> Result<(), Error> {
         let mut store_write = self.store.write()?;
-        store_write.set_account_name(self.account_num, name.to_string());
+        let mut settings =
+            store_write.get_account_settings(self.account_num).cloned().unwrap_or_default();
+        if let Some(name) = opt.name {
+            settings.name = name;
+        }
+        if let Some(hidden) = opt.hidden {
+            settings.hidden = hidden;
+        }
+        store_write.set_account_settings(self.account_num, settings);
         Ok(())
+    }
+
+    pub fn set_name(&self, name: &str) -> Result<(), Error> {
+        self.set_settings(UpdateAccountOpt {
+            name: Some(name.into()),
+            ..Default::default()
+        })
     }
 
     pub fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {

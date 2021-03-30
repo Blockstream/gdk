@@ -7,7 +7,7 @@ use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use bitcoin::Transaction;
 use gdk_common::be::{BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactions, BETxid};
 use gdk_common::be::{BETxidConvert, Unblinded};
-use gdk_common::model::{FeeEstimate, SPVVerifyResult, Settings};
+use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::NetworkId;
 use log::{info, warn};
 use rand::{thread_rng, Rng};
@@ -84,11 +84,12 @@ pub struct RawStore {
     /// wallet settings
     settings: Option<Settings>,
 
-    /// account names
-    account_names: HashMap<u32, String>,
-
     /// transaction memos (account_num -> txid -> memo)
     memos: HashMap<bitcoin::Txid, String>,
+
+    // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility.
+    /// account settings
+    accounts_settings: Option<HashMap<u32, AccountSettings>>,
 }
 
 pub struct StoreMeta {
@@ -184,13 +185,14 @@ impl StoreMeta {
         let key = GenericArray::from_slice(&key_bytes);
         let cipher = Aes256GcmSiv::new(&key);
         let mut cache = RawCache::new(path.as_ref(), &cipher);
-        let store = RawStore::new(path.as_ref(), &cipher);
+        let mut store = RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
 
         cache.accounts.entry(0).or_default();
+        store.accounts_settings.get_or_insert_with(|| Default::default());
 
         Ok(StoreMeta {
             cache,
@@ -344,12 +346,22 @@ impl StoreMeta {
         self.store.settings.clone()
     }
 
-    pub fn get_account_name(&self, account_num: u32) -> Option<&String> {
-        self.store.account_names.get(&account_num)
+    pub fn get_accounts_settings(&self) -> &HashMap<u32, AccountSettings> {
+        // This field is an Option to retain backwards compatibility with the db serialization,
+        // but is guaranteed to be initialized as a Some (via StoreMeta::new).
+        self.store.accounts_settings.as_ref().expect("set during initialization")
     }
 
-    pub fn set_account_name(&mut self, account_num: u32, name: String) {
-        self.store.account_names.insert(account_num, name);
+    pub fn get_account_settings(&self, account_num: u32) -> Option<&AccountSettings> {
+        self.get_accounts_settings().get(&account_num)
+    }
+
+    pub fn get_account_name(&self, account_num: u32) -> Option<&String> {
+        self.get_account_settings(account_num).map(|s| &s.name)
+    }
+
+    pub fn set_account_settings(&mut self, account_num: u32, settings: AccountSettings) {
+        self.store.accounts_settings.as_mut().unwrap().insert(account_num, settings);
     }
 
     pub fn spv_verification_status(&self, account_num: u32, txid: &BETxid) -> SPVVerifyResult {
@@ -396,7 +408,6 @@ impl RawAccountCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::hashes::hex::FromHex;
     use bitcoin::util::bip32::ExtendedPubKey;
     use bitcoin::Network;
     use gdk_common::{be::BETxid, NetworkId};
@@ -426,5 +437,36 @@ mod tests {
         let store = StoreMeta::new(&dir, xpub, id).unwrap();
         let acc_cache = store.account_cache(0).unwrap();
         assert_eq!(acc_cache.heights.get(&txid), Some(&Some(1)));
+    }
+
+    #[test]
+    fn test_db_upgrade() {
+        #[derive(Serialize, Deserialize)]
+        struct RawStoreV0 {
+            settings: Option<Settings>,
+            memos: HashMap<bitcoin::Txid, String>,
+        }
+
+        type RawStoreV1 = RawStore;
+
+        let store_v0 = RawStoreV0 {
+            settings: Some(Settings::default()),
+            memos: {
+                let mut memos = HashMap::new();
+                memos.insert(bitcoin::Txid::default(), "Foobar".into());
+                memos
+            },
+        };
+
+        let blob = serde_cbor::to_vec(&store_v0).unwrap();
+        let store_v1: RawStoreV1 = serde_cbor::from_slice(&blob).unwrap();
+
+        assert_eq!(store_v0.settings, store_v1.settings);
+        assert_eq!(store_v0.memos, store_v1.memos);
+
+        let blob = serde_cbor::to_vec(&store_v1).unwrap();
+        let store_v0: RawStoreV0 = serde_cbor::from_slice(&blob).unwrap();
+        assert_eq!(store_v0.settings, store_v1.settings);
+        assert_eq!(store_v0.memos, store_v1.memos);
     }
 }

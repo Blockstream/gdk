@@ -629,6 +629,10 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet_mut()?.rename_account(opt.subaccount, &opt.new_name)
     }
 
+    fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
+        self.get_wallet_mut()?.update_account(opt)
+    }
+
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
         let txs = self.get_wallet()?.list_tx(opt)?.iter().map(make_txlist_item).collect();
 

@@ -315,7 +315,8 @@ pub struct AccountInfo {
     pub account_num: u32,
     #[serde(rename = "type")]
     pub script_type: ScriptType,
-    pub name: String,
+    #[serde(flatten)]
+    pub settings: AccountSettings,
     pub has_transactions: bool,
     pub satoshi: Balances,
 }
@@ -354,6 +355,19 @@ pub struct Settings {
     pub altimeout: u32,
     pub pricing: Pricing,
     pub sound: bool,
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+pub struct AccountSettings {
+    pub name: String,
+    pub hidden: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct UpdateAccountOpt {
+    pub subaccount: u32,
+    pub name: Option<String>,
+    pub hidden: Option<bool>,
 }
 
 /// {"icons":true,"assets":false,"refresh":false}
