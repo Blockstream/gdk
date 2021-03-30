@@ -50,7 +50,7 @@ namespace sdk {
         const auto bits_p = amount_json.find("bits");
         const auto sats_p = amount_json.find("sats");
         const auto fiat_p = amount_json.find("fiat");
-        const auto asset_info_p = amount_json.find("asset_info");
+        const bool have_asset_info = amount_json.contains("asset_info");
         const auto asset_json = amount_json.value("asset_info", nlohmann::json::object());
         const auto precision = asset_json.value("precision", 0);
         const auto asset_id = asset_json.value("asset_id", "");
@@ -58,10 +58,10 @@ namespace sdk {
         const auto end_p = amount_json.end();
         const int key_count = (satoshi_p != end_p) + (btc_p != end_p) + (mbtc_p != end_p) + (ubtc_p != end_p)
             + (bits_p != end_p) + (sats_p != end_p) + (fiat_p != end_p) + (asset_p != end_p);
+
         if (key_count != 1) {
             throw user_error(res::id_no_amount_specified);
         }
-        GDK_RUNTIME_ASSERT(key_count == 1);
 
         const conversion_type COIN_VALUE_WITH_PRECISION(std::pow(10, precision));
 
@@ -86,17 +86,21 @@ namespace sdk {
             const std::string asset_str = *asset_p;
             satoshi = (conversion_type(asset_str) * COIN_VALUE_WITH_PRECISION).convert_to<value_type>();
         } else {
-            GDK_RUNTIME_ASSERT_MSG(!fiat_rate.empty(), "Cannot convert fiat, no rate available");
+            if (fiat_rate.empty()) {
+                throw user_error(res::id_your_favourite_exchange_rate_is);
+            }
             const std::string fiat_str = *fiat_p;
             const conversion_type btc_decimal = conversion_type(fiat_str) / conversion_type(fiat_rate);
             satoshi = (btc_type(btc_decimal) * COIN_VALUE_DECIMAL).convert_to<value_type>();
         }
-        GDK_RUNTIME_ASSERT_MSG(satoshi >= 0, "amount cannot be negative");
+        if (satoshi < 0) {
+            throw user_error(res::id_invalid_amount);
+        }
 
         // Check upper limit for btc type (ie. non-asset) inputs
         // Note: an asset_info block indicating btc denomination would have failed key_count check above
-        if (asset_p == end_p) {
-            GDK_RUNTIME_ASSERT_MSG(satoshi <= SATOSHI_MAX, "amount cannot exceed maximum number of bitcoins");
+        if (asset_p == end_p && satoshi > SATOSHI_MAX) {
+            throw user_error(res::id_invalid_amount);
         }
 
         // Then compute the other denominations and fiat amount
@@ -106,7 +110,6 @@ namespace sdk {
         const std::string ubtc = fmt(btc_type(satoshi_conv / COIN_VALUE_DECIMAL_UBTC), 2);
         const std::string sats = std::to_string(satoshi);
 
-        // TODO: If the server returned the ISO country code, the caller could do locale aware formatting
         nlohmann::json result
             = { { "satoshi", satoshi }, { "btc", btc }, { "mbtc", mbtc }, { "ubtc", ubtc }, { "bits", ubtc },
                   { "sats", sats }, { "fiat", nullptr }, { "fiat_currency", fiat_currency }, { "fiat_rate", nullptr } };
@@ -116,9 +119,12 @@ namespace sdk {
             result["fiat"] = fmt(fiat_type(conversion_type(fiat_rate) * conversion_type(satoshi) / COIN_VALUE_DECIMAL));
         }
 
-        if (asset_info_p != end_p) {
-            result.emplace(
-                asset_id, precision == 0 ? sats : fmt(btc_type(satoshi_conv / COIN_VALUE_WITH_PRECISION), precision));
+        if (have_asset_info) {
+            if (precision == 0) {
+                result[asset_id] = sats;
+            } else {
+                result[asset_id] = fmt(btc_type(satoshi_conv / COIN_VALUE_WITH_PRECISION), precision);
+            }
         }
         return result;
     }
