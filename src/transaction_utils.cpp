@@ -346,6 +346,9 @@ namespace sdk {
         amount satoshi;
         try {
             satoshi = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
+        } catch (const user_error& ex) {
+            // Note the error, and create a 0 satoshi output
+            result["error"] = ex.what();
         } catch (const std::exception&) {
             // Note the error, and create a 0 satoshi output
             result["error"] = res::id_invalid_amount;
