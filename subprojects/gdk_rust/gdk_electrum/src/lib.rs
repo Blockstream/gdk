@@ -254,7 +254,12 @@ fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
     Ok(estimates)
 }
 
-fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
+pub fn make_txlist_item(
+    tx: &TransactionMeta,
+    all_txs: &BETransactions,
+    all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    network_id: NetworkId,
+) -> TxListItem {
     let type_ = tx.type_.clone();
     let fee_rate = (tx.fee as f64 / tx.weight as f64 * 4000.0) as u64;
     let addressees = tx
@@ -267,6 +272,48 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         .collect();
     let can_rbf =
         tx.height.is_none() && tx.rbf_optin && type_ != "incoming" && type_ != "unblindable";
+
+    let transaction = BETransaction::from_hex(&tx.hex, network_id).expect("inconsistent network");
+    let inputs = transaction
+        .previous_outputs()
+        .iter()
+        .enumerate()
+        .map(|(vin, i)| {
+            let mut a = AddressIO::default();
+            a.pt_idx = vin as u32;
+            a.satoshi = all_txs.get_previous_output_value(i, all_unblinded).unwrap_or_default();
+            if let BEOutPoint::Elements(outpoint) = i {
+                a.asset_id = all_txs
+                    .get_previous_output_asset(*outpoint, all_unblinded)
+                    .map_or("".to_string(), |a| a.to_hex());
+                a.assetblinder = all_txs
+                    .get_previous_output_assetblinder_hex(*outpoint, all_unblinded)
+                    .unwrap_or_default();
+                a.amountblinder = all_txs
+                    .get_previous_output_amountblinder_hex(*outpoint, all_unblinded)
+                    .unwrap_or_default();
+            }
+            a
+        })
+        .collect();
+
+    let outputs = (0..transaction.output_len() as u32)
+        .map(|vout| {
+            let mut a = AddressIO::default();
+            a.pt_idx = vout;
+            a.satoshi = transaction.output_value(vout, all_unblinded).unwrap_or_default();
+            if let BETransaction::Elements(_) = transaction {
+                a.asset_id = transaction
+                    .output_asset(vout, all_unblinded)
+                    .map_or("".to_string(), |a| a.to_hex());
+                a.assetblinder =
+                    transaction.output_assetblinder_hex(vout, all_unblinded).unwrap_or_default();
+                a.amountblinder =
+                    transaction.output_amountblinder_hex(vout, all_unblinded).unwrap_or_default();
+            }
+            a
+        })
+        .collect();
 
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
@@ -286,9 +333,9 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         instant: false,
         fee: tx.fee,
         fee_rate,
-        addressees,      // notice the extra "e" -- its intentional
-        inputs: vec![],  // tx.input.iter().map(format_gdk_input).collect(),
-        outputs: vec![], //tx.output.iter().map(format_gdk_output).collect(),
+        addressees, // notice the extra "e" -- its intentional
+        inputs,
+        outputs,
         transaction_size: tx.size,
         transaction_vsize: tx.vsize,
         transaction_weight: tx.weight,
@@ -697,8 +744,17 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
-        let txs = self.get_wallet()?.list_tx(opt)?.iter().map(make_txlist_item).collect();
-
+        let wallet = self.get_wallet()?;
+        let store = wallet.store.read()?;
+        let acc_store = store.account_cache(opt.subaccount)?;
+        let txs = self
+            .get_wallet()?
+            .list_tx(opt)?
+            .iter()
+            .map(|tx| {
+                make_txlist_item(tx, &acc_store.all_txs, &acc_store.unblinded, self.network.id())
+            })
+            .collect();
         Ok(TxsResult(txs))
     }
 
