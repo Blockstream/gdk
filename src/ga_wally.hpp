@@ -204,6 +204,8 @@ namespace sdk {
 
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58);
 
+    std::vector<unsigned char> base64_to_bytes(const std::string& base64);
+
     //
     // Signing/Encryption
     //
