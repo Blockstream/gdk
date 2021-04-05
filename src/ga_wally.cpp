@@ -450,6 +450,17 @@ namespace sdk {
         return ret;
     }
 
+    std::vector<unsigned char> base64_to_bytes(const std::string& base64)
+    {
+        size_t written;
+        GDK_VERIFY(wally_base64_get_maximum_length(base64.data(), 0, &written));
+        std::vector<unsigned char> ret(written);
+        GDK_VERIFY(wally_base64_to_bytes(base64.data(), 0, &ret[0], ret.size(), &written));
+        GDK_RUNTIME_ASSERT(written <= ret.size());
+        ret.resize(written);
+        return ret;
+    }
+
     //
     // Signing/Encryption
     //
