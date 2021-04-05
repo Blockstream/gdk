@@ -327,6 +327,11 @@ namespace sdk {
     {
         char* s;
         GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, data.data(), data.size(), &s));
+        if (::bip39_mnemonic_validate(nullptr, s) != GA_OK) {
+            wally_free_string(s);
+            // This should only be possible with bad hardware/cosmic rays
+            GDK_RUNTIME_ASSERT_MSG(false, "Mnemonic creation failed!");
+        }
         return make_string(s);
     }
 

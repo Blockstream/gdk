@@ -555,6 +555,12 @@ template <std::size_t N> int generate_mnemonic(char** output)
         GDK_RUNTIME_ASSERT(output);
         auto entropy = ga::sdk::get_random_bytes<N>();
         GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
+        if (::bip39_mnemonic_validate(nullptr, *output) != GA_OK) {
+            wally_free_string(*output);
+            *output = nullptr;
+            // This should only be possible with bad hardware/cosmic rays
+            GDK_RUNTIME_ASSERT_MSG(false, "Mnemonic creation failed!");
+        }
         wally_bzero(entropy.data(), entropy.size());
         return GA_OK;
     } catch (const std::exception& e) {
