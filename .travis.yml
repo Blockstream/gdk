@@ -4,7 +4,7 @@ addons:
   homebrew:
     update: true
     packages:
-      - autoconf
+      - autoconf@2.13
       - gnu-getopt
       - gnu-sed
       - gnu-tar
