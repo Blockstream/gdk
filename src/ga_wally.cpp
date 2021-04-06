@@ -6,14 +6,6 @@
 namespace ga {
 namespace sdk {
 
-    namespace {
-        struct string_dtor {
-            void operator()(char* p) { wally_free_string(p); }
-        };
-        inline std::string make_string(char* p) { return std::string(std::unique_ptr<char, string_dtor>(p).get()); }
-
-    } // namespace
-
     std::array<unsigned char, HASH160_LEN> hash160(byte_span_t data)
     {
         std::array<unsigned char, HASH160_LEN> ret;
@@ -443,6 +435,19 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(written <= ret.size());
         ret.resize(written);
         return ret;
+    }
+
+    wally_string_ptr base64_string_from_bytes(byte_span_t bytes)
+    {
+        char* output = nullptr;
+        GDK_VERIFY(wally_base64_from_bytes(bytes.data(), bytes.size(), 0, &output));
+        return wally_string_ptr(output);
+    }
+
+    std::string base64_from_bytes(byte_span_t bytes)
+    {
+        auto ret = base64_string_from_bytes(bytes);
+        return std::string(ret.get());
     }
 
     std::vector<unsigned char> base64_to_bytes(const std::string& base64)

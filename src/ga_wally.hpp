@@ -61,6 +61,12 @@ namespace sdk {
     using cvalue_t = std::array<unsigned char, WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN>;
     using blinding_key_t = std::array<unsigned char, HMAC_SHA512_LEN>;
 
+    struct wally_string_dtor {
+        void operator()(char* p) { wally_free_string(p); }
+    };
+    using wally_string_ptr = std::unique_ptr<char, wally_string_dtor>;
+    inline std::string make_string(char* p) { return std::string(wally_string_ptr(p).get()); }
+
 #ifdef __GNUC__
 #define GA_USE_RESULT __attribute__((warn_unused_result))
 #else
@@ -203,6 +209,10 @@ namespace sdk {
     std::string base58check_from_bytes(byte_span_t data);
 
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58);
+
+    wally_string_ptr base64_string_from_bytes(byte_span_t bytes);
+
+    std::string base64_from_bytes(byte_span_t bytes);
 
     std::vector<unsigned char> base64_to_bytes(const std::string& base64);
 
