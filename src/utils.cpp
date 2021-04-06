@@ -33,7 +33,6 @@
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
 #include "bcrypt.h"
 #endif
-#include <websocketpp/base64/base64.hpp>
 
 namespace ga {
 namespace sdk {
@@ -427,8 +426,6 @@ namespace sdk {
             throw user_error(res::id_signature_validation_failed_if);
         }
     }
-
-    std::string base64_from_bytes(byte_span_t bytes) { return websocketpp::base64_encode(bytes.data(), bytes.size()); }
 
     std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes)
     {

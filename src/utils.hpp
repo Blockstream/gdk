@@ -98,10 +98,6 @@ namespace sdk {
     size_t aes_gcm_encrypt_get_length(byte_span_t plaintext);
     size_t aes_gcm_encrypt(byte_span_t key, byte_span_t plaintext, gsl::span<unsigned char> cyphertext);
 
-    // FIXME: Export base64 encode/decode from wally and use those functions
-    std::string base64_from_bytes(byte_span_t bytes);
-    std::vector<unsigned char> base64_to_bytes(const std::string& input);
-
     // Return prefix followed by compressed `bytes`
     std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes);
     // Return decompressed `bytes` (prefix is assumed removed by the caller)
