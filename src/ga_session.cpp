@@ -1767,9 +1767,10 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
-        const auto blob_b64{ base64_from_bytes(saved.first) };
+        auto blob_b64{ base64_string_from_bytes(saved.first) };
 
-        auto result = wamp_call(locker, "login.set_client_blob", blob_b64, 0, saved.second, old_hmac);
+        auto result = wamp_call(locker, "login.set_client_blob", blob_b64.get(), 0, saved.second, old_hmac);
+        blob_b64.reset();
         if (!wamp_cast<bool>(result)) {
             // Raced with another update on the server, caller should try again
             GDK_LOG_SEV(log_level::info) << "Save client blob race, retrying";
