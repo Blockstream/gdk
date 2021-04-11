@@ -277,7 +277,11 @@ namespace sdk {
 
     void ga_rust::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
-        throw std::runtime_error("rename_subaccount not implemented");
+        auto details = nlohmann::json{
+            { "subaccount", subaccount },
+            { "new_name", new_name },
+        };
+        call_session("rename_subaccount", details);
     }
 
     void ga_rust::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
