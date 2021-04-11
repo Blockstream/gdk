@@ -29,6 +29,7 @@ pub trait Session<E> {
     /// Deprecated in favor of update_subaccount
     fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), E>;
     fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), E>;
+    fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<(), E>;
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, E>;
     fn get_transaction_details(&self, txid: &str) -> Result<Value, E>;
     fn get_balance(&self, subaccount: u32, num_confs: u32) -> Result<Balances, E>;

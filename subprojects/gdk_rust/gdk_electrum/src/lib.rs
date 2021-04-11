@@ -650,7 +650,19 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), Error> {
-        self.get_wallet_mut()?.rename_account(opt.subaccount, &opt.new_name)
+        self.get_wallet_mut()?.update_account(UpdateAccountOpt {
+            subaccount: opt.subaccount,
+            name: Some(opt.new_name),
+            hidden: None,
+        })
+    }
+
+    fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<(), Error> {
+        self.get_wallet_mut()?.update_account(UpdateAccountOpt {
+            subaccount: opt.subaccount,
+            hidden: Some(opt.hidden),
+            name: None,
+        })
     }
 
     fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {

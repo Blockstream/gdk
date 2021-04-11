@@ -370,6 +370,12 @@ pub struct UpdateAccountOpt {
     pub hidden: Option<bool>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct SetAccountHiddenOpt {
+    pub subaccount: u32,
+    pub hidden: bool,
+}
+
 /// {"icons":true,"assets":false,"refresh":false}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RefreshAssets {

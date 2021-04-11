@@ -145,10 +145,6 @@ impl WalletCtx {
         Ok(account)
     }
 
-    pub fn rename_account(&mut self, account_num: u32, new_name: &str) -> Result<(), Error> {
-        self.get_account(account_num)?.set_name(new_name)
-    }
-
     pub fn update_account(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
         self.get_account(opt.subaccount)?.set_settings(opt)
     }
