@@ -129,6 +129,7 @@ install_headers(
 
 wally_headers = [
     join_paths(wallycore_incdir, 'wally_address.h'),
+    join_paths(wallycore_incdir, 'wally_anti_exfil.h'),
     join_paths(wallycore_incdir, 'wally_bip32.h'),
     join_paths(wallycore_incdir, 'wally_bip38.h'),
     join_paths(wallycore_incdir, 'wally_bip39.h'),
