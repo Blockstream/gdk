@@ -7,11 +7,11 @@ use bitcoin::{Address, Network, PublicKey, Script};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ScriptType {
-    #[serde(rename(serialize = "p2sh-p2wpkh"))]
+    #[serde(rename = "p2sh-p2wpkh")]
     P2shP2wpkh = 0,
-    #[serde(rename(serialize = "p2wpkh"))]
+    #[serde(rename = "p2wpkh")]
     P2wpkh = 1,
-    #[serde(rename(serialize = "p2pkh"))]
+    #[serde(rename = "p2pkh")]
     P2pkh = 2,
 }
 
