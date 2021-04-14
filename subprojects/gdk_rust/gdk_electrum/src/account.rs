@@ -554,17 +554,21 @@ pub fn get_last_next_account_nums(
     (last_account, next_account)
 }
 
+pub fn get_account_script_purpose(account_num: u32) -> Result<(ScriptType, u32), Error> {
+    Ok(match account_num % NUM_RESERVED_ACCOUNT_TYPES {
+        0 => (ScriptType::P2shP2wpkh, 49),
+        1 => (ScriptType::P2wpkh, 84),
+        2 => (ScriptType::P2pkh, 44),
+        _ => return Err(Error::InvalidSubaccount(account_num)),
+    })
+}
+
 fn get_account_derivation(
     account_num: u32,
     network_id: NetworkId,
 ) -> Result<(ScriptType, DerivationPath), Error> {
     let coin_type = get_coin_type(network_id);
-    let (script_type, purpose) = match account_num % NUM_RESERVED_ACCOUNT_TYPES {
-        0 => (ScriptType::P2shP2wpkh, 49),
-        1 => (ScriptType::P2wpkh, 84),
-        2 => (ScriptType::P2pkh, 44),
-        _ => return Err(Error::InvalidSubaccount(account_num)),
-    };
+    let (script_type, purpose) = get_account_script_purpose(account_num)?;
     let bip32_account_num = account_num / NUM_RESERVED_ACCOUNT_TYPES;
 
     // BIP44: m / purpose' / coin_type' / account' / change / address_index

@@ -148,9 +148,8 @@ pub struct GetAddressOpt {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateAccountOpt {
+    pub subaccount: u32,
     pub name: String,
-    #[serde(rename = "type")]
-    pub script_type: ScriptType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

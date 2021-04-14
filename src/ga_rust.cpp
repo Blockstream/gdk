@@ -206,12 +206,16 @@ namespace sdk {
 
     nlohmann::json ga_rust::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
     {
-        throw std::runtime_error("create_subaccount not implemented");
+        auto details_c = nlohmann::json{
+            { "subaccount", subaccount },
+            { "name", details.at("name") },
+        };
+        return call_session("create_subaccount", details_c);
     }
     nlohmann::json ga_rust::create_subaccount(
         const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {
-        throw std::runtime_error("create_subaccount not implemented");
+        throw std::runtime_error("create_subaccount with xpub not implemented");
     }
 
     void ga_rust::change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)

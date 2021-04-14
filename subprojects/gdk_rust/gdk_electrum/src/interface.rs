@@ -8,9 +8,12 @@ use gdk_common::model::{
     GetUnspentOpt, Settings, TransactionMeta, UpdateAccountOpt,
 };
 use gdk_common::network::Network;
+use gdk_common::scripts::ScriptType;
 use gdk_common::wally::*;
 
-use crate::account::{discover_accounts, get_last_next_account_nums, Account};
+use crate::account::{
+    discover_accounts, get_account_script_purpose, get_last_next_account_nums, Account,
+};
 use crate::error::*;
 use crate::store::*;
 
@@ -135,18 +138,23 @@ impl WalletCtx {
     }
 
     pub fn create_account(&mut self, opt: CreateAccountOpt) -> Result<&Account, Error> {
-        // Get the next available account number for the given script type.
-        // The script type is later derived from the account number.
+        // Check that the given subaccount number is the next available one for its script type.
+        let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
         let (last_account, next_account) =
-            get_last_next_account_nums(self.accounts.keys().copied().collect(), opt.script_type);
+            get_last_next_account_nums(self.accounts.keys().copied().collect(), script_type);
 
+        if opt.subaccount != next_account {
+            // The subaccount already exists, or skips over the next available subaccount number
+            bail!(Error::InvalidSubaccount(opt.subaccount));
+        }
         if let Some(last_account) = last_account {
+            // This is the next subaccount number, but the last one is still unused
             if !self.accounts.get(&last_account).unwrap().has_transactions() {
                 bail!(Error::AccountGapsDisallowed);
             }
         }
 
-        let account = self._ensure_account(next_account)?;
+        let account = self._ensure_account(opt.subaccount)?;
         account.set_name(&opt.name)?;
         Ok(account)
     }
