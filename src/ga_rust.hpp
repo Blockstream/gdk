@@ -87,7 +87,7 @@ namespace sdk {
         std::string get_watch_only_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
-        uint32_t get_next_subaccount();
+        uint32_t get_next_subaccount(const std::string& type);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
 

@@ -2286,8 +2286,10 @@ namespace sdk {
         return sa;
     }
 
-    uint32_t ga_session::get_next_subaccount()
+    uint32_t ga_session::get_next_subaccount(const std::string& type)
     {
+        // the `type` argument isn't used in ga_session, only in ga_rust
+        (void)type;
         locker_t locker(m_mutex);
         const uint32_t subaccount = m_next_subaccount;
         ++m_next_subaccount;

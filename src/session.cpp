@@ -430,11 +430,11 @@ namespace sdk {
         });
     }
 
-    uint32_t session::get_next_subaccount()
+    uint32_t session::get_next_subaccount(const std::string& type)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_next_subaccount();
+            return p->get_next_subaccount(type);
         });
     }
 

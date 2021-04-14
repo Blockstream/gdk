@@ -489,12 +489,14 @@ namespace sdk {
             return;
         }
 
+        const std::string type = details.at("type");
+
         // also check if we need to upload a few confidential addrs
-        if (m_session.is_liquid() && details.at("type") == "2of2_no_recovery") {
+        if (m_session.is_liquid() && type == "2of2_no_recovery") {
             m_remaining_ca_addrs = INITIAL_UPLOAD_CA;
         }
         try {
-            m_subaccount = session.get_next_subaccount();
+            m_subaccount = session.get_next_subaccount(type);
         } catch (const std::exception& e) {
             set_error(e.what());
             return;

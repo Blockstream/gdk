@@ -68,7 +68,7 @@ namespace sdk {
         virtual std::string get_watch_only_username() = 0;
         virtual bool remove_account(const nlohmann::json& twofactor_data) = 0;
 
-        virtual uint32_t get_next_subaccount() = 0;
+        virtual uint32_t get_next_subaccount(const std::string& type) = 0;
         virtual nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount) = 0;
         virtual nlohmann::json create_subaccount(
             const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
