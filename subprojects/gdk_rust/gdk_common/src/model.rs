@@ -154,6 +154,12 @@ pub struct CreateAccountOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetNextAccountOpt {
+    #[serde(rename = "type")]
+    pub script_type: ScriptType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RenameAccountOpt {
     pub subaccount: u32,
     pub new_name: String,

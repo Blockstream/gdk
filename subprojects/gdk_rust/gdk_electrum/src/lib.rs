@@ -649,6 +649,10 @@ impl Session<Error> for ElectrumSession {
         account.info(0)
     }
 
+    fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {
+        Ok(self.get_wallet()?.get_next_subaccount(opt.script_type))
+    }
+
     fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), Error> {
         self.get_wallet_mut()?.update_account(UpdateAccountOpt {
             subaccount: opt.subaccount,

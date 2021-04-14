@@ -128,6 +128,12 @@ impl WalletCtx {
         accounts.into_iter().map(|(_, account)| account)
     }
 
+    pub fn get_next_subaccount(&self, script_type: ScriptType) -> u32 {
+        let (_last_account, next_account) =
+            get_last_next_account_nums(self.accounts.keys().copied().collect(), script_type);
+        next_account
+    }
+
     pub fn create_account(&mut self, opt: CreateAccountOpt) -> Result<&Account, Error> {
         // Get the next available account number for the given script type.
         // The script type is later derived from the account number.

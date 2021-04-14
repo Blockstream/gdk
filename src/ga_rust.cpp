@@ -199,7 +199,11 @@ namespace sdk {
         throw std::runtime_error("remove_account not implemented");
     }
 
-    uint32_t ga_rust::get_next_subaccount() { throw std::runtime_error("get_next_subaccount not implemented"); }
+    uint32_t ga_rust::get_next_subaccount(const std::string& type)
+    {
+        return call_session("get_next_subaccount", nlohmann::json{ { "type", type } });
+    }
+
     nlohmann::json ga_rust::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
     {
         throw std::runtime_error("create_subaccount not implemented");

@@ -26,6 +26,7 @@ pub trait Session<E> {
     fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, E>;
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<AccountInfo, E>;
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, E>;
+    fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, E>;
     /// Deprecated in favor of update_subaccount
     fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), E>;
     fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), E>;
