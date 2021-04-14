@@ -89,7 +89,7 @@ pub fn subaccounts_value(subaccounts: &[AccountInfo]) -> Value {
 pub fn subaccount_value(subaccount: &AccountInfo) -> Value {
     json!({
         "type": subaccount.script_type,
-        "pointer": 0,
+        "pointer": subaccount.account_num,
         "required_ca": 0,
         "receiving_id": "",
         "name": subaccount.settings.name,
