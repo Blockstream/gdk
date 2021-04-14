@@ -1,5 +1,5 @@
 use gdk_common::model::{
-    AccountSettings, AddressAmount, CreateAccountOpt, CreateTransaction, RefreshAssets,
+    AddressAmount, CreateAccountOpt, CreateTransaction, GetNextAccountOpt, RefreshAssets,
     RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
 };
 use gdk_common::scripts::ScriptType;
@@ -132,15 +132,17 @@ fn subaccounts() {
     let account1 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
+            subaccount: 1,
             name: "Account 1".into(),
-            script_type: ScriptType::P2wpkh,
+            // p2wpkh
         })
         .unwrap();
     let account2 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
+            subaccount: 2,
             name: "Account 2".into(),
-            script_type: ScriptType::P2pkh,
+            // p2pkh
         })
         .unwrap();
     assert_eq!(account1.account_num, 1);
@@ -222,22 +224,22 @@ fn subaccounts() {
     assert_eq!(test_session.balance_account(0, None), 10385);
     assert_eq!(test_session.balance_account(2, None), 1000);
 
-    // Should use the next available P2PKH account number, skipping over used and reserved numbers
+    // Must be created using the next available P2PKH account number (skipping over used and reserved numbers)
     let account3 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
+            subaccount: 18,
             name: "Second PKPH".into(),
-            script_type: ScriptType::P2pkh,
         })
         .unwrap();
-    assert_eq!(account3.account_num, 18);
+    assert_eq!(account3.script_type, ScriptType::P2pkh);
 
     // Should fail - the second P2PKH account is still inactive
     let err = test_session
         .session
         .create_subaccount(CreateAccountOpt {
+            subaccount: 34,
             name: "Won't work".into(),
-            script_type: ScriptType::P2pkh,
         })
         .unwrap_err();
     assert!(matches!(err, Error::AccountGapsDisallowed));
@@ -252,11 +254,20 @@ fn subaccounts() {
     let account4 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
+            subaccount: 34,
             name: "Third PKPH".into(),
+        })
+        .unwrap();
+    assert_eq!(account4.script_type, ScriptType::P2pkh);
+
+    // Test get_next_subaccount
+    let next_p2pkh = test_session
+        .session
+        .get_next_subaccount(GetNextAccountOpt {
             script_type: ScriptType::P2pkh,
         })
         .unwrap();
-    assert_eq!(account4.account_num, 34);
+    assert_eq!(next_p2pkh, 50);
 
     // Start a new session, using the same mnemonic and electrum server, but
     // with a brand new database -- unaware of our subaccounts.
@@ -298,14 +309,16 @@ fn labels() {
         .session
         .create_subaccount(CreateAccountOpt {
             name: "Account 1".into(),
-            script_type: ScriptType::P2wpkh,
+            subaccount: 1,
+            // p2wpkh
         })
         .unwrap();
     let account2 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
             name: "Account 2".into(),
-            script_type: ScriptType::P2pkh,
+            subaccount: 2,
+            // p2pkh
         })
         .unwrap();
 
