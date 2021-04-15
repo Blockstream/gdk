@@ -698,6 +698,7 @@ Previous Addresses Request JSON
 Contains the query parameters for requesting previously generated addresses using :ref:`GA_get_previous_addresses`.
 
 .. code-block:: json
+
   {
     "subaccount": 0,
     "last_pointer": 0,
@@ -720,34 +721,34 @@ Contains a page of previously generated addresses, from newest to oldest.
 
 .. code-block:: json
 
-{
-  "last_pointer": 1,
-  "list": [
-    {
-      "address": "2N52RVsChsCi439PpJ1Hn8fHCiTrRjcAEiL",
-      "address_type": "csv",
-      "branch": 1,
-      "pointer": 2,
-      "script": "2102df992d7fa8f012d61048349e366f710aa0168a1c08606d7bebb65f980ccf2616ad2102a503dfc70ad1f1a510f7e3c79ffeebc608f27c6670edfb7b420bd32fdb044b73ac73640380ca00b268",
-      "script_type": 15,
-      "subaccount": 0,
-      "subtype": 51840,
-      "tx_count": 0
-    },
-    {
-      "address": "2MzyxeSfodsJkj4YYAyyNpGwqpvdze7qLSf",
-      "address_type": "csv",
-      "branch": 1,
-      "pointer": 1,
-      "script": "2102815c7ba597b1e0f08357ddb346dab3952b2a76e189efc9ebde51ec005df0b41cad210328154df2714de6b15e740330b3509ce26bc0a3e21bf77ce0eaefeea0e9e77b59ac73640380ca00b268",
-      "script_type": 15,
-      "subaccount": 0,
-      "subtype": 51840,
-      "tx_count": 0
-    }
-  ],
-  "subaccount": 0
-}
+  {
+    "last_pointer": 1,
+    "list": [
+      {
+        "address": "2N52RVsChsCi439PpJ1Hn8fHCiTrRjcAEiL",
+        "address_type": "csv",
+        "branch": 1,
+        "pointer": 2,
+        "script": "2102df992d7fa8f012d61048349e366f710aa0168a1c08606d7bebb65f980ccf2616ad2102a503dfc70ad1f1a510f7e3c79ffeebc608f27c6670edfb7b420bd32fdb044b73ac73640380ca00b268",
+        "script_type": 15,
+        "subaccount": 0,
+        "subtype": 51840,
+        "tx_count": 0
+      },
+      {
+        "address": "2MzyxeSfodsJkj4YYAyyNpGwqpvdze7qLSf",
+        "address_type": "csv",
+        "branch": 1,
+        "pointer": 1,
+        "script": "2102815c7ba597b1e0f08357ddb346dab3952b2a76e189efc9ebde51ec005df0b41cad210328154df2714de6b15e740330b3509ce26bc0a3e21bf77ce0eaefeea0e9e77b59ac73640380ca00b268",
+        "script_type": 15,
+        "subaccount": 0,
+        "subtype": 51840,
+        "tx_count": 0
+      }
+    ],
+    "subaccount": 0
+  }
 
 :last_pointer: Contains the next_pointer value to pass in :ref:`previous-addresses-request` in a
                subsequent call to :ref:`GA_get_previous_addresses` in order to fetch the next page.
