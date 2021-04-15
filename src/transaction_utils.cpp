@@ -424,7 +424,10 @@ namespace sdk {
 
         // Transactions with outputs below the dust threshold (except OP_RETURN)
         // are not relayed by network nodes
-        if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold()) {
+        // This check only applies when the amount has been set explicitly, so send all
+        // and greedy outputs are ignored as the amount is calculated later
+        if (!result.value("send_all", false) && !addressee.value("is_greedy", false)
+            && satoshi.value() < session.get_dust_threshold()) {
             set_tx_error(result, res::id_invalid_amount);
         }
 
