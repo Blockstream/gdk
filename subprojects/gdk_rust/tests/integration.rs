@@ -30,11 +30,12 @@ fn bitcoin() {
     let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
     test_session.fund(100_000_000, None);
     test_session.get_subaccount();
-    let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None); // p2shwpkh
+    let txid =
+        test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None, None); // p2shwpkh
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
-    test_session.send_tx(&node_bech32_address, 10_000, None, None, None); // p2wpkh
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, None); // p2pkh
+    test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None); // p2wpkh
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None); // p2pkh
     test_session.send_all(&node_legacy_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
@@ -53,7 +54,7 @@ fn bitcoin() {
     test_session.check_decryption(103, &[&txid]);
 
     utxos.0.get_mut("btc").unwrap().retain(|e| e.satoshi == 149739); // we want to use the smallest utxo
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos));
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None);
     test_session.utxo("btc", vec![139569, 96697483]); // the smallest utxo has been spent
                                                       // TODO add a test with external UTXO
 
@@ -69,16 +70,17 @@ fn liquid() {
     let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
 
     let assets = test_session.fund(100_000_000, Some(1));
-    test_session.send_tx_to_unconf();
+    test_session.receive_unconfidential();
     test_session.get_subaccount();
-    let txid = test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None);
+    let txid =
+        test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None, None);
     test_session.check_decryption(101, &[&txid]);
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
-    test_session.send_tx(&node_bech32_address, 10_000, None, None, None);
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, None);
-    test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None);
-    test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None, None); // asset should send below dust limit
+    test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None);
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None);
+    test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None, None);
+    test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None, None, None); // asset should send below dust limit
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_tag());
     test_session.mine_block();
@@ -105,7 +107,7 @@ fn liquid() {
         .get_mut("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
         .unwrap()
         .retain(|e| e.satoshi == 1_000_000); // we want to use the smallest utxo
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos));
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None);
     test_session.utxo(
         "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
         vec![989748, 99652226],
@@ -192,37 +194,37 @@ fn subaccounts() {
     // Send some to account #1
     test_session.node_sendtoaddress(&acc1_address.address, 98766, None);
     test_session.wait_tx_status_change();
-    assert_eq!(test_session.balance_account(0, None), 0);
-    assert_eq!(test_session.balance_account(1, None), 98766);
-    assert_eq!(test_session.balance_account(2, None), 0);
+    assert_eq!(test_session.balance_account(0, None, None), 0);
+    assert_eq!(test_session.balance_account(1, None, None), 98766);
+    assert_eq!(test_session.balance_account(2, None, None), 0);
 
     // Send some to account #2
     test_session.node_sendtoaddress(&acc2_address.address, 67899, None);
     test_session.wait_tx_status_change();
-    assert_eq!(test_session.balance_account(0, None), 0);
-    assert_eq!(test_session.balance_account(1, None), 98766);
-    assert_eq!(test_session.balance_account(2, None), 67899);
+    assert_eq!(test_session.balance_account(0, None, None), 0);
+    assert_eq!(test_session.balance_account(1, None, None), 98766);
+    assert_eq!(test_session.balance_account(2, None, None), 67899);
 
     // Send all from account #2 to account #1 (p2pkh -> p2wpkh)
     let txid =
         test_session.send_all_from_account(2, &test_session.get_receive_address(1).address, None);
     test_session.wait_account_tx(1, &txid);
-    assert_eq!(test_session.balance_account(0, None), 0);
-    assert_eq!(test_session.balance_account(1, None), 166471);
-    assert_eq!(test_session.balance_account(2, None), 0);
+    assert_eq!(test_session.balance_account(0, None, None), 0);
+    assert_eq!(test_session.balance_account(1, None, None), 166471);
+    assert_eq!(test_session.balance_account(2, None, None), 0);
 
     // Send from account #1 to account #0 (p2wpkh -> p2sh-p2wpkh)
     let txid = test_session.send_tx_from(1, &acc0_address.address, 11555, None);
     test_session.wait_account_tx(0, &txid);
-    assert_eq!(test_session.balance_account(0, None), 11555);
-    assert_eq!(test_session.balance_account(1, None), 154772);
+    assert_eq!(test_session.balance_account(0, None, None), 11555);
+    assert_eq!(test_session.balance_account(1, None, None), 154772);
 
     // Send from account #0 to account #2 (p2sh-p2wpkh -> p2pkh)
     let txid =
         test_session.send_tx_from(0, &test_session.get_receive_address(2).address, 1000, None);
     test_session.wait_account_tx(2, &txid);
-    assert_eq!(test_session.balance_account(0, None), 10385);
-    assert_eq!(test_session.balance_account(2, None), 1000);
+    assert_eq!(test_session.balance_account(0, None, None), 10385);
+    assert_eq!(test_session.balance_account(2, None, None), 1000);
 
     // Must be created using the next available P2PKH account number (skipping over used and reserved numbers)
     let account3 = test_session

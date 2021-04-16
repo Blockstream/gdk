@@ -1380,7 +1380,16 @@ impl Syncer {
                 };
                 Ok(unblinded)
             }
-            _ => Err(Error::Generic("received unconfidential or null asset/value/nonce".into())),
+            (Asset::Explicit(asset_id), confidential::Value::Explicit(satoshi), _) => {
+                let unblinded = Unblinded {
+                    asset: asset_id.into_inner().into_inner(),
+                    value: satoshi,
+                    abf: [0u8; 32],
+                    vbf: [0u8; 32],
+                };
+                Ok(unblinded)
+            }
+            _ => Err(Error::Generic("Unexpected asset/value/nonce".into())),
         }
     }
 }

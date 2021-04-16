@@ -375,7 +375,7 @@ impl TestSession {
         self.wait_account_tx(subaccount, &txid);
         //let end_sat_addr = self.balance_addr(address);
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
-        assert_eq!(self.balance_account(subaccount, asset_tag), 0);
+        assert_eq!(self.balance_account(subaccount, asset_tag, None), 0);
 
         assert!(tx.create_transaction.unwrap().send_all.unwrap());
         assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
@@ -390,6 +390,7 @@ impl TestSession {
         asset: Option<String>,
         memo: Option<String>,
         unspent_outputs: Option<GetUnspentOutputs>,
+        confidential: Option<bool>,
     ) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
@@ -406,6 +407,7 @@ impl TestSession {
         });
         create_opt.memo = memo;
         create_opt.utxos = unspent_outputs;
+        create_opt.confidential_utxos_only = confidential;
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         assert!(tx.user_signed, "tx is not marked as user_signed");
         match self.network.id() {
@@ -495,7 +497,7 @@ impl TestSession {
         self.session.disconnect().unwrap();
         self.session.connect(&Value::Null).unwrap();
         let address = self.node_getnewaddress(None);
-        let txid = self.send_tx(&address, 1000, None, None, None);
+        let txid = self.send_tx(&address, 1000, None, None, None, None);
         self.list_tx_contains(&txid, &[address], true);
     }
 
@@ -593,13 +595,90 @@ impl TestSession {
         self.list_tx_contains(&txid, &addressees, true);
     }
 
-    pub fn send_tx_to_unconf(&mut self) {
+    pub fn receive_unconfidential(&mut self) {
+        let policy_asset = &self.network.policy_asset.clone().unwrap();
         let init_sat = self.balance_gdk(None);
+        let mut utxos_opt = GetUnspentOpt::default();
+        let init_num_utxos = self
+            .session
+            .get_unspent_outputs(&utxos_opt)
+            .unwrap()
+            .0
+            .get(policy_asset)
+            .unwrap()
+            .len();
         let ap = self.get_receive_address(0);
         let unconf_address = to_unconfidential(ap.address);
-        self.node_sendtoaddress(&unconf_address, 10_000, None);
+        let unconf_sat = 10_000;
+        let unconf_txid = self.node_sendtoaddress(&unconf_address, unconf_sat, None);
         self.wait_tx_status_change();
-        assert_eq!(init_sat, self.balance_gdk(None));
+        // confidential balance
+        assert_eq!(init_sat, self.balance_account(0, None, Some(true)));
+        utxos_opt.confidential = Some(true);
+        assert_eq!(
+            init_num_utxos,
+            self.session
+                .get_unspent_outputs(&utxos_opt)
+                .unwrap()
+                .0
+                .get(policy_asset)
+                .unwrap()
+                .len()
+        );
+        // confidential and unconfidential balance (default)
+        assert_eq!(init_sat + unconf_sat, self.balance_account(0, None, Some(false)));
+        utxos_opt.confidential = Some(false);
+        assert_eq!(
+            init_num_utxos + 1,
+            self.session
+                .get_unspent_outputs(&utxos_opt)
+                .unwrap()
+                .0
+                .get(policy_asset)
+                .unwrap()
+                .len()
+        );
+
+        // Spend only confidential utxos
+        let node_address = self.node_getnewaddress(None);
+        let mut create_opt = CreateTransaction::default();
+        //let fee_rate = match self.network.id() {
+        //    NetworkId::Elements(_) => 100,
+        //    NetworkId::Bitcoin(_) => 1000,
+        //};
+        //create_opt.fee_rate = Some(fee_rate);
+        create_opt.addressees.push(AddressAmount {
+            address: node_address.to_string(),
+            satoshi: init_sat, // not enough to pay the fee with confidential utxos only
+            asset_tag: self.asset_tag(),
+        });
+        create_opt.confidential_utxos_only = Some(true);
+        assert!(matches!(
+            self.session.create_transaction(&mut create_opt),
+            Err(Error::InsufficientFunds)
+        ));
+
+        let balance_node_before = self.balance_node(None);
+        let sat = 1_000;
+        let txid = self.send_tx(&node_address, sat, None, None, None, Some(true));
+        self.list_tx_contains(&txid, &[node_address], true);
+        assert_eq!(balance_node_before + sat, self.balance_node(None));
+
+        // Spend a unconfidential utxos
+        // Note that unlike Elements Core, a transaction with 1 confidential output and 0
+        // confidential inputs, will be blinded by the wallet. This is a waste of fees (any
+        // observer can deduce asset and amount from the remaining inputs and outputs), however it
+        // reduces complexity.
+        let node_address = self.node_getnewaddress(None);
+        let balance_node_before = self.balance_node(None);
+        utxos_opt.confidential = Some(false);
+        let mut utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
+        utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
+        assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);
+        let sat = unconf_sat / 2;
+        let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None);
+        self.list_tx_contains(&txid, &[node_address], true);
+        assert_eq!(balance_node_before + sat, self.balance_node(None));
     }
 
     /// send a tx, check it spend utxo with the same script_pubkey together
@@ -870,10 +949,9 @@ impl TestSession {
     fn balance_node(&self, asset: Option<String>) -> u64 {
         let balance: Value = self.node.call("getbalance", &[]).unwrap();
         let unconfirmed_balance: Value = self.node.call("getunconfirmedbalance", &[]).unwrap();
-        match self.network_id {
+        let balance_btc = match self.network_id {
             NetworkId::Bitcoin(_) => {
-                ((balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap())
-                    * 100_000_000.0) as u64
+                balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap()
             }
             NetworkId::Elements(_) => {
                 let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
@@ -885,9 +963,10 @@ impl TestSession {
                     Some(Value::Number(s)) => s.as_f64().unwrap(),
                     _ => 0.0,
                 };
-                ((balance + unconfirmed_balance) * 100_000_000.0) as u64
+                balance + unconfirmed_balance
             }
-        }
+        };
+        Amount::from_btc(balance_btc).unwrap().as_sat()
     }
 
     pub fn asset_tag(&self) -> Option<String> {
@@ -909,14 +988,19 @@ impl TestSession {
 
     /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
     fn balance_gdk(&self, asset: Option<String>) -> u64 {
-        self.balance_account(0, asset)
+        self.balance_account(0, asset, None)
     }
 
-    pub fn balance_account(&self, account_num: u32, asset: Option<String>) -> u64 {
+    pub fn balance_account(
+        &self,
+        account_num: u32,
+        asset: Option<String>,
+        confidential: Option<bool>,
+    ) -> u64 {
         let opt = GetBalanceOpt {
             subaccount: account_num,
             num_confs: 0,
-            confidential: None,
+            confidential,
         };
         let balance = self.session.get_balance(&opt).unwrap();
         match self.network_id {
