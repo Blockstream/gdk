@@ -62,6 +62,10 @@ impl Unblinded {
     pub fn asset_hex(&self) -> String {
         asset_to_hex(&self.asset)
     }
+
+    pub fn confidential(&self) -> bool {
+        self.abf != [0u8; 32] || self.vbf != [0u8; 32]
+    }
 }
 
 impl Debug for Unblinded {

@@ -902,6 +902,7 @@ impl TestSession {
         let opt = GetBalanceOpt {
             subaccount: 0,
             num_confs: 0,
+            confidential: None,
         };
         self.session.get_balance(&opt).unwrap()
     }
@@ -915,6 +916,7 @@ impl TestSession {
         let opt = GetBalanceOpt {
             subaccount: account_num,
             num_confs: 0,
+            confidential: None,
         };
         let balance = self.session.get_balance(&opt).unwrap();
         match self.network_id {
@@ -979,6 +981,7 @@ impl TestSession {
         let utxo_opt = GetUnspentOpt {
             subaccount: 0,
             num_confs: None,
+            confidential: None,
             all_coins: None,
         };
         let outputs = self.session.get_unspent_outputs(&utxo_opt).unwrap();

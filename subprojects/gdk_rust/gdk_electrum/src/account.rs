@@ -101,7 +101,7 @@ impl Account {
             script_type: self.script_type,
             settings: settings.unwrap_or_default(),
             has_transactions: self.has_transactions(),
-            satoshi: self.balance(num_confs)?,
+            satoshi: self.balance(num_confs, false)?,
         })
     }
 
@@ -261,7 +261,7 @@ impl Account {
         Ok(txs)
     }
 
-    pub fn utxos(&self, num_confs: u32) -> Result<Utxos, Error> {
+    pub fn utxos(&self, num_confs: u32, confidential: bool) -> Result<Utxos, Error> {
         info!("start utxos");
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
@@ -331,6 +331,9 @@ impl Account {
                                     {
                                         return None;
                                     }
+                                    if confidential && !unblinded.confidential() {
+                                        return None;
+                                    }
                                     return Some((
                                         outpoint,
                                         UTXOInfo::new(
@@ -373,7 +376,7 @@ impl Account {
         Ok(result)
     }
 
-    pub fn balance(&self, num_confs: u32) -> Result<Balances, Error> {
+    pub fn balance(&self, num_confs: u32, confidential: bool) -> Result<Balances, Error> {
         info!("start balance");
         let mut result = HashMap::new();
         match self.network.id() {
@@ -382,7 +385,7 @@ impl Account {
                 result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0)
             }
         };
-        for (_, info) in self.utxos(num_confs)?.iter() {
+        for (_, info) in self.utxos(num_confs, confidential)?.iter() {
             *result.entry(info.asset.clone()).or_default() += info.value as i64;
         }
         Ok(result)
@@ -810,7 +813,10 @@ pub fn create_tx(
     info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
     let utxos = match &request.utxos {
-        None => account.utxos(request.num_confs.unwrap_or(0))?,
+        None => account.utxos(
+            request.num_confs.unwrap_or(0),
+            request.confidential_utxos_only.unwrap_or(false),
+        )?,
         Some(utxos) => utxos.try_into()?,
     };
     info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
