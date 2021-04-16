@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetTransactionsOpt,
-    GetUnspentOpt, Settings, TransactionMeta, UpdateAccountOpt,
+    AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetBalanceOpt,
+    GetTransactionsOpt, GetUnspentOpt, Settings, TransactionMeta, UpdateAccountOpt,
 };
 use gdk_common::network::Network;
 use gdk_common::scripts::ScriptType;
@@ -211,8 +211,8 @@ impl WalletCtx {
         self.get_account(opt.subaccount)?.utxos(opt.num_confs.unwrap_or(0))
     }
 
-    pub fn balance(&self, account_num: u32, num_confs: u32) -> Result<Balances, Error> {
-        self.get_account(account_num)?.balance(num_confs)
+    pub fn balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
+        self.get_account(opt.subaccount)?.balance(opt.num_confs)
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {

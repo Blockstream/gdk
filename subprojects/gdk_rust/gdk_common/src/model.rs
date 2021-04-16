@@ -134,6 +134,12 @@ pub struct GetTransactionsOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GetBalanceOpt {
+    pub subaccount: u32,
+    pub num_confs: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetUnspentOpt {
     pub subaccount: u32,
     pub num_confs: Option<u32>,

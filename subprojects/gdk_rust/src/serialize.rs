@@ -215,23 +215,6 @@ where
     session.set_transaction_memo(txid, memo).map(|v| json!(v)).map_err(Into::into)
 }
 
-pub fn get_balance<S, E>(session: &S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
-    let num_confs = input["num_confs"].as_u64().unwrap_or(0);
-
-    let subaccount = input["subaccount"]
-        .as_u64()
-        .ok_or_else(|| Error::Other("get_balance: missing subaccount".into()))?
-        as u32;
-
-    let bal = session.get_balance(subaccount, num_confs as u32).map_err(Into::into)?;
-
-    Ok(balance_result_value(&bal))
-}
-
 pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, Error> {
     if estimates.is_empty() {
         // Current apps depend on this length

@@ -411,7 +411,10 @@ where
         }
 
         "get_transaction_details" => get_transaction_details(session, input),
-        "get_balance" => serialize::get_balance(session, input),
+        "get_balance" => session
+            .get_unspent_outputs(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "set_transaction_memo" => set_transaction_memo(session, input),
         "create_transaction" => serialize::create_transaction(session, input),
         "sign_transaction" => session

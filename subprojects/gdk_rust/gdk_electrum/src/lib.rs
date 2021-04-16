@@ -683,8 +683,8 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
     }
 
-    fn get_balance(&self, account_num: u32, num_confs: u32) -> Result<Balances, Error> {
-        self.get_wallet()?.balance(account_num, num_confs)
+    fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
+        self.get_wallet()?.balance(opt)
     }
 
     fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {

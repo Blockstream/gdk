@@ -899,7 +899,11 @@ impl TestSession {
 
     /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
     fn balance_gdk_all(&self) -> Balances {
-        self.session.get_balance(0, 0).unwrap()
+        let opt = GetBalanceOpt {
+            subaccount: 0,
+            num_confs: 0,
+        };
+        self.session.get_balance(&opt).unwrap()
     }
 
     /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
@@ -908,7 +912,11 @@ impl TestSession {
     }
 
     pub fn balance_account(&self, account_num: u32, asset: Option<String>) -> u64 {
-        let balance = self.session.get_balance(account_num, 0).unwrap();
+        let opt = GetBalanceOpt {
+            subaccount: account_num,
+            num_confs: 0,
+        };
+        let balance = self.session.get_balance(&opt).unwrap();
         match self.network_id {
             NetworkId::Elements(_) => {
                 let asset =
