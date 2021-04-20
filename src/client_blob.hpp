@@ -24,6 +24,8 @@ namespace sdk {
         client_blob(client_blob&&) = delete;
         client_blob& operator=(client_blob&&) = delete;
 
+        void reset();
+
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
 

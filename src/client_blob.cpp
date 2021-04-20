@@ -32,6 +32,12 @@ namespace sdk {
     client_blob::client_blob()
         : m_data()
     {
+        reset();
+    }
+
+    void client_blob::reset()
+    {
+        m_data = nlohmann::json();
         m_data[USER_VERSION] = static_cast<uint64_t>(0);
         // Pre-create top level json objects for future cached items,
         // allowing later additions to be checked for without special cases

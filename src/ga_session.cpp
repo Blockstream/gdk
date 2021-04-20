@@ -870,6 +870,7 @@ namespace sdk {
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
             m_blob_hmac.clear();
+            m_blob.reset();
             m_blob_outdated = false;
             m_tx_list_caches.purge_all();
             // FIXME: securely destroy all held data
