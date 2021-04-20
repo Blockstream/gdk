@@ -209,11 +209,12 @@ impl WalletCtx {
     pub fn utxos(&self, opt: &GetUnspentOpt) -> Result<Utxos, Error> {
         // TODO does not support the `all_coins` option
         self.get_account(opt.subaccount)?
-            .utxos(opt.num_confs.unwrap_or(0), opt.confidential.unwrap_or(false))
+            .utxos(opt.num_confs.unwrap_or(0), opt.confidential_utxos_only.unwrap_or(false))
     }
 
     pub fn balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
-        self.get_account(opt.subaccount)?.balance(opt.num_confs, opt.confidential.unwrap_or(false))
+        self.get_account(opt.subaccount)?
+            .balance(opt.num_confs, opt.confidential_utxos_only.unwrap_or(false))
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {

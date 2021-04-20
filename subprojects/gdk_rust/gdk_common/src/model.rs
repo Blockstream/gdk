@@ -138,14 +138,16 @@ pub struct GetTransactionsOpt {
 pub struct GetBalanceOpt {
     pub subaccount: u32,
     pub num_confs: u32,
-    pub confidential: Option<bool>,
+    #[serde(rename = "confidential")]
+    pub confidential_utxos_only: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetUnspentOpt {
     pub subaccount: u32,
     pub num_confs: Option<u32>,
-    pub confidential: Option<bool>,
+    #[serde(rename = "confidential")]
+    pub confidential_utxos_only: Option<bool>,
     pub all_coins: Option<usize>, // unused
 }
 

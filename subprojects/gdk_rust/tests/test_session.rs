@@ -390,7 +390,7 @@ impl TestSession {
         asset: Option<String>,
         memo: Option<String>,
         unspent_outputs: Option<GetUnspentOutputs>,
-        confidential: Option<bool>,
+        confidential_utxos_only: Option<bool>,
     ) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
@@ -407,7 +407,7 @@ impl TestSession {
         });
         create_opt.memo = memo;
         create_opt.utxos = unspent_outputs;
-        create_opt.confidential_utxos_only = confidential;
+        create_opt.confidential_utxos_only = confidential_utxos_only;
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         assert!(tx.user_signed, "tx is not marked as user_signed");
         match self.network.id() {
@@ -614,7 +614,7 @@ impl TestSession {
         self.wait_tx_status_change();
         // confidential balance
         assert_eq!(init_sat, self.balance_account(0, None, Some(true)));
-        utxos_opt.confidential = Some(true);
+        utxos_opt.confidential_utxos_only = Some(true);
         assert_eq!(
             init_num_utxos,
             self.session
@@ -627,7 +627,7 @@ impl TestSession {
         );
         // confidential and unconfidential balance (default)
         assert_eq!(init_sat + unconf_sat, self.balance_account(0, None, Some(false)));
-        utxos_opt.confidential = Some(false);
+        utxos_opt.confidential_utxos_only = Some(false);
         assert_eq!(
             init_num_utxos + 1,
             self.session
@@ -671,7 +671,7 @@ impl TestSession {
         // reduces complexity.
         let node_address = self.node_getnewaddress(None);
         let balance_node_before = self.balance_node(None);
-        utxos_opt.confidential = Some(false);
+        utxos_opt.confidential_utxos_only = Some(false);
         let mut utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
         assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);
@@ -981,7 +981,7 @@ impl TestSession {
         let opt = GetBalanceOpt {
             subaccount: 0,
             num_confs: 0,
-            confidential: None,
+            confidential_utxos_only: None,
         };
         self.session.get_balance(&opt).unwrap()
     }
@@ -995,12 +995,12 @@ impl TestSession {
         &self,
         account_num: u32,
         asset: Option<String>,
-        confidential: Option<bool>,
+        confidential_utxos_only: Option<bool>,
     ) -> u64 {
         let opt = GetBalanceOpt {
             subaccount: account_num,
             num_confs: 0,
-            confidential,
+            confidential_utxos_only,
         };
         let balance = self.session.get_balance(&opt).unwrap();
         match self.network_id {
@@ -1065,7 +1065,7 @@ impl TestSession {
         let utxo_opt = GetUnspentOpt {
             subaccount: 0,
             num_confs: None,
-            confidential: None,
+            confidential_utxos_only: None,
             all_coins: None,
         };
         let outputs = self.session.get_unspent_outputs(&utxo_opt).unwrap();
