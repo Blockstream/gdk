@@ -112,6 +112,7 @@ namespace sdk {
         bool is_rbf_enabled() const;
         bool is_watch_only() const;
         nlohmann::json get_settings();
+        nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);
 
         nlohmann::json get_twofactor_config(bool reset_cached = false);

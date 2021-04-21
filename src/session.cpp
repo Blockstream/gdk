@@ -478,6 +478,14 @@ namespace sdk {
         });
     }
 
+    nlohmann::json session::get_post_login_data()
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->get_post_login_data();
+        });
+    }
+
     void session::change_settings(const nlohmann::json& settings)
     {
         return exception_wrapper([&] {

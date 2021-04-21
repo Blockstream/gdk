@@ -1898,6 +1898,11 @@ namespace sdk {
         return settings;
     }
 
+    nlohmann::json ga_session::get_post_login_data()
+    {
+        return nlohmann::json{ { "wallet_hash_id", m_login_data["wallet_hash_id"] } };
+    }
+
     void ga_session::change_settings(const nlohmann::json& settings)
     {
         locker_t locker(m_mutex);

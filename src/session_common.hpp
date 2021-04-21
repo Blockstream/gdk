@@ -96,6 +96,7 @@ namespace sdk {
         virtual bool is_rbf_enabled() const = 0;
         virtual bool is_watch_only() const = 0;
         virtual nlohmann::json get_settings() = 0;
+        virtual nlohmann::json get_post_login_data() = 0;
         virtual void change_settings(const nlohmann::json& settings) = 0;
 
         virtual nlohmann::json get_twofactor_config(bool reset_cached = false) = 0;

@@ -325,6 +325,8 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_settings() { return call_session("get_settings", nlohmann::json{}); }
 
+    nlohmann::json ga_rust::get_post_login_data() { throw std::runtime_error("get_post_login_data not implemented"); }
+
     void ga_rust::change_settings(const nlohmann::json& settings) { call_session("change_settings", settings); }
 
     nlohmann::json ga_rust::get_twofactor_config(bool reset_cached) { return nlohmann::json{}; }

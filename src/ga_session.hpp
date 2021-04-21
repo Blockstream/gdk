@@ -123,6 +123,7 @@ namespace sdk {
         std::vector<std::string> get_enabled_twofactor_methods();
 
         nlohmann::json get_settings();
+        nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);
 
         void set_email(const std::string& email, const nlohmann::json& twofactor_data);
