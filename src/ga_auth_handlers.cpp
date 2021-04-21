@@ -1046,7 +1046,7 @@ namespace sdk {
                 set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
             }
         } else if (m_session.hw_liquid_support() == liquid_support_level::none) {
-            set_error("id_the_hardware_wallet_you_are");
+            set_error(res::id_the_hardware_wallet_you_are);
         } else {
             // should be unreachable
             GDK_RUNTIME_ASSERT(false);
