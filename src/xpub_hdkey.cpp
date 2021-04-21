@@ -37,6 +37,14 @@ namespace sdk {
 
     std::string xpub_hdkey::to_base58() const { return bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC); }
 
+    std::string xpub_hdkey::to_hashed_identifier(const std::string& network) const
+    {
+        // Return a hashed id from which the xpub cannot be extracted
+        const auto key_data = bip32_key_serialize(m_ext_key, BIP32_FLAG_KEY_PUBLIC);
+        const auto hashed = pbkdf2_hmac_sha512_256(key_data, ustring_span(network));
+        return b2h(hashed);
+    }
+
     namespace detail {
         xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params)
             : m_is_main_net(net_params.main_net())

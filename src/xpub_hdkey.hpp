@@ -28,6 +28,7 @@ namespace sdk {
         pub_key_t derive(uint32_t pointer);
 
         std::string to_base58() const;
+        std::string to_hashed_identifier(const std::string& network) const;
 
     private:
         ext_key m_ext_key;

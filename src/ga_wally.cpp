@@ -70,10 +70,10 @@ namespace sdk {
     //
     // BIP 32
     //
-    std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const wally_ext_key_ptr& hdkey, uint32_t flags)
+    std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags)
     {
         std::array<unsigned char, BIP32_SERIALIZED_LEN> ret;
-        GDK_VERIFY(::bip32_key_serialize(hdkey.get(), flags, ret.data(), ret.size()));
+        GDK_VERIFY(::bip32_key_serialize(&hdkey, flags, ret.data(), ret.size()));
         return ret;
     }
 

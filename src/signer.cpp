@@ -187,10 +187,10 @@ namespace sdk {
     std::string software_signer::get_bip32_xpub(uint32_span_t path)
     {
         wally_ext_key_ptr derived;
-        wally_ext_key_ptr* hdkey = &m_master_key;
+        ext_key* hdkey = m_master_key.get();
         if (!path.empty()) {
             derived = derive(m_master_key, path);
-            hdkey = &derived;
+            hdkey = derived.get();
         }
         return base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
     }

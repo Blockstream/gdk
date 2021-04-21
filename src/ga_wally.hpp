@@ -97,7 +97,7 @@ namespace sdk {
     //
     // BIP 32
     //
-    std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const wally_ext_key_ptr& hdkey, uint32_t flags);
+    std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags);
 
     wally_ext_key_ptr bip32_key_unserialize_alloc(byte_span_t data);
 
@@ -173,6 +173,14 @@ namespace sdk {
     std::vector<unsigned char> h2b(const char* hex);
     std::vector<unsigned char> h2b(const std::string& hex);
     std::vector<unsigned char> h2b(const std::string& hex, uint8_t prefix);
+    template <size_t N> std::array<unsigned char, N> h2b_array(const std::string& hex)
+    {
+        const auto vec = h2b(hex);
+        GDK_RUNTIME_ASSERT(vec.size() == N);
+        std::array<unsigned char, N> ret;
+        std::copy(vec.begin(), vec.end(), ret.begin());
+        return ret;
+    }
 
     std::vector<unsigned char> h2b_rev(const char* hex);
     std::vector<unsigned char> h2b_rev(const std::string& hex);

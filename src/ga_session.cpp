@@ -1314,6 +1314,12 @@ namespace sdk {
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
+        // Compute wallet identifier for callers to use if they wish.
+        const chain_code_t main_chaincode{ h2b_array<32>(m_login_data["chain_code"]) };
+        const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(m_login_data["public_key"]) };
+        const xpub_hdkey main_hdkey(m_net_params.main_net(), std::make_pair(main_chaincode, main_pubkey));
+        m_login_data["wallet_hash_id"] = main_hdkey.to_hashed_identifier(m_net_params.network());
+
         // Check that csv blocks used are recoverable and provided by the server
         const auto net_csv_buckets = m_net_params.csv_buckets();
         for (uint32_t bucket : m_login_data["csv_times"]) {
