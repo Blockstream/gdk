@@ -181,9 +181,10 @@ namespace sdk {
 
         call_session("login_with_pin", details);
     }
-    void ga_rust::login_watch_only(const std::string& username, const std::string& password)
+    nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {
         throw std::runtime_error("login_watch_only not implemented");
+        __builtin_unreachable();
     }
     bool ga_rust::set_watch_only(const std::string& username, const std::string& password)
     {

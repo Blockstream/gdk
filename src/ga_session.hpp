@@ -81,7 +81,7 @@ namespace sdk {
         void login(const std::string& mnemonic, const std::string& password);
         bool login_from_cached(const std::string& mnemonic);
         void login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
-        void login_watch_only(const std::string& username, const std::string& password);
+        nlohmann::json login_watch_only(const std::string& username, const std::string& password);
         void on_failed_login();
 
         bool set_watch_only(const std::string& username, const std::string& password);

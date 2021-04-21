@@ -365,11 +365,11 @@ namespace sdk {
         });
     }
 
-    void session::login_watch_only(const std::string& username, const std::string& password)
+    nlohmann::json session::login_watch_only(const std::string& username, const std::string& password)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->login_watch_only(username, password);
+            return p->login_watch_only(username, password);
         });
     }
 

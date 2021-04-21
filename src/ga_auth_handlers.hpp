@@ -46,6 +46,16 @@ namespace sdk {
         nlohmann::json m_pin_data;
     };
 
+    class watch_only_login_call : public auth_handler {
+    public:
+        watch_only_login_call(session& session, const nlohmann::json& credential_data);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_credential_data;
+    };
+
     class create_subaccount_call : public auth_handler {
     public:
         create_subaccount_call(session& session, const nlohmann::json& details);

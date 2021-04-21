@@ -63,7 +63,7 @@ namespace sdk {
         virtual void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs) = 0;
         virtual void login(const std::string& mnemonic, const std::string& password) = 0;
         virtual void login_with_pin(const std::string& pin, const nlohmann::json& pin_data) = 0;
-        virtual void login_watch_only(const std::string& username, const std::string& password) = 0;
+        virtual nlohmann::json login_watch_only(const std::string& username, const std::string& password) = 0;
         virtual bool set_watch_only(const std::string& username, const std::string& password) = 0;
         virtual std::string get_watch_only_username() = 0;
         virtual bool remove_account(const nlohmann::json& twofactor_data) = 0;

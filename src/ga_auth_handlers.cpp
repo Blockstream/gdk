@@ -476,6 +476,27 @@ namespace sdk {
     }
 
     //
+    // Watch-only login
+    //
+    watch_only_login_call::watch_only_login_call(session& session, const nlohmann::json& credential_data)
+        : auth_handler(session, std::string())
+        , m_credential_data(credential_data)
+    {
+    }
+
+    auth_handler::state_type watch_only_login_call::call_impl()
+    {
+        try {
+            const auto username = m_credential_data.at("username");
+            const auto password = m_credential_data.at("password");
+            m_result = m_session.login_watch_only(username, password);
+        } catch (const std::exception& ex) {
+            set_error(res::id_username);
+        }
+        return state_type::done;
+    }
+
+    //
     // Create subaccount
     //
     create_subaccount_call::create_subaccount_call(session& session, const nlohmann::json& details)

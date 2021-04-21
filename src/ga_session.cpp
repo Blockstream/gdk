@@ -1965,7 +1965,7 @@ namespace sdk {
         login(data.at("mnemonic"), std::string());
     }
 
-    void ga_session::login_watch_only(const std::string& username, const std::string& password)
+    nlohmann::json ga_session::login_watch_only(const std::string& username, const std::string& password)
     {
         const std::map<std::string, std::string> args = { { "username", username }, { "password", password } };
         const auto user_agent = get_user_agent(true, m_user_agent);
@@ -1999,6 +1999,8 @@ namespace sdk {
         locker.unlock();
         on_new_block(nlohmann::json(
             { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } }));
+
+        return get_post_login_data();
     }
 
     void ga_session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
