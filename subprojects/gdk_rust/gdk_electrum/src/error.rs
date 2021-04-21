@@ -20,6 +20,10 @@ pub enum Error {
     AccountGapsDisallowed,
     SendAll,
     PinError,
+    /// An invalid pin attempt. Should trigger an increment to the caller counter as after 3
+    /// consecutive wrong guesses the server will delete the corresponding key. Other errors should
+    /// leave such counter unchanged.
+    InvalidPin,
     AddrParse(String),
     InvalidElectrumUrl(String),
     Bitcoin(bitcoin::util::Error),
@@ -71,6 +75,7 @@ impl Display for Error {
             Error::Encryption(ref send_err) => write!(f, "encryption_err: {:?}", send_err),
             Error::Secp256k1(ref err) => write!(f, "Secp256k1_err: {:?}", err),
             Error::PinError => write!(f, "PinError"),
+            Error::InvalidPin => write!(f, "invalid pin"),
             Error::InvalidElectrumUrl(url) => write!(f, "Invalid Electrum URL: {}", url),
         }
     }

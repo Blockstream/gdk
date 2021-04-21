@@ -36,6 +36,7 @@ use std::str::FromStr;
 
 pub const GA_OK: i32 = 0;
 pub const GA_ERROR: i32 = -1;
+pub const GA_NOT_AUTHORIZED: i32 = -5;
 
 pub struct GdkSession {
     pub backend: GdkBackend,
@@ -288,8 +289,9 @@ pub extern "C" fn GDKRUST_call_session(
             let code = e.to_gdk_code();
             let desc = e.gdk_display();
 
-            let ret_val = match code.as_str() {
-                "id_invalid_pin" => -5,
+            let ret_val = match e {
+                Error::Electrum(gdk_electrum::error::Error::InvalidPin) => GA_NOT_AUTHORIZED,
+                Error::Electrum(gdk_electrum::error::Error::PinError) => GA_ERROR,
                 _ => GA_OK,
             };
 

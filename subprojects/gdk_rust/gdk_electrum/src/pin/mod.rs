@@ -66,12 +66,12 @@ impl PinManager {
 
     /// `set_pin` consume self, because handshake must be done for every request
     pub fn set_pin(self, pin_secret: &[u8], private_key: &SecretKey) -> Result<Vec<u8>, Error> {
-        self.server_call(pin_secret, private_key, PinOp::Set)
+        self.server_call(pin_secret, private_key, PinOp::Set).map_err(|_| Error::PinError)
     }
 
     /// `get_pin` consume self, because handshake must be done for every request
     pub fn get_pin(self, pin_secret: &[u8], private_key: &SecretKey) -> Result<Vec<u8>, Error> {
-        self.server_call(pin_secret, private_key, PinOp::Get)
+        self.server_call(pin_secret, private_key, PinOp::Get).map_err(|_| Error::PinError)
     }
 
     fn handshake_request() -> Result<Handshake, Error> {

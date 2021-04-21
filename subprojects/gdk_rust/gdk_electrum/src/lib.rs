@@ -324,7 +324,11 @@ impl Session<Error> for ElectrumSession {
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
         let iv = hex::decode(&details.salt)?;
         let decipher = Aes256Cbc::new_var(&server_key[..], &iv).unwrap();
-        let mnemonic = decipher.decrypt_vec(&hex::decode(&details.encrypted_data)?)?;
+        // If the pin is wrong, pinserver returns a random key and decryption fails, return a
+        // specific error to signal the caller to update its pin counter.
+        let mnemonic = decipher
+            .decrypt_vec(&hex::decode(&details.encrypted_data)?)
+            .map_err(|_| Error::InvalidPin)?;
         let mnemonic = std::str::from_utf8(&mnemonic).unwrap().to_string();
         let mnemonic = Mnemonic::from(mnemonic);
 

@@ -29,7 +29,8 @@ impl Error {
             Error::Electrum(electrum::error::Error::InvalidAmount) => {
                 "id_invalid_amount".to_string()
             }
-            Error::Electrum(electrum::error::Error::PinError) => "id_invalid_pin".to_string(),
+            Error::Electrum(electrum::error::Error::PinError) => "id_connection_failed".to_string(),
+            Error::Electrum(electrum::error::Error::InvalidPin) => "id_invalid_pin".to_string(),
             _ => "id_unknown".to_string(),
         }
     }
