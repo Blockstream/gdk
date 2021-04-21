@@ -635,7 +635,7 @@ impl Session<Error> for ElectrumSession {
 
     fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, Error> {
         let wallet = self.get_wallet()?;
-        wallet.iter_accounts().map(|a| a.info(0)).collect()
+        wallet.iter_accounts_sorted().map(|a| a.info(0)).collect()
     }
 
     fn get_subaccount(&self, account_num: u32, num_confs: u32) -> Result<AccountInfo, Error> {
