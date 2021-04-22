@@ -1611,14 +1611,14 @@ namespace sdk {
         wamp_call(locker, "login.set_appearance", appearance.get());
     }
 
-    void ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
+    nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
     {
         locker_t locker(m_mutex);
-        authenticate(locker, sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
+        return authenticate(locker, sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
     }
 
-    void ga_session::authenticate(ga_session::locker_t& locker, const std::string& sig_der_hex,
+    nlohmann::json ga_session::authenticate(ga_session::locker_t& locker, const std::string& sig_der_hex,
         const std::string& path_hex, const std::string& root_xpub_bip32, const std::string& device_id,
         const nlohmann::json& hw_device)
     {
@@ -1747,6 +1747,7 @@ namespace sdk {
         locker.unlock();
         on_new_block(nlohmann::json(
             { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } }));
+        return get_post_login_data();
     }
 
     void ga_session::load_client_blob(ga_session::locker_t& locker, bool encache)
@@ -1870,9 +1871,8 @@ namespace sdk {
         const auto hexder_path = sign_challenge(locker, challenge);
         m_mnemonic = mnemonic;
 
-        authenticate(
+        return authenticate(
             locker, hexder_path.first, hexder_path.second, std::string(), std::string(), nlohmann::json::object());
-        return get_post_login_data();
     }
 
     nlohmann::json ga_session::get_settings()

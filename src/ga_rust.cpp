@@ -154,9 +154,10 @@ namespace sdk {
     }
 
     std::string ga_rust::get_challenge(const std::string& address) { throw std::runtime_error("not implemented"); }
-    void ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
+    nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
     {
+        // FIXME: return post-login data
         throw std::runtime_error("not implemented");
     }
     void ga_rust::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)

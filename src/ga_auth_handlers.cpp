@@ -341,7 +341,7 @@ namespace sdk {
                     m_ca_addrs[subaccount].emplace_back(blinded_addr);
                 }
             } else {
-                m_session.login(m_mnemonic, m_password);
+                m_result = m_session.login(m_mnemonic, m_password);
             }
 
             // fall-through down to check for/upload confidential addresses requests
@@ -397,7 +397,8 @@ namespace sdk {
                 }
 
                 // Log in and set up the session
-                m_session.authenticate(args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_hw_device);
+                m_result = m_session.authenticate(
+                    args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_hw_device);
 
                 // Ask the caller for the xpubs for each subaccount
                 std::vector<nlohmann::json> paths;
@@ -451,7 +452,7 @@ namespace sdk {
 
     auth_handler::state_type login_with_pin_call::call_impl()
     {
-        m_session.login_with_pin(m_pin, m_pin_data);
+        m_result = m_session.login_with_pin(m_pin, m_pin_data);
 
         if (m_session.is_liquid()) {
             // when logged in with pin, the wallet software signer is available, thus the session is able to obtain

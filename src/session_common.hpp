@@ -57,7 +57,7 @@ namespace sdk {
             = 0;
 
         virtual std::string get_challenge(const std::string& address) = 0;
-        virtual void authenticate(const std::string& sig_der_hex, const std::string& path_hex,
+        virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
             = 0;
         virtual void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs) = 0;

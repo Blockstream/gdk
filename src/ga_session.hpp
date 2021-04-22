@@ -72,7 +72,7 @@ namespace sdk {
             const std::string& gait_path_hex, bool supports_csv);
 
         std::string get_challenge(const std::string& address);
-        void authenticate(const std::string& sig_der_hex, const std::string& path_hex,
+        nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, const std::string& device_id,
             const nlohmann::json& hw_device = nlohmann::json::object());
 
@@ -244,7 +244,7 @@ namespace sdk {
         void register_user(locker_t& locker, const std::string& master_pub_key_hex,
             const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
 
-        void authenticate(locker_t& locker, const std::string& sig_der_hex, const std::string& path_hex,
+        nlohmann::json authenticate(locker_t& locker, const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device);
         nlohmann::json login(locker_t& locker, const std::string& mnemonic);
         void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context);
