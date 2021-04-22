@@ -138,6 +138,9 @@ class Session(object):
     def register_user(self, hw_device, mnemonic):
         return Call(register_user(self.session_obj, self._to_json(hw_device), mnemonic))
 
+    def login_user(self, hw_device, details):
+        return Call(login_user(self.session_obj, self._to_json(hw_device), self._to_json(details)))
+
     def login_with_pin(self, pin, pin_data):
         return Call(login_with_pin(self.session_obj, pin, self._to_json(pin_data)))
 

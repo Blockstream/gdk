@@ -527,6 +527,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_void__(GA_login_watch_only)
 %returns_struct(GA_login_with_pin, GA_auth_handler)
 %returns_struct(GA_login, GA_auth_handler)
+%returns_struct(GA_login_user, GA_auth_handler)
 %returns_void__(GA_register_network)
 %returns_struct(GA_register_user, GA_auth_handler)
 %returns_struct(GA_remove_account, GA_auth_handler)

@@ -16,6 +16,10 @@ namespace sdk {
         std::string m_mnemonic;
     };
 
+    // Return an auth handler for logging in a user (caller must delete it)
+    auth_handler* get_login_call(
+        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
+
     class login_call : public auth_handler {
     public:
         login_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic,

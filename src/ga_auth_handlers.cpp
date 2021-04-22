@@ -493,8 +493,28 @@ namespace sdk {
             m_result = m_session.login_watch_only(username, password);
         } catch (const std::exception& ex) {
             set_error(res::id_username);
+            return state_type::error;
         }
         return state_type::done;
+    }
+
+    //
+    // Return a suitable auth handler for all supported login types
+    //
+    auth_handler* get_login_call(
+        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
+    {
+        if (!hw_device.empty() || credential_data.contains("mnemonic")) {
+            const auto mnemonic = json_get_value(credential_data, "mnemonic");
+            const auto password = json_get_value(credential_data, "password");
+            // FIXME: Allow a "bip39_passphrase" element to enable bip39 logins
+            return new login_call(session, hw_device, mnemonic, password);
+        } else if (credential_data.contains("pin")) {
+            return new login_with_pin_call(session, credential_data.at("pin"), credential_data.at("pin_data"));
+        } else {
+            // Assume watch-only
+            return new watch_only_login_call(session, credential_data);
+        }
     }
 
     //

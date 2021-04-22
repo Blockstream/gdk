@@ -243,6 +243,18 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
+    public func loginUser(details: [String: Any], hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil;
+        var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_login_user(session, hw_device_json, details_json, &optr))
+        defer {
+            GA_destroy_json(hw_device_json)
+            GA_destroy_json(details_json)
+        }
+        return TwoFactorCall(optr: optr!);
+    }
+
     public func login(mnemonic: String = "", password: String = "", hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
         var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)

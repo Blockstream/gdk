@@ -222,6 +222,10 @@ GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::register_call(*session, *json_cast(hw_device), mnemonic)); })
 
+GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, const GA_json*, hw_device, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = auth_cast(ga::sdk::get_login_call(*session, *json_cast(hw_device), *json_cast(details))); })
+
 GDK_DEFINE_C_FUNCTION_5(GA_login, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
     const char*, password, struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::login_call(*session, *json_cast(hw_device), mnemonic, password)); })

@@ -32,6 +32,46 @@ Connection parameter JSON
       "spv_enabled": false,
    }
 
+.. _login-credentials:
+
+Login Credentials JSON
+----------------------
+
+To authenticate with a hardware wallet, pass empty JSON and provide :ref:`hw-device`.
+
+To authenticate with a mnemonic and optional password:
+
+.. code-block:: json
+
+   {
+      "mnemonic": "moral lonely ability sail balance simple kid girl inhale master dismiss round about aerobic purpose shiver silly happy kitten track kind pattern nose noise",
+      "password": ""
+   }
+
+To authenticate with a PIN:
+
+.. code-block:: json
+
+   {
+      "pin": "123456",
+      "pin_data": {
+          "encrypted_data": "0b39c1e90ca6adce9ff35d1780de74b91d46261a7cbf2b8d2fdc21528c068c8e2b26e3bf3f6a2a992e0e1ecfad0220343b9659495e7f4b21ff95c32cee1b2dd6b0f44b3828ccdc73d68d9e4142a25437b0c6b53a056e2415ca23442dd18d11fb5f62ef9155703c36a5b3e10b2d93973602cebb2369559612cb4267f4826028cea7b067d6ec3658cc72155a4b17b4ba277c143d40ce49c407102c62ca759d04e74dd0778ac514292be09f66449993c36b0bc0cb78f41368bc394d0cf444d452bea0e7df5766b92a3c3a3c57169c2529e9aa36e89b3f6dfcfddc6027f3aabd47dedbd9851729a3f6fba899842b1f5e949117c62e94f558da5ebd37feb4927209e2ead2d492c1d647049e8a1347c46c75411a14c5420ef6896cd0d0c6145af76668d9313f3e71e1970de58f674f3b387e4c74d24214fbc1ad7d30b3d2db3d6fb7d9e92dd1a9f836dad7c2713dc6ebfec62f",
+          "pin_identifier": "38e2f188-b3a8-4d98-a7f9-6c348cb54cfe",
+          "salt": "a99/9Qy6P7ON4Umk2FafVQ=="
+       }
+   }
+
+See :ref:`pin-data` for the format of the `pin_data` element.
+
+To authenticate a watch-only user:
+
+.. code-block:: json
+
+   {
+      "username": "my_watch_only_username",
+      "password": "my_watch_only_password"
+   }
+
 .. _hw-device:
 
 HW device JSON
