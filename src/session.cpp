@@ -349,19 +349,19 @@ namespace sdk {
         });
     }
 
-    void session::login(const std::string& mnemonic, const std::string& password)
+    nlohmann::json session::login(const std::string& mnemonic, const std::string& password)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->login(mnemonic, password);
+            return p->login(mnemonic, password);
         });
     }
 
-    void session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
+    nlohmann::json session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            p->login_with_pin(pin, pin_data);
+            return p->login_with_pin(pin, pin_data);
         });
     }
 

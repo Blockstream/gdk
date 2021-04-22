@@ -59,8 +59,8 @@ namespace sdk {
         void authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device);
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
-        void login(const std::string& mnemonic, const std::string& password);
-        void login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
+        nlohmann::json login(const std::string& mnemonic, const std::string& password);
+        nlohmann::json login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);
         bool set_watch_only(const std::string& username, const std::string& password);
         std::string get_watch_only_username();

@@ -61,8 +61,8 @@ namespace sdk {
             const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
             = 0;
         virtual void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs) = 0;
-        virtual void login(const std::string& mnemonic, const std::string& password) = 0;
-        virtual void login_with_pin(const std::string& pin, const nlohmann::json& pin_data) = 0;
+        virtual nlohmann::json login(const std::string& mnemonic, const std::string& password) = 0;
+        virtual nlohmann::json login_with_pin(const std::string& pin, const nlohmann::json& pin_data) = 0;
         virtual nlohmann::json login_watch_only(const std::string& username, const std::string& password) = 0;
         virtual bool set_watch_only(const std::string& username, const std::string& password) = 0;
         virtual std::string get_watch_only_username() = 0;

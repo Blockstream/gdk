@@ -163,7 +163,7 @@ namespace sdk {
     {
         throw std::runtime_error("register_subaccount_xpubs not implemented");
     }
-    void ga_rust::login(const std::string& mnemonic, const std::string& password)
+    nlohmann::json ga_rust::login(const std::string& mnemonic, const std::string& password)
     {
         auto details = nlohmann::json{
             { "mnemonic", mnemonic },
@@ -171,8 +171,9 @@ namespace sdk {
         };
 
         call_session("login", details);
+        return nlohmann::json(); // FIXME: return post-login data
     }
-    void ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
+    nlohmann::json ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
         auto details = nlohmann::json{
             { "pin", pin },
@@ -180,6 +181,7 @@ namespace sdk {
         };
 
         call_session("login_with_pin", details);
+        return nlohmann::json(); // FIXME: return post-login data
     }
     nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {

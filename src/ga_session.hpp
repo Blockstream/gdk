@@ -78,9 +78,9 @@ namespace sdk {
 
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
-        void login(const std::string& mnemonic, const std::string& password);
+        nlohmann::json login(const std::string& mnemonic, const std::string& password);
         bool login_from_cached(const std::string& mnemonic);
-        void login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
+        nlohmann::json login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);
         void on_failed_login();
 
@@ -246,7 +246,7 @@ namespace sdk {
 
         void authenticate(locker_t& locker, const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device);
-        void login(locker_t& locker, const std::string& mnemonic);
+        nlohmann::json login(locker_t& locker, const std::string& mnemonic);
         void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context);
 
         void load_client_blob(locker_t& locker, bool encache);

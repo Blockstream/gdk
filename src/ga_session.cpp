@@ -1594,14 +1594,14 @@ namespace sdk {
         });
     }
 
-    void ga_session::login(const std::string& mnemonic, const std::string& password)
+    nlohmann::json ga_session::login(const std::string& mnemonic, const std::string& password)
     {
         GDK_LOG_NAMED_SCOPE("login");
 
         locker_t locker(m_mutex);
 
         GDK_RUNTIME_ASSERT_MSG(!m_signer, "re-login on an existing session always fails");
-        login(locker, password.empty() ? mnemonic : decrypt_mnemonic(mnemonic, password));
+        return login(locker, password.empty() ? mnemonic : decrypt_mnemonic(mnemonic, password));
     }
 
     void ga_session::push_appearance_to_server(ga_session::locker_t& locker) const
@@ -1847,7 +1847,7 @@ namespace sdk {
         }
     }
 
-    void ga_session::login(ga_session::locker_t& locker, const std::string& mnemonic)
+    nlohmann::json ga_session::login(ga_session::locker_t& locker, const std::string& mnemonic)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1872,6 +1872,7 @@ namespace sdk {
 
         authenticate(
             locker, hexder_path.first, hexder_path.second, std::string(), std::string(), nlohmann::json::object());
+        return get_post_login_data();
     }
 
     nlohmann::json ga_session::get_settings()
@@ -1952,7 +1953,7 @@ namespace sdk {
         remap_appearance_setting("required_num_blocks", "required_num_blocks");
     }
 
-    void ga_session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
+    nlohmann::json ga_session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
         // FIXME: clear password after use
         const auto password = get_pin_password(pin, pin_data.at("pin_identifier"));
@@ -1962,7 +1963,7 @@ namespace sdk {
         // FIXME: clear data after use
         const auto data = nlohmann::json::parse(aes_cbc_decrypt(key, pin_data.at("encrypted_data")));
 
-        login(data.at("mnemonic"), std::string());
+        return login(data.at("mnemonic"), std::string());
     }
 
     nlohmann::json ga_session::login_watch_only(const std::string& username, const std::string& password)
