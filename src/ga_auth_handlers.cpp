@@ -101,7 +101,7 @@ namespace sdk {
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
     {
         try {
-            init(m_session.get_hw_device(), false);
+            init(m_session.is_watch_only() ? nlohmann::json() : m_session.get_hw_device(), false);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
