@@ -230,3 +230,9 @@ impl From<aead::Error> for Error {
         Error::Generic(err.to_string())
     }
 }
+
+impl From<ureq::Error> for Error {
+    fn from(err: ureq::Error) -> Self {
+        Error::Generic(err.to_string())
+    }
+}

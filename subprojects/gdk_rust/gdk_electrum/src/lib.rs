@@ -112,6 +112,7 @@ impl Closer {
 
 pub struct ElectrumSession {
     pub data_root: String,
+    pub proxy: Option<String>,
     pub network: Network,
     pub url: ElectrumUrl,
     pub wallet: Option<Arc<RwLock<WalletCtx>>>,
@@ -179,16 +180,43 @@ pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl,
     determine_electrum_url(&network.electrum_url, network.tls, network.validate_domain)
 }
 
-impl ElectrumSession {
-    pub fn new_session(network: Network, db_root: &str, url: ElectrumUrl) -> Result<Self, Error> {
-        Ok(Self::create_session(network, db_root, url))
+fn socksify(proxy: Option<&str>) -> Option<String> {
+    const SOCKS5: &str = "socks5://";
+    if let Some(proxy) = proxy {
+        let trimmed = proxy.trim();
+        if trimmed.is_empty() {
+            None
+        } else if trimmed.starts_with(SOCKS5) {
+            Some(trimmed.to_string())
+        } else {
+            Some(format!("{}{}", SOCKS5, trimmed))
+        }
+    } else {
+        None
     }
 }
 
 impl ElectrumSession {
-    pub fn create_session(network: Network, db_root: &str, url: ElectrumUrl) -> Self {
+    pub fn new_session(
+        network: Network,
+        db_root: &str,
+        proxy: Option<&str>,
+        url: ElectrumUrl,
+    ) -> Result<Self, Error> {
+        Ok(Self::create_session(network, db_root, proxy, url))
+    }
+}
+
+impl ElectrumSession {
+    pub fn create_session(
+        network: Network,
+        db_root: &str,
+        proxy: Option<&str>,
+        url: ElectrumUrl,
+    ) -> Self {
         Self {
             data_root: db_root.to_string(),
+            proxy: socksify(proxy),
             network,
             url,
             wallet: None,
@@ -213,8 +241,16 @@ impl ElectrumSession {
         Ok(wallet.write().unwrap())
     }
 
-    pub fn build_request_agent(&self) -> ureq::Agent {
-        ureq::Agent::new().build()
+    pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
+        match &self.proxy {
+            Some(proxy) => {
+                let proxy = ureq::Proxy::new(&proxy)?;
+                let mut agent = ureq::agent();
+                agent.set_proxy(proxy);
+                Ok(agent)
+            }
+            None => Ok(ureq::agent()),
+        }
     }
 }
 
@@ -296,6 +332,11 @@ impl Session<Error> for ElectrumSession {
                 info!("setting db_root to {:?}", self.data_root);
             }
 
+            if self.proxy.is_none() {
+                self.proxy = socksify(net_params["proxy"].as_str());
+                info!("setting proxy to {:?}", self.proxy);
+            }
+
             let mnemonic = match self.get_mnemonic() {
                 Ok(mnemonic) => Some(mnemonic.clone()),
                 Err(_) => None,
@@ -323,7 +364,7 @@ impl Session<Error> for ElectrumSession {
         pin: String,
         details: PinGetDetails,
     ) -> Result<Vec<Notification>, Error> {
-        let agent = self.build_request_agent();
+        let agent = self.build_request_agent()?;
         let manager = PinManager::new(agent)?;
         let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
@@ -627,7 +668,7 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
-        let agent = self.build_request_agent();
+        let agent = self.build_request_agent()?;
         let manager = PinManager::new(agent)?;
         let client_key = SecretKey::new(&mut thread_rng());
         let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
@@ -800,7 +841,7 @@ impl Session<Error> for ElectrumSession {
                 let last_modified =
                     self.get_wallet()?.store.read()?.cache.assets_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
-                let agent = self.build_request_agent();
+                let agent = self.build_request_agent()?;
                 thread::spawn(move || {
                     match call_assets(agent, base_url, registry_policy, last_modified) {
                         Ok(p) => tx_assets.send(Some(p)),
@@ -814,7 +855,7 @@ impl Session<Error> for ElectrumSession {
                 let last_modified =
                     self.get_wallet()?.store.read()?.cache.icons_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
-                let agent = self.build_request_agent();
+                let agent = self.build_request_agent()?;
                 thread::spawn(move || match call_icons(agent, base_url, last_modified) {
                     Ok(p) => tx_icons.send(Some(p)),
                     Err(_) => tx_icons.send(None),

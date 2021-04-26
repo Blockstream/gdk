@@ -201,6 +201,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     let parsed_network = parsed_network.unwrap();
 
     let db_root = network["db_root"].as_str().unwrap_or("");
+    let proxy = network["proxy"].as_str();
 
     match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
@@ -208,8 +209,8 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
             let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
                 .map_err(|x| json!(x))?;
 
-            let session =
-                ElectrumSession::new_session(parsed_network, db_root, url).map_err(|x| json!(x))?;
+            let session = ElectrumSession::new_session(parsed_network, db_root, proxy, url)
+                .map_err(|x| json!(x))?;
             let backend = GdkBackend::Electrum(session);
 
             // some time in the past
@@ -235,12 +236,14 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         let agent = match sess.backend {
             GdkBackend::Electrum(ref s) => s.build_request_agent(),
         };
-        let rates = fetch_exchange_rates(agent);
-        // still record time even if we get no results
-        sess.last_xr_fetch = SystemTime::now();
-        if !rates.is_empty() {
-            // only set last_xr if we got new non-empty rates
-            sess.last_xr = Some(rates);
+        if let Ok(agent) = agent {
+            let rates = fetch_exchange_rates(agent);
+            // still record time even if we get no results
+            sess.last_xr_fetch = SystemTime::now();
+            if !rates.is_empty() {
+                // only set last_xr if we got new non-empty rates
+                sess.last_xr = Some(rates);
+            }
         }
     }
 
