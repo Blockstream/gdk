@@ -674,12 +674,13 @@ pub fn discover_accounts(
     master_xprv: &ExtendedPrivKey,
     network_id: NetworkId,
     electrum_url: &ElectrumUrl,
+    proxy: Option<&str>,
     master_blinding: Option<&MasterBlindingKey>,
 ) -> Result<Vec<u32>, Error> {
     use electrum_client::ElectrumApi;
 
     // build our own client so that the subscriptions are dropped at the end
-    let client = electrum_url.build_client()?;
+    let client = electrum_url.build_client(proxy)?;
 
     // the batch size is the effective gap limit for our purposes. in reality it is a lower bound.
     let gap_limit = BATCH_SIZE;

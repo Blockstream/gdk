@@ -455,7 +455,7 @@ impl Session<Error> for ElectrumSession {
         notify_block(self.notify.clone(), tip_height);
 
         info!("building client");
-        if let Ok(fee_client) = self.url.build_client() {
+        if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref()) {
             info!("building built end");
             let fee_store = store.clone();
             thread::spawn(move || {
@@ -492,6 +492,7 @@ impl Session<Error> for ElectrumSession {
             };
 
             let headers_url = self.url.clone();
+            let proxy = self.proxy.clone();
             let (close_headers, r) = channel();
             self.closer.senders.push(close_headers);
             let notify_headers = self.notify.clone();
@@ -506,7 +507,7 @@ impl Session<Error> for ElectrumSession {
                         break;
                     }
 
-                    if let Ok(client) = headers_url.build_client() {
+                    if let Ok(client) = headers_url.build_client(proxy.as_deref()) {
                         loop {
                             if r.try_recv().is_ok() {
                                 info!("closing headers thread");
@@ -579,7 +580,7 @@ impl Session<Error> for ElectrumSession {
 
         // Recover BIP 44 accounts on the first login
         if !store.read().unwrap().cache.accounts_recovered {
-            wallet.write().unwrap().recover_accounts(&self.url)?;
+            wallet.write().unwrap().recover_accounts(&self.url, self.proxy.as_deref())?;
             store.write().unwrap().cache.accounts_recovered = true;
         }
 
@@ -602,10 +603,11 @@ impl Session<Error> for ElectrumSession {
         let (close_tipper, r) = channel();
         self.closer.senders.push(close_tipper);
         let tipper_url = self.url.clone();
+        let proxy = self.proxy.clone();
         let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
             loop {
-                if let Ok(client) = tipper_url.build_client() {
+                if let Ok(client) = tipper_url.build_client(proxy.as_deref()) {
                     match tipper.tip(&client) {
                         Ok(current_tip) => {
                             if tip_height != current_tip {
@@ -631,10 +633,11 @@ impl Session<Error> for ElectrumSession {
         self.closer.senders.push(close_syncer);
         let notify_txs = self.notify.clone();
         let syncer_url = self.url.clone();
+        let proxy = self.proxy.clone();
         let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
             loop {
-                match syncer_url.build_client() {
+                match syncer_url.build_client(proxy.as_deref()) {
                     Ok(client) => match syncer.sync(&client) {
                         Ok(updated_accounts) => {
                             for account_num in updated_accounts {
@@ -764,7 +767,7 @@ impl Session<Error> for ElectrumSession {
 
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
         info!("electrum send_transaction {:#?}", tx);
-        let client = self.url.build_client()?;
+        let client = self.url.build_client(self.proxy.as_deref())?;
         let tx_bytes = hex::decode(&tx.hex)?;
         let txid = client.transaction_broadcast_raw(&tx_bytes)?;
         Ok(format!("{}", txid))
@@ -774,7 +777,7 @@ impl Session<Error> for ElectrumSession {
         let transaction = BETransaction::from_hex(&tx_hex, self.network.id())?;
 
         info!("broadcast_transaction {:#?}", transaction.txid());
-        let client = self.url.build_client()?;
+        let client = self.url.build_client(self.proxy.as_deref())?;
         let hex = hex::decode(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
         Ok(format!("{}", txid))
@@ -790,7 +793,7 @@ impl Session<Error> for ElectrumSession {
             NetworkId::Bitcoin(_) => 1000,
             NetworkId::Elements(_) => 100,
         };
-        let fee_estimates = try_get_fee_estimates(&self.url.build_client()?)
+        let fee_estimates = try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref())?)
             .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
         self.get_wallet()?.store.write()?.cache.fee_estimates = fee_estimates.clone();
         Ok(fee_estimates)

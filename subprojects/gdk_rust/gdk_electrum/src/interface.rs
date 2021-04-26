@@ -42,8 +42,13 @@ pub enum ElectrumUrl {
 }
 
 impl ElectrumUrl {
-    pub fn build_client(&self) -> Result<Client, Error> {
-        self.build_config(ConfigBuilder::new())
+    pub fn build_client(&self, proxy: Option<&str>) -> Result<Client, Error> {
+        let mut config = ConfigBuilder::new();
+        if let Some(proxy) = proxy {
+            // TODO: add support for credentials?
+            config = config.socks5(Some(electrum_client::Socks5Config::new(proxy)))?;
+        }
+        self.build_config(config)
     }
 
     pub fn build_config(&self, config: ConfigBuilder) -> Result<Client, Error> {
@@ -163,11 +168,16 @@ impl WalletCtx {
         self.get_account(opt.subaccount)?.set_settings(opt)
     }
 
-    pub fn recover_accounts(&mut self, electrum_url: &ElectrumUrl) -> Result<(), Error> {
+    pub fn recover_accounts(
+        &mut self,
+        electrum_url: &ElectrumUrl,
+        proxy: Option<&str>,
+    ) -> Result<(), Error> {
         let account_nums = discover_accounts(
             &self.master_xprv,
             self.network.id(),
             electrum_url,
+            proxy,
             self.master_blinding.as_ref(),
         )?;
         for account_num in account_nums {
