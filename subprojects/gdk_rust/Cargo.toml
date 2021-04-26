@@ -25,7 +25,7 @@ chrono = "0.4.11"
 log = "0.4.8"
 android_logger = { version = "0.8.6", optional = true }
 url = "1.7.2"
-ureq = { version = "1.0.0", features = ["json"] }
+ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 
 [dev-dependencies]
 tempdir = "0.3.7"

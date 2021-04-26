@@ -212,6 +212,10 @@ impl ElectrumSession {
             self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
         Ok(wallet.write().unwrap())
     }
+
+    pub fn build_request_agent(&self) -> ureq::Agent {
+        ureq::Agent::new().build()
+    }
 }
 
 fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
@@ -319,7 +323,8 @@ impl Session<Error> for ElectrumSession {
         pin: String,
         details: PinGetDetails,
     ) -> Result<Vec<Notification>, Error> {
-        let manager = PinManager::new()?;
+        let agent = self.build_request_agent();
+        let manager = PinManager::new(agent)?;
         let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
         let iv = hex::decode(&details.salt)?;
@@ -622,7 +627,8 @@ impl Session<Error> for ElectrumSession {
     }
 
     fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
-        let manager = PinManager::new()?;
+        let agent = self.build_request_agent();
+        let manager = PinManager::new(agent)?;
         let client_key = SecretKey::new(&mut thread_rng());
         let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
         let iv = thread_rng().gen::<[u8; 16]>();
@@ -794,8 +800,9 @@ impl Session<Error> for ElectrumSession {
                 let last_modified =
                     self.get_wallet()?.store.read()?.cache.assets_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
+                let agent = self.build_request_agent();
                 thread::spawn(move || {
-                    match call_assets(base_url, registry_policy, last_modified) {
+                    match call_assets(agent, base_url, registry_policy, last_modified) {
                         Ok(p) => tx_assets.send(Some(p)),
                         Err(_) => tx_assets.send(None),
                     }
@@ -807,7 +814,8 @@ impl Session<Error> for ElectrumSession {
                 let last_modified =
                     self.get_wallet()?.store.read()?.cache.icons_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
-                thread::spawn(move || match call_icons(base_url, last_modified) {
+                let agent = self.build_request_agent();
+                thread::spawn(move || match call_icons(agent, base_url, last_modified) {
                     Ok(p) => tx_icons.send(Some(p)),
                     Err(_) => tx_icons.send(None),
                 });
@@ -907,11 +915,16 @@ impl ElectrumSession {
     }
 }
 
-fn call_icons(base_url: String, last_modified: String) -> Result<(Value, String), Error> {
+fn call_icons(
+    agent: ureq::Agent,
+    base_url: String,
+    last_modified: String,
+) -> Result<(Value, String), Error> {
     // TODO gzip encoding
     let url = format!("{}/{}", base_url, "icons.json");
     info!("START call_icons {}", &url);
-    let icons_response = ureq::get(&url)
+    let icons_response = agent
+        .get(&url)
         .timeout_connect(15_000)
         .timeout_read(15_000)
         .set("If-Modified-Since", &last_modified)
@@ -925,6 +938,7 @@ fn call_icons(base_url: String, last_modified: String) -> Result<(Value, String)
 }
 
 fn call_assets(
+    agent: ureq::Agent,
     base_url: String,
     registry_policy: String,
     last_modified: String,
@@ -932,7 +946,8 @@ fn call_assets(
     // TODO add gzip encoding
     let url = format!("{}/{}", base_url, "index.json");
     info!("START call_assets {}", &url);
-    let assets_response = ureq::get(&url)
+    let assets_response = agent
+        .get(&url)
         .timeout_connect(15_000)
         .timeout_read(15_000)
         .set("If-Modified-Since", &last_modified)

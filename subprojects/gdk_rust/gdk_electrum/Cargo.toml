@@ -21,7 +21,7 @@ libc = "0.2"
 android_logger = { version = "0.8.6", optional = true }
 electrum-client = "0.7.0"
 chrono = "0.4.11"
-ureq = { version = "1.0.0", features = ["json"] }
+ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 block-modes = "0.3.3"
 aes = "0.3.2"
 tempdir = "0.3.7"

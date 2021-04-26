@@ -232,7 +232,10 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         debug!("hit exchange rate cache");
     } else {
         info!("missed exchange rate cache");
-        let rates = fetch_exchange_rates();
+        let agent = match sess.backend {
+            GdkBackend::Electrum(ref s) => s.build_request_agent(),
+        };
+        let rates = fetch_exchange_rates(agent);
         // still record time even if we get no results
         sess.last_xr_fetch = SystemTime::now();
         if !rates.is_empty() {
@@ -319,9 +322,9 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     GA_OK
 }
 
-fn fetch_exchange_rates() -> Vec<Ticker> {
+fn fetch_exchange_rates(agent: ureq::Agent) -> Vec<Ticker> {
     if let Ok(result) =
-        ureq::get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call().into_json()
+        agent.get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call().into_json()
     {
         if let Value::Array(array) = result {
             if let Some(Value::Array(array)) = array.get(0) {
