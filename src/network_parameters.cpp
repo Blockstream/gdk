@@ -536,5 +536,47 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(p != registered_networks.end(), "Unknown network");
         return *p->second;
     }
+
+    std::string network_parameters::network() const { return m_details.at("network"); }
+    std::string network_parameters::gait_wamp_url() const { return m_details.at("wamp_url"); }
+    std::vector<std::string> network_parameters::gait_wamp_cert_pins() const { return m_details.at("wamp_cert_pins"); }
+    std::vector<std::string> network_parameters::gait_wamp_cert_roots() const
+    {
+        return m_details.at("wamp_cert_roots");
+    }
+    std::string network_parameters::block_explorer_address() const { return m_details.at("address_explorer_url"); }
+    std::string network_parameters::block_explorer_tx() const { return m_details.at("tx_explorer_url"); }
+    std::string network_parameters::asset_registry_url() const { return m_details.at("asset_registry_url"); }
+    std::string network_parameters::asset_registry_onion_url() const
+    {
+        return m_details.at("asset_registry_onion_url");
+    }
+    std::string network_parameters::chain_code() const { return m_details.at("service_chain_code"); }
+    std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
+    std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
+    std::string network_parameters::policy_asset() const { return m_details.value("policy_asset", std::string{}); }
+    std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
+    std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
+    std::string network_parameters::blech32_prefix() const { return m_details.at("blech32_prefix"); }
+    unsigned char network_parameters::btc_version() const { return m_details.at("p2pkh_version"); }
+    unsigned char network_parameters::btc_p2sh_version() const { return m_details.at("p2sh_version"); }
+    uint32_t network_parameters::blinded_prefix() const { return m_details.at("blinded_prefix"); }
+    int network_parameters::ct_exponent() const { return m_details.at("ct_exponent"); }
+    int network_parameters::ct_bits() const { return m_details.at("ct_bits"); }
+    bool network_parameters::is_main_net() const { return m_details.at("mainnet"); }
+    bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
+    bool network_parameters::is_electrum() const { return m_details.value("server_type", "") == "electrum"; }
+    bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
+    std::string network_parameters::socks5() const { return m_details.value("socks5", ""); }
+    std::string network_parameters::get_connection_string(bool use_tor) const
+    {
+        return use_tor ? gait_onion() : gait_wamp_url();
+    }
+    std::string network_parameters::get_registry_connection_string(bool use_tor) const
+    {
+        return use_tor ? asset_registry_onion_url() : asset_registry_url();
+    }
+    std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
+
 } // namespace sdk
 } // namespace ga

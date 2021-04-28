@@ -432,7 +432,7 @@ namespace sdk {
                 addressee["satoshi"] = amount::convert(uri_amount, "USD", "")["satoshi"];
             }
 
-            if (m_netparams.liquid()) {
+            if (m_netparams.is_liquid()) {
                 if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
                     throw std::runtime_error("in liquid amount without assetid is not valid"); // fixme return error
                 } else if (bip21_params.contains("assetid")) {

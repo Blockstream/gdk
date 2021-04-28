@@ -761,7 +761,7 @@ namespace sdk {
                 // - the caller can always choose to ignore the passed txn if so desired in that case.
                 // NOTE: this is not required for liquid where the attack is not possible, and the fee is an
                 // explicit output.
-                if (!m_session.get_network_parameters().liquid()) {
+                if (!m_session.get_network_parameters().is_liquid()) {
                     for (const auto& input : signing_inputs) {
                         const std::string txhash = input.at("txhash");
                         if (prev_txs.find(txhash) == prev_txs.end()) {
@@ -790,10 +790,10 @@ namespace sdk {
             const auto& signatures = get_sized_array(args, "signatures", inputs.size());
             const auto& outputs = m_twofactor_data["transaction_outputs"];
             const auto& transaction_details = m_twofactor_data["transaction"];
-            const bool is_liquid = m_session.get_network_parameters().liquid();
+            const bool is_liquid = m_session.get_network_parameters().is_liquid();
             const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
-            if (m_session.get_network_parameters().liquid()) {
+            if (m_session.get_network_parameters().is_liquid()) {
                 const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
                 const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
                 const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
@@ -1524,7 +1524,7 @@ namespace sdk {
             return;
         }
 
-        const bool is_liquid = m_session.get_network_parameters().liquid();
+        const bool is_liquid = m_session.get_network_parameters().is_liquid();
 
         try {
             if (!is_liquid) {
@@ -1585,7 +1585,7 @@ namespace sdk {
 
     void send_transaction_call::create_twofactor_data()
     {
-        const bool is_liquid = m_session.get_network_parameters().liquid();
+        const bool is_liquid = m_session.get_network_parameters().is_liquid();
         m_twofactor_data = nlohmann::json::object();
         if (m_twofactor_required && !is_liquid) {
             if (m_bump_amount != 0u) {
@@ -1610,7 +1610,7 @@ namespace sdk {
 
     auth_handler::state_type send_transaction_call::call_impl()
     {
-        const bool is_liquid = m_session.get_network_parameters().liquid();
+        const bool is_liquid = m_session.get_network_parameters().is_liquid();
         if (!is_liquid) {
             // The api requires the request and action data to differ, which is non-optimal
             json_rename_key(m_twofactor_data, "fee", "send_raw_tx_fee");

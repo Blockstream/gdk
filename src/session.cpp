@@ -610,7 +610,7 @@ namespace sdk {
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_network_parameters().liquid();
+            return p->get_network_parameters().is_liquid();
         });
     }
 

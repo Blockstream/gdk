@@ -375,9 +375,9 @@ namespace sdk {
                 // from being modified.
                 uint32_t vin = 0;
                 for (const auto& input : result["old_used_utxos"]) {
-                    const auto sigs = get_signatures_from_input(input, tx, vin, net_params.liquid());
+                    const auto sigs = get_signatures_from_input(input, tx, vin, net_params.is_liquid());
                     const auto pubkeys = session.pubkeys_from_utxo(input);
-                    const auto script_hash = get_script_hash(net_params.liquid(), input, tx, vin);
+                    const auto script_hash = get_script_hash(net_params.is_liquid(), input, tx, vin);
                     GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(0), script_hash, sigs.at(0))); // ga
                     GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(1), script_hash, sigs.at(1))); // user
                     ++vin;
@@ -416,7 +416,7 @@ namespace sdk {
             error = std::string(); // Clear any previous error
             result["user_signed"] = false;
             result["server_signed"] = false;
-            result["liquid"] = net_params.liquid();
+            result["liquid"] = net_params.is_liquid();
 
             // Must specify subaccount to use
             const auto p_subaccount = result.find("subaccount");
@@ -449,7 +449,7 @@ namespace sdk {
             // Let the caller know if addressees should not be modified
             result["addressees_read_only"] = is_redeposit || is_rbf || is_cpfp || is_sweep;
 
-            const bool is_liquid = net_params.liquid();
+            const bool is_liquid = net_params.is_liquid();
 
             auto addressees_p = result.find("addressees");
             if (is_sweep) {
@@ -550,7 +550,7 @@ namespace sdk {
                 for (auto& addressee : *addressees_p) {
                     nlohmann::json uri_params
                         = parse_bitcoin_uri(addressee.value("address", ""), net_params.bip21_prefix());
-                    if (net_params.liquid() && uri_params.is_object()) {
+                    if (net_params.is_liquid() && uri_params.is_object()) {
                         const auto& bip21_params = uri_params["bip21-params"];
                         const bool has_assetid = bip21_params.contains("assetid");
 
@@ -576,7 +576,7 @@ namespace sdk {
                     }
 
                     asset_tags.insert(session.asset_id_from_string(addressee.value("asset_tag", "btc")));
-                    if (asset_tags.size() > 1 && net_params.main_net()) {
+                    if (asset_tags.size() > 1 && net_params.is_main_net()) {
                         // Multi-asset send disabled in (liquid) mainnet
                         GDK_LOG_SEV(log_level::error) << "Multi-asset send not supported";
                         GDK_RUNTIME_ASSERT(false);
@@ -920,7 +920,7 @@ namespace sdk {
 
             std::array<unsigned char, SHA256_LEN> tx_hash;
             const auto& net_params = session.get_network_parameters();
-            tx_hash = get_script_hash(net_params.liquid(), u, tx, index);
+            tx_hash = get_script_hash(net_params.is_liquid(), u, tx, index);
 
             if (!private_key.empty()) {
                 const auto private_key_bytes = h2b(private_key);
@@ -965,7 +965,7 @@ namespace sdk {
         const std::string& signer_commitment_hex, const std::string& der_hex)
     {
         const auto& host_entropy_hex = input.at("ae_host_entropy");
-        const auto script_hash = get_script_hash(session.get_network_parameters().liquid(), input, tx, index);
+        const auto script_hash = get_script_hash(session.get_network_parameters().is_liquid(), input, tx, index);
         const auto pubkeys = session.pubkeys_from_utxo(input);
         const auto user_pubkey = pubkeys.at(1); // user key
 
@@ -1042,7 +1042,7 @@ namespace sdk {
     nlohmann::json blind_ga_transaction(ga_session& session, const nlohmann::json& details)
     {
         const auto& net_params = session.get_network_parameters();
-        GDK_RUNTIME_ASSERT(net_params.liquid());
+        GDK_RUNTIME_ASSERT(net_params.is_liquid());
 
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
@@ -1145,7 +1145,7 @@ namespace sdk {
         const std::array<unsigned char, 32>& vbf)
     {
         const auto& net_params = session.get_network_parameters();
-        GDK_RUNTIME_ASSERT(net_params.liquid());
+        GDK_RUNTIME_ASSERT(net_params.is_liquid());
         GDK_RUNTIME_ASSERT(!output.at("is_fee"));
 
         const std::string error = json_get_value(details, "error");

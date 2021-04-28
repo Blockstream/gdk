@@ -1317,7 +1317,7 @@ namespace sdk {
         // Compute wallet identifier for callers to use if they wish.
         const chain_code_t main_chaincode{ h2b_array<32>(m_login_data["chain_code"]) };
         const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(m_login_data["public_key"]) };
-        const xpub_hdkey main_hdkey(m_net_params.main_net(), std::make_pair(main_chaincode, main_pubkey));
+        const xpub_hdkey main_hdkey(m_net_params.is_main_net(), std::make_pair(main_chaincode, main_pubkey));
         m_login_data["wallet_hash_id"] = main_hdkey.to_hashed_identifier(m_net_params.network());
 
         // Check that csv blocks used are recoverable and provided by the server
@@ -2159,7 +2159,7 @@ namespace sdk {
     nlohmann::json ga_session::get_subaccount_balance_from_server(
         uint32_t subaccount, uint32_t num_confs, bool confidential)
     {
-        if (!m_net_params.liquid()) {
+        if (!m_net_params.is_liquid()) {
             auto balance = wamp_cast_json(wamp_call("txs.get_balance", subaccount, num_confs));
             // TODO: Make sure another session didn't change fiat currency
             {
@@ -2210,13 +2210,14 @@ namespace sdk {
     nlohmann::json ga_session::get_subaccount(ga_session::locker_t& locker, uint32_t subaccount)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        const bool is_liquid = m_net_params.is_liquid();
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         auto& details = p->second;
 
         const auto p_satoshi = details.find("satoshi");
-        if (p_satoshi == details.end() || m_net_params.liquid()) {
+        if (p_satoshi == details.end() || is_liquid) {
             const auto satoshi = [this, &locker, subaccount] {
                 unique_unlock unlocker{ locker };
                 return get_subaccount_balance_from_server(subaccount, 0, false);
@@ -2229,7 +2230,7 @@ namespace sdk {
             details = p->second;
 
             const auto p_satoshi = details.find("satoshi");
-            if (p_satoshi == details.end() || m_net_params.liquid()) {
+            if (p_satoshi == details.end() || is_liquid) {
                 details["satoshi"] = satoshi;
             }
         }
@@ -2656,7 +2657,7 @@ namespace sdk {
 
         const auto datadir = gdk_config().value("datadir", std::string{});
         const auto path = datadir + "/state";
-        const auto is_liquid = m_net_params.liquid();
+        const bool is_liquid = m_net_params.is_liquid();
         auto is_cached = true;
         for (auto& tx_details : tx_list) {
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
@@ -2677,7 +2678,7 @@ namespace sdk {
                 // on the hash of the confirmed transaction.
                 // Once caching is implemented this info can be populated up
                 // front so callers can always expect it.
-                const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.liquid()));
+                const auto tx = tx_from_hex(tx_data, tx_flags(is_liquid));
 
                 update_tx_info(m_net_params, tx, tx_details);
             } else {
@@ -2930,7 +2931,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_blinded_scripts(const nlohmann::json& details)
     {
-        GDK_RUNTIME_ASSERT(m_net_params.liquid());
+        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
         nlohmann::json answer = nlohmann::json::array();
         std::set<std::pair<std::string, std::string>> no_dups;
@@ -3011,8 +3012,9 @@ namespace sdk {
         const uint32_t num_confs = details.at("num_confs");
         const bool all_coins = json_get_value(details, "all_coins", false);
         const bool confidential_only = details.value("confidential", false);
+        const bool is_liquid = m_net_params.is_liquid();
 
-        GDK_RUNTIME_ASSERT(!confidential_only || m_net_params.liquid());
+        GDK_RUNTIME_ASSERT(!confidential_only || is_liquid);
 
         nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs, all_coins);
 
@@ -3031,20 +3033,18 @@ namespace sdk {
         cleanup_utxos(utxos, m_net_params.policy_asset());
 
         nlohmann::json asset_utxos({});
-        std::for_each(
-            std::begin(utxos), std::end(utxos), [&asset_utxos, &confidential_only, this](const nlohmann::json& utxo) {
-                const auto has_error = utxo.find("error") != utxo.end();
-                if (has_error) {
-                    asset_utxos["error"].emplace_back(utxo);
-                } else {
-                    const bool confidential_utxo = m_net_params.liquid() && utxo.at("confidential");
-                    // either return all or only confidential UTXOs
-                    if (!confidential_only || confidential_utxo) {
-                        const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
-                        asset_utxos[utxo_asset_tag].emplace_back(utxo);
-                    }
+        for (const auto& utxo : utxos) {
+            if (utxo.contains("error")) {
+                asset_utxos["error"].emplace_back(utxo);
+            } else {
+                const bool confidential_utxo = is_liquid && utxo.at("confidential");
+                // Either return all or only confidential UTXOs
+                if (!confidential_only || confidential_utxo) {
+                    const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
+                    asset_utxos[utxo_asset_tag].emplace_back(utxo);
                 }
-            });
+            }
+        }
 
         // Sort the utxos such that the oldest are first, with the default
         // UTXO selection strategy this reduces the number of re-deposits
@@ -3084,7 +3084,8 @@ namespace sdk {
 
         std::vector<unsigned char> private_key_bytes;
         bool compressed;
-        std::tie(private_key_bytes, compressed) = to_private_key_bytes(private_key, password, m_net_params.main_net());
+        std::tie(private_key_bytes, compressed)
+            = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
         auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes));
         if (!compressed) {
             public_key_bytes = ec_public_key_decompress(public_key_bytes);
@@ -3117,7 +3118,7 @@ namespace sdk {
     {
         const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
 
-        const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.liquid()));
+        const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
         nlohmann::json ret = { { "txhash", txhash } };
         update_tx_info(m_net_params, tx, ret);
         return ret;
@@ -3193,7 +3194,7 @@ namespace sdk {
             }
         }
 
-        if (m_net_params.liquid()) {
+        if (m_net_params.is_liquid()) {
             // we treat the script as a segwit wrapped script, which is the only supported type on Liquid at the moment
             GDK_RUNTIME_ASSERT(addr_script_type == script_type::ga_p2sh_p2wsh_csv_fortified_out
                 || addr_script_type == script_type::ga_p2sh_p2wsh_fortified_out);
@@ -3268,7 +3269,7 @@ namespace sdk {
         const uint32_t num_confs = details.at("num_confs");
         const uint32_t confidential = json_get_value(details, "confidential", false);
 
-        if (num_confs == 0 && !m_net_params.liquid()) {
+        if (num_confs == 0 && !m_net_params.is_liquid()) {
             // The subaccount details contains the confs=0 balance
             return get_subaccount(subaccount)["satoshi"];
         }
@@ -3295,7 +3296,7 @@ namespace sdk {
     bool ga_session::is_rbf_enabled() const
     {
         locker_t locker(m_mutex);
-        return !m_net_params.liquid() && json_get_value(m_login_data, "rbf", true);
+        return !m_net_params.is_liquid() && json_get_value(m_login_data, "rbf", true);
     }
 #else
     bool ga_session::is_rbf_enabled() const

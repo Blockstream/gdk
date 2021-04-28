@@ -248,7 +248,7 @@ namespace sdk {
 
     cache::cache(const network_parameters& net_params, const std::string& network_name)
         : m_network_name(network_name)
-        , m_is_liquid(net_params.liquid())
+        , m_is_liquid(net_params.is_liquid())
         , m_type(0)
         , m_data_dir()
         , m_db_name()

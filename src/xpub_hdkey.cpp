@@ -47,12 +47,12 @@ namespace sdk {
 
     namespace detail {
         xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params)
-            : m_is_main_net(net_params.main_net())
+            : m_is_main_net(net_params.is_main_net())
         {
         }
 
         xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params, const xpub_t& xpub)
-            : m_is_main_net(net_params.main_net())
+            : m_is_main_net(net_params.is_main_net())
             , m_xpub(xpub)
         {
         }

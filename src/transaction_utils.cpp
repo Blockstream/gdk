@@ -24,9 +24,9 @@ std::vector<unsigned char> output_script_for_address(
 {
     // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
     const bool is_bech32 = boost::starts_with(address, net_params.bech32_prefix());
-    const bool is_blech32 = net_params.liquid() && boost::starts_with(address, net_params.blech32_prefix());
+    const bool is_blech32 = net_params.is_liquid() && boost::starts_with(address, net_params.blech32_prefix());
 
-    if (net_params.liquid()) {
+    if (net_params.is_liquid()) {
         if (is_bech32) {
             error = res::id_nonconfidential_addresses_not;
         } else if (is_blech32) {
@@ -169,7 +169,7 @@ namespace sdk {
 
         if (type == script_type::ga_p2sh_p2wsh_csv_fortified_out && !is_2of3) {
             // CSV 2of2, subtype is the number of CSV blocks
-            const bool optimize = !net_params.liquid(); // Liquid uses old style CSV
+            const bool optimize = !net_params.is_liquid(); // Liquid uses old style CSV
             scriptpubkey_csv_2of2_then_1_from_bytes(keys, subtype, optimize, script);
         } else {
             // P2SH or P2SH-P2WSH standard 2of2/2of3 multisig
@@ -277,7 +277,7 @@ namespace sdk {
     {
         std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
 
-        if (net_params.liquid()) {
+        if (net_params.is_liquid()) {
             const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
             const auto asset_bytes
                 = h2b_rev(!asset_tag.empty() && asset_tag != "btc" ? asset_tag : net_params.policy_asset(), 0x1);
@@ -336,7 +336,7 @@ namespace sdk {
         // Only convert all uppercase strings, BIP-173 specifically disallows mixed case strings
         const std::string bech32_prefix = net_params.bech32_prefix() + "1";
         if ((boost::istarts_with(address, bech32_prefix)
-                || (net_params.liquid() && boost::istarts_with(address, net_params.blech32_prefix() + "1")))
+                || (net_params.is_liquid() && boost::istarts_with(address, net_params.blech32_prefix() + "1")))
             && isupper(address)) {
             boost::to_lower(address);
             addressee["address"] = address;
@@ -437,7 +437,7 @@ namespace sdk {
                     = have_change ? result.at("change_index").at(asset_id).get<uint32_t>() : NO_CHANGE_INDEX;
 
                 amount::value_type satoshi = o.satoshi;
-                if (net_params.liquid()) {
+                if (net_params.is_liquid()) {
                     GDK_RUNTIME_ASSERT(o.value);
                     if (*o.value == 1) {
                         satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
@@ -445,7 +445,7 @@ namespace sdk {
                 }
 
                 const auto output_asset_id
-                    = net_params.liquid() && asset_id == "btc" ? net_params.policy_asset() : asset_id;
+                    = net_params.is_liquid() && asset_id == "btc" ? net_params.policy_asset() : asset_id;
                 nlohmann::json output{ { "satoshi", satoshi }, { "script", script_hex },
                     { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", output_asset_id } };
 
@@ -463,20 +463,20 @@ namespace sdk {
                     // Insert our change meta-data for the change output
                     const auto& change_address = result.at("change_address").at(asset_id);
                     output.insert(change_address.begin(), change_address.end());
-                    if (net_params.liquid()) {
+                    if (net_params.is_liquid()) {
                         output["public_key"] = blinding_key_from_addr(change_address.at("address"));
                     }
                 } else {
                     const auto& addressee = result.at("addressees").at(addressee_index);
                     const auto& address = addressee.at("address");
                     output["address"] = address;
-                    if (net_params.liquid()) {
+                    if (net_params.is_liquid()) {
                         output["public_key"] = blinding_key_from_addr(address);
                     }
                     ++addressee_index;
                 }
 
-                if (net_params.liquid() && !is_fee && !output.contains("eph_keypair_sec")) {
+                if (net_params.is_liquid() && !is_fee && !output.contains("eph_keypair_sec")) {
                     auto ephemeral_keypair = get_ephemeral_keypair();
                     output["eph_keypair_sec"] = b2h(ephemeral_keypair.first);
                     output["eph_keypair_pub"] = b2h(ephemeral_keypair.second);
