@@ -274,6 +274,8 @@ namespace sdk {
         virtual nlohmann::json get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins);
         bool unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
         nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
+        tx_list_cache::container_type get_tx_list(ga_session::locker_t& locker, uint32_t subaccount, uint32_t page_id,
+            const std::string& start_date, const std::string& end_date, nlohmann::json& state_info);
         std::vector<uint32_t> get_all_subaccount_pointers() const;
 
         autobahn::wamp_subscription subscribe(

@@ -2569,6 +2569,31 @@ namespace sdk {
         return utxos;
     }
 
+    tx_list_cache::container_type ga_session::get_tx_list(ga_session::locker_t& locker, uint32_t subaccount,
+        uint32_t page_id, const std::string& start_date, const std::string& end_date, nlohmann::json& state_info)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        const std::vector<std::string> date_range{ start_date, end_date };
+
+        auto result
+            = wamp_call(locker, "txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
+        nlohmann::json txs = wamp_cast_json(result);
+
+        // Update block height and fiat rate in our state info
+        const uint32_t block_height = txs["cur_block"];
+        if (block_height > state_info["cur_block"]) {
+            state_info["cur_block"] = block_height;
+        }
+        // Note: fiat_value is actually the fiat exchange rate
+        if (!txs["fiat_value"].is_null()) {
+            state_info["fiat_exchange"] = txs["fiat_value"];
+        }
+
+        auto& tx_list = txs["list"];
+        return tx_list_cache::container_type{ std::make_move_iterator(tx_list.begin()),
+            std::make_move_iterator(tx_list.end()) };
+    }
+
     tx_list_cache::container_type ga_session::get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count)
     {
         if (!count) {
@@ -2584,27 +2609,7 @@ namespace sdk {
 
         auto&& server_get = [this, &locker, subaccount](uint32_t page_id, const std::string& start_date,
                                 const std::string& end_date, nlohmann::json& state_info) {
-            const std::vector<std::string> date_range{ start_date, end_date };
-
-            auto result
-                = wamp_call(locker, "txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
-            nlohmann::json txs = wamp_cast_json(result);
-
-            // Update block height and fiat rate in our state info
-            const uint32_t block_height = txs["cur_block"];
-            if (block_height > state_info["cur_block"]) {
-                state_info["cur_block"] = block_height;
-            }
-            if (!txs["fiat_value"].is_null()) {
-                state_info["fiat_value"] = txs["fiat_value"];
-            }
-            // Record whether there are any more results remaining
-            state_info["have_more_results"] = txs["next_page_id"].is_null();
-
-            // txs that aren't in our list as double spent
-            auto& tx_list = txs["list"];
-            return tx_list_cache::container_type{ std::make_move_iterator(tx_list.begin()),
-                std::make_move_iterator(tx_list.end()) };
+            return get_tx_list(locker, subaccount, page_id, start_date, end_date, state_info);
         };
 
         tx_list_cache::container_type tx_list;
@@ -2618,9 +2623,8 @@ namespace sdk {
             m_block_height = state_info["cur_block"];
         }
 
-        // Note: fiat_value is actually the fiat exchange rate
-        if (state_info.contains("fiat_value") && !state_info["fiat_value"].is_null()) {
-            const double fiat_rate = state_info["fiat_value"];
+        if (!state_info.at("fiat_exchange").is_null()) {
+            const double fiat_rate = state_info["fiat_exchange"];
             update_fiat_rate(locker, std::to_string(fiat_rate));
         }
 

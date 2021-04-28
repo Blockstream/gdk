@@ -194,7 +194,7 @@ namespace sdk {
         const auto move_iter = std::make_move_iterator<iterator>;
 
         const uint32_t required_cache_size = first + count;
-        nlohmann::json state_info = { { "cur_block", 0u }, { "fiat_value", nullptr }, { "have_more_results", false } };
+        nlohmann::json state_info = { { "cur_block", 0u }, { "fiat_exchange", nullptr } };
         container_type page_txs;
         bool is_last_page;
 
