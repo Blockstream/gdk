@@ -7,8 +7,8 @@
 namespace ga {
 namespace sdk {
     struct auth_handler {
-        auth_handler(ga::sdk::session& session, const std::string& action, const nlohmann::json& hw_device);
-        auth_handler(ga::sdk::session& session, const std::string& action);
+        auth_handler(session& session, const std::string& action, const nlohmann::json& hw_device);
+        auth_handler(session& session, const std::string& action);
         auth_handler(const auth_handler&) = delete;
         auth_handler& operator=(const auth_handler&) = delete;
         auth_handler(auth_handler&&) = delete;
@@ -37,7 +37,7 @@ namespace sdk {
         void request_code_impl(const std::string& method);
         virtual state_type call_impl() = 0;
 
-        ga::sdk::session& m_session;
+        session& m_session;
         std::vector<std::string> m_methods; // All available methods
         std::string m_method; // Selected 2fa method
         std::string m_action; // Selected 2fa action name (send_raw_tx, set_csvtime etc)
