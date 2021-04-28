@@ -454,6 +454,12 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
+    public func undoTwoFactorReset(email: String) throws -> TwoFactorCall {
+        var optr: OpaquePointer? = nil;
+        try callWrapper(fun: GA_twofactor_undo_reset(session, email, &optr))
+        return TwoFactorCall(optr: optr!);
+    }
+
     public func cancelTwoFactorReset() throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
         try callWrapper(fun: GA_twofactor_cancel_reset(session, &optr));
