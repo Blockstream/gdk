@@ -2922,68 +2922,55 @@ namespace sdk {
         return amount(v);
     }
 
-    std::vector<uint32_t> ga_session::get_all_subaccount_pointers() const
-    {
-        std::vector<uint32_t> pointers;
-
-        locker_t locker(m_mutex);
-        for (const auto& subaccount : m_subaccounts) {
-            pointers.push_back(subaccount.second["pointer"]);
-        }
-        return pointers;
-    }
-
     nlohmann::json ga_session::get_blinded_scripts(const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
-        nlohmann::json answer = nlohmann::json::array();
-        std::set<std::pair<std::string, std::string>> no_dups;
-
         // Get the wallet transactions from the tx list cache
-        tx_list_cache::container_type txs;
-        static constexpr uint32_t max_count = std::numeric_limits<uint32_t>::max();
-        const auto subaccount_p = details.find("subaccount");
-        if (subaccount_p != details.end()) {
+        std::vector<uint32_t> subaccounts;
+        if (details.contains("subaccount")) {
             // Only get txs for specified subaccount
-            txs = get_raw_transactions(*subaccount_p, 0, max_count);
+            subaccounts.push_back(details["subaccount"]);
         } else {
             // No subaccount specified - get transactions for all subaccounts
-            const auto sa_pointers = get_all_subaccount_pointers();
-            for (const uint32_t sa_pointer : sa_pointers) {
-                const auto sa_txs = get_raw_transactions(sa_pointer, 0, max_count);
-                txs.insert(txs.end(), sa_txs.begin(), sa_txs.end());
+            locker_t locker(m_mutex);
+            for (const auto& subaccount : m_subaccounts) {
+                subaccounts.push_back(subaccount.second["pointer"]);
             }
         }
 
-        // lock to guard m_cache
-        // Note that m_cache is not the same as the tx list cache
-        locker_t locker(m_mutex);
+        nlohmann::json answer = nlohmann::json::array();
+        std::set<std::pair<std::string, std::string>> no_dups;
 
-        for (const auto& tx : txs) {
-            for (const auto& ep : tx.at("eps")) {
-                if (!json_get_value(ep, "is_relevant", false)
-                    || m_cache.has_liquid_output(h2b(tx.at("txhash")), ep["pt_idx"])) {
-                    continue; // Not relevant or already cached; ignore
-                }
+        for (const uint32_t sa : subaccounts) {
+            const auto tx_list = get_raw_transactions(sa, 0, 0xffffffff);
 
-                const std::string& asset_tag = json_get_value(ep, "asset_tag", std::string{});
-                if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01")) {
-                    continue; // Unblinded or not an asset; ignore
-                }
-                const std::string& nonce_commitment = json_get_value(ep, "nonce_commitment", std::string{});
-                const std::string& script = json_get_value(ep, "script", std::string{});
+            locker_t locker(m_mutex); // For m_cache
 
-                if (!nonce_commitment.empty() && !script.empty()) {
-                    bool was_inserted = no_dups.emplace(std::make_pair(nonce_commitment, script)).second;
-                    if (was_inserted && !m_cache.has_liquid_blinding_nonce(h2b(nonce_commitment), h2b(script))) {
-                        // Not previously seen and not cached; add to the list to return
-                        answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+            for (const auto& tx : tx_list) {
+                for (const auto& ep : tx.at("eps")) {
+                    if (!json_get_value(ep, "is_relevant", false)
+                        || m_cache.has_liquid_output(h2b(tx.at("txhash")), ep["pt_idx"])) {
+                        continue; // Not relevant or already cached; ignore
+                    }
+
+                    const std::string asset_tag = json_get_value(ep, "asset_tag");
+                    if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01")) {
+                        continue; // Unblinded or not an asset; ignore
+                    }
+                    const std::string nonce_commitment = json_get_value(ep, "nonce_commitment");
+                    const std::string script = json_get_value(ep, "script");
+
+                    if (!nonce_commitment.empty() && !script.empty()) {
+                        bool was_inserted = no_dups.emplace(std::make_pair(nonce_commitment, script)).second;
+                        if (was_inserted && !m_cache.has_liquid_blinding_nonce(h2b(nonce_commitment), h2b(script))) {
+                            // Not previously seen and not cached; add to the list to return
+                            answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+                        }
                     }
                 }
             }
         }
-
         return answer;
     }
 
