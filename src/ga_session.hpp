@@ -166,11 +166,6 @@ namespace sdk {
         void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
             const std::string& signer_commitment_hex, const std::string& der_hex);
 
-        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-            const nlohmann::json& output, const std::string& asset_commitment_hex,
-            const std::string& value_commitment_hex, const std::string& assetblinder_hex,
-            const std::string& amountblinder_hex);
-
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);

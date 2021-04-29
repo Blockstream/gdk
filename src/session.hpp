@@ -151,9 +151,6 @@ namespace sdk {
             const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex);
         void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
             const std::string& signer_commitment_hex, const std::string& der_hex);
-        void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-            const std::string& assetblinder_hex, const std::string& amountblinder_hex);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
@@ -187,14 +184,6 @@ namespace sdk {
 
         const network_parameters& get_network_parameters() const;
 
-    private:
-        template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
-
-        void reconnect();
-
-        auto get_impl() { return m_impl.load(); }
-        auto get_impl() const { return m_impl.load(); }
-
         auto get_nonnull_impl()
         {
             auto p = m_impl.load();
@@ -208,6 +197,14 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(p != nullptr);
             return p;
         }
+
+    private:
+        template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
+
+        void reconnect();
+
+        auto get_impl() { return m_impl.load(); }
+        auto get_impl() const { return m_impl.load(); }
 
         using session_ptr = boost::shared_ptr<session_common>;
         using session_atomic_ptr = boost::atomic_shared_ptr<session_common>;

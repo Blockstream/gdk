@@ -3783,14 +3783,6 @@ namespace sdk {
         ::ga::sdk::sign_input(*this, tx, index, u, der_hex);
     }
 
-    void ga_session::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& output, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-        const std::string& assetblinder_hex, const std::string& amountblinder_hex)
-    {
-        ::ga::sdk::blind_output(*this, details, tx, index, output, h2b<33>(asset_commitment_hex),
-            h2b<33>(value_commitment_hex), h2b_rev<32>(assetblinder_hex), h2b_rev<32>(amountblinder_hex));
-    }
-
     // Idempotent
     void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.send_nlocktime"))); }
 

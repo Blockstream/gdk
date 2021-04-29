@@ -808,11 +808,12 @@ namespace sdk {
                 const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
                 const auto& vbfs = get_sized_array(args, "amountblinders", outputs.size());
 
+                auto session_impl = m_session.get_nonnull_impl();
                 size_t i = 0;
                 for (const auto& out : outputs) {
                     if (!out.at("is_fee")) {
-                        m_session.blind_output(transaction_details, tx, i, out, asset_commitments[i],
-                            value_commitments[i], abfs[i], vbfs[i]);
+                        blind_output(*session_impl, transaction_details, tx, i, out, h2b<33>(asset_commitments[i]),
+                            h2b<33>(value_commitments[i]), h2b_rev<32>(abfs[i]), h2b_rev<32>(vbfs[i]));
                     }
                     ++i;
                 }

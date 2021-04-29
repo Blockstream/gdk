@@ -864,17 +864,6 @@ namespace sdk {
         });
     }
 
-    void session::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-        const std::string& assetblinder_hex, const std::string& amountblinder_hex)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->blind_output(
-                details, tx, index, o, asset_commitment_hex, value_commitment_hex, assetblinder_hex, amountblinder_hex);
-        });
-    }
-
     void session::send_nlocktimes()
     {
         exception_wrapper([&] {

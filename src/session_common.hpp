@@ -133,10 +133,6 @@ namespace sdk {
             const std::string& mnemonic, const std::string& pin, const std::string& device_id)
             = 0;
 
-        virtual void blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-            const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-            const std::string& assetblinder_hex, const std::string& amountblinder_hex)
-            = 0;
         virtual void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
             = 0;
         virtual bool has_blinding_nonce(const std::string& pubkey, const std::string& script) = 0;

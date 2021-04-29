@@ -593,13 +593,6 @@ namespace sdk {
         throw std::runtime_error("sign_hash not yet implemented");
     }
 
-    void ga_rust::blind_output(const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& o, const std::string& asset_commitment_hex, const std::string& value_commitment_hex,
-        const std::string& assetblinder_hex, const std::string& amountblinder_hex)
-    {
-        throw std::runtime_error("blind_output not yet implemented");
-    }
-
     void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet) {}
 
     void ga_rust::disable_all_pin_logins() {}
