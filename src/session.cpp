@@ -550,14 +550,6 @@ namespace sdk {
         });
     }
 
-    std::string session::blind_address(const std::string& unblinded_addr, const std::string& blinding_key_hex)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->blind_address(unblinded_addr, blinding_key_hex);
-        });
-    }
-
     std::string session::extract_confidential_address(const std::string& blinded_address)
     {
         return exception_wrapper([&] {

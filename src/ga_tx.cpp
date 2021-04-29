@@ -695,9 +695,12 @@ namespace sdk {
                         // set a temporary blinding key, will be changed later through the resolvers. we need
                         // to have one because all our create_transaction logic relies on being able to blind
                         // the tx for a few things (fee estimation for instance).
-                        const auto temp_pk = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
-
-                        change_address["address"] = session.blind_address(change_address.at("address"), temp_pk);
+                        const auto blinded_prefix = session.get_network_parameters().blinded_prefix();
+                        const auto public_key
+                            = h2b("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+                        const auto& unblinded_addr = change_address.at("address");
+                        change_address["address"]
+                            = confidential_addr_from_addr(unblinded_addr, blinded_prefix, public_key);
                         change_address["is_blinded"] = false;
                     }
 

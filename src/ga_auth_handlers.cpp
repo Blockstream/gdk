@@ -33,6 +33,14 @@ namespace sdk {
             return make_xpub(hdkey.get());
         }
 
+        static std::string blind_address(
+            const session& session, const std::string& unblinded_addr, const std::string& blinding_key_hex)
+        {
+            const auto blinded_prefix = session.get_network_parameters().blinded_prefix();
+            const auto blinding_key = h2b(blinding_key_hex);
+            return confidential_addr_from_addr(unblinded_addr, blinded_prefix, blinding_key);
+        }
+
         static auto get_paths_json(bool include_root = true)
         {
             std::vector<nlohmann::json> paths;
@@ -337,7 +345,7 @@ namespace sdk {
                     const auto address = m_session.get_receive_address({ { "subaccount", subaccount } });
                     const auto blinding_key = m_session.get_blinding_key_for_script(address["blinding_script_hash"]);
 
-                    const std::string blinded_addr = m_session.blind_address(address["address"], blinding_key);
+                    auto blinded_addr = blind_address(m_session, address["address"], blinding_key);
                     m_ca_addrs[subaccount].emplace_back(blinded_addr);
                 }
             } else {
@@ -350,8 +358,8 @@ namespace sdk {
 
             if (m_action == "get_receive_address") {
                 // Blind the address
-                const std::string blinded_addr
-                    = m_session.blind_address(m_twofactor_data["address"]["address"], args["blinding_key"]);
+                const auto& unblinded_addr = m_twofactor_data["address"]["address"];
+                auto blinded_addr = blind_address(m_session, unblinded_addr, args["blinding_key"]);
 
                 // save it and pop the request
                 m_ca_addrs[m_ca_reqs.back()].emplace_back(blinded_addr);
@@ -463,7 +471,7 @@ namespace sdk {
                 for (size_t i = 0; i < sa["required_ca"]; ++i) {
                     const auto address = m_session.get_receive_address({ { "subaccount", sa["pointer"] } });
                     const auto blinding_key = m_session.get_blinding_key_for_script(address["blinding_script_hash"]);
-                    const std::string blinded_addr = m_session.blind_address(address["address"], blinding_key);
+                    auto blinded_addr = blind_address(m_session, address["address"], blinding_key);
                     conf_addresses.emplace_back(blinded_addr);
                 }
 
@@ -594,7 +602,8 @@ namespace sdk {
                 const auto address = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
                 const auto blinding_key = m_session.get_blinding_key_for_script(address["blinding_script_hash"]);
 
-                m_ca_addrs.emplace_back(m_session.blind_address(address["address"], blinding_key));
+                auto blinded_addr = blind_address(m_session, address["address"], blinding_key);
+                m_ca_addrs.emplace_back(blinded_addr);
 
                 m_remaining_ca_addrs--;
             }
@@ -622,11 +631,11 @@ namespace sdk {
                 m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
                 m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
             } else if (m_action == "get_receive_address") {
-                const auto pub_blinding_key = args["blinding_key"];
+                const auto& unblinded_addr = m_twofactor_data["address"]["address"];
+                const auto blinding_key = args["blinding_key"];
+                auto blinded_addr = blind_address(m_session, unblinded_addr, blinding_key);
 
-                m_ca_addrs.emplace_back(
-                    m_session.blind_address(m_twofactor_data["address"]["address"], pub_blinding_key));
-
+                m_ca_addrs.emplace_back(blinded_addr);
                 m_remaining_ca_addrs--;
             }
 
@@ -865,19 +874,19 @@ namespace sdk {
 
         // if we are on liquid blind the address
         if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
-            std::string pub_blinding_key;
+            std::string blinding_key;
 
             if (m_hw_device.empty()) {
                 // Get the key from our signer
-                pub_blinding_key = m_session.get_blinding_key_for_script(m_result["blinding_script_hash"]);
+                blinding_key = m_session.get_blinding_key_for_script(m_result["blinding_script_hash"]);
             } else {
                 // Use the response from the HW
                 const nlohmann::json args = nlohmann::json::parse(m_code);
-                pub_blinding_key = args.at("blinding_key");
+                blinding_key = args.at("blinding_key");
             }
 
             // Blind the address
-            m_result["address"] = m_session.blind_address(m_result["address"], pub_blinding_key);
+            m_result["address"] = blind_address(m_session, m_result["address"], blinding_key);
         }
 
         return state_type::done;
@@ -933,20 +942,20 @@ namespace sdk {
     auth_handler::state_type get_previous_addresses_call::call_impl()
     {
         auto& current = m_result["list"][m_index];
-        std::string pub_blinding_key;
+        std::string blinding_key;
 
         if (m_hw_device.empty()) {
             // Get the key from our software signer
-            pub_blinding_key = m_session.get_blinding_key_for_script(current.at("blinding_script_hash"));
+            blinding_key = m_session.get_blinding_key_for_script(current.at("blinding_script_hash"));
         } else {
             // Use the response from the HW
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            pub_blinding_key = args.at("blinding_key");
+            blinding_key = args.at("blinding_key");
         }
 
         // Blind the address
         auto& address = current.at("address");
-        address = m_session.blind_address(address, pub_blinding_key);
+        address = blind_address(m_session, address, blinding_key);
 
         ++m_index; // Move to the next address
         if (m_index == m_result["list"].size()) {
@@ -1046,17 +1055,17 @@ namespace sdk {
 
             const std::string asset_tag = it.key();
 
-            std::string pub_blinding_key;
+            std::string blinding_key;
             if (m_hw_device.empty()) {
                 // Get the key from our signer
-                pub_blinding_key = m_session.get_blinding_key_for_script(it.value().at("blinding_script_hash"));
+                blinding_key = m_session.get_blinding_key_for_script(it.value().at("blinding_script_hash"));
             } else {
                 // Use the response from the HW
-                pub_blinding_key = args.at("blinding_keys").at(asset_tag);
+                blinding_key = args.at("blinding_keys").at(asset_tag);
             }
 
-            const std::string& unconf_addr = m_session.extract_confidential_address(it.value().at("address"));
-            m_tx["change_address"][asset_tag]["address"] = m_session.blind_address(unconf_addr, pub_blinding_key);
+            const auto unblinded_addr = m_session.extract_confidential_address(it.value().at("address"));
+            m_tx["change_address"][asset_tag]["address"] = blind_address(m_session, unblinded_addr, blinding_key);
             m_tx["change_address"][asset_tag]["is_blinded"] = true;
         }
 
