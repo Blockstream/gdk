@@ -408,6 +408,16 @@ namespace sdk {
             return { is_rbf, is_cpfp };
         }
 
+        static void create_send_to_self(ga_session& session, uint32_t subaccount, nlohmann::json& result)
+        {
+            // Set addressees to a wallet address from the given subaccount
+            const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
+            const auto address = addr.at("address");
+            std::vector<nlohmann::json> addressees;
+            addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
+            result["addressees"] = addressees;
+        }
+
         static void create_ga_transaction_impl(ga_session& session, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
@@ -432,12 +442,7 @@ namespace sdk {
 
             if (is_redeposit) {
                 if (result.find("addressees") == result.end()) {
-                    // For re-deposit/CPFP, create the addressee if not present already
-                    const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
-                    const auto address = addr.at("address");
-                    std::vector<nlohmann::json> addressees;
-                    addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
-                    result["addressees"] = addressees;
+                    create_send_to_self(session, subaccount, result);
                 }
                 // When re-depositing, send everything and don't create change
                 result["send_all"] = true;
@@ -486,11 +491,7 @@ namespace sdk {
                     addressees_p->at(0)["satoshi"] = 0;
                 } else {
                     // Send to an address in the current subaccount
-                    const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
-                    const auto address = addr.at("address");
-                    std::vector<nlohmann::json> addressees;
-                    addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
-                    result["addressees"] = addressees;
+                    create_send_to_self(session, subaccount, result);
                     addressees_p = result.find("addressees");
                 }
             }
