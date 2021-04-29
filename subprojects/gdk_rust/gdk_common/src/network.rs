@@ -3,7 +3,7 @@ use crate::be::AssetId;
 use crate::error::Error;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use elements::confidential::Asset;
 use elements::{confidential, issuance};
 use serde::{Deserialize, Serialize};
@@ -111,11 +111,14 @@ impl Network {
 
 // Unique wallet id (to derive db dir) and xpub (to derive the decryption key) used by Aqua wallet for backward compatibility
 pub fn aqua_unique_id_and_xpub(
-    master_xprv: &ExtendedPrivKey,
+    seed: &[u8],
     id: NetworkId,
 ) -> Result<(sha256::Hash, ExtendedPubKey), Error> {
+    // master xprv must use network testnet to maintain backward compatibility
+    let master_xprv =
+        bitcoin::util::bip32::ExtendedPrivKey::new_master(bitcoin::Network::Testnet, seed)?;
     // Values obtained from src/network_parameters.cpp from version 0.0.37, the one used by Aqua
-    // "name" field is overwritten as the Aqua did.
+    // "name" field is overwritten as Aqua did.
     let s = match id {
         NetworkId::Bitcoin(bitcoin::Network::Bitcoin) => {
             r#"{"address_explorer_url": "https://blockstream.info/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:700", "liquid": false, "mainnet": true, "name": "electrum-mainnet", "network": "electrum-mainnet", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/tx/"}"#
@@ -129,9 +132,6 @@ pub fn aqua_unique_id_and_xpub(
         _ => return Err("network was not supported".into()),
     };
 
-    if master_xprv.network != bitcoin::Network::Testnet {
-        panic!("master xprv must use network testnet to maintain backward compatibility");
-    }
     let secp = Secp256k1::new();
     let purpose = 49;
     let coin_type = match id {
@@ -179,21 +179,22 @@ pub fn aqua_unique_id_and_xpub(
 #[cfg(test)]
 mod tests {
     use crate::network::{aqua_unique_id_and_xpub, ElementsNetwork, NetworkId};
-    use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
+    use bitcoin::util::bip32::ExtendedPubKey;
     use bitcoin::Network;
     use std::str::FromStr;
 
     #[test]
     fn test_aqua() {
-        // abandon abandon ... about
-        let master_tprv = ExtendedPrivKey::from_str("tprv8ZgxMBicQKsPe5YMU9gHen4Ez3ApihUfykaqUorj9t6FDqy3nP6eoXiAo2ssvpAjoLroQxHqr3R5nE3a5dU3DHTjTgJDd7zrbniJr6nrCzd").unwrap();
+        let seed = crate::wally::bip39_mnemonic_to_seed(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "",
+        ).unwrap();
         let (wallet_id_testnet, xpub_testnet) =
-            aqua_unique_id_and_xpub(&master_tprv, NetworkId::Bitcoin(Network::Testnet)).unwrap();
+            aqua_unique_id_and_xpub(&seed, NetworkId::Bitcoin(Network::Testnet)).unwrap();
         let (wallet_id_bitcoin, xpub_bitcoin) =
-            aqua_unique_id_and_xpub(&master_tprv, NetworkId::Bitcoin(Network::Bitcoin)).unwrap();
+            aqua_unique_id_and_xpub(&seed, NetworkId::Bitcoin(Network::Bitcoin)).unwrap();
         let (wallet_id_liquid, xpub_liquid) =
-            aqua_unique_id_and_xpub(&master_tprv, NetworkId::Elements(ElementsNetwork::Liquid))
-                .unwrap();
+            aqua_unique_id_and_xpub(&seed, NetworkId::Elements(ElementsNetwork::Liquid)).unwrap();
         assert_eq!(
             hex::encode(wallet_id_testnet),
             "588079b940d8d1fd18d0fc26c3ed1af358c603b4572adea13482fc85ff100bb2"
