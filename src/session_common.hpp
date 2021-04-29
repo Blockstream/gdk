@@ -143,7 +143,6 @@ namespace sdk {
         virtual liquid_support_level hw_liquid_support() const = 0;
         virtual std::string get_blinding_key_for_script(const std::string& script_hex) = 0;
         virtual nlohmann::json get_blinded_scripts(const nlohmann::json& details) = 0;
-        virtual std::string extract_confidential_address(const std::string& blinded_address) = 0;
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;

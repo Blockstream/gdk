@@ -582,8 +582,6 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details) { return nlohmann::json(); }
 
-    std::string ga_rust::extract_confidential_address(const std::string& blinded_address) { return ""; }
-
     void ga_rust::upload_confidential_addresses(
         uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
     {

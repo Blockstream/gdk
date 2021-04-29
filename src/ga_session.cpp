@@ -3236,11 +3236,6 @@ namespace sdk {
         return get_receive_address(subaccount, addr_type_);
     }
 
-    std::string ga_session::extract_confidential_address(const std::string& blinded_address)
-    {
-        return confidential_addr_to_addr(blinded_address, m_net_params.blinded_prefix());
-    }
-
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
     {
         locker_t locker(m_mutex);

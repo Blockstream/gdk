@@ -184,7 +184,6 @@ namespace sdk {
         liquid_support_level hw_liquid_support() const;
         std::string get_blinding_key_for_script(const std::string& script_hex);
         nlohmann::json get_blinded_scripts(const nlohmann::json& details);
-        std::string extract_confidential_address(const std::string& blinded_address);
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);

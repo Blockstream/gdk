@@ -1064,7 +1064,8 @@ namespace sdk {
                 blinding_key = args.at("blinding_keys").at(asset_tag);
             }
 
-            const auto unblinded_addr = m_session.extract_confidential_address(it.value().at("address"));
+            const auto blinded_prefix = m_session.get_network_parameters().blinded_prefix();
+            const auto unblinded_addr = confidential_addr_to_addr(it.value().at("address"), blinded_prefix);
             m_tx["change_address"][asset_tag]["address"] = blind_address(m_session, unblinded_addr, blinding_key);
             m_tx["change_address"][asset_tag]["is_blinded"] = true;
         }

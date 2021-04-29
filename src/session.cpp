@@ -550,14 +550,6 @@ namespace sdk {
         });
     }
 
-    std::string session::extract_confidential_address(const std::string& blinded_address)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->extract_confidential_address(blinded_address);
-        });
-    }
-
     nlohmann::json session::get_balance(const nlohmann::json& details)
     {
         return exception_wrapper([&] {
