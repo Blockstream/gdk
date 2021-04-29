@@ -75,7 +75,9 @@ namespace sdk {
         virtual std::vector<unsigned char> get_public_key_from_blinding_key(byte_span_t script);
 
     protected:
-        const network_parameters& m_net_params;
+        const bool m_is_main_net;
+        const bool m_is_liquid;
+        const unsigned char m_btc_version;
     };
 
     //

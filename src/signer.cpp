@@ -23,7 +23,9 @@ namespace sdk {
     };
 
     signer::signer(const network_parameters& net_params)
-        : m_net_params(net_params)
+        : m_is_main_net(net_params.is_main_net())
+        , m_is_liquid(net_params.is_liquid())
+        , m_btc_version(net_params.btc_version())
     {
     }
 
@@ -128,9 +130,9 @@ namespace sdk {
             // mnemonic
             // FIXME: secure_array
             const auto seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
-            const uint32_t version = m_net_params.is_main_net() ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
-            if (net_params.is_liquid()) {
+            if (m_is_liquid) {
                 m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
         } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
@@ -142,9 +144,9 @@ namespace sdk {
             // facilitate non-bip39 mnemonic future integration. For these
             // reasons this is a temporary solution.
             const auto seed = h2b(mnemonic_or_xpub.substr(0, 128));
-            const uint32_t version = m_net_params.is_main_net() ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
-            if (net_params.is_liquid()) {
+            if (m_is_liquid) {
                 m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
         } else {
@@ -168,7 +170,7 @@ namespace sdk {
     std::string software_signer::get_challenge()
     {
         std::array<unsigned char, 1 + sizeof(m_master_key->hash160)> vpkh;
-        vpkh[0] = m_net_params.btc_version();
+        vpkh[0] = m_btc_version;
         std::copy(std::begin(m_master_key->hash160), std::end(m_master_key->hash160), vpkh.data() + 1);
         return base58check_from_bytes(vpkh);
     }
