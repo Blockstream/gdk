@@ -220,7 +220,13 @@ namespace sdk {
 
     hardware_signer::~hardware_signer() = default;
 
-    bool hardware_signer::supports_low_r() const { return json_get_value(m_hw_device, "supports_low_r", false); }
+    bool hardware_signer::supports_low_r() const
+    {
+        if (ae_protocol_support() != ae_protocol_support_level::none) {
+            return false; // Always use AE if the HW supports it
+        }
+        return json_get_value(m_hw_device, "supports_low_r", false);
+    }
     bool hardware_signer::supports_arbitrary_scripts() const
     {
         return json_get_value(m_hw_device, "supports_arbitrary_scripts", false);
