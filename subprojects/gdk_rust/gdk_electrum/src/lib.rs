@@ -419,7 +419,7 @@ impl Session<Error> for ElectrumSession {
 
         let wallet_id = self.network.unique_id(&db_xpub);
         let (aqua_wallet_id, fallback_xpub) =
-            match aqua_unique_id_and_xpub(&master_xprv, self.network.id()) {
+            match aqua_unique_id_and_xpub(&seed, self.network.id()) {
                 Ok((id, xpub)) => (Some(id), Some(xpub)),
                 Err(_) => (None, None),
             };
