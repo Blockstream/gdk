@@ -3200,20 +3200,6 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::get_receive_address(uint32_t subaccount, const std::string& addr_type_)
-    {
-        const std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
-        GDK_RUNTIME_ASSERT_MSG(
-            addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv,
-            "Unknown address type");
-
-        constexpr bool return_pointer = true;
-        auto address = wamp_cast_json(wamp_call("vault.fund", subaccount, return_pointer, addr_type));
-        update_address_info(address, false);
-        GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
-        return address;
-    }
-
     nlohmann::json ga_session::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
     {
         auto addresses = wamp_cast_json(wamp_call("addressbook.get_my_addresses", subaccount, last_pointer));
@@ -3233,7 +3219,16 @@ namespace sdk {
         const uint32_t subaccount = details.value("subaccount", 0);
         const std::string addr_type_ = details.value("address_type", std::string{});
 
-        return get_receive_address(subaccount, addr_type_);
+        const std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
+        GDK_RUNTIME_ASSERT_MSG(
+            addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv,
+            "Unknown address type");
+
+        constexpr bool return_pointer = true;
+        auto address = wamp_cast_json(wamp_call("vault.fund", subaccount, return_pointer, addr_type));
+        update_address_info(address, false);
+        GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
+        return address;
     }
 
     std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)

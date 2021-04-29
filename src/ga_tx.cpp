@@ -433,7 +433,8 @@ namespace sdk {
             if (is_redeposit) {
                 if (result.find("addressees") == result.end()) {
                     // For re-deposit/CPFP, create the addressee if not present already
-                    const auto address = session.get_receive_address(subaccount, {}).at("address");
+                    const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
+                    const auto address = addr.at("address");
                     std::vector<nlohmann::json> addressees;
                     addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
                     result["addressees"] = addressees;
@@ -485,7 +486,8 @@ namespace sdk {
                     addressees_p->at(0)["satoshi"] = 0;
                 } else {
                     // Send to an address in the current subaccount
-                    const auto address = session.get_receive_address(subaccount, {}).at("address");
+                    const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
+                    const auto address = addr.at("address");
                     std::vector<nlohmann::json> addressees;
                     addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
                     result["addressees"] = addressees;
@@ -690,7 +692,7 @@ namespace sdk {
                     // Find out where to send any change
                     const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
                     result["change_subaccount"] = change_subaccount;
-                    auto change_address = session.get_receive_address(change_subaccount, {});
+                    auto change_address = session.get_receive_address({ { "subaccount", change_subaccount } });
                     if (is_liquid) {
                         // set a temporary blinding key, will be changed later through the resolvers. we need
                         // to have one because all our create_transaction logic relies on being able to blind
