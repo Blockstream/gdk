@@ -257,12 +257,12 @@ mod test {
     use bitcoin::consensus::deserialize;
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
-    use bitcoin::util::bip143::SighashComponents;
+    use bitcoin::util::bip143::SigHashCache;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::util::key::PrivateKey;
     use bitcoin::util::key::PublicKey;
     use bitcoin::Script;
-    use bitcoin::{Address, Network, Transaction};
+    use bitcoin::{Address, Network, SigHashType, Transaction};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
@@ -299,11 +299,11 @@ mod test {
             "76a91479091972186c449eb1ded22b78e40d009bdf008988ac"
         );
         let value = 1_000_000_000;
-        let comp = SighashComponents::new(&tx);
-        let hash = comp.sighash_all(&tx.input[0], &witness_script, value).into_inner();
+        let hash =
+            SigHashCache::new(&tx).signature_hash(0, &witness_script, value, SigHashType::All);
 
         assert_eq!(
-            &hash[..],
+            &hash.into_inner()[..],
             &hex::decode("64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6")
                 .unwrap()[..],
         );
@@ -350,8 +350,8 @@ mod test {
             "76a9141790ee5e7710a06ce4a9250c8677c1ec2843844f88ac"
         );
         let value = 10_202;
-        let comp = SighashComponents::new(&tx);
-        let hash = comp.sighash_all(&tx.input[0], &witness_script, value);
+        let hash =
+            SigHashCache::new(&tx).signature_hash(0, &witness_script, value, SigHashType::All);
 
         assert_eq!(
             &hash.into_inner()[..],
