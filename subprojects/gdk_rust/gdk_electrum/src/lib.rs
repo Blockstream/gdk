@@ -402,8 +402,13 @@ impl Session<Error> for ElectrumSession {
         .ok_or(Error::InvalidMnemonic)?;
         let secp = Secp256k1::new();
 
-        let master_xprv =
-            ExtendedPrivKey::new_master(bitcoin::network::constants::Network::Testnet, &seed)?;
+        let bip32_network = if self.network.mainnet {
+            bitcoin::network::constants::Network::Bitcoin
+        } else {
+            bitcoin::network::constants::Network::Testnet
+        };
+
+        let master_xprv = ExtendedPrivKey::new_master(bip32_network, &seed)?;
         let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
 
         // xpub from an unusual path to derive the encryption key for the db
