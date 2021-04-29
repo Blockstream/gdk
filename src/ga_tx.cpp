@@ -979,8 +979,8 @@ namespace sdk {
         verify_ae_signature(user_pubkey, script_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
     }
 
-    void sign_input(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
-        const std::string& der_hex)
+    void add_input_signature(
+        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r)
     {
         GDK_RUNTIME_ASSERT(json_get_value(u, "private_key").empty());
 
@@ -997,7 +997,7 @@ namespace sdk {
         } else {
             constexpr bool has_sighash = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash);
-            tx_set_input_script(tx, index, input_script(session.supports_low_r(), script, user_sig));
+            tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig));
         }
     }
 

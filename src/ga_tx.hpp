@@ -10,8 +10,8 @@ namespace sdk {
 
     nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details);
 
-    void sign_input(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
-        const std::string& der_hex);
+    void add_input_signature(
+        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r);
     // used by HWs
     void verify_ae_signature(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
         const std::string& signer_commitment_hex, const std::string& der_hex);

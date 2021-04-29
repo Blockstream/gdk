@@ -159,8 +159,6 @@ namespace sdk {
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
-        void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
-
         void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32, uint32_span_t path,
             const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex);
         void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
@@ -203,6 +201,7 @@ namespace sdk {
 
         void emit_notification(std::string event, nlohmann::json details);
 
+        std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
@@ -410,7 +409,7 @@ namespace sdk {
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
         uint32_t m_block_height;
-        std::unique_ptr<signer> m_signer;
+        std::shared_ptr<signer> m_signer;
 
         uint32_t m_system_message_id; // Next system message
         uint32_t m_system_message_ack_id; // Currently returned message id to ack

@@ -472,12 +472,6 @@ namespace sdk {
         throw std::runtime_error("verify_ae_signature not implemented");
     }
 
-    void ga_rust::sign_input(
-        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
-    {
-        throw std::runtime_error("sign_input not implemented");
-    }
-
     void ga_rust::send_nlocktimes() { throw std::runtime_error("send_nlocktimes not implemented"); }
     nlohmann::json ga_rust::get_expired_deposits(const nlohmann::json& deposit_details)
     {
@@ -559,6 +553,7 @@ namespace sdk {
 
     const network_parameters& ga_rust::get_network_parameters() const { return m_netparams; }
 
+    std::shared_ptr<signer> ga_rust::get_signer() { throw std::runtime_error("get_signer not implemented"); }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
     user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rust::get_recovery_pubkeys()

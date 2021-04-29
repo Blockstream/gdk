@@ -831,9 +831,10 @@ namespace sdk {
                 }
             }
 
+            const bool is_low_r = m_session.get_nonnull_impl()->get_signer()->supports_low_r();
             size_t i = 0;
             for (const auto& utxo : inputs) {
-                m_session.sign_input(tx, i, utxo, signatures[i]);
+                add_input_signature(tx, i, utxo, signatures[i], is_low_r);
                 ++i;
             }
 

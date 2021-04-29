@@ -159,9 +159,6 @@ namespace sdk {
             = 0;
         virtual std::string broadcast_transaction(const std::string& tx_hex) = 0;
 
-        virtual void sign_input(
-            const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
-            = 0;
         virtual void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32,
             uint32_span_t path, const std::string& host_entropy_hex, const std::string& signer_commitment_hex,
             const std::string& der_hex)
@@ -201,6 +198,7 @@ namespace sdk {
         virtual void disable_all_pin_logins() = 0;
 
         virtual const network_parameters& get_network_parameters() const = 0;
+        virtual std::shared_ptr<signer> get_signer() = 0;
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
         virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;

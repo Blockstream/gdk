@@ -1627,7 +1627,7 @@ namespace sdk {
         if (m_signer == nullptr) {
             GDK_LOG_SEV(log_level::debug) << "authenticate called for hardware device";
             // Logging in with a hardware wallet; create our proxy signer
-            m_signer = std::make_unique<hardware_signer>(m_net_params, hw_device);
+            m_signer = std::make_shared<hardware_signer>(m_net_params, hw_device);
         }
 
         // TODO: If no device id is given, generate one, update our settings and
@@ -1854,7 +1854,7 @@ namespace sdk {
 
         // Create our signer
         GDK_LOG_SEV(log_level::debug) << "creating signer for mnemonic";
-        m_signer = std::make_unique<software_signer>(m_net_params, mnemonic);
+        m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
 
         // Create our local user keys repository
         m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, m_signer->get_xpub());
@@ -1976,8 +1976,8 @@ namespace sdk {
             throw login_error(res::id_login_failed);
         }
         locker_t locker(m_mutex);
+        m_signer = std::make_shared<watch_only_signer>(m_net_params);
         constexpr bool watch_only = true;
-        m_signer = std::make_unique<watch_only_signer>(m_net_params);
         update_login_data(locker, login_data, std::string(), watch_only);
 
         const std::string receiving_id = m_login_data["receiving_id"];
@@ -3572,6 +3572,13 @@ namespace sdk {
         return std::vector<unsigned char>(password.begin(), password.end());
     }
 
+    std::shared_ptr<signer> ga_session::get_signer()
+    {
+        locker_t locker(m_mutex);
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return m_signer;
+    }
+
     // Post-login idempotent
     ga_pubkeys& ga_session::get_ga_pubkeys()
     {
@@ -3758,12 +3765,15 @@ namespace sdk {
 
         // TODO: signer or session should cache xpubs - or at least the root and signing xpubs
         pub_key_t pubkey;
-        if (m_signer && m_signer->get_hw_device().empty()) {
-            pubkey = m_signer->get_xpub(path).second;
-        } else {
-            wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
-            ext_key derived = bip32_public_key_from_parent_path(*parent, path);
-            memcpy(pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+        {
+            locker_t locker(m_mutex);
+            if (m_signer && m_signer->get_hw_device().empty()) {
+                pubkey = m_signer->get_xpub(path).second;
+            } else {
+                wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
+                ext_key derived = bip32_public_key_from_parent_path(*parent, path);
+                memcpy(pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+            }
         }
 
         constexpr bool has_sighash = false;
@@ -3775,12 +3785,6 @@ namespace sdk {
         const std::string& signer_commitment_hex, const std::string& der_hex)
     {
         ::ga::sdk::verify_ae_signature(*this, tx, index, u, signer_commitment_hex, der_hex);
-    }
-
-    void ga_session::sign_input(
-        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
-    {
-        ::ga::sdk::sign_input(*this, tx, index, u, der_hex);
     }
 
     // Idempotent

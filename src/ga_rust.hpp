@@ -152,7 +152,6 @@ namespace sdk {
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
-        void sign_input(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex);
         void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32, uint32_span_t path,
             const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex);
         void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
@@ -194,6 +193,7 @@ namespace sdk {
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
 
         const network_parameters& get_network_parameters() const;
+        std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();

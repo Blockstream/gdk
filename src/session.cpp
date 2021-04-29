@@ -855,15 +855,6 @@ namespace sdk {
         });
     }
 
-    void session::sign_input(
-        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->sign_input(tx, index, u, der_hex);
-        });
-    }
-
     void session::send_nlocktimes()
     {
         exception_wrapper([&] {
