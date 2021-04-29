@@ -285,9 +285,13 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    let mut res_string = format!("{:?}", res);
-    res_string.truncate(200);
-    info!("GDKRUST_call_session {} output {:?}", method, res_string);
+    let mut output_redacted = if method == "get_mnemonic" {
+        "redacted".to_string()
+    } else {
+        format!("{:?}", res)
+    };
+    output_redacted.truncate(200);
+    info!("GDKRUST_call_session {} output {:?}", method, output_redacted);
 
     match res {
         Ok(ref val) => json_res!(output, val, GA_OK),
