@@ -173,6 +173,26 @@ extern "C" {
         len: size_t,
     ) -> c_int;
 
+    //WALLY_CORE_API int wally_pbkdf2_hmac_sha512(
+    //    const unsigned char *pass,
+    //    size_t pass_len,
+    //    const unsigned char *salt,
+    //    size_t salt_len,
+    //    uint32_t flags,
+    //    uint32_t cost,
+    //    unsigned char *bytes_out,
+    //    size_t len);
+    pub fn wally_pbkdf2_hmac_sha512(
+        pass: *const c_uchar,
+        pass_len: size_t,
+        salt: *const c_uchar,
+        salt_len: size_t,
+        flags: u32,
+        cost: u32,
+        bytes_out: *mut c_uchar,
+        len: size_t,
+    ) -> c_int;
+
     //WALLY_CORE_API int wally_confidential_addr_from_addr(
     //    const char *address,
     //    uint32_t prefix,
