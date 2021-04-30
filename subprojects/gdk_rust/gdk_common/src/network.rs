@@ -100,14 +100,6 @@ impl Network {
 
     // Unique wallet identifier for the given xpub on this network. Used as part of the database
     // root path, any changes will result in the creation of a new separate database.
-    pub fn unique_id(&self, master_xpub: &ExtendedPubKey) -> sha256::Hash {
-        if master_xpub.network != bitcoin::Network::Testnet {
-            panic!("master xpub must use network testnet to maintain backward compatibility");
-        }
-        let wallet_desc = format!("{}{:?}", master_xpub, self.id());
-        sha256::Hash::hash(wallet_desc.as_bytes())
-    }
-
     pub fn wallet_hash_id(&self, master_xpub: &ExtendedPubKey) -> String {
         assert_eq!(self.bip32_network(), master_xpub.network);
         let password = master_xpub.encode().to_vec();
