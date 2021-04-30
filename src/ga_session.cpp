@@ -3231,13 +3231,6 @@ namespace sdk {
         return address;
     }
 
-    std::string ga_session::get_blinding_key_for_script(const std::string& script_hex)
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return b2h(m_signer->get_public_key_from_blinding_key(h2b(script_hex)));
-    }
-
     nlohmann::json ga_session::get_balance(const nlohmann::json& details)
     {
         const uint32_t subaccount = details.at("subaccount");

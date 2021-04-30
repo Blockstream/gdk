@@ -534,14 +534,6 @@ namespace sdk {
         });
     }
 
-    std::string session::get_blinding_key_for_script(const std::string& script_hex)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_blinding_key_for_script(script_hex);
-        });
-    }
-
     void session::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet)
     {
         return exception_wrapper([&] {

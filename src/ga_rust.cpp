@@ -573,8 +573,6 @@ namespace sdk {
 
     liquid_support_level ga_rust::hw_liquid_support() const { return liquid_support_level::full; }
 
-    std::string ga_rust::get_blinding_key_for_script(const std::string& script_hex) { return ""; }
-
     nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details) { return nlohmann::json(); }
 
     void ga_rust::upload_confidential_addresses(
