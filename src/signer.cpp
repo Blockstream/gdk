@@ -56,10 +56,11 @@ namespace sdk {
         return nlohmann::json::object(); // No HW device unless we are a HW signer
     }
 
-    priv_key_t signer::get_blinding_key_from_script(__attribute__((unused)) byte_span_t script)
+    priv_key_t signer::get_blinding_key_from_script(byte_span_t script)
     {
+        (void)script;
         GDK_RUNTIME_ASSERT(false);
-        __builtin_unreachable();
+        return priv_key_t();
     }
 
     std::vector<unsigned char> signer::get_public_key_from_blinding_key(byte_span_t script)
@@ -94,21 +95,21 @@ namespace sdk {
     std::string watch_only_signer::get_challenge()
     {
         GDK_RUNTIME_ASSERT(false);
-        __builtin_unreachable();
+        return std::string();
     }
 
     xpub_t watch_only_signer::get_xpub(uint32_span_t path)
     {
         (void)path;
         GDK_RUNTIME_ASSERT(false);
-        __builtin_unreachable();
+        return xpub_t();
     }
 
     std::string watch_only_signer::get_bip32_xpub(uint32_span_t path)
     {
         (void)path;
         GDK_RUNTIME_ASSERT(false);
-        __builtin_unreachable();
+        return std::string();
     }
 
     ecdsa_sig_t watch_only_signer::sign_hash(uint32_span_t path, byte_span_t hash)
@@ -116,7 +117,7 @@ namespace sdk {
         (void)path;
         (void)hash;
         GDK_RUNTIME_ASSERT(false);
-        __builtin_unreachable();
+        return ecdsa_sig_t();
     }
 
     //
