@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Network {
-    name: String,
+    pub name: String,
     network: String,
 
     pub development: bool,
@@ -106,6 +106,22 @@ impl Network {
         }
         let wallet_desc = format!("{}{:?}", master_xpub, self.id());
         sha256::Hash::hash(wallet_desc.as_bytes())
+    }
+
+    pub fn wallet_hash_id(&self, master_xpub: &ExtendedPubKey) -> String {
+        assert_eq!(self.bip32_network(), master_xpub.network);
+        let password = master_xpub.encode().to_vec();
+        let salt = self.name.as_bytes().to_vec();
+        let cost = 2048;
+        hex::encode(crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost))
+    }
+
+    pub fn bip32_network(&self) -> bitcoin::network::constants::Network {
+        if self.mainnet {
+            bitcoin::network::constants::Network::Bitcoin
+        } else {
+            bitcoin::network::constants::Network::Testnet
+        }
     }
 }
 

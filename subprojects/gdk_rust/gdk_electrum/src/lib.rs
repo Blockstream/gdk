@@ -359,11 +359,7 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
-    fn login_with_pin(
-        &mut self,
-        pin: String,
-        details: PinGetDetails,
-    ) -> Result<Vec<Notification>, Error> {
+    fn login_with_pin(&mut self, pin: String, details: PinGetDetails) -> Result<LoginData, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(agent)?;
         let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
@@ -385,11 +381,13 @@ impl Session<Error> for ElectrumSession {
         &mut self,
         mnemonic: &Mnemonic,
         password: Option<Password>,
-    ) -> Result<Vec<Notification>, Error> {
+    ) -> Result<LoginData, Error> {
         info!("login {:?} {:?}", self.network, self.state);
 
         if self.state == State::Logged {
-            return Ok(vec![]);
+            return Ok(LoginData {
+                wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
+            });
         }
 
         // TODO: passphrase?
@@ -402,13 +400,7 @@ impl Session<Error> for ElectrumSession {
         .ok_or(Error::InvalidMnemonic)?;
         let secp = Secp256k1::new();
 
-        let bip32_network = if self.network.mainnet {
-            bitcoin::network::constants::Network::Bitcoin
-        } else {
-            bitcoin::network::constants::Network::Testnet
-        };
-
-        let master_xprv = ExtendedPrivKey::new_master(bip32_network, &seed)?;
+        let master_xprv = ExtendedPrivKey::new_master(self.network.bip32_network(), &seed)?;
         let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
 
         // xpub from an unusual path to derive the encryption key for the db
@@ -665,7 +657,9 @@ impl Session<Error> for ElectrumSession {
         notify_settings(self.notify.clone(), &self.get_settings()?);
 
         self.state = State::Logged;
-        Ok(vec![])
+        Ok(LoginData {
+            wallet_hash_id: self.network.wallet_hash_id(&master_xpub),
+        })
     }
 
     fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {

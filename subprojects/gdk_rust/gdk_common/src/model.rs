@@ -93,21 +93,9 @@ pub struct AddressAmount {
     pub asset_tag: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct BlockNotification {
-    //pub block_hash: bitcoin::BlockHash,
-    pub block_height: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TransactionNotification {
-    pub transaction_hash: bitcoin::Txid,
-}
-
-#[derive(Debug)]
-pub enum Notification {
-    Block(BlockNotification),
-    Transaction(TransactionNotification),
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct LoginData {
+    pub wallet_hash_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
