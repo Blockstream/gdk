@@ -3826,10 +3826,28 @@ namespace sdk {
         const uint32_t expires_at_block
             = std::max(curr_block_height, deposit_details.value("expires_at_block", curr_block_height));
 
+        // Remove utxos that are not expired
         std::for_each(std::begin(asset_utxos), std::end(asset_utxos), [expires_at_block](nlohmann::json& utxos) {
-            utxos.erase(std::remove_if(std::begin(utxos), std::end(utxos),
-                            [expires_at_block](const auto& u) { return u.at("nlocktime_at") > expires_at_block; }),
-                std::end(utxos));
+            utxos.erase(std::remove_if(std::begin(utxos), std::end(utxos), [expires_at_block](const auto& u) {
+
+                // csv outputs have subtype set to the number of csv blocks
+                const uint32_t csv_blocks = json_get_value(u, "subtype", 0);
+                const uint32_t block_height = json_get_value(u, "block_height", 0);
+                if (csv_blocks && block_height) {
+                    return block_height + csv_blocks > expires_at_block;
+                }
+
+                // non-csv outputs may have nlocktime set (if it's enabled)
+                const uint32_t nlocktime_at = json_get_value(u, "nlocktime_at", 0);
+                if (nlocktime_at) {
+                    return nlocktime_at > expires_at_block;
+                }
+
+                // No expiry set
+                return true;
+
+            }),
+            std::end(utxos));
         });
 
         return asset_utxos;
