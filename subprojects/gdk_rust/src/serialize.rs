@@ -112,7 +112,7 @@ where
 
     session
         .login(&mnemonic_str.into(), pass_str.map(Into::into))
-        .map(notification_values)
+        .map(|x| serde_json::to_value(&x).unwrap())
         .map_err(Into::into)
 }
 
@@ -126,7 +126,10 @@ where
         .map(|s| s.to_string())
         .ok_or_else(|| Error::Other("login_with_pin: missing pin argument".into()))?;
     let pin_data: PinGetDetails = serde_json::from_value(input["pin_data"].clone())?;
-    session.login_with_pin(pin, pin_data).map(notification_values).map_err(Into::into)
+    session
+        .login_with_pin(pin, pin_data)
+        .map(|x| serde_json::to_value(&x).unwrap())
+        .map_err(Into::into)
 }
 
 pub fn get_subaccount<S, E>(session: &S, input: &Value) -> Result<Value, Error>
@@ -181,17 +184,6 @@ where
 
         Ok(v) => v,
     })
-}
-
-pub fn notification_values(notifications: Vec<Notification>) -> Value {
-    Value::Array(notifications.iter().map(|note| notification_value(&note)).collect())
-}
-
-pub fn notification_value(notification: &Notification) -> Value {
-    match notification {
-        Notification::Block(ref header) => json!({ "block": header }),
-        Notification::Transaction(ref tx) => json!({ "transaction": tx }),
-    }
 }
 
 pub fn set_transaction_memo<S, E>(session: &S, input: &Value) -> Result<Value, Error>

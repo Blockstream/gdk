@@ -225,7 +225,12 @@ pub fn setup(
 
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
-    session.login(&mnemonic, None).unwrap();
+    let login_data = session.login(&mnemonic, None).unwrap();
+    assert_eq!(network.name, ""); // network name contributes to wallet hash id
+    assert_eq!(
+        login_data.wallet_hash_id,
+        "540dced6da44434f0fcc02cb6cda7e7a9ae5d961759a698797e1835dddc0cd6b"
+    );
     let tx_status = session.tx_status().unwrap();
     assert_eq!(tx_status, 15130871412783076140);
     let mut i = 120;

@@ -157,7 +157,6 @@ namespace sdk {
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
     {
-        // FIXME: return post-login data
         throw std::runtime_error("not implemented");
     }
     void ga_rust::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
@@ -171,8 +170,7 @@ namespace sdk {
             { "password", password },
         };
 
-        call_session("login", details);
-        return nlohmann::json(); // FIXME: return post-login data
+        return call_session("login", details);
     }
     nlohmann::json ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
@@ -181,8 +179,7 @@ namespace sdk {
             { "pin_data", pin_data },
         };
 
-        call_session("login_with_pin", details);
-        return nlohmann::json(); // FIXME: return post-login data
+        return call_session("login_with_pin", details);
     }
     nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {
