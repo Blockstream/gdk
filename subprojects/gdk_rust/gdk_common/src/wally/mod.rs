@@ -305,6 +305,26 @@ pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256
     secp256k1::PublicKey::from_slice(&pub_key[..]).unwrap() // TODO return Result?
 }
 
+pub fn pbkdf2_hmac_sha512_256(password: Vec<u8>, salt: Vec<u8>, cost: u32) -> [u8; 32] {
+    let mut tmp = [0; 64];
+    let mut out = [0; 32];
+    let ret = unsafe {
+        ffi::wally_pbkdf2_hmac_sha512(
+            password.as_ptr(),
+            password.len(),
+            salt.as_ptr(),
+            salt.len(),
+            0,
+            cost,
+            tmp.as_mut_ptr(),
+            tmp.len(),
+        )
+    };
+    assert_eq!(ret, ffi::WALLY_OK);
+    out.copy_from_slice(&tmp[..32]);
+    out
+}
+
 pub fn asset_generator_from_bytes(asset: &AssetId, abf: &[u8; 32]) -> Asset {
     let mut generator = [0u8; 33];
     let ret = unsafe {
@@ -743,5 +763,20 @@ mod tests {
             println!("surj size: {}", output.witness.surjection_proof.len());
             println!("rangeproof size: {}", output.witness.rangeproof.len());
         }
+    }
+
+    #[test]
+    fn test_pbkdf2() {
+        // abandon abandon ... about
+        // expected value got from a session with server_type green
+        let xpub = bitcoin::util::bip32::ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
+        let password = xpub.encode().to_vec();
+        let salt = "testnet".as_bytes().to_vec();
+        let cost = 2048;
+        let bytes = pbkdf2_hmac_sha512_256(password, salt, cost);
+        assert_eq!(
+            hex::encode(bytes),
+            "657a9de33d1f7753edbb86c90b0ba064bd1b986570f1a5019ed80459877b013b"
+        );
     }
 }
