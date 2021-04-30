@@ -469,8 +469,8 @@ mod tests {
 
         let mut dir2 = TempDir::new("unit_test_2").unwrap().into_path();
         dir2.push("store");
-        // abandon ... M/0x70617373' "pass"
-        let xpub2 = ExtendedPubKey::from_str("tpubDCUQwB7GDsQKGfGk1CpCxzkWwWQodwKRttFB55vhCbMu8RGdQZ1k2ayVXmdJrER313963TTB4dRdx12JLjjBNpcs3v6shG93ci6A2XiGuJN").unwrap();
+        // abandon ... M (master_xpub)
+        let xpub2 = ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
 
         // Before creating a new empty store, attempt recovery from fallback path
         {

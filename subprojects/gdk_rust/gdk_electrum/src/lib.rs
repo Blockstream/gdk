@@ -403,18 +403,13 @@ impl Session<Error> for ElectrumSession {
         let master_xprv = ExtendedPrivKey::new_master(self.network.bip32_network(), &seed)?;
         let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
 
-        // xpub from an unusual path to derive the encryption key for the db
-        let db_path: DerivationPath = format!("m/{}'", 0x70617373).parse().unwrap(); // "pass"
-        let db_xprv = master_xprv.derive_priv(&secp, &db_path).unwrap();
-        let db_xpub = ExtendedPubKey::from_private(&secp, &db_xprv);
-
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))
         } else {
             None
         };
 
-        let wallet_id = self.network.unique_id(&db_xpub);
+        let wallet_hash_id = self.network.wallet_hash_id(&master_xpub);
         let (aqua_wallet_id, fallback_xpub) =
             match aqua_unique_id_and_xpub(&seed, self.network.id()) {
                 Ok((id, xpub)) => (Some(id), Some(xpub)),
@@ -433,13 +428,13 @@ impl Session<Error> for ElectrumSession {
                 fallback_path = Some(fpath.as_path());
             }
         }
-        path.push(hex::encode(wallet_id));
+        path.push(hex::encode(wallet_hash_id));
         info!("Store root path: {:?}", path);
         let store = match self.get_wallet() {
             Ok(wallet) => wallet.store.clone(),
             Err(_) => Arc::new(RwLock::new(StoreMeta::new(
                 &path,
-                db_xpub,
+                master_xpub,
                 fallback_path,
                 fallback_xpub,
                 self.network.id(),
