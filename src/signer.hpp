@@ -59,6 +59,10 @@ namespace sdk {
         // Returns how this signer supports the Anti-Exfil protocol
         virtual ae_protocol_support_level ae_protocol_support() const;
 
+        // Returns true if this is an external hardware device
+        virtual bool is_hw_device() const;
+
+        // Get the HW device description for this signer (empty if not HW)
         virtual nlohmann::json get_hw_device() const;
 
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
@@ -157,6 +161,7 @@ namespace sdk {
         liquid_support_level supports_liquid() const override;
         ae_protocol_support_level ae_protocol_support() const override;
 
+        bool is_hw_device() const override;
         nlohmann::json get_hw_device() const override;
 
         std::string get_challenge() override;

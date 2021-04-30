@@ -130,7 +130,7 @@ namespace sdk {
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
     {
         try {
-            init(m_session.is_watch_only() ? nlohmann::json() : m_session.get_hw_device(), false);
+            init(m_session.get_nonnull_impl()->get_signer()->get_hw_device(), false);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
@@ -503,7 +503,7 @@ namespace sdk {
     // Watch-only login
     //
     watch_only_login_call::watch_only_login_call(session& session, const nlohmann::json& credential_data)
-        : auth_handler(session, std::string())
+        : auth_handler(session, std::string(), nlohmann::json::object())
         , m_credential_data(credential_data)
     {
     }

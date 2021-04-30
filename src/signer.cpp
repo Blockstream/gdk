@@ -51,6 +51,8 @@ namespace sdk {
         return ae_protocol_support_level::none; // assume not unless overridden
     }
 
+    bool signer::is_hw_device() const { return false; }
+
     nlohmann::json signer::get_hw_device() const
     {
         return nlohmann::json::object(); // No HW device unless we are a HW signer
@@ -240,6 +242,8 @@ namespace sdk {
     {
         return json_get_value(m_hw_device, "ae_protocol_support_level", ae_protocol_support_level::none);
     }
+
+    bool hardware_signer::is_hw_device() const { return true; }
 
     nlohmann::json hardware_signer::get_hw_device() const { return m_hw_device; }
 

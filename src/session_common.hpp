@@ -91,7 +91,6 @@ namespace sdk {
 
         virtual nlohmann::json get_balance(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_available_currencies() const = 0;
-        virtual nlohmann::json get_hw_device() const = 0;
 
         virtual bool is_rbf_enabled() const = 0;
         virtual bool is_watch_only() const = 0;

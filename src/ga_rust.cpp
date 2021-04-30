@@ -319,8 +319,6 @@ namespace sdk {
         return call_session("get_available_currencies", nlohmann::json{});
     }
 
-    nlohmann::json ga_rust::get_hw_device() const { return nlohmann::json{}; }
-
     bool ga_rust::is_rbf_enabled() const { throw std::runtime_error("is_rbf_enabled not implemented"); }
     bool ga_rust::is_watch_only() const { return false; }
 

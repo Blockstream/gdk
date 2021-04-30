@@ -107,7 +107,6 @@ namespace sdk {
 
         nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
-        nlohmann::json get_hw_device() const;
 
         bool is_rbf_enabled() const;
         bool is_watch_only() const;

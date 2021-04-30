@@ -1263,12 +1263,12 @@ namespace sdk {
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
                 pub_key_t login_pubkey;
-                if (m_signer->get_hw_device().empty()) {
-                    login_pubkey = m_signer->get_xpub(signer::LOGIN_PATH).second;
-                } else {
+                if (m_signer->is_hw_device()) {
                     wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
                     ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
                     memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+                } else {
+                    login_pubkey = m_signer->get_xpub(signer::LOGIN_PATH).second;
                 }
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
             }
@@ -2459,7 +2459,7 @@ namespace sdk {
             locker_t locker(m_mutex);
             GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
-            if (!m_signer->get_hw_device().empty()) {
+            if (m_signer->is_hw_device()) {
                 return boost::none;
             }
 
@@ -3251,13 +3251,6 @@ namespace sdk {
         return wamp_cast_json(wamp_call("login.available_currencies"));
     }
 
-    nlohmann::json ga_session::get_hw_device() const
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer->get_hw_device();
-    }
-
 #if 1
     // Note: Current design is to always enable RBF if the server supports
     // it, perhaps allowing disabling for individual txs or only for BIP 70
@@ -3760,12 +3753,12 @@ namespace sdk {
         pub_key_t pubkey;
         {
             locker_t locker(m_mutex);
-            if (m_signer && m_signer->get_hw_device().empty()) {
-                pubkey = m_signer->get_xpub(path).second;
-            } else {
+            if (!m_signer || m_signer->is_hw_device()) {
                 wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
                 ext_key derived = bip32_public_key_from_parent_path(*parent, path);
                 memcpy(pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+            } else {
+                pubkey = m_signer->get_xpub(path).second;
             }
         }
 

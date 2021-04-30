@@ -558,14 +558,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_hw_device()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_hw_device();
-        });
-    }
-
     bool session::is_rbf_enabled()
     {
         return exception_wrapper([&] {

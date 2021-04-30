@@ -93,8 +93,6 @@ namespace sdk {
 
         nlohmann::json get_available_currencies();
 
-        nlohmann::json get_hw_device();
-
         bool is_rbf_enabled();
         bool is_watch_only();
         bool is_liquid();
