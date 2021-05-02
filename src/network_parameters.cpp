@@ -129,12 +129,48 @@ tX8K3m8UYQvK51BrXclM6WfrdeZlUBKyhTXUmFAtJw4X6A0x9mQFPAIwJa/No+KQ
 UAM1u34E36neL/Zba7ombkIOchSgx1iVxzqtFWGddgoG+tppRPWhuhhn
 -----END CERTIFICATE-----)";
 
+// Google Trust Services
+// Expires 22/06/2036
+static const char* GTS_Root_R1 = R"(
+-----BEGIN CERTIFICATE-----
+MIIFWjCCA0KgAwIBAgIQbkepxUtHDA3sM9CJuRz04TANBgkqhkiG9w0BAQwFADBH
+MQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExM
+QzEUMBIGA1UEAxMLR1RTIFJvb3QgUjEwHhcNMTYwNjIyMDAwMDAwWhcNMzYwNjIy
+MDAwMDAwWjBHMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNl
+cnZpY2VzIExMQzEUMBIGA1UEAxMLR1RTIFJvb3QgUjEwggIiMA0GCSqGSIb3DQEB
+AQUAA4ICDwAwggIKAoICAQC2EQKLHuOhd5s73L+UPreVp0A8of2C+X0yBoJx9vaM
+f/vo27xqLpeXo4xL+Sv2sfnOhB2x+cWX3u+58qPpvBKJXqeqUqv4IyfLpLGcY9vX
+mX7wCl7raKb0xlpHDU0QM+NOsROjyBhsS+z8CZDfnWQpJSMHobTSPS5g4M/SCYe7
+zUjwTcLCeoiKu7rPWRnWr4+wB7CeMfGCwcDfLqZtbBkOtdh+JhpFAz2weaSUKK0P
+fyblqAj+lug8aJRT7oM6iCsVlgmy4HqMLnXWnOunVmSPlk9orj2XwoSPwLxAwAtc
+vfaHszVsrBhQf4TgTM2S0yDpM7xSma8ytSmzJSq0SPly4cpk9+aCEI3oncKKiPo4
+Zor8Y/kB+Xj9e1x3+naH+uzfsQ55lVe0vSbv1gHR6xYKu44LtcXFilWr06zqkUsp
+zBmkMiVOKvFlRNACzqrOSbTqn3yDsEB750Orp2yjj32JgfpMpf/VjsPOS+C12LOO
+Rc92wO1AK/1TD7Cn1TsNsYqiA94xrcx36m97PtbfkSIS5r762DL8EGMUUXLeXdYW
+k70paDPvOmbsB4om3xPXV2V4J95eSRQAogB/mqghtqmxlbCluQ0WEdrHbEg8QOB+
+DVrNVjzRlwW5y0vtOUucxD/SVRNuJLDWcfr0wbrM7Rv1/oFB2ACYPTrIrnqYNxgF
+lQIDAQABo0IwQDAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNV
+HQ4EFgQU5K8rJnEaK0gnhS9SZizv8IkTcT4wDQYJKoZIhvcNAQEMBQADggIBADiW
+Cu49tJYeX++dnAsznyvgyv3SjgofQXSlfKqE1OXyHuY3UjKcC9FhHb8owbZEKTV1
+d5iyfNm9dKyKaOOpMQkpAWBz40d8U6iQSifvS9efk+eCNs6aaAyC58/UEBZvXw6Z
+XPYfcX3v73svfuo21pdwCxXu11xWajOl40k4DLh9+42FpLFZXvRq4d2h9mREruZR
+gyFmxhE+885H7pwoHyXa/6xmld01D1zvICxi/ZG6qcz8WpyTgYMpl0p8WnK0OdC3
+d8t5/Wk6kjftbjhlRn7pYL15iJdfOBL07q9bgsiG1eGZbYwE8na6SfZu6W0eX6Dv
+J4J2QPim01hcDyxC2kLGe4g0x8HYRZvBPsVhHdljUEn2NIVq4BjFbkerQUIpm/Zg
+DdIx02OYI5NaAIFItO/Nis3Jz5nu2Z6qNuFoS3FJFDYoOj0dzpqPJeaAcWErtXvM
++SUWgeExX6GjfhaknBZqlxi9dnKlC54dNuYvoS++cJEPqOba+MSSQGwlfnuzCdyy
+F62ARPBopY+Udf90WuioAnwMCeKpSwughQtiue+hMZL77/ZRBIls6Kl0obsXs7X9
+SQ98POyDGCBDTtWTurQ0sR8WNh8M5mQ5Fkzc4P4dyKliPUDqysU0ArSuiYgzNdws
+E3PYJ/HQcu51OyLemGhmW/HGY0dVHLqlCFF1pkgl
+-----END CERTIFICATE-----
+)";
+
 static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_networks = {
     { "localtest",
         std::make_shared<nlohmann::json>(nlohmann::json(
             { { "name", "Localtest" }, { "network", "localtest" }, { "wamp_url", "ws://localhost:8080/v2/ws" },
                 { "wamp_onion_url", std::string() }, { "wamp_cert_pins", nlohmann::json::array() },
-                { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+                { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
                 { "address_explorer_url", std::string() }, { "tx_explorer_url", std::string() },
                 { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
                 { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
@@ -155,7 +191,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                         "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda",
                         "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa",
                         "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1" } },
-                { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+                { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
                 { "address_explorer_url", "https://blockstream.info/liquid/address/" },
                 { "asset_registry_url", "https://assets.blockstream.info" },
                 { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
@@ -175,7 +211,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         std::make_shared<nlohmann::json>(nlohmann::json({ { "name", "Localtest Liquid" },
             { "network", "localtest-liquid" }, { "wamp_url", "ws://localhost:8080/v2/ws" },
             { "wamp_onion_url", std::string() }, { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+            { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
             { "address_explorer_url", std::string() }, { "tx_explorer_url", std::string() },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
@@ -200,7 +236,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                         "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda",
                         "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa",
                         "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1" } },
-                { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+                { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
                 { "address_explorer_url", "https://blockstream.info/address/" },
                 { "tx_explorer_url", "https://blockstream.info/tx/" },
                 { "service_pubkey", "0322c5f5c9c4b9d1c3e22ca995e200d724c2d7d8b6953f7b38fddf9296053c961f" },
@@ -222,7 +258,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
                         "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda",
                         "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa",
                         "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1" } },
-                { "wamp_cert_roots", std::vector<std::string>{ IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+                { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
                 { "address_explorer_url", "https://blockstream.info/testnet/address/" },
                 { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
                 { "electrum_url", "blockstream.info:993" }, { "spv_enabled", false }, { "tls", true },
