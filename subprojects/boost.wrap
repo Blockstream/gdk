@@ -1,7 +1,7 @@
 [wrap-file]
 directory = boost_1_72_0
 
-source_url = https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.gz
+source_url = https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz
 source_filename = boost-1_72_0.tar.gz
 source_hash = c66e88d5786f2ca4dbebb14e06b566fb642a1a6947ad8cc9091f9f445134143f
 
