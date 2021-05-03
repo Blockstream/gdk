@@ -3622,13 +3622,6 @@ namespace sdk {
         return get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
     }
 
-    bool ga_session::supports_low_r() const
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer->supports_low_r();
-    }
-
     ae_protocol_support_level ga_session::ae_protocol_support() const
     {
         locker_t locker(m_mutex);

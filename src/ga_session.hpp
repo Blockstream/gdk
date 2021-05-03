@@ -208,7 +208,6 @@ namespace sdk {
         std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
         std::string get_service_xpub(uint32_t subaccount);
         std::string get_recovery_xpub(uint32_t subaccount);
-        bool supports_low_r() const;
         liquid_support_level hw_liquid_support() const;
         ae_protocol_support_level ae_protocol_support() const;
 
