@@ -1126,6 +1126,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
     let last_vbf = asset_final_vbf(all_values, in_num as u32, all_abfs, all_vbfs);
     output_vbfs.push(last_vbf.to_vec());
 
+    let mut rng = rand::thread_rng();
     for (i, mut output) in tx.output.iter_mut().enumerate() {
         info!("output {:?}", output);
         if !output.is_fee() {
@@ -1134,11 +1135,8 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     info!("value: {}", value);
                     let nonce = elements::encode::serialize(&output.nonce);
                     let blinding_pubkey = PublicKey::from_slice(&nonce).unwrap();
-                    let blinding_key = asset_blinding_key_to_ec_private_key(
-                        account.master_blinding.as_ref().unwrap(),
-                        &output.script_pubkey,
-                    );
-                    let blinding_public_key = ec_public_key_from_private_key(blinding_key);
+                    let ephemeral_sk = secp256k1::SecretKey::new(&mut rng);
+                    let ephemeral_pk = secp256k1::PublicKey::from_secret_key(&EC, &ephemeral_sk);
                     let mut output_abf = [0u8; 32];
                     output_abf.copy_from_slice(&(&output_abfs[i])[..]);
                     let mut output_vbf = [0u8; 32];
@@ -1158,7 +1156,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     let rangeproof = asset_rangeproof(
                         value,
                         blinding_pubkey.key,
-                        blinding_key,
+                        ephemeral_sk,
                         asset.into_inner(),
                         output_abf,
                         output_vbf,
@@ -1192,7 +1190,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     );
                     trace!("surjectionproof: {}", hex::encode(&surjectionproof));
 
-                    let bytes = blinding_public_key.serialize();
+                    let bytes = ephemeral_pk.serialize();
                     let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
                     output.nonce = elements::confidential::Nonce::Confidential(bytes[0], byte32);
                     output.asset = output_generator;
