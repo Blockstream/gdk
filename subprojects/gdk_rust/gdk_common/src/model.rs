@@ -7,7 +7,6 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
-use bitcoin::hashes::core::fmt::Formatter;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::Value;
@@ -471,7 +470,7 @@ impl SPVVerifyResult {
 }
 
 impl Display for SPVVerifyResult {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SPVVerifyResult::InProgress => write!(f, "in_progress"),
             SPVVerifyResult::Verified => write!(f, "verified"),

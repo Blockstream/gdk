@@ -1,6 +1,5 @@
 use crate::Error;
 use aes::Aes256;
-use bitcoin::hashes::core::fmt::Formatter;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::secp256k1::{self, ecdh, All, Message, Secp256k1, SecretKey, Signature};
@@ -219,7 +218,7 @@ impl Handshake {
 }
 
 impl Display for PinOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             PinOp::Get => write!(f, "get_pin"),
             PinOp::Set => write!(f, "set_pin"),

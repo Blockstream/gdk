@@ -9,7 +9,6 @@ mod transaction;
 mod txid;
 
 pub use address::*;
-use bitcoin::hashes::core::fmt::Formatter;
 use bitcoin::util::bip32::DerivationPath;
 pub use blockhash::*;
 pub use blockheader::*;
@@ -69,7 +68,7 @@ impl Unblinded {
 }
 
 impl Debug for Unblinded {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}", self.asset_hex(), self.value)
     }
 }
