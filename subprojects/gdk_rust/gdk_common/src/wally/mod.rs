@@ -43,7 +43,12 @@ pub fn bip39_mnemonic_from_bytes(entropy: &[u8]) -> String {
 
 /// Validate the validity of a BIP-39 mnemonic.
 pub fn bip39_mnemonic_validate(mnemonic: &str) -> bool {
-    let ret = unsafe { ffi::bip39_mnemonic_validate(ptr::null(), make_str(mnemonic)) };
+    let c_mnemonic = make_str(mnemonic);
+    let ret = unsafe {
+        let ret = ffi::bip39_mnemonic_validate(ptr::null(), c_mnemonic);
+        let _ = CString::from_raw(c_mnemonic);
+        ret
+    };
     ret == ffi::WALLY_OK
 }
 
@@ -57,13 +62,15 @@ pub fn bip39_mnemonic_to_bytes(mnemonic: &str) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(BIP39_MAX_ENTROPY_BYTES);
     let mut written = 0usize;
     let ret = unsafe {
-        ffi::bip39_mnemonic_to_bytes(
+        let ret = ffi::bip39_mnemonic_to_bytes(
             ptr::null(),
             c_mnemonic,
             out.as_mut_ptr(),
             BIP39_MAX_ENTROPY_BYTES,
             &mut written,
-        )
+        );
+        let _ = CString::from_raw(c_mnemonic);
+        ret
     };
     assert_eq!(ret, ffi::WALLY_OK);
     assert!(written <= BIP39_MAX_ENTROPY_BYTES);
@@ -84,13 +91,16 @@ pub fn bip39_mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Option<[u8; B
     let mut out = [0u8; BIP39_SEED_BYTES];
     let mut written = 0usize;
     let ret = unsafe {
-        ffi::bip39_mnemonic_to_seed(
+        let ret = ffi::bip39_mnemonic_to_seed(
             c_mnemonic,
             c_passphrase,
             out.as_mut_ptr(),
             BIP39_SEED_BYTES,
             &mut written,
-        )
+        );
+        let _ = CString::from_raw(c_mnemonic);
+        let _ = CString::from_raw(c_passphrase);
+        ret
     };
     assert_eq!(ret, ffi::WALLY_OK);
     assert_eq!(written, BIP39_SEED_BYTES);
@@ -176,14 +186,17 @@ pub fn confidential_addr_from_addr(
     let mut out = ptr::null();
     let pub_key = pub_key.serialize();
 
+    let c_address = make_str(address);
     let ret = unsafe {
-        ffi::wally_confidential_addr_from_addr(
-            make_str(address),
+        let ret = ffi::wally_confidential_addr_from_addr(
+            c_address,
             prefix,
             pub_key.as_ptr(),
             pub_key.len(),
             &mut out,
-        )
+        );
+        let _ = CString::from_raw(c_address);
+        ret
     };
     assert_eq!(ret, ffi::WALLY_OK);
     read_str(out)
@@ -474,7 +487,7 @@ pub fn asset_surjectionproof(
     proof[..proof_size].to_vec()
 }
 
-pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *const c_char {
+pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *mut c_char {
     CString::new(data.into().into_owned()).unwrap().into_raw()
 }
 
