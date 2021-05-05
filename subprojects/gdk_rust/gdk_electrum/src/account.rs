@@ -1015,21 +1015,25 @@ fn internal_sign_elements(
     value: Value,
     script_type: ScriptType,
 ) -> (elements::Script, Vec<Vec<u8>>) {
-    use gdk_common::wally::tx_get_elements_signature_hash;
-
     let xprv = xprv.derive_priv(&EC, &path).unwrap();
     let private_key = &xprv.private_key;
     let public_key = &PublicKey::from_private_key(&EC, private_key);
 
     let script_code = p2pkh_script(public_key).into_elements();
-    let sighash = tx_get_elements_signature_hash(
-        &tx,
-        input_index,
-        &script_code,
-        &value,
-        SigHashType::All.as_u32(),
-        script_type.is_segwit(),
-    );
+    let sighash = if script_type.is_segwit() {
+        elements::sighash::SigHashCache::new(tx).segwitv0_sighash(
+            input_index,
+            &script_code,
+            value,
+            elements::SigHashType::All,
+        )
+    } else {
+        elements::sighash::SigHashCache::new(tx).legacy_sighash(
+            input_index,
+            &script_code,
+            elements::SigHashType::All,
+        )
+    };
     let message = secp256k1::Message::from_slice(&sighash[..]).unwrap();
     let signature = EC.sign(&message, &private_key.key);
     let mut signature = signature.serialize_der().to_vec();
