@@ -1,6 +1,5 @@
 use crate::error::Error;
 
-use bitcoin::util::address::AddressType;
 use gdk_common::model::*;
 use gdk_common::session::Session;
 use serde_json::Value;
@@ -9,19 +8,10 @@ pub fn balance_result_value(bal: &Balances) -> Value {
     json!(bal)
 }
 
-pub fn address_type_str(addr_type: AddressType) -> &'static str {
-    match addr_type {
-        AddressType::P2pkh => "p2pkh",
-        AddressType::P2sh => "p2sh",
-        AddressType::P2wpkh => "p2wpkh",
-        AddressType::P2wsh => "p2wsh",
-    }
-}
-
 pub fn address_io_value(addr: &AddressIO) -> Value {
     json!({
         "address": addr.address,
-        "address_type": address_type_str(addr.address_type),
+        "address_type": addr.address_type.to_string(),
         "addressee": addr.addressee,
         "is_output": addr.is_output,
         "is_relevant": addr.is_relevant,
