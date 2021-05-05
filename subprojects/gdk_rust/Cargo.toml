@@ -28,7 +28,7 @@ ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 
 [dev-dependencies]
 tempdir = "0.3.7"
-bitcoincore-rpc = { git="https://github.com/romanz/rust-bitcoincore-rpc", rev="637e895a0b73ffc21c8f62fa2c65b6fd1247785a" }
+bitcoincore-rpc = "0.13.0"
 electrum-client = "0.7.0"
 elements = { version = "0.16", features = ["serde-feature"] }
 
