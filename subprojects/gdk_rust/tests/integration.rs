@@ -351,6 +351,8 @@ fn labels() {
     test_session.session.set_transaction_memo(&txid, "Bar, Foo Qux").unwrap();
     assert_eq!(test_session.get_tx_from_list(account1.account_num, &txid).memo, "Bar, Foo Qux");
     assert_eq!(test_session.get_tx_from_list(account2.account_num, &txid).memo, "Bar, Foo Qux");
+
+    test_session.stop();
 }
 
 // Test the low-level spv_cross_validate()
