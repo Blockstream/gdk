@@ -12,7 +12,6 @@ crate-type = ["staticlib"]
 android_log = ["android_logger"]
 
 [dependencies]
-bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
 rand = "0.7.3"
 gdk-electrum = { path = "gdk_electrum", features = ["android_log"] }
 gdk-common = { path = "gdk_common" }
@@ -30,6 +29,7 @@ ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 tempdir = "0.3.7"
 bitcoincore-rpc = "0.13.0"
 electrum-client = "0.7.0"
+bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
 elements = { version = "0.16", features = ["serde-feature"] }
 
 [profile.release]
