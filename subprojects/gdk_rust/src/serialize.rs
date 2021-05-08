@@ -8,67 +8,8 @@ pub fn balance_result_value(bal: &Balances) -> Value {
     json!(bal)
 }
 
-pub fn address_io_value(addr: &AddressIO) -> Value {
-    json!({
-        "address": addr.address,
-        "address_type": addr.address_type.to_string(),
-        "addressee": addr.addressee,
-        "is_output": addr.is_output,
-        "is_relevant": addr.is_relevant,
-        "is_spent": addr.is_spent,
-        "pointer": addr.pointer,
-        "pt_idx": addr.pt_idx,
-        "satoshi": addr.satoshi,
-        "script_type": addr.script_type,
-        "subaccount": addr.subaccount,
-        "subtype": addr.subtype,
-    })
-}
-
-pub fn txitem_value(tx: &TxListItem) -> Value {
-    let inputs = Value::Array(tx.inputs.iter().map(address_io_value).collect());
-    let outputs = Value::Array(tx.outputs.iter().map(address_io_value).collect());
-    let mut satoshi = tx.satoshi.clone();
-    for (_, v) in satoshi.iter_mut() {
-        *v = v.abs();
-    }
-
-    json!({
-        "block_height": tx.block_height,
-        "created_at": tx.created_at,
-
-        "type": tx.type_,
-        "memo": tx.memo,
-
-        "txhash": tx.txhash,
-
-        "satoshi": satoshi,
-
-        "rbf_optin": tx.rbf_optin,
-        "can_cpfp": tx.can_cpfp, // TODO
-        "can_rbf": tx.can_rbf, // TODO
-        "has_payment_request": tx.has_payment_request, // TODO
-        "server_signed": tx.server_signed,
-        "user_signed": tx.user_signed,
-        "instant": tx.instant,
-
-        "fee": tx.fee,
-        "fee_rate": tx.fee_rate,
-
-        "addressees": tx.addressees, // notice the extra "e" -- its intentional
-        "inputs": inputs, // tx.input.iter().map(format_gdk_input).collect(),
-        "outputs": outputs, //tx.output.iter().map(format_gdk_output).collect(),
-
-        "transaction_size" : tx.transaction_size,
-        "transaction_vsize" : tx.transaction_vsize,
-        "transaction_weight" : tx.transaction_weight,
-
-        "spv_verified" : tx.spv_verified,
-    })
-}
-
 pub fn txs_result_value(txs: &TxsResult) -> Value {
-    Value::Array(txs.0.iter().map(txitem_value).collect())
+    json!(txs.0.clone())
 }
 
 pub fn subaccounts_value(subaccounts: &[AccountInfo]) -> Value {

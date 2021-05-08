@@ -1,4 +1,5 @@
 use crate::be::{AssetId, BEOutPoint, BETransaction, UTXOInfo, Utxos};
+use crate::util::StringSerialized;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::Network;
 use core::mem::transmute;
@@ -7,6 +8,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
+use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::Value;
@@ -269,10 +271,10 @@ impl TransactionMeta {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddressIO {
     pub address: String,
-    pub address_type: bitcoin::util::address::AddressType,
+    pub address_type: StringSerialized<AddressType>,
     pub addressee: String,
     pub is_output: String,
     pub is_relevant: String,
@@ -286,14 +288,16 @@ pub struct AddressIO {
 }
 
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxListItem {
     pub block_height: u32,
     pub created_at: String,
+    #[serde(rename = "type")]
     pub type_: String,
     pub memo: String,
     pub txhash: String,
     pub transaction: String,
+    #[serde(serialize_with = "serialize_tx_balances")]
     pub satoshi: Balances,
     pub rbf_optin: bool,
     pub can_cpfp: bool,
@@ -311,6 +315,20 @@ pub struct TxListItem {
     pub transaction_size: usize,
     pub transaction_vsize: usize,
     pub transaction_weight: usize,
+}
+
+// Negative (sent) amounts are expceted to be provided as positive numbers.
+// The app side will use the 'type' field to try and determine whether its sent or received,
+// which works in the typical case but not with transactions that has mixed types. To be fixed later.
+fn serialize_tx_balances<S>(balances: &Balances, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let mut balances_abs = balances.clone();
+    for (_, v) in balances_abs.iter_mut() {
+        *v = v.abs();
+    }
+    balances_abs.serialize(serializer)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
