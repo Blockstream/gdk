@@ -107,7 +107,7 @@ pub struct CreateTransaction {
     pub subaccount: u32,
     pub send_all: Option<bool>,
     #[serde(default)]
-    pub previous_transaction: HashMap<String, Value>,
+    pub previous_transaction: Option<TxListItem>,
     pub memo: Option<String>,
     pub utxos: Option<GetUnspentOutputs>,
     /// Minimum number of confirmations for coin selection
@@ -288,7 +288,7 @@ pub struct AddressIO {
 }
 
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TxListItem {
     pub block_height: u32,
     pub created_at: String,

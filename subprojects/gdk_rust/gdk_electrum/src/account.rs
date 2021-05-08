@@ -777,7 +777,7 @@ pub fn create_tx(
         return Err(Error::EmptyAddressees);
     }
 
-    if !request.previous_transaction.is_empty() {
+    if request.previous_transaction.is_some() {
         return Err(Error::Generic("bump not supported".into()));
     }
 
