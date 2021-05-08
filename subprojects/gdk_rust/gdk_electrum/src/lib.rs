@@ -275,7 +275,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         transaction: tx.hex.clone(), // FIXME
         satoshi: tx.satoshi.clone(),
         rbf_optin: tx.rbf_optin, // TODO: TransactionMeta -> TxListItem rbf_optin
-        cap_cpfp: false,         // TODO: TransactionMeta -> TxListItem cap_cpfp
+        can_cpfp: false,         // TODO: TransactionMeta -> TxListItem can_cpfp
         can_rbf: false,          // TODO: TransactionMeta -> TxListItem can_rbf
         has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
         server_signed: false,    // TODO: TransactionMeta -> TxListItem server_signed

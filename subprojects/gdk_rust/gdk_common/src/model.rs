@@ -296,7 +296,7 @@ pub struct TxListItem {
     pub transaction: String,
     pub satoshi: Balances,
     pub rbf_optin: bool,
-    pub cap_cpfp: bool,
+    pub can_cpfp: bool,
     pub can_rbf: bool,
     pub has_payment_request: bool,
     pub server_signed: bool,
