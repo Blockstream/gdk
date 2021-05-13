@@ -71,7 +71,7 @@ start_electrs
 sleep 2
 
 # regtest
-export GDK_NETWORK=electrum-regtest
+export GDK_NETWORK=electrum-localtest
 export GDK_NETWORK_URL=localhost:$ELECTRUM_PORT
 export GDK_TLS=false
 $TEST_RUST

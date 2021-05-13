@@ -322,7 +322,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
         })) },
 
 #ifdef BUILD_GDK_RUST
-    { "liquid-electrum-mainnet",
+    { "electrum-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquid/address/" },
             { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
@@ -338,8 +338,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:995" },
             { "liquid", true },
             { "mainnet", true },
-            { "name", "Electrum Liquid" },
-            { "network", "liquid-electrum-mainnet" },
+            { "name", "Liquid (Electrum)" },
+            { "network", "electrum-liquid" },
             { "p2pkh_version", 57u },
             { "p2sh_version", 39u },
             { "policy_asset", "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d" },
@@ -357,7 +357,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_url", std::string() }
         })) },
 
-    { "liquid-electrum-regtest",
+    { "electrum-localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
             { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
@@ -373,8 +373,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:50001" },
             { "liquid", true },
             { "mainnet", false },
-            { "name", "Electrum Liquid Regtest" },
-            { "network", "liquid-electrum-regtest" },
+            { "name", "Localtest Liquid (Electrum)" },
+            { "network", "electrum-localtest-liquid" },
             { "p2pkh_version", 235u },
             { "p2sh_version", 75u },
             { "policy_asset", "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" },
@@ -402,7 +402,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:700" },
             { "liquid", false },
             { "mainnet", true },
-            { "name", "Electrum Mainnet" },
+            { "name", "Bitcoin (Electrum)" },
             { "network", "electrum-mainnet" },
             { "p2pkh_version", 0u },
             { "p2sh_version", 5u },
@@ -430,7 +430,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:993" },
             { "liquid", false },
             { "mainnet", false },
-            { "name", "Electrum Testnet" },
+            { "name", "Testnet (Electrum)" },
             { "network", "electrum-testnet" },
             { "p2pkh_version", 111u },
             { "p2sh_version", 196u },
@@ -448,7 +448,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_url", std::string() },
         })) },
 
-    { "electrum-regtest",
+    { "electrum-localtest",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "http://127.0.0.1:8080/address/" },
             { "bech32_prefix", "bcrt" },
@@ -458,8 +458,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:50001" },
             { "liquid", false },
             { "mainnet", false },
-            { "name", "Electrum Regtest" },
-            { "network", "electrum-regtest" },
+            { "name", "Localtest (Electrum)" },
+            { "network", "electrum-localtest" },
             { "p2pkh_version", 111u },
             { "p2sh_version", 196u },
             { "server_type", "electrum" },
