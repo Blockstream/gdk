@@ -860,26 +860,35 @@ Network JSON
 .. code-block:: json
 
   {
-    "address_explorer_url": "http://192.168.56.1:8080/address/",
-    "bech32_prefix": "tb",
-    "default_peers": [
-      "192.168.56.1:19000"
+    "address_explorer_url": "",
+    "bech32_prefix": "bcrt",
+    "bip21_prefix": "bitcoin",
+    "csv_buckets": [
+      144,
+      4320,
+      51840
     ],
     "development": true,
+    "electrum_url": "localhost:19002",
     "liquid": false,
     "mainnet": false,
-    "name": "Regtest",
-    "network": "regtest",
+    "name": "Localtest",
+    "network": "localtest",
     "p2pkh_version": 111,
     "p2sh_version": 196,
+    "server_type": "green",
     "service_chain_code": "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04",
     "service_pubkey": "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3",
-    "tx_explorer_url": "http://192.168.56.1:8080/tx/",
+    "spv_cross_validation": false,
+    "spv_cross_validation_servers": [],
+    "spv_enabled": false,
+    "tls": false,
+    "tx_explorer_url": "",
     "wamp_cert_pins": [],
+    "wamp_cert_roots": [],
     "wamp_onion_url": "",
-    "wamp_url": "ws://10.0.2.2:8080/v2/ws"
+    "wamp_url": "ws://localhost:8080/v2/ws"
   }
-
 
 .. _networks-list:
 

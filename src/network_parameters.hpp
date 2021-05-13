@@ -45,7 +45,6 @@ namespace sdk {
         std::string gait_onion() const { return m_details.at("wamp_onion_url"); }
         std::string policy_asset() const { return m_details.value("policy_asset", std::string{}); }
         std::string bip21_prefix() const { return m_details.at("bip21_prefix"); }
-        std::vector<std::string> default_peers() const { return m_details.at("default_peers"); }
         std::string bech32_prefix() const { return m_details.at("bech32_prefix"); }
         std::string blech32_prefix() const { return m_details.at("blech32_prefix"); }
         unsigned char btc_version() const { return m_details.at("p2pkh_version"); }
