@@ -8,7 +8,6 @@ use bitcoin::secp256k1;
 use std::fmt;
 
 use crate::be::AssetId;
-use bitcoin::hashes::{sha256d, Hash};
 use elements::confidential::{Asset, Value};
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
@@ -105,62 +104,6 @@ pub fn bip39_mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Option<[u8; B
     assert_eq!(ret, ffi::WALLY_OK);
     assert_eq!(written, BIP39_SEED_BYTES);
     Some(out)
-}
-
-/// Calculate the signature hash for a specific index of
-/// an Elements transaction.
-pub fn tx_get_elements_signature_hash(
-    tx: &elements::Transaction,
-    index: usize,
-    script_code: &elements::Script,
-    value: &elements::confidential::Value,
-    sighash: u32,
-    segwit: bool,
-) -> sha256d::Hash {
-    let flags = if segwit {
-        ffi::WALLY_TX_FLAG_USE_WITNESS
-    } else {
-        0
-    };
-
-    let tx_bytes = elements::encode::serialize(tx);
-    let mut wally_tx = ptr::null();
-    let ret = unsafe {
-        ffi::wally_tx_from_bytes(
-            tx_bytes.as_ptr(),
-            tx_bytes.len(),
-            flags | ffi::WALLY_TX_FLAG_USE_ELEMENTS,
-            &mut wally_tx,
-        )
-    };
-    assert_eq!(ret, ffi::WALLY_OK, "can't serialize");
-
-    let value = elements::encode::serialize(value);
-    let mut out = [0u8; sha256d::Hash::LEN];
-
-    let (script_ptr, script_len) = if script_code == &elements::Script::default() {
-        (ptr::null(), 0)
-    } else {
-        (script_code.as_bytes().as_ptr(), script_code.as_bytes().len())
-    };
-
-    let ret = unsafe {
-        ffi::wally_tx_get_elements_signature_hash(
-            wally_tx,
-            index,
-            script_ptr,
-            script_len,
-            value.as_ptr(),
-            value.len(),
-            sighash,
-            flags,
-            out.as_mut_ptr(),
-            sha256d::Hash::LEN,
-        )
-    };
-    assert_eq!(ret, ffi::WALLY_OK, "can't get signature_hash");
-    //TODO(stevenroose) use from_inner with hashes 0.7 in bitcoin 0.19
-    sha256d::Hash::from_slice(&out[..]).unwrap()
 }
 
 pub fn asset_blinding_key_from_seed(seed: &[u8]) -> MasterBlindingKey {
@@ -741,25 +684,6 @@ mod tests {
         let ret = unsafe { ffi::wally_asset_surjectionproof_size(num_inputs, &mut proof_size) };
         assert_eq!(ret, ffi::WALLY_OK);
         assert_eq!(proof_size, 67);
-    }
-
-    #[test]
-    fn test_sighash() {
-        //from test_elements_tx.c
-        let tx_hex =
-            include_str!("0ae624340f0cd7969d7ff70486f855ecfae62cc85061872076fd1744ca0c90c0.hex")
-                .trim();
-        let tx_sighash_hex = "450f330746507f7a53b805895b6026dd5947cbf65a7b49eeb850c32e9de17cd9";
-
-        let tx: elements::Transaction =
-            elements::encode::deserialize(&hex::decode(tx_hex).unwrap()).unwrap();
-
-        let sighash_all = 1;
-        let value = Value::Explicit(1000);
-        let result =
-            tx_get_elements_signature_hash(&tx, 0, &Script::default(), &value, sighash_all, true);
-
-        assert_eq!(tx_sighash_hex, hex::encode(&result.into_inner()));
     }
 
     #[test]
