@@ -200,6 +200,9 @@ namespace sdk {
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
         virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
+
+    protected:
+        std::shared_ptr<signer> m_signer;
     };
 
 } // namespace sdk

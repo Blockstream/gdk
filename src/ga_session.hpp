@@ -406,7 +406,6 @@ namespace sdk {
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
         uint32_t m_block_height;
-        std::shared_ptr<signer> m_signer;
 
         uint32_t m_system_message_id; // Next system message
         uint32_t m_system_message_ack_id; // Currently returned message id to ack

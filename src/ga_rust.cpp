@@ -170,7 +170,9 @@ namespace sdk {
             { "password", password },
         };
 
-        return call_session("login", details);
+        auto ret = call_session("login", details);
+        m_signer = std::make_shared<software_signer>(m_netparams, mnemonic);
+        return ret;
     }
     nlohmann::json ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
@@ -179,7 +181,9 @@ namespace sdk {
             { "pin_data", pin_data },
         };
 
-        return call_session("login_with_pin", details);
+        auto ret = call_session("login_with_pin", details);
+        m_signer = std::make_shared<software_signer>(m_netparams, get_mnemonic_passphrase(std::string()));
+        return ret;
     }
     nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {
@@ -551,7 +555,7 @@ namespace sdk {
 
     const network_parameters& ga_rust::get_network_parameters() const { return m_netparams; }
 
-    std::shared_ptr<signer> ga_rust::get_signer() { throw std::runtime_error("get_signer not implemented"); }
+    std::shared_ptr<signer> ga_rust::get_signer() { return m_signer; }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
     user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rust::get_recovery_pubkeys()
