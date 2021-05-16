@@ -67,6 +67,7 @@ else
     $SED -i "741s!^TOR_LIB.*!  TOR_LIB_PTHREAD=-lpthread!" configure.ac
     $SED -i "764a AC_SUBST(TOR_LIB_PTHREAD)" configure.ac
     $SED -i "912s!^TOR_SEARCH.*!TOR_SEARCH_LIBRARY(openssl, \$tryssldir, \[-lssl -lcrypto \$TOR_LIB_GDI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\ -ldl \$TOR_LIB_PTHREAD\],!" configure.ac
+    sed -ie "s!^AC_PROG_CC_C99!!" configure.ac
     sh autogen.sh
     ./configure ${CONFIGURE_ARGS} --host=${HOST_OS}
     sed -ie "s!^include src/app.*!!" "src/include.am"
