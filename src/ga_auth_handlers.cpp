@@ -1056,8 +1056,7 @@ namespace sdk {
 
             if (!m_hw_device.empty()) {
                 // Use the blinding key returned by the HW
-                const std::string asset_tag = it.key();
-                addr["blinding_key"] = args.at("blinding_keys").at(asset_tag);
+                addr["blinding_key"] = args.at("blinding_keys").at(it.key());
             }
 
             auto& address = addr.at("address");

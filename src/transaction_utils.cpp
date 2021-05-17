@@ -219,6 +219,12 @@ namespace sdk {
         return script;
     }
 
+    std::string asset_id_from_json(const network_parameters& net_params, const nlohmann::json& json)
+    {
+        std::string id = json_get_value(json, "asset_id");
+        return id.empty() || id == net_params.policy_asset() ? "btc" : id;
+    }
+
     std::vector<unsigned char> input_script(
         bool low_r, const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig)
     {
@@ -273,14 +279,14 @@ namespace sdk {
     }
 
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_tag)
+        const std::string& address, amount::value_type satoshi, const std::string& asset_id)
     {
         std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
 
         if (net_params.is_liquid()) {
             const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
             const auto asset_bytes
-                = h2b_rev(!asset_tag.empty() && asset_tag != "btc" ? asset_tag : net_params.policy_asset(), 0x1);
+                = h2b_rev(!asset_id.empty() && asset_id != "btc" ? asset_id : net_params.policy_asset(), 0x1);
             tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
         } else {
             tx_add_raw_output(tx, satoshi, script);
@@ -298,10 +304,10 @@ namespace sdk {
     }
 
     void set_tx_output_commitment(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,
-        const std::string& asset_tag, amount::value_type satoshi)
+        const std::string& asset_id, amount::value_type satoshi)
     {
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-        const auto asset_bytes = h2b_rev(asset_tag == "btc" ? net_params.policy_asset() : asset_tag, 0x1);
+        const auto asset_bytes = h2b_rev(asset_id == "btc" ? net_params.policy_asset() : asset_id, 0x1);
         tx_elements_output_commitment_set(tx, index, asset_bytes, ct_value, {}, {}, {});
     }
 
@@ -362,7 +368,7 @@ namespace sdk {
         addressee["satoshi"] = satoshi.value(); // Sets to 0 if not present
 
         return add_tx_output(
-            net_params, result, tx, address, satoshi.value(), addressee.value("asset_tag", std::string{}));
+            net_params, result, tx, address, satoshi.value(), asset_id_from_json(net_params, addressee));
     }
 
     void update_tx_size_info(const wally_tx_ptr& tx, nlohmann::json& result)

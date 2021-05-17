@@ -48,6 +48,9 @@ namespace sdk {
     std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
         user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
+    // Returns the asset id, or "btc" if it matches the networks policy asset
+    std::string asset_id_from_json(const network_parameters& net_params, const nlohmann::json& json);
+
     // Make a multisig scriptSig
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
         const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig);
@@ -72,13 +75,13 @@ namespace sdk {
 
     // Add an output to a tx given its address
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi = 0, const std::string& asset_tag = {});
+        const std::string& address, amount::value_type satoshi = 0, const std::string& asset_id = {});
 
     // Add a fee output to a tx, returns the index in tx->outputs
     size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi);
 
     void set_tx_output_commitment(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,
-        const std::string& asset_tag, amount::value_type satoshi);
+        const std::string& asset_id, amount::value_type satoshi);
 
     // Add an output from a JSON addressee
     amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,

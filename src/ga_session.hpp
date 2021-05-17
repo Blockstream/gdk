@@ -213,11 +213,6 @@ namespace sdk {
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
-        std::string asset_id_from_string(const std::string& tag)
-        {
-            return tag.empty() || tag == m_net_params.policy_asset() ? "btc" : tag;
-        }
-
     private:
         void reset();
 

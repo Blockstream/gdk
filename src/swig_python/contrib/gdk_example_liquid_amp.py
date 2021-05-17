@@ -336,7 +336,7 @@ class gdk_wallet:
     def send_to_address(self, sat_amount, asset_id, destination_address):
         details = {
             'subaccount': self.subaccount_pointer,
-            'addressees': [{'satoshi': sat_amount, 'address': destination_address, 'asset_tag': asset_id}]
+            'addressees': [{'satoshi': sat_amount, 'address': destination_address, 'asset_id': asset_id}]
         }
 
         try:

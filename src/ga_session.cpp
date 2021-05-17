@@ -2714,7 +2714,7 @@ namespace sdk {
                 const bool is_relevant = json_get_value(ep, "is_relevant", false);
 
                 if (is_relevant && ep.find("error") == ep.end()) {
-                    const auto asset_id = asset_id_from_string(ep.value("asset_id", std::string{}));
+                    const auto asset_id = asset_id_from_json(m_net_params, ep);
                     unique_asset_ids.emplace(asset_id);
 
                     // Compute the effect of the input/output on the wallets balance
@@ -3031,8 +3031,8 @@ namespace sdk {
                 const bool confidential_utxo = is_liquid && utxo.at("confidential");
                 // Either return all or only confidential UTXOs
                 if (!confidential_only || confidential_utxo) {
-                    const auto utxo_asset_tag = asset_id_from_string(utxo.value("asset_id", std::string{}));
-                    asset_utxos[utxo_asset_tag].emplace_back(utxo);
+                    const auto utxo_asset_id = asset_id_from_json(m_net_params, utxo);
+                    asset_utxos[utxo_asset_id].emplace_back(utxo);
                 }
             }
         }

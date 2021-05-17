@@ -547,7 +547,7 @@ namespace sdk {
             std::vector<nlohmann::json> used_utxos;
             used_utxos.reserve(utxos.size());
 
-            std::set<std::string> asset_tags;
+            std::set<std::string> asset_ids;
             bool addressees_have_assets = json_get_value(result, "addressees_have_assets", false);
             if (num_addressees) {
                 for (auto& addressee : *addressees_p) {
@@ -571,15 +571,15 @@ namespace sdk {
                             addressees_have_assets = true;
 
                             if (assetid_hex == net_params.policy_asset()) {
-                                addressee["asset_tag"] = "btc";
+                                addressee["asset_id"] = "btc";
                             } else {
-                                addressee["asset_tag"] = assetid_hex;
+                                addressee["asset_id"] = assetid_hex;
                             }
                         }
                     }
 
-                    asset_tags.insert(session.asset_id_from_string(addressee.value("asset_tag", "btc")));
-                    if (asset_tags.size() > 1 && net_params.is_main_net()) {
+                    asset_ids.insert(asset_id_from_json(net_params, addressee));
+                    if (asset_ids.size() > 1 && net_params.is_main_net()) {
                         // Multi-asset send disabled in (liquid) mainnet
                         GDK_LOG_SEV(log_level::error) << "Multi-asset send not supported";
                         GDK_RUNTIME_ASSERT(false);
@@ -590,8 +590,8 @@ namespace sdk {
 
             std::vector<nlohmann::json> reordered_addressees;
 
-            auto create_tx_outputs = [&](const std::string& asset_tag) {
-                const bool include_fee = asset_tag == "btc";
+            auto create_tx_outputs = [&](const std::string& asset_id) {
+                const bool include_fee = asset_id == "btc";
 
                 std::vector<nlohmann::json> current_used_utxos;
                 amount available_total, total, fee, v;
@@ -612,9 +612,8 @@ namespace sdk {
 
                 if (num_addressees) {
                     for (auto& addressee : *addressees_p) {
-                        const auto addressee_asset_tag
-                            = session.asset_id_from_string(addressee.value("asset_tag", std::string{}));
-                        if (addressee_asset_tag == asset_tag) {
+                        const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
+                        if (addressee_asset_id == asset_id) {
                             required_total += add_tx_addressee(session, net_params, result, tx, addressee);
                             reordered_addressees.push_back(addressee);
                         }
@@ -633,13 +632,13 @@ namespace sdk {
                 } else {
                     // Collect utxos in order until we have covered the amount to send
                     // FIXME: Better coin selection algorithms (esp. minimum size)
-                    const auto asset_utxos_p = utxos.find(asset_tag);
+                    const auto asset_utxos_p = utxos.find(asset_id);
                     if (asset_utxos_p == utxos.end()) {
                         if (!is_rbf) {
                             set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
                         }
                     } else {
-                        for (auto& utxo : utxos.at(asset_tag)) {
+                        for (auto& utxo : utxos.at(asset_id)) {
                             if (send_all || total < required_total) {
                                 v = add_utxo(session, tx, utxo);
                                 total += v;
@@ -685,7 +684,7 @@ namespace sdk {
                 bool change_address = result.find("change_address") != result.end();
                 if (change_address) {
                     const auto asset_change_address
-                        = result.at("change_address").value(asset_tag, nlohmann::json::object());
+                        = result.at("change_address").value(asset_id, nlohmann::json::object());
                     change_address = !asset_change_address.empty();
                 }
                 if (!change_address) {
@@ -708,7 +707,7 @@ namespace sdk {
                     }
 
                     add_paths(session, change_address);
-                    result["change_address"][asset_tag] = change_address;
+                    result["change_address"][asset_id] = change_address;
                 }
 
                 const size_t max_loop_iterations
@@ -723,10 +722,10 @@ namespace sdk {
                         if (is_liquid) {
                             constexpr amount::value_type dummy_amount = 1;
                             if (!have_fee_output) {
-                                if (send_all && addressees_p->at(0).value("asset_tag", "btc") == asset_tag) {
+                                if (send_all && addressees_p->at(0).value("asset_id", "btc") == asset_id) {
                                     // the output commitment will be corrected below. this is a placeholder for the
                                     // blinding.
-                                    set_tx_output_commitment(net_params, tx, 0, asset_tag, dummy_amount);
+                                    set_tx_output_commitment(net_params, tx, 0, asset_id, dummy_amount);
                                 }
                                 fee_index = add_tx_fee_output(net_params, tx, dummy_amount);
                                 have_fee_output = true;
@@ -745,7 +744,7 @@ namespace sdk {
                         fee += network_fee;
                     }
 
-                    if (send_all && addressees_p->at(0).value("asset_tag", "btc") == asset_tag) {
+                    if (send_all && addressees_p->at(0).value("asset_id", "btc") == asset_id) {
                         if (available_total < fee + dust_threshold) {
                             // After paying the fee, we only have dust left, so
                             // the requested amount isn't payable
@@ -756,7 +755,7 @@ namespace sdk {
                             // fee) and exit the loop
                             required_total = available_total - fee;
                             if (is_liquid) {
-                                set_tx_output_commitment(net_params, tx, 0, asset_tag, required_total.value());
+                                set_tx_output_commitment(net_params, tx, 0, asset_id, required_total.value());
                             } else {
                                 tx->outputs[0].satoshi = required_total.value();
                             }
@@ -773,14 +772,14 @@ namespace sdk {
                         // need to add more to avoid a dusty change output
                         force_add_utxo = false;
                         if (manual_selection || utxos.empty()
-                            || current_used_utxos.size() == utxos.at(asset_tag).size()) {
+                            || current_used_utxos.size() == utxos.at(asset_id).size()) {
                             // Used all inputs and do not have enough funds
                             set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
                             goto leave_loop;
                         }
 
                         // FIXME: Use our strategy here when non-default implemented
-                        auto& utxo = utxos.at(asset_tag).at(current_used_utxos.size());
+                        auto& utxo = utxos.at(asset_id).at(current_used_utxos.size());
                         total += add_utxo(session, tx, utxo);
                         current_used_utxos.emplace_back(utxo);
                         continue;
@@ -818,16 +817,16 @@ namespace sdk {
                     // We have more than the dust amount of change. Add a change
                     // output to collect it, then loop again in case the amount
                     // this increases the fee by requires more UTXOs.
-                    add_tx_output(net_params, result, tx, result.at("change_address").at(asset_tag).at("address"),
-                        is_liquid ? 1 : 0, asset_tag == "btc" ? std::string{} : asset_tag);
+                    add_tx_output(net_params, result, tx, result.at("change_address").at(asset_id).at("address"),
+                        is_liquid ? 1 : 0, asset_id == "btc" ? std::string{} : asset_id);
                     have_change_output = true;
                     change_index = tx->num_outputs - 1;
                     if (is_liquid && include_fee) {
                         std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
                         std::swap(fee_index, change_index);
                     }
-                    result["have_change"][asset_tag] = have_change_output;
-                    result["change_index"][asset_tag] = change_index;
+                    result["have_change"][asset_id] = have_change_output;
+                    result["change_index"][asset_id] = change_index;
                 }
 
                 used_utxos.insert(used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
@@ -843,7 +842,7 @@ namespace sdk {
                         // Set the change amount
                         change_amount = (total - required_total - fee).value();
                         if (is_liquid) {
-                            set_tx_output_commitment(net_params, tx, change_index, asset_tag, change_amount);
+                            set_tx_output_commitment(net_params, tx, change_index, asset_id, change_amount);
                         } else {
                             auto& change_output = tx->outputs[change_index];
                             change_output.satoshi = change_amount;
@@ -856,14 +855,14 @@ namespace sdk {
                         }
                     }
                     // TODO: change amount should be liquid specific (blinded)
-                    result["change_amount"][asset_tag] = change_amount;
-                    result["change_index"][asset_tag] = change_index;
+                    result["change_amount"][asset_id] = change_amount;
+                    result["change_index"][asset_id] = change_index;
                 };
 
                 update_change_output(fee);
 
                 if (include_fee && is_liquid) {
-                    set_tx_output_commitment(net_params, tx, fee_index, asset_tag, fee.value());
+                    set_tx_output_commitment(net_params, tx, fee_index, asset_id, fee.value());
                 }
 
                 if (required_total == 0 && (!include_fee || !is_liquid)) {
@@ -874,8 +873,8 @@ namespace sdk {
                 }
 
                 result["used_utxos"] = used_utxos;
-                result["have_change"][asset_tag] = have_change_output;
-                result["satoshi"][asset_tag] = required_total.value();
+                result["have_change"][asset_id] = have_change_output;
+                result["satoshi"][asset_id] = required_total.value();
 
                 update_tx_info(net_params, tx, result);
 
@@ -895,9 +894,9 @@ namespace sdk {
             };
 
             if (is_liquid) {
-                std::for_each(std::begin(asset_tags), std::end(asset_tags), [&](const auto& asset_tag) {
-                    if (asset_tag != "btc") {
-                        create_tx_outputs(asset_tag);
+                std::for_each(std::begin(asset_ids), std::end(asset_ids), [&](const auto& id) {
+                    if (id != "btc") {
+                        create_tx_outputs(id);
                     }
                 });
             }
