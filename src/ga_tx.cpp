@@ -923,7 +923,8 @@ namespace sdk {
             const auto type = script_type(u.at("script_type"));
             const auto script = h2b(u.at("prevout_script"));
             const std::string private_key = json_get_value(u, "private_key");
-            const bool low_r = session.get_signer()->supports_low_r();
+            auto signer = session.get_signer();
+            const bool low_r = signer->supports_low_r();
 
             std::array<unsigned char, SHA256_LEN> tx_hash;
             const auto& net_params = session.get_network_parameters();
@@ -936,7 +937,7 @@ namespace sdk {
                     tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), ec_sig_to_der(user_sig, true)));
             } else {
                 const auto path = session.get_subaccount_full_path(subaccount, pointer);
-                const auto user_sig = session.sign_hash(path, tx_hash);
+                const auto user_sig = signer->sign_hash(path, tx_hash);
 
                 if (is_segwit_script_type(type)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)

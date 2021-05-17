@@ -605,9 +605,10 @@ namespace sdk {
         if (m_hw_device.empty()) {
             if (type == "2of3") {
                 // sign recovery key with login key
+                auto signer = m_session.get_nonnull_impl()->get_signer();
                 const auto message = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-                m_details["recovery_key_sig"] = b2h(m_session.sign_hash(signer::LOGIN_PATH, message_hash));
+                m_details["recovery_key_sig"] = b2h(signer->sign_hash(signer::LOGIN_PATH, message_hash));
             }
 
             m_result = m_session.create_subaccount(m_details, m_subaccount);

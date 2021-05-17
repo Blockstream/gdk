@@ -3646,13 +3646,6 @@ namespace sdk {
             { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
     }
 
-    ecdsa_sig_t ga_session::sign_hash(uint32_span_t path, byte_span_t hash)
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer->sign_hash(path, hash);
-    }
-
     nlohmann::json ga_session::create_transaction(const nlohmann::json& details)
     {
         try {

@@ -581,11 +581,6 @@ namespace sdk {
         throw std::runtime_error("upload_confidential_addresses not yet implemented");
     }
 
-    ecdsa_sig_t ga_rust::sign_hash(uint32_span_t path, byte_span_t hash)
-    {
-        throw std::runtime_error("sign_hash not yet implemented");
-    }
-
     void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet) {}
 
     void ga_rust::disable_all_pin_logins() {}
