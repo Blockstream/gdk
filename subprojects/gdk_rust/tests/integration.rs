@@ -82,7 +82,7 @@ fn liquid() {
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None, None);
     test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None, None, None); // asset should send below dust limit
     test_session.send_all(&node_address, Some(assets[0].to_string()));
-    test_session.send_all(&node_address, test_session.asset_tag());
+    test_session.send_all(&node_address, test_session.asset_id());
     test_session.mine_block();
     let assets = test_session.fund(100_000_000, Some(3));
     test_session.send_multi(3, 100_000, &vec![]);
@@ -336,7 +336,7 @@ fn labels() {
     create_opt.addressees.push(AddressAmount {
         address: test_session.get_receive_address(account2.account_num).address,
         satoshi: 50000,
-        asset_tag: None,
+        asset_id: None,
     });
     create_opt.memo = Some("Foo, Bar Foo".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();

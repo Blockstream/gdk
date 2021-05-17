@@ -352,14 +352,14 @@ impl TestSession {
     }
 
     /// send all of the balance of the  tx from the gdk session to the specified address
-    pub fn send_all(&mut self, address: &str, asset_tag: Option<String>) {
-        self.send_all_from_account(0, address, asset_tag);
+    pub fn send_all(&mut self, address: &str, asset_id: Option<String>) {
+        self.send_all_from_account(0, address, asset_id);
     }
     pub fn send_all_from_account(
         &mut self,
         subaccount: u32,
         address: &str,
-        asset_tag: Option<String>,
+        asset_id: Option<String>,
     ) -> String {
         //let init_sat = self.balance_gdk();
         //let init_sat_addr = self.balance_addr(address);
@@ -370,7 +370,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: 0,
-            asset_tag: asset_tag.clone(),
+            asset_id: asset_id.clone(),
         });
         create_opt.send_all = Some(true);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
@@ -381,7 +381,7 @@ impl TestSession {
         self.wait_account_tx(subaccount, &txid);
         //let end_sat_addr = self.balance_addr(address);
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
-        assert_eq!(self.balance_account(subaccount, asset_tag, None), 0);
+        assert_eq!(self.balance_account(subaccount, asset_id, None), 0);
 
         assert!(tx.create_transaction.unwrap().send_all.unwrap());
         assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
@@ -409,7 +409,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi,
-            asset_tag: asset.clone().or(self.asset_tag()),
+            asset_id: asset.clone().or(self.asset_id()),
         });
         create_opt.memo = memo;
         create_opt.utxos = unspent_outputs;
@@ -478,7 +478,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi,
-            asset_tag: asset.clone().or(self.asset_tag()),
+            asset_id: asset.clone().or(self.asset_id()),
         });
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
@@ -551,7 +551,7 @@ impl TestSession {
     }
 
     /// send a tx with multiple recipients with same amount from the gdk session to generated
-    /// node's addressees, if `assets` contains values, they are used as asset_tag cyclically
+    /// node's addressees, if `assets` contains values, they are used as asset_id cyclically
     pub fn send_multi(&mut self, recipients: u8, amount: u64, assets: &Vec<String>) {
         let init_sat = self.balance_gdk(None);
         let init_assets_sat = self.balance_gdk_all();
@@ -563,8 +563,8 @@ impl TestSession {
         let mut tags = vec![];
         for _ in 0..recipients {
             let address = self.node_getnewaddress(None);
-            let asset_tag = if assets.is_empty() {
-                self.asset_tag()
+            let asset_id = if assets.is_empty() {
+                self.asset_id()
             } else {
                 let current = assets_cycle.next().unwrap().to_string();
                 tags.push(current.clone());
@@ -574,7 +574,7 @@ impl TestSession {
             create_opt.addressees.push(AddressAmount {
                 address: address.to_string(),
                 satoshi: amount,
-                asset_tag,
+                asset_id,
             });
             addressees.push(address);
         }
@@ -656,7 +656,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: node_address.to_string(),
             satoshi: init_sat, // not enough to pay the fee with confidential utxos only
-            asset_tag: self.asset_tag(),
+            asset_id: self.asset_id(),
         });
         create_opt.confidential_utxos_only = Some(true);
         assert!(matches!(
@@ -708,7 +708,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi,
-            asset_tag: self.asset_tag(),
+            asset_id: self.asset_id(),
         });
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
@@ -731,7 +731,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: 0,
-            asset_tag: self.asset_tag(),
+            asset_id: self.asset_id(),
         });
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
@@ -975,7 +975,7 @@ impl TestSession {
         Amount::from_btc(balance_btc).unwrap().as_sat()
     }
 
-    pub fn asset_tag(&self) -> Option<String> {
+    pub fn asset_id(&self) -> Option<String> {
         match self.network_id {
             NetworkId::Bitcoin(_) => None,
             NetworkId::Elements(_) => self.network.policy_asset.clone(),

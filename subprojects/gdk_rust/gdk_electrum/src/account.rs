@@ -189,7 +189,7 @@ impl Account {
                     addressees.push(AddressAmount {
                         address: address.unwrap_or_else(|| "".to_string()),
                         satoshi: 0, // apparently not needed in list_tx addressees
-                        asset_tag: None,
+                        asset_id: None,
                     });
                 }
             }
@@ -731,7 +731,7 @@ pub fn create_tx(
 
     let network = &account.network;
 
-    // TODO put checks into CreateTransaction::validate, add check asset_tag are valid asset hex
+    // TODO put checks into CreateTransaction::validate, add check asset_id are valid asset hex
     // eagerly check for address validity
     for address in request.addressees.iter().map(|a| &a.address) {
         match network.id() {
@@ -793,7 +793,7 @@ pub fn create_tx(
                 match network.id() {
                     NetworkId::Bitcoin(_) => return Err(Error::InvalidAmount),
                     NetworkId::Elements(_) => {
-                        if address_amount.asset_tag == network.policy_asset {
+                        if address_amount.asset_id == network.policy_asset {
                             // we apply dust rules for liquid bitcoin as elements do
                             return Err(Error::InvalidAmount);
                         }
@@ -804,7 +804,7 @@ pub fn create_tx(
     }
 
     if let NetworkId::Elements(_) = network.id() {
-        if request.addressees.iter().any(|a| a.asset_tag.is_none()) {
+        if request.addressees.iter().any(|a| a.asset_id.is_none()) {
             return Err(Error::AssetEmpty);
         }
     }
@@ -833,7 +833,7 @@ pub fn create_tx(
         if request.addressees.len() != 1 {
             return Err(Error::SendAll);
         }
-        let asset = request.addressees[0].asset_tag.as_deref().unwrap_or("btc");
+        let asset = request.addressees[0].asset_id.as_deref().unwrap_or("btc");
         let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> =
             utxos.iter().filter(|(_, i)| i.asset == asset).collect();
         let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
@@ -845,7 +845,7 @@ pub fn create_tx(
             }
             let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
             dummy_tx
-                .add_output(&out.address, out.satoshi, out.asset_tag.clone())
+                .add_output(&out.address, out.satoshi, out.asset_id.clone())
                 .map_err(|_| Error::InvalidAddress)?;
             // estimating 2 satoshi more as estimating less would later result in InsufficientFunds
             let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 2;
@@ -867,7 +867,7 @@ pub fn create_tx(
 
     // STEP 1) add the outputs requested for this transactions
     for out in request.addressees.iter() {
-        tx.add_output(&out.address, out.satoshi, out.asset_tag.clone())
+        tx.add_output(&out.address, out.satoshi, out.asset_id.clone())
             .map_err(|_| Error::InvalidAddress)?;
     }
 

@@ -90,7 +90,7 @@ impl ExchangeRateOk {
 pub struct AddressAmount {
     pub address: String, // could be bitcoin or elements
     pub satoshi: u64,
-    pub asset_tag: Option<String>,
+    pub asset_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -422,8 +422,8 @@ impl Default for Settings {
 
 impl AddressAmount {
     pub fn asset(&self) -> Option<AssetId> {
-        if let Some(asset_tag) = self.asset_tag.as_ref() {
-            let vec = hex::decode(asset_tag).ok();
+        if let Some(asset_id) = self.asset_id.as_ref() {
+            let vec = hex::decode(asset_id).ok();
             if let Some(mut vec) = vec {
                 vec.reverse();
                 return (&vec[..]).try_into().ok();

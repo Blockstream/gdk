@@ -54,7 +54,7 @@ impl Display for Error {
             Error::InvalidAmount => write!(f, "invalid amount"),
             Error::InvalidHeaders => write!(f, "invalid headers"),
             Error::EmptyAddressees => write!(f, "addressees cannot be empty"),
-            Error::AssetEmpty => write!(f, "asset_tag cannot be empty in liquid"),
+            Error::AssetEmpty => write!(f, "asset_id cannot be empty in liquid"),
             Error::InvalidSubaccount(sub) => write!(f, "invalid subaccount {}", sub),
             Error::AccountGapsDisallowed => {
                 write!(f, "cannot create a new subaccount while the last one is unused")
