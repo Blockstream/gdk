@@ -77,15 +77,27 @@ To authenticate a watch-only user:
 HW device JSON
 --------------
 
+Describes the capabilities of an external signing device.
+
 .. code-block:: json
 
    {
       "device": {
          "name": "Ledger",
+         "supports_ae_protocol": 0,
          "supports_arbitrary_scripts": true,
-         "supports_low_r": false
+         "supports_liquid": 1,
+         "supports_low_r": false,
       }
    }
+
+:supports_arbitrary_scripts: True if the device can sign non-standard scripts such as CSV.
+:supports_low_r: True if the device can produce low-R ECDSA signatures.
+:supports_liquid: See `liquid_support_level` in the gdk source for details.
+:supports_ae_protocol: See `ae_protocol_support_level` in the gdk source for details.
+
+The default for any value not provided is false or 0.
+
 
 .. _pin-data:
 

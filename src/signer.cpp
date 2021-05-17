@@ -41,7 +41,7 @@ namespace sdk {
         return false; // assume not unless overridden
     }
 
-    liquid_support_level signer::supports_liquid() const
+    liquid_support_level signer::get_liquid_support() const
     {
         return liquid_support_level::none; // assume none unless overridden
     }
@@ -84,7 +84,7 @@ namespace sdk {
     bool watch_only_signer::supports_low_r() const { return true; }
     bool watch_only_signer::supports_arbitrary_scripts() const { return true; }
 
-    liquid_support_level watch_only_signer::supports_liquid() const
+    liquid_support_level watch_only_signer::get_liquid_support() const
     {
         return liquid_support_level::none;
     } // we don't support Liquid in watch-only
@@ -167,7 +167,7 @@ namespace sdk {
 
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; }
-    liquid_support_level software_signer::supports_liquid() const { return liquid_support_level::full; }
+    liquid_support_level software_signer::get_liquid_support() const { return liquid_support_level::full; }
     ae_protocol_support_level software_signer::ae_protocol_support() const { return ae_protocol_support_level::none; }
 
     std::string software_signer::get_challenge()
@@ -215,9 +215,17 @@ namespace sdk {
     //
     // Hardware signer
     //
+    static nlohmann::json get_hw_device_json(const nlohmann::json& hw_device)
+    {
+        // FIXME: Remove this function when the wallets are upgraded to use "supports_ae_protocol"
+        nlohmann::json ret = hw_device;
+        json_rename_key(ret, "ae_protocol_support_level", "supports_ae_protocol");
+        return ret;
+    }
+
     hardware_signer::hardware_signer(const network_parameters& net_params, const nlohmann::json& hw_device)
         : signer(net_params)
-        , m_hw_device(hw_device)
+        , m_hw_device(get_hw_device_json(hw_device))
     {
     }
 
@@ -234,13 +242,13 @@ namespace sdk {
     {
         return json_get_value(m_hw_device, "supports_arbitrary_scripts", false);
     }
-    liquid_support_level hardware_signer::supports_liquid() const
+    liquid_support_level hardware_signer::get_liquid_support() const
     {
         return json_get_value(m_hw_device, "supports_liquid", liquid_support_level::none);
     }
     ae_protocol_support_level hardware_signer::ae_protocol_support() const
     {
-        return json_get_value(m_hw_device, "ae_protocol_support_level", ae_protocol_support_level::none);
+        return json_get_value(m_hw_device, "supports_ae_protocol", ae_protocol_support_level::none);
     }
 
     bool hardware_signer::is_hw_device() const { return true; }

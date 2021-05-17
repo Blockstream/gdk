@@ -3629,13 +3629,6 @@ namespace sdk {
         return m_signer->ae_protocol_support();
     }
 
-    liquid_support_level ga_session::hw_liquid_support() const
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer->supports_liquid();
-    }
-
     std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
     {
         locker_t locker(m_mutex);

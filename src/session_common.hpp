@@ -135,7 +135,6 @@ namespace sdk {
         virtual void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
             = 0;
         virtual bool has_blinding_nonce(const std::string& pubkey, const std::string& script) = 0;
-        virtual liquid_support_level hw_liquid_support() const = 0;
         virtual nlohmann::json get_blinded_scripts(const nlohmann::json& details) = 0;
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)

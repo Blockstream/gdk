@@ -96,7 +96,6 @@ namespace sdk {
         bool is_rbf_enabled();
         bool is_watch_only();
         bool is_liquid();
-        liquid_support_level hw_liquid_support();
         nlohmann::json get_settings();
         nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);

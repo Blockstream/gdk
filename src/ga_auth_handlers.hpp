@@ -141,7 +141,6 @@ namespace sdk {
     class needs_unblind_call : public auth_handler {
     protected:
         needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
-        void set_nonces();
 
         virtual state_type wrapped_call_impl() = 0;
 
@@ -149,6 +148,8 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+
+        const liquid_support_level m_liquid_support;
     };
 
     class get_balance_call : public needs_unblind_call {

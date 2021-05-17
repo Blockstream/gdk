@@ -573,8 +573,6 @@ namespace sdk {
         throw std::runtime_error("hash_blinding_nonce not yet implemented");
     }
 
-    liquid_support_level ga_rust::hw_liquid_support() const { return liquid_support_level::full; }
-
     nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details) { return nlohmann::json(); }
 
     void ga_rust::upload_confidential_addresses(

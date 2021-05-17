@@ -81,7 +81,7 @@ namespace sdk {
         // Whether the hw has any support for the Anti-Exfil protocol
         static bool supports_ae_protocol(const nlohmann::json& hw_device)
         {
-            return json_get_value(hw_device, "ae_protocol_support_level", ae_protocol_support_level::none)
+            return json_get_value(hw_device, "supports_ae_protocol", ae_protocol_support_level::none)
                 != ae_protocol_support_level::none;
         }
 
@@ -998,7 +998,8 @@ namespace sdk {
         try {
             m_tx = m_session.create_transaction(details);
             m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", m_tx } };
-            if (m_session.is_liquid() && m_session.hw_liquid_support() != liquid_support_level::full) {
+            if (m_session.is_liquid()
+                && m_session.get_nonnull_impl()->get_signer()->get_liquid_support() != liquid_support_level::full) {
                 m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
             }
         } catch (const std::exception& e) {
@@ -1070,18 +1071,21 @@ namespace sdk {
         return state_type::done;
     }
 
+    //
     // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
+    //
     needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
         : auth_handler(session, name)
         , m_details(details)
+        , m_liquid_support(session.get_nonnull_impl()->get_signer()->get_liquid_support())
     {
         if (m_state == state_type::error) {
             return;
         }
 
-        if (!m_session.is_liquid() || m_session.hw_liquid_support() == liquid_support_level::full) {
+        if (!m_session.is_liquid() || m_liquid_support == liquid_support_level::full) {
             m_state = state_type::make_call;
-        } else if (m_session.hw_liquid_support() == liquid_support_level::lite) {
+        } else if (m_liquid_support == liquid_support_level::lite) {
             try {
                 m_state = state_type::resolve_code;
 
@@ -1091,29 +1095,20 @@ namespace sdk {
             } catch (const std::exception& e) {
                 set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
             }
-        } else if (m_session.hw_liquid_support() == liquid_support_level::none) {
-            set_error(res::id_the_hardware_wallet_you_are);
         } else {
-            // should be unreachable
-            GDK_RUNTIME_ASSERT(false);
+            set_error(res::id_the_hardware_wallet_you_are);
         }
     }
 
     auth_handler::state_type needs_unblind_call::call_impl()
     {
-        set_nonces(); // parse and set the nonces we got back
-        return wrapped_call_impl(); // run the actual wrapped call
-    }
-
-    void needs_unblind_call::set_nonces()
-    {
-        // Bitcoin or HW with full support
-        if (!m_session.is_liquid() || m_session.hw_liquid_support() == liquid_support_level::full) {
-            return;
+        if (m_session.is_liquid() && m_liquid_support != liquid_support_level::full) {
+            // Parse and set the nonces we got back
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
         }
 
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-        cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
+        return wrapped_call_impl(); // run the actual wrapped call
     }
 
     //

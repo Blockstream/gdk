@@ -582,14 +582,6 @@ namespace sdk {
         });
     }
 
-    liquid_support_level session::hw_liquid_support()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->hw_liquid_support();
-        });
-    }
-
     nlohmann::json session::get_twofactor_config(bool reset_cached)
     {
         return exception_wrapper([&] {
