@@ -318,8 +318,6 @@ namespace sdk {
             const auto& bip21_params = uri_params["bip21-params"];
             addressee["bip21-params"] = bip21_params;
 
-            const std::string asset_id = addressee.value("asset_tag", "btc");
-
             // In Liquid amounts should be encoded in the "consensus form"
             // For instance, assuming an invoice for qty 1 of an asset with precision `2`, the amount in the URI
             // should be 0.00000100
