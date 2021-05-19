@@ -959,11 +959,6 @@ namespace sdk {
         return p->get_default_fee_rate(); // Note no exception_wrapper
     }
 
-    bool session::have_subaccounts() const
-    {
-        auto p = get_nonnull_impl();
-        return p->have_subaccounts(); // Note no exception_wrapper
-    }
     uint32_t session::get_block_height() const
     {
         auto p = get_nonnull_impl();

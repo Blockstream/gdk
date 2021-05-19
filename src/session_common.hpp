@@ -184,7 +184,6 @@ namespace sdk {
 
         virtual amount get_min_fee_rate() const = 0;
         virtual amount get_default_fee_rate() const = 0;
-        virtual bool have_subaccounts() const = 0;
         virtual uint32_t get_block_height() const = 0;
         virtual amount get_dust_threshold() const = 0;
         virtual nlohmann::json get_spending_limits() const = 0;

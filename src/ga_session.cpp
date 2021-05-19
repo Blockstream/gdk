@@ -1397,13 +1397,6 @@ namespace sdk {
         return m_block_height;
     }
 
-    bool ga_session::have_subaccounts() const
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(!m_subaccounts.empty());
-        return m_subaccounts.size() != 1u;
-    }
-
     nlohmann::json ga_session::get_spending_limits() const
     {
         locker_t locker(m_mutex);

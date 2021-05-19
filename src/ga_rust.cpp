@@ -541,7 +541,6 @@ namespace sdk {
 
     amount ga_rust::get_min_fee_rate() const { throw std::runtime_error("get_min_fee_rate not implemented"); }
     amount ga_rust::get_default_fee_rate() const { throw std::runtime_error("get_default_fee_rate not implemented"); }
-    bool ga_rust::have_subaccounts() const { throw std::runtime_error("have_subaccounts not implemented"); }
     uint32_t ga_rust::get_block_height() const { throw std::runtime_error("get_block_height not implemented"); }
     amount ga_rust::get_dust_threshold() const { throw std::runtime_error("get_dust_threshold not implemented"); }
     nlohmann::json ga_rust::get_spending_limits() const
