@@ -551,6 +551,10 @@ namespace sdk {
             bool addressees_have_assets = json_get_value(result, "addressees_have_assets", false);
             if (num_addressees) {
                 for (auto& addressee : *addressees_p) {
+                    // FIXME: Remove this renaming when the wallets have upgraded to use
+                    // asset_id in their addressees.
+                    json_rename_key(addressee, "asset_tag", "asset_id");
+
                     nlohmann::json uri_params
                         = parse_bitcoin_uri(addressee.value("address", ""), net_params.bip21_prefix());
                     if (net_params.is_liquid() && uri_params.is_object()) {
