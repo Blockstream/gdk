@@ -2821,7 +2821,7 @@ namespace sdk {
             }
 
             if (m_spv_enabled) {
-                tx_details["spv_verified"] = "InProgress";
+                tx_details["spv_verified"] = "in_progress";
                 if (!datadir.empty() && is_cached) {
                     nlohmann::json net_params = m_net_params.get_json();
                     net_params["electrum_url"] = m_electrum_url;
@@ -2846,13 +2846,19 @@ namespace sdk {
                             }
                         });
                     } else if (verify_result == 1) {
-                        tx_details["spv_verified"] = "Verified";
+                        tx_details["spv_verified"] = "verified";
                     } else if (verify_result == 2) {
-                        tx_details["spv_verified"] = "NotVerified";
+                        tx_details["spv_verified"] = "not_verified";
+                    } else if (verify_result == 3) {
+                        tx_details["spv_verified"] = "disabled";
+                    } else if (verify_result == 4) {
+                        tx_details["spv_verified"] = "not_longest";
+                    } else if (verify_result == 5) {
+                        tx_details["spv_verified"] = "unconfirmed";
                     }
                 }
             } else {
-                tx_details["spv_verified"] = "Disabled";
+                tx_details["spv_verified"] = "disabled";
             }
             tx_details["addressees"] = addressees;
             tx_details["user_signed"] = true;
