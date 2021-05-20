@@ -203,6 +203,9 @@ namespace sdk {
 
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password)
     {
+        if (password.empty()) {
+            return encrypted_mnemonic; // Unencrypted
+        }
         const auto entropy = bip39_mnemonic_to_bytes(encrypted_mnemonic);
         GDK_RUNTIME_ASSERT_MSG(entropy.size() == 36, "Invalid encrypted mnemonic");
         const auto ciphertext = gsl::make_span(entropy).first(32);

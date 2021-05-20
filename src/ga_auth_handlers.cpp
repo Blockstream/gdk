@@ -78,13 +78,6 @@ namespace sdk {
             return value;
         }
 
-        // Whether the hw has any support for the Anti-Exfil protocol
-        static bool supports_ae_protocol(const nlohmann::json& hw_device)
-        {
-            return json_get_value(hw_device, "supports_ae_protocol", ae_protocol_support_level::none)
-                != ae_protocol_support_level::none;
-        }
-
         // Add anti-exfil protocol host-entropy and host-commitment to the passed json
         static void add_ae_host_data(nlohmann::json& data)
         {
@@ -98,27 +91,37 @@ namespace sdk {
 
         // If the hww is populated and supports the AE signing protocol, add
         // the host-entropy and host-commitment fields to the passed json.
-        static bool add_required_ae_data(const nlohmann::json& hw_device, nlohmann::json& data)
+        static bool add_required_ae_data(const std::shared_ptr<signer>& signer, nlohmann::json& data)
         {
-            const bool using_ae_protocol = supports_ae_protocol(hw_device);
+            const bool using_ae_protocol = signer->ae_protocol_support() != ae_protocol_support_level::none;
             data["use_ae_protocol"] = using_ae_protocol;
             if (using_ae_protocol) {
                 add_ae_host_data(data);
             }
             return using_ae_protocol;
         }
+
+        // Make a temporary signer for login and register calls
+        static std::shared_ptr<signer> make_login_signer(
+            const network_parameters& net_params, const nlohmann::json& hw_device, const std::string& mnemonic)
+        {
+            if (hw_device.empty()) {
+                return std::make_shared<software_signer>(net_params, mnemonic);
+            }
+            return std::make_shared<hardware_signer>(net_params, hw_device.at("device"));
+        }
     } // namespace
 
     //
     // Common auth handling
     //
-    auth_handler::auth_handler(session& session, const std::string& action, const nlohmann::json& hw_device)
+    auth_handler::auth_handler(session& session, const std::string& action, std::shared_ptr<signer> signer)
         : m_session(session)
         , m_action(action)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
     {
         try {
-            init(hw_device.empty() ? hw_device : hw_device.at("device"), true);
+            init(signer, true);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
@@ -130,26 +133,28 @@ namespace sdk {
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
     {
         try {
-            init(m_session.get_nonnull_impl()->get_signer()->get_hw_device(), false);
+            init(m_session.get_nonnull_impl()->get_signer(), false);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
     }
 
-    void auth_handler::init(const nlohmann::json& hw_device, bool is_pre_login)
+    void auth_handler::init(std::shared_ptr<signer> signer, bool is_pre_login)
     {
-        if (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx"
-            || m_action == "get_receive_address" || m_action == "create_transaction" || m_action == "get_balance"
-            || m_action == "get_subaccounts" || m_action == "get_subaccount" || m_action == "get_transactions"
-            || m_action == "get_unspent_outputs" || m_action == "get_expired_deposits") {
-            // Hardware action, so provide the caller with the device information
-            m_hw_device = hw_device;
-        }
+        m_signer = signer;
+        m_is_hw_action = signer && signer->is_hw_device()
+            && (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx"
+                   || m_action == "get_receive_address" || m_action == "create_transaction" || m_action == "get_balance"
+                   || m_action == "get_subaccounts" || m_action == "get_subaccount" || m_action == "get_transactions"
+                   || m_action == "get_unspent_outputs" || m_action == "get_expired_deposits");
+
         if (!is_pre_login && !m_session.is_watch_only()) {
             m_methods = m_session.get_enabled_twofactor_methods();
         }
         m_state = m_methods.empty() ? state_type::make_call : state_type::request_code;
     }
+
+    auth_handler::~auth_handler() {}
 
     void auth_handler::set_error(const std::string& error_message)
     {
@@ -187,7 +192,7 @@ namespace sdk {
     void auth_handler::set_data(const std::string& action)
     {
         m_action = action;
-        m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+        m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() } };
     }
 
     void auth_handler::operator()()
@@ -235,14 +240,13 @@ namespace sdk {
     nlohmann::json auth_handler::get_status() const
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::error || m_error.empty());
-        const bool is_hw_action = !m_hw_device.empty();
 
         std::string status_str;
         nlohmann::json status;
 
         switch (m_state) {
         case state_type::request_code:
-            GDK_RUNTIME_ASSERT(!is_hw_action);
+            GDK_RUNTIME_ASSERT(!m_is_hw_action);
 
             // Caller should ask the user to pick 2fa and request a code
             status_str = "request_code";
@@ -250,10 +254,10 @@ namespace sdk {
             break;
         case state_type::resolve_code:
             status_str = "resolve_code";
-            if (is_hw_action) {
+            if (m_is_hw_action) {
                 // Caller must interact with the hardware and return
                 // the returning data to us
-                status["method"] = m_hw_device.at("name");
+                status["method"] = m_signer->get_hw_device().value("name", std::string());
                 status["required_data"] = m_twofactor_data;
             } else {
                 // Caller should resolve the code the user has entered
@@ -281,7 +285,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!status_str.empty());
         status["status"] = status_str;
         status["action"] = m_action;
-        status["device"] = m_hw_device;
+        status["device"] = m_signer ? m_signer->get_hw_device() : nlohmann::json();
         return status;
     }
 
@@ -289,20 +293,20 @@ namespace sdk {
     // Register
     //
     register_call::register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic)
-        : auth_handler(session, "get_xpubs", hw_device)
+        : auth_handler(session, "get_xpubs", make_login_signer(session.get_network_parameters(), hw_device, mnemonic))
         , m_mnemonic(mnemonic)
     {
         if (m_state == state_type::error) {
             return;
         }
 
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             m_state = state_type::make_call;
         } else {
             // To register, we need the master xpub to identify the wallet,
             // and the registration xpub to compute the gait_path.
             m_state = state_type::resolve_code;
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+            m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() } };
             auto paths = get_paths_json();
             paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
             m_twofactor_data["paths"] = paths;
@@ -311,8 +315,8 @@ namespace sdk {
 
     auth_handler::state_type register_call::call_impl()
     {
-        if (m_hw_device.empty()) {
-            constexpr bool supports_csv = true;
+        const bool supports_csv = m_signer->supports_arbitrary_scripts();
+        if (!m_is_hw_action) {
             m_session.register_user(m_mnemonic, supports_csv);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
@@ -326,7 +330,6 @@ namespace sdk {
             const auto gait_xpub = get_xpub(xpubs.at(1));
             const auto gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
 
-            const bool supports_csv = json_get_value(m_hw_device, "supports_arbitrary_scripts", false);
             m_session.register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
         }
         return state_type::done;
@@ -337,7 +340,8 @@ namespace sdk {
     //
     login_call::login_call(
         session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
-        : auth_handler(session, "get_xpubs", hw_device)
+        : auth_handler(session, "get_xpubs",
+              make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
         , m_mnemonic(mnemonic)
         , m_password(password)
         , m_use_ae_protocol(false)
@@ -346,7 +350,7 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             m_state = state_type::make_call;
         } else {
             // We first need the challenge, so ask the caller for the master pubkey.
@@ -360,7 +364,7 @@ namespace sdk {
 
     auth_handler::state_type login_call::call_impl()
     {
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             if (m_action == "get_receive_address") {
                 for (uint32_t subaccount : m_ca_reqs) {
                     m_ca_addrs[subaccount].emplace_back(get_new_blinded_address(m_session, subaccount));
@@ -407,7 +411,7 @@ namespace sdk {
                     set_data("sign_message");
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
-                    m_use_ae_protocol = add_required_ae_data(m_hw_device, m_twofactor_data);
+                    m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
                     return state_type::resolve_code;
                 }
                 // Register the xpub for each of our subaccounts
@@ -423,7 +427,7 @@ namespace sdk {
 
                 // Log in and set up the session
                 m_result = m_session.authenticate(
-                    args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_hw_device);
+                    args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_signer->get_hw_device());
 
                 // Ask the caller for the xpubs for each subaccount
                 std::vector<nlohmann::json> paths;
@@ -459,7 +463,7 @@ namespace sdk {
             set_data("get_receive_address");
             m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
 
-            return (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
+            return (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
         }
 
         return state_type::done;
@@ -469,7 +473,7 @@ namespace sdk {
     // Login_with_pin
     //
     login_with_pin_call::login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data)
-        : auth_handler(session, "get_xpubs", nlohmann::json::object())
+        : auth_handler(session, "get_xpubs", std::shared_ptr<signer>())
         , m_pin(pin)
         , m_pin_data(pin_data)
     {
@@ -503,7 +507,7 @@ namespace sdk {
     // Watch-only login
     //
     watch_only_login_call::watch_only_login_call(session& session, const nlohmann::json& credential_data)
-        : auth_handler(session, std::string(), nlohmann::json::object())
+        : auth_handler(session, std::string(), std::shared_ptr<signer>())
         , m_credential_data(credential_data)
     {
     }
@@ -567,11 +571,11 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             m_state = state_type::make_call;
         } else {
             m_state = state_type::resolve_code;
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device } };
+            m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() } };
 
             auto paths = get_paths_json();
             paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
@@ -602,7 +606,7 @@ namespace sdk {
             }
         }
 
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             if (type == "2of3") {
                 // sign recovery key with login key
                 auto signer = m_session.get_nonnull_impl()->get_signer();
@@ -630,7 +634,7 @@ namespace sdk {
                     set_data("sign_message");
                     m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
-                    m_use_ae_protocol = add_required_ae_data(m_hw_device, m_twofactor_data);
+                    m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
                     return state_type::resolve_code;
                 }
                 m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
@@ -675,12 +679,12 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             m_state = state_type::make_call;
         } else {
             try {
                 m_message_info = m_session.get_system_message_info(msg);
-                m_use_ae_protocol = supports_ae_protocol(m_hw_device);
+                m_use_ae_protocol = m_signer->ae_protocol_support() != ae_protocol_support_level::none;
                 m_state = state_type::resolve_code;
 
                 // If using Anti-Exfil protocol we need to get the root xpub
@@ -693,7 +697,7 @@ namespace sdk {
                     set_data("sign_message");
                     m_twofactor_data["message"] = m_message_info.first;
                     m_twofactor_data["path"] = m_message_info.second;
-                    add_required_ae_data(m_hw_device, m_twofactor_data);
+                    add_required_ae_data(m_signer, m_twofactor_data);
                 }
             } catch (const std::exception& e) {
                 set_error(e.what());
@@ -703,7 +707,7 @@ namespace sdk {
 
     auth_handler::state_type ack_system_message_call::call_impl()
     {
-        if (m_hw_device.empty()) {
+        if (!m_is_hw_action) {
             m_session.ack_system_message(m_message);
         } else {
             const nlohmann::json args = nlohmann::json::parse(m_code);
@@ -713,14 +717,13 @@ namespace sdk {
                 set_data("sign_message");
                 m_twofactor_data["message"] = m_message_info.first;
                 m_twofactor_data["path"] = m_message_info.second;
-                add_required_ae_data(m_hw_device, m_twofactor_data);
+                add_required_ae_data(m_signer, m_twofactor_data);
                 return state_type::resolve_code;
             } else if (m_action == "sign_message") {
                 // If we are using the Anti-Exfil protocol we verify the signature
                 if (m_use_ae_protocol) {
-                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32,
-                        m_message_info.second, m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"),
-                        args.at("signature"));
+                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, m_message_info.second,
+                        m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
                 }
                 m_session.ack_system_message(m_message_info.first, args.at("signature"));
             }
@@ -740,7 +743,7 @@ namespace sdk {
             return;
         }
 
-        if (m_hw_device.empty() || json_get_value(tx_details, "is_sweep", false)) {
+        if (!m_is_hw_action || json_get_value(tx_details, "is_sweep", false)) {
             // TODO: Once tx aggregation is implemented, merge the sweep logic
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)
@@ -750,10 +753,11 @@ namespace sdk {
                 // Compute the data we need for the hardware to sign the transaction
                 m_state = state_type::resolve_code;
 
-                m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", tx_details } };
+                m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() },
+                    { "transaction", tx_details } };
 
                 // We use the Anti-Exfil protocol if the hw supports it
-                m_use_ae_protocol = supports_ae_protocol(m_hw_device);
+                m_use_ae_protocol = m_signer->ae_protocol_support() != ae_protocol_support_level::none;
                 m_twofactor_data["use_ae_protocol"] = m_use_ae_protocol;
 
                 // We need the inputs, augmented with types, scripts and paths
@@ -804,7 +808,7 @@ namespace sdk {
     {
         auto session_impl = m_session.get_nonnull_impl();
 
-        if (m_hw_device.empty() || json_get_value(m_tx_details, "is_sweep", false)) {
+        if (!m_is_hw_action || json_get_value(m_tx_details, "is_sweep", false)) {
             m_result = m_session.sign_transaction(m_tx_details);
         } else {
             const auto& net_params = m_session.get_network_parameters();
@@ -877,14 +881,15 @@ namespace sdk {
 
         try {
             nlohmann::json address = m_session.get_receive_address(details);
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", address } };
+            m_twofactor_data
+                = { { "action", m_action }, { "device", m_signer->get_hw_device() }, { "address", address } };
         } catch (const std::exception& e) {
             set_error(e.what());
             return;
         }
 
         // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
-        m_state = (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
+        m_state = (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type get_receive_address_call::call_impl()
@@ -894,7 +899,7 @@ namespace sdk {
 
         if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
             // Liquid: blind the address
-            if (!m_hw_device.empty()) {
+            if (m_is_hw_action) {
                 // Use the blinding key returned by the HW
                 m_result["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
             }
@@ -946,9 +951,9 @@ namespace sdk {
     auth_handler::state_type get_previous_addresses_call::set_address_to_blind()
     {
         const auto& current = m_result["list"][m_index];
-        m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "address", current } };
+        m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() }, { "address", current } };
         // Ask the HW to provide the blinding key or process directly if no HW
-        return m_hw_device.empty() ? state_type::make_call : state_type::resolve_code;
+        return !m_is_hw_action ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type get_previous_addresses_call::call_impl()
@@ -956,7 +961,7 @@ namespace sdk {
         auto& current = m_result["list"][m_index];
 
         // Liquid: blind the address
-        if (!m_hw_device.empty()) {
+        if (m_is_hw_action) {
             // Use the blinding key returned by the HW
             current["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
         }
@@ -1005,7 +1010,8 @@ namespace sdk {
 
         try {
             m_tx = m_session.create_transaction(details);
-            m_twofactor_data = { { "action", m_action }, { "device", m_hw_device }, { "transaction", m_tx } };
+            m_twofactor_data
+                = { { "action", m_action }, { "device", m_signer->get_hw_device() }, { "transaction", m_tx } };
             if (m_session.is_liquid()
                 && m_session.get_nonnull_impl()->get_signer()->get_liquid_support() != liquid_support_level::full) {
                 m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
@@ -1017,7 +1023,7 @@ namespace sdk {
         }
 
         // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
-        m_state = (m_hw_device.empty() || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
+        m_state = (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type create_transaction_call::call_impl()
@@ -1034,7 +1040,7 @@ namespace sdk {
         }
 
         nlohmann::json args;
-        if (!m_hw_device.empty()) {
+        if (m_is_hw_action) {
             args = nlohmann::json::parse(m_code);
 
             if (args.contains("nonces")) {
@@ -1061,7 +1067,7 @@ namespace sdk {
                 continue; // already done, skip it
             }
 
-            if (!m_hw_device.empty()) {
+            if (m_is_hw_action) {
                 // Use the blinding key returned by the HW
                 addr["blinding_key"] = args.at("blinding_keys").at(it.key());
             }
@@ -1097,8 +1103,8 @@ namespace sdk {
                 m_state = state_type::resolve_code;
 
                 const nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data
-                    = { { "action", m_action }, { "device", m_hw_device }, { "blinded_scripts", blinded_scripts } };
+                m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() },
+                    { "blinded_scripts", blinded_scripts } };
             } catch (const std::exception& e) {
                 set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
             }

@@ -217,6 +217,8 @@ namespace sdk {
     //
     static nlohmann::json get_hw_device_json(const nlohmann::json& hw_device)
     {
+        GDK_RUNTIME_ASSERT(!hw_device.empty());
+
         // FIXME: Remove this function when the wallets are upgraded to use "supports_ae_protocol"
         nlohmann::json ret = hw_device;
         json_rename_key(ret, "ae_protocol_support_level", "supports_ae_protocol");

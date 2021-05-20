@@ -1594,7 +1594,7 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         GDK_RUNTIME_ASSERT_MSG(!m_signer, "re-login on an existing session always fails");
-        return login(locker, password.empty() ? mnemonic : decrypt_mnemonic(mnemonic, password));
+        return login(locker, decrypt_mnemonic(mnemonic, password));
     }
 
     void ga_session::push_appearance_to_server(ga_session::locker_t& locker) const

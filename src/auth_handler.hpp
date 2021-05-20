@@ -7,13 +7,13 @@
 namespace ga {
 namespace sdk {
     struct auth_handler {
-        auth_handler(session& session, const std::string& action, const nlohmann::json& hw_device);
+        auth_handler(session& session, const std::string& action, std::shared_ptr<signer> signer);
         auth_handler(session& session, const std::string& action);
         auth_handler(const auth_handler&) = delete;
         auth_handler& operator=(const auth_handler&) = delete;
         auth_handler(auth_handler&&) = delete;
         auth_handler& operator=(auth_handler&&) = delete;
-        virtual ~auth_handler() = default;
+        virtual ~auth_handler();
 
         virtual void request_code(const std::string& method);
         void resolve_code(const std::string& code);
@@ -38,6 +38,8 @@ namespace sdk {
         virtual state_type call_impl() = 0;
 
         session& m_session;
+        std::shared_ptr<signer> m_signer;
+        bool m_is_hw_action;
         std::vector<std::string> m_methods; // All available methods
         std::string m_method; // Selected 2fa method
         std::string m_action; // Selected 2fa action name (send_raw_tx, set_csvtime etc)
@@ -47,10 +49,9 @@ namespace sdk {
         nlohmann::json m_twofactor_data; // Actual data to send along with any call
         state_type m_state; // Current state
         uint32_t m_attempts_remaining;
-        nlohmann::json m_hw_device;
 
     private:
-        void init(const nlohmann::json& hw_device, bool is_pre_login);
+        void init(std::shared_ptr<signer> signer, bool is_pre_login);
     };
 } // namespace sdk
 } // namespace ga
