@@ -174,10 +174,12 @@ impl Account {
         for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
             trace!("tx_id {}", tx_id);
 
-            let tx = acc_store
+            let txe = acc_store
                 .all_txs
                 .get(*tx_id)
                 .ok_or_else(fn_err(&format!("list_tx no tx {}", tx_id)))?;
+            let tx = &txe.tx;
+
             let header = height.map(|h| store.cache.headers.get(&h)).flatten();
             trace!("tx_id {} header {:?}", tx_id, header);
             let mut addressees = vec![];
@@ -242,7 +244,7 @@ impl Account {
             );
 
             let tx_meta = TransactionMeta::new(
-                tx.clone(),
+                txe.clone(),
                 **height,
                 header.map(|h| h.time()),
                 satoshi,
@@ -275,10 +277,11 @@ impl Account {
                 continue;
             }
 
-            let tx = acc_store
+            let tx = &acc_store
                 .all_txs
                 .get(tx_id)
-                .ok_or_else(fn_err(&format!("utxos no tx {}", tx_id)))?;
+                .ok_or_else(fn_err(&format!("utxos no tx {}", tx_id)))?
+                .tx;
             let tx_utxos: Vec<(BEOutPoint, UTXOInfo)> = match tx {
                 BETransaction::Bitcoin(tx) => tx
                     .output
@@ -362,8 +365,8 @@ impl Account {
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
         let mut result = HashSet::new();
-        for tx in acc_store.all_txs.values() {
-            let outpoints: Vec<BEOutPoint> = match tx {
+        for txe in acc_store.all_txs.values() {
+            let outpoints: Vec<BEOutPoint> = match &txe.tx {
                 BETransaction::Bitcoin(tx) => {
                     tx.input.iter().map(|i| BEOutPoint::Bitcoin(i.previous_output)).collect()
                 }

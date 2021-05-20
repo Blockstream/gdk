@@ -384,7 +384,7 @@ fn rbf() {
     let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
     test_session.wait_account_tx(1, &txid);
     let txitem = test_session.get_tx_from_list(1, &txid);
-    assert_eq!(txitem.fee_rate, 25);
+    assert_eq!(txitem.fee_rate / 1000, 25);
 
     // Replace it
     let mut create_opt = CreateTransaction::default();
@@ -396,7 +396,7 @@ fn rbf() {
     let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
     test_session.wait_account_tx(1, &txid);
     let txitem = test_session.get_tx_from_list(1, &txid);
-    assert_eq!(txitem.fee_rate, 43);
+    assert_eq!(txitem.fee_rate / 1000, 43);
     assert_eq!(txitem.memo, "poz qux");
 }
 

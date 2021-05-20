@@ -742,10 +742,17 @@ fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {
 }
 
 #[derive(Default, Serialize, Deserialize)]
-pub struct BETransactions(HashMap<BETxid, BETransaction>);
+pub struct BETransactions(HashMap<BETxid, BETransactionEntry>);
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BETransactionEntry {
+    pub tx: BETransaction,
+    pub size: usize,
+    pub weight: usize,
+}
 
 impl Deref for BETransactions {
-    type Target = HashMap<BETxid, BETransaction>;
+    type Target = HashMap<BETxid, BETransactionEntry>;
     fn deref(&self) -> &<Self as Deref>::Target {
         &self.0
     }
@@ -757,14 +764,14 @@ impl DerefMut for BETransactions {
 }
 impl BETransactions {
     pub fn get_previous_output_script_pubkey(&self, outpoint: &BEOutPoint) -> Option<BEScript> {
-        self.0.get(&outpoint.txid()).map(|tx| tx.output_script(outpoint.vout()))
+        self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_script(outpoint.vout()))
     }
     pub fn get_previous_output_value(
         &self,
         outpoint: &BEOutPoint,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Option<u64> {
-        self.0.get(&outpoint.txid()).map(|tx| tx.output_value(outpoint.vout(), &all_unblinded))
+        self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_value(outpoint.vout(), &all_unblinded))
     }
 
     pub fn get_previous_output_asset_hex(
@@ -774,7 +781,20 @@ impl BETransactions {
     ) -> Option<String> {
         self.0
             .get(&outpoint.txid.into())
-            .map(|tx| tx.output_asset_hex(outpoint.vout, &all_unblinded).unwrap())
+            .map(|txe| txe.tx.output_asset_hex(outpoint.vout, &all_unblinded).unwrap())
+    }
+}
+
+impl From<BETransaction> for BETransactionEntry {
+    fn from(mut tx: BETransaction) -> Self {
+        let size = tx.serialize().len();
+        let weight = tx.get_weight();
+        tx.strip_witness();
+        Self {
+            tx,
+            size,
+            weight,
+        }
     }
 }
 

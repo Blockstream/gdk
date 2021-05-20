@@ -1,4 +1,4 @@
-use crate::be::{AssetId, BEOutPoint, BETransaction, UTXOInfo, Utxos};
+use crate::be::{AssetId, BEOutPoint, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
 use crate::util::StringSerialized;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::Network;
@@ -207,6 +207,8 @@ pub struct TransactionMeta {
     pub rbf_optin: bool,
     pub user_signed: bool,
     pub spv_verified: SPVVerifyResult,
+    pub weight: usize,
+    pub size: usize,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -234,14 +236,23 @@ impl From<BETransaction> for TransactionMeta {
             user_signed: false,
             spv_verified: SPVVerifyResult::InProgress,
             rbf_optin,
+            weight: transaction.get_weight(),
+            size: transaction.serialize().len(),
         }
     }
 }
-
+impl From<BETransactionEntry> for TransactionMeta {
+    fn from(txe: BETransactionEntry) -> Self {
+        let mut txm: TransactionMeta = txe.tx.into();
+        txm.weight = txe.weight;
+        txm.size = txe.size;
+        txm
+    }
+}
 impl TransactionMeta {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        transaction: BETransaction,
+        transaction: impl Into<TransactionMeta>,
         height: Option<u32>,
         timestamp: Option<u32>,
         satoshi: Balances,

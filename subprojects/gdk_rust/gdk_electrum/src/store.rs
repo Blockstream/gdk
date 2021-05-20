@@ -420,14 +420,14 @@ impl StoreMeta {
 
 impl RawAccountCache {
     pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {
-        match self.all_txs.get(&txid.into_be()) {
+        match self.all_txs.get(&txid.into_be()).map(|etx| &etx.tx) {
             Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
             _ => Err(Error::Generic("expected bitcoin tx".to_string())),
         }
     }
 
     pub fn get_liquid_tx(&self, txid: &elements::Txid) -> Result<elements::Transaction, Error> {
-        match self.all_txs.get(&txid.into_be()) {
+        match self.all_txs.get(&txid.into_be()).map(|etx| &etx.tx) {
             Some(BETransaction::Elements(tx)) => Ok(tx.clone()),
             _ => Err(Error::Generic("expected liquid tx".to_string())),
         }

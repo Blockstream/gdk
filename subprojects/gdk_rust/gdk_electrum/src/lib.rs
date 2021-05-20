@@ -254,8 +254,7 @@ fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
 
 fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
     let type_ = tx.type_.clone();
-    let len = tx.hex.len() / 2;
-    let fee_rate = (tx.fee as f64 / len as f64) as u64;
+    let fee_rate = (tx.fee as f64 / tx.weight as f64 * 4000.0) as u64;
     let addressees = tx
         .create_transaction
         .as_ref()
@@ -271,7 +270,6 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         type_,
         memo: tx.create_transaction.as_ref().and_then(|c| c.memo.clone()).unwrap_or("".to_string()),
         txhash: tx.txid.clone(),
-        transaction_size: len,
         transaction: tx.hex.clone(), // FIXME
         satoshi: tx.satoshi.clone(),
         rbf_optin: tx.rbf_optin, // TODO: TransactionMeta -> TxListItem rbf_optin
@@ -284,11 +282,12 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         instant: false,
         fee: tx.fee,
         fee_rate,
-        addressees,              // notice the extra "e" -- its intentional
-        inputs: vec![],          // tx.input.iter().map(format_gdk_input).collect(),
-        outputs: vec![],         //tx.output.iter().map(format_gdk_output).collect(),
-        transaction_vsize: len,  //TODO
-        transaction_weight: len, //TODO
+        addressees,      // notice the extra "e" -- its intentional
+        inputs: vec![],  // tx.input.iter().map(format_gdk_input).collect(),
+        outputs: vec![], //tx.output.iter().map(format_gdk_output).collect(),
+        transaction_size: tx.size,
+        transaction_vsize: (tx.weight as f32 / 4.0) as usize,
+        transaction_weight: tx.weight,
     }
 }
 
@@ -1216,7 +1215,9 @@ impl Syncer {
 
                 let mut acc_store = store_write.account_cache_mut(account.num())?;
                 acc_store.indexes = last_used;
-                acc_store.all_txs.extend(new_txs.txs.into_iter());
+                acc_store
+                    .all_txs
+                    .extend(new_txs.txs.into_iter().map(|(txid, tx)| (txid, tx.into())));
                 acc_store.unblinded.extend(new_txs.unblinds);
 
                 // height map is used for the live list of transactions, since due to reorg or rbf tx
@@ -1301,7 +1302,7 @@ impl Syncer {
             }
             info!("txs_downloaded {:?}", txs_downloaded.len());
             let mut previous_txs_to_download = HashSet::new();
-            for mut tx in txs_downloaded.into_iter() {
+            for tx in txs_downloaded.into_iter() {
                 let txid = tx.txid();
                 txs_in_db.insert(txid);
 
@@ -1333,7 +1334,6 @@ impl Syncer {
                         previous_txs_to_download.insert(previous_txid);
                     }
                 }
-                tx.strip_witness();
                 txs.push((txid, tx));
             }
 
