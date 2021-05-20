@@ -10,7 +10,7 @@
 #include "amount.hpp"
 #include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
-#include "session_common.hpp"
+#include "session_impl.hpp"
 #include "signer.hpp"
 
 namespace ga {
@@ -193,8 +193,8 @@ namespace sdk {
         auto get_impl() { return m_impl.load(); }
         auto get_impl() const { return m_impl.load(); }
 
-        using session_ptr = boost::shared_ptr<session_common>;
-        using session_atomic_ptr = boost::atomic_shared_ptr<session_common>;
+        using session_ptr = boost::shared_ptr<session_impl>;
+        using session_atomic_ptr = boost::atomic_shared_ptr<session_impl>;
 
         session_atomic_ptr m_impl;
 

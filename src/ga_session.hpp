@@ -15,7 +15,7 @@
 #include "ga_cache.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
-#include "session_common.hpp"
+#include "session_impl.hpp"
 #include "signer.hpp"
 #include "threading.hpp"
 #include "tx_list_cache.hpp"
@@ -38,7 +38,7 @@ namespace sdk {
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
 
-    class ga_session final : public session_common {
+    class ga_session final : public session_impl {
     public:
         using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
         using locker_t = std::unique_lock<std::mutex>;

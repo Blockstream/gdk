@@ -821,7 +821,7 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        auto session_impl = m_session.get_nonnull_impl();
+        auto impl = m_session.get_nonnull_impl();
 
         if (!m_is_hw_action || json_get_value(m_tx_details, "is_sweep", false)) {
             m_result = m_session.sign_transaction(m_tx_details);
@@ -844,7 +844,7 @@ namespace sdk {
                 size_t i = 0;
                 for (const auto& out : outputs) {
                     if (!out.at("is_fee")) {
-                        blind_output(*session_impl, transaction_details, tx, i, out, h2b<33>(asset_commitments[i]),
+                        blind_output(*impl, transaction_details, tx, i, out, h2b<33>(asset_commitments[i]),
                             h2b<33>(value_commitments[i]), h2b_rev<32>(abfs[i]), h2b_rev<32>(vbfs[i]));
                     }
                     ++i;
@@ -858,7 +858,7 @@ namespace sdk {
                 // FIXME: User pubkeys is not threadsafe if adding a subaccount
                 // at the same time (this cant happen yet but should be allowed
                 // in the future).
-                auto& user_pubkeys = session_impl->get_user_pubkeys();
+                auto& user_pubkeys = impl->get_user_pubkeys();
                 size_t i = 0;
                 const auto& signer_commitments = get_sized_array(args, "signer_commitments", inputs.size());
                 for (const auto& utxo : inputs) {

@@ -1,5 +1,5 @@
-#ifndef GDK_GA_SESSION_COMMON_HPP
-#define GDK_GA_SESSION_COMMON_HPP
+#ifndef GDK_SESSION_IMPL_HPP
+#define GDK_SESSION_IMPL_HPP
 
 #pragma once
 
@@ -26,10 +26,10 @@ namespace sdk {
     class ga_rust;
 #endif
 
-    class session_common {
+    class session_impl {
     public:
-        session_common() {}
-        virtual ~session_common() {}
+        session_impl() {}
+        virtual ~session_impl() {}
 
         virtual void on_failed_login() = 0;
         virtual bool is_connected() const = 0;
@@ -197,4 +197,4 @@ namespace sdk {
 } // namespace sdk
 } // namespace ga
 
-#endif // #ifndef GDK_GA_SESSION_COMMON_HPP
+#endif // #ifndef GDK_SESSION_IMPL_HPP

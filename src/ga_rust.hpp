@@ -6,7 +6,7 @@
 #include "../subprojects/gdk_rust/gdk_rust.h"
 #include "ga_tor.hpp"
 #include "network_parameters.hpp"
-#include "session_common.hpp"
+#include "session_impl.hpp"
 
 namespace ga {
 namespace sdk {
@@ -43,7 +43,7 @@ namespace sdk {
         GDKRUST_json* m_json;
     };
 
-    class ga_rust final : public session_common {
+    class ga_rust final : public session_impl {
     public:
         ~ga_rust();
 

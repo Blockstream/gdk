@@ -1149,7 +1149,7 @@ namespace sdk {
         return result;
     }
 
-    void blind_output(session_common& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
+    void blind_output(session_impl& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
         const nlohmann::json& output, const std::array<unsigned char, 33>& generator,
         const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
         const std::array<unsigned char, 32>& vbf)

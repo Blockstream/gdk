@@ -160,7 +160,7 @@ namespace sdk {
             }
 
             GDK_RUNTIME_ASSERT(session_p != nullptr);
-            boost::weak_ptr<session_common> weak_session = session_p;
+            boost::weak_ptr<session_impl> weak_session = session_p;
             session_p->set_ping_fail_handler([weak_session] {
                 if (auto p = weak_session.lock()) {
                     GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
