@@ -23,10 +23,12 @@ if [ $LTO = "true" ]; then
     EXTRA_FLAGS="-flto"
 fi
 
+# patch for autoconf >= 2.70
+sed -ie "s!^AC_PROG_CC_C99!!" configure.ac
+
 if [ \( "$1" = "--ndk" \) ]; then
     sh autogen.sh
     . ${MESON_SOURCE_ROOT}/tools/env.sh
-
     export CFLAGS="$CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
     export LDFLAGS="$LDFLAGS $EXTRA_FLAGS"
 
@@ -40,6 +42,7 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     export LDFLAGS="$SDK_LDFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0  $EXTRA_FLAGS"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
+
     ./configure --host=arm-apple-darwin ${CONFIGURE_ARGS} ac_cv_func__NSGetEnviron=no
     make -o configure clean -j$NUM_JOBS
     make -o configure -j$NUM_JOBS
