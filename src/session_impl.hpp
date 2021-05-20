@@ -28,8 +28,8 @@ namespace sdk {
 
     class session_impl {
     public:
-        session_impl() {}
-        virtual ~session_impl() {}
+        session_impl();
+        virtual ~session_impl();
 
         virtual void on_failed_login() = 0;
         virtual bool is_connected() const = 0;
