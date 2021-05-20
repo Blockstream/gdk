@@ -57,7 +57,7 @@ namespace sdk {
         virtual liquid_support_level get_liquid_support() const;
 
         // Returns how this signer supports the Anti-Exfil protocol
-        virtual ae_protocol_support_level ae_protocol_support() const;
+        virtual ae_protocol_support_level get_ae_protocol_support() const;
 
         // Returns true if this is an external hardware device
         virtual bool is_hw_device() const;
@@ -100,7 +100,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
         liquid_support_level get_liquid_support() const override;
-        ae_protocol_support_level ae_protocol_support() const override;
+        ae_protocol_support_level get_ae_protocol_support() const override;
 
         std::string get_challenge() override;
 
@@ -127,7 +127,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
         liquid_support_level get_liquid_support() const override;
-        ae_protocol_support_level ae_protocol_support() const override;
+        ae_protocol_support_level get_ae_protocol_support() const override;
 
         std::string get_challenge() override;
 
@@ -159,7 +159,7 @@ namespace sdk {
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
         liquid_support_level get_liquid_support() const override;
-        ae_protocol_support_level ae_protocol_support() const override;
+        ae_protocol_support_level get_ae_protocol_support() const override;
 
         bool is_hw_device() const override;
         nlohmann::json get_hw_device() const override;

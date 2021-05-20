@@ -93,7 +93,7 @@ namespace sdk {
         // the host-entropy and host-commitment fields to the passed json.
         static bool add_required_ae_data(const std::shared_ptr<signer>& signer, nlohmann::json& data)
         {
-            const bool using_ae_protocol = signer->ae_protocol_support() != ae_protocol_support_level::none;
+            const bool using_ae_protocol = signer->get_ae_protocol_support() != ae_protocol_support_level::none;
             data["use_ae_protocol"] = using_ae_protocol;
             if (using_ae_protocol) {
                 add_ae_host_data(data);
@@ -696,7 +696,7 @@ namespace sdk {
         } else {
             try {
                 m_message_info = m_session.get_system_message_info(msg);
-                m_use_ae_protocol = m_signer->ae_protocol_support() != ae_protocol_support_level::none;
+                m_use_ae_protocol = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
                 m_state = state_type::resolve_code;
 
                 // If using Anti-Exfil protocol we need to get the root xpub
@@ -772,7 +772,7 @@ namespace sdk {
                 m_twofactor_data["transaction"] = tx_details;
 
                 // We use the Anti-Exfil protocol if the hw supports it
-                m_use_ae_protocol = m_signer->ae_protocol_support() != ae_protocol_support_level::none;
+                m_use_ae_protocol = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
                 m_twofactor_data["use_ae_protocol"] = m_use_ae_protocol;
 
                 // We need the inputs, augmented with types, scripts and paths

@@ -46,7 +46,7 @@ namespace sdk {
         return liquid_support_level::none; // assume none unless overridden
     }
 
-    ae_protocol_support_level signer::ae_protocol_support() const
+    ae_protocol_support_level signer::get_ae_protocol_support() const
     {
         return ae_protocol_support_level::none; // assume not unless overridden
     }
@@ -89,7 +89,7 @@ namespace sdk {
         return liquid_support_level::none;
     } // we don't support Liquid in watch-only
 
-    ae_protocol_support_level watch_only_signer::ae_protocol_support() const
+    ae_protocol_support_level watch_only_signer::get_ae_protocol_support() const
     {
         return ae_protocol_support_level::none;
     } // we don't support ae-protocol in watch-only
@@ -168,7 +168,10 @@ namespace sdk {
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; }
     liquid_support_level software_signer::get_liquid_support() const { return liquid_support_level::full; }
-    ae_protocol_support_level software_signer::ae_protocol_support() const { return ae_protocol_support_level::none; }
+    ae_protocol_support_level software_signer::get_ae_protocol_support() const
+    {
+        return ae_protocol_support_level::none;
+    }
 
     std::string software_signer::get_challenge()
     {
@@ -235,7 +238,7 @@ namespace sdk {
 
     bool hardware_signer::supports_low_r() const
     {
-        if (ae_protocol_support() != ae_protocol_support_level::none) {
+        if (get_ae_protocol_support() != ae_protocol_support_level::none) {
             return false; // Always use AE if the HW supports it
         }
         return json_get_value(m_hw_device, "supports_low_r", false);
@@ -248,7 +251,7 @@ namespace sdk {
     {
         return json_get_value(m_hw_device, "supports_liquid", liquid_support_level::none);
     }
-    ae_protocol_support_level hardware_signer::ae_protocol_support() const
+    ae_protocol_support_level hardware_signer::get_ae_protocol_support() const
     {
         return json_get_value(m_hw_device, "supports_ae_protocol", ae_protocol_support_level::none);
     }
