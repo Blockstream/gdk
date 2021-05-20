@@ -11,7 +11,6 @@ use crate::scripts::ScriptType;
 use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use serde_json::Value;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fmt::Display;

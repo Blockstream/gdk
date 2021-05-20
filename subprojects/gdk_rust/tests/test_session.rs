@@ -760,10 +760,6 @@ impl TestSession {
         ));
         create_opt.subaccount = 0;
 
-        create_opt.previous_transaction = Some(TxListItem::default());
-        assert!(matches!(self.session.create_transaction(&mut create_opt), Err(Error::Generic(_))));
-        create_opt.previous_transaction = None;
-
         create_opt.addressees[0].address = "x".to_string();
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),

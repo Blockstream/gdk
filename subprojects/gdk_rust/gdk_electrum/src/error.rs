@@ -18,6 +18,7 @@ pub enum Error {
     InvalidHeaders,
     InvalidSubaccount(u32),
     AccountGapsDisallowed,
+    InvalidReplacementRequest,
     SendAll,
     PinError,
     /// An invalid pin attempt. Should trigger an increment to the caller counter as after 3
@@ -58,6 +59,9 @@ impl Display for Error {
             Error::InvalidSubaccount(sub) => write!(f, "invalid subaccount {}", sub),
             Error::AccountGapsDisallowed => {
                 write!(f, "cannot create a new subaccount while the last one is unused")
+            }
+            Error::InvalidReplacementRequest => {
+                write!(f, "invalid replacement request fields")
             }
             Error::UnknownCall => write!(f, "unknown call"),
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),

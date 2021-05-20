@@ -706,6 +706,31 @@ impl BETransaction {
             }
         }
     }
+
+    /// Return a copy of the transaction with the outputs matched by `f` only
+    pub fn filter_outputs<F>(
+        &self,
+        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        mut f: F,
+    ) -> BETransaction
+    where
+        F: FnMut(u32, BEScript, Option<String>) -> bool,
+    {
+        let mut vout = 0u32;
+        let mut predicate = || {
+            let matched =
+                f(vout, self.output_script(vout), self.output_asset_hex(vout, all_unblinded));
+            vout += 1;
+            matched
+        };
+
+        let mut stripped_tx = self.clone();
+        match stripped_tx {
+            Self::Bitcoin(ref mut tx) => tx.output.retain(|_| predicate()),
+            Self::Elements(ref mut tx) => tx.output.retain(|_| predicate()),
+        }
+        stripped_tx
+    }
 }
 
 fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {

@@ -354,6 +354,52 @@ fn labels() {
     test_session.stop();
 }
 
+#[test]
+fn rbf() {
+    // Create session/account and fund id
+    let mut test_session = setup_session(false, 0, |_| ());
+    test_session
+        .session
+        .create_subaccount(CreateAccountOpt {
+            name: "Account 1".into(),
+            subaccount: 1,
+        })
+        .unwrap();
+    test_session.node_sendtoaddress(&test_session.get_receive_address(1).address, 9876543, None);
+    test_session.wait_tx_status_change();
+
+    // Create transaction for replacement
+    let mut create_opt = CreateTransaction::default();
+    let dest_address = test_session.get_receive_address(1).address;
+    create_opt.subaccount = 1;
+    create_opt.addressees.push(AddressAmount {
+        address: dest_address,
+        satoshi: 50000,
+        asset_id: None,
+    });
+    create_opt.fee_rate = Some(25000);
+    create_opt.memo = Some("poz qux".into());
+    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
+    let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
+    let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_account_tx(1, &txid);
+    let txitem = test_session.get_tx_from_list(1, &txid);
+    assert_eq!(txitem.fee_rate, 25);
+
+    // Replace it
+    let mut create_opt = CreateTransaction::default();
+    create_opt.subaccount = 1;
+    create_opt.previous_transaction = Some(txitem);
+    create_opt.fee_rate = Some(43000);
+    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
+    let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
+    let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_account_tx(1, &txid);
+    let txitem = test_session.get_tx_from_list(1, &txid);
+    assert_eq!(txitem.fee_rate, 43);
+    assert_eq!(txitem.memo, "poz qux");
+}
+
 // Test the low-level spv_cross_validate()
 #[test]
 fn spv_cross_validate() {

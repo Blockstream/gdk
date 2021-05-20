@@ -11,7 +11,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
 use bitcoin::util::bip143::SigHashCache;
-use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{PublicKey, SigHashType};
 use elements::confidential::Value;
 
@@ -544,6 +544,22 @@ impl Account {
         }
         Ok(result)
     }
+
+    /// Get the chain number for the given address (0 for receive or 1 for change)
+    pub fn get_wallet_chain_type(&self, script: &BEScript) -> Option<u32> {
+        let store_read = self.store.read().unwrap();
+        let acc_store = store_read.account_cache(self.account_num).unwrap();
+
+        if let Some(path) = acc_store.paths.get(&script) {
+            if let ChildNumber::Normal {
+                index,
+            } = path[0]
+            {
+                return Some(index);
+            }
+        }
+        None
+    }
 }
 
 /// Return the last (if any) and next account numbers for the given script type
@@ -773,39 +789,72 @@ pub fn create_tx(
         }
     }
 
-    if request.addressees.is_empty() {
-        return Err(Error::EmptyAddressees);
-    }
-
-    if request.previous_transaction.is_some() {
-        return Err(Error::Generic("bump not supported".into()));
-    }
-
     let send_all = request.send_all.unwrap_or(false);
     request.send_all = Some(send_all); // accept default false, but always return the value
-    if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
-        return Err(Error::InvalidAmount);
-    }
 
-    if !send_all {
-        for address_amount in request.addressees.iter() {
-            if address_amount.satoshi <= DUST_VALUE {
-                match network.id() {
-                    NetworkId::Bitcoin(_) => return Err(Error::InvalidAmount),
-                    NetworkId::Elements(_) => {
-                        if address_amount.asset_id == network.policy_asset {
-                            // we apply dust rules for liquid bitcoin as elements do
-                            return Err(Error::InvalidAmount);
+    let mut template_tx = None;
+    let mut change_addresses = HashMap::new();
+
+    // When a previous transaction is replaced, use it as a template for the new transaction
+    if let Some(ref prev_txitem) = request.previous_transaction {
+        if !request.addressees.is_empty() || send_all {
+            return Err(Error::InvalidReplacementRequest);
+        }
+
+        let prev_tx = BETransaction::from_hex(&prev_txitem.transaction, network.id())?;
+        let policy_asset = network.policy_asset.as_deref().unwrap_or("btc");
+
+        let store_read = account.store.read()?;
+        let acc_store = store_read.account_cache(account.num())?;
+
+        // Strip the mining fee change output from the transaction, keeping the change address for reuse
+        template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
+            if asset.map_or(true, |a| a == policy_asset)
+                && account.get_wallet_chain_type(&script) == Some(1)
+            {
+                let change_address = prev_tx
+                    .output_address(vout, network.id())
+                    .expect("own change addresses to have address representation");
+                change_addresses.insert(policy_asset.to_string(), change_address);
+                false
+            } else {
+                true
+            }
+        }));
+
+        // Keep the previous transaction memo
+        if request.memo.is_none() && !prev_txitem.memo.is_empty() {
+            request.memo = Some(prev_txitem.memo.clone());
+        }
+    } else {
+        if request.addressees.is_empty() {
+            return Err(Error::EmptyAddressees);
+        }
+
+        if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
+            return Err(Error::InvalidAmount);
+        }
+
+        if !send_all {
+            for address_amount in request.addressees.iter() {
+                if address_amount.satoshi <= DUST_VALUE {
+                    match network.id() {
+                        NetworkId::Bitcoin(_) => return Err(Error::InvalidAmount),
+                        NetworkId::Elements(_) => {
+                            if address_amount.asset_id == network.policy_asset {
+                                // we apply dust rules for liquid bitcoin as elements do
+                                return Err(Error::InvalidAmount);
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    if let NetworkId::Elements(_) = network.id() {
-        if request.addressees.iter().any(|a| a.asset_id.is_none()) {
-            return Err(Error::AssetEmpty);
+        if let NetworkId::Elements(_) = network.id() {
+            if request.addressees.iter().any(|a| a.asset_id.is_none()) {
+                return Err(Error::AssetEmpty);
+            }
         }
     }
 
@@ -859,17 +908,25 @@ pub fn create_tx(
         request.addressees[0].satoshi = to_send;
     }
 
-    let mut tx = BETransaction::new(network.id());
     // transaction is created in 3 steps:
-    // 1) adding requested outputs to tx outputs
+    // 1) adding requested outputs to tx outputs, or using the replaced transaction template
     // 2) adding enough utxso to inputs such that tx outputs and estimated fees are covered
     // 3) adding change(s)
 
-    // STEP 1) add the outputs requested for this transactions
-    for out in request.addressees.iter() {
-        tx.add_output(&out.address, out.satoshi, out.asset_id.clone())
-            .map_err(|_| Error::InvalidAddress)?;
-    }
+    // STEP 1) add the requested outputs for newly created transactions,
+    //         or start with the replaced transaction (minus change) as a template
+    let mut tx = template_tx.map_or_else(
+        || -> Result<_, Error> {
+            let mut new_tx = BETransaction::new(network.id());
+            for out in request.addressees.iter() {
+                new_tx
+                    .add_output(&out.address, out.satoshi, out.asset_id.clone())
+                    .map_err(|_| Error::InvalidAddress)?;
+            }
+            Ok(new_tx)
+        },
+        Ok,
+    )?;
 
     // STEP 2) add utxos until tx outputs are covered (including fees) or fail
     let store_read = account.store.read()?;
@@ -936,8 +993,13 @@ pub fn create_tx(
         &acc_store.unblinded,
     ); // Vec<Change> asset, value
     for (i, change) in changes.iter().enumerate() {
-        let change_index = acc_store.indexes.internal + i as u32 + 1;
-        let change_address = account.derive_address(true, change_index)?.to_string();
+        let change_address = change_addresses.remove(&change.asset).map_or_else(
+            || -> Result<_, Error> {
+                let change_index = acc_store.indexes.internal + i as u32 + 1;
+                Ok(account.derive_address(true, change_index)?.to_string())
+            },
+            Ok,
+        )?;
         info!(
             "adding change to {} of {} asset {:?}",
             &change_address, change.satoshi, change.asset

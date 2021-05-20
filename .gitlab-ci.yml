@@ -198,6 +198,7 @@ test_rust:
     - DEBUG=1 ./launch_integration_tests.sh liquid
     - DEBUG=1 ./launch_integration_tests.sh subaccounts
     - DEBUG=1 ./launch_integration_tests.sh labels
+    - DEBUG=1 ./launch_integration_tests.sh rbf
     - DEBUG=1 ./launch_integration_tests.sh spv_cross_validate
     - DEBUG=1 ./launch_integration_tests.sh spv_cross_validation_session
 
