@@ -3621,13 +3621,6 @@ namespace sdk {
         return get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
     }
 
-    ae_protocol_support_level ga_session::ae_protocol_support() const
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer->ae_protocol_support();
-    }
-
     std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
     {
         locker_t locker(m_mutex);
