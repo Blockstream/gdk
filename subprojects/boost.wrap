@@ -1,10 +1,10 @@
 [wrap-file]
-directory = boost_1_72_0
+directory = boost_1_76_0
 
-source_url = https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz
-source_filename = boost-1_72_0.tar.gz
-source_hash = c66e88d5786f2ca4dbebb14e06b566fb642a1a6947ad8cc9091f9f445134143f
+source_url = https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+source_filename = boost-7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca.tar.gz
+source_hash = 7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca
 
-patch_url = file:./subprojects/boost-meson/boost-meson-c66e88d5786f2ca4dbebb14e06b566fb642a1a6947ad8cc9091f9f445134143f.tar
-patch_filename = boost-meson-c66e88d5786f2ca4dbebb14e06b566fb642a1a6947ad8cc9091f9f445134143f.tar
-patch_hash = bf3161a632d8325ec5bd047645f5a97d878e1a6616ae386257f78055a5b32585
+patch_url = file:./subprojects/boost-meson/boost-meson-7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca.tar
+patch_filename = boost-meson-7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca.tar
+patch_hash = eb6a6db4225fd3a42750d0b2f8077d018266b7ffe7b78f57cb06a223bb5ee804
