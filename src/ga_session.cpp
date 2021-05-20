@@ -3721,30 +3721,6 @@ namespace sdk {
         return wamp_cast(wamp_call("vault.broadcast_raw_tx", tx_hex));
     }
 
-    void ga_session::verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32,
-        uint32_span_t path, const std::string& host_entropy_hex, const std::string& signer_commitment_hex,
-        const std::string& der_hex)
-    {
-        const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-
-        // TODO: signer or session should cache xpubs - or at least the root and signing xpubs
-        pub_key_t pubkey;
-        {
-            locker_t locker(m_mutex);
-            if (!m_signer || m_signer->is_hw_device()) {
-                wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
-                ext_key derived = bip32_public_key_from_parent_path(*parent, path);
-                memcpy(pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
-            } else {
-                pubkey = m_signer->get_xpub(path).second;
-            }
-        }
-
-        constexpr bool has_sighash = false;
-        ::ga::sdk::verify_ae_signature(
-            pubkey, message_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
-    }
-
     // Idempotent
     void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.send_nlocktime"))); }
 

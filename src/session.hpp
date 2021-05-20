@@ -142,9 +142,6 @@ namespace sdk {
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
-        void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32, uint32_span_t path,
-            const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex);
-
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);

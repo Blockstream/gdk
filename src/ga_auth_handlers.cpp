@@ -417,7 +417,7 @@ namespace sdk {
             } else if (m_action == "sign_message") {
                 // If we are using the Anti-Exfil protocol we verify the signature
                 if (m_use_ae_protocol) {
-                    m_session.verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
                         m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
                 }
 
@@ -637,7 +637,7 @@ namespace sdk {
             } else if (m_action == "sign_message") {
                 // If we are using the Anti-Exfil protocol we verify the signature
                 if (m_use_ae_protocol) {
-                    m_session.verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
                         m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
                 }
 
@@ -718,7 +718,7 @@ namespace sdk {
             } else if (m_action == "sign_message") {
                 // If we are using the Anti-Exfil protocol we verify the signature
                 if (m_use_ae_protocol) {
-                    m_session.verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32,
+                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32,
                         m_message_info.second, m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"),
                         args.at("signature"));
                 }

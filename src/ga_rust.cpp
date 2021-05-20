@@ -462,13 +462,6 @@ namespace sdk {
         return call_session("broadcast_transaction", nlohmann::json(tx_hex)).get<std::string>();
     }
 
-    void ga_rust::verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32,
-        uint32_span_t path, const std::string& host_entropy_hex, const std::string& signer_commitment_hex,
-        const std::string& der_hex)
-    {
-        throw std::runtime_error("verify_ae_signature not implemented");
-    }
-
     void ga_rust::send_nlocktimes() { throw std::runtime_error("send_nlocktimes not implemented"); }
     nlohmann::json ga_rust::get_expired_deposits(const nlohmann::json& deposit_details)
     {

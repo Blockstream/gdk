@@ -427,6 +427,23 @@ namespace sdk {
         }
     }
 
+    void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32, uint32_span_t path,
+        const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex)
+    {
+        const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
+
+        // TODO: signer or session should cache xpubs - or at least the root and signing xpubs
+        // Note that you must pass a non-hardened path here; root_xpub_bip32 should be
+        // the root or last hardened key for this public bip32 derivation to work.
+        wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
+        ext_key derived = bip32_public_key_from_parent_path(*parent, path);
+        pub_key_t pubkey;
+        memcpy(pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+
+        constexpr bool has_sighash = false;
+        verify_ae_signature(pubkey, message_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
+    }
+
     std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes)
     {
         const size_t prefix_len = prefix.size();
