@@ -58,6 +58,7 @@ elif cross_android_build
 endif
 
 common_compile_options = [
+    '-Wno-unknown-warning-option',
     '-Wextra',
     '-D_FORTIFY_SOURCE=2',
     '-fasynchronous-unwind-tables',
