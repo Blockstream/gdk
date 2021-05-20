@@ -972,16 +972,15 @@ namespace sdk {
         return result;
     }
 
-    void verify_ae_signature(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& input,
-        const std::string& signer_commitment_hex, const std::string& der_hex)
+    void verify_ae_signature(const network_parameters& net_params, const pub_key_t& public_key, const wally_tx_ptr& tx,
+        uint32_t index, const nlohmann::json& input, const std::string& signer_commitment_hex,
+        const std::string& der_hex)
     {
         const auto& host_entropy_hex = input.at("ae_host_entropy");
-        const auto script_hash = get_script_hash(session.get_network_parameters().is_liquid(), input, tx, index);
-        const auto pubkeys = session.pubkeys_from_utxo(input);
-        const auto user_pubkey = pubkeys.at(1); // user key
+        const auto script_hash = get_script_hash(net_params.is_liquid(), input, tx, index);
 
         constexpr bool has_sighash = true;
-        verify_ae_signature(user_pubkey, script_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
+        verify_ae_signature(public_key, script_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
     }
 
     void add_input_signature(

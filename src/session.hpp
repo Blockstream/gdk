@@ -144,8 +144,6 @@ namespace sdk {
 
         void verify_ae_signature(const std::string& message, const std::string& root_xpub_bip32, uint32_span_t path,
             const std::string& host_entropy_hex, const std::string& signer_commitment_hex, const std::string& der_hex);
-        void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
-            const std::string& signer_commitment_hex, const std::string& der_hex);
 
         void send_nlocktimes();
         nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);

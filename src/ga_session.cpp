@@ -3745,12 +3745,6 @@ namespace sdk {
             pubkey, message_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
     }
 
-    void ga_session::verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
-        const std::string& signer_commitment_hex, const std::string& der_hex)
-    {
-        ::ga::sdk::verify_ae_signature(*this, tx, index, u, signer_commitment_hex, der_hex);
-    }
-
     // Idempotent
     void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.send_nlocktime"))); }
 

@@ -802,24 +802,26 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
+        auto session_impl = m_session.get_nonnull_impl();
+
         if (m_hw_device.empty() || json_get_value(m_tx_details, "is_sweep", false)) {
             m_result = m_session.sign_transaction(m_tx_details);
         } else {
+            const auto& net_params = m_session.get_network_parameters();
             const nlohmann::json args = nlohmann::json::parse(m_code);
             const auto& inputs = m_twofactor_data["signing_inputs"];
             const auto& signatures = get_sized_array(args, "signatures", inputs.size());
             const auto& outputs = m_twofactor_data["transaction_outputs"];
             const auto& transaction_details = m_twofactor_data["transaction"];
-            const bool is_liquid = m_session.get_network_parameters().is_liquid();
+            const bool is_liquid = net_params.is_liquid();
             const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
-            if (m_session.get_network_parameters().is_liquid()) {
+            if (is_liquid) {
                 const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
                 const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
                 const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
                 const auto& vbfs = get_sized_array(args, "amountblinders", outputs.size());
 
-                auto session_impl = m_session.get_nonnull_impl();
                 size_t i = 0;
                 for (const auto& out : outputs) {
                     if (!out.at("is_fee")) {
@@ -834,10 +836,15 @@ namespace sdk {
             // TODO: the signer-commitments should be verified as being the same for the
             // same input data and host-entropy (eg. if retrying following failure).
             if (m_use_ae_protocol) {
+                // FIXME: User pubkeys is not threadsafe if adding a subaccount
+                // at the same time (this cant happen yet but should be allowed
+                // in the future).
+                auto& user_pubkeys = session_impl->get_user_pubkeys();
                 size_t i = 0;
                 const auto& signer_commitments = get_sized_array(args, "signer_commitments", inputs.size());
                 for (const auto& utxo : inputs) {
-                    m_session.verify_ae_signature(tx, i, utxo, signer_commitments[i], signatures[i]);
+                    const auto pubkey = user_pubkeys.derive(utxo.at("subaccount"), utxo.at("pointer"));
+                    verify_ae_signature(net_params, pubkey, tx, i, utxo, signer_commitments[i], signatures[i]);
                     ++i;
                 }
             }

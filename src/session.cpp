@@ -822,15 +822,6 @@ namespace sdk {
         });
     }
 
-    void session::verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
-        const std::string& signer_commitment_hex, const std::string& der_hex)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->verify_ae_signature(tx, index, u, signer_commitment_hex, der_hex);
-        });
-    }
-
     void session::send_nlocktimes()
     {
         exception_wrapper([&] {

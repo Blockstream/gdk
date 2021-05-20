@@ -159,9 +159,6 @@ namespace sdk {
             uint32_span_t path, const std::string& host_entropy_hex, const std::string& signer_commitment_hex,
             const std::string& der_hex)
             = 0;
-        virtual void verify_ae_signature(const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u,
-            const std::string& signer_commitment_hex, const std::string& der_hex)
-            = 0;
 
         virtual void send_nlocktimes() = 0;
         virtual nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details) = 0;
