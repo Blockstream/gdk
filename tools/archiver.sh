@@ -63,7 +63,11 @@ if [ -f "$gdk_rust" ]; then
 fi
 
 if [ "$(uname)" = "Darwin" ]; then
-  libtool -static -o $1/src/libgreenaddress_full.a $libraries $1/src/*@@greenaddress@sha/*.o
+  obj_dir=$1/src/*@@greenaddress@sha
+  if [ ! -d "$obj_dir" ]; then
+    obj_dir=$1/src/libgreenaddress.dylib.p
+  fi
+  libtool -static -o $1/src/libgreenaddress_full.a $libraries $obj_dir/*.o
 else
   echo "create $1/src/libgreenaddress_full.a" > $1/src/libgreenaddress.mri
   for lib in $libraries; do
