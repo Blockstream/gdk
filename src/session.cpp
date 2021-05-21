@@ -245,36 +245,6 @@ namespace sdk {
         });
     }
 
-    bool session::check_proxy_connectivity(const nlohmann::json& params)
-    {
-        boost::asio::io_context io;
-        boost::beast::tcp_stream stream{ boost::asio::make_strand(io) };
-        stream.expires_after(5s);
-
-        const auto net_params = network_parameters{ network_parameters::get(params.at("name")) };
-        const bool use_tor = params.value("use_tor", false);
-        const auto server = net_params.get_connection_string(use_tor);
-        const std::string proxy = params.at("proxy");
-
-        GDK_LOG_SEV(log_level::info) << "attempting connection to " << server;
-
-        auto client = std::make_shared<socks_client>(io, stream);
-        GDK_RUNTIME_ASSERT(client != nullptr);
-
-        auto result = client->run(server, proxy);
-        io.run();
-
-        try {
-            result.get();
-            client->shutdown();
-            return true;
-        } catch (const std::exception&) {
-            throw;
-        }
-
-        __builtin_unreachable();
-    }
-
     std::string session::get_tor_socks5()
     {
         return exception_wrapper([&] {

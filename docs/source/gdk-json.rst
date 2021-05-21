@@ -1089,21 +1089,6 @@ HTTP params JSON
 
 
 
-.. _params-proxy:
-
-Proxy connectivity params JSON
-------------------------------
-
-.. code-block:: json
-
-   {
-      "name":"testnet"
-      "use_tor":true
-      "proxy":"localhost:9150"
-   }
-
-
-
 .. _set-locktime-details:
 
 Locktime Details JSON

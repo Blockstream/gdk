@@ -118,12 +118,6 @@ GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
  */
 
 GDK_API int GA_get_tor_socks5(struct GA_session* session, char** socks5);
-/**
- * Check if server can be reached via the proxy.
- *
- * :param params: the :ref:`params-proxy` of the server to connect to.
- */
-GDK_API int GA_check_proxy_connectivity(const GA_json* params);
 
 /**
  * Make a request to an http server.
