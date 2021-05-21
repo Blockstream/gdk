@@ -3,24 +3,16 @@
 
 #pragma once
 
-#include "autobahn_wrapper.hpp"
-#include "ga_wally.hpp"
-#include "include/gdk.h"
-#include "signer.hpp"
-
 #include "amount.hpp"
 #include "autobahn_wrapper.hpp"
-#include "ga_wally.hpp"
-#include "include/gdk.h"
+#include "network_parameters.hpp"
+#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
-    class network_parameters;
-    class ga_session;
     class ga_pubkeys;
     class ga_user_pubkeys;
     using ping_fail_t = std::function<void()>;
-    class signer;
     class user_pubkeys;
 #ifdef BUILD_GDK_RUST
     class ga_rust;
@@ -28,7 +20,7 @@ namespace sdk {
 
     class session_impl {
     public:
-        session_impl();
+        explicit session_impl(const nlohmann::json& net_params);
         virtual ~session_impl();
 
         virtual void on_failed_login() = 0;
@@ -184,13 +176,14 @@ namespace sdk {
         virtual void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet) = 0;
         virtual void disable_all_pin_logins() = 0;
 
-        virtual const network_parameters& get_network_parameters() const = 0;
+        const network_parameters& get_network_parameters() const { return m_net_params; }
         virtual std::shared_ptr<signer> get_signer() = 0;
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
         virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
 
     protected:
+        const network_parameters m_net_params;
         std::shared_ptr<signer> m_signer;
     };
 

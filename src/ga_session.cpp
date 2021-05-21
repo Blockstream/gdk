@@ -424,11 +424,9 @@ namespace sdk {
     };
 
     ga_session::ga_session(const nlohmann::json& net_params)
-        : m_net_params(network_parameters{ network_parameters::get(net_params.at("name")) })
+        : session_impl(net_params)
         , m_proxy(socksify(net_params.value("proxy", std::string{})))
-        , m_use_tor(net_params.value("use_tor", false))
         , m_has_network_proxy(!m_proxy.empty())
-        , m_is_tls_connection(boost::algorithm::starts_with(m_net_params.get_connection_string(m_use_tor), "wss://"))
         , m_io()
         , m_controller(new event_loop_controller(m_io))
         , m_ping_timer(m_io)
@@ -450,12 +448,7 @@ namespace sdk {
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_multi_call_category(0)
         , m_cache(m_net_params, net_params.at("name"))
-        , m_user_agent(std::string(GDK_COMMIT) + " " + net_params.value("user_agent", ""))
-        , m_electrum_url(
-              net_params.value("electrum_url", network_parameters::get(net_params.at("name")).at("electrum_url")))
-        , m_electrum_tls(net_params.value("tls", network_parameters::get(net_params.at("name")).at("tls")))
-        , m_spv_enabled(
-              net_params.value("spv_enabled", network_parameters::get(net_params.at("name")).at("spv_enabled")))
+        , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
         , m_wamp_call_options()
         , m_wamp_call_prefix("com.greenaddress.")
     {
@@ -521,7 +514,7 @@ namespace sdk {
     void ga_session::set_socket_options()
     {
         auto set_option = [this](auto option) {
-            if (m_is_tls_connection) {
+            if (m_net_params.is_tls_connection()) {
                 GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport_tls>(m_transport)->set_socket_option(option));
             } else {
                 GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport>(m_transport)->set_socket_option(option));
@@ -562,7 +555,7 @@ namespace sdk {
 
     void ga_session::make_client()
     {
-        if (!m_is_tls_connection) {
+        if (!m_net_params.is_tls_connection()) {
             m_client = std::make_unique<client>();
             boost::get<std::unique_ptr<client>>(m_client)->init_asio(&m_io);
             return;
@@ -581,7 +574,7 @@ namespace sdk {
 
     void ga_session::make_transport()
     {
-        if (m_use_tor && !m_has_network_proxy) {
+        if (m_net_params.use_tor() && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
             m_proxy
                 = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
@@ -595,14 +588,14 @@ namespace sdk {
             GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_proxy;
         }
 
-        const auto server = m_net_params.get_connection_string(m_use_tor);
+        const auto server = m_net_params.get_connection_string();
         std::string proxy_details;
         if (!m_proxy.empty()) {
             proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
         const bool is_debug_enabled = m_log_level == logging_levels::debug;
-        if (m_is_tls_connection) {
+        if (m_net_params.is_tls_connection()) {
             auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
             clnt.set_pong_timeout_handler(m_heartbeat_handler);
             m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, is_debug_enabled);
@@ -632,7 +625,7 @@ namespace sdk {
         bool expect_pong = false;
         no_std_exception_escape([this, &expect_pong] {
             if (is_connected()) {
-                if (m_is_tls_connection) {
+                if (m_net_params.is_tls_connection()) {
                     expect_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
                 } else {
                     expect_pong = std::static_pointer_cast<transport>(m_transport)->ping(std::string());
@@ -902,7 +895,7 @@ namespace sdk {
     {
         nlohmann::json result;
         try {
-            params.update(select_url(params["urls"], m_use_tor));
+            params.update(select_url(params["urls"], m_net_params.use_tor()));
             json_add_if_missing(params, "proxy", socksify(m_proxy));
 
             auto root_certificates = m_net_params.gait_wamp_cert_roots();
@@ -930,7 +923,7 @@ namespace sdk {
             for (uint8_t i = 0; i < num_redirects; ++i) {
                 result = get();
                 if (!result.value("location", std::string{}).empty()) {
-                    GDK_RUNTIME_ASSERT_MSG(!m_use_tor, "redirection over Tor is not supported");
+                    GDK_RUNTIME_ASSERT_MSG(!m_net_params.use_tor(), "redirection over Tor is not supported");
                     params.update(parse_url(result["location"]));
                 } else {
                     break;
@@ -968,7 +961,7 @@ namespace sdk {
             return cached_data;
         }
 
-        const std::string url = m_net_params.get_registry_connection_string(m_use_tor) + "/" + type + ".json";
+        const std::string url = m_net_params.get_registry_connection_string() + "/" + type + ".json";
         nlohmann::json get_params = { { "method", "GET" }, { "urls", { url } }, { "accept", "json" } };
         if (!last_modified.empty()) {
             get_params.update({ { "headers",
@@ -2820,16 +2813,12 @@ namespace sdk {
                 tx_details["can_cpfp"] = false;
             }
 
-            if (m_spv_enabled) {
+            if (m_net_params.spv_enabled()) {
                 tx_details["spv_verified"] = "in_progress";
                 if (!datadir.empty() && is_cached) {
-                    nlohmann::json net_params = m_net_params.get_json();
-                    net_params["electrum_url"] = m_electrum_url;
-                    net_params["tls"] = m_electrum_tls;
-
                     const nlohmann::json verify_params
                         = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] },
-                              { "path", path }, { "network", net_params }, { "encryption_key", "TBD" } };
+                              { "path", path }, { "network", m_net_params.get_json() }, { "encryption_key", "TBD" } };
 
                     const auto verify_result = spv_verify_tx(verify_params);
                     GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;

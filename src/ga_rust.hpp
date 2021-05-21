@@ -181,7 +181,6 @@ namespace sdk {
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
 
-        const network_parameters& get_network_parameters() const;
         std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();
@@ -193,7 +192,6 @@ namespace sdk {
     private:
         static void GDKRUST_notif_handler(void* self_context, GDKRUST_json* json);
 
-        network_parameters m_netparams;
         std::shared_ptr<tor_controller> m_tor_ctrl;
         bool m_reconnect_restart;
 

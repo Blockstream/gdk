@@ -30,7 +30,6 @@ namespace sdk {
         network_parameters& operator=(network_parameters&&) = default;
 
         const nlohmann::json& get_json() const { return m_details; }
-        nlohmann::json& get_json_mut() { return m_details; }
 
         std::string network() const;
         std::string gait_wamp_url() const;
@@ -41,6 +40,7 @@ namespace sdk {
         std::string asset_registry_url() const;
         std::string asset_registry_onion_url() const;
         std::string chain_code() const;
+        std::string electrum_url() const;
         std::string pub_key() const;
         std::string gait_onion() const;
         std::string policy_asset() const;
@@ -57,8 +57,12 @@ namespace sdk {
         bool is_electrum() const;
         bool use_tor() const;
         std::string socks5() const;
-        std::string get_connection_string(bool use_tor) const;
-        std::string get_registry_connection_string(bool use_tor) const;
+        bool spv_enabled() const;
+        bool tls() const;
+        std::string user_agent() const;
+        std::string get_connection_string() const;
+        std::string get_registry_connection_string() const;
+        bool is_tls_connection() const;
         std::vector<uint32_t> csv_buckets() const;
 
     private:

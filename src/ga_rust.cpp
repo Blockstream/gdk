@@ -40,9 +40,9 @@ namespace sdk {
     }
 
     ga_rust::ga_rust(const nlohmann::json& net_params)
-        : m_netparams(ga::sdk::network_parameters(net_params))
+        : session_impl(net_params)
     {
-        GDKRUST_create_session(&m_session, gdkrust_json(m_netparams.get_json()).get());
+        GDKRUST_create_session(&m_session, gdkrust_json(m_net_params.get_json()).get());
     }
 
     ga_rust::~ga_rust()
@@ -97,7 +97,9 @@ namespace sdk {
 
     void ga_rust::connect()
     {
-        if (m_netparams.use_tor() && m_netparams.socks5().empty()) {
+        nlohmann::json net_params = m_net_params.get_json();
+
+        if (m_net_params.use_tor() && m_net_params.socks5().empty()) {
             m_tor_ctrl = tor_controller::get_shared_ref();
             std::string full_socks5
                 = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
@@ -112,12 +114,12 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(full_socks5.size() > TOR_SOCKS5_PREFIX.size());
             full_socks5.erase(0, TOR_SOCKS5_PREFIX.size());
 
-            m_netparams.get_json_mut()["socks5"] = full_socks5;
+            net_params["socks5"] = full_socks5;
 
-            GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_netparams.socks5();
+            GDK_LOG_SEV(log_level::info) << "tor_socks address " << full_socks5;
         }
 
-        call_session("connect", m_netparams.get_json());
+        call_session("connect", net_params);
     }
 
     void ga_rust::disconnect()
@@ -171,7 +173,7 @@ namespace sdk {
         };
 
         auto ret = call_session("login", details);
-        m_signer = std::make_shared<software_signer>(m_netparams, mnemonic);
+        m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
         return ret;
     }
     nlohmann::json ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
@@ -182,7 +184,7 @@ namespace sdk {
         };
 
         auto ret = call_session("login_with_pin", details);
-        m_signer = std::make_shared<software_signer>(m_netparams, get_mnemonic_passphrase(std::string()));
+        m_signer = std::make_shared<software_signer>(m_net_params, get_mnemonic_passphrase(std::string()));
         return ret;
     }
     nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
@@ -417,7 +419,7 @@ namespace sdk {
         auto addressees_p = result.find("addressees");
         for (auto& addressee : *addressees_p) {
             addressee["satoshi"] = addressee.value("satoshi", (long long)0);
-            nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_netparams.bip21_prefix());
+            nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_net_params.bip21_prefix());
             if (!uri_params.is_object())
                 continue;
 
@@ -434,7 +436,7 @@ namespace sdk {
                 addressee["satoshi"] = amount::convert(uri_amount, "USD", "")["satoshi"];
             }
 
-            if (m_netparams.is_liquid()) {
+            if (m_net_params.is_liquid()) {
                 if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
                     throw std::runtime_error("in liquid amount without assetid is not valid"); // fixme return error
                 } else if (bip21_params.contains("assetid")) {
@@ -539,8 +541,6 @@ namespace sdk {
     {
         throw std::runtime_error("is_spending_limits_decrease not implemented");
     }
-
-    const network_parameters& ga_rust::get_network_parameters() const { return m_netparams; }
 
     std::shared_ptr<signer> ga_rust::get_signer() { return m_signer; }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }

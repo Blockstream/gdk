@@ -14,7 +14,6 @@
 #include "client_blob.hpp"
 #include "ga_cache.hpp"
 #include "ga_wally.hpp"
-#include "network_parameters.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
 #include "threading.hpp"
@@ -189,7 +188,6 @@ namespace sdk {
         amount get_dust_threshold() const;
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& details);
-        const network_parameters& get_network_parameters() const { return m_net_params; }
 
         void emit_notification(std::string event, nlohmann::json details);
 
@@ -339,11 +337,8 @@ namespace sdk {
         //
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;
-        const network_parameters m_net_params;
         std::string m_proxy;
-        const bool m_use_tor;
         const bool m_has_network_proxy;
-        const bool m_is_tls_connection;
 
         boost::asio::io_context m_io;
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
@@ -410,9 +405,6 @@ namespace sdk {
         cache m_cache;
         const std::string m_user_agent;
 
-        const std::string m_electrum_url;
-        const bool m_electrum_tls;
-        const bool m_spv_enabled;
         autobahn::wamp_call_options m_wamp_call_options;
         const std::string m_wamp_call_prefix;
     };

@@ -1,6 +1,7 @@
 #include <mutex>
 
 #include "assertion.hpp"
+#include "boost_wrapper.hpp"
 #include "containers.hpp"
 #include "network_parameters.hpp"
 
@@ -552,9 +553,10 @@ namespace sdk {
         return m_details.at("asset_registry_onion_url");
     }
     std::string network_parameters::chain_code() const { return m_details.at("service_chain_code"); }
+    std::string network_parameters::electrum_url() const { return m_details.at("electrum_url"); }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
-    std::string network_parameters::policy_asset() const { return m_details.value("policy_asset", std::string{}); }
+    std::string network_parameters::policy_asset() const { return m_details.value("policy_asset", std::string()); }
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
     std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
     std::string network_parameters::blech32_prefix() const { return m_details.at("blech32_prefix"); }
@@ -567,14 +569,18 @@ namespace sdk {
     bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
     bool network_parameters::is_electrum() const { return m_details.value("server_type", "") == "electrum"; }
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
-    std::string network_parameters::socks5() const { return m_details.value("socks5", ""); }
-    std::string network_parameters::get_connection_string(bool use_tor) const
+    std::string network_parameters::socks5() const { return m_details.value("socks5", std::string()); }
+    bool network_parameters::spv_enabled() const { return m_details.at("spv_enabled"); }
+    bool network_parameters::tls() const { return m_details.at("tls"); }
+    std::string network_parameters::user_agent() const { return m_details.value("user_agent", std::string()); }
+    std::string network_parameters::get_connection_string() const { return use_tor() ? gait_onion() : gait_wamp_url(); }
+    std::string network_parameters::get_registry_connection_string() const
     {
-        return use_tor ? gait_onion() : gait_wamp_url();
+        return use_tor() ? asset_registry_onion_url() : asset_registry_url();
     }
-    std::string network_parameters::get_registry_connection_string(bool use_tor) const
+    bool network_parameters::is_tls_connection() const
     {
-        return use_tor ? asset_registry_onion_url() : asset_registry_url();
+        return boost::algorithm::starts_with(get_connection_string(), "wss://");
     }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
 
