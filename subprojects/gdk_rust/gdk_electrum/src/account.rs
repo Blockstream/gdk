@@ -800,7 +800,7 @@ pub fn create_tx(
 
     // When a previous transaction is replaced, use it as a template for the new transaction
     if let Some(ref prev_txitem) = request.previous_transaction {
-        if !request.addressees.is_empty() || send_all {
+        if !request.addressees.is_empty() || send_all || network.liquid {
             return Err(Error::InvalidReplacementRequest);
         }
 
