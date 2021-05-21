@@ -92,8 +92,8 @@ if (is_darwin or cross_iphone_build) and not cross_android_build
 endif
 
 if cross_iphone_build
-  add_project_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
-  add_project_link_arguments(['-miphoneos-version-min=11.0'], language : 'cpp')
+  add_project_arguments(['-miphoneos-version-min=11.0'], language : ['c', 'cpp'])
+  add_project_link_arguments(['-miphoneos-version-min=11.0'], language : ['c', 'cpp'])
 endif
 
 if is_freebsd
