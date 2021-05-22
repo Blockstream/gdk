@@ -19,7 +19,8 @@ namespace sdk {
         void resolve_code(const std::string& code);
 
         virtual nlohmann::json get_status() const;
-        void set_data(const std::string& action);
+        void set_action(const std::string& action);
+        void set_data();
 
         virtual void operator()();
 
@@ -51,7 +52,7 @@ namespace sdk {
         uint32_t m_attempts_remaining;
 
     private:
-        void init(std::shared_ptr<signer> signer, bool is_pre_login);
+        void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);
     };
 } // namespace sdk
 } // namespace ga

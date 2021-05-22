@@ -121,7 +121,7 @@ namespace sdk {
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
     {
         try {
-            init(signer, true);
+            init(action, signer, true);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
@@ -133,20 +133,18 @@ namespace sdk {
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
     {
         try {
-            init(m_session.get_nonnull_impl()->get_signer(), false);
+            init(action, m_session.get_nonnull_impl()->get_signer(), false);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
     }
 
-    void auth_handler::init(std::shared_ptr<signer> signer, bool is_pre_login)
+    auth_handler::~auth_handler() {}
+
+    void auth_handler::init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login)
     {
         m_signer = signer;
-        m_is_hw_action = signer && signer->is_hw_device()
-            && (m_action == "get_xpubs" || m_action == "sign_message" || m_action == "sign_tx"
-                   || m_action == "get_receive_address" || m_action == "create_transaction" || m_action == "get_balance"
-                   || m_action == "get_subaccounts" || m_action == "get_subaccount" || m_action == "get_transactions"
-                   || m_action == "get_unspent_outputs" || m_action == "get_expired_deposits");
+        set_action(action);
 
         if (!is_pre_login && !m_session.is_watch_only()) {
             m_methods = m_session.get_enabled_twofactor_methods();
@@ -154,13 +152,27 @@ namespace sdk {
         m_state = m_methods.empty() ? state_type::make_call : state_type::request_code;
     }
 
-    auth_handler::~auth_handler() {}
+    void auth_handler::set_action(const std::string& action)
+    {
+        m_action = action;
+        m_is_hw_action = m_signer && m_signer->is_hw_device()
+            && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
+                   || action == "get_receive_address" || action == "create_transaction" || action == "get_balance"
+                   || action == "get_subaccounts" || action == "get_subaccount" || action == "get_transactions"
+                   || action == "get_unspent_outputs" || action == "get_expired_deposits");
+    }
 
     void auth_handler::set_error(const std::string& error_message)
     {
         GDK_LOG_SEV(log_level::debug) << m_action << " call exception: " << error_message;
         m_state = state_type::error;
         m_error = error_message;
+    }
+
+    void auth_handler::set_data()
+    {
+        m_twofactor_data
+            = { { "action", m_action }, { "device", m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json() } };
     }
 
     void auth_handler::request_code(const std::string& method)
@@ -187,13 +199,6 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_state == state_type::resolve_code);
         m_code = code;
         m_state = state_type::make_call;
-    }
-
-    void auth_handler::set_data(const std::string& action)
-    {
-        m_action = action;
-        m_twofactor_data
-            = { { "action", action }, { "device", m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json() } };
     }
 
     void auth_handler::operator()()
@@ -307,7 +312,7 @@ namespace sdk {
             // To register, we need the master xpub to identify the wallet,
             // and the registration xpub to compute the gait_path.
             m_state = state_type::resolve_code;
-            set_data(m_action);
+            set_data();
             auto paths = get_paths_json();
             paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
             m_twofactor_data["paths"] = paths;
@@ -356,7 +361,8 @@ namespace sdk {
         } else {
             // We first need the challenge, so ask the caller for the master pubkey.
             m_state = state_type::resolve_code;
-            set_data("get_xpubs");
+            set_action("get_xpubs");
+            set_data();
             auto paths = get_paths_json();
             paths.emplace_back(signer::CLIENT_SECRET_PATH);
             m_twofactor_data["paths"] = paths;
@@ -409,7 +415,8 @@ namespace sdk {
                     m_session.set_local_encryption_keys(local_xpub.second, is_hw_wallet);
 
                     // Ask the caller to sign the challenge
-                    set_data("sign_message");
+                    set_action("sign_message");
+                    set_data();
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
                     m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
@@ -435,7 +442,8 @@ namespace sdk {
                 for (const auto& sa : m_session.get_subaccounts()) {
                     paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
                 }
-                set_data("get_xpubs");
+                set_action("get_xpubs");
+                set_data();
                 m_twofactor_data["paths"] = paths;
                 return state_type::resolve_code;
             }
@@ -461,7 +469,8 @@ namespace sdk {
 
         if (m_ca_reqs.size() > 0) {
             // prepare the first request
-            set_data("get_receive_address");
+            set_action("get_receive_address");
+            set_data();
             m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
 
             return (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
@@ -576,7 +585,7 @@ namespace sdk {
             m_state = state_type::make_call;
         } else {
             m_state = state_type::resolve_code;
-            set_data(m_action);
+            set_data();
 
             auto paths = get_paths_json();
             paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
@@ -632,7 +641,8 @@ namespace sdk {
                 m_subaccount_xpub = args.at("xpubs").at(1);
                 if (type == "2of3") {
                     // ask the caller to sign recovery key with login key
-                    set_data("sign_message");
+                    set_action("sign_message");
+                    set_data();
                     m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
                     m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
@@ -656,7 +666,8 @@ namespace sdk {
             }
 
             if (m_remaining_ca_addrs > 0) {
-                set_data("get_receive_address");
+                set_action("get_receive_address");
+                set_data();
                 m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
 
                 return state_type::resolve_code;
@@ -691,11 +702,13 @@ namespace sdk {
                 // If using Anti-Exfil protocol we need to get the root xpub
                 // Otherwise just sign the message
                 if (m_use_ae_protocol) {
-                    set_data("get_xpubs");
+                    set_action("get_xpubs");
+                    set_data();
                     auto paths = get_paths_json();
                     m_twofactor_data["paths"] = paths;
                 } else {
-                    set_data("sign_message");
+                    set_action("sign_message");
+                    set_data();
                     m_twofactor_data["message"] = m_message_info.first;
                     m_twofactor_data["path"] = m_message_info.second;
                     add_required_ae_data(m_signer, m_twofactor_data);
@@ -715,7 +728,8 @@ namespace sdk {
             if (m_action == "get_xpubs") {
                 m_master_xpub_bip32 = args.at("xpubs").at(0);
 
-                set_data("sign_message");
+                set_action("sign_message");
+                set_data();
                 m_twofactor_data["message"] = m_message_info.first;
                 m_twofactor_data["path"] = m_message_info.second;
                 add_required_ae_data(m_signer, m_twofactor_data);
@@ -754,7 +768,7 @@ namespace sdk {
                 // Compute the data we need for the hardware to sign the transaction
                 m_state = state_type::resolve_code;
 
-                set_data(m_action);
+                set_data();
                 m_twofactor_data["transaction"] = tx_details;
 
                 // We use the Anti-Exfil protocol if the hw supports it
@@ -882,7 +896,7 @@ namespace sdk {
 
         try {
             nlohmann::json address = m_session.get_receive_address(details);
-            set_data(m_action);
+            set_data();
             m_twofactor_data["address"] = address;
         } catch (const std::exception& e) {
             set_error(e.what());
@@ -952,7 +966,7 @@ namespace sdk {
     auth_handler::state_type get_previous_addresses_call::set_address_to_blind()
     {
         const auto& current = m_result["list"][m_index];
-        set_data(m_action);
+        set_data();
         m_twofactor_data["address"] = current;
         // Ask the HW to provide the blinding key or process directly if no HW
         return !m_is_hw_action ? state_type::make_call : state_type::resolve_code;
@@ -1012,7 +1026,7 @@ namespace sdk {
 
         try {
             m_tx = m_session.create_transaction(details);
-            set_data(m_action);
+            set_data();
             m_twofactor_data["transaction"] = m_tx;
             if (m_session.is_liquid()
                 && m_session.get_nonnull_impl()->get_signer()->get_liquid_support() != liquid_support_level::full) {
@@ -1105,7 +1119,7 @@ namespace sdk {
                 m_state = state_type::resolve_code;
 
                 const nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                set_data(m_action);
+                set_data();
                 m_twofactor_data["blinded_scripts"] = blinded_scripts;
             } catch (const std::exception& e) {
                 set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
@@ -1281,7 +1295,7 @@ namespace sdk {
 
                 // If 2fa enabled trigger resolution for set_nlocktime
                 if (!m_methods.empty()) {
-                    m_action = "set_nlocktime";
+                    set_action("set_nlocktime");
                     m_state = state_type::request_code;
                     m_twofactor_data = m_nlocktime_value;
                 }
@@ -1347,10 +1361,10 @@ namespace sdk {
                     // to set the email associated with twofactor but not enable it for 2fa.
                     // This is useful since notifications and 2fa currently share the
                     // same 2fa email address.
-                    m_action = "set_email";
+                    set_action("set_email");
                     m_twofactor_data = { { "address", data } };
                 } else {
-                    m_action = "disable_2fa";
+                    set_action("disable_2fa");
                     if (m_methods.size() > 1) {
                         // If disabling 'method_to_update' will leave other methods enabled, insist
                         // the disable action is confirmed using one of the remaining methods to
@@ -1376,7 +1390,7 @@ namespace sdk {
         // So, we now request the user enters the code for the method they are enabling
         // (which means restricting their 2fa choice for entering the code to this method)
         m_method = m_method_to_update;
-        m_action = new_action + m_method;
+        set_action(new_action + m_method);
         m_methods = { { m_method_to_update } };
         // Move to prompt the user for the code for the method they are enabling
         m_gauth_data = m_twofactor_data;
@@ -1603,7 +1617,7 @@ namespace sdk {
         m_twofactor_data = nlohmann::json::object();
         if (m_twofactor_required && !is_liquid) {
             if (m_bump_amount != 0u) {
-                m_action = "bump_fee";
+                set_action("bump_fee");
                 const auto amount_key = m_under_limit ? "try_under_limits_bump" : "amount";
                 m_twofactor_data[amount_key] = m_bump_amount;
             } else {
