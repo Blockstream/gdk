@@ -192,7 +192,8 @@ namespace sdk {
     void auth_handler::set_data(const std::string& action)
     {
         m_action = action;
-        m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() } };
+        m_twofactor_data
+            = { { "action", action }, { "device", m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json() } };
     }
 
     void auth_handler::operator()()
@@ -285,7 +286,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!status_str.empty());
         status["status"] = status_str;
         status["action"] = m_action;
-        status["device"] = m_signer ? m_signer->get_hw_device() : nlohmann::json();
+        status["device"] = m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json();
         return status;
     }
 
@@ -306,7 +307,7 @@ namespace sdk {
             // To register, we need the master xpub to identify the wallet,
             // and the registration xpub to compute the gait_path.
             m_state = state_type::resolve_code;
-            m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() } };
+            set_data(m_action);
             auto paths = get_paths_json();
             paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
             m_twofactor_data["paths"] = paths;
@@ -575,7 +576,7 @@ namespace sdk {
             m_state = state_type::make_call;
         } else {
             m_state = state_type::resolve_code;
-            m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() } };
+            set_data(m_action);
 
             auto paths = get_paths_json();
             paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
@@ -753,8 +754,8 @@ namespace sdk {
                 // Compute the data we need for the hardware to sign the transaction
                 m_state = state_type::resolve_code;
 
-                m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() },
-                    { "transaction", tx_details } };
+                set_data(m_action);
+                m_twofactor_data["transaction"] = tx_details;
 
                 // We use the Anti-Exfil protocol if the hw supports it
                 m_use_ae_protocol = m_signer->ae_protocol_support() != ae_protocol_support_level::none;
@@ -881,8 +882,8 @@ namespace sdk {
 
         try {
             nlohmann::json address = m_session.get_receive_address(details);
-            m_twofactor_data
-                = { { "action", m_action }, { "device", m_signer->get_hw_device() }, { "address", address } };
+            set_data(m_action);
+            m_twofactor_data["address"] = address;
         } catch (const std::exception& e) {
             set_error(e.what());
             return;
@@ -951,7 +952,8 @@ namespace sdk {
     auth_handler::state_type get_previous_addresses_call::set_address_to_blind()
     {
         const auto& current = m_result["list"][m_index];
-        m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() }, { "address", current } };
+        set_data(m_action);
+        m_twofactor_data["address"] = current;
         // Ask the HW to provide the blinding key or process directly if no HW
         return !m_is_hw_action ? state_type::make_call : state_type::resolve_code;
     }
@@ -1010,8 +1012,8 @@ namespace sdk {
 
         try {
             m_tx = m_session.create_transaction(details);
-            m_twofactor_data
-                = { { "action", m_action }, { "device", m_signer->get_hw_device() }, { "transaction", m_tx } };
+            set_data(m_action);
+            m_twofactor_data["transaction"] = m_tx;
             if (m_session.is_liquid()
                 && m_session.get_nonnull_impl()->get_signer()->get_liquid_support() != liquid_support_level::full) {
                 m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
@@ -1103,8 +1105,8 @@ namespace sdk {
                 m_state = state_type::resolve_code;
 
                 const nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
-                m_twofactor_data = { { "action", m_action }, { "device", m_signer->get_hw_device() },
-                    { "blinded_scripts", blinded_scripts } };
+                set_data(m_action);
+                m_twofactor_data["blinded_scripts"] = blinded_scripts;
             } catch (const std::exception& e) {
                 set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
             }
