@@ -425,9 +425,8 @@ namespace sdk {
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
                 // TODO: we're only handling assets here when they're still explicit
-                auto asset_id = o.asset != nullptr && o.asset_len != 0u
-                    ? b2h_rev(gsl::make_span(o.asset + 1, o.asset_len - 1))
-                    : "btc";
+                auto asset_id
+                    = o.asset && o.asset_len ? b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1)) : "btc";
                 if (asset_id == net_params.policy_asset()) {
                     asset_id = "btc";
                 }

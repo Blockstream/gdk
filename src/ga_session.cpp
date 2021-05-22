@@ -2418,7 +2418,7 @@ namespace sdk {
             utxo["amountblinder"] = ZEROS;
             const auto asset_tag = h2b(utxo.value("asset_tag", policy_asset));
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
-            utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag.data() + 1, asset_tag.size() - 1));
+            utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag).subspan(1));
             utxo["confidential"] = false;
             return false; // Cache not updated
         }
