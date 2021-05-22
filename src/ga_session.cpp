@@ -2435,33 +2435,29 @@ namespace sdk {
         }
         const auto rangeproof = h2b(utxo.at("range_proof"));
         const auto commitment = h2b(utxo.at("commitment"));
-        const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
+        const auto nonce_commitment_hex = utxo.at("nonce_commitment");
         const auto asset_tag = h2b(utxo.at("asset_tag"));
-        const auto extra_commitment = h2b(utxo.at("script"));
+        const auto extra_commitment_hex = utxo.at("script");
+        const auto extra_commitment = h2b(extra_commitment_hex);
 
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
-        const auto blinding_key = [this, &extra_commitment]() -> boost::optional<std::array<unsigned char, 32>> {
-            locker_t locker(m_mutex);
-            GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        std::shared_ptr<signer> signer = get_signer();
+        boost::optional<priv_key_t> blinding_key;
 
-            if (m_signer->is_hw_device()) {
-                return boost::none;
-            }
-
-            // if it's software signer, fetch the blinding key immediately
-            return m_signer->get_blinding_key_from_script(extra_commitment);
-        }();
+        if (!signer->is_hw_device()) {
+            // Software signer, fetch the blinding key immediately
+            blinding_key = signer->get_blinding_key_from_script(extra_commitment);
+        }
 
         try {
             unblind_t unblinded;
             if (blinding_key) {
                 unblinded = asset_unblind(
-                    *blinding_key, rangeproof, commitment, nonce_commitment, extra_commitment, asset_tag);
-            } else if (has_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"))) {
-                const auto blinding_nonce = get_blinding_nonce(utxo.at("nonce_commitment"), utxo.at("script"));
-                unblinded
-                    = asset_unblind_with_nonce(blinding_nonce, rangeproof, commitment, extra_commitment, asset_tag);
+                    *blinding_key, rangeproof, commitment, h2b(nonce_commitment_hex), extra_commitment, asset_tag);
+            } else if (has_blinding_nonce(nonce_commitment_hex, extra_commitment_hex)) {
+                const auto nonce = get_blinding_nonce(nonce_commitment_hex, extra_commitment_hex);
+                unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, extra_commitment, asset_tag);
             } else {
                 // hw and missing nonce in the map
                 utxo["error"] = "missing blinding nonce";
