@@ -548,49 +548,30 @@ namespace sdk {
             used_utxos.reserve(utxos.size());
 
             std::set<std::string> asset_ids;
-            bool addressees_have_assets = json_get_value(result, "addressees_have_assets", false);
+            bool have_assets = json_get_value(result, "addressees_have_assets", false);
             if (num_addressees) {
                 for (auto& addressee : *addressees_p) {
-                    // FIXME: Remove this renaming when the wallets have upgraded to use
-                    // asset_id in their addressees.
-                    json_rename_key(addressee, "asset_tag", "asset_id");
-
-                    nlohmann::json uri_params
-                        = parse_bitcoin_uri(addressee.value("address", ""), net_params.bip21_prefix());
-                    if (net_params.is_liquid() && uri_params.is_object()) {
-                        const auto& bip21_params = uri_params["bip21-params"];
-                        const bool has_assetid = bip21_params.contains("assetid");
-
-                        if (!has_assetid && bip21_params.contains("amount")) {
-                            result["error"] = res::id_invalid_payment_request_assetid;
-                            break;
-                        } else if (has_assetid) {
-                            const std::string assetid_hex = bip21_params["assetid"];
-                            try {
-                                h2b<32>(assetid_hex);
-                            } catch (const std::exception&) {
-                                result["error"] = res::id_invalid_payment_request_assetid;
-                                break;
-                            }
-                            addressees_have_assets = true;
-
-                            if (assetid_hex == net_params.policy_asset()) {
-                                addressee["asset_id"] = "btc";
-                            } else {
-                                addressee["asset_id"] = assetid_hex;
-                            }
-                        }
+                    const std::string asset_id_hex = validate_tx_addressee(net_params, result, addressee);
+                    if (!json_get_value(result, "error").empty()) {
+                        // FIXME: should probably either exit early or continue
+                        // and not overwrite error here
+                        break;
                     }
-
-                    asset_ids.insert(asset_id_from_json(net_params, addressee));
-                    if (asset_ids.size() > 1 && net_params.is_main_net()) {
-                        // Multi-asset send disabled in (liquid) mainnet
-                        GDK_LOG_SEV(log_level::error) << "Multi-asset send not supported";
-                        GDK_RUNTIME_ASSERT(false);
-                    }
+                    asset_ids.insert(asset_id_hex);
                 }
             }
-            result["addressees_have_assets"] = addressees_have_assets;
+
+            if (net_params.is_liquid()) {
+                if (asset_ids.size() > 1 && net_params.is_main_net()) {
+                    set_tx_error(result, "Multi-asset send not supported");
+                }
+                have_assets = true;
+            } else {
+                if (have_assets) {
+                    set_tx_error(result, "Assets cannot be used on Bitcoin"); // FIXME: res::
+                }
+            }
+            result["addressees_have_assets"] = have_assets;
 
             std::vector<nlohmann::json> reordered_addressees;
 

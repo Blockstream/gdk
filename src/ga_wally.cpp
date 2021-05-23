@@ -402,6 +402,16 @@ namespace sdk {
         return h2b(hex.data(), hex.size(), true, prefix);
     }
 
+    bool validate_hex(const std::string& hex, size_t len)
+    {
+        try {
+            return h2b(hex).size() == len;
+        } catch (const std::exception&) {
+            // Fall through
+        }
+        return false;
+    }
+
     std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family)
     {
         const uint32_t flags = 0;

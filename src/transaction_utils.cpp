@@ -221,8 +221,19 @@ namespace sdk {
 
     std::string asset_id_from_json(const network_parameters& net_params, const nlohmann::json& json)
     {
-        std::string id = json_get_value(json, "asset_id");
-        return id.empty() || id == net_params.policy_asset() ? "btc" : id;
+        if (net_params.is_liquid()) {
+            // Input asset_ids must only be valid hex asset ids
+            std::string asset_id_hex = json_get_value(json, "asset_id");
+            if (!validate_hex(asset_id_hex, ASSET_TAG_LEN)) {
+                throw user_error("Invalid AssetID"); // FIXME: res::
+            }
+            return asset_id_hex == net_params.policy_asset() ? "btc" : asset_id_hex;
+        } else {
+            if (json.contains("asset_id")) {
+                throw user_error("Assets cannot be used on Bitcoin"); // FIXME: res::
+            }
+            return "btc";
+        }
     }
 
     std::vector<unsigned char> input_script(
@@ -311,17 +322,48 @@ namespace sdk {
         tx_elements_output_commitment_set(tx, index, asset_bytes, ct_value, {}, {}, {});
     }
 
+    // TODO: Merge this validation with add_tx_addressee to avoid re-parsing?
+    std::string validate_tx_addressee(
+        const network_parameters& net_params, nlohmann::json& result, nlohmann::json& addressee)
+    {
+        // FIXME: Remove this renaming when the wallets have upgraded to use
+        // asset_id in their addressees.
+        json_rename_key(addressee, "asset_tag", "asset_id");
+
+        std::string address = addressee.at("address"); // Assume its a standard address
+
+        const auto uri = parse_bitcoin_uri(address, net_params.bip21_prefix());
+        if (net_params.is_liquid() && uri.is_object()) {
+            const auto& bip21_params = uri["bip21-params"];
+            const bool has_assetid = bip21_params.contains("assetid");
+
+            if (!has_assetid && bip21_params.contains("amount")) {
+                result["error"] = res::id_invalid_payment_request_assetid;
+                return std::string();
+            } else if (has_assetid) {
+                const std::string assetid_hex = bip21_params["assetid"];
+                if (!validate_hex(assetid_hex, ASSET_TAG_LEN)) {
+                    result["error"] = res::id_invalid_payment_request_assetid;
+                    return std::string();
+                }
+                addressee["asset_id"] = assetid_hex;
+            }
+        }
+
+        return asset_id_from_json(net_params, addressee);
+    }
+
     amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee)
     {
         std::string address = addressee.at("address"); // Assume its a standard address
 
-        nlohmann::json uri_params = parse_bitcoin_uri(address, net_params.bip21_prefix());
-        if (!uri_params.is_null()) {
+        nlohmann::json uri = parse_bitcoin_uri(address, net_params.bip21_prefix());
+        if (!uri.is_null()) {
             // Address is a BIP21 style payment URI. Validation is done in `ga_tx.cpp`, assume everything is good here
-            address = uri_params.at("address");
+            address = uri.at("address");
             addressee["address"] = address;
-            const auto& bip21_params = uri_params["bip21-params"];
+            const auto& bip21_params = uri["bip21-params"];
             addressee["bip21-params"] = bip21_params;
 
             // In Liquid amounts should be encoded in the "consensus form"
