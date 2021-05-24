@@ -1490,7 +1490,7 @@ namespace sdk {
         try {
             // Transform the details json that is passed in into the json that the api expects
             // The api expects {is_fiat: bool, total: in satoshis, per_tx: not really used}
-            // This function takes a full amount json, e.g. {'BTC': 1234}
+            // This function takes a full amount json, e.g. {'btc': 1234}
             const bool is_fiat = details.at("is_fiat").get<bool>();
             GDK_RUNTIME_ASSERT(is_fiat == (details.find("fiat") != details.end()));
             m_limit_details = { { "is_fiat", is_fiat }, { "per_tx", 0 } };

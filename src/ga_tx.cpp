@@ -212,6 +212,8 @@ namespace sdk {
         // Check if a tx to bump is present, and if so add the details required to bump it
         static std::pair<bool, bool> check_bump_tx(ga_session& session, nlohmann::json& result, uint32_t subaccount)
         {
+            const std::string policy_asset("btc"); // FIXME: Bump/CPFP for liquid
+
             if (result.find("previous_transaction") == result.end()) {
                 return std::make_pair(false, false);
             }
@@ -317,8 +319,8 @@ namespace sdk {
                     } else {
                         // We paid to someone else, so this output really was
                         // change. Save the change address to re-use it.
-                        result["change_address"]["btc"] = output;
-                        add_paths(session, result["change_address"]["btc"]);
+                        result["change_address"][policy_asset] = output;
+                        add_paths(session, result["change_address"][policy_asset]);
                     }
                     // Save the change subaccount whether we found change or not
                     result["change_subaccount"] = output.at("subaccount");
@@ -327,7 +329,7 @@ namespace sdk {
                 result["is_redeposit"] = is_redeposit;
                 result["addressees"] = addressees;
 
-                result["have_change"]["btc"] = change_index != NO_CHANGE_INDEX;
+                result["have_change"][policy_asset] = change_index != NO_CHANGE_INDEX;
                 if (change_index == NO_CHANGE_INDEX && !is_redeposit) {
                     for (const auto& in : prev_tx["inputs"]) {
                         if (json_get_value(in, "is_relevant", false)) {
@@ -402,7 +404,7 @@ namespace sdk {
                         }
                     }
                     GDK_RUNTIME_ASSERT(utxos.size() == 1u);
-                    result["utxos"]["btc"] = utxos;
+                    result["utxos"][policy_asset] = utxos;
                 }
             }
             return { is_rbf, is_cpfp };
@@ -421,12 +423,14 @@ namespace sdk {
         static void create_ga_transaction_impl(ga_session& session, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
+            const bool is_liquid = net_params.is_liquid();
+            const auto policy_asset = is_liquid ? net_params.policy_asset() : std::string("btc");
 
             auto& error = result["error"];
             error = std::string(); // Clear any previous error
             result["user_signed"] = false;
             result["server_signed"] = false;
-            result["liquid"] = net_params.is_liquid();
+            result["liquid"] = is_liquid;
 
             // Must specify subaccount to use
             const auto p_subaccount = result.find("subaccount");
@@ -455,8 +459,6 @@ namespace sdk {
             // Let the caller know if addressees should not be modified
             result["addressees_read_only"] = is_redeposit || is_rbf || is_cpfp || is_sweep;
 
-            const bool is_liquid = net_params.is_liquid();
-
             auto addressees_p = result.find("addressees");
             if (is_sweep) {
                 if (is_liquid) {
@@ -464,9 +466,9 @@ namespace sdk {
                     return;
                 }
 
-                if (result.find("utxos") != result.end() && !result["utxos"]["btc"].empty()) {
+                if (result.find("utxos") != result.end() && !result["utxos"][policy_asset].empty()) {
                     // check for sweep related keys
-                    for (const auto& utxo : result["utxos"]["btc"]) {
+                    for (const auto& utxo : result["utxos"][policy_asset]) {
                         GDK_RUNTIME_ASSERT(!json_get_value(utxo, "private_key").empty());
                     }
                 } else {
@@ -479,7 +481,7 @@ namespace sdk {
                     } catch (const std::exception& ex) {
                         GDK_LOG_SEV(log_level::error) << "Exception getting outputs for private key: " << ex.what();
                     }
-                    result["utxos"]["btc"] = utxos;
+                    result["utxos"][policy_asset] = utxos;
                     if (utxos.empty()) {
                         set_tx_error(result, res::id_no_utxos_found); // No UTXOs found
                     }
@@ -561,7 +563,7 @@ namespace sdk {
                 }
             }
 
-            if (net_params.is_liquid()) {
+            if (is_liquid) {
                 if (asset_ids.size() > 1 && net_params.is_main_net()) {
                     set_tx_error(result, "Multi-asset send not supported");
                 }
@@ -576,7 +578,7 @@ namespace sdk {
             std::vector<nlohmann::json> reordered_addressees;
 
             auto create_tx_outputs = [&](const std::string& asset_id) {
-                const bool include_fee = asset_id == "btc";
+                const bool include_fee = asset_id == policy_asset;
 
                 std::vector<nlohmann::json> current_used_utxos;
                 amount available_total, total, fee, v;
@@ -647,9 +649,10 @@ namespace sdk {
                 if (is_rbf) {
                     const auto have_change_p = result.find("have_change");
                     have_change_output
-                        = have_change_p != result.end() ? json_get_value(*have_change_p, "btc", false) : false;
+                        = have_change_p != result.end() ? json_get_value(*have_change_p, policy_asset, false) : false;
                     if (have_change_output) {
-                        add_tx_output(net_params, result, tx, result.at("change_address").at("btc").at("address"));
+                        const auto change_address = result.at("change_address").at(policy_asset).at("address");
+                        add_tx_output(net_params, result, tx, change_address);
                         change_index = tx->num_outputs - 1;
                     }
                 }
@@ -666,13 +669,13 @@ namespace sdk {
 
                 bool force_add_utxo = false;
 
-                bool change_address = result.find("change_address") != result.end();
-                if (change_address) {
+                bool have_change_addr = result.find("change_address") != result.end();
+                if (have_change_addr) {
                     const auto asset_change_address
                         = result.at("change_address").value(asset_id, nlohmann::json::object());
-                    change_address = !asset_change_address.empty();
+                    have_change_addr = !asset_change_address.empty();
                 }
-                if (!change_address) {
+                if (!have_change_addr) {
                     // No previously generated change address found, so generate one.
                     // Find out where to send any change
                     const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
@@ -707,10 +710,10 @@ namespace sdk {
                         if (is_liquid) {
                             constexpr amount::value_type dummy_amount = 1;
                             if (!have_fee_output) {
-                                if (send_all && addressees_p->at(0).value("asset_id", "btc") == asset_id) {
+                                if (send_all && addressees_p->at(0).value("asset_id", policy_asset) == asset_id) {
                                     // the output commitment will be corrected below. this is a placeholder for the
                                     // blinding.
-                                    set_tx_output_commitment(net_params, tx, 0, asset_id, dummy_amount);
+                                    set_tx_output_commitment(tx, 0, asset_id, dummy_amount);
                                 }
                                 fee_index = add_tx_fee_output(net_params, tx, dummy_amount);
                                 have_fee_output = true;
@@ -729,7 +732,7 @@ namespace sdk {
                         fee += network_fee;
                     }
 
-                    if (send_all && addressees_p->at(0).value("asset_id", "btc") == asset_id) {
+                    if (send_all && addressees_p->at(0).value("asset_id", policy_asset) == asset_id) {
                         if (available_total < fee + dust_threshold) {
                             // After paying the fee, we only have dust left, so
                             // the requested amount isn't payable
@@ -740,7 +743,7 @@ namespace sdk {
                             // fee) and exit the loop
                             required_total = available_total - fee;
                             if (is_liquid) {
-                                set_tx_output_commitment(net_params, tx, 0, asset_id, required_total.value());
+                                set_tx_output_commitment(tx, 0, asset_id, required_total.value());
                             } else {
                                 tx->outputs[0].satoshi = required_total.value();
                             }
@@ -802,8 +805,8 @@ namespace sdk {
                     // We have more than the dust amount of change. Add a change
                     // output to collect it, then loop again in case the amount
                     // this increases the fee by requires more UTXOs.
-                    add_tx_output(net_params, result, tx, result.at("change_address").at(asset_id).at("address"),
-                        is_liquid ? 1 : 0, asset_id == "btc" ? std::string{} : asset_id);
+                    const auto change_address = result.at("change_address").at(asset_id).at("address");
+                    add_tx_output(net_params, result, tx, change_address, is_liquid ? 1 : 0, asset_id);
                     have_change_output = true;
                     change_index = tx->num_outputs - 1;
                     if (is_liquid && include_fee) {
@@ -827,7 +830,7 @@ namespace sdk {
                         // Set the change amount
                         change_amount = (total - required_total - fee).value();
                         if (is_liquid) {
-                            set_tx_output_commitment(net_params, tx, change_index, asset_id, change_amount);
+                            set_tx_output_commitment(tx, change_index, asset_id, change_amount);
                         } else {
                             auto& change_output = tx->outputs[change_index];
                             change_output.satoshi = change_amount;
@@ -847,7 +850,7 @@ namespace sdk {
                 update_change_output(fee);
 
                 if (include_fee && is_liquid) {
-                    set_tx_output_commitment(net_params, tx, fee_index, asset_id, fee.value());
+                    set_tx_output_commitment(tx, fee_index, asset_id, fee.value());
                 }
 
                 if (required_total == 0 && (!include_fee || !is_liquid)) {
@@ -880,13 +883,13 @@ namespace sdk {
 
             if (is_liquid) {
                 std::for_each(std::begin(asset_ids), std::end(asset_ids), [&](const auto& id) {
-                    if (id != "btc") {
+                    if (id != policy_asset) {
                         create_tx_outputs(id);
                     }
                 });
             }
             // do fee output + L-BTC outputs
-            create_tx_outputs("btc");
+            create_tx_outputs(policy_asset);
 
             result["addressees"] = reordered_addressees;
 
