@@ -33,7 +33,7 @@ export CC_armv7_linux_androideabi=armv7a-linux-androideabi19-clang
 export CC_aarch64_linux_android=aarch64-linux-android21-clang
 
 OUT_LIB_FILE="libgdk_rust.a"
-LD_ARCH="-arch x86_64 -platform_version macos 10.8 10.8"
+LD_ARCH="" #-arch x86_64 -platform_version macos 10.8 10.8"
 CARGO_FEATURES=()
 CARGO_ARGS=()
 
