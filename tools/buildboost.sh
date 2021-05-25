@@ -23,7 +23,7 @@ if (($# > 0)); then
     shift
 fi
 
-if [ $LTO = "true" ]; then
+if [ "$LTO" = "true" ]; then
     EXTRA_COMPILE_FLAGS="<compileflags>-flto"
     EXTRA_LINK_FLAGS="<linkflags>-flto"
 fi
@@ -119,7 +119,7 @@ else
 
     EXTRAFLAGS=""
     LINKFLAGS=""
-    if [ $LTO = "true" ]; then
+    if [ "$LTO" = "true" ]; then
         EXTRAFLAGS="-flto"
         LINKFLAGS="linkflags=-flto"
     fi
