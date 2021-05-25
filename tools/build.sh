@@ -267,7 +267,7 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
 
         . tools/ios_env.sh $BUILD
 
-        export PATH=$XCODE_DEFAULT_PATH:$XCODE_IOS_PATH:$PATH_BASE
+        export PATH=$XCODE_IOS_PATH:$PATH_BASE
         export AR=ar
 
         if [ \( $BUILD = "--iphonesim" \)  -a \( "$(sw_vers -productVersion)" = "10.15" \) ]; then
