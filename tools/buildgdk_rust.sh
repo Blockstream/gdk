@@ -46,13 +46,13 @@ if [ \( "$1" = "--ndk" \) ]; then
     else
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin
     fi
-    if [ $HOST_ARCH = "armeabi-v7a" ]; then
+    if [ "$HOST_ARCH" = "armeabi-v7a" ]; then
         RUSTTARGET=armv7-linux-androideabi
-    elif [ $HOST_ARCH = "arm64-v8a" ]; then
+    elif [ "$HOST_ARCH" = "arm64-v8a" ]; then
         RUSTTARGET=aarch64-linux-android
-    elif [ $HOST_ARCH = "x86" ]; then
+    elif [ "$HOST_ARCH" = "x86" ]; then
         RUSTTARGET=i686-linux-android
-    elif [ $HOST_ARCH = "x86_64" ]; then
+    elif [ "$HOST_ARCH" = "x86_64" ]; then
         RUSTTARGET=x86_64-linux-android
     else
         echo "Unkown android platform"
