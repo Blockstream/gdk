@@ -43,6 +43,10 @@ if [ "$2" = "--asan" ]; then
     EXTRA_FLAGS="${EXTRA_FLAGS} -fsanitize=address"
 fi
 
+if ([ "$(uname)" == "Darwin" ] && [ -n "${JAVA_HOME}" ]); then
+    EXTRA_FLAGS+=" -I${JAVA_HOME}/include -I${JAVA_HOME}/include/darwin"
+fi
+
 if [ "$1" = "--ndk" ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
     . tools/android_helpers.sh
