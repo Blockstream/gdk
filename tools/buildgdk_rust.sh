@@ -33,7 +33,6 @@ export CC_armv7_linux_androideabi=armv7a-linux-androideabi19-clang
 export CC_aarch64_linux_android=aarch64-linux-android21-clang
 
 OUT_LIB_FILE="libgdk_rust.a"
-LD_ARCH="" #-arch x86_64 -platform_version macos 10.8 10.8"
 CARGO_FEATURES=()
 CARGO_ARGS=()
 
@@ -67,6 +66,8 @@ elif [ \( "$1" = "--iphone" \) ]; then
 elif [ \( "$1" = "--iphonesim" \) ]; then
     RUSTTARGET=x86_64-apple-ios
     LD_ARCH="-arch x86_64 -platform_version ios-simulator 11.0 11.0"
+else
+    LD_ARCH="-arch x86_64 -platform_version macos 11.0 11.0"
 fi
 
 if [ "$BUILDTYPE" == "release" ]; then
