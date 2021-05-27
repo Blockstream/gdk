@@ -129,13 +129,13 @@ pub fn aqua_unique_id_and_xpub(
     // "name" field is overwritten as Aqua did.
     let s = match id {
         NetworkId::Bitcoin(bitcoin::Network::Bitcoin) => {
-            r#"{"address_explorer_url": "https://blockstream.info/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:700", "liquid": false, "mainnet": true, "name": "electrum-mainnet", "network": "electrum-mainnet", "server_type": "electrum", "spv_enabled": false, "electrum_tls": true, "tx_explorer_url": "https://blockstream.info/tx/"}"#
+            r#"{"address_explorer_url": "https://blockstream.info/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:700", "liquid": false, "mainnet": true, "name": "electrum-mainnet", "network": "electrum-mainnet", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/tx/"}"#
         }
         NetworkId::Bitcoin(bitcoin::Network::Testnet) => {
-            r#"{"address_explorer_url": "https://blockstream.info/testnet/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:993", "liquid": false, "mainnet": false, "name": "electrum-testnet", "network": "electrum-testnet", "server_type": "electrum", "spv_enabled": false, "electrum_tls": true, "tx_explorer_url": "https://blockstream.info/testnet/tx/"}"#
+            r#"{"address_explorer_url": "https://blockstream.info/testnet/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:993", "liquid": false, "mainnet": false, "name": "electrum-testnet", "network": "electrum-testnet", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/testnet/tx/"}"#
         }
         NetworkId::Elements(ElementsNetwork::Liquid) => {
-            r#"{"address_explorer_url": "https://blockstream.info/liquid/address/", "asset_registry_onion_url": "http://vi5flmr4z3h3luup.onion", "asset_registry_url": "https://assets.blockstream.info", "bip21_prefix": "liquidnetwork", "ct_bits": 52, "ct_exponent": 0, "development": false, "electrum_url": "blockstream.info:995", "liquid": true, "mainnet": true, "name": "liquid-electrum-mainnet", "network": "liquid-electrum-mainnet", "policy_asset": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d", "server_type": "electrum", "spv_enabled": false, "electrum_tls": true, "tx_explorer_url": "https://blockstream.info/liquid/tx/"}"#
+            r#"{"address_explorer_url": "https://blockstream.info/liquid/address/", "asset_registry_onion_url": "http://vi5flmr4z3h3luup.onion", "asset_registry_url": "https://assets.blockstream.info", "bip21_prefix": "liquidnetwork", "ct_bits": 52, "ct_exponent": 0, "development": false, "electrum_url": "blockstream.info:995", "liquid": true, "mainnet": true, "name": "liquid-electrum-mainnet", "network": "liquid-electrum-mainnet", "policy_asset": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/liquid/tx/"}"#
         }
         _ => return Err("network was not supported".into()),
     };

@@ -175,7 +175,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "bitcoin" },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
             { "development", true },
-            { "electrum_tls", false },
+            { "tls", false },
             { "electrum_url", "localhost:19002" },
             { "liquid", false },
             { "mainnet", false },
@@ -209,7 +209,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "ct_bits", 52 },
             { "ct_exponent", 0 },
             { "development", false },
-            { "electrum_tls", true },
+            { "tls", true },
             { "electrum_url", "blockstream.info:995" },
             { "liquid", true },
             { "mainnet", true },
@@ -244,7 +244,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "ct_bits", 52 },
             { "ct_exponent", 0 },
             { "development", true },
-            { "electrum_tls", false },
+            { "tls", false },
             { "electrum_url", "localhost:50001" },
             { "liquid", true },
             { "mainnet", false },
@@ -273,7 +273,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "bitcoin" },
             { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } },
             { "development", false },
-            { "electrum_tls", true },
+            { "tls", true },
             { "electrum_url", "blockstream.info:700" },
             { "liquid", false },
             { "mainnet", true },
@@ -301,7 +301,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "bitcoin" },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
             { "development", false },
-            { "electrum_tls", true },
+            { "tls", true },
             { "electrum_url", "blockstream.info:993" },
             { "liquid", false },
             { "mainnet", false },
@@ -336,7 +336,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "ct_bits", 52 },
             { "ct_exponent", 0 },
             { "development", false },
-            { "electrum_tls", true },
+            { "tls", true },
             { "electrum_url", "blockstream.info:995" },
             { "liquid", true },
             { "mainnet", true },
@@ -371,7 +371,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "ct_bits", 52 },
             { "ct_exponent", 0 },
             { "development", true },
-            { "electrum_tls", false },
+            { "tls", false },
             { "electrum_url", "localhost:50001" },
             { "liquid", true },
             { "mainnet", false },
@@ -400,7 +400,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "bitcoin" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
-            { "electrum_tls", true },
+            { "tls", true },
             { "electrum_url", "blockstream.info:700" },
             { "liquid", false },
             { "mainnet", true },
@@ -428,7 +428,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "bitcoin" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
-            { "electrum_tls", true },
+            { "tls", true },
             { "electrum_url", "blockstream.info:993" },
             { "liquid", false },
             { "mainnet", false },
@@ -456,7 +456,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "bitcoin" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", true },
-            { "electrum_tls", false },
+            { "tls", false },
             { "electrum_url", "localhost:50001" },
             { "liquid", false },
             { "mainnet", false },
@@ -553,7 +553,7 @@ namespace sdk {
         return m_details.at("asset_registry_onion_url");
     }
     std::string network_parameters::chain_code() const { return m_details.at("service_chain_code"); }
-    bool network_parameters::electrum_tls() const { return m_details.at("electrum_tls"); }
+    bool network_parameters::tls() const { return m_details.at("tls"); }
     std::string network_parameters::electrum_url() const { return m_details.at("electrum_url"); }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }

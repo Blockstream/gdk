@@ -188,7 +188,7 @@ int main()
     net_params["name"] = network;
     net_params["validate_electrum_domain"] = false;
     if (tls != nullptr)
-        net_params["electrum_tls"] = std::string(tls) == "true" ? true : false;
+        net_params["tls"] = std::string(tls) == "true" ? true : false;
 
     printf("====================================\n");
     printf("testing with network(%s) url(%s) state_dir(%s)\n",
