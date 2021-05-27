@@ -428,7 +428,7 @@ impl Session<Error> for ElectrumSession {
                 fallback_path = Some(fpath.as_path());
             }
         }
-        path.push(hex::encode(wallet_hash_id));
+        path.push(wallet_hash_id);
         info!("Store root path: {:?}", path);
         let store = match self.get_wallet() {
             Ok(wallet) => wallet.store.clone(),
