@@ -29,11 +29,30 @@ namespace sdk {
 
             return network_parameters{ ret };
         }
+
+        static void configure_logging(const network_parameters& net_params)
+        {
+            const auto level = net_params.log_level();
+            // Default to fatal logging, i.e. 'none' since we don't log any
+            auto severity = log_level::severity_level::fatal;
+            if (level == "debug") {
+                severity = log_level::severity_level::debug;
+            } else if (level == "info") {
+                severity = log_level::severity_level::info;
+            } else if (level == "warn") {
+                severity = log_level::severity_level::warning;
+            } else if (level == "error") {
+                severity = log_level::severity_level::error;
+            }
+            boost::log::core::get()->set_filter(log_level::severity >= severity);
+        }
     } // namespace
 
     session_impl::session_impl(const nlohmann::json& net_params)
         : m_net_params(get_network_overrides(net_params))
+        , m_debug_logging(m_net_params.log_level() == "debug")
     {
+        configure_logging(m_net_params);
     }
 
     session_impl::~session_impl() {}

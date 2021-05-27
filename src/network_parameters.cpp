@@ -560,6 +560,7 @@ namespace sdk {
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
     std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
     std::string network_parameters::blech32_prefix() const { return m_details.at("blech32_prefix"); }
+    std::string network_parameters::log_level() const { return m_details.value("log_level", "none"); }
     unsigned char network_parameters::btc_version() const { return m_details.at("p2pkh_version"); }
     unsigned char network_parameters::btc_p2sh_version() const { return m_details.at("p2sh_version"); }
     uint32_t network_parameters::blinded_prefix() const { return m_details.at("blinded_prefix"); }
@@ -567,7 +568,7 @@ namespace sdk {
     int network_parameters::ct_bits() const { return m_details.at("ct_bits"); }
     bool network_parameters::is_main_net() const { return m_details.at("mainnet"); }
     bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
-    bool network_parameters::is_electrum() const { return m_details.value("server_type", "") == "electrum"; }
+    bool network_parameters::is_electrum() const { return m_details.value("server_type", std::string()) == "electrum"; }
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
     std::string network_parameters::socks5() const { return m_details.value("socks5", std::string()); }
     bool network_parameters::spv_enabled() const { return m_details.at("spv_enabled"); }

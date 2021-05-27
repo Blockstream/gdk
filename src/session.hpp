@@ -21,12 +21,6 @@ namespace sdk {
     class ga_user_pubkeys;
     class signer;
 
-    enum class logging_levels : uint32_t {
-        none = 0,
-        info = 1,
-        debug = 2,
-    };
-
     int init(const nlohmann::json& config);
     const nlohmann::json& gdk_config();
 

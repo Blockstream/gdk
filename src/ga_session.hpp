@@ -24,8 +24,6 @@ using namespace std::literals;
 
 namespace ga {
 namespace sdk {
-    enum class logging_levels : uint32_t;
-
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
     struct tor_controller;
@@ -392,7 +390,6 @@ namespace sdk {
         std::string m_system_message_ack; // Currently returned message to ack
         bool m_watch_only;
         bool m_is_locked;
-        logging_levels m_log_level;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
 

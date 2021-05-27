@@ -183,7 +183,11 @@ namespace sdk {
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
 
     protected:
+        // Immutable upon construction
         const network_parameters m_net_params;
+        const bool m_debug_logging;
+
+        // Immutable post-login
         std::shared_ptr<signer> m_signer;
     };
 

@@ -455,16 +455,6 @@ namespace sdk {
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
 
-        const auto log_level = net_params.value("log_level", "none");
-        m_log_level = log_level == "none"
-            ? logging_levels::none
-            : log_level == "info" ? logging_levels::info
-                                  : log_level == "debug" ? logging_levels::debug : logging_levels::none;
-        boost::log::core::get()->set_filter(
-            log_level::severity >= (m_log_level == logging_levels::debug
-                                           ? log_level::severity_level::debug
-                                           : m_log_level == logging_levels::info ? log_level::severity_level::info
-                                                                                 : log_level::severity_level::fatal));
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         make_client();
     }
@@ -543,7 +533,7 @@ namespace sdk {
 
     void ga_session::connect()
     {
-        m_session = std::make_shared<autobahn::wamp_session>(m_io, m_log_level == logging_levels::debug);
+        m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
 
         make_transport();
         m_transport->connect().get();
@@ -594,15 +584,14 @@ namespace sdk {
             proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
-        const bool is_debug_enabled = m_log_level == logging_levels::debug;
         if (m_net_params.is_tls_connection()) {
             auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
             clnt.set_pong_timeout_handler(m_heartbeat_handler);
-            m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, is_debug_enabled);
+            m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, m_debug_logging);
         } else {
             auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
             clnt.set_pong_timeout_handler(m_heartbeat_handler);
-            m_transport = std::make_shared<transport>(clnt, server, m_proxy, is_debug_enabled);
+            m_transport = std::make_shared<transport>(clnt, server, m_proxy, m_debug_logging);
         }
         m_transport->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }
