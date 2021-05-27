@@ -9,17 +9,9 @@ swig_py_target = custom_target('swig-python',
 
 python_inc_dir = python_installation.get_variable('INCLUDEPY')
 
-c_args = []
-if compiler.has_argument('-Wno-error=cast-function-type')
-    c_args +=  ['-Wno-error=cast-function-type']
-endif
-if compiler.has_argument('-Wno-missing-field-initializers')
-    c_args +=  ['-Wno-missing-field-initializers']
-endif
-
 libswig_python = static_library('swig_python', swig_py_target,
                                 include_directories : python_inc_dir,
-                                c_args : c_args,
+                                c_args : [],
                                 dependencies : dependencies + [python_dep])
 
 meson.add_install_script(join_paths(meson.source_root(), 'tools', 'install_python.sh'), meson.project_version(), python_installation.path())
