@@ -18,12 +18,12 @@ namespace sdk {
             // Get the registered network parameters the passed in parameters are based on
             auto ret = network_parameters::get(user_params.at("name"));
             // Set override-able settings from the users parameters
+            set_override(ret, "electrum_tls", user_params, false);
             set_override(ret, "electrum_url", user_params, std::string());
             set_override(ret, "log_level", user_params, "none");
-            set_override(ret, "spv_cross_validation", user_params, false);
-            set_override(ret, "spv_cross_validation_servers", user_params, nlohmann::json::array());
+            set_override(ret, "spv_multi", user_params, false);
+            set_override(ret, "spv_servers", user_params, nlohmann::json::array());
             set_override(ret, "spv_enabled", user_params, false);
-            set_override(ret, "tls", user_params, false);
             set_override(ret, "use_tor", user_params, false);
             set_override(ret, "user_agent", user_params, std::string());
 

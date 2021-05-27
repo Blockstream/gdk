@@ -498,8 +498,8 @@ fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSessi
 
     let mut test_session1 = setup_session(false, 1, |network| {
         if enable_session_cross {
-            network.spv_cross_validation = Some(true);
-            network.spv_cross_validation_servers = Some(vec![test_session2.electrs_url.clone()]);
+            network.spv_multi = Some(true);
+            network.spv_servers = Some(vec![test_session2.electrs_url.clone()]);
         }
     });
 

@@ -59,7 +59,7 @@ namespace sdk {
         bool use_tor() const;
         std::string socks5() const;
         bool spv_enabled() const;
-        bool tls() const;
+        bool electrum_tls() const;
         std::string user_agent() const;
         std::string get_connection_string() const;
         std::string get_registry_connection_string() const;

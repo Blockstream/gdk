@@ -118,7 +118,7 @@ impl SpvCrossValidator {
     }
 
     pub fn from_network(network: &Network) -> Result<Option<Self>, Error> {
-        Ok(if !network.liquid && network.spv_cross_validation.unwrap_or(false) {
+        Ok(if !network.liquid && network.spv_multi.unwrap_or(false) {
             Some(SpvCrossValidator {
                 servers: get_cross_servers(network)?,
                 last_result: CrossValidationResult::Valid,
@@ -389,7 +389,7 @@ fn parse_server_file(sl: &str) -> Vec<ElectrumUrl> {
 pub fn get_cross_servers(network: &Network) -> Result<Vec<ElectrumUrl>, Error> {
     let net = network.id().get_bitcoin_network().expect("spv cross-validation is bitcoin-only");
 
-    let servers = match &network.spv_cross_validation_servers {
+    let servers = match &network.spv_servers {
         Some(servers) if !servers.is_empty() => {
             servers.iter().map(String::as_ref).map(FromStr::from_str).collect()
         }
