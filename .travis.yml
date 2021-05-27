@@ -19,7 +19,7 @@ matrix:
     - os: osx
       osx_image: xcode11.3
       install:
-        - python3 -m pip install virtualenv meson===0.51.2
+        - python3 -m pip install virtualenv meson===0.58.0
         - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.42.0
       script:
         - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version $(python3 --version | cut -d ' ' -f 2 | cut -d '.' -f1,2) --enable-rust
