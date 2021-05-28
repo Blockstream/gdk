@@ -189,6 +189,7 @@ pub struct TransactionMeta {
     pub create_transaction: Option<CreateTransaction>,
     #[serde(rename = "transaction")]
     pub hex: String,
+    #[serde(rename = "txhash")]
     pub txid: String,
     pub height: Option<u32>,
     pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created or when list_tx happens
