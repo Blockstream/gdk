@@ -367,6 +367,41 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_url", "ws://localhost:8080/v2/ws" }
         })) },
 
+    { "testnet-liquid",
+        std::make_shared<nlohmann::json>(nlohmann::json({
+            { "address_explorer_url", "https://esplora.blockstream.com/liquidtestnet/address/" },
+            { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/" },
+            { "asset_registry_url", "https://assets.blockstream.info/testnet/" },
+            { "bech32_prefix", "ert" },
+            { "bip21_prefix", "liquidtestnet" },
+            { "blech32_prefix", "el" },
+            { "blinded_prefix", 4u },
+            { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 25920, 51840, 65535 } },
+            { "ct_bits", 52 },
+            { "ct_exponent", 0 },
+            { "development", false },
+            { "electrum_tls", false },
+            { "electrum_url", "blockstream.info:465" },
+            { "liquid", true },
+            { "mainnet", false },
+            { "name", "Testnet Liquid" },
+            { "network", "testnet-liquid" },
+            { "p2pkh_version", 235u },
+            { "p2sh_version", 75u },
+            { "policy_asset", "5d8629bf58c7f98e90e171a81058ce543418f0dc16e8459367773552b067f3f3" },
+            { "server_type", "green" },
+            { "service_chain_code", "c660eec6d9c536f4121854146da22e02d4c91d72af004d41729b9a592f0788e5" },
+            { "service_pubkey", "02c47d84a5b256ee3c29df89642d14b6ed73d17a2b8af0aca18f6f1900f1633533" },
+            { "spv_multi", false },
+            { "spv_servers", nlohmann::json::array() },
+            { "spv_enabled", false },
+            { "tx_explorer_url", "https://esplora.blockstream.com/liquidtestnet/tx/" },
+            { "wamp_cert_pins", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_onion_url", "ws://liqtestulh46kwla3mgenugrcogvjjvzr2qdto663hujwnbaewzpkoad.onion/v2/ws" },
+            { "wamp_url", "wss://green-liquid-testnet.blockstream.com/v2/ws" }
+        })) },
+
     { "mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/address/" },
@@ -577,6 +612,41 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
+
+    { "electrum-testnet-liquid",
+        std::make_shared<nlohmann::json>(nlohmann::json({
+            { "address_explorer_url", "https://blockstream.info/liquidtestnet/address/" },
+            { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/" },
+            { "asset_registry_url", "https://assets.blockstream.info/testnet/" },
+            { "bech32_prefix", "ert" },
+            { "bip21_prefix", "liquidtestnet" },
+            { "blech32_prefix", "el" },
+            { "blinded_prefix", 4u },
+            { "csv_buckets", std::vector<uint32_t>() },
+            { "ct_bits", 52 },
+            { "ct_exponent", 0 },
+            { "development", false },
+            { "electrum_tls", false },
+            { "electrum_url", "blockstream.info:465" },
+            { "liquid", true },
+            { "mainnet", false },
+            { "name", "Testnet Liquid (Electrum)" },
+            { "network", "electrum-testnet-liquid" },
+            { "p2pkh_version", 57u },
+            { "p2sh_version", 39u },
+            { "policy_asset", "5d8629bf58c7f98e90e171a81058ce543418f0dc16e8459367773552b067f3f3" },
+            { "server_type", "electrum" },
+            { "service_chain_code", std::string() },
+            { "service_pubkey", std::string() },
+            { "spv_multi", false },
+            { "spv_servers", nlohmann::json::array() },
+            { "spv_enabled", false },
+            { "tx_explorer_url", "https://blockstream.info/liquidtestnet/tx/" },
+            { "wamp_cert_pins", nlohmann::json::array() },
+            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_onion_url", std::string() },
+            { "wamp_url", std::string() }
+        })) },
 #endif
 };
 // clang-format on
@@ -615,7 +685,7 @@ namespace sdk {
     nlohmann::json network_parameters::get_all()
     {
         // We manually order mainnet/liquid/testnet first for nice wallet/UX display ordering
-        std::vector<std::string> all_networks{ "mainnet", "liquid", "testnet" };
+        std::vector<std::string> all_networks{ "mainnet", "liquid", "testnet", "testnet-liquid" };
         nlohmann::json ret;
 
         std::unique_lock<std::mutex> l{ registered_networks_mutex };
