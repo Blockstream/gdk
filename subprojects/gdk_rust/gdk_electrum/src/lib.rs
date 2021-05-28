@@ -759,12 +759,12 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet()?.sign(create_tx)
     }
 
-    fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<String, Error> {
+    fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum send_transaction {:#?}", tx);
         let client = self.url.build_client(self.proxy.as_deref())?;
         let tx_bytes = hex::decode(&tx.hex)?;
-        let txid = client.transaction_broadcast_raw(&tx_bytes)?;
-        Ok(format!("{}", txid))
+        client.transaction_broadcast_raw(&tx_bytes)?;
+        Ok(tx.clone())
     }
 
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {

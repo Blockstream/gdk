@@ -30,7 +30,10 @@ pub trait Session<E> {
     fn create_transaction(&mut self, details: &mut CreateTransaction)
         -> Result<TransactionMeta, E>;
     fn sign_transaction(&self, tx_detail_unsigned: &TransactionMeta) -> Result<TransactionMeta, E>;
-    fn send_transaction(&mut self, tx_detail_signed: &TransactionMeta) -> Result<String, E>;
+    fn send_transaction(
+        &mut self,
+        tx_detail_signed: &TransactionMeta,
+    ) -> Result<TransactionMeta, E>;
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, E>;
     fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, E>;
     fn get_mnemonic(&self) -> Result<Mnemonic, E>;
