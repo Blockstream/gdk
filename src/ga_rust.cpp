@@ -9,6 +9,7 @@
 #include "ga_rust.hpp"
 #include "exception.hpp"
 #include "logging.hpp"
+#include "session.hpp"
 #include "utils.hpp"
 
 namespace ga {
@@ -119,6 +120,7 @@ namespace sdk {
             GDK_LOG_SEV(log_level::info) << "tor_socks address " << full_socks5;
         }
 
+        net_params["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
         call_session("connect", net_params);
     }
 
