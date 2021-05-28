@@ -1552,10 +1552,12 @@ namespace sdk {
             return;
         }
 
-        const bool is_liquid = m_session.get_network_parameters().is_liquid();
+        const auto& net_params = m_session.get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
+        const bool is_electrum = net_params.is_electrum();
 
         try {
-            if (!is_liquid) {
+            if (!is_liquid && !is_electrum) {
                 const uint64_t limit
                     = m_twofactor_required ? session.get_spending_limits()["satoshi"].get<uint64_t>() : 0;
                 const uint64_t satoshi = m_tx_details["satoshi"]["btc"];
