@@ -7,7 +7,6 @@
 #include <map>
 #include <string>
 #include <thread>
-#include <type_traits>
 #include <vector>
 
 #include "amount.hpp"
@@ -18,7 +17,6 @@
 #include "signer.hpp"
 #include "threading.hpp"
 #include "tx_list_cache.hpp"
-#include "utils.hpp"
 
 using namespace std::literals;
 
@@ -40,7 +38,6 @@ namespace sdk {
         using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
         using locker_t = std::unique_lock<std::mutex>;
         using heartbeat_t = websocketpp::pong_timeout_handler;
-        using ping_fail_t = std::function<void()>;
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(const nlohmann::json& net_params);

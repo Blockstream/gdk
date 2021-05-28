@@ -10,13 +10,11 @@
 
 namespace ga {
 namespace sdk {
+    using ping_fail_t = std::function<void()>;
+
     class ga_pubkeys;
     class ga_user_pubkeys;
-    using ping_fail_t = std::function<void()>;
     class user_pubkeys;
-#ifdef BUILD_GDK_RUST
-    class ga_rust;
-#endif
 
     class session_impl {
     public:

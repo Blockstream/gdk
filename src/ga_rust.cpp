@@ -7,6 +7,7 @@
 #endif
 
 #include "ga_rust.hpp"
+#include "ga_tor.hpp"
 #include "exception.hpp"
 #include "logging.hpp"
 #include "session.hpp"

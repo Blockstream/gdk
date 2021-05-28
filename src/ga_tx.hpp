@@ -2,13 +2,13 @@
 #define GDK_GA_TX_HPP
 #pragma once
 
-#include "containers.hpp"
-#include "ga_wally.hpp"
+#include <nlohmann/json.hpp>
 
 namespace ga {
 namespace sdk {
-    class network_parameters;
     class ga_session;
+    class network_parameters;
+    class session_impl;
 
     nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details);
 

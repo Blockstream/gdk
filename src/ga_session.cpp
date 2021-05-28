@@ -19,9 +19,6 @@
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
-#ifdef BUILD_GDK_RUST
-#include "ga_rust.hpp"
-#endif
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
@@ -32,6 +29,7 @@
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "tx_list_cache.hpp"
+#include "utils.hpp"
 #include "version.h"
 #include "xpub_hdkey.hpp"
 
@@ -1140,7 +1138,7 @@ namespace sdk {
         software_signer registerer(m_net_params, mnemonic);
 
         // Get our master xpub
-        const auto master_xpub = registerer.get_xpub();
+        const auto master_xpub = registerer.get_xpub(empty_span<uint32_t>());
         const auto master_chain_code_hex = b2h(master_xpub.first);
         const auto master_pub_key_hex = b2h(master_xpub.second);
 
@@ -1832,7 +1830,8 @@ namespace sdk {
         m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
 
         // Create our local user keys repository
-        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, m_signer->get_xpub());
+        const auto master_xpub = m_signer->get_xpub(empty_span<uint32_t>());
+        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, master_xpub);
 
         // Cache local encryption key
         const auto pwd_xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);

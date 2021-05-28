@@ -2,10 +2,12 @@
 #define GDK_AUTH_HANDLER_HPP
 #pragma once
 
-#include "session.hpp"
+#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
+    class session;
+
     struct auth_handler {
         auth_handler(session& session, const std::string& action, std::shared_ptr<signer> signer);
         auth_handler(session& session, const std::string& action);

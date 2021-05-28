@@ -1,15 +1,11 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <string>
-
 #include "../subprojects/gdk_rust/gdk_rust.h"
-#include "ga_tor.hpp"
-#include "network_parameters.hpp"
 #include "session_impl.hpp"
 
 namespace ga {
 namespace sdk {
+    struct tor_controller;
 
     class gdkrust_json {
     public:

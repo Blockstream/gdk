@@ -6,6 +6,7 @@
 #include "assertion.hpp"
 #include "ga_cache.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "network_parameters.hpp"
 #include "session.hpp"
 #include "sqlite3/sqlite3.h"

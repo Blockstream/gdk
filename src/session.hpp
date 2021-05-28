@@ -10,16 +10,11 @@
 #include "amount.hpp"
 #include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
-#include "session_impl.hpp"
-#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
     class network_parameters;
-    class ga_session;
-    class ga_pubkeys;
-    class ga_user_pubkeys;
-    class signer;
+    class session_impl;
 
     int init(const nlohmann::json& config);
     const nlohmann::json& gdk_config();
