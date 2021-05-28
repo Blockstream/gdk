@@ -177,7 +177,7 @@ fn determine_electrum_url(
 }
 
 pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl, Error> {
-    determine_electrum_url(&network.electrum_url, network.tls, network.validate_domain)
+    determine_electrum_url(&network.electrum_url, network.electrum_tls, network.validate_domain)
 }
 
 fn socksify(proxy: Option<&str>) -> Option<String> {

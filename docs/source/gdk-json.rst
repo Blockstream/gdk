@@ -881,7 +881,7 @@ Network JSON
       51840
     ],
     "development": true,
-    "tls": false,
+    "electrum_tls": false,
     "electrum_url": "localhost:19002",
     "liquid": false,
     "mainnet": false,

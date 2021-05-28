@@ -20,7 +20,7 @@ pub struct Network {
     tx_explorer_url: String,
     address_explorer_url: String,
 
-    pub tls: Option<bool>,
+    pub electrum_tls: Option<bool>,
     pub electrum_url: Option<String>,
     pub validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
