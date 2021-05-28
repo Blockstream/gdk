@@ -141,14 +141,15 @@ pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const GdkSession,
     network: *const GDKRUST_json,
 ) -> i32 {
+    const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Off;
     let network = &safe_ref!(network).0;
     let level = if network.is_object() {
         match network.as_object().unwrap().get("log_level") {
-            Some(Value::String(val)) => LevelFilter::from_str(val).unwrap_or(LevelFilter::Info),
-            _ => LevelFilter::Info,
+            Some(Value::String(val)) => LevelFilter::from_str(val).unwrap_or(DEFAULT_LOG_LEVEL),
+            _ => DEFAULT_LOG_LEVEL,
         }
     } else {
-        LevelFilter::Info
+        DEFAULT_LOG_LEVEL
     };
     init_logging(level);
     debug!("init logging");
