@@ -1020,6 +1020,7 @@ namespace sdk {
         }
 
         nlohmann::json result(details);
+        result.erase("utxos");
         result["user_signed"] = true;
         update_tx_size_info(tx, result);
         return result;
