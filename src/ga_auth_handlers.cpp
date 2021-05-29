@@ -106,7 +106,7 @@ namespace sdk {
         static std::shared_ptr<signer> make_login_signer(
             const network_parameters& net_params, const nlohmann::json& hw_device, const std::string& mnemonic)
         {
-            if (hw_device.empty()) {
+            if (hw_device.empty() || hw_device.value("device", nlohmann::json::object()).empty()) {
                 return std::make_shared<software_signer>(net_params, mnemonic);
             }
             return std::make_shared<hardware_signer>(net_params, hw_device.at("device"));
