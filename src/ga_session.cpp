@@ -2145,28 +2145,19 @@ namespace sdk {
             const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", satoshi } };
         }
-        const auto utxos = get_unspent_outputs(
+        const auto utxos_by_asset = get_unspent_outputs(
             { { "subaccount", subaccount }, { "num_confs", num_confs }, { "confidential", confidential } });
 
-        const auto accumulate_if = [](const auto& utxos, auto pred) {
-            return std::accumulate(
-                std::begin(utxos), std::end(utxos), int64_t{ 0 }, [pred](int64_t init, const nlohmann::json& utxo) {
-                    amount::value_type satoshi{ 0 };
-                    if (pred(utxo)) {
-                        satoshi = utxo.at("satoshi");
-                    }
-                    return init + satoshi;
-                });
-        };
-
         nlohmann::json balance({ { m_net_params.policy_asset(), 0 } });
-        for (const auto& item : utxos.items()) {
-            const auto& key = item.key();
-            if (key != "error") {
-                const auto& item_utxos = item.value();
-                const amount::value_type satoshi
-                    = accumulate_if(item_utxos, [](const auto& utxo) { return !utxo.contains("error"); });
-                balance[key] = satoshi;
+        for (const auto& asset_utxo : utxos_by_asset.items()) {
+            if (asset_utxo.key() != "error") {
+                amount::value_type satoshi = 0;
+                for (const auto& utxo : asset_utxo.value()) {
+                    if (!utxo.contains("error")) {
+                        satoshi += amount::value_type(utxo.at("satoshi"));
+                    }
+                }
+                balance[asset_utxo.key()] = satoshi;
             }
         }
 
