@@ -41,9 +41,8 @@ namespace sdk {
 
     class ga_rust final : public session_impl {
     public:
-        ~ga_rust();
-
         explicit ga_rust(const nlohmann::json& net_params);
+        ~ga_rust();
 
         nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
 

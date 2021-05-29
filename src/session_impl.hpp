@@ -19,6 +19,11 @@ namespace sdk {
     class session_impl {
     public:
         explicit session_impl(const nlohmann::json& net_params);
+        session_impl(const session_impl& other) = delete;
+        session_impl(session_impl&& other) noexcept = delete;
+        session_impl& operator=(const session_impl& other) = delete;
+        session_impl& operator=(session_impl&& other) noexcept = delete;
+
         virtual ~session_impl();
 
         virtual void on_failed_login() = 0;

@@ -41,11 +41,6 @@ namespace sdk {
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(const nlohmann::json& net_params);
-        ga_session(const ga_session& other) = delete;
-        ga_session(ga_session&& other) noexcept = delete;
-        ga_session& operator=(const ga_session& other) = delete;
-        ga_session& operator=(ga_session&& other) noexcept = delete;
-
         ~ga_session();
 
         void connect();
