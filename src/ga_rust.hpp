@@ -1,43 +1,12 @@
 #pragma once
 
-#include "../subprojects/gdk_rust/gdk_rust.h"
 #include "session_impl.hpp"
+
+struct GDKRUST_session;
 
 namespace ga {
 namespace sdk {
     struct tor_controller;
-
-    class gdkrust_json {
-    public:
-        explicit gdkrust_json(const nlohmann::json& val)
-            : gdkrust_json(val.dump())
-        {
-        }
-
-        explicit gdkrust_json(GDKRUST_json* json) { m_json = json; }
-
-        explicit gdkrust_json(const std::string& str) { GDKRUST_convert_string_to_json(str.c_str(), &m_json); }
-
-        static inline nlohmann::json from_serde(GDKRUST_json* json)
-        {
-            char* output;
-            GDKRUST_convert_json_to_string(json, &output);
-
-            auto cppjson = nlohmann::json::parse(output);
-
-            GDKRUST_destroy_json(json);
-            GDKRUST_destroy_string(output);
-
-            return cppjson;
-        }
-
-        GDKRUST_json* get() { return m_json; }
-
-        ~gdkrust_json() { GDKRUST_destroy_json(m_json); }
-
-    private:
-        GDKRUST_json* m_json;
-    };
 
     class ga_rust final : public session_impl {
     public:
@@ -187,12 +156,12 @@ namespace sdk {
         static int32_t spv_verify_tx(const nlohmann::json& details);
 
     private:
-        static void GDKRUST_notif_handler(void* self_context, GDKRUST_json* json);
+        static void GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json);
 
         std::shared_ptr<tor_controller> m_tor_ctrl;
         bool m_reconnect_restart;
 
-        GDKRUST_session* m_session;
+        struct GDKRUST_session* m_session;
         GA_notification_handler m_ga_notif_handler;
         void* m_ga_notif_context;
     };

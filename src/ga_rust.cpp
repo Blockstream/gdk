@@ -6,9 +6,11 @@
 // ??
 #endif
 
+#include "../subprojects/gdk_rust/gdk_rust.h"
+
+#include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_tor.hpp"
-#include "exception.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "utils.hpp"
@@ -16,30 +18,64 @@
 namespace ga {
 namespace sdk {
 
-    static const std::string TOR_SOCKS5_PREFIX("socks5://");
+    namespace {
+        static const std::string TOR_SOCKS5_PREFIX("socks5://");
 
-    static inline void check_code(const int32_t return_code)
-    {
-        switch (return_code) {
-        case GA_OK:
-            return;
+        class gdkrust_json {
+        public:
+            explicit gdkrust_json(const nlohmann::json& val)
+                : gdkrust_json(val.dump())
+            {
+            }
 
-        case GA_RECONNECT:
-        case GA_SESSION_LOST:
-            throw reconnect_error();
+            explicit gdkrust_json(GDKRUST_json* json) { m_json = json; }
 
-        case GA_TIMEOUT:
-            throw timeout_error();
+            explicit gdkrust_json(const std::string& str) { GDKRUST_convert_string_to_json(str.c_str(), &m_json); }
 
-        case GA_NOT_AUTHORIZED:
-            throw login_error(""); // TODO: msg from rust
+            static inline nlohmann::json from_serde(GDKRUST_json* json)
+            {
+                char* output;
+                GDKRUST_convert_json_to_string(json, &output);
 
-        case GA_ERROR:
-        default:
-            throw std::runtime_error("call failed with: " + std::to_string(return_code));
-            break;
+                auto cppjson = nlohmann::json::parse(output);
+
+                GDKRUST_destroy_json(json);
+                GDKRUST_destroy_string(output);
+
+                return cppjson;
+            }
+
+            GDKRUST_json* get() { return m_json; }
+
+            ~gdkrust_json() { GDKRUST_destroy_json(m_json); }
+
+        private:
+            GDKRUST_json* m_json;
+        };
+
+        static void check_code(const int32_t return_code)
+        {
+            switch (return_code) {
+            case GA_OK:
+                return;
+
+            case GA_RECONNECT:
+            case GA_SESSION_LOST:
+                throw reconnect_error();
+
+            case GA_TIMEOUT:
+                throw timeout_error();
+
+            case GA_NOT_AUTHORIZED:
+                throw login_error(""); // TODO: msg from rust
+
+            case GA_ERROR:
+            default:
+                throw std::runtime_error("call failed with: " + std::to_string(return_code));
+                break;
+            }
         }
-    }
+    } // namespace
 
     ga_rust::ga_rust(const nlohmann::json& net_params)
         : session_impl(net_params)
