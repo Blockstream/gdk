@@ -169,8 +169,7 @@ namespace sdk {
     int32_t spv_verify_tx(const nlohmann::json& details)
     {
 #ifdef BUILD_GDK_RUST
-        auto rustinput = gdkrust_json(details).get();
-        return GDKRUST_spv_verify_tx(rustinput);
+        return ga_rust::spv_verify_tx(details);
 #else
         (void)details;
         GDK_RUNTIME_ASSERT_MSG(false, "SPV not implemented");

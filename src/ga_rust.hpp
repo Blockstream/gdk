@@ -184,6 +184,8 @@ namespace sdk {
         void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
         void disable_all_pin_logins();
 
+        static int32_t spv_verify_tx(const nlohmann::json& details);
+
     private:
         static void GDKRUST_notif_handler(void* self_context, GDKRUST_json* json);
 
