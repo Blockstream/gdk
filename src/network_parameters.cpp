@@ -3,6 +3,7 @@
 #include "assertion.hpp"
 #include "boost_wrapper.hpp"
 #include "containers.hpp"
+#include "exception.hpp"
 #include "network_parameters.hpp"
 
 // TODO: Use std::string_view when its fully supported
@@ -534,7 +535,9 @@ namespace sdk {
         std::unique_lock<std::mutex> l{ registered_networks_mutex };
 
         const auto p = registered_networks.find(name);
-        GDK_RUNTIME_ASSERT_MSG(p != registered_networks.end(), "Unknown network");
+        if (p == registered_networks.end()) {
+            throw user_error("Unknown network");
+        }
         return *p->second;
     }
 

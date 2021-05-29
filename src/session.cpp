@@ -123,43 +123,23 @@ namespace sdk {
     {
         try {
             GDK_RUNTIME_ASSERT_MSG(init_done, "You must call GA_init first");
+            GDK_RUNTIME_ASSERT_MSG(!get_impl(), "session already connected");
 
-            auto impl = get_impl();
-            GDK_RUNTIME_ASSERT_MSG(!impl, "session already connected");
+            const auto network = network_parameters::get(net_params.value("name", std::string()));
+            const auto type = net_params.value("server_type", network.value("server_type", std::string()));
 
             session_ptr session_p;
-            const auto list = ga::sdk::network_parameters::get_all();
-            const auto network_name = net_params.value("name", "");
 
-            if (network_name == "") {
-                GDK_LOG_SEV(log_level::error) << "network name not provided";
-                throw new std::runtime_error("network name not provided");
-            }
-
-            auto network = list.at(network_name);
-
-            if (network == nullptr) {
-                GDK_LOG_SEV(log_level::error) << "network not found: " << network_name;
-                throw new std::runtime_error("network not found");
-            }
-
-            // merge with net_params
-            network.update(net_params.begin(), net_params.end());
-
-            GDK_RUNTIME_ASSERT_MSG(network.contains("server_type"), "server_type field missing");
-            if (network.value("server_type", "") == "green") {
-                session_p = boost::make_shared<ga_session>(network);
+            if (type == "green") {
+                session_p = boost::make_shared<ga_session>(net_params);
 #ifdef BUILD_GDK_RUST
-            } else if (network.value("server_type", "") == "electrum") {
-                GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
-                network["state_dir"] = std::string(gdk_config().at("datadir")) + "/state";
-                session_p = boost::make_shared<ga_rust>(network);
+            } else if (type == "electrum") {
+                session_p = boost::make_shared<ga_rust>(net_params);
 #endif
             } else {
                 GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
             }
 
-            GDK_RUNTIME_ASSERT(session_p != nullptr);
             boost::weak_ptr<session_impl> weak_session = session_p;
             session_p->set_ping_fail_handler([weak_session] {
                 if (auto p = weak_session.lock()) {

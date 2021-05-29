@@ -1,6 +1,7 @@
 #include "session_impl.hpp"
 #include "exception.hpp"
 #include "logging.hpp"
+#include "session.hpp"
 
 namespace ga {
 namespace sdk {
@@ -26,7 +27,10 @@ namespace sdk {
             set_override(ret, "spv_enabled", user_params, false);
             set_override(ret, "use_tor", user_params, false);
             set_override(ret, "user_agent", user_params, std::string());
-
+            // FIXME: Remove this by fetching it directly where needed
+            const std::string datadir = gdk_config().value("datadir", std::string());
+            GDK_RUNTIME_ASSERT(!datadir.empty());
+            ret["state_dir"] = datadir + "/state";
             return network_parameters{ ret };
         }
 
