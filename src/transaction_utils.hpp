@@ -73,6 +73,9 @@ namespace sdk {
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address);
 
+    // Set the error in a transaction, if it hasn't been set already
+    void set_tx_error(nlohmann::json& result, const std::string& error);
+
     // Add an output to a tx given its address
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi = 0, const std::string& asset_id = {});

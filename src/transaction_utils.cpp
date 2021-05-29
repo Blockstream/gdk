@@ -289,6 +289,14 @@ namespace sdk {
         return script;
     }
 
+    void set_tx_error(nlohmann::json& result, const std::string& error)
+    {
+        auto error_p = result.find("error");
+        if (error_p == result.end() || error_p->get<std::string>().empty()) {
+            result["error"] = error;
+        }
+    }
+
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
         const std::string& address, amount::value_type satoshi, const std::string& asset_id)
     {
@@ -336,12 +344,12 @@ namespace sdk {
             const bool has_assetid = bip21_params.contains("assetid");
 
             if (!has_assetid && bip21_params.contains("amount")) {
-                result["error"] = res::id_invalid_payment_request_assetid;
+                set_tx_error(result, res::id_invalid_payment_request_assetid);
                 return std::string();
             } else if (has_assetid) {
                 const std::string assetid_hex = bip21_params["assetid"];
                 if (!validate_hex(assetid_hex, ASSET_TAG_LEN)) {
-                    result["error"] = res::id_invalid_payment_request_assetid;
+                    set_tx_error(result, res::id_invalid_payment_request_assetid);
                     return std::string();
                 }
                 addressee["asset_id"] = assetid_hex;
@@ -393,16 +401,16 @@ namespace sdk {
             satoshi = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
         } catch (const user_error& ex) {
             // Note the error, and create a 0 satoshi output
-            result["error"] = ex.what();
+            set_tx_error(result, ex.what());
         } catch (const std::exception&) {
             // Note the error, and create a 0 satoshi output
-            result["error"] = res::id_invalid_amount;
+            set_tx_error(result, res::id_invalid_amount);
         }
 
         // Transactions with outputs below the dust threshold (except OP_RETURN)
         // are not relayed by network nodes
         if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold()) {
-            result["error"] = res::id_invalid_amount;
+            set_tx_error(result, res::id_invalid_amount);
         }
 
         amount::strip_non_satoshi_keys(addressee);

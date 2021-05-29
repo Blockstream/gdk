@@ -24,13 +24,6 @@ namespace sdk {
         static const std::string UTXO_SEL_DEFAULT("default"); // Use the default utxo selection strategy
         static const std::string UTXO_SEL_MANUAL("manual"); // Use manual utxo selection
 
-        static void set_tx_error(nlohmann::json& result, const std::string& error)
-        {
-            if (json_get_value(result, "error").empty()) {
-                result["error"] = error;
-            }
-        }
-
         static void add_paths(ga_session& session, nlohmann::json& utxo)
         {
             const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
@@ -426,8 +419,7 @@ namespace sdk {
             const bool is_liquid = net_params.is_liquid();
             const auto policy_asset = is_liquid ? net_params.policy_asset() : std::string("btc");
 
-            auto& error = result["error"];
-            error = std::string(); // Clear any previous error
+            result["error"] = std::string(); // Clear any previous error
             result["user_signed"] = false;
             result["server_signed"] = false;
             result["liquid"] = is_liquid;
