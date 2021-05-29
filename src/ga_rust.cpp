@@ -21,37 +21,28 @@ namespace sdk {
     namespace {
         static const std::string TOR_SOCKS5_PREFIX("socks5://");
 
-        class gdkrust_json {
-        public:
-            explicit gdkrust_json(const nlohmann::json& val)
-                : gdkrust_json(val.dump())
-            {
-            }
+        using json_ptr = std::shared_ptr<GDKRUST_json>;
 
-            explicit gdkrust_json(GDKRUST_json* json) { m_json = json; }
+        inline json_ptr convert_json(const std::string& v)
+        {
+            GDKRUST_json* p;
+            GDKRUST_convert_string_to_json(v.c_str(), &p);
+            return json_ptr(p, GDKRUST_destroy_json);
+        }
 
-            explicit gdkrust_json(const std::string& str) { GDKRUST_convert_string_to_json(str.c_str(), &m_json); }
+        inline json_ptr convert_json(const nlohmann::json& v) { return convert_json(v.dump()); }
 
-            static inline nlohmann::json from_serde(GDKRUST_json* json)
-            {
-                char* output;
-                GDKRUST_convert_json_to_string(json, &output);
+        static nlohmann::json convert_serde(GDKRUST_json* json)
+        {
+            char* output;
+            GDKRUST_convert_json_to_string(json, &output);
+            GDKRUST_destroy_json(json);
 
-                auto cppjson = nlohmann::json::parse(output);
+            auto cppjson = nlohmann::json::parse(output);
+            GDKRUST_destroy_string(output);
 
-                GDKRUST_destroy_json(json);
-                GDKRUST_destroy_string(output);
-
-                return cppjson;
-            }
-
-            GDKRUST_json* get() { return m_json; }
-
-            ~gdkrust_json() { GDKRUST_destroy_json(m_json); }
-
-        private:
-            GDKRUST_json* m_json;
-        };
+            return cppjson;
+        }
 
         static void check_code(const int32_t return_code)
         {
@@ -80,7 +71,7 @@ namespace sdk {
     ga_rust::ga_rust(const nlohmann::json& net_params)
         : session_impl(net_params)
     {
-        GDKRUST_create_session(&m_session, gdkrust_json(m_net_params.get_json()).get());
+        GDKRUST_create_session(&m_session, convert_json(m_net_params.get_json()).get());
     }
 
     ga_rust::~ga_rust()
@@ -127,10 +118,9 @@ namespace sdk {
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
     {
         GDKRUST_json* ret;
-        auto rustinput = gdkrust_json(input).get();
-        int res = GDKRUST_call_session(m_session, method.c_str(), rustinput, &ret);
+        int res = GDKRUST_call_session(m_session, method.c_str(), convert_json(input).get(), &ret);
         check_code(res);
-        return gdkrust_json::from_serde(ret);
+        return convert_serde(ret);
     }
 
     void ga_rust::connect()
@@ -285,7 +275,7 @@ namespace sdk {
     void ga_rust::GDKRUST_notif_handler(void* self_context, GDKRUST_json* json)
     {
         // "new" needed because we want that to be on the heap. the notif handler will free it
-        nlohmann::json* converted_heap = new nlohmann::json(gdkrust_json::from_serde(json));
+        nlohmann::json* converted_heap = new nlohmann::json(convert_serde(json));
         GA_json* as_ptr = reinterpret_cast<GA_json*>(converted_heap);
 
         ga_rust* self = static_cast<ga_rust*>(self_context);
@@ -613,8 +603,7 @@ namespace sdk {
 
     int32_t ga_rust::spv_verify_tx(const nlohmann::json& details)
     {
-        auto rustinput = gdkrust_json(details).get();
-        return GDKRUST_spv_verify_tx(rustinput);
+        return GDKRUST_spv_verify_tx(convert_json(details).get());
     }
 
 } // namespace sdk
