@@ -32,6 +32,7 @@ cpp_headers = [
 cpp_sources = [
            'amount.cpp',
            'assertion.cpp',
+           'auth_handler.cpp',
            'client_blob.cpp',
            'containers.cpp',
            'exception.cpp',
