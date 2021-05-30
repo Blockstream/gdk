@@ -9,22 +9,19 @@ namespace sdk {
     class session;
 
     struct auth_handler {
-        auth_handler(session& session, const std::string& action, std::shared_ptr<signer> signer);
-        auth_handler(session& session, const std::string& action);
+        auth_handler();
         auth_handler(const auth_handler&) = delete;
         auth_handler& operator=(const auth_handler&) = delete;
         auth_handler(auth_handler&&) = delete;
         auth_handler& operator=(auth_handler&&) = delete;
         virtual ~auth_handler();
 
-        virtual void request_code(const std::string& method);
-        void resolve_code(const std::string& code);
+        virtual void request_code(const std::string& method) = 0;
+        virtual void resolve_code(const std::string& code) = 0;
 
-        virtual nlohmann::json get_status() const;
-        void set_action(const std::string& action);
-        void set_data();
+        virtual nlohmann::json get_status() const = 0;
 
-        virtual void operator()();
+        virtual void operator()() = 0;
 
     protected:
         enum class state_type : uint32_t {
@@ -35,10 +32,32 @@ namespace sdk {
             error // User should handle the error
         };
 
-        void set_error(const std::string& error_message);
+        virtual void set_action(const std::string& action) = 0;
+        virtual void set_error(const std::string& error_message) = 0;
+        virtual void set_data() = 0;
 
-        void request_code_impl(const std::string& method);
+        virtual void request_code_impl(const std::string& method) = 0;
         virtual state_type call_impl() = 0;
+    };
+
+    struct auth_handler_impl : public auth_handler {
+        auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer);
+        auth_handler_impl(session& session, const std::string& action);
+        ~auth_handler_impl();
+
+        virtual void request_code(const std::string& method) override;
+        virtual void resolve_code(const std::string& code) final;
+
+        virtual nlohmann::json get_status() const final;
+
+        virtual void operator()() final;
+
+    protected:
+        virtual void set_action(const std::string& action) final;
+        virtual void set_error(const std::string& error_message) final;
+        virtual void set_data() final;
+
+        virtual void request_code_impl(const std::string& method) final;
 
         session& m_session;
         std::shared_ptr<signer> m_signer;
@@ -50,12 +69,13 @@ namespace sdk {
         std::string m_error; // Error details if any
         nlohmann::json m_result; // Result of any successful action
         nlohmann::json m_twofactor_data; // Actual data to send along with any call
-        state_type m_state; // Current state
+        auth_handler::state_type m_state; // Current state
         uint32_t m_attempts_remaining;
 
     private:
         void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);
     };
+
 } // namespace sdk
 } // namespace ga
 #endif

@@ -6,7 +6,7 @@
 
 namespace ga {
 namespace sdk {
-    class register_call : public auth_handler {
+    class register_call : public auth_handler_impl {
     public:
         register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic);
 
@@ -20,7 +20,7 @@ namespace sdk {
     auth_handler* get_login_call(
         session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
 
-    class login_call : public auth_handler {
+    class login_call : public auth_handler_impl {
     public:
         login_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic,
             const std::string& password);
@@ -39,7 +39,7 @@ namespace sdk {
         std::vector<uint32_t> m_ca_reqs;
     };
 
-    class login_with_pin_call : public auth_handler {
+    class login_with_pin_call : public auth_handler_impl {
     public:
         login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data);
 
@@ -50,7 +50,7 @@ namespace sdk {
         nlohmann::json m_pin_data;
     };
 
-    class watch_only_login_call : public auth_handler {
+    class watch_only_login_call : public auth_handler_impl {
     public:
         watch_only_login_call(session& session, const nlohmann::json& credential_data);
 
@@ -60,7 +60,7 @@ namespace sdk {
         nlohmann::json m_credential_data;
     };
 
-    class create_subaccount_call : public auth_handler {
+    class create_subaccount_call : public auth_handler_impl {
     public:
         create_subaccount_call(session& session, const nlohmann::json& details);
 
@@ -80,7 +80,7 @@ namespace sdk {
         uint32_t m_remaining_ca_addrs;
     };
 
-    class ack_system_message_call : public auth_handler {
+    class ack_system_message_call : public auth_handler_impl {
     public:
         ack_system_message_call(session& session, const std::string& msg);
 
@@ -94,7 +94,7 @@ namespace sdk {
         std::string m_master_xpub_bip32;
     };
 
-    class sign_transaction_call : public auth_handler {
+    class sign_transaction_call : public auth_handler_impl {
     public:
         sign_transaction_call(session& session, const nlohmann::json& tx_details);
 
@@ -105,7 +105,7 @@ namespace sdk {
         bool m_use_ae_protocol;
     };
 
-    class get_receive_address_call : public auth_handler {
+    class get_receive_address_call : public auth_handler_impl {
     public:
         get_receive_address_call(session& session, const nlohmann::json& details);
 
@@ -115,7 +115,7 @@ namespace sdk {
         const nlohmann::json m_details;
     };
 
-    class get_previous_addresses_call : public auth_handler {
+    class get_previous_addresses_call : public auth_handler_impl {
     public:
         get_previous_addresses_call(session& session, const nlohmann::json& details);
 
@@ -127,7 +127,7 @@ namespace sdk {
         size_t m_index;
     };
 
-    class create_transaction_call : public auth_handler {
+    class create_transaction_call : public auth_handler_impl {
     public:
         create_transaction_call(session& session, const nlohmann::json& details);
 
@@ -138,7 +138,7 @@ namespace sdk {
         nlohmann::json m_tx;
     };
 
-    class needs_unblind_call : public auth_handler {
+    class needs_unblind_call : public auth_handler_impl {
     protected:
         needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
 
@@ -192,7 +192,7 @@ namespace sdk {
         state_type wrapped_call_impl() override;
     };
 
-    class set_unspent_outputs_status_call : public auth_handler {
+    class set_unspent_outputs_status_call : public auth_handler_impl {
     public:
         set_unspent_outputs_status_call(session& session, const nlohmann::json& details);
 
@@ -210,7 +210,7 @@ namespace sdk {
         state_type wrapped_call_impl() override;
     };
 
-    class change_settings_call : public auth_handler {
+    class change_settings_call : public auth_handler_impl {
     public:
         change_settings_call(session& session, const nlohmann::json& settings);
 
@@ -221,7 +221,7 @@ namespace sdk {
         nlohmann::json m_nlocktime_value;
     };
 
-    class change_settings_twofactor_call : public auth_handler {
+    class change_settings_twofactor_call : public auth_handler_impl {
     public:
         change_settings_twofactor_call(
             session& session, const std::string& method_to_update, const nlohmann::json& details);
@@ -238,7 +238,7 @@ namespace sdk {
         bool m_enabling;
     };
 
-    class update_subaccount_call : public auth_handler {
+    class update_subaccount_call : public auth_handler_impl {
     public:
         update_subaccount_call(session& session, const nlohmann::json& details);
 
@@ -248,7 +248,7 @@ namespace sdk {
         const nlohmann::json m_details;
     };
 
-    class change_limits_call : public auth_handler {
+    class change_limits_call : public auth_handler_impl {
     public:
         change_limits_call(session& session, const nlohmann::json& details);
 
@@ -261,7 +261,7 @@ namespace sdk {
         bool m_is_decrease;
     };
 
-    class remove_account_call : public auth_handler {
+    class remove_account_call : public auth_handler_impl {
     public:
         explicit remove_account_call(session& session);
 
@@ -269,7 +269,7 @@ namespace sdk {
         state_type call_impl() override;
     };
 
-    class send_transaction_call final : public auth_handler {
+    class send_transaction_call final : public auth_handler_impl {
     public:
         send_transaction_call(session& session, const nlohmann::json& tx_details);
 
@@ -287,7 +287,7 @@ namespace sdk {
         bool m_under_limit;
     };
 
-    class twofactor_reset_call : public auth_handler {
+    class twofactor_reset_call : public auth_handler_impl {
     public:
         twofactor_reset_call(session& session, const std::string& email, bool is_dispute, bool is_undo);
 
@@ -300,7 +300,7 @@ namespace sdk {
         bool m_confirming;
     };
 
-    class twofactor_cancel_reset_call final : public auth_handler {
+    class twofactor_cancel_reset_call final : public auth_handler_impl {
     public:
         explicit twofactor_cancel_reset_call(session& session);
 
@@ -308,7 +308,7 @@ namespace sdk {
         state_type call_impl() override;
     };
 
-    class csv_time_call : public auth_handler {
+    class csv_time_call : public auth_handler_impl {
     public:
         explicit csv_time_call(session& session, const nlohmann::json& params);
 
@@ -318,7 +318,7 @@ namespace sdk {
         nlohmann::json m_params;
     };
 
-    class nlocktime_call : public auth_handler {
+    class nlocktime_call : public auth_handler_impl {
     public:
         explicit nlocktime_call(session& session, const nlohmann::json& params);
 

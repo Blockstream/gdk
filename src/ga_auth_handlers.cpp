@@ -110,7 +110,8 @@ namespace sdk {
     // Register
     //
     register_call::register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic)
-        : auth_handler(session, "get_xpubs", make_login_signer(session.get_network_parameters(), hw_device, mnemonic))
+        : auth_handler_impl(
+              session, "get_xpubs", make_login_signer(session.get_network_parameters(), hw_device, mnemonic))
         , m_mnemonic(mnemonic)
     {
         if (m_state == state_type::error) {
@@ -157,7 +158,7 @@ namespace sdk {
     //
     login_call::login_call(
         session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
-        : auth_handler(session, "get_xpubs",
+        : auth_handler_impl(session, "get_xpubs",
               make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
         , m_mnemonic(mnemonic)
         , m_password(password)
@@ -294,7 +295,7 @@ namespace sdk {
     // Login_with_pin
     //
     login_with_pin_call::login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data)
-        : auth_handler(session, "get_xpubs", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "get_xpubs", std::shared_ptr<signer>())
         , m_pin(pin)
         , m_pin_data(pin_data)
     {
@@ -328,7 +329,7 @@ namespace sdk {
     // Watch-only login
     //
     watch_only_login_call::watch_only_login_call(session& session, const nlohmann::json& credential_data)
-        : auth_handler(session, std::string(), std::shared_ptr<signer>())
+        : auth_handler_impl(session, std::string(), std::shared_ptr<signer>())
         , m_credential_data(credential_data)
     {
     }
@@ -369,7 +370,7 @@ namespace sdk {
     // Create subaccount
     //
     create_subaccount_call::create_subaccount_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "get_xpubs")
+        : auth_handler_impl(session, "get_xpubs")
         , m_details(details)
         , m_subaccount(0)
         , m_use_ae_protocol(false)
@@ -494,7 +495,7 @@ namespace sdk {
     }
 
     ack_system_message_call::ack_system_message_call(session& session, const std::string& msg)
-        : auth_handler(session, "sign_message")
+        : auth_handler_impl(session, "sign_message")
         , m_message(msg)
         , m_use_ae_protocol(false)
     {
@@ -561,7 +562,7 @@ namespace sdk {
     // Sign tx
     //
     sign_transaction_call::sign_transaction_call(session& session, const nlohmann::json& tx_details)
-        : auth_handler(session, "sign_tx")
+        : auth_handler_impl(session, "sign_tx")
         , m_tx_details(tx_details)
         , m_use_ae_protocol(false)
     {
@@ -698,7 +699,7 @@ namespace sdk {
     // Get receive address
     //
     get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "get_receive_address")
+        : auth_handler_impl(session, "get_receive_address")
         , m_details(details)
     {
         if (m_state == state_type::error) {
@@ -739,7 +740,7 @@ namespace sdk {
     // Get previous addresses
     //
     get_previous_addresses_call::get_previous_addresses_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "get_receive_address")
+        : auth_handler_impl(session, "get_receive_address")
         , m_details(details)
         , m_index(0)
     {
@@ -828,7 +829,7 @@ namespace sdk {
     // Create transaction
     //
     create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "create_transaction")
+        : auth_handler_impl(session, "create_transaction")
         , m_details(details)
     {
         if (m_state == state_type::error) {
@@ -915,7 +916,7 @@ namespace sdk {
     // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
     //
     needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
-        : auth_handler(session, name)
+        : auth_handler_impl(session, name)
         , m_details(details)
         , m_liquid_support(session.get_nonnull_impl()->get_signer()->get_liquid_support())
     {
@@ -1025,7 +1026,7 @@ namespace sdk {
     // Set unspent outputs status
     //
     set_unspent_outputs_status_call::set_unspent_outputs_status_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "set_utxo_status")
+        : auth_handler_impl(session, "set_utxo_status")
     {
         if (m_state == state_type::error) {
             return;
@@ -1088,7 +1089,7 @@ namespace sdk {
     // Change settings
     //
     change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
-        : auth_handler(session, std::string())
+        : auth_handler_impl(session, std::string())
         , m_settings(settings)
     {
         if (m_state == state_type::error) {
@@ -1128,7 +1129,7 @@ namespace sdk {
     //
     change_settings_twofactor_call::change_settings_twofactor_call(
         session& session, const std::string& method_to_update, const nlohmann::json& details)
-        : auth_handler(session, "enable_2fa")
+        : auth_handler_impl(session, "enable_2fa")
         , m_method_to_update(method_to_update)
         , m_details(details)
         , m_enabling(m_details.value("enabled", true))
@@ -1265,7 +1266,7 @@ namespace sdk {
     // Update subaccount
     //
     update_subaccount_call::update_subaccount_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "update_subaccount")
+        : auth_handler_impl(session, "update_subaccount")
         , m_details(details)
     {
         if (m_state != state_type::error) {
@@ -1290,7 +1291,7 @@ namespace sdk {
     // Change limits
     //
     change_limits_call::change_limits_call(session& session, const nlohmann::json& details)
-        : auth_handler(session, "change_tx_limits")
+        : auth_handler_impl(session, "change_tx_limits")
         , m_limit_details(details)
         , m_is_decrease(m_methods.empty() ? false : m_session.is_spending_limits_decrease(details))
     {
@@ -1326,7 +1327,7 @@ namespace sdk {
         // If we are requesting a code, then our limits changed elsewhere and
         // this is not a limit decrease
         m_is_decrease = false;
-        auth_handler::request_code(method);
+        auth_handler_impl::request_code(method);
     }
 
     auth_handler::state_type change_limits_call::call_impl()
@@ -1340,7 +1341,7 @@ namespace sdk {
     // Remove account
     //
     remove_account_call::remove_account_call(session& session)
-        : auth_handler(session, "remove_account")
+        : auth_handler_impl(session, "remove_account")
     {
     }
 
@@ -1354,7 +1355,7 @@ namespace sdk {
     // Send transaction
     //
     send_transaction_call::send_transaction_call(session& session, const nlohmann::json& tx_details)
-        : auth_handler(session, "send_raw_tx")
+        : auth_handler_impl(session, "send_raw_tx")
         , m_tx_details(tx_details)
         , m_twofactor_required(!m_methods.empty())
         , m_under_limit(false)
@@ -1418,7 +1419,7 @@ namespace sdk {
         m_under_limit = false;
         try {
             create_twofactor_data();
-            auth_handler::request_code(method);
+            auth_handler_impl::request_code(method);
         } catch (const std::exception& e) {
             set_error(e.what());
         }
@@ -1471,7 +1472,7 @@ namespace sdk {
     //
     twofactor_reset_call::twofactor_reset_call(
         session& session, const std::string& email, bool is_dispute, bool is_undo)
-        : auth_handler(session, is_undo ? "request_undo_reset" : "request_reset")
+        : auth_handler_impl(session, is_undo ? "request_undo_reset" : "request_reset")
         , m_reset_email(email)
         , m_is_dispute(is_dispute)
         , m_is_undo(is_undo)
@@ -1510,7 +1511,7 @@ namespace sdk {
     // Cancel 2fa reset
     //
     twofactor_cancel_reset_call::twofactor_cancel_reset_call(session& session)
-        : auth_handler(session, "cancel_reset")
+        : auth_handler_impl(session, "cancel_reset")
     {
     }
 
@@ -1524,7 +1525,7 @@ namespace sdk {
     // Set CSV time
     //
     csv_time_call::csv_time_call(session& session, const nlohmann::json& params)
-        : auth_handler(session, "set_csvtime")
+        : auth_handler_impl(session, "set_csvtime")
         , m_params(params)
     {
         if (m_state == state_type::error) {
@@ -1544,7 +1545,7 @@ namespace sdk {
     // Set nlocktime time
     //
     nlocktime_call::nlocktime_call(session& session, const nlohmann::json& params)
-        : auth_handler(session, "set_nlocktime")
+        : auth_handler_impl(session, "set_nlocktime")
         , m_params(params)
     {
         if (m_state == state_type::error) {

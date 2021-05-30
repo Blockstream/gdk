@@ -19,9 +19,16 @@ namespace sdk {
     } // namespace
 
     //
-    // Common auth handling
+    // Auth handling interface
     //
-    auth_handler::auth_handler(session& session, const std::string& action, std::shared_ptr<signer> signer)
+    auth_handler::auth_handler() {}
+
+    auth_handler::~auth_handler() {}
+
+    //
+    // Common auth handling implementation
+    //
+    auth_handler_impl::auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer)
         : m_session(session)
         , m_action(action)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
@@ -33,7 +40,7 @@ namespace sdk {
         }
     }
 
-    auth_handler::auth_handler(session& session, const std::string& action)
+    auth_handler_impl::auth_handler_impl(session& session, const std::string& action)
         : m_session(session)
         , m_action(action)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
@@ -45,9 +52,9 @@ namespace sdk {
         }
     }
 
-    auth_handler::~auth_handler() {}
+    auth_handler_impl::~auth_handler_impl() {}
 
-    void auth_handler::init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login)
+    void auth_handler_impl::init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login)
     {
         m_signer = signer;
         set_action(action);
@@ -58,7 +65,7 @@ namespace sdk {
         m_state = m_methods.empty() ? state_type::make_call : state_type::request_code;
     }
 
-    void auth_handler::set_action(const std::string& action)
+    void auth_handler_impl::set_action(const std::string& action)
     {
         m_action = action;
         m_is_hw_action = m_signer && m_signer->is_hw_device()
@@ -68,26 +75,26 @@ namespace sdk {
                    || action == "get_unspent_outputs" || action == "get_expired_deposits");
     }
 
-    void auth_handler::set_error(const std::string& error_message)
+    void auth_handler_impl::set_error(const std::string& error_message)
     {
         GDK_LOG_SEV(log_level::debug) << m_action << " call exception: " << error_message;
         m_state = state_type::error;
         m_error = error_message;
     }
 
-    void auth_handler::set_data()
+    void auth_handler_impl::set_data()
     {
         m_twofactor_data
             = { { "action", m_action }, { "device", m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json() } };
     }
 
-    void auth_handler::request_code(const std::string& method)
+    void auth_handler_impl::request_code(const std::string& method)
     {
         request_code_impl(method);
         m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
     }
 
-    void auth_handler::request_code_impl(const std::string& method)
+    void auth_handler_impl::request_code_impl(const std::string& method)
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::request_code);
 
@@ -100,14 +107,14 @@ namespace sdk {
         m_state = state_type::resolve_code;
     }
 
-    void auth_handler::resolve_code(const std::string& code)
+    void auth_handler_impl::resolve_code(const std::string& code)
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::resolve_code);
         m_code = code;
         m_state = state_type::make_call;
     }
 
-    void auth_handler::operator()()
+    void auth_handler_impl::operator()()
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::make_call);
         try {
@@ -149,7 +156,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json auth_handler::get_status() const
+    nlohmann::json auth_handler_impl::get_status() const
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::error || m_error.empty());
 
