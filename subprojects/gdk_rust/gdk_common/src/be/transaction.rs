@@ -1,11 +1,17 @@
 use crate::be::*;
 use crate::error::Error;
 use crate::model::Balances;
-use crate::scripts::ScriptType;
+use crate::scripts::{p2pkh_script, ScriptType};
 use crate::wally::asset_surjectionproof_size;
+use crate::{bail, ensure};
 use crate::{ElementsNetwork, NetworkId};
+use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
+use bitcoin::util::bip143::SigHashCache;
+use bitcoin::{PublicKey, SigHashType};
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
@@ -730,6 +736,51 @@ impl BETransaction {
             Self::Elements(ref mut tx) => tx.output.retain(|_| predicate()),
         }
         stripped_tx
+    }
+
+    /// Verify the given transaction input. Only supports the script types that
+    /// can be managed using gdk-rust. Implemented for Bitcoin only.
+    ///
+    /// The `hashcache` argument should be initialized as None for every tx and
+    /// reused for its inputs.
+    pub fn verify_input_sig<'a>(
+        &'a self,
+        secp: &Secp256k1<impl secp256k1::Verification>,
+        hashcache: &mut Option<SigHashCache<&'a bitcoin::Transaction>>,
+        inv: usize,
+        public_key: &PublicKey,
+        value: u64,
+        script_type: ScriptType,
+    ) -> Result<(), Error> {
+        let tx = if let BETransaction::Bitcoin(tx) = self {
+            tx
+        } else {
+            // Signature verification is currently only used on Bitcoin
+            unimplemented!();
+        };
+        let script_code = p2pkh_script(public_key);
+        let hash = if script_type.is_segwit() {
+            let hashcache = hashcache.get_or_insert_with(|| SigHashCache::new(tx));
+            hashcache.signature_hash(inv, &script_code, value, SigHashType::All)
+        } else {
+            tx.signature_hash(inv, &script_code, SigHashType::All as u32)
+        };
+        let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
+        let mut sig = match script_type {
+            ScriptType::P2wpkh | ScriptType::P2shP2wpkh => {
+                tx.input[inv].witness.get(0).cloned().ok_or(Error::InputValidationFailed)
+            }
+            ScriptType::P2pkh => match tx.input[inv].script_sig.instructions().next() {
+                Some(Ok(Instruction::PushBytes(sig))) => Ok(sig.to_vec()),
+                _ => Err(Error::InputValidationFailed),
+            },
+        }?;
+
+        // We only ever create SIGHASH_ALL transactions
+        ensure!(sig.pop() == Some(SigHashType::All as u8), Error::InputValidationFailed);
+
+        secp.verify(&message, &Signature::from_der(&sig)?, &public_key.key)?;
+        Ok(())
     }
 }
 

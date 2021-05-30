@@ -1,3 +1,5 @@
+use electrum_client::ElectrumApi;
+use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetNextAccountOpt, RefreshAssets,
     RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
@@ -398,6 +400,16 @@ fn rbf() {
     let txitem = test_session.get_tx_from_list(1, &txid);
     assert_eq!(txitem.fee_rate / 1000, 43);
     assert_eq!(txitem.memo, "poz qux");
+
+    // Transactions that are not properly signed should be rejected, to prevent the user from
+    // being tricked into fee-bumping them.
+    let mut tx = test_session.electrs.transaction_get(&txitem.txhash.parse().unwrap()).unwrap();
+    tx.input[0].witness[0][5] = 0;
+    let tx = BETransaction::Bitcoin(tx);
+    let wallet = test_session.session.get_wallet().unwrap();
+    let account = wallet.get_account(1).unwrap();
+    let is_valid = account.verify_own_txs(&[(tx.txid(), tx)]).unwrap();
+    assert_eq!(is_valid, false);
 }
 
 // Test the low-level spv_cross_validate()

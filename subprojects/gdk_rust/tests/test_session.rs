@@ -32,7 +32,7 @@ const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 #[allow(unused)]
 pub struct TestSession {
     node: Client,
-    electrs: RawClient<ElectrumPlaintextStream>,
+    pub electrs: RawClient<ElectrumPlaintextStream>,
     electrs_header: RawClient<ElectrumPlaintextStream>,
     pub session: ElectrumSession,
     tx_status: u64,

@@ -1217,7 +1217,7 @@ impl Syncer {
                 acc_store.indexes = last_used;
                 acc_store
                     .all_txs
-                    .extend(new_txs.txs.into_iter().map(|(txid, tx)| (txid, tx.into())));
+                    .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
                 acc_store.unblinded.extend(new_txs.unblinds);
 
                 // height map is used for the live list of transactions, since due to reorg or rbf tx
@@ -1228,8 +1228,13 @@ impl Syncer {
                 acc_store.paths.extend(scripts.into_iter());
 
                 store_write.flush()?;
+                drop(store_write);
 
                 updated_accounts.insert(account.num());
+
+                // the transactions are first indexed into the db and then verified so that all the prevouts
+                // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
+                account.verify_own_txs(&new_txs.txs)?;
                 true
             } else {
                 false

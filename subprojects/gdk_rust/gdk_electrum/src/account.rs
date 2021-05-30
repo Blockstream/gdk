@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::str::FromStr;
 
-use log::{debug, info, trace};
+use log::{debug, info, trace, warn};
 use rand::Rng;
 
 use bitcoin::blockdata::script;
@@ -46,13 +46,14 @@ pub struct Account {
     account_num: u32,
     script_type: ScriptType,
     xprv: ExtendedPrivKey,
+    xpub: ExtendedPubKey,
     chains: [ExtendedPubKey; 2],
     network: Network,
     store: Store,
     // elements only
     master_blinding: Option<MasterBlindingKey>,
+
     _path: DerivationPath,
-    _xpub: ExtendedPubKey,
 }
 
 impl Account {
@@ -80,12 +81,12 @@ impl Account {
             account_num,
             script_type,
             xprv,
+            xpub,
             chains,
             store,
             master_blinding,
             // currently unused, but seems useful to have around
             _path: path,
-            _xpub: xpub,
         })
     }
 
@@ -562,6 +563,62 @@ impl Account {
             }
         }
         None
+    }
+
+    /// Verify that our own (outgoing) transactions were properly signed by the wallet.
+    /// This is needed to prevent malicious servers from getting the user to fee-bump a
+    /// transaction that they never signed in the first place.
+    ///
+    /// Invalid transactions will be removed from the db and result in an Ok(false).
+    pub fn verify_own_txs(&self, txs: &[(BETxid, BETransaction)]) -> Result<bool, Error> {
+        let mut all_valid = true;
+        let mut store_write = self.store.write().unwrap();
+        let acc_store = store_write.account_cache_mut(self.account_num).unwrap();
+
+        for (txid, tx) in txs {
+            info!("verifying tx: {}", txid);
+            // Confirmed transactions and Elements transactions cannot be fee-bumped and therefore don't require verification
+            if !matches!(tx, BETransaction::Bitcoin(_))
+                || acc_store.heights.get(txid).map_or(true, |h| h.is_some())
+            {
+                continue;
+            }
+            let mut hashcache = None;
+            for (vin, outpoint) in tx.previous_outputs().iter().enumerate() {
+                let script = acc_store
+                    .all_txs
+                    .get_previous_output_script_pubkey(outpoint)
+                    .expect("prevout to be indexed");
+                let public_key = match acc_store.paths.get(&script) {
+                    Some(path) => self.xpub.derive_pub(&EC, path)?,
+                    // We only need to check wallet-owned inputs
+                    None => continue,
+                }
+                .public_key;
+                let value = acc_store
+                    .all_txs
+                    .get_previous_output_value(&outpoint, &acc_store.unblinded)
+                    .expect("own prevout to have known value");
+                if let Err(err) = tx.verify_input_sig(
+                    &EC,
+                    &mut hashcache,
+                    vin,
+                    &public_key,
+                    value,
+                    self.script_type,
+                ) {
+                    warn!("tx {} verification failed: {:?}", txid, err);
+                    acc_store.all_txs.remove(txid);
+                    acc_store.heights.remove(txid);
+                    all_valid = false;
+                    break;
+                }
+            }
+        }
+        if !all_valid {
+            store_write.flush()?;
+        }
+        Ok(all_valid)
     }
 }
 
