@@ -1,5 +1,7 @@
 #include "session_impl.hpp"
 #include "exception.hpp"
+#include "ga_rust.hpp"
+#include "ga_session.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 
@@ -14,24 +16,22 @@ namespace sdk {
             ret[key] = src.value(key, ret.value(key, default_));
         }
 
-        static network_parameters get_network_overrides(const nlohmann::json& user_params)
+        static network_parameters get_network_overrides(const nlohmann::json& user_params, nlohmann::json& defaults)
         {
-            // Get the registered network parameters the passed in parameters are based on
-            auto ret = network_parameters::get(user_params.at("name"));
             // Set override-able settings from the users parameters
-            set_override(ret, "electrum_tls", user_params, false);
-            set_override(ret, "electrum_url", user_params, std::string());
-            set_override(ret, "log_level", user_params, "none");
-            set_override(ret, "spv_multi", user_params, false);
-            set_override(ret, "spv_servers", user_params, nlohmann::json::array());
-            set_override(ret, "spv_enabled", user_params, false);
-            set_override(ret, "use_tor", user_params, false);
-            set_override(ret, "user_agent", user_params, std::string());
+            set_override(defaults, "electrum_tls", user_params, false);
+            set_override(defaults, "electrum_url", user_params, std::string());
+            set_override(defaults, "log_level", user_params, "none");
+            set_override(defaults, "spv_multi", user_params, false);
+            set_override(defaults, "spv_servers", user_params, nlohmann::json::array());
+            set_override(defaults, "spv_enabled", user_params, false);
+            set_override(defaults, "use_tor", user_params, false);
+            set_override(defaults, "user_agent", user_params, std::string());
             // FIXME: Remove this by fetching it directly where needed
             const std::string datadir = gdk_config().value("datadir", std::string());
             GDK_RUNTIME_ASSERT(!datadir.empty());
-            ret["state_dir"] = datadir + "/state";
-            return network_parameters{ ret };
+            defaults["state_dir"] = datadir + "/state";
+            return network_parameters{ defaults };
         }
 
         static void configure_logging(const network_parameters& net_params)
@@ -52,8 +52,24 @@ namespace sdk {
         }
     } // namespace
 
-    session_impl::session_impl(const nlohmann::json& net_params)
-        : m_net_params(get_network_overrides(net_params))
+    boost::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
+    {
+        auto defaults = network_parameters::get(net_params.value("name", std::string()));
+        const auto type = net_params.value("server_type", defaults.value("server_type", std::string()));
+
+        if (type == "green") {
+            return boost::make_shared<ga_session>(net_params, defaults);
+        }
+#ifdef BUILD_GDK_RUST
+        if (type == "electrum") {
+            return boost::make_shared<ga_rust>(net_params, defaults);
+        }
+#endif
+        throw user_error("Unknown server_type");
+    }
+
+    session_impl::session_impl(const nlohmann::json& net_params, nlohmann::json& defaults)
+        : m_net_params(get_network_overrides(net_params, defaults))
         , m_debug_logging(m_net_params.log_level() == "debug")
     {
         configure_logging(m_net_params);

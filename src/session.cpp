@@ -10,9 +10,6 @@
 
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
-#ifdef BUILD_GDK_RUST
-#include "ga_rust.hpp"
-#endif
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -125,20 +122,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(init_done, "You must call GA_init first");
             GDK_RUNTIME_ASSERT_MSG(!get_impl(), "session already connected");
 
-            const auto network = network_parameters::get(net_params.value("name", std::string()));
-            const auto type = net_params.value("server_type", network.value("server_type", std::string()));
-
-            session_ptr session_p;
-
-            if (type == "green") {
-                session_p = boost::make_shared<ga_session>(net_params);
-#ifdef BUILD_GDK_RUST
-            } else if (type == "electrum") {
-                session_p = boost::make_shared<ga_rust>(net_params);
-#endif
-            } else {
-                GDK_RUNTIME_ASSERT_MSG(false, "server_type field unknown value");
-            }
+            session_ptr session_p = session_impl::create(net_params);
 
             boost::weak_ptr<session_impl> weak_session = session_p;
             session_p->set_ping_fail_handler([weak_session] {

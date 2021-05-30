@@ -40,7 +40,7 @@ namespace sdk {
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
-        explicit ga_session(const nlohmann::json& net_params);
+        ga_session(const nlohmann::json& net_params, nlohmann::json& defaults);
         ~ga_session();
 
         void connect();

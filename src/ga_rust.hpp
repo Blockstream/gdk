@@ -10,10 +10,8 @@ namespace sdk {
 
     class ga_rust final : public session_impl {
     public:
-        explicit ga_rust(const nlohmann::json& net_params);
+        ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults);
         ~ga_rust();
-
-        nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
 
         void on_failed_login();
 
@@ -156,6 +154,8 @@ namespace sdk {
         static int32_t spv_verify_tx(const nlohmann::json& details);
 
     private:
+        nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
+
         static void GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json);
 
         std::shared_ptr<tor_controller> m_tor_ctrl;

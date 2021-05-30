@@ -421,8 +421,8 @@ namespace sdk {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
     };
 
-    ga_session::ga_session(const nlohmann::json& net_params)
-        : session_impl(net_params)
+    ga_session::ga_session(const nlohmann::json& net_params, nlohmann::json& defaults)
+        : session_impl(net_params, defaults)
         , m_proxy(socksify(net_params.value("proxy", std::string{})))
         , m_has_network_proxy(!m_proxy.empty())
         , m_io()

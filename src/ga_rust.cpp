@@ -68,8 +68,8 @@ namespace sdk {
         }
     } // namespace
 
-    ga_rust::ga_rust(const nlohmann::json& net_params)
-        : session_impl(net_params)
+    ga_rust::ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults)
+        : session_impl(net_params, defaults)
     {
         GDKRUST_create_session(&m_session, convert_json(m_net_params.get_json()).get());
     }
