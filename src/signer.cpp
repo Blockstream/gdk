@@ -225,6 +225,11 @@ namespace sdk {
         // FIXME: Remove this function when the wallets are upgraded to use "supports_ae_protocol"
         nlohmann::json ret = hw_device;
         json_rename_key(ret, "ae_protocol_support_level", "supports_ae_protocol");
+        const bool overwrite_null = true;
+        json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
+        json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
+        json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
+        json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
         return ret;
     }
 
@@ -241,19 +246,22 @@ namespace sdk {
         if (get_ae_protocol_support() != ae_protocol_support_level::none) {
             return false; // Always use AE if the HW supports it
         }
-        return json_get_value(m_hw_device, "supports_low_r", false);
+        return m_hw_device["supports_low_r"];
     }
+
     bool hardware_signer::supports_arbitrary_scripts() const
     {
-        return json_get_value(m_hw_device, "supports_arbitrary_scripts", false);
+        return m_hw_device["supports_arbitrary_scripts"];
     }
+
     liquid_support_level hardware_signer::get_liquid_support() const
     {
-        return json_get_value(m_hw_device, "supports_liquid", liquid_support_level::none);
+        return m_hw_device["supports_liquid"];
     }
+
     ae_protocol_support_level hardware_signer::get_ae_protocol_support() const
     {
-        return json_get_value(m_hw_device, "supports_ae_protocol", ae_protocol_support_level::none);
+        return m_hw_device["supports_ae_protocol"];
     }
 
     bool hardware_signer::is_hw_device() const { return true; }
