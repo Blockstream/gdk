@@ -197,17 +197,6 @@ fn socksify(proxy: Option<&str>) -> Option<String> {
 }
 
 impl ElectrumSession {
-    pub fn new_session(
-        network: Network,
-        db_root: &str,
-        proxy: Option<&str>,
-        url: ElectrumUrl,
-    ) -> Result<Self, Error> {
-        Ok(Self::create_session(network, db_root, proxy, url))
-    }
-}
-
-impl ElectrumSession {
     pub fn create_session(
         network: Network,
         db_root: &str,

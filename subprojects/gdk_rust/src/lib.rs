@@ -210,8 +210,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
             let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
                 .map_err(|x| json!(x))?;
 
-            let session = ElectrumSession::new_session(parsed_network, db_root, proxy, url)
-                .map_err(|x| json!(x))?;
+            let session = ElectrumSession::create_session(parsed_network, db_root, proxy, url);
             let backend = GdkBackend::Electrum(session);
 
             // some time in the past
