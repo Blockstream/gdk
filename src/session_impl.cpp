@@ -3,7 +3,6 @@
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
-#include "session.hpp"
 
 namespace ga {
 namespace sdk {
@@ -27,10 +26,6 @@ namespace sdk {
             set_override(defaults, "spv_enabled", user_params, false);
             set_override(defaults, "use_tor", user_params, false);
             set_override(defaults, "user_agent", user_params, std::string());
-            // FIXME: Remove this by fetching it directly where needed
-            const std::string datadir = gdk_config().value("datadir", std::string());
-            GDK_RUNTIME_ASSERT(!datadir.empty());
-            defaults["state_dir"] = datadir + "/state";
             return network_parameters{ defaults };
         }
 
