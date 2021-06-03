@@ -316,10 +316,8 @@ impl Session<Error> for ElectrumSession {
                 info!("setting db_root to {:?}", self.data_root);
             }
 
-            if self.proxy.is_none() {
-                self.proxy = socksify(net_params["proxy"].as_str());
-                info!("setting proxy to {:?}", self.proxy);
-            }
+            self.proxy = socksify(net_params["proxy"].as_str());
+            info!("setting proxy to {:?}", self.proxy);
 
             let mnemonic = match self.get_mnemonic() {
                 Ok(mnemonic) => Some(mnemonic.clone()),
