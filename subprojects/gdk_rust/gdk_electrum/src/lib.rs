@@ -197,15 +197,10 @@ fn socksify(proxy: Option<&str>) -> Option<String> {
 }
 
 impl ElectrumSession {
-    pub fn create_session(
-        network: Network,
-        db_root: &str,
-        proxy: Option<&str>,
-        url: ElectrumUrl,
-    ) -> Self {
+    pub fn create_session(network: Network, db_root: &str, url: ElectrumUrl) -> Self {
         Self {
             data_root: db_root.to_string(),
-            proxy: socksify(proxy),
+            proxy: None,
             network,
             url,
             wallet: None,

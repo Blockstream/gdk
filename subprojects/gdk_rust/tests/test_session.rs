@@ -217,11 +217,10 @@ pub fn setup(
     let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
 
     let db_root = format!("{}", db_root_dir.path().display());
-    let proxy = Some("");
     let url = determine_electrum_url_from_net(&network).unwrap();
 
     info!("creating gdk session");
-    let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
+    let mut session = ElectrumSession::create_session(network.clone(), &db_root, url);
 
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
