@@ -249,15 +249,9 @@ namespace sdk {
         return m_hw_device["supports_low_r"];
     }
 
-    bool hardware_signer::supports_arbitrary_scripts() const
-    {
-        return m_hw_device["supports_arbitrary_scripts"];
-    }
+    bool hardware_signer::supports_arbitrary_scripts() const { return m_hw_device["supports_arbitrary_scripts"]; }
 
-    liquid_support_level hardware_signer::get_liquid_support() const
-    {
-        return m_hw_device["supports_liquid"];
-    }
+    liquid_support_level hardware_signer::get_liquid_support() const { return m_hw_device["supports_liquid"]; }
 
     ae_protocol_support_level hardware_signer::get_ae_protocol_support() const
     {

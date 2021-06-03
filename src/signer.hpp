@@ -21,7 +21,7 @@ namespace sdk {
     enum class ae_protocol_support_level : uint32_t {
         none = 0, // AE signing protocol is not supported, only vanilla EC sigs
         optional = 1, // Both AE and vanilla EC sigs are supported
-        mandatory=2 // AE protocol mandatory, vanilla EC sigs not supported
+        mandatory = 2 // AE protocol mandatory, vanilla EC sigs not supported
     };
 
     //
