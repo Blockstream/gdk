@@ -308,14 +308,6 @@ impl Session<Error> for ElectrumSession {
         info!("connect network:{:?} state:{:?}", self.network, self.state);
 
         if self.state == State::Disconnected {
-            if self.data_root == "" {
-                self.data_root = net_params["state_dir"]
-                    .as_str()
-                    .map(|x| x.to_string())
-                    .unwrap_or_else(|| "".into());
-                info!("setting db_root to {:?}", self.data_root);
-            }
-
             self.proxy = socksify(net_params["proxy"].as_str());
             info!("setting proxy to {:?}", self.proxy);
 

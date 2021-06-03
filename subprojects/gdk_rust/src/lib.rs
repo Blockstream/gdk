@@ -201,7 +201,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let parsed_network = parsed_network.unwrap();
 
-    let db_root = network["db_root"].as_str().unwrap_or("");
+    let db_root = network["state_dir"].as_str().unwrap_or("");
 
     match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),

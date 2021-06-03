@@ -71,7 +71,9 @@ namespace sdk {
     ga_rust::ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults)
         : session_impl(net_params, defaults)
     {
-        GDKRUST_create_session(&m_session, convert_json(m_net_params.get_json()).get());
+        nlohmann::json network{ m_net_params.get_json() };
+        network["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
+        GDKRUST_create_session(&m_session, convert_json(network).get());
     }
 
     ga_rust::~ga_rust()
@@ -147,7 +149,6 @@ namespace sdk {
             GDK_LOG_SEV(log_level::info) << "tor_socks address " << full_socks5;
         }
 
-        net_params["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
         call_session("connect", net_params);
     }
 
