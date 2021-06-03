@@ -12,16 +12,16 @@ namespace sdk {
 
     // Enum to represent the "level" of support for Liquid on an HW
     enum class liquid_support_level : uint32_t {
-        none, // Liquid is not supported
-        lite, // Liquid is supported, but the unblinding is done on the host
-        full // Everything is done on the HW
+        none = 0, // Liquid is not supported
+        lite = 1, // Liquid is supported, but the unblinding is done on the host
+        full = 2 // Everything is done on the HW
     };
 
     // Enum to indicate whether AE-protocol signatures are supported/mandatory
     enum class ae_protocol_support_level : uint32_t {
-        none, // AE signing protocol is not supported, only vanilla EC sigs
-        optional, // Both AE and vanilla EC sigs are supported
-        mandatory // AE protocol mandatory, vanilla EC sigs not supported
+        none = 0, // AE signing protocol is not supported, only vanilla EC sigs
+        optional = 1, // Both AE and vanilla EC sigs are supported
+        mandatory=2 // AE protocol mandatory, vanilla EC sigs not supported
     };
 
     //
