@@ -364,7 +364,11 @@ impl TestSession {
         //let init_sat_addr = self.balance_addr(address);
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
-        let fee_rate = 1000;
+        let fee_rate = if asset_id.is_none() {
+            1000
+        } else {
+            100
+        };
         create_opt.fee_rate = Some(fee_rate);
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),

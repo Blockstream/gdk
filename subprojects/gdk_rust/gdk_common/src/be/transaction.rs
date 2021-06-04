@@ -276,15 +276,16 @@ impl BETransaction {
             BETransaction::Elements(mut tx) => {
                 for input in tx.input.iter_mut() {
                     let mut tx_wit = TxInWitness::default();
-                    tx_wit.script_witness = vec![vec![0u8; 72], vec![0u8; 33]]; // considering signature sizes (72) and compressed public key (33)
+                    tx_wit.script_witness = script_type.mock_witness();
                     input.witness = tx_wit;
-                    input.script_sig = vec![0u8; 23].into(); // p2shwpkh redeem script size
+                    input.script_sig = script_type.mock_script_sig().into();
                 }
                 for _ in 0..more_changes {
                     let new_out = elements::TxOut {
                         asset: confidential::Asset::Confidential(0u8, [0u8; 32]),
                         value: confidential::Value::Confidential(0u8, [0u8; 32]),
                         nonce: confidential::Nonce::Confidential(0u8, [0u8; 32]),
+                        script_pubkey: script_type.mock_script_pubkey().into(),
                         ..Default::default()
                     };
                     tx.output.push(new_out);
@@ -295,10 +296,12 @@ impl BETransaction {
                         surjection_proof: vec![0u8; sur_size],
                         rangeproof: vec![0u8; 4174],
                     };
-                    output.script_pubkey = vec![0u8; 21].into();
                 }
 
-                tx.output.push(elements::TxOut::default()); // mockup for the explicit fee output
+                tx.output.push(elements::TxOut::new_fee(
+                    0,
+                    elements::issuance::AssetId::from_slice(&[0u8; 32]).unwrap(),
+                )); // mockup for the explicit fee output
                 let vbytes = tx.get_weight() as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
                 info!(

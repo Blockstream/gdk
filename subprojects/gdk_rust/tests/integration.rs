@@ -100,7 +100,7 @@ fn liquid() {
     test_session.fund(1_000_000, None);
     let mut utxos = test_session.utxo(
         "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
-        vec![99652226, 1_000_000],
+        vec![99652062, 1_000_000],
     );
     utxos
         .0
@@ -110,7 +110,7 @@ fn liquid() {
     test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None);
     test_session.utxo(
         "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
-        vec![989748, 99652226],
+        vec![989744, 99652062],
     ); // the smallest utxo has been spent
 
     // test_session.check_decryption(103, &[&txid]); // TODO restore after sorting out https://github.com/ElementsProject/rust-elements/pull/61
