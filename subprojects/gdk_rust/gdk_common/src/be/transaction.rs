@@ -695,7 +695,7 @@ impl BETransaction {
                             outpoint,
                             unblinded.value
                         );
-                        let asset_id_str = unblinded.asset_hex();
+                        let asset_id_str = unblinded.asset().to_hex();
                         *result.entry(asset_id_str).or_default() -= unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -712,7 +712,7 @@ impl BETransaction {
                             outpoint,
                             unblinded.value
                         );
-                        let asset_id_str = unblinded.asset_hex();
+                        let asset_id_str = unblinded.asset().to_hex();
                         *result.entry(asset_id_str).or_default() += unblinded.value as i64;
                         // TODO check overflow
                     }
