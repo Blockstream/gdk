@@ -8,6 +8,7 @@ use crate::{ElementsNetwork, NetworkId};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
@@ -174,11 +175,11 @@ impl BETransaction {
         }
     }
 
-    pub fn output_asset_hex(
+    pub fn output_asset(
         &self,
         vout: u32,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-    ) -> Option<String> {
+    ) -> Option<elements::issuance::AssetId> {
         match self {
             Self::Bitcoin(_) => None,
             Self::Elements(tx) => {
@@ -186,7 +187,7 @@ impl BETransaction {
                     txid: tx.txid(),
                     vout,
                 };
-                Some(all_unblinded.get(&outpoint).unwrap().asset_hex())
+                Some(all_unblinded.get(&outpoint).unwrap().asset())
             }
         }
     }
@@ -343,8 +344,9 @@ impl BETransaction {
                 let mut different_assets = HashSet::new();
                 for input in tx.input.iter() {
                     let asset_hex = all_txs
-                        .get_previous_output_asset_hex(input.previous_output, unblinded)
-                        .unwrap();
+                        .get_previous_output_asset(input.previous_output, unblinded)
+                        .unwrap()
+                        .to_hex();
                     different_assets.insert(asset_hex.clone());
                 }
                 if different_assets.is_empty() {
@@ -400,8 +402,9 @@ impl BETransaction {
 
                 for input in tx.input.iter() {
                     let asset_hex = all_txs
-                        .get_previous_output_asset_hex(input.previous_output, unblinded)
-                        .unwrap();
+                        .get_previous_output_asset(input.previous_output, unblinded)
+                        .unwrap()
+                        .to_hex();
                     let value = all_txs
                         .get_previous_output_value(
                             &BEOutPoint::Elements(input.previous_output),
@@ -473,8 +476,9 @@ impl BETransaction {
                 let mut inputs_asset_amounts: HashMap<String, u64> = HashMap::new();
                 for input in tx.input.iter() {
                     let asset_hex = all_txs
-                        .get_previous_output_asset_hex(input.previous_output, unblinded)
-                        .unwrap();
+                        .get_previous_output_asset(input.previous_output, unblinded)
+                        .unwrap()
+                        .to_hex();
                     let value = all_txs
                         .get_previous_output_value(
                             &BEOutPoint::Elements(input.previous_output),
@@ -727,12 +731,11 @@ impl BETransaction {
         mut f: F,
     ) -> BETransaction
     where
-        F: FnMut(u32, BEScript, Option<String>) -> bool,
+        F: FnMut(u32, BEScript, Option<elements::issuance::AssetId>) -> bool,
     {
         let mut vout = 0u32;
         let mut predicate = || {
-            let matched =
-                f(vout, self.output_script(vout), self.output_asset_hex(vout, all_unblinded));
+            let matched = f(vout, self.output_script(vout), self.output_asset(vout, all_unblinded));
             vout += 1;
             matched
         };
@@ -832,14 +835,14 @@ impl BETransactions {
         self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_value(outpoint.vout(), &all_unblinded))
     }
 
-    pub fn get_previous_output_asset_hex(
+    pub fn get_previous_output_asset(
         &self,
         outpoint: elements::OutPoint,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-    ) -> Option<String> {
+    ) -> Option<elements::issuance::AssetId> {
         self.0
             .get(&outpoint.txid.into())
-            .map(|txe| txe.tx.output_asset_hex(outpoint.vout, &all_unblinded).unwrap())
+            .map(|txe| txe.tx.output_asset(outpoint.vout, &all_unblinded).unwrap())
     }
 }
 
