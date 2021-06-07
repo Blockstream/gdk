@@ -32,15 +32,30 @@ pub struct UTXOInfo {
 }
 
 impl UTXOInfo {
-    pub fn new(
-        asset: String,
+    pub fn new_bitcoin(
         value: u64,
         script: BEScript,
         height: Option<u32>,
         path: DerivationPath,
     ) -> Self {
         UTXOInfo {
-            asset,
+            asset: "btc".to_string(),
+            value,
+            script,
+            height,
+            path,
+        }
+    }
+
+    pub fn new_elements(
+        asset: elements::issuance::AssetId,
+        value: u64,
+        script: BEScript,
+        height: Option<u32>,
+        path: DerivationPath,
+    ) -> Self {
+        UTXOInfo {
+            asset: asset.to_hex(),
             value,
             script,
             height,

@@ -555,21 +555,31 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
         let mut utxos = vec![];
         for (asset, v) in unspent_outputs.0.iter() {
             for e in v {
-                let outpoint = match &asset[..] {
-                    "btc" => BEOutPoint::new_bitcoin(bitcoin::Txid::from_hex(&e.txhash)?, e.pt_idx),
-                    _ => BEOutPoint::new_elements(elements::Txid::from_hex(&e.txhash)?, e.pt_idx),
-                };
                 let height = match e.block_height {
                     0 => None,
                     n => Some(n),
                 };
-                let utxo_info = UTXOInfo::new(
-                    asset.to_string(),
-                    e.satoshi,
-                    e.scriptpubkey.clone(),
-                    height,
-                    e.derivation_path.clone(),
-                );
+                let (outpoint, utxo_info) = match &asset[..] {
+                    "btc" => (
+                        BEOutPoint::new_bitcoin(bitcoin::Txid::from_hex(&e.txhash)?, e.pt_idx),
+                        UTXOInfo::new_bitcoin(
+                            e.satoshi,
+                            e.scriptpubkey.clone().into(),
+                            height,
+                            e.derivation_path.clone(),
+                        ),
+                    ),
+                    _ => (
+                        BEOutPoint::new_elements(elements::Txid::from_hex(&e.txhash)?, e.pt_idx),
+                        UTXOInfo::new_elements(
+                            elements::issuance::AssetId::from_hex(asset)?,
+                            e.satoshi,
+                            e.scriptpubkey.clone().into(),
+                            height,
+                            e.derivation_path.clone(),
+                        ),
+                    ),
+                };
                 utxos.push((outpoint, utxo_info));
             }
         }

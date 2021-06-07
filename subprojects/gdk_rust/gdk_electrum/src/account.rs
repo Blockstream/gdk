@@ -302,8 +302,7 @@ impl Account {
                     .map(|(outpoint, output, path)| {
                         (
                             outpoint,
-                            UTXOInfo::new(
-                                "btc".to_string(),
+                            UTXOInfo::new_bitcoin(
                                 output.value,
                                 output.script_pubkey.into(),
                                 height.clone(),
@@ -341,8 +340,8 @@ impl Account {
                                     }
                                     return Some((
                                         outpoint,
-                                        UTXOInfo::new(
-                                            unblinded.asset().to_hex(),
+                                        UTXOInfo::new_elements(
+                                            unblinded.asset(),
                                             unblinded.value,
                                             output.script_pubkey.into(),
                                             height.clone(),
