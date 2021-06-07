@@ -1011,7 +1011,7 @@ pub fn create_tx(
         let mut needs = tx.needs(
             fee_rate,
             send_all,
-            network.policy_asset.clone(),
+            network.policy_asset_id().ok(),
             &acc_store.all_txs,
             &acc_store.unblinded,
             account.script_type,
@@ -1063,7 +1063,7 @@ pub fn create_tx(
     );
     let changes = tx.changes(
         estimated_fee,
-        network.policy_asset.clone(),
+        network.policy_asset_id().ok(),
         &acc_store.all_txs,
         &acc_store.unblinded,
     ); // Vec<Change> asset, value
