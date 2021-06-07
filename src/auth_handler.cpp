@@ -3,6 +3,7 @@
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "session.hpp"
 #include "session_impl.hpp"
 
@@ -156,6 +157,12 @@ namespace sdk {
         }
     }
 
+    bool auth_handler_impl::is_hw_action() const { return m_is_hw_action; }
+
+    session& auth_handler_impl::get_session() const { return m_session; }
+
+    std::shared_ptr<signer> auth_handler_impl::get_signer() const { return m_signer; }
+
     nlohmann::json auth_handler_impl::get_status() const
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::error || m_error.empty());
@@ -206,6 +213,101 @@ namespace sdk {
         status["action"] = m_action;
         status["device"] = m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json();
         return status;
+    }
+
+    //
+    // An auth handler that auto-resolves HW actions against a SW implementation
+    //
+    auto_auth_handler::auto_auth_handler(auth_handler* handler)
+        : auth_handler()
+        , m_handler(handler)
+    {
+        GDK_RUNTIME_ASSERT(handler != nullptr);
+        step();
+    }
+
+    auto_auth_handler::~auto_auth_handler() { delete m_handler; }
+
+    void auto_auth_handler::set_action(const std::string& action)
+    {
+        (void)action;
+        GDK_RUNTIME_ASSERT(false);
+    }
+
+    void auto_auth_handler::set_error(const std::string& error_message)
+    {
+        (void)error_message;
+        GDK_RUNTIME_ASSERT(false);
+    }
+
+    void auto_auth_handler::set_data() { GDK_RUNTIME_ASSERT(false); }
+
+    void auto_auth_handler::request_code(const std::string& method) { return m_handler->request_code(method); }
+
+    void auto_auth_handler::request_code_impl(const std::string& method)
+    {
+        (void)method;
+        GDK_RUNTIME_ASSERT(false);
+    }
+
+    void auto_auth_handler::resolve_code(const std::string& code) { return m_handler->resolve_code(code); }
+
+    void auto_auth_handler::operator()()
+    {
+        (*m_handler)();
+        step();
+    }
+
+    auth_handler::state_type auto_auth_handler::call_impl()
+    {
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
+    bool auto_auth_handler::is_hw_action() const { return m_handler->is_hw_action(); }
+
+    session& auto_auth_handler::get_session() const { return m_handler->get_session(); }
+
+    std::shared_ptr<signer> auto_auth_handler::get_signer() const { return m_handler->get_signer(); }
+
+    nlohmann::json auto_auth_handler::get_status() const { return m_handler->get_status(); }
+
+    void auto_auth_handler::step()
+    {
+        // Step through states resolving any software wallet actions automatically
+        const auto status = get_status();
+        if (!status.contains("required_data")) {
+            return; // Not a HW action, let the caller resolve
+        }
+        GDK_RUNTIME_ASSERT(is_hw_action());
+        GDK_RUNTIME_ASSERT(status.at("status") == "resolve_code");
+        const auto& required_data = status["required_data"];
+        if (!required_data.at("device").value("name", std::string()).empty()) {
+            return; // Caller provided HW device, let the caller resolve
+        }
+        // We have an action to resolve with the internal software wallet
+        nlohmann::json result;
+
+        const std::string action = status.at("action");
+        const auto signer = get_signer();
+        if (action == "get_xpubs") {
+            GDK_RUNTIME_ASSERT(required_data.contains("paths"));
+            std::vector<std::string> xpubs;
+            const std::vector<nlohmann::json> paths = required_data.at("paths");
+            for (const auto& p : paths) {
+                const std::vector<uint32_t> path = p;
+                xpubs.emplace_back(signer->get_bip32_xpub(path));
+            }
+            result["xpubs"] = xpubs;
+        } else if (action == "sign_message") {
+            const std::vector<uint32_t> path = required_data.at("path");
+            const std::string message = required_data.at("message");
+            const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
+            result["signature"] = sig_to_der_hex(signer->sign_hash(path, message_hash));
+        } else {
+            abort(); // FIXME
+        }
+        resolve_code(result.dump());
     }
 
 } // namespace sdk

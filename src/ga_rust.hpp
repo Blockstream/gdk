@@ -34,16 +34,12 @@ namespace sdk {
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
-        void register_user(const std::string& mnemonic, bool supports_csv);
-        void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-            const std::string& gait_path_hex, bool supports_csv);
-
         std::string get_challenge(const std::string& address);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device);
+            const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer);
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
         nlohmann::json login(const std::string& mnemonic, const std::string& password);
-        nlohmann::json login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
+        std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);
         bool set_watch_only(const std::string& username, const std::string& password);
         std::string get_watch_only_username();
@@ -121,8 +117,6 @@ namespace sdk {
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo);
 
         nlohmann::json get_fee_estimates();
-
-        std::string get_mnemonic_passphrase(const std::string& password);
 
         std::string get_system_message();
         std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& system_message);

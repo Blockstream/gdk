@@ -29,6 +29,9 @@ namespace sdk {
         // Factory method
         static boost::shared_ptr<session_impl> create(const nlohmann::json& net_params);
 
+        virtual void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
+            const std::string& gait_path_hex, bool supports_csv);
+
         virtual void on_failed_login() = 0;
         virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
@@ -49,18 +52,13 @@ namespace sdk {
         virtual nlohmann::json refresh_assets(const nlohmann::json& params) = 0;
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
 
-        virtual void register_user(const std::string& mnemonic, bool supports_csv) = 0;
-        virtual void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-            const std::string& gait_path_hex, bool supports_csv)
-            = 0;
-
         virtual std::string get_challenge(const std::string& address) = 0;
         virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
+            const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer)
             = 0;
         virtual void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs) = 0;
         virtual nlohmann::json login(const std::string& mnemonic, const std::string& password) = 0;
-        virtual nlohmann::json login_with_pin(const std::string& pin, const nlohmann::json& pin_data) = 0;
+        virtual std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data) = 0;
         virtual nlohmann::json login_watch_only(const std::string& username, const std::string& password) = 0;
         virtual bool set_watch_only(const std::string& username, const std::string& password) = 0;
         virtual std::string get_watch_only_username() = 0;
@@ -161,8 +159,6 @@ namespace sdk {
         virtual void set_transaction_memo(const std::string& txhash_hex, const std::string& memo) = 0;
 
         virtual nlohmann::json get_fee_estimates() = 0;
-
-        virtual std::string get_mnemonic_passphrase(const std::string& password) = 0;
 
         virtual std::string get_system_message() = 0;
         virtual std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& system_message)

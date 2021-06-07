@@ -72,5 +72,11 @@ namespace sdk {
 
     session_impl::~session_impl() {}
 
+    void session_impl::register_user(const std::string& /*master_pub_key_hex*/,
+        const std::string& /*master_chain_code_hex*/, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
+    {
+        // Default impl is a no-op; registration is only meaningful in multisig
+    }
+
 } // namespace sdk
 } // namespace ga

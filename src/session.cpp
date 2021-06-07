@@ -241,14 +241,6 @@ namespace sdk {
         });
     }
 
-    void session::register_user(const std::string& mnemonic, bool supports_csv)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->register_user(mnemonic, supports_csv);
-        });
-    }
-
     void session::register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
         const std::string& gait_path_hex, bool supports_csv)
     {
@@ -267,11 +259,11 @@ namespace sdk {
     }
 
     nlohmann::json session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->authenticate(sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
+            return p->authenticate(sig_der_hex, path_hex, root_xpub_bip32, device_id, signer);
         });
     }
 
@@ -291,11 +283,11 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
+    std::string session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->login_with_pin(pin, pin_data);
+            return p->mnemonic_from_pin_data(pin, pin_data);
         });
     }
 
@@ -823,7 +815,8 @@ namespace sdk {
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_mnemonic_passphrase(password);
+            auto s = p->get_signer();
+            return s ? s->get_mnemonic(password) : std::string();
         });
     }
 

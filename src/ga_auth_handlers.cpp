@@ -50,12 +50,6 @@ namespace sdk {
             return blind_address(session, addr["address"], blinding_key_hex);
         }
 
-        static std::string get_new_blinded_address(session& session, uint32_t subaccount)
-        {
-            const auto address = session.get_receive_address({ { "subaccount", subaccount } });
-            return get_blinded_address(session, address);
-        }
-
         static auto get_paths_json(bool include_root = true)
         {
             std::vector<nlohmann::json> paths;
@@ -114,105 +108,107 @@ namespace sdk {
               session, "get_xpubs", make_login_signer(session.get_network_parameters(), hw_device, mnemonic))
         , m_mnemonic(mnemonic)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        if (!m_is_hw_action) {
-            m_state = state_type::make_call;
-        } else {
-            // To register, we need the master xpub to identify the wallet,
-            // and the registration xpub to compute the gait_path.
-            m_state = state_type::resolve_code;
-            set_data();
-            auto paths = get_paths_json();
-            paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
-            m_twofactor_data["paths"] = paths;
+        if (m_state != state_type::error) {
+            if (m_session.get_network_parameters().is_electrum()) {
+                // Register is a no-op for electrum sessions
+                m_state = state_type::done;
+            } else {
+                // To register, we need the master xpub to identify the wallet,
+                // and the registration xpub to compute the gait_path.
+                m_state = state_type::resolve_code;
+                set_data();
+                auto paths = get_paths_json();
+                paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
+                m_twofactor_data["paths"] = paths;
+            }
         }
     }
 
     auth_handler::state_type register_call::call_impl()
     {
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        const std::vector<std::string> xpubs = args.at("xpubs");
+        const auto master_xpub = get_xpub(xpubs.at(0));
+
+        const auto master_chain_code_hex = b2h(master_xpub.first);
+        const auto master_pub_key_hex = b2h(master_xpub.second);
+
+        // Get our gait path xpub and compute gait_path from it
+        const auto gait_xpub = get_xpub(xpubs.at(1));
+        const auto gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
+
         const bool supports_csv = m_signer->supports_arbitrary_scripts();
-        if (!m_is_hw_action) {
-            m_session.register_user(m_mnemonic, supports_csv);
-        } else {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            const std::vector<std::string> xpubs = args.at("xpubs");
-            const auto master_xpub = get_xpub(xpubs.at(0));
-
-            const auto master_chain_code_hex = b2h(master_xpub.first);
-            const auto master_pub_key_hex = b2h(master_xpub.second);
-
-            // Get our gait path xpub and compute gait_path from it
-            const auto gait_xpub = get_xpub(xpubs.at(1));
-            const auto gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
-
-            m_session.register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
-        }
+        m_session.register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
         return state_type::done;
     }
 
     //
     // Login
     //
+    class login_call : public auth_handler_impl {
+    public:
+        login_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic,
+            const std::string& password);
+
+    private:
+        state_type call_impl() override;
+
+        std::string m_challenge;
+        std::string m_master_xpub_bip32;
+        bool m_use_ae_protocol;
+
+        // used for 2of2_no_recovery
+        std::unordered_map<uint32_t, std::vector<std::string>> m_ca_addrs;
+        std::vector<uint32_t> m_ca_reqs;
+    };
+
     login_call::login_call(
         session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
         : auth_handler_impl(session, "get_xpubs",
               make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
-        , m_mnemonic(mnemonic)
-        , m_password(password)
         , m_use_ae_protocol(false)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        if (!m_is_hw_action) {
-            m_state = state_type::make_call;
-        } else {
-            // We first need the challenge, so ask the caller for the master pubkey.
-            m_state = state_type::resolve_code;
-            set_action("get_xpubs");
-            set_data();
-            auto paths = get_paths_json();
-            paths.emplace_back(signer::CLIENT_SECRET_PATH);
-            m_twofactor_data["paths"] = paths;
+        if (m_state != state_type::error) {
+            if (m_session.get_network_parameters().is_electrum()) {
+                // Electrum sessions do not use a challenge
+                m_state = state_type::make_call;
+            } else {
+                // We first need the challenge, so ask the caller for the master pubkey.
+                m_state = state_type::resolve_code;
+                set_action("get_xpubs");
+                set_data();
+                auto paths = get_paths_json();
+                paths.emplace_back(signer::CLIENT_SECRET_PATH);
+                m_twofactor_data["paths"] = paths;
+            }
         }
     }
 
     auth_handler::state_type login_call::call_impl()
     {
-        if (!m_is_hw_action) {
-            if (m_action == "get_receive_address") {
-                for (uint32_t subaccount : m_ca_reqs) {
-                    m_ca_addrs[subaccount].emplace_back(get_new_blinded_address(m_session, subaccount));
-                }
-            } else {
-                m_result = m_session.login(m_mnemonic, m_password);
+        const nlohmann::json args = m_code.empty() ? nlohmann::json() : nlohmann::json::parse(m_code);
+
+        if (m_action == "get_receive_address") {
+            // Blind the address
+            auto& addr = m_twofactor_data["address"];
+            addr["blinding_key"] = args["blinding_key"];
+
+            // save it and pop the request
+            m_ca_addrs[m_ca_reqs.back()].emplace_back(get_blinded_address(m_session, addr));
+            m_ca_reqs.pop_back();
+
+            // prepare the next one
+            if (!m_ca_reqs.empty()) {
+                m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
+                return state_type::resolve_code;
             }
 
-            // fall-through down to check for/upload confidential addresses requests
-        } else {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-
-            if (m_action == "get_receive_address") {
-                // Blind the address
-                auto& addr = m_twofactor_data["address"];
-                addr["blinding_key"] = args["blinding_key"];
-
-                // save it and pop the request
-                m_ca_addrs[m_ca_reqs.back()].emplace_back(get_blinded_address(m_session, addr));
-                m_ca_reqs.pop_back();
-
-                // prepare the next one
-                if (!m_ca_reqs.empty()) {
-                    m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
-                    return state_type::resolve_code;
-                }
-
-                // fall-through down to upload them
-            } else if (m_action == "get_xpubs") {
+            // fall-through down to upload them
+        } else if (m_action == "get_xpubs") {
+            if (m_session.get_network_parameters().is_electrum()) {
+                // FIXME: Implement rust login via authenticate()
+                m_result = m_session.login(m_signer->get_mnemonic(std::string()), std::string());
+            } else {
                 const std::vector<std::string> xpubs = args.at("xpubs");
 
                 if (m_challenge.empty()) {
@@ -223,7 +219,7 @@ namespace sdk {
                     m_challenge = m_session.get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
                     const auto local_xpub = get_xpub(xpubs.at(1));
-                    constexpr bool is_hw_wallet = true;
+                    const bool is_hw_wallet = !m_signer->get_hw_device().empty();
                     m_session.set_local_encryption_keys(local_xpub.second, is_hw_wallet);
 
                     // Ask the caller to sign the challenge
@@ -236,29 +232,32 @@ namespace sdk {
                 }
                 // Register the xpub for each of our subaccounts
                 m_session.register_subaccount_xpubs(xpubs);
-
-                // fall through to the required_ca check down there...
-            } else if (m_action == "sign_message") {
-                // If we are using the Anti-Exfil protocol we verify the signature
-                if (m_use_ae_protocol) {
-                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
-                        m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
-                }
-
-                // Log in and set up the session
-                m_result = m_session.authenticate(
-                    args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_signer->get_hw_device());
-
-                // Ask the caller for the xpubs for each subaccount
-                std::vector<nlohmann::json> paths;
-                for (const auto& sa : m_session.get_subaccounts()) {
-                    paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
-                }
-                set_action("get_xpubs");
-                set_data();
-                m_twofactor_data["paths"] = paths;
-                return state_type::resolve_code;
             }
+            // fall through to the required_ca check down there...
+        } else if (m_action == "sign_message") {
+            // If we are using the Anti-Exfil protocol we verify the signature
+            if (m_use_ae_protocol) {
+                verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+            }
+
+            // Log in and set up the session
+            m_result = m_session.authenticate(args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_signer);
+
+            // Ask the caller for the xpubs for each subaccount
+            std::vector<nlohmann::json> paths;
+            for (const auto& sa : m_session.get_subaccounts()) {
+                paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
+            }
+            set_action("get_xpubs");
+            set_data();
+            m_twofactor_data["paths"] = paths;
+            return state_type::resolve_code;
+        }
+
+        if (m_session.get_network_parameters().is_electrum()) {
+            // Skip checking for 2of2_no_recovery confidential address upload
+            return state_type::done;
         }
 
         if (!m_ca_addrs.empty()) {
@@ -272,10 +271,11 @@ namespace sdk {
 
         // Check whether the backend asked for some conf addrs (only 2of2_no_recovery) on some subaccount
         for (const auto& sa : m_session.get_subaccounts()) {
-            if (sa["required_ca"] > 0) {
+            const uint32_t required_ca = sa.value("required_ca", 0);
+            if (required_ca > 0) {
                 // add the subaccount number (`pointer`) repeated `required_ca` times. we will pop them one at a time
                 // and then resolve their blinding keys
-                m_ca_reqs.insert(m_ca_reqs.end(), sa["required_ca"], sa["pointer"]);
+                m_ca_reqs.insert(m_ca_reqs.end(), required_ca, sa["pointer"]);
             }
         }
 
@@ -285,41 +285,7 @@ namespace sdk {
             set_data();
             m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
 
-            return (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
-        }
-
-        return state_type::done;
-    }
-
-    //
-    // Login_with_pin
-    //
-    login_with_pin_call::login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data)
-        : auth_handler_impl(session, "get_xpubs", std::shared_ptr<signer>())
-        , m_pin(pin)
-        , m_pin_data(pin_data)
-    {
-    }
-
-    auth_handler::state_type login_with_pin_call::call_impl()
-    {
-        m_result = m_session.login_with_pin(m_pin, m_pin_data);
-
-        if (m_session.is_liquid()) {
-            // when logged in with pin, the wallet software signer is available, thus the session is able to obtain
-            // blinding key without interacting with the caller
-            for (const auto& sa : m_session.get_subaccounts()) {
-                const size_t num_required = sa["required_ca"];
-                if (num_required) {
-                    const uint32_t subaccount = sa["pointer"];
-                    std::vector<std::string> addresses;
-                    addresses.reserve(num_required);
-                    for (size_t i = 0; i < num_required; ++i) {
-                        addresses.push_back(get_new_blinded_address(m_session, subaccount));
-                    }
-                    m_session.upload_confidential_addresses(subaccount, addresses);
-                }
-            }
+            return m_session.is_liquid() ? state_type::resolve_code : state_type::make_call;
         }
 
         return state_type::done;
@@ -328,24 +294,30 @@ namespace sdk {
     //
     // Watch-only login
     //
-    watch_only_login_call::watch_only_login_call(session& session, const nlohmann::json& credential_data)
-        : auth_handler_impl(session, std::string(), std::shared_ptr<signer>())
-        , m_credential_data(credential_data)
-    {
-    }
-
-    auth_handler::state_type watch_only_login_call::call_impl()
-    {
-        try {
-            const auto username = m_credential_data.at("username");
-            const auto password = m_credential_data.at("password");
-            m_result = m_session.login_watch_only(username, password);
-        } catch (const std::exception& ex) {
-            set_error(res::id_username);
-            return state_type::error;
+    class watch_only_login_call : public auth_handler_impl {
+    public:
+        watch_only_login_call(session& session, const nlohmann::json& credential_data)
+            : auth_handler_impl(session, std::string(), std::shared_ptr<signer>())
+            , m_credential_data(credential_data)
+        {
         }
-        return state_type::done;
-    }
+
+    private:
+        state_type call_impl() override
+        {
+            try {
+                const auto username = m_credential_data.at("username");
+                const auto password = m_credential_data.at("password");
+                m_result = m_session.login_watch_only(username, password);
+            } catch (const std::exception& ex) {
+                set_error(res::id_username);
+                return state_type::error;
+            }
+            return state_type::done;
+        }
+
+        nlohmann::json m_credential_data;
+    };
 
     //
     // Return a suitable auth handler for all supported login types
@@ -353,17 +325,23 @@ namespace sdk {
     auth_handler* get_login_call(
         session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
     {
+        auth_handler* impl;
         if (!hw_device.empty() || credential_data.contains("mnemonic")) {
             const auto mnemonic = json_get_value(credential_data, "mnemonic");
             const auto password = json_get_value(credential_data, "password");
             // FIXME: Allow a "bip39_passphrase" element to enable bip39 logins
-            return new login_call(session, hw_device, mnemonic, password);
+            impl = new login_call(session, hw_device, mnemonic, password);
         } else if (credential_data.contains("pin")) {
-            return new login_with_pin_call(session, credential_data.at("pin"), credential_data.at("pin_data"));
+            const auto pin = credential_data.at("pin");
+            const auto pin_data = credential_data.at("pin_data");
+            const auto mnemonic = session.mnemonic_from_pin_data(pin, pin_data);
+            const auto password = std::string();
+            impl = new login_call(session, hw_device, mnemonic, password);
         } else {
             // Assume watch-only
-            return new watch_only_login_call(session, credential_data);
+            impl = new watch_only_login_call(session, credential_data);
         }
+        return new ga::sdk::auto_auth_handler(impl);
     }
 
     //

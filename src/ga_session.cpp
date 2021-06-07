@@ -297,8 +297,6 @@ namespace sdk {
             return msgpack::unpack(reinterpret_cast<const char*>(buffer.data()), buffer.size());
         }
 
-        inline auto sig_to_der_hex(const ecdsa_sig_t& signature) { return b2h(ec_sig_to_der(signature)); }
-
         static amount::value_type get_limit_total(const nlohmann::json& details)
         {
             const auto& total_p = details.at("total");
@@ -815,7 +813,8 @@ namespace sdk {
             disconnect();
             connect();
 
-            const bool logged_in = !m_mnemonic.empty() && login_from_cached(m_mnemonic);
+            // FIXME: Re-login using signer, call authenticate directly
+            const bool logged_in = false; // FIXME !m_mnemonic.empty() && login_from_cached(m_mnemonic);
             if (!logged_in) {
                 on_failed_login();
             }
@@ -858,7 +857,7 @@ namespace sdk {
             // FIXME: securely destroy all held data
             // TODO: pass in whether we are disconnecting in order to reconnect,
             //       and if so, only securely destroy data not needed to re-login
-            //       (e.g. leave m_mnemonic alone).
+            //       (e.g. leave signer alone).
         }
 
         m_ping_timer.cancel();
@@ -1128,41 +1127,9 @@ namespace sdk {
         return m_fee_estimates;
     }
 
-    void ga_session::register_user(const std::string& mnemonic, bool supports_csv)
-    {
-        locker_t locker(m_mutex);
-        register_user(locker, mnemonic, supports_csv);
-    }
-
-    void ga_session::register_user(ga_session::locker_t& locker, const std::string& mnemonic, bool supports_csv)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        software_signer registerer(m_net_params, mnemonic);
-
-        // Get our master xpub
-        const auto master_xpub = registerer.get_xpub(empty_span<uint32_t>());
-        const auto master_chain_code_hex = b2h(master_xpub.first);
-        const auto master_pub_key_hex = b2h(master_xpub.second);
-
-        // Get our gait path xpub and compute gait_path from it
-        const auto gait_xpub = registerer.get_xpub(ga_pubkeys::get_gait_generation_path());
-        const auto gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
-
-        register_user(locker, master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
-    }
-
     void ga_session::register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
         const std::string& gait_path_hex, bool supports_csv)
     {
-        locker_t locker(m_mutex);
-        register_user(locker, master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
-    }
-
-    void ga_session::register_user(ga_session::locker_t& locker, const std::string& master_pub_key_hex,
-        const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        unique_unlock unlocker(locker);
         const auto user_agent = get_user_agent(supports_csv, m_user_agent);
         auto result = wamp_call("login.register", master_pub_key_hex, master_chain_code_hex, user_agent, gait_path_hex);
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
@@ -1587,23 +1554,12 @@ namespace sdk {
     }
 
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
-        return authenticate(locker, sig_der_hex, path_hex, root_xpub_bip32, device_id, hw_device);
-    }
 
-    nlohmann::json ga_session::authenticate(ga_session::locker_t& locker, const std::string& sig_der_hex,
-        const std::string& path_hex, const std::string& root_xpub_bip32, const std::string& device_id,
-        const nlohmann::json& hw_device)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-
-        if (m_signer == nullptr) {
-            GDK_LOG_SEV(log_level::debug) << "authenticate called for hardware device";
-            // Logging in with a hardware wallet; create our proxy signer
-            m_signer = std::make_shared<hardware_signer>(m_net_params, hw_device);
-        }
+        GDK_RUNTIME_ASSERT(m_signer == nullptr);
+        m_signer = signer;
 
         // TODO: If no device id is given, generate one, update our settings and
         // call the storage interface to store the settings (once storage/caching is implemented)
@@ -1803,7 +1759,6 @@ namespace sdk {
             locker_t locker(m_mutex);
             m_signer.reset();
             m_user_pubkeys.reset();
-            m_mnemonic.clear();
             m_local_encryption_key = boost::none;
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
@@ -1826,6 +1781,9 @@ namespace sdk {
     nlohmann::json ga_session::login(ga_session::locker_t& locker, const std::string& mnemonic)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(false);
+        (void)mnemonic;
+#if 0
 
         // Create our signer
         GDK_LOG_SEV(log_level::debug) << "creating signer for mnemonic";
@@ -1849,6 +1807,8 @@ namespace sdk {
 
         return authenticate(
             locker, hexder_path.first, hexder_path.second, std::string(), std::string(), nlohmann::json::object());
+#endif
+        return nlohmann::json::object();
     }
 
     nlohmann::json ga_session::get_settings()
@@ -1929,7 +1889,7 @@ namespace sdk {
         remap_appearance_setting("required_num_blocks", "required_num_blocks");
     }
 
-    nlohmann::json ga_session::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
+    std::string ga_session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
     {
         // FIXME: clear password after use
         const auto password = get_pin_password(pin, pin_data.at("pin_identifier"));
@@ -1939,7 +1899,7 @@ namespace sdk {
         // FIXME: clear data after use
         const auto data = nlohmann::json::parse(aes_cbc_decrypt(key, pin_data.at("encrypted_data")));
 
-        return login(data.at("mnemonic"), std::string());
+        return data.at("mnemonic");
     }
 
     nlohmann::json ga_session::login_watch_only(const std::string& username, const std::string& password)
@@ -2000,16 +1960,6 @@ namespace sdk {
 
         // TODO: augment with last_updated, user preference for display?
         return { { "fees", m_fee_estimates } };
-    }
-
-    std::string ga_session::get_mnemonic_passphrase(const std::string& password)
-    {
-        locker_t locker(m_mutex);
-
-        GDK_RUNTIME_ASSERT(!m_watch_only);
-        GDK_RUNTIME_ASSERT(!m_mnemonic.empty());
-
-        return password.empty() ? m_mnemonic : encrypt_mnemonic(m_mnemonic, password);
     }
 
     std::string ga_session::get_system_message()

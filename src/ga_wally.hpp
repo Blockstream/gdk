@@ -243,6 +243,8 @@ namespace sdk {
     bool ec_sig_verify(
         byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);
 
+    inline auto sig_to_der_hex(const ecdsa_sig_t& signature) { return b2h(ec_sig_to_der(signature)); }
+
     std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key);
 
     std::vector<unsigned char> ec_public_key_decompress(byte_span_t public_key);

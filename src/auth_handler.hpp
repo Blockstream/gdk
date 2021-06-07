@@ -22,6 +22,9 @@ namespace sdk {
         virtual nlohmann::json get_status() const = 0;
 
         virtual void operator()() = 0;
+        virtual bool is_hw_action() const = 0;
+        virtual session& get_session() const = 0;
+        virtual std::shared_ptr<signer> get_signer() const = 0;
 
     protected:
         enum class state_type : uint32_t {
@@ -51,6 +54,9 @@ namespace sdk {
         virtual nlohmann::json get_status() const final;
 
         virtual void operator()() final;
+        virtual bool is_hw_action() const final;
+        virtual session& get_session() const final;
+        virtual std::shared_ptr<signer> get_signer() const final;
 
     protected:
         virtual void set_action(const std::string& action) final;
@@ -74,6 +80,35 @@ namespace sdk {
 
     private:
         void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);
+    };
+
+    struct auto_auth_handler : public auth_handler {
+        auto_auth_handler(auth_handler* m_handler);
+        ~auto_auth_handler();
+
+        void request_code(const std::string& method) override;
+        void resolve_code(const std::string& code) final;
+
+        nlohmann::json get_status() const final;
+
+        void operator()() final;
+        bool is_hw_action() const final;
+        virtual session& get_session() const final;
+        virtual std::shared_ptr<signer> get_signer() const final;
+
+    protected:
+        void set_action(const std::string& action) final;
+        void set_error(const std::string& error_message) final;
+        void set_data() final;
+
+        void request_code_impl(const std::string& method) final;
+
+        state_type call_impl() final;
+
+    private:
+        void step();
+
+        auth_handler* m_handler;
     };
 
 } // namespace sdk

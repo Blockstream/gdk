@@ -171,24 +171,9 @@ namespace sdk {
 
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
 
-    void ga_rust::register_user(const std::string& mnemonic, bool supports_csv)
-    {
-        auto details = nlohmann::json({
-            { "mnemonic", mnemonic },
-            { "supports_csv", supports_csv },
-        });
-
-        call_session("register_user", details);
-    }
-
-    void ga_rust::register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-        const std::string& gait_path_hex, bool supports_csv)
-    {
-    }
-
     std::string ga_rust::get_challenge(const std::string& address) { throw std::runtime_error("not implemented"); }
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device)
+        const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer)
     {
         throw std::runtime_error("not implemented");
     }
@@ -207,16 +192,14 @@ namespace sdk {
         m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
         return ret;
     }
-    nlohmann::json ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
+    std::string ga_rust::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
     {
         auto details = nlohmann::json({
             { "pin", pin },
             { "pin_data", pin_data },
         });
 
-        auto ret = call_session("login_with_pin", details);
-        m_signer = std::make_shared<software_signer>(m_net_params, get_mnemonic_passphrase(std::string()));
-        return ret;
+        return call_session("mnemonic_from_pin_data", details);
     }
     nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {
@@ -525,13 +508,6 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_fee_estimates() { return call_session("get_fee_estimates", nlohmann::json({})); }
 
-    std::string ga_rust::get_mnemonic_passphrase(const std::string& password)
-    {
-        if (!password.empty())
-            throw std::runtime_error("get_mnemonic_phassphrase: encrypted mnemonics not yet supported in electrum/rpc");
-        return call_session("get_mnemonic", nlohmann::json({})).get<std::string>();
-    }
-
     std::string ga_rust::get_system_message()
     {
         // TODO
@@ -576,7 +552,11 @@ namespace sdk {
         throw std::runtime_error("is_spending_limits_decrease not implemented");
     }
 
-    std::shared_ptr<signer> ga_rust::get_signer() { return m_signer; }
+    std::shared_ptr<signer> ga_rust::get_signer()
+    {
+        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        return m_signer;
+    }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
     user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rust::get_recovery_pubkeys()

@@ -42,6 +42,9 @@ namespace sdk {
         signer& operator=(signer&&) = delete;
         virtual ~signer();
 
+        // Return the mnemonic associated with this signer (empty if none available)
+        virtual std::string get_mnemonic(const std::string& password);
+
         // Get the challenge to sign for GA authentication
         virtual std::string get_challenge() = 0;
 
@@ -90,9 +93,6 @@ namespace sdk {
         explicit watch_only_signer(const network_parameters& net_params);
 
         watch_only_signer(const watch_only_signer&) = delete;
-        watch_only_signer& operator=(const watch_only_signer&) = delete;
-        watch_only_signer(watch_only_signer&&) = delete;
-        watch_only_signer& operator=(watch_only_signer&&) = delete;
         ~watch_only_signer() override;
 
         bool supports_low_r() const override;
@@ -109,41 +109,9 @@ namespace sdk {
     };
 
     //
-    // A signer that signs using a private key held in memory
-    //
-    class software_signer final : public signer {
-    public:
-        // FIXME: Take mnemonic/xpub as a char* to avoid copying
-        software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
-
-        software_signer(const software_signer&) = delete;
-        software_signer& operator=(const software_signer&) = delete;
-        software_signer(software_signer&&) = delete;
-        software_signer& operator=(software_signer&&) = delete;
-        ~software_signer() override;
-
-        bool supports_low_r() const override;
-        bool supports_arbitrary_scripts() const override;
-        liquid_support_level get_liquid_support() const override;
-        ae_protocol_support_level get_ae_protocol_support() const override;
-
-        std::string get_challenge() override;
-
-        xpub_t get_xpub(uint32_span_t path) override;
-        std::string get_bip32_xpub(uint32_span_t path) override;
-
-        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
-        priv_key_t get_blinding_key_from_script(byte_span_t script) override;
-
-    private:
-        wally_ext_key_ptr m_master_key;
-        boost::optional<blinding_key_t> m_master_blinding_key;
-    };
-
-    //
     // A proxy for a hardware signer controlled by the caller
     //
-    class hardware_signer final : public signer {
+    class hardware_signer : public signer {
     public:
         // FIXME: Take mnemonic/xpub as a char* to avoid copying
         hardware_signer(const network_parameters& net_params, const nlohmann::json& hw_device);
@@ -172,6 +140,37 @@ namespace sdk {
 
     private:
         const nlohmann::json m_hw_device;
+    };
+
+    //
+    // A signer that signs using a private key held in memory
+    //
+    class software_signer final : public hardware_signer {
+    public:
+        // FIXME: Take mnemonic/xpub as a char* to avoid copying
+        software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
+        ~software_signer() override;
+
+        std::string get_mnemonic(const std::string& password) override;
+
+        bool supports_low_r() const override;
+        bool supports_arbitrary_scripts() const override;
+        liquid_support_level get_liquid_support() const override;
+        ae_protocol_support_level get_ae_protocol_support() const override;
+
+        nlohmann::json get_hw_device() const override;
+        std::string get_challenge() override;
+
+        xpub_t get_xpub(uint32_span_t path) override;
+        std::string get_bip32_xpub(uint32_span_t path) override;
+
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
+        priv_key_t get_blinding_key_from_script(byte_span_t script) override;
+
+    private:
+        std::string m_mnemonic;
+        wally_ext_key_ptr m_master_key;
+        boost::optional<blinding_key_t> m_master_blinding_key;
     };
 
 } // namespace sdk

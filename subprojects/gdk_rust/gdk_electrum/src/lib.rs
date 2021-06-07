@@ -335,7 +335,11 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
-    fn login_with_pin(&mut self, pin: String, details: PinGetDetails) -> Result<LoginData, Error> {
+    fn mnemonic_from_pin_data(
+        &mut self,
+        pin: String,
+        details: PinGetDetails,
+    ) -> Result<String, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(agent)?;
         let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
@@ -348,9 +352,7 @@ impl Session<Error> for ElectrumSession {
             .decrypt_vec(&hex::decode(&details.encrypted_data)?)
             .map_err(|_| Error::InvalidPin)?;
         let mnemonic = std::str::from_utf8(&mnemonic).unwrap().to_string();
-        let mnemonic = Mnemonic::from(mnemonic);
-
-        self.login(&mnemonic, None)
+        Ok(mnemonic)
     }
 
     fn login(
