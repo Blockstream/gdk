@@ -12,9 +12,8 @@ pub trait Session<E> {
     fn poll_session(&self) -> Result<(), E>;
     fn connect(&mut self, net_params: &Value) -> Result<(), E>;
     fn disconnect(&mut self) -> Result<(), E>;
-    // fn register_user(&mut self, mnemonic: String) -> Result<(), E>;
     fn login(&mut self, mnemonic: &Mnemonic, password: Option<Password>) -> Result<LoginData, E>;
-    fn login_with_pin(&mut self, pin: String, details: PinGetDetails) -> Result<LoginData, E>;
+    fn mnemonic_from_pin_data(&mut self, pin: String, details: PinGetDetails) -> Result<String, E>;
     fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, E>;
     fn get_subaccount(&self, index: u32, num_confs: u32) -> Result<AccountInfo, E>;
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, E>;

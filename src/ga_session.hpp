@@ -43,6 +43,9 @@ namespace sdk {
         ga_session(const nlohmann::json& net_params, nlohmann::json& defaults);
         ~ga_session();
 
+        void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
+            const std::string& gait_path_hex, bool supports_csv);
+
         void connect();
         void try_reconnect();
         void reconnect_hint(bool enabled, bool restarted);
@@ -56,20 +59,15 @@ namespace sdk {
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
-        void register_user(const std::string& mnemonic, bool supports_csv);
-        void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-            const std::string& gait_path_hex, bool supports_csv);
-
         std::string get_challenge(const std::string& address);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, const std::string& device_id,
-            const nlohmann::json& hw_device = nlohmann::json::object());
+            const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer);
 
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
         nlohmann::json login(const std::string& mnemonic, const std::string& password);
         bool login_from_cached(const std::string& mnemonic);
-        nlohmann::json login_with_pin(const std::string& pin, const nlohmann::json& pin_data);
+        std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);
         void on_failed_login();
 
@@ -159,8 +157,6 @@ namespace sdk {
 
         nlohmann::json get_fee_estimates();
 
-        std::string get_mnemonic_passphrase(const std::string& password);
-
         std::string get_system_message();
         std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& message);
         void ack_system_message(const std::string& message);
@@ -201,12 +197,6 @@ namespace sdk {
         bool reconnect();
         void stop_reconnect();
 
-        void register_user(locker_t& locker, const std::string& mnemonic, bool supports_csv);
-        void register_user(locker_t& locker, const std::string& master_pub_key_hex,
-            const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
-
-        nlohmann::json authenticate(locker_t& locker, const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, const std::string& device_id, const nlohmann::json& hw_device);
         nlohmann::json login(locker_t& locker, const std::string& mnemonic);
         void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context);
 
@@ -357,7 +347,6 @@ namespace sdk {
         std::array<uint32_t, 32> m_gait_path;
         nlohmann::json m_limits_data;
         nlohmann::json m_twofactor_config;
-        std::string m_mnemonic;
         amount::value_type m_min_fee_rate;
         std::string m_fiat_source;
         std::string m_fiat_rate;

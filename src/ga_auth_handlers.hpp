@@ -20,46 +20,6 @@ namespace sdk {
     auth_handler* get_login_call(
         session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
 
-    class login_call : public auth_handler_impl {
-    public:
-        login_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic,
-            const std::string& password);
-
-    private:
-        state_type call_impl() override;
-
-        std::string m_challenge;
-        std::string m_mnemonic;
-        std::string m_master_xpub_bip32;
-        std::string m_password;
-        bool m_use_ae_protocol;
-
-        // used for 2of2_no_recovery
-        std::unordered_map<uint32_t, std::vector<std::string>> m_ca_addrs;
-        std::vector<uint32_t> m_ca_reqs;
-    };
-
-    class login_with_pin_call : public auth_handler_impl {
-    public:
-        login_with_pin_call(session& session, const std::string& pin, const nlohmann::json& pin_data);
-
-    private:
-        state_type call_impl() override;
-
-        std::string m_pin;
-        nlohmann::json m_pin_data;
-    };
-
-    class watch_only_login_call : public auth_handler_impl {
-    public:
-        watch_only_login_call(session& session, const nlohmann::json& credential_data);
-
-    private:
-        state_type call_impl() override;
-
-        nlohmann::json m_credential_data;
-    };
-
     class create_subaccount_call : public auth_handler_impl {
     public:
         create_subaccount_call(session& session, const nlohmann::json& details);

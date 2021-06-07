@@ -376,7 +376,9 @@ where
         "disconnect" => session.disconnect().map(|v| json!(v)).map_err(Into::into),
 
         "login" => login(session, input).map(|v| json!(v)),
-        "login_with_pin" => login_with_pin(session, input).map(|v| json!(v)),
+        "mnemonic_from_pin_data" => {
+            mnemonic_from_pin_data(session, input).map(|v| json!(v)).map_err(Into::into)
+        }
         "set_pin" => session
             .set_pin(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))

@@ -216,20 +216,30 @@ GDK_DEFINE_C_FUNCTION_3(GA_validate_asset_domain_name, struct GA_session*, sessi
     output, { *json_cast(output) = new nlohmann::json(session->validate_asset_domain_name(*json_cast((params)))); });
 
 GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::register_call(*session, *json_cast(hw_device), mnemonic)); })
+    struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::register_call(*session, *json_cast(hw_device), mnemonic);
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
 GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, const GA_json*, hw_device, const GA_json*, details,
     struct GA_auth_handler**, call,
     { *call = auth_cast(ga::sdk::get_login_call(*session, *json_cast(hw_device), *json_cast(details))); })
 
 GDK_DEFINE_C_FUNCTION_5(GA_login, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
-    const char*, password, struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::login_call(*session, *json_cast(hw_device), mnemonic, password)); })
+    const char*, password, struct GA_auth_handler**, call, {
+        nlohmann::json details;
+        details["mnemonic"] = mnemonic;
+        details["password"] = password;
+        *call = auth_cast(ga::sdk::get_login_call(*session, *json_cast(hw_device), details));
+    })
 
 GDK_DEFINE_C_FUNCTION_4(GA_login_with_pin, struct GA_session*, session, const char*, pin, const GA_json*, pin_data,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::login_with_pin_call(*session, pin, *json_cast(pin_data))); })
+    struct GA_auth_handler**, call, {
+        nlohmann::json details;
+        details["pin"] = pin;
+        details["pin_data"] = *json_cast(pin_data);
+        *call = auth_cast(ga::sdk::get_login_call(*session, nlohmann::json(), details));
+    })
 
 GDK_DEFINE_C_FUNCTION_3(GA_login_watch_only, struct GA_session*, session, const char*, username, const char*, password,
     { session->login_watch_only(username, password); })

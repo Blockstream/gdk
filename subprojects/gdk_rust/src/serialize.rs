@@ -47,7 +47,7 @@ where
         .map_err(Into::into)
 }
 
-pub fn login_with_pin<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
+pub fn mnemonic_from_pin_data<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,
@@ -58,7 +58,7 @@ where
         .ok_or_else(|| Error::Other("login_with_pin: missing pin argument".into()))?;
     let pin_data: PinGetDetails = serde_json::from_value(input["pin_data"].clone())?;
     session
-        .login_with_pin(pin, pin_data)
+        .mnemonic_from_pin_data(pin, pin_data)
         .map(|x| serde_json::to_value(&x).unwrap())
         .map_err(Into::into)
 }
