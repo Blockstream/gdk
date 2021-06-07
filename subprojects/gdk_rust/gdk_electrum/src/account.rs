@@ -205,11 +205,11 @@ impl Account {
                 ..Default::default()
             };
 
-            let fee = tx.fee(
-                &acc_store.all_txs,
-                &acc_store.unblinded,
-                &self.network.policy_asset().ok(),
-            )?;
+            let policy_asset = match self.network.policy_asset_id() {
+                Ok(asset_id) => Some(elements::confidential::Asset::Explicit(asset_id)),
+                Err(_) => None,
+            };
+            let fee = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?;
             trace!("tx_id {} fee {}", tx_id, fee);
 
             let satoshi =
@@ -313,7 +313,8 @@ impl Account {
                     })
                     .collect(),
                 BETransaction::Elements(tx) => {
-                    let policy_asset = self.network.policy_asset_id()?;
+                    let policy_asset: [u8; 32] =
+                        self.network.policy_asset_id()?.into_inner().into_inner()[..].try_into()?;
                     tx.output
                         .clone()
                         .into_iter()
@@ -1085,7 +1086,10 @@ pub fn create_tx(
     // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
     tx.scramble();
 
-    let policy_asset = network.policy_asset().ok();
+    let policy_asset = match network.policy_asset_id() {
+        Ok(asset_id) => Some(elements::confidential::Asset::Explicit(asset_id)),
+        Err(_) => None,
+    };
     let fee_val = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
     tx.add_fee_if_elements(fee_val, &policy_asset)?;
 
