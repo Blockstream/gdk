@@ -341,11 +341,10 @@ impl BETransaction {
             Self::Elements(tx) => {
                 let mut different_assets = HashSet::new();
                 for input in tx.input.iter() {
-                    let asset_hex = all_txs
+                    let asset = all_txs
                         .get_previous_output_asset(input.previous_output, unblinded)
-                        .unwrap()
-                        .to_hex();
-                    different_assets.insert(asset_hex.clone());
+                        .unwrap();
+                    different_assets.insert(asset);
                 }
                 if different_assets.is_empty() {
                     0
