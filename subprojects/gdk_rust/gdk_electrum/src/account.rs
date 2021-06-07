@@ -956,12 +956,12 @@ pub fn create_tx(
         if request.addressees.len() != 1 {
             return Err(Error::SendAll);
         }
-        let asset = request.addressees[0].asset_id.as_deref().unwrap_or("btc");
+        let asset = request.addressees[0].asset_id();
         let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> =
-            utxos.iter().filter(|(_, i)| i.asset == asset).collect();
+            utxos.iter().filter(|(_, i)| i.asset_id() == asset).collect();
         let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
 
-        let to_send = if asset == "btc" || Some(asset.to_string()) == network.policy_asset {
+        let to_send = if asset == network.policy_asset_id().ok() {
             let mut dummy_tx = BETransaction::new(network.id());
             for utxo in all_utxos.iter() {
                 dummy_tx.add_input(utxo.0.clone());
@@ -977,7 +977,7 @@ pub fn create_tx(
             total_amount_utxos
         };
 
-        info!("send_all asset: {} to_send:{}", asset, to_send);
+        info!("send_all asset: {:?} to_send:{}", asset, to_send);
 
         request.addressees[0].satoshi = to_send;
     }
@@ -1014,22 +1014,18 @@ pub fn create_tx(
             &acc_store.all_txs,
             &acc_store.unblinded,
             account.script_type,
-        ); // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
+        ); // Vec<(asset_id, satoshi) "policy asset" is last, in bitcoin max 1 element
         info!("needs: {:?}", needs);
         if needs.is_empty() {
             // SUCCESS tx doesn't need other inputs
             break;
         }
         let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
-        let current_asset_hex = match current_need.asset {
-            Some(asset) => asset.to_hex(),
-            None => "btc".to_string(),
-        };
 
         // taking only utxos of current asset considered, filters also utxos used in this loop
         let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
             .iter()
-            .filter(|(o, i)| i.asset == current_asset_hex && !used_utxo.contains(o))
+            .filter(|(o, i)| i.asset_id() == current_need.asset && !used_utxo.contains(o))
             .collect();
 
         // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)

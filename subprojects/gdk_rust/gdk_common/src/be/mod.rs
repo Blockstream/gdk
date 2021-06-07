@@ -9,7 +9,7 @@ mod transaction;
 mod txid;
 
 pub use address::*;
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::util::bip32::DerivationPath;
 pub use blockhash::*;
 pub use blockheader::*;
@@ -61,6 +61,10 @@ impl UTXOInfo {
             height,
             path,
         }
+    }
+
+    pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
+        elements::issuance::AssetId::from_hex(&self.asset).ok()
     }
 }
 
