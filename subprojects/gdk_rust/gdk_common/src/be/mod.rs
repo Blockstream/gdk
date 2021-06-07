@@ -58,6 +58,10 @@ pub struct Unblinded {
 }
 
 impl Unblinded {
+    pub fn asset(&self) -> elements::issuance::AssetId {
+        elements::issuance::AssetId::from_slice(&self.asset).unwrap()
+    }
+
     pub fn asset_hex(&self) -> String {
         asset_to_hex(&self.asset)
     }

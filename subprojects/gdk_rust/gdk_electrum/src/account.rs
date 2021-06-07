@@ -878,9 +878,7 @@ pub fn create_tx(
 
         // Strip the mining fee change output from the transaction, keeping the change address for reuse
         template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
-            if asset.map_or(true, |a| a == "btc")
-                && account.get_wallet_chain_type(&script) == Some(1)
-            {
+            if asset == None && account.get_wallet_chain_type(&script) == Some(1) {
                 let change_address = prev_tx
                     .output_address(vout, network.id())
                     .expect("own change addresses to have address representation");
