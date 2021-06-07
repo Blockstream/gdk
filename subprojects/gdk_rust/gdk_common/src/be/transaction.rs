@@ -8,7 +8,7 @@ use crate::{ElementsNetwork, NetworkId};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
@@ -16,7 +16,7 @@ use bitcoin::{PublicKey, SigHashType};
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
-use elements::{confidential, issuance, AddressParams};
+use elements::{confidential, AddressParams};
 use elements::{TxInWitness, TxOutWitness};
 use log::{info, trace};
 use rand::seq::SliceRandom;
@@ -230,8 +230,7 @@ impl BETransaction {
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
                 let asset =
                     asset_hex.expect("add_output must be called with a non empty asset in liquid");
-                let asset = asset_to_bin(&asset).expect("invalid asset hex");
-                let asset_id = issuance::AssetId::from_slice(&asset)?;
+                let asset_id = elements::issuance::AssetId::from_hex(&asset)?;
                 let new_out = elements::TxOut {
                     asset: confidential::Asset::Explicit(asset_id),
                     value: confidential::Value::Explicit(value),
@@ -391,8 +390,7 @@ impl BETransaction {
                 for output in tx.output.iter() {
                     match (output.asset, output.value) {
                         (Asset::Explicit(asset), Value::Explicit(value)) => {
-                            let asset_hex = asset_to_hex(&asset.into_inner());
-                            *outputs.entry(asset_hex).or_insert(0) += value;
+                            *outputs.entry(asset.to_hex()).or_insert(0) += value;
                         }
                         _ => panic!("asset and value should be explicit here"),
                     }
@@ -466,8 +464,7 @@ impl BETransaction {
                 for output in tx.output.iter() {
                     match (output.asset, output.value) {
                         (Asset::Explicit(asset), Value::Explicit(value)) => {
-                            let asset_hex = asset_to_hex(&asset.into_inner());
-                            *outputs_asset_amounts.entry(asset_hex).or_insert(0) += value;
+                            *outputs_asset_amounts.entry(asset.to_hex()).or_insert(0) += value;
                         }
                         _ => panic!("asset and value should be explicit here"),
                     }
