@@ -7,7 +7,7 @@ use log::{debug, info, trace, warn};
 use rand::Rng;
 
 use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::{FromHex, ToHex};
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -1022,11 +1022,15 @@ pub fn create_tx(
             break;
         }
         let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
+        let current_asset_hex = match current_need.asset {
+            Some(asset) => asset.to_hex(),
+            None => "btc".to_string(),
+        };
 
         // taking only utxos of current asset considered, filters also utxos used in this loop
         let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
             .iter()
-            .filter(|(o, i)| i.asset == current_need.asset && !used_utxo.contains(o))
+            .filter(|(o, i)| i.asset == current_asset_hex && !used_utxo.contains(o))
             .collect();
 
         // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
@@ -1079,11 +1083,7 @@ pub fn create_tx(
             "adding change to {} of {} asset {:?}",
             &change_address, change.satoshi, change.asset
         );
-        tx.add_output(
-            &change_address,
-            change.satoshi,
-            elements::issuance::AssetId::from_hex(&change.asset).ok(),
-        )?;
+        tx.add_output(&change_address, change.satoshi, change.asset)?;
     }
 
     // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
