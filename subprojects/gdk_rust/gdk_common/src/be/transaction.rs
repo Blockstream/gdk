@@ -511,13 +511,13 @@ impl BETransaction {
     pub fn add_fee_if_elements(
         &mut self,
         value: u64,
-        policy_asset: &Option<Asset>,
+        policy_asset: &Option<elements::issuance::AssetId>,
     ) -> Result<(), Error> {
         if let BETransaction::Elements(tx) = self {
             let policy_asset =
                 policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
             let new_out = elements::TxOut {
-                asset: policy_asset,
+                asset: confidential::Asset::Explicit(policy_asset),
                 value: confidential::Value::Explicit(value),
                 ..Default::default()
             };
@@ -563,7 +563,7 @@ impl BETransaction {
         &self,
         all_txs: &BETransactions,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-        policy_asset: &Option<Asset>,
+        policy_asset: &Option<elements::issuance::AssetId>,
     ) -> Result<u64, Error> {
         Ok(match self {
             Self::Bitcoin(tx) => {
@@ -575,8 +575,10 @@ impl BETransaction {
                 let has_fee = tx.output.iter().any(|o| o.is_fee());
 
                 if has_fee {
-                    let policy_asset = policy_asset
-                        .ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
+                    let policy_asset = elements::confidential::Asset::Explicit(
+                        policy_asset
+                            .ok_or_else(|| Error::Generic("Missing policy asset".into()))?,
+                    );
                     tx.output
                         .iter()
                         .filter(|o| o.is_fee())

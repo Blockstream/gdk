@@ -205,11 +205,11 @@ impl Account {
                 ..Default::default()
             };
 
-            let policy_asset = match self.network.policy_asset_id() {
-                Ok(asset_id) => Some(elements::confidential::Asset::Explicit(asset_id)),
-                Err(_) => None,
-            };
-            let fee = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?;
+            let fee = tx.fee(
+                &acc_store.all_txs,
+                &acc_store.unblinded,
+                &self.network.policy_asset_id().ok(),
+            )?;
             trace!("tx_id {} fee {}", tx_id, fee);
 
             let satoshi =
@@ -1086,11 +1086,9 @@ pub fn create_tx(
     // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
     tx.scramble();
 
-    let policy_asset = match network.policy_asset_id() {
-        Ok(asset_id) => Some(elements::confidential::Asset::Explicit(asset_id)),
-        Err(_) => None,
-    };
-    let fee_val = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
+    let policy_asset = network.policy_asset_id().ok();
+    // recompute exact fee_val from built tx
+    let fee_val = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?;
     tx.add_fee_if_elements(fee_val, &policy_asset)?;
 
     info!("created tx fee {:?}", fee_val);
