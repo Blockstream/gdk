@@ -1,6 +1,4 @@
-use crate::be::{
-    AssetId, BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos,
-};
+use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
 use crate::util::StringSerialized;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::Network;
@@ -13,7 +11,7 @@ use crate::scripts::ScriptType;
 use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -465,19 +463,6 @@ impl Default for Settings {
             pricing,
             sound: false,
         }
-    }
-}
-
-impl AddressAmount {
-    pub fn asset(&self) -> Option<AssetId> {
-        if let Some(asset_id) = self.asset_id.as_ref() {
-            let vec = hex::decode(asset_id).ok();
-            if let Some(mut vec) = vec {
-                vec.reverse();
-                return (&vec[..]).try_into().ok();
-            }
-        }
-        None
     }
 }
 
