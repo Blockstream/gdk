@@ -7,6 +7,7 @@ use log::{debug, info, trace, warn};
 use rand::Rng;
 
 use bitcoin::blockdata::script;
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -341,7 +342,7 @@ impl Account {
                                     return Some((
                                         outpoint,
                                         UTXOInfo::new(
-                                            unblinded.asset_hex(),
+                                            unblinded.asset().to_hex(),
                                             unblinded.value,
                                             output.script_pubkey.into(),
                                             height.clone(),
