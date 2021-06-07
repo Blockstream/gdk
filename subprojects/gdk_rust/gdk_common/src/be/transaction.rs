@@ -362,7 +362,7 @@ impl BETransaction {
         &self,
         fee_rate: f64,
         no_change: bool,
-        policy_asset: Option<String>,
+        policy_asset: Option<elements::issuance::AssetId>,
         all_txs: &BETransactions,
         unblinded: &HashMap<elements::OutPoint, Unblinded>,
         script_type: ScriptType,
@@ -415,7 +415,7 @@ impl BETransaction {
                     self.estimated_changes(no_change, all_txs, unblinded),
                     script_type,
                 );
-                *outputs.entry(policy_asset.clone()).or_insert(0) += estimated_fee;
+                *outputs.entry(policy_asset.to_hex()).or_insert(0) += estimated_fee;
 
                 let mut result = vec![];
                 for (asset, value) in outputs.iter() {
@@ -426,7 +426,7 @@ impl BETransaction {
                     }
                 }
 
-                if let Some(index) = result.iter().position(|e| e.asset == policy_asset) {
+                if let Some(index) = result.iter().position(|e| e.asset == policy_asset.to_hex()) {
                     let last_index = result.len() - 1;
                     if index != last_index {
                         result.swap(index, last_index); // put the policy asset last
@@ -442,7 +442,7 @@ impl BETransaction {
     pub fn changes(
         &self,
         estimated_fee: u64,
-        policy_asset: Option<String>,
+        policy_asset: Option<elements::issuance::AssetId>,
         all_txs: &BETransactions,
         unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Vec<AssetValue> {
@@ -485,7 +485,7 @@ impl BETransaction {
                 let mut result = vec![];
                 for (asset, value) in inputs_asset_amounts.iter() {
                     let mut sum = value - outputs_asset_amounts.remove(asset).unwrap_or(0);
-                    if asset == policy_asset.as_ref().unwrap() {
+                    if asset == &policy_asset.unwrap().to_hex() {
                         // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
                         // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
                         sum -= estimated_fee;
