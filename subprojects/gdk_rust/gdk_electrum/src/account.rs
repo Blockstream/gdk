@@ -313,8 +313,7 @@ impl Account {
                     })
                     .collect(),
                 BETransaction::Elements(tx) => {
-                    let policy_asset: [u8; 32] =
-                        self.network.policy_asset_id()?.into_inner().into_inner()[..].try_into()?;
+                    let policy_asset = self.network.policy_asset_id()?;
                     tx.output
                         .clone()
                         .into_iter()
@@ -1229,10 +1228,10 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
             .unblinded
             .get(&input.previous_output)
             .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
-        info!("unblinded value: {} asset:{}", unblinded.value, hex::encode(&unblinded.asset[..]));
+        info!("unblinded value: {} asset:{}", unblinded.value, unblinded.asset.to_hex());
 
         input_values.push(unblinded.value);
-        input_assets.extend(unblinded.asset.to_vec());
+        input_assets.extend(unblinded.asset.into_inner().to_vec());
         input_abfs.extend(unblinded.abf.to_vec());
         input_vbfs.extend(unblinded.vbf.to_vec());
         let input_asset = asset_generator_from_bytes(&unblinded.asset, &unblinded.abf);
@@ -1285,10 +1284,8 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     output_abf.copy_from_slice(&(&output_abfs[i])[..]);
                     let mut output_vbf = [0u8; 32];
                     output_vbf.copy_from_slice(&(&output_vbfs[i])[..]);
-                    let asset = asset.clone().into_inner();
 
-                    let output_generator =
-                        asset_generator_from_bytes(&asset.into_inner(), &output_abf);
+                    let output_generator = asset_generator_from_bytes(&asset, &output_abf);
                     let output_value_commitment =
                         asset_value_commitment(value, output_vbf, output_generator);
                     let min_value = if output.script_pubkey.is_provably_unspendable() {
@@ -1301,7 +1298,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                         value,
                         blinding_pubkey.key,
                         ephemeral_sk,
-                        asset.into_inner(),
+                        &asset,
                         output_abf,
                         output_vbf,
                         output_value_commitment,
@@ -1311,7 +1308,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                         ct_exp,
                         ct_bits,
                     );
-                    trace!("asset: {}", hex::encode(&asset));
+                    trace!("asset: {}", asset.to_hex());
                     trace!("output_abf: {}", hex::encode(&output_abf));
                     trace!(
                         "output_generator: {}",
@@ -1323,7 +1320,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     trace!("in_num: {}", in_num);
 
                     let surjectionproof = asset_surjectionproof(
-                        asset.into_inner(),
+                        &asset,
                         output_abf,
                         output_generator,
                         output_abf,

@@ -23,6 +23,7 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
@@ -1417,12 +1418,7 @@ impl Syncer {
                     asset_commitment,
                 )?;
 
-                info!(
-                    "Unblinded outpoint:{} asset:{} value:{}",
-                    outpoint,
-                    hex::encode(&asset),
-                    value
-                );
+                info!("Unblinded outpoint:{} asset:{} value:{}", outpoint, asset.to_hex(), value);
 
                 let unblinded = Unblinded {
                     asset,
@@ -1434,7 +1430,7 @@ impl Syncer {
             }
             (Asset::Explicit(asset_id), confidential::Value::Explicit(satoshi), _) => {
                 let unblinded = Unblinded {
-                    asset: asset_id.into_inner().into_inner(),
+                    asset: asset_id,
                     value: satoshi,
                     abf: [0u8; 32],
                     vbf: [0u8; 32],

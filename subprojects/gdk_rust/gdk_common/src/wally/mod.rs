@@ -7,7 +7,6 @@ use std::ptr;
 use bitcoin::secp256k1;
 use std::fmt;
 
-use crate::be::AssetId;
 use elements::confidential::{Asset, Value};
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
@@ -172,7 +171,7 @@ pub fn asset_unblind(
     commitment: Vec<u8>,
     extra: elements::Script,
     generator: Vec<u8>,
-) -> Result<([u8; 32], [u8; 32], [u8; 32], u64), crate::error::Error> {
+) -> Result<(elements::issuance::AssetId, [u8; 32], [u8; 32], u64), crate::error::Error> {
     let pub_key = pub_key.serialize();
 
     let mut asset_out = [0u8; 32];
@@ -205,6 +204,7 @@ pub fn asset_unblind(
     if ret != ffi::WALLY_OK {
         crate::error::err("asset_unblind not ok")
     } else {
+        let asset_out = elements::issuance::AssetId::from_slice(&asset_out)?;
         Ok((asset_out, abf_out, vbf_out, value_out))
     }
 }
@@ -281,7 +281,8 @@ pub fn pbkdf2_hmac_sha512_256(password: Vec<u8>, salt: Vec<u8>, cost: u32) -> [u
     out
 }
 
-pub fn asset_generator_from_bytes(asset: &AssetId, abf: &[u8; 32]) -> Asset {
+pub fn asset_generator_from_bytes(asset: &elements::issuance::AssetId, abf: &[u8; 32]) -> Asset {
+    let asset = asset.into_inner().into_inner();
     let mut generator = [0u8; 33];
     let ret = unsafe {
         ffi::wally_asset_generator_from_bytes(
@@ -350,7 +351,7 @@ pub fn asset_rangeproof(
     value: u64,
     pub_key: secp256k1::PublicKey,
     priv_key: secp256k1::SecretKey,
-    asset: AssetId,
+    asset: &elements::issuance::AssetId,
     abf: [u8; 32],
     vbf: [u8; 32],
     commitment: Value,
@@ -360,6 +361,7 @@ pub fn asset_rangeproof(
     exp: i32,
     min_bits: i32,
 ) -> Vec<u8> {
+    let asset = asset.into_inner().into_inner();
     let mut rangeproof_buffer = [0u8; 5134];
     let mut written = 0usize;
     let pub_key = pub_key.serialize();
@@ -407,7 +409,7 @@ pub fn asset_surjectionproof_size(num_inputs: usize) -> usize {
 
 #[allow(clippy::too_many_arguments)]
 pub fn asset_surjectionproof(
-    output_asset: AssetId,
+    output_asset: &elements::issuance::AssetId,
     output_abf: [u8; 32],
     output_generator: Asset,
     bytes: [u8; 32],
@@ -416,6 +418,7 @@ pub fn asset_surjectionproof(
     generators: &[u8],
     num_inputs: usize,
 ) -> Vec<u8> {
+    let output_asset = output_asset.into_inner().into_inner();
     let proof_size = asset_surjectionproof_size(num_inputs);
 
     let output_generator = elements::encode::serialize(&output_generator);
@@ -462,6 +465,7 @@ pub fn read_str(s: *const c_char) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin::hashes::hex::ToHex;
     use bitcoin::secp256k1;
     use elements::Script;
     use hex;
@@ -561,9 +565,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            asset.to_vec(),
-            hex::decode("25b251070e29ca19043cf33ccd7324e2ddab03ecc4ae0b5e77c4fc0e5cf6c95a")
-                .unwrap()
+            asset.to_hex(),
+            "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
         );
         assert_eq!(
             abf.to_vec(),
@@ -664,7 +667,7 @@ mod tests {
 
         let ones = [0x17u8; 32];
         let values = [20000u64, 4910, 13990, 1100].to_vec();
-        let asset = ones.clone();
+        let asset = elements::issuance::AssetId::from_slice(&ones[..]).unwrap();
         let abf = ones.clone();
         let abfs = hex::decode("7fca161c2b849a434f49065cf590f5f1909f25e252f728dfd53669c3c8f8e37100000000000000000000000000000000000000000000000000000000000000002c89075f3c8861fea27a15682d664fb643bc08598fe36dcf817fcabc7ef5cf2efdac7bbad99a45187f863cd58686a75135f2cc0714052f809b0c1f603bcdc574").unwrap();
         let vbfs = hex::decode("1c07611b193009e847e5b296f05a561c559ca84e16d1edae6cbe914b73fb6904000000000000000000000000000000000000000000000000000000000000000074e4135177cd281b332bb8fceb46da32abda5d6dc4d2eef6342a5399c9fb3c48").unwrap();
