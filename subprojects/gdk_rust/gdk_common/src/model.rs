@@ -94,6 +94,12 @@ pub struct AddressAmount {
     pub asset_id: Option<String>,
 }
 
+impl AddressAmount {
+    pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
+        self.asset_id.as_ref().and_then(|a| elements::issuance::AssetId::from_hex(a).ok())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct LoginData {
     pub wallet_hash_id: String,

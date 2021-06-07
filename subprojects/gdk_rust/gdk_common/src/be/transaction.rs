@@ -8,7 +8,7 @@ use crate::{ElementsNetwork, NetworkId};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
-use bitcoin::hashes::hex::{FromHex, ToHex};
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
@@ -211,7 +211,7 @@ impl BETransaction {
         &mut self,
         address: &str,
         value: u64,
-        asset_hex: Option<String>,
+        asset: Option<elements::issuance::AssetId>,
     ) -> Result<(), Error> {
         match self {
             BETransaction::Bitcoin(tx) => {
@@ -228,9 +228,8 @@ impl BETransaction {
                 let blinding_pubkey = address.blinding_pubkey.ok_or(Error::InvalidAddress)?;
                 let bytes = blinding_pubkey.serialize();
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
-                let asset =
-                    asset_hex.expect("add_output must be called with a non empty asset in liquid");
-                let asset_id = elements::issuance::AssetId::from_hex(&asset)?;
+                let asset_id =
+                    asset.expect("add_output must be called with a non empty asset in liquid");
                 let new_out = elements::TxOut {
                     asset: confidential::Asset::Explicit(asset_id),
                     value: confidential::Value::Explicit(value),

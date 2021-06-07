@@ -7,7 +7,7 @@ use log::{debug, info, trace, warn};
 use rand::Rng;
 
 use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -969,7 +969,7 @@ pub fn create_tx(
             }
             let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
             dummy_tx
-                .add_output(&out.address, out.satoshi, out.asset_id.clone())
+                .add_output(&out.address, out.satoshi, out.asset_id())
                 .map_err(|_| Error::InvalidAddress)?;
             // estimating 2 satoshi more as estimating less would later result in InsufficientFunds
             let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 2;
@@ -995,7 +995,7 @@ pub fn create_tx(
             let mut new_tx = BETransaction::new(network.id());
             for out in request.addressees.iter() {
                 new_tx
-                    .add_output(&out.address, out.satoshi, out.asset_id.clone())
+                    .add_output(&out.address, out.satoshi, out.asset_id())
                     .map_err(|_| Error::InvalidAddress)?;
             }
             Ok(new_tx)
@@ -1079,7 +1079,11 @@ pub fn create_tx(
             "adding change to {} of {} asset {:?}",
             &change_address, change.satoshi, change.asset
         );
-        tx.add_output(&change_address, change.satoshi, Some(change.asset.clone()))?;
+        tx.add_output(
+            &change_address,
+            change.satoshi,
+            elements::issuance::AssetId::from_hex(&change.asset).ok(),
+        )?;
     }
 
     // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
