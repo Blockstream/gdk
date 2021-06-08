@@ -287,7 +287,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         inputs: vec![],  // tx.input.iter().map(format_gdk_input).collect(),
         outputs: vec![], //tx.output.iter().map(format_gdk_output).collect(),
         transaction_size: tx.size,
-        transaction_vsize: (tx.weight as f32 / 4.0) as usize,
+        transaction_vsize: tx.vsize,
         transaction_weight: tx.weight,
     }
 }

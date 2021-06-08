@@ -219,7 +219,11 @@ pub struct TransactionMeta {
     pub rbf_optin: bool,
     pub user_signed: bool,
     pub spv_verified: SPVVerifyResult,
+    #[serde(rename = "transaction_weight")]
     pub weight: usize,
+    #[serde(rename = "transaction_vsize")]
+    pub vsize: usize,
+    #[serde(rename = "transaction_size")]
     pub size: usize,
 }
 
@@ -229,6 +233,7 @@ impl From<BETransaction> for TransactionMeta {
         let hex = hex::encode(&transaction.serialize());
         let timestamp = now();
         let rbf_optin = transaction.rbf_optin();
+        let weight = transaction.get_weight();
 
         TransactionMeta {
             create_transaction: None,
@@ -249,8 +254,9 @@ impl From<BETransaction> for TransactionMeta {
             user_signed: false,
             spv_verified: SPVVerifyResult::InProgress,
             rbf_optin,
-            weight: transaction.get_weight(),
-            size: transaction.serialize().len(),
+            weight,
+            vsize: (weight as f32 / 4.0) as usize,
+            size: transaction.get_size(),
         }
     }
 }
