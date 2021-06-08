@@ -162,7 +162,6 @@ namespace sdk {
         virtual std::string get_system_message() = 0;
         virtual std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& system_message)
             = 0;
-        virtual void ack_system_message(const std::string& system_message) = 0;
         virtual void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex) = 0;
 
         virtual nlohmann::json convert_amount(const nlohmann::json& amount_json) const = 0;

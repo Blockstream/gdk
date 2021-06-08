@@ -259,9 +259,11 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_mnemonic_passphrase, struct GA_session*, session,
 GDK_DEFINE_C_FUNCTION_2(GA_get_system_message, struct GA_session*, session, char**, message_text,
     { *message_text = to_c_string(session->get_system_message()); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_ack_system_message, struct GA_session*, session, const char*, message_text,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::ack_system_message_call(*session, message_text)); });
+GDK_DEFINE_C_FUNCTION_3(
+    GA_ack_system_message, struct GA_session*, session, const char*, message_text, struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::ack_system_message_call(*session, message_text);
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_twofactor_config, struct GA_session*, session, GA_json**, config,
     { *json_cast(config) = new nlohmann::json(session->get_twofactor_config()); })

@@ -522,10 +522,7 @@ namespace sdk {
     {
         throw std::runtime_error("get_system_message_info not implemented");
     }
-    void ga_rust::ack_system_message(const std::string& system_message)
-    {
-        throw std::runtime_error("ack_system_message not implemented");
-    }
+
     void ga_rust::ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex)
     {
         throw std::runtime_error("ack_system_message not implemented");

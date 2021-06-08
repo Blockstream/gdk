@@ -444,13 +444,7 @@ namespace sdk {
         , m_message(msg)
         , m_use_ae_protocol(false)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        if (!m_is_hw_action) {
-            m_state = state_type::make_call;
-        } else {
+        if (m_state != state_type::error) {
             try {
                 m_message_info = m_session.get_system_message_info(msg);
                 m_use_ae_protocol = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
@@ -478,27 +472,23 @@ namespace sdk {
 
     auth_handler::state_type ack_system_message_call::call_impl()
     {
-        if (!m_is_hw_action) {
-            m_session.ack_system_message(m_message);
-        } else {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            if (m_action == "get_xpubs") {
-                m_master_xpub_bip32 = args.at("xpubs").at(0);
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        if (m_action == "get_xpubs") {
+            m_master_xpub_bip32 = args.at("xpubs").at(0);
 
-                set_action("sign_message");
-                set_data();
-                m_twofactor_data["message"] = m_message_info.first;
-                m_twofactor_data["path"] = m_message_info.second;
-                add_required_ae_data(m_signer, m_twofactor_data);
-                return state_type::resolve_code;
-            } else if (m_action == "sign_message") {
-                // If we are using the Anti-Exfil protocol we verify the signature
-                if (m_use_ae_protocol) {
-                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, m_message_info.second,
-                        m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
-                }
-                m_session.ack_system_message(m_message_info.first, args.at("signature"));
+            set_action("sign_message");
+            set_data();
+            m_twofactor_data["message"] = m_message_info.first;
+            m_twofactor_data["path"] = m_message_info.second;
+            add_required_ae_data(m_signer, m_twofactor_data);
+            return state_type::resolve_code;
+        } else if (m_action == "sign_message") {
+            // If we are using the Anti-Exfil protocol we verify the signature
+            if (m_use_ae_protocol) {
+                verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, m_message_info.second,
+                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
             }
+            m_session.ack_system_message(m_message_info.first, args.at("signature"));
         }
         return state_type::done;
     }
