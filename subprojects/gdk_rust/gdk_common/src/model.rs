@@ -110,6 +110,7 @@ pub struct CreateTransaction {
     #[serde(default)]
     pub send_all: bool,
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_transaction: Option<TxListItem>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
