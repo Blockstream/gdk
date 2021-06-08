@@ -163,9 +163,8 @@ namespace sdk {
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
 
-        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
-        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
-        std::vector<unsigned char> get_blinding_nonce(const std::string& pubkey, const std::string& script);
+        bool set_blinding_nonce(
+            const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
@@ -203,6 +202,9 @@ namespace sdk {
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
         void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data);
         void update_blob(locker_t& locker, std::function<bool()> update_fn);
+
+        std::vector<unsigned char> get_blinding_nonce(const std::string& pubkey_hex, const std::string& script_hex);
+
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json get_appearance() const;

@@ -78,5 +78,11 @@ namespace sdk {
         // Default impl is a no-op; registration is only meaningful in multisig
     }
 
+    bool session_impl::set_blinding_nonce(
+        const std::string& /*pubkey_hex*/, const std::string& /*script_hex*/, const std::string& /*nonce_hex*/)
+    {
+        return false; // No nonce caching by default, so return 'not updated'
+    }
+
 } // namespace sdk
 } // namespace ga

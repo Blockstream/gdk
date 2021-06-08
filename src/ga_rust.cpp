@@ -565,16 +565,6 @@ namespace sdk {
         throw std::runtime_error("get_recovery_pubkeys not implemented");
     }
 
-    void ga_rust::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
-    {
-        throw std::runtime_error("set_blinding_nonce not yet implemented");
-    }
-
-    bool ga_rust::has_blinding_nonce(const std::string& pubkey, const std::string& script)
-    {
-        throw std::runtime_error("hash_blinding_nonce not yet implemented");
-    }
-
     nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details) { return nlohmann::json(); }
 
     void ga_rust::upload_confidential_addresses(

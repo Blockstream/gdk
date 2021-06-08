@@ -664,15 +664,7 @@ namespace sdk {
         });
     }
 
-    bool session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->has_blinding_nonce(pubkey, script);
-        });
-    }
-
-    void session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
+    bool session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();

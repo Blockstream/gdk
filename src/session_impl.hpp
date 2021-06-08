@@ -127,9 +127,8 @@ namespace sdk {
             const std::string& mnemonic, const std::string& pin, const std::string& device_id)
             = 0;
 
-        virtual void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
-            = 0;
-        virtual bool has_blinding_nonce(const std::string& pubkey, const std::string& script) = 0;
+        virtual bool set_blinding_nonce(
+            const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex);
         virtual nlohmann::json get_blinded_scripts(const nlohmann::json& details) = 0;
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
