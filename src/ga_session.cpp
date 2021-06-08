@@ -2222,25 +2222,14 @@ namespace sdk {
 
     uint32_t ga_session::get_next_subaccount(const std::string& type)
     {
-        // the `type` argument isn't used in ga_session, only in ga_rust
-        (void)type;
+        if ((type != "2of2" && type != "2of3" && type != "2of2_no_recovery")
+            || (type == "2of2_no_recovery" && !m_net_params.is_liquid())) {
+            throw user_error("Invalid account type");
+        }
         locker_t locker(m_mutex);
         const uint32_t subaccount = m_next_subaccount;
         ++m_next_subaccount;
         return subaccount;
-    }
-
-    nlohmann::json ga_session::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
-    {
-        const uint32_t path[2] = { harden(3), harden(subaccount) };
-
-        // FIXME: pass locker throughout subaccount creation
-        const auto xpub = [this, &path] {
-            locker_t locker(m_mutex);
-            GDK_RUNTIME_ASSERT(m_signer != nullptr);
-            return m_signer->get_bip32_xpub(path);
-        }();
-        return create_subaccount(details, subaccount, xpub);
     }
 
     nlohmann::json ga_session::create_subaccount(

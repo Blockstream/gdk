@@ -304,6 +304,10 @@ namespace sdk {
             const std::string message = required_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
             result["signature"] = sig_to_der_hex(signer->sign_hash(path, message_hash));
+        } else if (action == "get_receive_address") {
+            const auto& address = required_data.at("address");
+            const auto script_hash = h2b(address.at("blinding_script_hash"));
+            result["blinding_key"] = b2h(signer->get_public_key_from_blinding_key(script_hash));
         } else {
             abort(); // FIXME
         }
