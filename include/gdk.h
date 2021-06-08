@@ -151,8 +151,8 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
  * Create a new user account using a hardware wallet/HSM/TPM.
  *
  * :param session: The session to use.
- * :param hw_device: Details about the :ref:`hw-device` being used to register.
- * :param mnemonic: The user's mnemonic passphrase.
+ * :param hw_device: :ref:`hw-device` or empty JSON for software wallet registration.
+ * :param mnemonic: The user's mnemonic passphrase for software wallet registration.
  * :param call: Destination for the resulting GA_auth_handler to perform the registration.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -163,7 +163,7 @@ GDK_API int GA_register_user(
  * Authenticate a user.
  *
  * :param session: The session to use.
- * :param hw_device: Details about any :ref:`hw-device` being used to login.
+ * :param hw_device: :ref:`hw-device` or empty JSON for software wallet login.
  * :param details: The :ref:`login-credentials` for authenticating the user.
  * :param call: Destination for the resulting GA_auth_handler to perform the login.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
@@ -245,15 +245,15 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  * Create a subaccount.
  *
  * :param session: The session to use.
- * :param details: The :ref:`subaccount`. "name" (which must not be already used in
- *|     the wallet) and "type" (either "2of2", "2of2_no_recovery" or "2of3") must be
- *|     populated. Type "2of2_no_recovery" is available only for Liquid networks and
- *|     always requires both keys for spending. For type "2of3" the caller may provide
- *|     either "recovery_mnemonic" or "recovery_xpub" if they do not wish to have a
+ * :param details: The :ref:`subaccount`. ``"name"`` (which must not be already used in
+ *|     the wallet) and ``"type"`` (either ``"2of2"``, ``"2of2_no_recovery"`` or ``"2of3"``) must be
+ *|     populated. Type ``"2of2_no_recovery"`` is available only for Liquid networks and
+ *|     always requires both keys for spending. For type ``"2of3"`` the caller may provide
+ *|     either ``"recovery_mnemonic"`` or ``"recovery_xpub"`` if they do not wish to have a
  *|     mnemonic passphrase generated automatically.
  *|     All other fields are ignored.
  * :param subaccount: Destination for the created subaccount details. For 2of3
- *|     subaccounts the field "recovery_xpub" will be populated, and "recovery_mnemonic"
+ *|     subaccounts the field ``"recovery_xpub"`` will be populated, and ``"recovery_mnemonic"``
  *|     will contain the recovery mnemonic passphrase if one was generated. These
  *|     values should be stored safely by the caller as they will not be returned again
  *|     by any GDK call such as GA_get_subaccounts.
@@ -275,7 +275,7 @@ GDK_API int GA_get_subaccounts(struct GA_session* session, struct GA_auth_handle
  * Get subaccount details.
  *
  * :param session: The session to use.
- * :param subaccount: The value of "pointer" from :ref:`subaccount-list` for the subaccount.
+ * :param subaccount: The value of ``"pointer"`` from :ref:`subaccount-list` for the subaccount.
  * :param call: Destination for the resulting GA_auth_handler to perform the creation.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -285,7 +285,7 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, s
  * Rename a subaccount.
  *
  * :param session: The session to use.
- * :param subaccount: The value of "pointer" from :ref:`subaccount-list` or
+ * :param subaccount: The value of ``"pointer"`` from :ref:`subaccount-list` or
  *|                   :ref:`subaccount-detail` for the subaccount to rename.
  * :param new_name: New name for the subaccount.
  *
@@ -619,11 +619,11 @@ GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
  * :param handler: The handler to receive notifications.
  * :param context: A context pointer to be passed to the handler.
  *
- * This must be called before GA_connect/GA_connect_with_proxy.
+ * This function must be called before `GA_connect`.
  * Notifications may arrive on different threads so the caller must ensure
  * that shared data is correctly locked within the handler.
  * The GA_json object passed to the caller must be destroyed by the caller
- * using GA_destroy_json. Failing to do so will result in memory leaks.
+ * using `GA_destroy_json`. Failing to do so will result in memory leaks.
  * When the session is disconnected/destroyed, a final call will be made to
  * the handler with a :ref:`session-event` notification.
  *
@@ -676,26 +676,29 @@ GDK_API int GA_destroy_json(GA_json* json);
  * differences.
  *
  * The state machine has the following states, which are returned in the
- * "status" element from GA_auth_handler_get_status():
+ * ``"status"`` element from `GA_auth_handler_get_status`:
  *
- * * "done": The action has been completed successfully. Any data returned
- *|  from the action is present in the "result" element of the status JSON.
+ * * ``"done"``: The action has been completed successfully. Any data returned
+ *|  from the action is present in the ``"result"`` element of the status JSON.
  *
- * * "error": A non-recoverable error occurred performing the action. The
- *| associated error message is given in the status element "error". The
+ * * ``"error"``: A non-recoverable error occurred performing the action. The
+ *| associated error message is given in the status element ``"error"``. The
  *| auth_handler object should be destroyed and the action restarted from
  *| scratch if this state is returned.
  *
- * * "request_code": Two factor authorization is required. The caller should
- *| prompt the user to choose a two factor method from the "methods" element
- *| and call GA_auth_handler_request_code() with the selected method.
+ * * ``"request_code"``: Two factor authorization is required. The caller should
+ *| prompt the user to choose a two factor method from the ``"methods"`` element
+ *| and call `GA_auth_handler_request_code` with the selected method.
  *
- * * "resolve_code": The caller should prompt the user to enter the code from
- *| the twofactor method chosen in the "request_code" step, and pass this
- *| code to GA_auth_handler_resolve_code().
+ * * ``"resolve_code"``: A twofactor code from the ``"request_code"`` step, or
+ *| data from a hardware device is required. If the status JSON contains
+ *| :ref:`hw-required-data`, then see :ref:`hw-resolve-overview` for details.
+ *| Otherwise, to resolve a twofactor code, the caller should prompt the user
+ *| to enter the code from the twofactor method chosen in the ``"request_code"``
+ *| step, and pass this code to `GA_auth_handler_resolve_code`.
  *
- * * "call": Twofactor or hardware authorization is complete and the caller
- *| should call GA_auth_handler_call() to perform the action.
+ * * ``"call"``: Twofactor or hardware authorization is complete and the caller
+ *| should call `GA_auth_handler_call` to perform the action.
  *
  */
 GDK_API int GA_auth_handler_get_status(struct GA_auth_handler* call, GA_json** output);
@@ -712,7 +715,8 @@ GDK_API int GA_auth_handler_request_code(struct GA_auth_handler* call, const cha
  * Authorize an action by providing its previously requested two factor authentication code.
  *
  * :param call: The auth_handler representing the action to perform.
- * :param code: The two factor authentication code received by the user.
+ * :param code: The two factor authentication code received by the user, or
+ *|    the serialised JSON response for hardware interaction (see :ref:`hw-resolve-overview`).
  */
 GDK_API int GA_auth_handler_resolve_code(struct GA_auth_handler* call, const char* code);
 
@@ -734,7 +738,7 @@ GDK_API int GA_destroy_auth_handler(struct GA_auth_handler* call);
  * Enable or disable a two factor authentication method.
  *
  * :param session: The session to use
- * :param method: The two factor method to enable/disable, i.e. "email", "sms", "phone", "gauth"
+ * :param method: The two factor method to enable/disable, i.e. ``"email"``, ``"sms"``, ``"phone"``, ``"gauth"``
  * :param twofactor_details: The two factor method and associated data such as an email address. :ref:`twofactor-detail`
  * :param call: Destination for the resulting GA_auth_handler to perform the action
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.

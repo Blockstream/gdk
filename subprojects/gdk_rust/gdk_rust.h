@@ -46,19 +46,6 @@ GDK_API int GDKRUST_spv_verify_tx(const GDKRUST_json* json);
 #ifndef SWIG
 /**
  * Set a handler to be called when notifications arrive.
- *
- * :param session: The server session to receive notifications for.
- * :param handler: The handler to receive notifications.
- * :param context: A context pointer to be passed to the handler.
- *
- * This must be called before GA_connect/GA_connect_with_proxy.
- * Notifications may arrive on different threads so the caller must ensure
- * that shared data is correctly locked within the handler.
- * The GDKRUST_json object passed to the caller must be destroyed by the caller
- * using GA_destroy_json. Failing to do so will result in memory leaks.
- * When the session is disconnected/destroyed, a final call will be made to
- * the handler with a :ref:`session-event` notification.
- *
  */
 GDK_API int GDKRUST_set_notification_handler(struct GDKRUST_session* session, GDKRUST_notification_handler handler, void *self_context);
 
