@@ -198,6 +198,13 @@ impl BETransaction {
         }
     }
 
+    pub fn get_size(&self) -> usize {
+        match self {
+            Self::Bitcoin(tx) => tx.get_size(),
+            Self::Elements(tx) => tx.get_size(),
+        }
+    }
+
     /// asset is none for bitcoin, in liquid must be Some
     pub fn add_output(
         &mut self,
