@@ -806,6 +806,15 @@ pub fn create_tx(
 
     let network = &account.network;
 
+    let fee_rate_sat_kb = request.fee_rate.get_or_insert_with(|| match network.id() {
+        NetworkId::Bitcoin(_) => 1000,
+        NetworkId::Elements(_) => 100,
+    });
+
+    // convert from satoshi/kbyte to satoshi/byte
+    let fee_rate = (*fee_rate_sat_kb as f64) / 1000.0;
+    info!("target fee_rate {:?} satoshi/byte", fee_rate);
+
     // TODO put checks into CreateTransaction::validate, add check asset_id are valid asset hex
     // eagerly check for address validity
     for address in request.addressees.iter().map(|a| &a.address) {
@@ -936,14 +945,6 @@ pub fn create_tx(
             }
         }
     }
-
-    // convert from satoshi/kbyte to satoshi/byte
-    let default_value = match network.id() {
-        NetworkId::Bitcoin(_) => 1000,
-        NetworkId::Elements(_) => 100,
-    };
-    let fee_rate = (request.fee_rate.unwrap_or(default_value) as f64) / 1000.0;
-    info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
     let utxos = match &request.utxos {
         None => account.utxos(request.num_confs, request.confidential_utxos_only)?,
