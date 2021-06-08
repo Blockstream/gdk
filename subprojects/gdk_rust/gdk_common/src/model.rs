@@ -111,6 +111,7 @@ pub struct CreateTransaction {
     pub send_all: bool,
     #[serde(default)]
     pub previous_transaction: Option<TxListItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
     pub utxos: Option<GetUnspentOutputs>,
     /// Minimum number of confirmations for coin selection
