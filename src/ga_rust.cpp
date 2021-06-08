@@ -225,18 +225,14 @@ namespace sdk {
         return call_session("get_next_subaccount", nlohmann::json({ { "type", type } }));
     }
 
-    nlohmann::json ga_rust::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
+    nlohmann::json ga_rust::create_subaccount(
+        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {
         auto details_c = nlohmann::json({
             { "subaccount", subaccount },
             { "name", details.at("name") },
         });
         return call_session("create_subaccount", details_c);
-    }
-    nlohmann::json ga_rust::create_subaccount(
-        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
-    {
-        throw std::runtime_error("create_subaccount with xpub not implemented");
     }
 
     void ga_rust::change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)
@@ -324,7 +320,15 @@ namespace sdk {
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
     {
-        throw std::runtime_error("get_subaccount_root_path not implemented");
+        // FIXME: Use rust mapping/map in user pubkeys
+        const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
+        const bool main_net = m_net_params.is_main_net();
+        const bool liquid = m_net_params.is_liquid();
+
+        const uint32_t purpose = purpose_lookup.at(subaccount % 16);
+        const uint32_t coin_type = main_net ? (liquid ? 1776 : 0) : 1;
+        const uint32_t account = subaccount / 16;
+        return std::vector<uint32_t>{ harden(purpose), harden(coin_type), account };
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)

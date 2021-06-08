@@ -94,3 +94,42 @@ a message using the given path.
      }
 
 :signature: The hex-encoded ECDSA signature in DER encoding corresponding to the given message.
+
+
+.. _hw-action-get-receive-address:
+
+Hardware Get Receive Address Action
+-----------------------------------
+
+When ``"action"`` is ``"get_receive_address"``, this describes a request to
+compute a blinding key for a new wallet address.
+
+.. note:: This action is only returned when using the Liquid network.
+
+.. code-block:: json
+
+     {
+       "address": {
+         "address": "XBiBx41oSSXxuQkmJKbiMKk2tXzTjDLG86",
+         "address_type": "p2wsh",
+         "blinding_script_hash": "a91403f650e2434916d5b7f124de8f673442b696282887",
+         "branch": 1,
+         "pointer": 1,
+         "script": "5221030361d2b6ea7d5e5237f0647c49a1c519b42173959631d939a28bc64263446e102102d4a348b9f48833dcefffa80305846686d101d02c45a4547b3a5ff6fabb8e2f1f52ae",
+         "script_type": 14,
+         "subaccount": 1,
+         "subtype": null
+       },
+     }
+
+:address: The address details for which a blinding key should be generated.
+
+**Expected response**:
+
+.. code-block:: json
+
+     {
+       "blinding_key": "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27"
+     }
+
+:blinding_key: The hex-encoded compressed pubkey for blinding the given address.

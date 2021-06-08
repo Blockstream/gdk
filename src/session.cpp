@@ -323,14 +323,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->create_subaccount(details, subaccount);
-        });
-    }
-
     nlohmann::json session::create_subaccount(
         const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {

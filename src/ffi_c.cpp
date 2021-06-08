@@ -303,9 +303,11 @@ GDK_DEFINE_C_FUNCTION_3(
 GDK_DEFINE_C_FUNCTION_2(GA_remove_account, struct GA_session*, session, struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::remove_account_call(*session)); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_create_subaccount, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::create_subaccount_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(
+    GA_create_subaccount, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::create_subaccount_call(*session, *json_cast(details));
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_subaccounts, struct GA_session*, session, struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::get_subaccounts_call(*session)); });
@@ -324,13 +326,17 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, const 
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::get_transactions_call(*session, *json_cast(details))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::get_receive_address_call(*session, *json_cast(details))); });
+GDK_DEFINE_C_FUNCTION_3(
+    GA_get_receive_address, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::get_receive_address_call(*session, *json_cast(details));
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_previous_addresses, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::get_previous_addresses_call(*session, *json_cast(details))); });
+GDK_DEFINE_C_FUNCTION_3(
+    GA_get_previous_addresses, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::get_previous_addresses_call(*session, *json_cast(details));
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_balance, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
     call, { *call = auth_cast(new ga::sdk::get_balance_call(*session, *json_cast(details))); });

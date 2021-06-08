@@ -354,32 +354,19 @@ namespace sdk {
         , m_use_ae_protocol(false)
         , m_remaining_ca_addrs(0)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        const std::string type = details.at("type");
-
-        // also check if we need to upload a few confidential addrs
-        if (m_session.is_liquid() && type == "2of2_no_recovery") {
-            m_remaining_ca_addrs = INITIAL_UPLOAD_CA;
-        }
-        try {
-            m_subaccount = session.get_next_subaccount(type);
-        } catch (const std::exception& e) {
-            set_error(e.what());
-            return;
-        }
-
-        if (!m_is_hw_action) {
-            m_state = state_type::make_call;
-        } else {
-            m_state = state_type::resolve_code;
-            set_data();
-
-            auto paths = get_paths_json();
-            paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
-            m_twofactor_data["paths"] = paths;
+        if (m_state != state_type::error) {
+            try {
+                const std::string type = details.at("type");
+                m_remaining_ca_addrs = type == "2of2_no_recovery" ? INITIAL_UPLOAD_CA : 0;
+                m_subaccount = session.get_next_subaccount(type);
+                m_state = state_type::resolve_code;
+                set_data();
+                auto paths = get_paths_json();
+                paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
+                m_twofactor_data["paths"] = paths;
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
         }
     }
 
@@ -406,62 +393,42 @@ namespace sdk {
             }
         }
 
-        if (!m_is_hw_action) {
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        if (m_action == "get_xpubs") {
+            m_master_xpub_bip32 = args.at("xpubs").at(0);
+            m_subaccount_xpub = args.at("xpubs").at(1);
             if (type == "2of3") {
-                // sign recovery key with login key
-                auto signer = m_session.get_nonnull_impl()->get_signer();
-                const auto message = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
-                const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-                m_details["recovery_key_sig"] = b2h(signer->sign_hash(signer::LOGIN_PATH, message_hash));
-            }
-
-            m_result = m_session.create_subaccount(m_details, m_subaccount);
-
-            // generate the conf addrs if required
-            while (m_remaining_ca_addrs > 0) {
-                const auto address = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
-                m_ca_addrs.emplace_back(get_blinded_address(m_session, address));
-
-                m_remaining_ca_addrs--;
-            }
-        } else {
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            if (m_action == "get_xpubs") {
-                m_master_xpub_bip32 = args.at("xpubs").at(0);
-                m_subaccount_xpub = args.at("xpubs").at(1);
-                if (type == "2of3") {
-                    // ask the caller to sign recovery key with login key
-                    set_action("sign_message");
-                    set_data();
-                    m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
-                    m_twofactor_data["path"] = signer::LOGIN_PATH;
-                    m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
-                    return state_type::resolve_code;
-                }
-                m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
-            } else if (m_action == "sign_message") {
-                // If we are using the Anti-Exfil protocol we verify the signature
-                if (m_use_ae_protocol) {
-                    verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
-                        m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
-                }
-
-                m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
-                m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
-            } else if (m_action == "get_receive_address") {
-                auto& addr = m_twofactor_data["address"];
-                addr["blinding_key"] = args["blinding_key"];
-                m_ca_addrs.emplace_back(get_blinded_address(m_session, addr));
-                m_remaining_ca_addrs--;
-            }
-
-            if (m_remaining_ca_addrs > 0) {
-                set_action("get_receive_address");
+                // ask the caller to sign recovery key with login key
+                set_action("sign_message");
                 set_data();
-                m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
-
+                m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
+                m_twofactor_data["path"] = signer::LOGIN_PATH;
+                m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
                 return state_type::resolve_code;
             }
+            m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
+        } else if (m_action == "sign_message") {
+            // If we are using the Anti-Exfil protocol we verify the signature
+            if (m_use_ae_protocol) {
+                verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+            }
+
+            m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
+            m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
+        } else if (m_action == "get_receive_address") {
+            auto& addr = m_twofactor_data["address"];
+            addr["blinding_key"] = args["blinding_key"];
+            m_ca_addrs.emplace_back(get_blinded_address(m_session, addr));
+            m_remaining_ca_addrs--;
+        }
+
+        if (m_remaining_ca_addrs > 0) {
+            set_action("get_receive_address");
+            set_data();
+            m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
+
+            return state_type::resolve_code;
         }
 
         // we prepared a few addresses, upload them to the backend
@@ -680,21 +647,18 @@ namespace sdk {
         : auth_handler_impl(session, "get_receive_address")
         , m_details(details)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
+        if (m_state != state_type::error) {
+            try {
+                nlohmann::json address = m_session.get_receive_address(details);
+                set_data();
+                m_twofactor_data["address"] = address;
 
-        try {
-            nlohmann::json address = m_session.get_receive_address(details);
-            set_data();
-            m_twofactor_data["address"] = address;
-        } catch (const std::exception& e) {
-            set_error(e.what());
-            return;
+                // Make the call directly unless we are Liquid and so need to blind
+                m_state = m_session.is_liquid() ? state_type::resolve_code : state_type::make_call;
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
         }
-
-        // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
-        m_state = (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type get_receive_address_call::call_impl()
@@ -703,11 +667,8 @@ namespace sdk {
         m_result = m_twofactor_data["address"];
 
         if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
-            // Liquid: blind the address
-            if (m_is_hw_action) {
-                // Use the blinding key returned by the HW
-                m_result["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
-            }
+            // Liquid: blind the address using the blinding key from the HW
+            m_result["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
             m_result["address"] = get_blinded_address(m_session, m_result);
         }
 
@@ -758,19 +719,16 @@ namespace sdk {
         const auto& current = m_result["list"][m_index];
         set_data();
         m_twofactor_data["address"] = current;
-        // Ask the HW to provide the blinding key or process directly if no HW
-        return !m_is_hw_action ? state_type::make_call : state_type::resolve_code;
+        // Ask the HW to provide the blinding key
+        return state_type::resolve_code;
     }
 
     auth_handler::state_type get_previous_addresses_call::call_impl()
     {
         auto& current = m_result["list"][m_index];
 
-        // Liquid: blind the address
-        if (m_is_hw_action) {
-            // Use the blinding key returned by the HW
-            current["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
-        }
+        // Liquid: blind the address Using the blinding key from the HW
+        current["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
         current["address"] = get_blinded_address(m_session, current);
 
         ++m_index; // Move to the next address
