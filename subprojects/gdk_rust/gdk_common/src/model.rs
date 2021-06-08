@@ -92,6 +92,7 @@ impl ExchangeRateOk {
 pub struct AddressAmount {
     pub address: String, // could be bitcoin or elements
     pub satoshi: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_id: Option<String>,
 }
 
