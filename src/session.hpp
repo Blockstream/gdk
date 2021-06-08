@@ -121,8 +121,8 @@ namespace sdk {
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transaction_details(const std::string& txhash_hex);
 
-        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
-        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
+        bool set_blinding_nonce(
+            const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex);
 
         nlohmann::json create_transaction(const nlohmann::json& details);
         nlohmann::json sign_transaction(const nlohmann::json& details);

@@ -739,12 +739,7 @@ namespace sdk {
         for (const auto& nonce : nonces) {
             const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
             const std::string& script = blinded_scripts.at(i).at("script");
-
-            if (!session.has_blinding_nonce(pubkey, script)) {
-                session.set_blinding_nonce(pubkey, script, nonce);
-                updated = true;
-            }
-
+            updated |= session.set_blinding_nonce(pubkey, script, nonce);
             ++i;
         }
 

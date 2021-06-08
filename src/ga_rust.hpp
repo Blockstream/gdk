@@ -123,8 +123,6 @@ namespace sdk {
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
 
-        void set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce);
-        bool has_blinding_nonce(const std::string& pubkey, const std::string& script);
         nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 

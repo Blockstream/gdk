@@ -2362,13 +2362,15 @@ namespace sdk {
             if (blinding_key) {
                 unblinded = asset_unblind(
                     *blinding_key, rangeproof, commitment, h2b(nonce_commitment_hex), extra_commitment, asset_tag);
-            } else if (has_blinding_nonce(nonce_commitment_hex, extra_commitment_hex)) {
-                const auto nonce = get_blinding_nonce(nonce_commitment_hex, extra_commitment_hex);
-                unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, extra_commitment, asset_tag);
             } else {
-                // hw and missing nonce in the map
-                utxo["error"] = "missing blinding nonce";
-                return false; // Cache not updated
+                std::vector<unsigned char> nonce = get_blinding_nonce(nonce_commitment_hex, extra_commitment_hex);
+                if (!nonce.empty()) {
+                    unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, extra_commitment, asset_tag);
+                } else {
+                    // hw and missing nonce in the map
+                    utxo["error"] = "missing blinding nonce";
+                    return false; // Cache not updated
+                }
             }
 
             utxo["satoshi"] = std::get<3>(unblinded);
@@ -2866,26 +2868,27 @@ namespace sdk {
         return answer;
     }
 
-    std::vector<unsigned char> ga_session::get_blinding_nonce(const std::string& pubkey, const std::string& script)
+    std::vector<unsigned char> ga_session::get_blinding_nonce(
+        const std::string& pubkey_hex, const std::string& script_hex)
     {
-        GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
+        GDK_RUNTIME_ASSERT(!pubkey_hex.empty() && !script_hex.empty());
         locker_t locker(m_mutex);
 
-        const auto nonce = m_cache.get_liquid_blinding_nonce(h2b(pubkey), h2b(script));
-        GDK_RUNTIME_ASSERT(nonce != boost::none);
-        return nonce.get();
+        auto nonce = m_cache.get_liquid_blinding_nonce(h2b(pubkey_hex), h2b(script_hex));
+        return nonce == boost::none ? std::vector<unsigned char>() : nonce.get();
     }
 
-    bool ga_session::has_blinding_nonce(const std::string& pubkey, const std::string& script)
+    bool ga_session::set_blinding_nonce(
+        const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex)
     {
         locker_t locker(m_mutex);
-        return m_cache.has_liquid_blinding_nonce(h2b(pubkey), h2b(script));
-    }
-
-    void ga_session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
-    {
-        locker_t locker(m_mutex);
-        m_cache.insert_liquid_blinding_nonce(h2b(pubkey), h2b(script), h2b(nonce));
+        const auto pubkey = h2b(pubkey_hex);
+        const auto script = h2b(script_hex);
+        if (m_cache.has_liquid_blinding_nonce(pubkey, script)) {
+            return false; // Not updated
+        }
+        m_cache.insert_liquid_blinding_nonce(pubkey, script, h2b(nonce_hex));
+        return true; // Updated
     }
 
     // Idempotent
