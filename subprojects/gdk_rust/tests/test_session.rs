@@ -1,5 +1,5 @@
 use bitcoin::{self, Amount};
-use bitcoincore_rpc::{Auth, Client, RpcApi};
+use bitcoind::bitcoincore_rpc::{Auth, Client, RpcApi};
 use chrono::Utc;
 use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
 use electrum_client::ElectrumApi;
@@ -17,7 +17,6 @@ use log::{info, warn, Metadata, Record};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::net::TcpStream;
 use std::process::Child;
 use std::process::Command;
 use std::str::FromStr;
@@ -31,15 +30,13 @@ const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
 pub struct TestSession {
-    node: Client,
+    node: bitcoind::BitcoinD,
     pub electrs: RawClient<ElectrumPlaintextStream>,
     electrs_header: RawClient<ElectrumPlaintextStream>,
     pub session: ElectrumSession,
     tx_status: u64,
     block_status: (u32, BEBlockHash),
-    node_process: Child,
     electrs_process: Child,
-    node_work_dir: TempDir,
     electrs_work_dir: TempDir,
     db_root_dir: TempDir,
     network_id: NetworkId,
@@ -86,69 +83,53 @@ pub fn setup(
             .expect("cannot initialize logging");
     });
 
-    let node_work_dir = TempDir::new("electrum_integration_tests").unwrap();
-    let node_work_dir_str = format!("{}", &node_work_dir.path().display());
-    let sum_port = num_client * 10 + is_liquid as u16;
-
-    let rpc_port = 55363u16 + sum_port;
-    let p2p_port = 34975u16 + sum_port;
-    let monitor_port = 28901u16 + sum_port;
-    let socket = format!("127.0.0.1:{}", rpc_port);
-    let node_url = format!("http://{}", socket);
-
-    let test = TcpStream::connect(&socket);
-    assert!(test.is_err(), "check the port is not open with a previous instance of bitcoind");
-
-    let datadir_arg = format!("-datadir={}", &node_work_dir.path().display());
-    let rpcport_arg = format!("-rpcport={}", rpc_port);
-    let p2pport_arg = format!("-port={}", p2p_port);
-    let mut args: Vec<&str> = vec![&datadir_arg, &rpcport_arg, &p2pport_arg];
-    if is_liquid {
-        args.push("-initialfreecoins=2100000000");
-        args.push("-chain=liquidregtest");
-        args.push("-validatepegin=0");
-    } else {
-        args.push("-regtest");
-        args.push("-fallbackfee=0.0001");
-    };
-    if !is_debug {
-        args.push("-daemon");
-    }
-    args.push("-dustrelayfee=0.00000001");
-    info!("LAUNCHING: {} {}", node_exec, args.join(" "));
-    let node_process = Command::new(node_exec).args(args).spawn().unwrap();
-    info!("node spawned");
-
-    let par_network = if is_liquid {
+    let mut args = vec!["-fallbackfee=0.0001", "-dustrelayfee=0.00000001"];
+    let network = if is_liquid {
+        args.extend_from_slice(&[
+            "-chain=liquidregtest",
+            "-initialfreecoins=2100000000",
+            "-validatepegin=0",
+        ]);
         "liquidregtest"
     } else {
+        args.extend_from_slice(&["-regtest"]);
         "regtest"
     };
-    let cookie_file = node_work_dir.path().join(par_network).join(".cookie");
-    // wait bitcoind is ready, use default wallet
-    let mut i = 120;
-    let node: Client = loop {
-        assert!(i > 0, "1 minute without updates");
-        i -= 1;
-        thread::sleep(Duration::from_millis(500));
-        assert!(node_process.stderr.is_none());
-        let client_result = Client::new(node_url.clone(), Auth::CookieFile(cookie_file.clone()));
-        match client_result {
-            Ok(client) => match client.call::<Value>("getblockchaininfo", &[]) {
-                Ok(_) => break client,
-                Err(e) => warn!("{:?}", e),
-            },
-            Err(e) => warn!("{:?}", e),
-        }
+    let conf = bitcoind::Conf {
+        args,
+        view_stdout: is_debug,
+        p2p: bitcoind::P2P::Yes,
+        network,
     };
-    info!("Bitcoin started");
-    let cookie_value = std::fs::read_to_string(&cookie_file).unwrap();
+    let node = bitcoind::BitcoinD::with_conf(&node_exec, &conf).unwrap();
+    info!("node spawned");
 
+    node_generate(&node.client, 1);
+    if is_liquid {
+        // send initialfreecoins from wallet "" to the wallet created by BitcoinD::new
+        let node_url = format!("http://127.0.0.1:{}/wallet/", node.params.rpc_socket.port());
+        let client =
+            Client::new(node_url, Auth::CookieFile(node.params.cookie_file.clone())).unwrap();
+        let address = node_getnewaddress(&node.client, None);
+        client
+            .call::<Value>(
+                "sendtoaddress",
+                &[address.into(), "21".into(), "".into(), "".into(), true.into()],
+            )
+            .unwrap();
+    }
+
+    let p2p_port = node.params.p2p_socket.unwrap().port();
+    let node_work_dir_str = format!("{}", &node.params.datadir.display());
+    let cookie_value = std::fs::read_to_string(&node.params.cookie_file).unwrap();
+
+    let sum_port = num_client * 10 + is_liquid as u16;
+    let monitor_port = 28901u16 + sum_port;
     let electrs_port = 62431u16 + sum_port;
     let electrs_work_dir = TempDir::new("electrum_integration_tests").unwrap();
     let electrs_work_dir_str = format!("{}", &electrs_work_dir.path().display());
     let electrs_url = format!("127.0.0.1:{}", electrs_port);
-    let daemon_url = format!("127.0.0.1:{}", rpc_port);
+    let daemon_url = format!("127.0.0.1:{}", node.params.rpc_socket.port());
     let monitor_url = format!("127.0.0.1:{}", monitor_port);
     let mut args: Vec<&str> = vec![
         "--db-dir",
@@ -162,7 +143,7 @@ pub fn setup(
         "--monitoring-addr",
         &monitor_url,
         "--network",
-        par_network,
+        network,
         "--cookie",
         &cookie_value,
         "--jsonrpc-import",
@@ -175,7 +156,7 @@ pub fn setup(
     let electrs_process = Command::new(electrs_exec).args(args).spawn().unwrap();
     info!("Electrs spawned");
 
-    node_generate(&node, 101);
+    node_generate(&node.client, 100);
 
     info!("creating electrs client");
     let mut i = 120;
@@ -260,9 +241,7 @@ pub fn setup(
         electrs,
         electrs_header,
         session,
-        node_process,
         electrs_process,
-        node_work_dir,
         electrs_work_dir,
         db_root_dir,
         network_id,
@@ -308,7 +287,7 @@ impl TestSession {
     /// test fees are 25 elements and greater than relay_fee
     pub fn fees(&mut self) {
         let fees = self.session.get_fee_estimates().unwrap();
-        let relay_fee = self.node.get_network_info().unwrap().relay_fee.as_sat();
+        let relay_fee = self.node.client.get_network_info().unwrap().relay_fee.as_sat();
         assert_eq!(fees.len(), 25);
         assert!(fees.iter().all(|f| f.0 >= relay_fee));
         assert!(fees.windows(2).all(|s| s[0].0 <= s[1].0)); // monotonic
@@ -888,27 +867,28 @@ impl TestSession {
     }
 
     pub fn node_getnewaddress(&self, kind: Option<&str>) -> String {
-        node_getnewaddress(&self.node, kind)
+        node_getnewaddress(&self.node.client, kind)
     }
 
     pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) -> String {
-        node_sendtoaddress(&self.node, address, satoshi, asset)
+        node_sendtoaddress(&self.node.client, address, satoshi, asset)
     }
     fn node_issueasset(&self, satoshi: u64) -> String {
-        node_issueasset(&self.node, satoshi)
+        node_issueasset(&self.node.client, satoshi)
     }
     pub fn node_generate(&self, block_num: u32) {
-        node_generate(&self.node, block_num)
+        node_generate(&self.node.client, block_num)
     }
     pub fn node_connect(&self, port: u16) {
-        self.node.call::<Value>("clearbanned", &[]).unwrap();
+        self.node.client.call::<Value>("clearbanned", &[]).unwrap();
         self.node
+            .client
             .call::<Value>("addnode", &[format!("127.0.0.1:{}", port).into(), "add".into()])
             .unwrap();
     }
     pub fn node_disconnect_all(&self) {
         // if we disconnect without banning, the other peer will connect back to us
-        self.node.call::<Value>("setban", &["127.0.0.1".into(), "add".into()]).unwrap();
+        self.node.client.call::<Value>("setban", &["127.0.0.1".into(), "add".into()]).unwrap();
     }
 
     pub fn check_fee_rate(&self, req_rate: u64, tx_meta: &TransactionMeta, max_perc_diff: f64) {
@@ -919,7 +899,8 @@ impl TestSession {
             ((real_rate - req_rate).abs() / real_rate) < max_perc_diff,
             format!("real_rate:{} req_rate:{}", real_rate, req_rate)
         ); // percentage difference between fee rate requested vs real fee
-        let relay_fee = self.node.get_network_info().unwrap().relay_fee.as_sat() as f64 / 1000.0;
+        let relay_fee =
+            self.node.client.get_network_info().unwrap().relay_fee.as_sat() as f64 / 1000.0;
         assert!(
             real_rate > relay_fee,
             format!("fee rate:{} is under relay_fee:{}", real_rate, relay_fee)
@@ -953,8 +934,9 @@ impl TestSession {
 
     /// balance in satoshi of the node
     fn balance_node(&self, asset: Option<String>) -> u64 {
-        let balance: Value = self.node.call("getbalance", &[]).unwrap();
-        let unconfirmed_balance: Value = self.node.call("getunconfirmedbalance", &[]).unwrap();
+        let balance: Value = self.node.client.call("getbalance", &[]).unwrap();
+        let unconfirmed_balance: Value =
+            self.node.client.call("getunconfirmedbalance", &[]).unwrap();
         let balance_btc = match self.network_id {
             NetworkId::Bitcoin(_) => {
                 balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap()
@@ -1090,7 +1072,6 @@ impl TestSession {
     pub fn stop(&mut self) {
         self.session.disconnect().unwrap();
         self.node.stop().unwrap();
-        self.node_process.wait().unwrap();
         self.electrs_process.kill().unwrap();
     }
 

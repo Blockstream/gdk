@@ -27,10 +27,10 @@ ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 
 [dev-dependencies]
 tempdir = "0.3.7"
-bitcoincore-rpc = "0.13.0"
 electrum-client = "0.7.0"
 bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
 elements = { version = "0.16", features = ["serde-feature"] }
+bitcoind = "0.11.0"
 
 [profile.release]
 lto = true
