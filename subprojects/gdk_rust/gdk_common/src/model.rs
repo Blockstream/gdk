@@ -114,7 +114,8 @@ pub struct CreateTransaction {
     pub memo: Option<String>,
     pub utxos: Option<GetUnspentOutputs>,
     /// Minimum number of confirmations for coin selection
-    pub num_confs: Option<u32>,
+    #[serde(default)]
+    pub num_confs: u32,
     #[serde(default)]
     pub confidential_utxos_only: bool,
 }
