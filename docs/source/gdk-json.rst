@@ -1,20 +1,24 @@
-Gdk JSON
+GDK JSON
 ========
 
-In this section there are some example JSON used by the lib
+This section describes the various JSON formats used by the library.
 
 .. _init-config-arg:
 
 Initialization config JSON
 --------------------------
 
-GDK uses the optional `datadir` to store assets and other data.
+Passed to `GA_init` when initializing the library.
 
 .. code-block:: json
 
     {
         "datadir": "/path/to/datadir"
     }
+
+:datadir: An optional directory which the gdk will use to store encrypted data
+         relating to sessions. If omitted no local storage will be used, note
+         that this may significantly decrease the performance of some calls.
 
 .. _net-params:
 
@@ -61,7 +65,8 @@ To authenticate with a PIN:
        }
    }
 
-See :ref:`pin-data` for the format of the `pin_data` element.
+:pin: The PIN entered by the user to unlock the wallet.
+:pin_data: See :ref:`pin-data`.
 
 To authenticate a watch-only user:
 
@@ -91,10 +96,11 @@ Describes the capabilities of an external signing device.
       }
    }
 
+:name: The unique name of the hardware device.
 :supports_arbitrary_scripts: True if the device can sign non-standard scripts such as CSV.
 :supports_low_r: True if the device can produce low-R ECDSA signatures.
-:supports_liquid: See `liquid_support_level` in the gdk source for details.
-:supports_ae_protocol: See `ae_protocol_support_level` in the gdk source for details.
+:supports_liquid: See the "liquid_support_level" enum in the gdk source for details.
+:supports_ae_protocol: See "ae_protocol_support_level" enum  in the gdk source for details.
 
 The default for any value not provided is false or 0.
 
@@ -103,6 +109,10 @@ The default for any value not provided is false or 0.
 
 PIN data JSON
 -------------
+
+Contains the data returned by `GA_set_pin`. The caller must persist this
+data and pass it to `GA_login_user` along with the users PIN in order to
+allow a PIN login.
 
 .. code-block:: json
 
@@ -747,7 +757,7 @@ Receive Address Details JSON
 Previous Addresses Request JSON
 -------------------------------
 
-Contains the query parameters for requesting previously generated addresses using :ref:`GA_get_previous_addresses`.
+Contains the query parameters for requesting previously generated addresses using `GA_get_previous_addresses`.
 
 .. code-block:: json
 
@@ -803,7 +813,7 @@ Contains a page of previously generated addresses, from newest to oldest.
   }
 
 :last_pointer: Contains the next_pointer value to pass in :ref:`previous-addresses-request` in a
-               subsequent call to :ref:`GA_get_previous_addresses` in order to fetch the next page.
+               subsequent call to `GA_get_previous_addresses` in order to fetch the next page.
                Will be 1 when all addresses have been fetched.
 :list: Contains the current page of addresses in :ref:`receive-address-details` format.
 :subaccount: The subaccount which the generated addresses belong to.
@@ -830,7 +840,7 @@ Unspent UTXOs Request JSON
 Unspent Ouputs Set Status JSON
 ------------------------------
 
-Valid status values are `"default"` for normal behaviour or `"frozen"`. Frozen
+Valid status values are ``"default"`` for normal behaviour or ``"frozen"``. Frozen
 outputs are hidden from the caller's balance and unspent output requests, are
 not returned in nlocktime emails, and cannot be spent. An account containing
 frozen outputs can be deleted, whereas an account with unfrozen outputs can not.
@@ -916,12 +926,11 @@ Contains a list of all available networks the API can connect to.
     "all_networks": [
       "mainnet",
       "liquid",
-      "testnet",
-      ...
+      "testnet"
     ],
-    "liquid": * Network JSON *
-    "mainnet": * Network JSON *
-    "testnet": * Network JSON *
+    "liquid": { },
+    "mainnet": { },
+    "testnet": { },
   }
 
 For each network listed, a :ref:`network` element is present containing
@@ -982,7 +991,7 @@ Reconnect hint JSON
 .. _convert-amount:
 
 Convert Amount JSON
------------------
+-------------------
 
 Amounts to convert are passed with a single key containing the unit value
 to convert, returning all possible conversion values for that value.
@@ -996,9 +1005,9 @@ For example, to convert satoshi into all available units:
     "satoshi": 1120
   }
 
-If `"fiat_currency"` and `"fiat_rate"` members are provided, the fiat
+If ``"fiat_currency"`` and ``"fiat_rate"`` members are provided, the fiat
 conversion will fall back on these values if no fiat rates are available.
-Callers can check the `"is_current"` member in the result :ref:`amount-data`
+Callers can check the ``"is_current"`` member in the result :ref:`amount-data`
 to determine if the fall back values were used.
 
 For example, to convert bits into all available units, with a fiat
@@ -1036,8 +1045,8 @@ Amount JSON
   }
 
 :fiat_currency: Set to the users fiat currency if available, otherwise an empty string.
-:fiat_rate: Set to the users fiat exchange rate if available, otherwise `null`.
-:is_current: `true` if the `"fiat_currency"` and `"fiat_rate"` members are current.
+:fiat_rate: Set to the users fiat exchange rate if available, otherwise ``null``.
+:is_current: ``true`` if the ``"fiat_currency"`` and ``"fiat_rate"`` members are current.
 
 
 .. _currencies:
@@ -1119,9 +1128,9 @@ Assets Params JSON
 .. code-block:: json
 
    {
-      "assets":True,
-      "icons":True,
-      "refresh":True
+      "assets": true,
+      "icons": true,
+      "refresh": true
    }
 
 

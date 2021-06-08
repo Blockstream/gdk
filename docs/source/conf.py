@@ -26,7 +26,7 @@ def output_func(docs, func):
 def extract_docs(infile, outfile):
 
     lines = [l.strip() for l in open(infile).readlines()]
-    title = infile.split('/')[-1][:-2].capitalize() + ' Functions'  # FIXME. we may need C headers to have a prefix
+    title = infile.split('/')[-1][:-2].upper() + ' Functions'  # FIXME. we may need C headers to have a prefix
     title_markup = '=' * len(title)
     output, current, func, state = [title, title_markup, ''], [], '', SCANNING
 
