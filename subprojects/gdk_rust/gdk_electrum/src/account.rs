@@ -848,8 +848,10 @@ pub fn create_tx(
         }
     }
 
-    let send_all = request.send_all.unwrap_or(false);
-    request.send_all = Some(send_all); // accept default false, but always return the value
+    let send_all = request.send_all;
+    if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
+        return Err(Error::InvalidAmount);
+    }
 
     let mut template_tx = None;
     let mut change_addresses = HashMap::new();

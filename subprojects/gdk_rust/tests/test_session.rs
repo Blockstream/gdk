@@ -375,7 +375,7 @@ impl TestSession {
             satoshi: 0,
             asset_id: asset_id.clone().or(self.asset_id()),
         });
-        create_opt.send_all = Some(true);
+        create_opt.send_all = true;
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
 
@@ -386,8 +386,8 @@ impl TestSession {
         //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
         assert_eq!(self.balance_account(subaccount, asset_id, None), 0);
 
-        assert!(tx.create_transaction.unwrap().send_all.unwrap());
-        assert!(signed_tx.create_transaction.unwrap().send_all.unwrap());
+        assert!(tx.create_transaction.unwrap().send_all);
+        assert!(signed_tx.create_transaction.unwrap().send_all);
         txid
     }
 
@@ -451,11 +451,11 @@ impl TestSession {
         assert_eq!(self.balance_gdk(asset.clone()), expected, "gdk balance does not match");
 
         assert!(
-            !tx.create_transaction.unwrap().send_all.unwrap(),
+            !tx.create_transaction.unwrap().send_all,
             "send_all in tx is true but should be false"
         );
         assert!(
-            !signed_tx.create_transaction.unwrap().send_all.unwrap(),
+            !signed_tx.create_transaction.unwrap().send_all,
             "send_all in signed_tx is true but should be false"
         );
 
