@@ -1996,20 +1996,6 @@ namespace sdk {
         return std::make_pair(message_hash_hex, path);
     }
 
-    void ga_session::ack_system_message(const std::string& message)
-    {
-        const auto info = get_system_message_info(message);
-
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(message == m_system_message_ack);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-
-        const auto hash = format_bitcoin_message_hash(ustring_span(info.first));
-        const auto sig_der_hex = sig_to_der_hex(m_signer->sign_hash(info.second, hash));
-
-        ack_system_message(locker, info.first, sig_der_hex);
-    }
-
     void ga_session::ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex)
     {
         locker_t locker(m_mutex);

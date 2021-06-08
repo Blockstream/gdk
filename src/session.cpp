@@ -818,14 +818,6 @@ namespace sdk {
         return p->get_system_message_info(system_message); // Note no exception wrapper
     }
 
-    void session::ack_system_message(const std::string& system_message)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->ack_system_message(system_message);
-        });
-    }
-
     void session::ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex)
     {
         exception_wrapper([&] {
