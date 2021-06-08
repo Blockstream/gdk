@@ -416,7 +416,7 @@ impl TestSession {
         });
         create_opt.memo = memo;
         create_opt.utxos = unspent_outputs;
-        create_opt.confidential_utxos_only = confidential_utxos_only;
+        create_opt.confidential_utxos_only = confidential_utxos_only.unwrap_or(false);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         assert!(tx.user_signed, "tx is not marked as user_signed");
         match self.network.id() {
@@ -661,7 +661,7 @@ impl TestSession {
             satoshi: init_sat, // not enough to pay the fee with confidential utxos only
             asset_id: self.asset_id(),
         });
-        create_opt.confidential_utxos_only = Some(true);
+        create_opt.confidential_utxos_only = true;
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
             Err(Error::InsufficientFunds)
@@ -680,7 +680,7 @@ impl TestSession {
         // reduces complexity.
         let node_address = self.node_getnewaddress(None);
         let balance_node_before = self.balance_node(None);
-        utxos_opt.confidential_utxos_only = Some(false);
+        utxos_opt.confidential_utxos_only = None;
         let mut utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
         assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);

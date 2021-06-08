@@ -944,10 +944,7 @@ pub fn create_tx(
     info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
     let utxos = match &request.utxos {
-        None => account.utxos(
-            request.num_confs.unwrap_or(0),
-            request.confidential_utxos_only.unwrap_or(false),
-        )?,
+        None => account.utxos(request.num_confs.unwrap_or(0), request.confidential_utxos_only)?,
         Some(utxos) => utxos.try_into()?,
     };
     info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);

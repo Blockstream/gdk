@@ -114,7 +114,8 @@ pub struct CreateTransaction {
     pub utxos: Option<GetUnspentOutputs>,
     /// Minimum number of confirmations for coin selection
     pub num_confs: Option<u32>,
-    pub confidential_utxos_only: Option<bool>,
+    #[serde(default)]
+    pub confidential_utxos_only: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
