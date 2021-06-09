@@ -95,7 +95,6 @@ namespace sdk {
         state_type call_impl() override;
 
         const nlohmann::json m_details;
-        nlohmann::json m_tx;
     };
 
     class needs_unblind_call : public auth_handler_impl {

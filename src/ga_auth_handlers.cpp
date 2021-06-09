@@ -745,6 +745,16 @@ namespace sdk {
         return updated;
     }
 
+    static bool has_unblinded_change(const nlohmann::json& tx)
+    {
+        for (const auto& it : tx.at("change_address").items()) {
+            if (!it.value().value("is_blinded", false)) {
+                return true; // At least one change output is unblinded
+            }
+        }
+        return false; // All change ouputs are blinded
+    }
+
     //
     // Create transaction
     //
@@ -752,83 +762,45 @@ namespace sdk {
         : auth_handler_impl(session, "create_transaction")
         , m_details(details)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        try {
-            m_tx = m_session.create_transaction(details);
-            set_data();
-            m_twofactor_data["transaction"] = m_tx;
-            if (m_session.is_liquid()
-                && m_session.get_nonnull_impl()->get_signer()->get_liquid_support() != liquid_support_level::full) {
-                m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
+        if (m_state != state_type::error) {
+            try {
+                auto tx = m_session.create_transaction(details);
+                if (!tx.contains("change_address") || !m_session.is_liquid() || !has_unblinded_change(tx)) {
+                    m_result.swap(tx);
+                    m_state = state_type::done; // No blinding needed
+                } else {
+                    // Ask the HW to blind the change address(es)
+                    m_state = state_type::resolve_code;
+                    set_data();
+                    m_twofactor_data["transaction"].swap(tx);
+                }
+            } catch (const std::exception& e) {
+                set_error(e.what());
             }
-        } catch (const std::exception& e) {
-            GDK_LOG_SEV(log_level::info) << "exception in create_transaction_call::create_transaction_call()";
-            set_error(e.what());
-            return;
         }
-
-        // If there's no HW, OR we are on Bitcoin then there's no need to poll the HW, and we are ready for the call
-        m_state = (!m_is_hw_action || !m_session.is_liquid()) ? state_type::make_call : state_type::resolve_code;
     }
 
     auth_handler::state_type create_transaction_call::call_impl()
     {
-        if (!m_session.is_liquid()) {
-            m_result = m_tx; // no need to do much here
-            return state_type::done;
-        }
-
-        // TODO: we might also need to blind other kind of addresses, in case of sweep etc
-        if (m_tx.find("change_address") == m_tx.end()) {
-            m_result = m_tx;
-            return state_type::done;
-        }
-
-        nlohmann::json args;
-        if (m_is_hw_action) {
-            args = nlohmann::json::parse(m_code);
-
-            if (args.contains("nonces")) {
-                if (cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"])) {
-                    if (m_tx["utxos"].contains("error")) {
-                        // In the case where the blinding nonces were not available the first time
-                        // create_transaction was called they will have been added under 'error'
-                        // Clear the utxos here to force the next call to create_transaction to
-                        // reload them.
-                        // This is not really ideal as it involves another server call and throws
-                        // away any non-error utxos as well but any better fix will require more
-                        // extensive refactoring
-                        m_tx.erase("utxos");
-                    }
-                }
-            }
-        }
-
         const auto blinded_prefix = m_session.get_network_parameters().blinded_prefix();
+        const nlohmann::json args = nlohmann::json::parse(m_code);
 
-        for (auto& it : m_tx.at("change_address").items()) {
+        // Blind the change addresses
+        auto& tx = m_twofactor_data["transaction"];
+        for (auto& it : tx.at("change_address").items()) {
             auto& addr = it.value();
-            if (addr.value("is_blinded", false)) {
-                continue; // already done, skip it
-            }
-
-            if (m_is_hw_action) {
-                // Use the blinding key returned by the HW
+            if (!addr.value("is_blinded", false)) {
                 addr["blinding_key"] = args.at("blinding_keys").at(it.key());
-            }
 
-            auto& address = addr.at("address");
-            address = confidential_addr_to_addr(address, blinded_prefix);
-            address = get_blinded_address(m_session, addr);
-            addr["is_blinded"] = true;
+                auto& address = addr.at("address");
+                address = confidential_addr_to_addr(address, blinded_prefix);
+                address = get_blinded_address(m_session, addr);
+                addr["is_blinded"] = true;
+            }
         }
 
         // Update the transaction
-        m_result = m_session.create_transaction(m_tx);
-
+        m_result = m_session.create_transaction(tx);
         return state_type::done;
     }
 
@@ -849,10 +821,8 @@ namespace sdk {
         } else if (m_liquid_support == liquid_support_level::lite) {
             try {
                 m_state = state_type::resolve_code;
-
-                const nlohmann::json blinded_scripts = m_session.get_blinded_scripts(details);
                 set_data();
-                m_twofactor_data["blinded_scripts"] = blinded_scripts;
+                m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
             } catch (const std::exception& e) {
                 set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
             }
