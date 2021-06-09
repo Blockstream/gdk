@@ -65,7 +65,7 @@ namespace sdk {
 
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
-        nlohmann::json login(const std::string& mnemonic, const std::string& password);
+        nlohmann::json login(const std::string& mnemonic);
         bool login_from_cached(const std::string& mnemonic);
         std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);
@@ -195,7 +195,6 @@ namespace sdk {
         bool reconnect();
         void stop_reconnect();
 
-        nlohmann::json login(locker_t& locker, const std::string& mnemonic);
         void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context);
 
         void load_client_blob(locker_t& locker, bool encache);

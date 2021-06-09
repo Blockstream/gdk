@@ -1536,14 +1536,10 @@ namespace sdk {
         });
     }
 
-    nlohmann::json ga_session::login(const std::string& mnemonic, const std::string& password)
+    nlohmann::json ga_session::login(const std::string& /*mnemonic*/)
     {
-        GDK_LOG_NAMED_SCOPE("login");
-
-        locker_t locker(m_mutex);
-
-        GDK_RUNTIME_ASSERT_MSG(!m_signer, "re-login on an existing session always fails");
-        return login(locker, decrypt_mnemonic(mnemonic, password));
+        GDK_RUNTIME_ASSERT(false);
+        return nlohmann::json();
     }
 
     void ga_session::push_appearance_to_server(ga_session::locker_t& locker) const
@@ -1771,44 +1767,11 @@ namespace sdk {
     {
         try {
             locker_t locker(m_mutex);
-            login(locker, mnemonic);
+            login(mnemonic);
             return true;
         } catch (const std::exception&) {
             return false;
         }
-    }
-
-    nlohmann::json ga_session::login(ga_session::locker_t& locker, const std::string& mnemonic)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(false);
-        (void)mnemonic;
-#if 0
-
-        // Create our signer
-        GDK_LOG_SEV(log_level::debug) << "creating signer for mnemonic";
-        m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
-
-        // Create our local user keys repository
-        const auto master_xpub = m_signer->get_xpub(empty_span<uint32_t>());
-        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, master_xpub);
-
-        // Cache local encryption key
-        const auto pwd_xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);
-        constexpr bool is_hw_wallet = false;
-        set_local_encryption_keys(locker, pwd_xpub.second, is_hw_wallet);
-
-        // TODO: Unify normal and trezor logins
-        const auto challenge_arg = m_signer->get_challenge();
-        std::string challenge = wamp_cast(wamp_call(locker, "login.get_challenge", challenge_arg));
-
-        const auto hexder_path = sign_challenge(locker, challenge);
-        m_mnemonic = mnemonic;
-
-        return authenticate(
-            locker, hexder_path.first, hexder_path.second, std::string(), std::string(), nlohmann::json::object());
-#endif
-        return nlohmann::json::object();
     }
 
     nlohmann::json ga_session::get_settings()

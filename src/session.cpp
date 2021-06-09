@@ -275,14 +275,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::login(const std::string& mnemonic, const std::string& password)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->login(mnemonic, password);
-        });
-    }
-
     std::string session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
     {
         return exception_wrapper([&] {

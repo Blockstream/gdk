@@ -205,7 +205,7 @@ namespace sdk {
         } else if (m_action == "get_xpubs") {
             if (m_session.get_network_parameters().is_electrum()) {
                 // FIXME: Implement rust login via authenticate()
-                m_result = m_session.login(m_signer->get_mnemonic(std::string()), std::string());
+                m_result = m_session.get_nonnull_impl()->login(m_signer->get_mnemonic(std::string()));
             } else {
                 const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
 
