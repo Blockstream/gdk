@@ -337,12 +337,4 @@ if get_option('enable-tests')
                     link_with: libga.get_static_lib(),
                     dependencies: dependencies
         ))
-
-    if get_option('enable-rust')
-        test('test rust',
-             executable('test_rust', 'tests/test_rust.cpp',
-                        link_with: libga.get_static_lib(),
-                        dependencies: dependencies
-        ))
-    endif
 endif
