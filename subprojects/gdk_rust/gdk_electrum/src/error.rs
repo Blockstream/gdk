@@ -60,9 +60,7 @@ impl Display for Error {
             Error::AccountGapsDisallowed => {
                 write!(f, "cannot create a new subaccount while the last one is unused")
             }
-            Error::InvalidReplacementRequest => {
-                write!(f, "invalid replacement request fields")
-            }
+            Error::InvalidReplacementRequest => write!(f, "invalid replacement request fields"),
             Error::UnknownCall => write!(f, "unknown call"),
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
             Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),
