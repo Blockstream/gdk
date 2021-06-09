@@ -159,13 +159,13 @@ class gdk_wallet:
         # You can pass in a mnemonic generated outside GDK if you want, or have
         # GDK generate it for you by omitting it. 2FA is enabled if chosen and
         # can be enabled/disabled at any point.
-        if not mnemonic:
-            self.mnemonic = gdk.generate_mnemonic()
+        self.mnemonic = mnemonic or gdk.generate_mnemonic()
         # Set the network name to 'liquid' for the live Liquid network.
         # There is currently no test Liquid network.
         self.session = gdk.Session({'name': 'liquid'})
         self.session.register_user({}, self.mnemonic).resolve()
-        self.session.login({}, self.mnemonic).resolve()
+        credentials = {'mnemonic': self.mnemonic, 'password': ''}
+        self.session.login_user({}, credentials).resolve()
         self.session.create_subaccount({'name': self.SUBACCOUNT_NAME, 'type': self.AMP_ACCOUNT_TYPE}).resolve()
         if create_with_2fa_enabled:
             self.twofactor_auth_enabled(True)
@@ -177,7 +177,8 @@ class gdk_wallet:
         self = cls()
         self.mnemonic = mnemonic
         self.session = gdk.Session({'name': 'liquid'})
-        self.session.login({}, self.mnemonic).resolve()
+        credentials = {'mnemonic': self.mnemonic, 'password': ''}
+        self.session.login_user({}, credentials).resolve()
         self.fetch_subaccount()
         return self
 
@@ -187,7 +188,8 @@ class gdk_wallet:
         self = cls()
         pin_data = open(self.PIN_DATA_FILENAME).read()
         self.session = gdk.Session({'name': 'liquid'})
-        self.session.login_with_pin(str(pin), pin_data).resolve()
+        credentials = {'pin': str(pin), 'pin_data': json.loads(pin_data)}
+        self.session.login_user({}, credentials).resolve()
         self.fetch_subaccount()
         return self
 
@@ -283,7 +285,7 @@ class gdk_wallet:
     def fetch_block_height(self):
         # New blocks are added to notifications as they are found so we need to
         # find the latest or, if there hasn't been one since we last checked,
-        # use the value set during login in the session_login method.
+        # use the value set during login in the session's login method.
         # The following provides an example of using GDK's notification queue.
         q = self.session.notifications
         while not q.empty():
