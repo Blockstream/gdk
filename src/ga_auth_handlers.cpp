@@ -186,12 +186,10 @@ namespace sdk {
 
     auth_handler::state_type login_call::call_impl()
     {
-        const nlohmann::json args = m_code.empty() ? nlohmann::json() : nlohmann::json::parse(m_code);
-
         if (m_action == "get_receive_address") {
             // Blind the address
             auto& addr = m_twofactor_data["address"];
-            addr["blinding_key"] = args["blinding_key"];
+            addr["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
 
             // save it and pop the request
             m_ca_addrs[m_ca_reqs.back()].emplace_back(get_blinded_address(m_session, addr));
@@ -209,7 +207,7 @@ namespace sdk {
                 // FIXME: Implement rust login via authenticate()
                 m_result = m_session.login(m_signer->get_mnemonic(std::string()), std::string());
             } else {
-                const std::vector<std::string> xpubs = args.at("xpubs");
+                const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
 
                 if (m_challenge.empty()) {
                     // Compute the challenge with the master pubkey
@@ -236,6 +234,7 @@ namespace sdk {
             // fall through to the required_ca check down there...
         } else if (m_action == "sign_message") {
             // If we are using the Anti-Exfil protocol we verify the signature
+            const nlohmann::json args = nlohmann::json::parse(m_code);
             if (m_use_ae_protocol) {
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
                     m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
