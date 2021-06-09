@@ -614,7 +614,7 @@ namespace sdk {
                 }
             }
 
-            const bool is_low_r = m_session.get_nonnull_impl()->get_signer()->supports_low_r();
+            const bool is_low_r = get_signer()->supports_low_r();
             size_t i = 0;
             for (const auto& utxo : inputs) {
                 add_input_signature(tx, i, utxo, signatures[i], is_low_r);
@@ -810,24 +810,22 @@ namespace sdk {
     needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
         : auth_handler_impl(session, name)
         , m_details(details)
-        , m_liquid_support(session.get_nonnull_impl()->get_signer()->get_liquid_support())
+        , m_liquid_support(get_signer()->get_liquid_support())
     {
-        if (m_state == state_type::error) {
-            return;
-        }
-
-        if (!m_session.is_liquid() || m_liquid_support == liquid_support_level::full) {
-            m_state = state_type::make_call;
-        } else if (m_liquid_support == liquid_support_level::lite) {
-            try {
-                m_state = state_type::resolve_code;
-                set_data();
-                m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
-            } catch (const std::exception& e) {
-                set_error(std::string("exception in needs_unblind_call constructor:") + e.what());
+        if (m_state != state_type::error) {
+            if (!m_session.is_liquid() || m_liquid_support == liquid_support_level::full) {
+                m_state = state_type::make_call;
+            } else if (m_liquid_support == liquid_support_level::lite) {
+                try {
+                    m_state = state_type::resolve_code;
+                    set_data();
+                    m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
+                } catch (const std::exception& e) {
+                    set_error(e.what());
+                }
+            } else {
+                set_error(res::id_the_hardware_wallet_you_are);
             }
-        } else {
-            set_error(res::id_the_hardware_wallet_you_are);
         }
     }
 
