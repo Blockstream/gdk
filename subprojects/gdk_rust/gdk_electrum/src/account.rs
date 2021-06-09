@@ -1223,7 +1223,7 @@ mod test {
     fn test_derivation(account_num: u32, expected_type: ScriptType, expected_path: &str) {
         let (script_type, path) = get_account_derivation(account_num, NETWORK).unwrap();
         assert_eq!(script_type, expected_type);
-        assert_eq!(path.to_string(), expected_path);
+        assert_eq!(path, DerivationPath::from_str(expected_path).unwrap());
     }
 
     fn test_derivation_fails(account_num: u32) {
