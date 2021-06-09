@@ -133,3 +133,50 @@ compute a blinding key for a new wallet address.
      }
 
 :blinding_key: The hex-encoded compressed pubkey for blinding the given address.
+
+
+.. _hw-action-create-transaction:
+
+Hardware Create Transaction Action
+----------------------------------
+
+When ``"action"`` is ``"create_transaction"``, this describes a request to
+compute blinding keys for the transactions change addresses.
+
+.. note:: This action is only returned when using the Liquid network.
+
+.. code-block:: json
+
+     {
+       "transaction": {
+         "change_address": {
+           "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d": {
+             "address": "XBiBx41oSSXxuQkmJKbiMKk2tXzTjDLG86",
+             "address_type": "p2wsh",
+             "blinding_script_hash": "a91403f650e2434916d5b7f124de8f673442b696282887",
+             "branch": 1,
+             "pointer": 1,
+             "script": "5221030361d2b6ea7d5e5237f0647c49a1c519b42173959631d939a28bc64263446e102102d4a348b9f48833dcefffa80305846686d101d02c45a4547b3a5ff6fabb8e2f1f52ae",
+             "script_type": 14,
+             "subaccount": 1,
+             "subtype": null
+           }
+         }
+       }
+     }
+
+:change_address: Asset ID keyed address details for which a blinding key should
+    be generated. Note that there may be more than one address. Addresses with
+    the key ``"is_blinded"`` present and set to ``true`` can be skipped.
+
+**Expected response**:
+
+.. code-block:: json
+
+     {
+       "blinding_keys": {
+           "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d": "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27"
+       }
+     }
+
+:blinding_keys: Asset ID keyed hex-encoded compressed pubkeys for blinding each address.
