@@ -121,7 +121,6 @@ test_clang:
     - ./build-clang/test_aes_gcm >/dev/null
     - ./build-clang/test_json
     - ./build-clang/test_networks
-    - ninja -C build-clang test_rust && ./build-clang/test_rust # REVERTME
 
 gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
