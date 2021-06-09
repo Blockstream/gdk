@@ -504,7 +504,7 @@ namespace sdk {
             return;
         }
 
-        if (!m_is_hw_action || json_get_value(tx_details, "is_sweep", false)) {
+        if (json_get_value(tx_details, "is_sweep", false)) {
             // TODO: Once tx aggregation is implemented, merge the sweep logic
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)
@@ -513,12 +513,11 @@ namespace sdk {
             try {
                 // Compute the data we need for the hardware to sign the transaction
                 m_state = state_type::resolve_code;
-
                 set_data();
                 m_twofactor_data["transaction"] = tx_details;
 
                 // We use the Anti-Exfil protocol if the hw supports it
-                m_use_ae_protocol = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
+                m_use_ae_protocol = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
                 m_twofactor_data["use_ae_protocol"] = m_use_ae_protocol;
 
                 // We need the inputs, augmented with types, scripts and paths
@@ -540,13 +539,10 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(false);
                 }
 
-                // When signing btc, we always pass the prior transactions creating the utxos we are spending,
-                // so the hw wallet can verify the amounts.  In theory this is not required when the current
-                // txn is spending a single segwit utxo - but we will not make that optimisation at this time
-                // - the caller can always choose to ignore the passed txn if so desired in that case.
-                // NOTE: this is not required for liquid where the attack is not possible, and the fee is an
-                // explicit output.
                 if (!m_session.get_network_parameters().is_liquid()) {
+                    // BTC: Provide the previous txs data for validation, even
+                    // for segwit, in order to mitigate the segwit fee attack.
+                    // (Liquid txs are segwit+explicit fee and so not affected)
                     for (const auto& input : signing_inputs) {
                         const std::string txhash = input.at("txhash");
                         if (prev_txs.find(txhash) == prev_txs.end()) {
@@ -558,6 +554,7 @@ namespace sdk {
                     = std::vector<std::string>(addr_types.begin(), addr_types.end());
                 m_twofactor_data["signing_inputs"] = signing_inputs;
                 m_twofactor_data["signing_transactions"] = prev_txs;
+                // FIXME: Do not duplicate the transaction_outputs in required_data
                 m_twofactor_data["transaction_outputs"] = tx_details["transaction_outputs"];
             } catch (const std::exception& e) {
                 set_error(e.what());
@@ -569,63 +566,63 @@ namespace sdk {
     {
         auto impl = m_session.get_nonnull_impl();
 
-        if (!m_is_hw_action || json_get_value(m_tx_details, "is_sweep", false)) {
+        if (json_get_value(m_tx_details, "is_sweep", false)) {
             m_result = m_session.sign_transaction(m_tx_details);
-        } else {
-            const auto& net_params = m_session.get_network_parameters();
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            const auto& inputs = m_twofactor_data["signing_inputs"];
-            const auto& signatures = get_sized_array(args, "signatures", inputs.size());
-            const auto& outputs = m_twofactor_data["transaction_outputs"];
-            const auto& transaction_details = m_twofactor_data["transaction"];
-            const bool is_liquid = net_params.is_liquid();
-            const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
+            return state_type::done;
+        }
+        const auto& net_params = m_session.get_network_parameters();
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        const auto& inputs = m_twofactor_data["signing_inputs"];
+        const auto& signatures = get_sized_array(args, "signatures", inputs.size());
+        const auto& outputs = m_twofactor_data["transaction_outputs"];
+        const auto& transaction_details = m_twofactor_data["transaction"];
+        const bool is_liquid = net_params.is_liquid();
+        const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
-            if (is_liquid) {
-                const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
-                const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
-                const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
-                const auto& vbfs = get_sized_array(args, "amountblinders", outputs.size());
+        if (is_liquid) {
+            const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
+            const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
+            const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
+            const auto& vbfs = get_sized_array(args, "amountblinders", outputs.size());
 
-                size_t i = 0;
-                for (const auto& out : outputs) {
-                    if (!out.at("is_fee")) {
-                        blind_output(*impl, transaction_details, tx, i, out, h2b<33>(asset_commitments[i]),
-                            h2b<33>(value_commitments[i]), h2b_rev<32>(abfs[i]), h2b_rev<32>(vbfs[i]));
-                    }
-                    ++i;
-                }
-            }
-
-            // If we are using the Anti-Exfil protocol we verify the signatures
-            // TODO: the signer-commitments should be verified as being the same for the
-            // same input data and host-entropy (eg. if retrying following failure).
-            if (m_use_ae_protocol) {
-                // FIXME: User pubkeys is not threadsafe if adding a subaccount
-                // at the same time (this cant happen yet but should be allowed
-                // in the future).
-                auto& user_pubkeys = impl->get_user_pubkeys();
-                size_t i = 0;
-                const auto& signer_commitments = get_sized_array(args, "signer_commitments", inputs.size());
-                for (const auto& utxo : inputs) {
-                    const auto pubkey = user_pubkeys.derive(utxo.at("subaccount"), utxo.at("pointer"));
-                    verify_ae_signature(net_params, pubkey, tx, i, utxo, signer_commitments[i], signatures[i]);
-                    ++i;
-                }
-            }
-
-            const bool is_low_r = get_signer()->supports_low_r();
             size_t i = 0;
-            for (const auto& utxo : inputs) {
-                add_input_signature(tx, i, utxo, signatures[i], is_low_r);
+            for (const auto& out : outputs) {
+                if (!out.at("is_fee")) {
+                    blind_output(*impl, transaction_details, tx, i, out, h2b<33>(asset_commitments[i]),
+                        h2b<33>(value_commitments[i]), h2b_rev<32>(abfs[i]), h2b_rev<32>(vbfs[i]));
+                }
                 ++i;
             }
-
-            std::swap(m_result, m_twofactor_data["transaction"]);
-            m_result["user_signed"] = true;
-            m_result["blinded"] = true;
-            update_tx_size_info(tx, m_result);
         }
+
+        // If we are using the Anti-Exfil protocol we verify the signatures
+        // TODO: the signer-commitments should be verified as being the same for the
+        // same input data and host-entropy (eg. if retrying following failure).
+        if (m_use_ae_protocol) {
+            // FIXME: User pubkeys is not threadsafe if adding a subaccount
+            // at the same time (this cant happen yet but should be allowed
+            // in the future).
+            auto& user_pubkeys = impl->get_user_pubkeys();
+            size_t i = 0;
+            const auto& signer_commitments = get_sized_array(args, "signer_commitments", inputs.size());
+            for (const auto& utxo : inputs) {
+                const auto pubkey = user_pubkeys.derive(utxo.at("subaccount"), utxo.at("pointer"));
+                verify_ae_signature(net_params, pubkey, tx, i, utxo, signer_commitments[i], signatures[i]);
+                ++i;
+            }
+        }
+
+        const bool is_low_r = get_signer()->supports_low_r();
+        size_t i = 0;
+        for (const auto& utxo : inputs) {
+            add_input_signature(tx, i, utxo, signatures[i], is_low_r);
+            ++i;
+        }
+
+        m_result.swap(m_twofactor_data["transaction"]);
+        m_result["user_signed"] = true;
+        m_result["blinded"] = true;
+        update_tx_size_info(tx, m_result);
         return state_type::done;
     }
 
