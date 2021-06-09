@@ -318,7 +318,12 @@ namespace sdk {
                     blinding_keys[it.key()] = b2h(signer->get_public_key_from_blinding_key(script_hash));
                 }
             }
+        } else if (action == "get_balance" || action == "get_subaccount" || action == "get_subaccounts"
+            || action == "get_transactions" || action == "get_unspent_outputs" || action == "get_expired_deposits") {
+            // Should only be requested for liquid_support_level = 'lite'
+            GDK_RUNTIME_ASSERT_MSG(false, "Unexpected action for software wallet");
         } else {
+            GDK_RUNTIME_ASSERT(action == "sign_tx");
             abort(); // FIXME
         }
         resolve_code(result.dump());
