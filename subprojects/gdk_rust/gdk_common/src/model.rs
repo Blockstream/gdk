@@ -101,6 +101,7 @@ pub struct LoginData {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct CreateTransaction {
+    #[serde(default)]
     pub addressees: Vec<AddressAmount>,
     pub fee_rate: Option<u64>, // in satoshi/kbyte
     pub subaccount: u32,
