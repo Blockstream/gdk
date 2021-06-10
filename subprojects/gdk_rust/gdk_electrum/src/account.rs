@@ -24,7 +24,7 @@ use gdk_common::model::{
     AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
     SPVVerifyResult, TransactionMeta, UpdateAccountOpt,
 };
-use gdk_common::scripts::{p2pkh_script, p2shwpkh_script, p2shwpkh_script_sig, ScriptType};
+use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
@@ -724,17 +724,16 @@ fn elements_address(
     script_type: ScriptType,
     net: ElementsNetwork,
 ) -> elements::Address {
-    use elements::Address;
-    let script = p2shwpkh_script(public_key).into_elements();
-    let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
-    let blinding_pub = ec_public_key_from_private_key(blinding_key);
     let addr_params = elements_address_params(net);
-
-    match script_type {
-        ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, Some(blinding_pub), addr_params),
-        ScriptType::P2wpkh => Address::p2wpkh(public_key, Some(blinding_pub), addr_params),
-        ScriptType::P2pkh => Address::p2pkh(public_key, Some(blinding_pub), addr_params),
-    }
+    let address = match script_type {
+        ScriptType::P2pkh => elements::Address::p2pkh(public_key, None, addr_params),
+        ScriptType::P2shP2wpkh => elements::Address::p2shwpkh(public_key, None, addr_params),
+        ScriptType::P2wpkh => elements::Address::p2wpkh(public_key, None, addr_params),
+    };
+    let script_pubkey = address.script_pubkey();
+    let blinding_prv = asset_blinding_key_to_ec_private_key(master_blinding_key, &script_pubkey);
+    let blinding_pub = ec_public_key_from_private_key(blinding_prv);
+    address.to_confidential(blinding_pub)
 }
 
 fn elements_address_params(net: ElementsNetwork) -> &'static elements::AddressParams {
