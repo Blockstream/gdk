@@ -894,7 +894,8 @@ namespace sdk {
             }
         }
 
-        static void sign_input(ga_session& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u)
+        static std::string sign_input(
+            session_impl& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u)
         {
             const auto txhash = u.at("txhash");
             const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
@@ -912,22 +913,25 @@ namespace sdk {
             if (!private_key.empty()) {
                 const auto private_key_bytes = h2b(private_key);
                 const auto user_sig = ec_sig_from_bytes(private_key_bytes, tx_hash);
-                tx_set_input_script(
-                    tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), ec_sig_to_der(user_sig, true)));
+                const auto der = ec_sig_to_der(user_sig, true);
+                tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
+                return b2h(der);
             } else {
                 const auto path = session.get_subaccount_full_path(subaccount, pointer);
                 const auto user_sig = signer->sign_hash(path, tx_hash);
+                const auto der = ec_sig_to_der(user_sig, true);
 
                 if (is_segwit_script_type(type)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     // Note that this requires setting the inputs sequence number to the CSV time too
                     auto wit = tx_witness_stack_init(1);
-                    tx_witness_stack_add(wit, ec_sig_to_der(user_sig, true));
+                    tx_witness_stack_add(wit, der);
                     tx_set_input_witness(tx, index, wit);
                     tx_set_input_script(tx, index, witness_script(script));
                 } else {
                     tx_set_input_script(tx, index, input_script(low_r, script, user_sig));
                 }
+                return b2h(der);
             }
         }
     } // namespace
@@ -1008,17 +1012,25 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json sign_ga_transaction(ga_session& session, const nlohmann::json& details)
+    std::pair<std::vector<std::string>, wally_tx_ptr> sign_ga_transaction(
+        session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs)
     {
-        const auto inputs = get_ga_signing_inputs(details);
-        const auto tx = tx_from_hex(details.at("transaction"), tx_flags(details.at("liquid")));
+        wally_tx_ptr tx = tx_from_hex(details.at("transaction"), tx_flags(details.at("liquid")));
+        std::vector<std::string> sigs;
+        sigs.reserve(inputs.size());
 
         size_t i = 0;
         for (const auto& utxo : inputs) {
-            sign_input(session, tx, i, utxo);
+            sigs.emplace_back(sign_input(session, tx, i, utxo));
             ++i;
         }
+        return std::make_pair(sigs, std::move(tx));
+    }
 
+    // FIXME: Only used for sweep txs, refactor to remove
+    nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details)
+    {
+        auto tx = sign_ga_transaction(session, details, get_ga_signing_inputs(details)).second;
         nlohmann::json result(details);
         result.erase("utxos");
         result["user_signed"] = true;

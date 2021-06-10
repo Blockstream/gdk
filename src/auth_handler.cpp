@@ -2,6 +2,7 @@
 
 #include "exception.hpp"
 #include "ga_strings.hpp"
+#include "ga_tx.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "session.hpp"
@@ -324,7 +325,9 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(false, "Unexpected action for software wallet");
         } else {
             GDK_RUNTIME_ASSERT(action == "sign_tx");
-            abort(); // FIXME
+            auto impl = get_session().get_nonnull_impl();
+            auto sigs = sign_ga_transaction(*impl, required_data["transaction"], required_data["signing_inputs"]).first;
+            result["signatures"] = sigs;
         }
         resolve_code(result.dump());
     }

@@ -2,6 +2,7 @@
 #define GDK_GA_TX_HPP
 #pragma once
 
+#include <ga_wally.hpp>
 #include <nlohmann/json.hpp>
 
 namespace ga {
@@ -25,7 +26,9 @@ namespace sdk {
 
     std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details);
 
-    nlohmann::json sign_ga_transaction(ga_session& session, const nlohmann::json& details);
+    std::pair<std::vector<std::string>, wally_tx_ptr> sign_ga_transaction(
+        session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs);
+    nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details);
 
     nlohmann::json blind_ga_transaction(ga_session& session, const nlohmann::json& details);
 
