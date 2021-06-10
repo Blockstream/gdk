@@ -1194,7 +1194,8 @@ impl Syncer {
             let store_indexes = acc_store.indexes.clone();
             let txs_heights_changed = txid_height
                 .iter()
-                .any(|(txid, height)| acc_store.heights.get(txid) != Some(height));
+                .any(|(txid, height)| acc_store.heights.get(txid) != Some(height))
+                || acc_store.heights.keys().any(|txid| txid_height.get(txid).is_none());
             drop(acc_store);
             drop(store_read);
 
