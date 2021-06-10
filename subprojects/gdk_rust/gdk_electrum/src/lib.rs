@@ -263,6 +263,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         .iter()
         .map(|e| e.address.clone())
         .collect();
+    let can_rbf = tx.height.is_none() && tx.rbf_optin;
 
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
@@ -274,9 +275,9 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         satoshi: tx.satoshi.clone(),
         rbf_optin: tx.rbf_optin, // TODO: TransactionMeta -> TxListItem rbf_optin
         can_cpfp: false,         // TODO: TransactionMeta -> TxListItem can_cpfp
-        can_rbf: false,          // TODO: TransactionMeta -> TxListItem can_rbf
+        can_rbf,
         has_payment_request: false, // TODO: TransactionMeta -> TxListItem has_payment_request
-        server_signed: false,    // TODO: TransactionMeta -> TxListItem server_signed
+        server_signed: false,       // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: tx.user_signed,
         spv_verified: tx.spv_verified.to_string(),
         instant: false,
