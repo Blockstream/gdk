@@ -125,6 +125,12 @@ fn liquid() {
     test_session.stop();
 }
 
+fn check_account_balances(test_session: &TestSession, balances: &HashMap<u32, u64>) {
+    for (n, balance) in balances {
+        assert_eq!(test_session.balance_account(*n, None, None), *balance);
+    }
+}
+
 #[test]
 fn subaccounts() {
     let mut test_session = setup_session(false, 0, |_| ());
@@ -193,40 +199,46 @@ fn subaccounts() {
     assert!(acc1_address.address.starts_with("bcrt1")); // Native Bech32 P2WPKH
     assert!(acc2_address.address.starts_with(&['m', 'n'][..])); // Legacy P2PKH
 
+    let mut balances: HashMap<u32, u64> = HashMap::new();
+
     // Send some to account #1
-    test_session.node_sendtoaddress(&acc1_address.address, 98766, None);
+    let sat = 98766;
+    test_session.node_sendtoaddress(&acc1_address.address, sat, None);
     test_session.wait_tx_status_change();
-    assert_eq!(test_session.balance_account(0, None, None), 0);
-    assert_eq!(test_session.balance_account(1, None, None), 98766);
-    assert_eq!(test_session.balance_account(2, None, None), 0);
+    *balances.entry(1).or_insert(0) += sat;
+    check_account_balances(&test_session, &balances);
 
     // Send some to account #2
-    test_session.node_sendtoaddress(&acc2_address.address, 67899, None);
+    let sat = 67899;
+    test_session.node_sendtoaddress(&acc2_address.address, sat, None);
     test_session.wait_tx_status_change();
-    assert_eq!(test_session.balance_account(0, None, None), 0);
-    assert_eq!(test_session.balance_account(1, None, None), 98766);
-    assert_eq!(test_session.balance_account(2, None, None), 67899);
+    *balances.entry(2).or_insert(0) += sat;
+    check_account_balances(&test_session, &balances);
 
     // Send all from account #2 to account #1 (p2pkh -> p2wpkh)
     let txid =
         test_session.send_all_from_account(2, &test_session.get_receive_address(1).address, None);
     test_session.wait_account_tx(1, &txid);
-    assert_eq!(test_session.balance_account(0, None, None), 0);
-    assert_eq!(test_session.balance_account(1, None, None), 166471);
-    assert_eq!(test_session.balance_account(2, None, None), 0);
+    *balances.entry(1).or_insert(0) += sat - test_session.get_tx_from_list(1, &txid).fee;
+    *balances.entry(2).or_insert(0) = 0;
+    check_account_balances(&test_session, &balances);
 
     // Send from account #1 to account #0 (p2wpkh -> p2sh-p2wpkh)
-    let txid = test_session.send_tx_from(1, &acc0_address.address, 11555, None);
+    let sat = 11555;
+    let txid = test_session.send_tx_from(1, &acc0_address.address, sat, None);
     test_session.wait_account_tx(0, &txid);
-    assert_eq!(test_session.balance_account(0, None, None), 11555);
-    assert_eq!(test_session.balance_account(1, None, None), 154772);
+    *balances.entry(1).or_insert(0) -= sat + test_session.get_tx_from_list(1, &txid).fee;
+    *balances.entry(0).or_insert(0) += sat;
+    check_account_balances(&test_session, &balances);
 
     // Send from account #0 to account #2 (p2sh-p2wpkh -> p2pkh)
+    let sat = 1000;
     let txid =
-        test_session.send_tx_from(0, &test_session.get_receive_address(2).address, 1000, None);
+        test_session.send_tx_from(0, &test_session.get_receive_address(2).address, sat, None);
     test_session.wait_account_tx(2, &txid);
-    assert_eq!(test_session.balance_account(0, None, None), 10385);
-    assert_eq!(test_session.balance_account(2, None, None), 1000);
+    *balances.entry(0).or_insert(0) -= sat + test_session.get_tx_from_list(0, &txid).fee;
+    *balances.entry(2).or_insert(0) += sat;
+    check_account_balances(&test_session, &balances);
 
     // Must be created using the next available P2PKH account number (skipping over used and reserved numbers)
     let account3 = test_session
@@ -249,10 +261,14 @@ fn subaccounts() {
     assert!(matches!(err, Error::AccountGapsDisallowed));
 
     // Fund the second P2PKH account, skipping over one address
+    let sat = 6666;
     test_session.get_receive_address(18);
     let txid =
-        test_session.send_tx_from(0, &test_session.get_receive_address(18).address, 6666, None);
+        test_session.send_tx_from(0, &test_session.get_receive_address(18).address, sat, None);
     test_session.wait_account_tx(18, &txid);
+    *balances.entry(0).or_insert(0) -= sat + test_session.get_tx_from_list(0, &txid).fee;
+    *balances.entry(18).or_insert(0) += sat;
+    check_account_balances(&test_session, &balances);
 
     // Should now work
     let account4 = test_session
@@ -290,16 +306,16 @@ fn subaccounts() {
 
     // Check all the accounts were properly recovered
     let subaccounts = new_session.get_subaccounts().unwrap();
-    let mut balances = subaccounts
+    let mut recovered_balances = subaccounts
         .into_iter()
         .map(|mut subaccount| (subaccount.account_num, subaccount.satoshi.remove("btc").unwrap()))
         .collect::<HashMap<_, _>>();
-    info!("recovered subaccounts: {:?}", balances);
-    assert_eq!(balances.remove(&0).unwrap(), 3549);
-    assert_eq!(balances.remove(&1).unwrap(), 154772);
-    assert_eq!(balances.remove(&2).unwrap(), 1000);
-    assert_eq!(balances.remove(&18).unwrap(), 6666);
-    assert!(balances.is_empty());
+    info!("recovered subaccounts: {:?}", recovered_balances);
+    assert_eq!(recovered_balances.remove(&0).unwrap(), *balances.get(&0).unwrap() as i64);
+    assert_eq!(recovered_balances.remove(&1).unwrap(), *balances.get(&1).unwrap() as i64);
+    assert_eq!(recovered_balances.remove(&2).unwrap(), *balances.get(&2).unwrap() as i64);
+    assert_eq!(recovered_balances.remove(&18).unwrap(), *balances.get(&18).unwrap() as i64);
+    assert!(recovered_balances.is_empty());
 
     new_session.disconnect().unwrap();
     test_session.stop();
