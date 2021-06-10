@@ -373,7 +373,7 @@ impl TestSession {
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: 0,
-            asset_id: asset_id.clone(),
+            asset_id: asset_id.clone().or(self.asset_id()),
         });
         create_opt.send_all = Some(true);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();

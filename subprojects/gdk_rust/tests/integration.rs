@@ -132,8 +132,17 @@ fn check_account_balances(test_session: &TestSession, balances: &HashMap<u32, u6
 }
 
 #[test]
-fn subaccounts() {
-    let mut test_session = setup_session(false, 0, |_| ());
+fn subaccounts_bitcoin() {
+    subaccounts(false);
+}
+
+#[test]
+fn subaccounts_liquid() {
+    subaccounts(false);
+}
+
+fn subaccounts(is_liquid: bool) {
+    let mut test_session = setup_session(is_liquid, 0, |_| ());
 
     assert!(test_session.session.get_subaccount(0, 0).is_ok());
     assert!(test_session.session.get_subaccount(1, 0).is_err());
@@ -195,9 +204,15 @@ fn subaccounts() {
     let acc1_address = test_session.get_receive_address(1);
     let acc2_address = test_session.get_receive_address(2);
 
-    assert!(acc0_address.address.starts_with("2")); // P2SH-P2WSH
-    assert!(acc1_address.address.starts_with("bcrt1")); // Native Bech32 P2WPKH
-    assert!(acc2_address.address.starts_with(&['m', 'n'][..])); // Legacy P2PKH
+    if is_liquid {
+        assert!(acc0_address.address.starts_with("A")); // P2SH-P2WSH
+        assert!(acc1_address.address.starts_with("el1")); // Native Bech32 P2WPKH
+        assert!(acc2_address.address.starts_with("CT")); // Legacy P2PKH
+    } else {
+        assert!(acc0_address.address.starts_with("2")); // P2SH-P2WSH
+        assert!(acc1_address.address.starts_with("bcrt1")); // Native Bech32 P2WPKH
+        assert!(acc2_address.address.starts_with(&['m', 'n'][..])); // Legacy P2PKH
+    }
 
     let mut balances: HashMap<u32, u64> = HashMap::new();
 
@@ -306,9 +321,16 @@ fn subaccounts() {
 
     // Check all the accounts were properly recovered
     let subaccounts = new_session.get_subaccounts().unwrap();
+    let btc_key = if is_liquid {
+        new_session.network.policy_asset.clone().unwrap()
+    } else {
+        "btc".to_string()
+    };
     let mut recovered_balances = subaccounts
         .into_iter()
-        .map(|mut subaccount| (subaccount.account_num, subaccount.satoshi.remove("btc").unwrap()))
+        .map(|mut subaccount| {
+            (subaccount.account_num, subaccount.satoshi.remove(&btc_key).unwrap())
+        })
         .collect::<HashMap<_, _>>();
     info!("recovered subaccounts: {:?}", recovered_balances);
     assert_eq!(recovered_balances.remove(&0).unwrap(), *balances.get(&0).unwrap() as i64);
