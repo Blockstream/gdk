@@ -404,7 +404,7 @@ fn rbf() {
     // Transactions that are not properly signed should be rejected, to prevent the user from
     // being tricked into fee-bumping them.
     let mut tx = test_session.electrs.transaction_get(&txitem.txhash.parse().unwrap()).unwrap();
-    tx.input[0].witness[0][5] = 0;
+    tx.input[0].witness[0][5] = tx.input[0].witness[0][5].wrapping_add(1);
     let tx = BETransaction::Bitcoin(tx);
     let wallet = test_session.session.get_wallet().unwrap();
     let account = wallet.get_account(1).unwrap();
