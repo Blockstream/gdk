@@ -1,8 +1,8 @@
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, GetNextAccountOpt, RefreshAssets,
-    RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
+    AddressAmount, CreateAccountOpt, CreateTransaction, GetNextAccountOpt, GetTransactionsOpt,
+    RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -383,9 +383,9 @@ fn rbf() {
     create_opt.memo = Some("poz qux".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
-    let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
-    test_session.wait_account_tx(1, &txid);
-    let txitem = test_session.get_tx_from_list(1, &txid);
+    let txid1 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_account_tx(1, &txid1);
+    let txitem = test_session.get_tx_from_list(1, &txid1);
     assert_eq!(txitem.fee_rate / 1000, 25);
 
     // Replace it
@@ -395,11 +395,24 @@ fn rbf() {
     create_opt.fee_rate = Some(43000);
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
-    let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
-    test_session.wait_account_tx(1, &txid);
-    let txitem = test_session.get_tx_from_list(1, &txid);
+    let txid2 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_account_tx(1, &txid2);
+    let txitem = test_session.get_tx_from_list(1, &txid2);
     assert_eq!(txitem.fee_rate / 1000, 43);
     assert_eq!(txitem.memo, "poz qux");
+
+    // The old transaction should be gone (after the next sync with the server)
+    std::thread::sleep(std::time::Duration::from_secs(3));
+    let list = test_session
+        .session
+        .get_transactions(&GetTransactionsOpt {
+            subaccount: 1,
+            count: 100,
+            ..Default::default()
+        })
+        .unwrap()
+        .0;
+    assert!(list.iter().all(|e| e.txhash != txid1));
 
     // Transactions that are not properly signed should be rejected, to prevent the user from
     // being tricked into fee-bumping them.
