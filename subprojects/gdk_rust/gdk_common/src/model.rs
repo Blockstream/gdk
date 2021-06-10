@@ -327,7 +327,7 @@ pub struct TxListItem {
     pub transaction_weight: usize,
 }
 
-// Negative (sent) amounts are expceted to be provided as positive numbers.
+// Negative (sent) amounts are expected to be provided as positive numbers.
 // The app side will use the 'type' field to try and determine whether its sent or received,
 // which works in the typical case but not with transactions that has mixed types. To be fixed later.
 fn serialize_tx_balances<S>(balances: &Balances, serializer: S) -> Result<S::Ok, S::Error>
