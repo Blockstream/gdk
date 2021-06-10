@@ -410,6 +410,9 @@ fn rbf() {
     let account = wallet.get_account(1).unwrap();
     let is_valid = account.verify_own_txs(&[(tx.txid(), tx)]).unwrap();
     assert_eq!(is_valid, false);
+
+    drop(wallet);
+    test_session.stop();
 }
 
 // Test the low-level spv_cross_validate()
