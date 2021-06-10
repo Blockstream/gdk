@@ -96,7 +96,11 @@ namespace sdk {
             if (hw_device.empty() || hw_device.value("device", nlohmann::json::object()).empty()) {
                 return std::make_shared<software_signer>(net_params, mnemonic);
             }
-            return std::make_shared<hardware_signer>(net_params, hw_device.at("device"));
+            const auto& device = hw_device.at("device");
+            if (device.value("name", std::string()).empty()) {
+                throw user_error("Hardware device JSON requires a non-empty 'name' element");
+            }
+            return std::make_shared<hardware_signer>(net_params, device);
         }
     } // namespace
 
