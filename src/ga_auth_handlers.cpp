@@ -497,21 +497,24 @@ namespace sdk {
     //
     sign_transaction_call::sign_transaction_call(session& session, const nlohmann::json& tx_details)
         : auth_handler_impl(session, "sign_tx")
-        , m_tx_details(tx_details)
         , m_use_ae_protocol(false)
     {
         if (m_state == state_type::error) {
             return;
         }
+        const auto& net_params = m_session.get_network_parameters();
 
-        if (json_get_value(tx_details, "is_sweep", false)) {
-            // TODO: Once tx aggregation is implemented, merge the sweep logic
-            // with general tx construction to allow HW devices to sign individual
-            // inputs (currently HW expects to sign all tx inputs)
-            m_state = state_type::make_call;
-        } else {
-            try {
+        try {
+            if (json_get_value(tx_details, "is_sweep", false) || net_params.is_electrum()) {
+                // TODO: Once tx aggregation is implemented, merge the sweep logic
+                // with general tx construction to allow HW devices to sign individual
+                // inputs (currently HW expects to sign all tx inputs)
+                // FIXME: Sign rust txs using the standard code path
+                m_result = m_session.sign_transaction(tx_details);
+                m_state = state_type::done;
+            } else {
                 // Compute the data we need for the hardware to sign the transaction
+                m_tx_details = tx_details;
                 m_state = state_type::resolve_code;
                 set_data();
                 m_twofactor_data["transaction"] = tx_details;
@@ -539,7 +542,7 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(false);
                 }
 
-                if (!m_session.get_network_parameters().is_liquid()) {
+                if (!net_params.is_liquid()) {
                     // BTC: Provide the previous txs data for validation, even
                     // for segwit, in order to mitigate the segwit fee attack.
                     // (Liquid txs are segwit+explicit fee and so not affected)
@@ -556,9 +559,9 @@ namespace sdk {
                 m_twofactor_data["signing_transactions"] = prev_txs;
                 // FIXME: Do not duplicate the transaction_outputs in required_data
                 m_twofactor_data["transaction_outputs"] = tx_details["transaction_outputs"];
-            } catch (const std::exception& e) {
-                set_error(e.what());
             }
+        } catch (const std::exception& e) {
+            set_error(e.what());
         }
     }
 
@@ -566,10 +569,6 @@ namespace sdk {
     {
         auto impl = m_session.get_nonnull_impl();
 
-        if (json_get_value(m_tx_details, "is_sweep", false)) {
-            m_result = m_session.sign_transaction(m_tx_details);
-            return state_type::done;
-        }
         const auto& net_params = m_session.get_network_parameters();
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const auto& inputs = m_twofactor_data["signing_inputs"];

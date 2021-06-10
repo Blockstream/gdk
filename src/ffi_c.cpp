@@ -269,12 +269,16 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_twofactor_config, struct GA_session*, session, GA
     { *json_cast(config) = new nlohmann::json(session->get_twofactor_config()); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_create_transaction, struct GA_session*, session, const GA_json*, transaction_details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::create_transaction_call(*session, *json_cast(transaction_details))); });
+    struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::create_transaction_call(*session, *json_cast(transaction_details));
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
 GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const GA_json*, transaction_details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::sign_transaction_call(*session, *json_cast(transaction_details))); });
+    struct GA_auth_handler**, call, {
+        auto call_impl = new ga::sdk::sign_transaction_call(*session, *json_cast(transaction_details));
+        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
+    })
 
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
