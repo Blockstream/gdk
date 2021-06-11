@@ -1211,14 +1211,10 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(make_xpub(recovery_xpub) == make_xpub(recovery_chain_code, recovery_pub_key));
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
+                auto parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
+                ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
                 pub_key_t login_pubkey;
-                if (m_signer->is_hw_device()) {
-                    wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
-                    ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
-                    memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
-                } else {
-                    login_pubkey = m_signer->get_xpub(signer::LOGIN_PATH).second;
-                }
+                memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
             }
 
@@ -2315,25 +2311,15 @@ namespace sdk {
         std::shared_ptr<signer> signer = get_signer();
         boost::optional<priv_key_t> blinding_key;
 
-        if (!signer->is_hw_device()) {
-            // Software signer, fetch the blinding key immediately
-            blinding_key = signer->get_blinding_key_from_script(extra_commitment);
-        }
-
         try {
             unblind_t unblinded;
-            if (blinding_key) {
-                unblinded = asset_unblind(
-                    *blinding_key, rangeproof, commitment, h2b(nonce_commitment_hex), extra_commitment, asset_tag);
+            std::vector<unsigned char> nonce = get_blinding_nonce(nonce_commitment_hex, extra_commitment_hex);
+            if (!nonce.empty()) {
+                unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, extra_commitment, asset_tag);
             } else {
-                std::vector<unsigned char> nonce = get_blinding_nonce(nonce_commitment_hex, extra_commitment_hex);
-                if (!nonce.empty()) {
-                    unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, extra_commitment, asset_tag);
-                } else {
-                    // hw and missing nonce in the map
-                    utxo["error"] = "missing blinding nonce";
-                    return false; // Cache not updated
-                }
+                // hw and missing nonce in the map
+                utxo["error"] = "missing blinding nonce";
+                return false; // Cache not updated
             }
 
             utxo["satoshi"] = std::get<3>(unblinded);

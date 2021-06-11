@@ -28,7 +28,7 @@ namespace sdk {
         }
 
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "supports_low_r", true },
-            { "supports_arbitrary_scripts", true }, { "supports_liquid", liquid_support_level::full },
+            { "supports_arbitrary_scripts", true }, { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
     } // namespace
 
@@ -90,7 +90,7 @@ namespace sdk {
         return priv_key_t();
     }
 
-    std::vector<unsigned char> signer::get_public_key_from_blinding_key(byte_span_t script)
+    std::vector<unsigned char> signer::get_blinding_pubkey_from_script(byte_span_t script)
     {
         return ec_public_key_from_private_key(get_blinding_key_from_script(script));
     }
@@ -268,7 +268,7 @@ namespace sdk {
 
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; }
-    liquid_support_level software_signer::get_liquid_support() const { return liquid_support_level::full; }
+    liquid_support_level software_signer::get_liquid_support() const { return liquid_support_level::lite; }
     ae_protocol_support_level software_signer::get_ae_protocol_support() const
     {
         return ae_protocol_support_level::none;

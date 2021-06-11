@@ -2,11 +2,15 @@
 #define GDK_AUTH_HANDLER_HPP
 #pragma once
 
-#include "signer.hpp"
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <string>
+#include <vector>
 
 namespace ga {
 namespace sdk {
     class session;
+    class signer;
 
     struct auth_handler {
         auth_handler();

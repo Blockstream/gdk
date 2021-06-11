@@ -13,8 +13,7 @@ namespace sdk {
     // Enum to represent the "level" of support for Liquid on an HW
     enum class liquid_support_level : uint32_t {
         none = 0, // Liquid is not supported
-        lite = 1, // Liquid is supported, but the unblinding is done on the host
-        full = 2 // Everything is done on the HW
+        lite = 1 // Liquid is supported, unblinding is done on the host
     };
 
     // Enum to indicate whether AE-protocol signatures are supported/mandatory
@@ -77,7 +76,7 @@ namespace sdk {
 
         virtual priv_key_t get_blinding_key_from_script(byte_span_t script);
 
-        virtual std::vector<unsigned char> get_public_key_from_blinding_key(byte_span_t script);
+        virtual std::vector<unsigned char> get_blinding_pubkey_from_script(byte_span_t script);
 
     protected:
         const bool m_is_main_net;
