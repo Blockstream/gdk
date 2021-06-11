@@ -45,7 +45,7 @@ namespace sdk {
                 // Derive the blinding key from the blinding_script_hash
                 auto signer = session.get_nonnull_impl()->get_signer();
                 const auto script_hash = h2b(addr.at("blinding_script_hash"));
-                blinding_key_hex = b2h(signer->get_public_key_from_blinding_key(script_hash));
+                blinding_key_hex = b2h(signer->get_blinding_pubkey_from_script(script_hash));
             }
             return blind_address(session, addr["address"], blinding_key_hex);
         }
@@ -93,14 +93,20 @@ namespace sdk {
         static std::shared_ptr<signer> make_login_signer(
             const network_parameters& net_params, const nlohmann::json& hw_device, const std::string& mnemonic)
         {
+            std::shared_ptr<signer> ret;
             if (hw_device.empty() || hw_device.value("device", nlohmann::json::object()).empty()) {
-                return std::make_shared<software_signer>(net_params, mnemonic);
+                ret = std::make_shared<software_signer>(net_params, mnemonic);
+            } else {
+                const auto& device = hw_device.at("device");
+                if (device.value("name", std::string()).empty()) {
+                    throw user_error("Hardware device JSON requires a non-empty 'name' element");
+                }
+                ret = std::make_shared<hardware_signer>(net_params, device);
             }
-            const auto& device = hw_device.at("device");
-            if (device.value("name", std::string()).empty()) {
-                throw user_error("Hardware device JSON requires a non-empty 'name' element");
+            if (net_params.is_liquid() && ret->get_liquid_support() == liquid_support_level::none) {
+                throw user_error(res::id_the_hardware_wallet_you_are);
             }
-            return std::make_shared<hardware_signer>(net_params, device);
+            return ret;
         }
     } // namespace
 
@@ -810,28 +816,25 @@ namespace sdk {
     needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
         : auth_handler_impl(session, name)
         , m_details(details)
-        , m_liquid_support(get_signer()->get_liquid_support())
     {
         if (m_state != state_type::error) {
-            if (!m_session.is_liquid() || m_liquid_support == liquid_support_level::full) {
-                m_state = state_type::make_call;
-            } else if (m_liquid_support == liquid_support_level::lite) {
-                try {
+            try {
+                if (!m_session.is_liquid()) {
+                    m_state = state_type::make_call;
+                } else {
                     m_state = state_type::resolve_code;
                     set_data();
                     m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
-                } catch (const std::exception& e) {
-                    set_error(e.what());
                 }
-            } else {
-                set_error(res::id_the_hardware_wallet_you_are);
+            } catch (const std::exception& e) {
+                set_error(e.what());
             }
         }
     }
 
     auth_handler::state_type needs_unblind_call::call_impl()
     {
-        if (m_session.is_liquid() && m_liquid_support != liquid_support_level::full) {
+        if (m_session.is_liquid()) {
             // Parse and set the nonces we got back
             const nlohmann::json args = nlohmann::json::parse(m_code);
             cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);

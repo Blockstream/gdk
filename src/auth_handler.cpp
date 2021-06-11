@@ -79,7 +79,7 @@ namespace sdk {
 
     void auth_handler_impl::set_error(const std::string& error_message)
     {
-        GDK_LOG_SEV(log_level::debug) << m_action << " call exception: " << error_message;
+        GDK_LOG_SEV(log_level::warning) << m_action << " call exception: " << error_message;
         m_state = state_type::error;
         m_error = error_message;
     }
@@ -308,7 +308,7 @@ namespace sdk {
         } else if (action == "get_receive_address") {
             const auto& addr = required_data.at("address");
             const auto script_hash = h2b(addr.at("blinding_script_hash"));
-            result["blinding_key"] = b2h(signer->get_public_key_from_blinding_key(script_hash));
+            result["blinding_key"] = b2h(signer->get_blinding_pubkey_from_script(script_hash));
         } else if (action == "create_transaction") {
             auto& blinding_keys = result["blinding_keys"];
             const auto& addresses = required_data.at("transaction").at("change_address");
@@ -316,13 +316,19 @@ namespace sdk {
                 const auto& addr = it.value();
                 if (!addr.value("is_blinded", false)) {
                     const auto script_hash = h2b(addr.at("blinding_script_hash"));
-                    blinding_keys[it.key()] = b2h(signer->get_public_key_from_blinding_key(script_hash));
+                    blinding_keys[it.key()] = b2h(signer->get_blinding_pubkey_from_script(script_hash));
                 }
             }
         } else if (action == "get_balance" || action == "get_subaccount" || action == "get_subaccounts"
             || action == "get_transactions" || action == "get_unspent_outputs" || action == "get_expired_deposits") {
-            // Should only be requested for liquid_support_level = 'lite'
-            GDK_RUNTIME_ASSERT_MSG(false, "Unexpected action for software wallet");
+            const auto& blinded_scripts = required_data.at("blinded_scripts");
+            std::vector<std::string> nonces;
+            nonces.reserve(blinded_scripts.size());
+            for (const auto& it : blinded_scripts) {
+                const auto blinding_key = signer->get_blinding_key_from_script(h2b(it.at("script")));
+                nonces.emplace_back(b2h(sha256(ecdh(h2b(it.at("pubkey")), blinding_key))));
+            }
+            result["nonces"] = nonces;
         } else {
             GDK_RUNTIME_ASSERT(action == "sign_tx");
             auto impl = get_session().get_nonnull_impl();

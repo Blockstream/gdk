@@ -107,8 +107,6 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
-
-        const liquid_support_level m_liquid_support;
     };
 
     class get_balance_call : public needs_unblind_call {
