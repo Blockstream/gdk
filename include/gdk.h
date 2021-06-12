@@ -252,13 +252,13 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  *|     either ``"recovery_mnemonic"`` or ``"recovery_xpub"`` if they do not wish to have a
  *|     mnemonic passphrase generated automatically.
  *|     All other fields are ignored.
- * :param subaccount: Destination for the created subaccount details. For 2of3
- *|     subaccounts the field ``"recovery_xpub"`` will be populated, and ``"recovery_mnemonic"``
- *|     will contain the recovery mnemonic passphrase if one was generated. These
- *|     values should be stored safely by the caller as they will not be returned again
- *|     by any GDK call such as GA_get_subaccounts.
  * :param call: Destination for the resulting GA_auth_handler to perform the creation.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *|     Details of the created subaccount are returned in the ``"result"`` element of
+ *|     the GA_auth_handler. For 2of3 subaccounts the field ``"recovery_xpub"`` will
+ *|     be populated, and ``"recovery_mnemonic"`` will contain the recovery mnemonic
+ *|     passphrase if one was generated. These values must be stored safely by the
+ *|     caller as they will not be returned again by any call such as `GA_get_subaccounts`.
  */
 GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
