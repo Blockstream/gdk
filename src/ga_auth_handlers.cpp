@@ -734,23 +734,6 @@ namespace sdk {
         return set_address_to_blind();
     }
 
-    static bool cache_nonces(session& session, const nlohmann::json& blinded_scripts, const nlohmann::json& nonces)
-    {
-        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
-
-        size_t i = 0;
-        bool updated = false;
-
-        for (const auto& nonce : nonces) {
-            const std::string& pubkey = blinded_scripts.at(i).at("pubkey");
-            const std::string& script = blinded_scripts.at(i).at("script");
-            updated |= session.set_blinding_nonce(pubkey, script, nonce);
-            ++i;
-        }
-
-        return updated;
-    }
-
     static bool has_unblinded_change(const nlohmann::json& tx)
     {
         for (const auto& it : tx.at("change_address").items()) {
@@ -819,12 +802,12 @@ namespace sdk {
     {
         if (m_state != state_type::error) {
             try {
-                if (!m_session.is_liquid()) {
-                    m_state = state_type::make_call;
-                } else {
+                if (m_session.is_liquid()) {
                     m_state = state_type::resolve_code;
                     set_data();
                     m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
+                } else {
+                    m_state = state_type::make_call;
                 }
             } catch (const std::exception& e) {
                 set_error(e.what());
@@ -837,7 +820,14 @@ namespace sdk {
         if (m_session.is_liquid()) {
             // Parse and set the nonces we got back
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            cache_nonces(m_session, m_twofactor_data["blinded_scripts"], args["nonces"]);
+            const auto& blinded_scripts = m_twofactor_data.at("blinded_scripts");
+            const auto& nonces = args.at("nonces");
+            GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
+
+            for (size_t i = 0; i < blinded_scripts.size(); ++i) {
+                const auto& it = blinded_scripts[i];
+                m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
+            }
         }
 
         return wrapped_call_impl(); // run the actual wrapped call
