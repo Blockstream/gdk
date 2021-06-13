@@ -33,7 +33,6 @@ namespace sdk {
         // used by 2of3 subaccounts
         std::string m_master_xpub_bip32;
         std::string m_subaccount_xpub;
-        bool m_use_ae_protocol;
 
         // used when a new authorized-assets-enabled subaccount is created
         std::vector<std::string> m_ca_addrs;
@@ -50,7 +49,6 @@ namespace sdk {
         std::string m_message;
         std::pair<std::string, std::vector<uint32_t>> m_message_info;
 
-        bool m_use_ae_protocol;
         std::string m_master_xpub_bip32;
     };
 
@@ -62,7 +60,6 @@ namespace sdk {
         state_type call_impl() override;
 
         nlohmann::json m_tx_details;
-        bool m_use_ae_protocol;
     };
 
     class get_receive_address_call : public auth_handler_impl {

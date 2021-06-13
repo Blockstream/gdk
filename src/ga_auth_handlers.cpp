@@ -165,7 +165,6 @@ namespace sdk {
 
         std::string m_challenge;
         std::string m_master_xpub_bip32;
-        bool m_use_ae_protocol;
 
         // used for 2of2_no_recovery
         std::unordered_map<uint32_t, std::vector<std::string>> m_ca_addrs;
@@ -176,7 +175,6 @@ namespace sdk {
         session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
         : auth_handler_impl(session, "get_xpubs",
               make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
-        , m_use_ae_protocol(false)
     {
         if (m_state != state_type::error) {
             if (m_session.get_network_parameters().is_electrum()) {
@@ -235,7 +233,7 @@ namespace sdk {
                     set_data();
                     m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
                     m_twofactor_data["path"] = signer::LOGIN_PATH;
-                    m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
+                    m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
                     return state_type::resolve_code;
                 }
                 // Register the xpub for each of our subaccounts
@@ -245,7 +243,7 @@ namespace sdk {
         } else if (m_action == "sign_message") {
             // If we are using the Anti-Exfil protocol we verify the signature
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            if (m_use_ae_protocol) {
+            if (m_use_anti_exfil) {
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
                     m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
             }
@@ -360,7 +358,6 @@ namespace sdk {
         : auth_handler_impl(session, "get_xpubs")
         , m_details(details)
         , m_subaccount(0)
-        , m_use_ae_protocol(false)
         , m_remaining_ca_addrs(0)
     {
         if (m_state != state_type::error) {
@@ -412,13 +409,13 @@ namespace sdk {
                 set_data();
                 m_twofactor_data["message"] = format_recovery_key_message(recovery_bip32_xpub, m_subaccount);
                 m_twofactor_data["path"] = signer::LOGIN_PATH;
-                m_use_ae_protocol = add_required_ae_data(m_signer, m_twofactor_data);
+                m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
                 return state_type::resolve_code;
             }
             m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
         } else if (m_action == "sign_message") {
             // If we are using the Anti-Exfil protocol we verify the signature
-            if (m_use_ae_protocol) {
+            if (m_use_anti_exfil) {
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
                     m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
             }
@@ -451,17 +448,16 @@ namespace sdk {
     ack_system_message_call::ack_system_message_call(session& session, const std::string& msg)
         : auth_handler_impl(session, "sign_message")
         , m_message(msg)
-        , m_use_ae_protocol(false)
     {
         if (m_state != state_type::error) {
             try {
                 m_message_info = m_session.get_system_message_info(msg);
-                m_use_ae_protocol = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
+                m_use_anti_exfil = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
                 m_state = state_type::resolve_code;
 
                 // If using Anti-Exfil protocol we need to get the root xpub
                 // Otherwise just sign the message
-                if (m_use_ae_protocol) {
+                if (m_use_anti_exfil) {
                     set_action("get_xpubs");
                     set_data();
                     auto paths = get_paths_json();
@@ -493,7 +489,7 @@ namespace sdk {
             return state_type::resolve_code;
         } else if (m_action == "sign_message") {
             // If we are using the Anti-Exfil protocol we verify the signature
-            if (m_use_ae_protocol) {
+            if (m_use_anti_exfil) {
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, m_message_info.second,
                     m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
             }
@@ -507,7 +503,6 @@ namespace sdk {
     //
     sign_transaction_call::sign_transaction_call(session& session, const nlohmann::json& tx_details)
         : auth_handler_impl(session, "sign_tx")
-        , m_use_ae_protocol(false)
     {
         if (m_state == state_type::error) {
             return;
@@ -530,8 +525,8 @@ namespace sdk {
                 m_twofactor_data["transaction"] = tx_details;
 
                 // We use the Anti-Exfil protocol if the hw supports it
-                m_use_ae_protocol = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
-                m_twofactor_data["use_ae_protocol"] = m_use_ae_protocol;
+                m_use_anti_exfil = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
+                m_twofactor_data["use_ae_protocol"] = m_use_anti_exfil;
 
                 // We need the inputs, augmented with types, scripts and paths
                 auto signing_inputs = get_ga_signing_inputs(tx_details);
@@ -543,7 +538,7 @@ namespace sdk {
                     addr_types.insert(addr_type.get<std::string>());
 
                     // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-                    if (m_use_ae_protocol) {
+                    if (m_use_anti_exfil) {
                         add_ae_host_data(input);
                     }
                 }
@@ -607,7 +602,7 @@ namespace sdk {
         // If we are using the Anti-Exfil protocol we verify the signatures
         // TODO: the signer-commitments should be verified as being the same for the
         // same input data and host-entropy (eg. if retrying following failure).
-        if (m_use_ae_protocol) {
+        if (m_use_anti_exfil) {
             // FIXME: User pubkeys is not threadsafe if adding a subaccount
             // at the same time (this cant happen yet but should be allowed
             // in the future).
