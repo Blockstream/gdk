@@ -71,7 +71,6 @@ namespace sdk {
 
         session& m_session;
         std::shared_ptr<signer> m_signer;
-        bool m_is_hw_action;
         std::vector<std::string> m_methods; // All available methods
         std::string m_method; // Selected 2fa method
         std::string m_action; // Selected 2fa action name (send_raw_tx, set_csvtime etc)
@@ -81,6 +80,8 @@ namespace sdk {
         nlohmann::json m_twofactor_data; // Actual data to send along with any call
         auth_handler::state_type m_state; // Current state
         uint32_t m_attempts_remaining;
+        bool m_is_hw_action;
+        bool m_use_anti_exfil;
 
     private:
         void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);

@@ -21,19 +21,17 @@ namespace sdk {
     } // namespace
 
     //
-    // Auth handling interface
+    // Common auth handling implementation
     //
     auth_handler::auth_handler() {}
 
     auth_handler::~auth_handler() {}
 
-    //
-    // Common auth handling implementation
-    //
     auth_handler_impl::auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer)
         : m_session(session)
         , m_action(action)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
+        , m_use_anti_exfil(false)
     {
         try {
             init(action, signer, true);
