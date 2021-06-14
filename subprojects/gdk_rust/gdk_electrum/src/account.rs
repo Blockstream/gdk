@@ -872,14 +872,13 @@ pub fn create_tx(
         }
 
         let prev_tx = BETransaction::from_hex(&prev_txitem.transaction, network.id())?;
-        let policy_asset = network.policy_asset.as_deref().unwrap_or("btc");
 
         let store_read = account.store.read()?;
         let acc_store = store_read.account_cache(account.num())?;
 
         // Strip the mining fee change output from the transaction, keeping the change address for reuse
         template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
-            if asset.map_or(true, |a| a == policy_asset)
+            if asset.map_or(true, |a| a == "btc")
                 && account.get_wallet_chain_type(&script) == Some(1)
             {
                 let change_address = prev_tx
