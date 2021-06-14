@@ -8,11 +8,19 @@
 
 // TODO: Use std::string_view when its fully supported
 
+// clang-format off
 namespace {
+
+static std::vector<std::string> wamp_cert_roots = {
 
 // TODO: generate these from pem file?
 // https://www.identrust.com/certificates/trustid/root-download-x3.html
-static const char* IDENTX3 = R"(
+//
+// subject: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+// issuer: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+// not before: Sat Sep 30 21:12:19 2000
+// not after: Thu Sep 30 14:01:15 2021
+R"(
 -----BEGIN CERTIFICATE-----
 MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/
 MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
@@ -32,10 +40,15 @@ AvHRAosZy5Q6XkjEGB5YGV8eAlrwDPGxrancWYaLbumR9YbK+rlmM6pZW87ipxZz
 R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5
 JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo
 Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ
------END CERTIFICATE-----)";
+-----END CERTIFICATE-----)",
 
 // https://letsencrypt.org/certificates/
-static const char* IDENTR3 = R"(
+//
+// subject: '/C=US/O=Let's Encrypt/CN=R3'
+// issuer: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+// not before: Wed Oct  7 19:21:40 2020
+// not after: Wed Sep 29 19:21:40 2021
+R"(
 -----BEGIN CERTIFICATE-----
 MIIEZTCCA02gAwIBAgIQQAF1BIMUpMghjISpDBbN3zANBgkqhkiG9w0BAQsFADA/
 MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
@@ -61,10 +74,15 @@ S8MXjohyc9z9/G2948kLjmE6Flh9dDYrVYA9x2O+hEPGOaEOa1eePynBgPayvUfL
 qjBstzLhWVQLGAkXXmNs+5ZnPBxzDJOLxhF2JIbeQAcH5H0tZrUlo5ZYyOqA7s9p
 O5b85o3AM/OJ+CktFBQtfvBhcJVd9wvlwPsk+uyOy2HI7mNxKKgsBTt375teA2Tw
 UdHkhVNcsAKX1H7GNNLOEADksd86wuoXvg==
------END CERTIFICATE-----)";
+-----END CERTIFICATE-----)",
 
 // backup
-static const char* IDENTR4 = R"(
+//
+// subject: '/C=US/O=Let's Encrypt/CN=R4'
+// issuer: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+// not before: Wed Oct  7 19:21:45 2020
+// not after: Wed Sep 29 19:21:45 2021
+R"(
 -----BEGIN CERTIFICATE-----
 MIIEZTCCA02gAwIBAgIQQAF1BIMlO+Rkt3exI9CKgjANBgkqhkiG9w0BAQsFADA/
 MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
@@ -90,9 +108,13 @@ hvPBQxxuqPECZsi4nLQ45VJpyC1NDd0GqGQIMqNdC4N4TLDtd7Yhy8v5JsfEMUbb
 akfyt4TkBhA8+Wu8MM6dlJyJ7nHBVnEUFQ4Ni+GzNC/pQSL2+Y9Mq4HHIk2ZFy0W
 B8KsVwdeNrERPL+LjhhLde1Et0aL9nlv4CqwXHML2LPgk38j/WllbQ/8HRd2VpB+
 JW6Z8JNhcnuBwATHMCeJVCFapoZsPfQQ6Q==
------END CERTIFICATE-----)";
+-----END CERTIFICATE-----)",
 
-static const char* IDENTE1 = R"(
+// subject: '/C=US/O=Let's Encrypt/CN=E1'
+// issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
+// not before: Fri Sep  4 00:00:00 2020
+// not after: Mon Sep 15 16:00:00 2025
+R"(
 -----BEGIN CERTIFICATE-----
 MIICxjCCAk2gAwIBAgIRALO93/inhFu86QOgQTWzSkUwCgYIKoZIzj0EAwMwTzEL
 MAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2VhcmNo
@@ -109,10 +131,15 @@ IDAeMBygGqAYhhZodHRwOi8veDIuYy5sZW5jci5vcmcvMCIGA1UdIAQbMBkwCAYG
 Z4EMAQIBMA0GCysGAQQBgt8TAQEBMAoGCCqGSM49BAMDA2cAMGQCMHt01VITjWH+
 Dbo/AwCd89eYhNlXLr3pD5xcSAQh8suzYHKOl9YST8pE9kLJ03uGqQIwWrGxtO3q
 YJkgsTgDyj2gJrjubi1K9sZmHzOa25JK1fUpE8ZwYii6I4zPPS/Lgul/
------END CERTIFICATE-----)";
+-----END CERTIFICATE-----)",
 
 // backup
-static const char* IDENTE2 = R"(
+//
+// subject: '/C=US/O=Let's Encrypt/CN=E2'
+// issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
+// not before: Fri Sep  4 00:00:00 2020
+// not after: Mon Sep 15 16:00:00 2025
+R"(
 -----BEGIN CERTIFICATE-----
 MIICxjCCAkygAwIBAgIQTtI99q9+x/mwxHJv+VEqdzAKBggqhkjOPQQDAzBPMQsw
 CQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJuZXQgU2VjdXJpdHkgUmVzZWFyY2gg
@@ -129,11 +156,13 @@ MB4wHKAaoBiGFmh0dHA6Ly94Mi5jLmxlbmNyLm9yZy8wIgYDVR0gBBswGTAIBgZn
 gQwBAgEwDQYLKwYBBAGC3xMBAQEwCgYIKoZIzj0EAwMDaAAwZQIxAPJCN9qpyDmZ
 tX8K3m8UYQvK51BrXclM6WfrdeZlUBKyhTXUmFAtJw4X6A0x9mQFPAIwJa/No+KQ
 UAM1u34E36neL/Zba7ombkIOchSgx1iVxzqtFWGddgoG+tppRPWhuhhn
------END CERTIFICATE-----)";
+-----END CERTIFICATE-----)",
 
-// Google Trust Services
-// Expires 22/06/2036
-static const char* GTS_Root_R1 = R"(
+// subject: '/C=US/O=Google Trust Services LLC/CN=GTS Root R1'
+// issuer: '/C=US/O=Google Trust Services LLC/CN=GTS Root R1'
+// not before: Wed Jun 22 00:00:00 2016
+// not after: Sun Jun 22 00:00:00 2036
+R"(
 -----BEGIN CERTIFICATE-----
 MIIFWjCCA0KgAwIBAgIQbkepxUtHDA3sM9CJuRz04TANBgkqhkiG9w0BAQwFADBH
 MQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExM
@@ -164,10 +193,38 @@ DdIx02OYI5NaAIFItO/Nis3Jz5nu2Z6qNuFoS3FJFDYoOj0dzpqPJeaAcWErtXvM
 F62ARPBopY+Udf90WuioAnwMCeKpSwughQtiue+hMZL77/ZRBIls6Kl0obsXs7X9
 SQ98POyDGCBDTtWTurQ0sR8WNh8M5mQ5Fkzc4P4dyKliPUDqysU0ArSuiYgzNdws
 E3PYJ/HQcu51OyLemGhmW/HGY0dVHLqlCFF1pkgl
------END CERTIFICATE-----
-)";
+-----END CERTIFICATE-----)",
+};
 
-// clang-format off
+static std::vector<std::string> wamp_cert_pins = {
+    // subject: '/C=US/O=Let's Encrypt/CN=Let's Encrypt Authority X3'
+    // issuer: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+    // not before: Thu Mar 17 16:40:46 2016
+    // not after: Wed Mar 17 16:40:46 2021
+    "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
+
+    // subject: '/C=US/O=Let's Encrypt/CN=R3'
+    // issuer: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+    // not before: Wed Oct  7 19:21:40 2020
+    // not after: Wed Sep 29 19:21:40 2021
+    "730c1bdcd85f57ce5dc0bba733e5f1ba5a925b2a771d640a26f7a454224dad3b",
+
+    // subject: '/C=US/O=Let's Encrypt/CN=E1'
+    // issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
+    // not before: Fri Sep  4 00:00:00 2020
+    // not after: Mon Sep 15 16:00:00 2025
+    "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda",
+
+    // subject: '/C=US/O=Let's Encrypt/CN=R4'
+    // issuer: '/O=Digital Signature Trust Co./CN=DST Root CA X3'
+    // not before: Wed Oct  7 19:21:45 2020
+    // not after: Wed Sep 29 19:21:45 2021
+    "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa",
+
+    // ??
+    "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1",
+};
+
 static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_networks = {
     { "localtest",
         std::make_shared<nlohmann::json>(nlohmann::json({
@@ -192,7 +249,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", "ws://localhost:8080/v2/ws" }
         })) },
@@ -226,8 +283,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_servers", nlohmann::json::array() },
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
-            { "wamp_cert_pins", std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d", "730c1bdcd85f57ce5dc0bba733e5f1ba5a925b2a771d640a26f7a454224dad3b", "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda", "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa", "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1" } },
-            { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+            { "wamp_cert_pins", wamp_cert_pins },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://liquidbtc7u746j4.onion/v2/ws" },
             { "wamp_url", "wss://liquidwss.greenaddress.it/v2/ws" }
         })) },
@@ -262,7 +319,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", "ws://localhost:8080/v2/ws" }
         })) },
@@ -289,8 +346,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_servers", nlohmann::json::array() },
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/tx/" },
-            { "wamp_cert_pins", std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d", "730c1bdcd85f57ce5dc0bba733e5f1ba5a925b2a771d640a26f7a454224dad3b", "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda", "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa", "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1" } },
-            { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+            { "wamp_cert_pins", wamp_cert_pins },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://s7a4rvc6425y72d2.onion/v2/ws" },
             { "wamp_url", "wss://prodwss.greenaddress.it/v2/ws" }
         })) },
@@ -317,8 +374,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_servers", nlohmann::json::array() },
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
-            { "wamp_cert_pins", std::vector<std::string>{ "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d", "730c1bdcd85f57ce5dc0bba733e5f1ba5a925b2a771d640a26f7a454224dad3b", "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda", "5a8f16fda448d783481cca57a2428d174dad8c60943ceb28f661ae31fd39a5fa", "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1" } },
-            { "wamp_cert_roots", std::vector<std::string>{ GTS_Root_R1, IDENTX3, IDENTR3, IDENTR4, IDENTE1, IDENTE2 } },
+            { "wamp_cert_pins", wamp_cert_pins },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://gu5ke7a2aguwfqhz.onion/v2/ws" },
             { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" }
         })) },
