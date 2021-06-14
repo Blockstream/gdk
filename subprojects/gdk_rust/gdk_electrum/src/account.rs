@@ -863,7 +863,7 @@ pub fn create_tx(
     }
 
     let mut template_tx = None;
-    let mut change_addresses = HashMap::new();
+    let mut change_addresses = vec![];
 
     // When a previous transaction is replaced, use it as a template for the new transaction
     if let Some(ref prev_txitem) = request.previous_transaction {
@@ -885,7 +885,7 @@ pub fn create_tx(
                 let change_address = prev_tx
                     .output_address(vout, network.id())
                     .expect("own change addresses to have address representation");
-                change_addresses.insert(policy_asset.to_string(), change_address);
+                change_addresses.push(change_address);
                 false
             } else {
                 true
@@ -1070,7 +1070,7 @@ pub fn create_tx(
         &acc_store.unblinded,
     ); // Vec<Change> asset, value
     for (i, change) in changes.iter().enumerate() {
-        let change_address = change_addresses.remove(&change.asset).map_or_else(
+        let change_address = change_addresses.pop().map_or_else(
             || -> Result<_, Error> {
                 let change_index = acc_store.indexes.internal + i as u32 + 1;
                 Ok(account.derive_address(true, change_index)?.to_string())
