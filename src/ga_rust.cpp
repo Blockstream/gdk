@@ -447,30 +447,33 @@ namespace sdk {
         nlohmann::json result(details);
 
         auto addressees_p = result.find("addressees");
-        for (auto& addressee : *addressees_p) {
-            addressee["satoshi"] = addressee.value("satoshi", (long long)0);
-            nlohmann::json uri_params = parse_bitcoin_uri(addressee.value("address", ""), m_net_params.bip21_prefix());
-            if (!uri_params.is_object())
-                continue;
+        if (addressees_p != result.end()) {
+            for (auto& addressee : *addressees_p) {
+                addressee["satoshi"] = addressee.value("satoshi", (long long)0);
+                nlohmann::json uri_params
+                    = parse_bitcoin_uri(addressee.value("address", ""), m_net_params.bip21_prefix());
+                if (!uri_params.is_object())
+                    continue;
 
-            addressee["address"] = uri_params["address"];
+                addressee["address"] = uri_params["address"];
 
-            const auto bip21_params = uri_params["bip21-params"];
-            if (!bip21_params.is_object())
-                continue;
+                const auto bip21_params = uri_params["bip21-params"];
+                if (!bip21_params.is_object())
+                    continue;
 
-            const auto uri_amount_p = bip21_params.find("amount");
-            if (uri_amount_p != bip21_params.end()) {
-                // Use the amount specified in the URI
-                const nlohmann::json uri_amount = { { "btc", uri_amount_p->get<std::string>() } };
-                addressee["satoshi"] = amount::convert(uri_amount, "USD", "")["satoshi"];
-            }
+                const auto uri_amount_p = bip21_params.find("amount");
+                if (uri_amount_p != bip21_params.end()) {
+                    // Use the amount specified in the URI
+                    const nlohmann::json uri_amount = { { "btc", uri_amount_p->get<std::string>() } };
+                    addressee["satoshi"] = amount::convert(uri_amount, "USD", "")["satoshi"];
+                }
 
-            if (m_net_params.is_liquid()) {
-                if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
-                    throw std::runtime_error("in liquid amount without assetid is not valid"); // fixme return error
-                } else if (bip21_params.contains("assetid")) {
-                    addressee["asset_id"] = bip21_params["assetid"];
+                if (m_net_params.is_liquid()) {
+                    if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
+                        throw std::runtime_error("in liquid amount without assetid is not valid"); // fixme return error
+                    } else if (bip21_params.contains("assetid")) {
+                        addressee["asset_id"] = bip21_params["assetid"];
+                    }
                 }
             }
         }
