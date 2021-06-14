@@ -402,17 +402,22 @@ fn rbf() {
     assert_eq!(txitem.memo, "poz qux");
 
     // The old transaction should be gone (after the next sync with the server)
-    std::thread::sleep(std::time::Duration::from_secs(3));
-    let list = test_session
-        .session
-        .get_transactions(&GetTransactionsOpt {
-            subaccount: 1,
-            count: 100,
-            ..Default::default()
-        })
-        .unwrap()
-        .0;
-    assert!(list.iter().all(|e| e.txhash != txid1));
+    for i in 0..60 {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let list = test_session
+            .session
+            .get_transactions(&GetTransactionsOpt {
+                subaccount: 1,
+                count: 100,
+                ..Default::default()
+            })
+            .unwrap()
+            .0;
+        if list.iter().all(|e| e.txhash != txid1) {
+            break;
+        }
+        assert!(i < 59, "replaced transaction didn't disappear after 1 minute");
+    }
 
     // Transactions that are not properly signed should be rejected, to prevent the user from
     // being tricked into fee-bumping them.
