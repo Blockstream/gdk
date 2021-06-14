@@ -1153,6 +1153,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(false, error);
         }
 
+        // FIXME: Compute these up front
         std::vector<unsigned char> input_assets;
         std::vector<unsigned char> input_abfs;
         std::vector<unsigned char> input_ags;
@@ -1160,9 +1161,9 @@ namespace sdk {
             const auto asset_id = h2b_rev(utxo["asset_id"]);
             input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
             const auto abf = h2b_rev(utxo["assetblinder"]);
-            const auto generator = asset_generator_from_bytes(asset_id, abf);
-            input_ags.insert(input_ags.end(), std::begin(generator), std::end(generator));
             input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
+            const auto asset_generator = asset_generator_from_bytes(asset_id, abf);
+            input_ags.insert(input_ags.end(), std::begin(asset_generator), std::end(asset_generator));
         }
 
         const auto asset_id = h2b_rev(output.at("asset_id"));
