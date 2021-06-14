@@ -583,7 +583,10 @@ namespace sdk {
         const bool is_liquid = net_params.is_liquid();
         const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
-        if (is_liquid) {
+        if (is_liquid && !get_signer()->get_hw_device().empty()) {
+            // FIMXE: We skip re-blinding for the internal software signer here,
+            // since we have already done it. It should be possible to avoid blinding
+            // the tx twice in the general HWW case.
             const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
             const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
             const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
@@ -740,23 +743,25 @@ namespace sdk {
     }
 
     //
-    // Create transaction
+    // Generic parent for calls that need blinding nonces
+    // FIXME: We should not need to fetch all txs before every call
+    // using this base class.
     //
-    create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, "create_transaction")
+    needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, name)
         , m_details(details)
+        , m_fetch_nonces(false)
     {
         if (m_state != state_type::error) {
             try {
-                auto tx = m_session.create_transaction(details);
-                if (!tx.contains("change_address") || !m_session.is_liquid() || !has_unblinded_change(tx)) {
-                    m_result.swap(tx);
-                    m_state = state_type::done; // No blinding needed
-                } else {
-                    // Ask the HW to blind the change address(es)
+                // TODO: Electrum is skipped here as it does its own unblinding
+                if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
+                    m_fetch_nonces = true;
                     m_state = state_type::resolve_code;
                     set_data();
-                    m_twofactor_data["transaction"].swap(tx);
+                    m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
+                } else {
+                    m_state = state_type::make_call;
                 }
             } catch (const std::exception& e) {
                 set_error(e.what());
@@ -764,12 +769,60 @@ namespace sdk {
         }
     }
 
-    auth_handler::state_type create_transaction_call::call_impl()
+    auth_handler::state_type needs_unblind_call::call_impl()
     {
+        if (m_fetch_nonces) {
+            // Parse and set the nonces we got back
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            const auto& blinded_scripts = m_twofactor_data.at("blinded_scripts");
+            const auto& nonces = args.at("nonces");
+            GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
+
+            for (size_t i = 0; i < blinded_scripts.size(); ++i) {
+                const auto& it = blinded_scripts[i];
+                m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
+            }
+            m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
+        }
+
+        return wrapped_call_impl(); // run the actual wrapped call
+    }
+
+    //
+    // Create transaction
+    //
+    create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
+        : needs_unblind_call("get_transactions", session, details)
+    {
+        if (m_state != state_type::error) {
+            if (m_fetch_nonces && m_details.contains("utxos")) {
+                // Skip fetching txs to get blinding nonces if the tx already contains
+                // utxos (since fetching the utxos will have cached the nonces already)
+                m_fetch_nonces = false;
+                m_state = state_type::make_call;
+            }
+        }
+    }
+
+    auth_handler::state_type create_transaction_call::wrapped_call_impl()
+    {
+        if (!m_twofactor_data.contains("transaction")) {
+            auto tx = m_session.create_transaction(m_details);
+            if (!tx.contains("change_address") || !m_session.is_liquid() || !has_unblinded_change(tx)) {
+                m_result.swap(tx);
+                return state_type::done; // No blinding needed
+            }
+            // Ask the HW to blind the change address(es)
+            set_action("create_transaction");
+            set_data();
+            m_twofactor_data["transaction"].swap(tx);
+            return state_type::resolve_code;
+        }
+
         const auto blinded_prefix = m_session.get_network_parameters().blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
 
-        // Blind the change addresses
+        // Blind the change addresseses
         auto& tx = m_twofactor_data["transaction"];
         for (auto& it : tx.at("change_address").items()) {
             auto& addr = it.value();
@@ -786,46 +839,6 @@ namespace sdk {
         // Update the transaction
         m_result = m_session.create_transaction(tx);
         return state_type::done;
-    }
-
-    //
-    // Generic parent for all the other calls that needs the unblinded transactions in order to do their job
-    //
-    needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, name)
-        , m_details(details)
-    {
-        if (m_state != state_type::error) {
-            try {
-                if (m_session.is_liquid()) {
-                    m_state = state_type::resolve_code;
-                    set_data();
-                    m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
-                } else {
-                    m_state = state_type::make_call;
-                }
-            } catch (const std::exception& e) {
-                set_error(e.what());
-            }
-        }
-    }
-
-    auth_handler::state_type needs_unblind_call::call_impl()
-    {
-        if (m_session.is_liquid()) {
-            // Parse and set the nonces we got back
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            const auto& blinded_scripts = m_twofactor_data.at("blinded_scripts");
-            const auto& nonces = args.at("nonces");
-            GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
-
-            for (size_t i = 0; i < blinded_scripts.size(); ++i) {
-                const auto& it = blinded_scripts[i];
-                m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
-            }
-        }
-
-        return wrapped_call_impl(); // run the actual wrapped call
     }
 
     //
