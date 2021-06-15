@@ -856,7 +856,7 @@ pub fn create_tx(
 
     // When a previous transaction is replaced, use it as a template for the new transaction
     if let Some(ref prev_txitem) = request.previous_transaction {
-        if !request.addressees.is_empty() || send_all || network.liquid {
+        if send_all || network.liquid {
             return Err(Error::InvalidReplacementRequest);
         }
 
@@ -880,6 +880,24 @@ pub fn create_tx(
                 true
             }
         }));
+
+        if let (Some(BETransaction::Bitcoin(tx)), NetworkId::Bitcoin(net)) =
+            (&template_tx, network.id())
+        {
+            request.addressees = tx
+                .output
+                .iter()
+                .filter_map(|o| {
+                    Some(AddressAmount {
+                        address: bitcoin::Address::from_script(&o.script_pubkey, net)?.to_string(),
+                        satoshi: o.value,
+                        asset_id: None,
+                    })
+                })
+                .collect();
+        } else {
+            return Err(Error::InvalidReplacementRequest);
+        }
 
         // Keep the previous transaction memo
         if request.memo.is_none() && !prev_txitem.memo.is_empty() {
