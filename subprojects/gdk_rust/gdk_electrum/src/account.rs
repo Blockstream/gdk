@@ -1095,6 +1095,7 @@ pub fn create_tx(
         SPVVerifyResult::InProgress,
     );
     created_tx.changes_used = Some(changes.len() as u32);
+    created_tx.addressees_read_only = request.previous_transaction.is_some();
     info!("returning: {:?}", created_tx);
 
     Ok(created_tx)
