@@ -2293,8 +2293,8 @@ namespace sdk {
             const auto vout = utxo["pt_idx"];
             locker_t locker(m_mutex);
             const auto value = m_cache.get_liquid_output(txhash, vout);
-            if (value) {
-                utxo.insert(value->begin(), value->end());
+            if (!value.empty()) {
+                utxo.update(value.begin(), value.end());
                 utxo["confidential"] = true;
                 return false; // Cache not updated
             }
