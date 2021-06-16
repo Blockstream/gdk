@@ -1,5 +1,6 @@
 #include "include/gdk.h"
 #include "src/assertion.hpp"
+#include <nlohmann/json.hpp>
 #include <string.h>
 
 // Tests for gdk exposed JSON functions
@@ -26,6 +27,22 @@ int main()
     GA_destroy_string(str_out);
 
     GDK_RUNTIME_ASSERT(GA_destroy_json(json) == GA_OK);
+
+    // Default-constructed JSON is both empty and null
+    GDK_RUNTIME_ASSERT(nlohmann::json().empty());
+    GDK_RUNTIME_ASSERT(nlohmann::json().is_null());
+
+    // Empty init list constructed JSON is both empty but *not* null
+    GDK_RUNTIME_ASSERT(nlohmann::json({}).empty());
+    GDK_RUNTIME_ASSERT(!nlohmann::json({}).is_null());
+
+    // JSON constructed from an empty object is empty but *not* null
+    GDK_RUNTIME_ASSERT(nlohmann::json(nlohmann::json::object()).empty());
+    GDK_RUNTIME_ASSERT(!nlohmann::json(nlohmann::json::object()).is_null());
+
+    // Default-constructed JSON Object is empty but *not* null
+    GDK_RUNTIME_ASSERT(nlohmann::json::object().empty());
+    GDK_RUNTIME_ASSERT(!nlohmann::json::object().is_null());
 
     return 0;
 }
