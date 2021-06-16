@@ -439,7 +439,6 @@ Sign Transaction JSON
     {
       "address_type": "p2wsh",
       "block_height": 1448369,
-      "ga_asset_id": 1,
       "pointer": 475,
       "prevout_script": "522103bad7ac76143368781c4ac3e7afbb63cd6b52f2a923c715576804aa1046cabc1a210264f5fa70969907861ebdb2b2d53beb125523bb5140b90194481e2415ade1787452ae",
       "pt_idx": 1,
@@ -458,7 +457,6 @@ Sign Transaction JSON
     {
       "address_type": "p2wsh",
       "block_height": 1448369,
-      "ga_asset_id": 1,
       "pointer": 474,
       "pt_idx": 0,
       "satoshi": 10000,
@@ -563,7 +561,6 @@ Send Transaction JSON
     {
       "address_type": "p2wsh",
       "block_height": 1448369,
-      "ga_asset_id": 1,
       "pointer": 474,
       "prevout_script": "522102ff54a17dc6efe168673dbf679fe97e06b5cdcaf7dea8ab83dc6732350cd1b4e4210279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e52ae",
       "pt_idx": 0,
@@ -582,7 +579,6 @@ Send Transaction JSON
     {
       "address_type": "p2wsh",
       "block_height": 0,
-      "ga_asset_id": 1,
       "pointer": 493,
       "prevout_script": "522102c9465e8b6e98848428b90f21291a19c62fcb20d2dbff76217068219cada5f7a921022e831b15a4faa339ed9a09a6f1bc01da9001f86130e010a397603b4b4230a22552ae",
       "pt_idx": 1,
@@ -601,7 +597,6 @@ Send Transaction JSON
     {
       "address_type": "p2wsh",
       "block_height": 0,
-      "ga_asset_id": 1,
       "pointer": 494,
       "pt_idx": 0,
       "satoshi": 4789588,
