@@ -1007,11 +1007,7 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         if (!m_nlocktimes && !m_watch_only) {
-            nlohmann::json nlocktime_json;
-            {
-                unique_unlock unlocker(locker);
-                nlocktime_json = fetch_nlocktime_json();
-            }
+            auto nlocktime_json = wamp_cast_json(wamp_call(locker, "txs.upcoming_nlocktime"));
             m_nlocktimes = std::make_shared<nlocktime_t>();
             for (const auto& v : nlocktime_json.at("list")) {
                 const uint32_t vout = v.at("output_n");
@@ -1022,9 +1018,6 @@ namespace sdk {
 
         return m_nlocktimes;
     }
-
-    // Idempotent
-    nlohmann::json ga_session::fetch_nlocktime_json() { return wamp_cast_json(wamp_call("txs.upcoming_nlocktime")); }
 
     nlohmann::json ga_session::validate_asset_domain_name(const nlohmann::json& params)
     {
@@ -2831,7 +2824,7 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(!confidential_only || is_liquid);
 
-        nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs, all_coins);
+        auto utxos = wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
 
         const auto nlocktimes = update_nlocktime_info();
         if (nlocktimes && !nlocktimes->empty()) {
@@ -2881,12 +2874,6 @@ namespace sdk {
         });
 
         return asset_utxos;
-    }
-
-    // Idempotent
-    nlohmann::json ga_session::get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins)
-    {
-        return wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
     }
 
     // Idempotent
