@@ -202,8 +202,6 @@ namespace sdk {
         void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data);
         void update_blob(locker_t& locker, std::function<bool()> update_fn);
 
-        std::vector<unsigned char> get_blinding_nonce(const std::string& pubkey_hex, const std::string& script_hex);
-
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
         nlohmann::json get_appearance() const;

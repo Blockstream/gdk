@@ -373,6 +373,7 @@ namespace sdk {
 
     static auto h2b(const char* hex, size_t siz, bool rev, uint8_t prefix = 0)
     {
+        GDK_RUNTIME_ASSERT(hex != nullptr && siz != 0);
         size_t written;
         const size_t bytes_siz = siz / 2;
         std::vector<unsigned char> buff(bytes_siz + (prefix != 0 ? 1 : 0));

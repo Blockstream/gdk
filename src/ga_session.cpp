@@ -2288,11 +2288,9 @@ namespace sdk {
             utxo["confidential"] = false;
             return false; // Cache not updated
         }
+        locker_t locker(m_mutex);
         if (utxo.contains("txhash")) {
-            const auto txhash = h2b(utxo.at("txhash"));
-            const auto vout = utxo["pt_idx"];
-            locker_t locker(m_mutex);
-            const auto value = m_cache.get_liquid_output(txhash, vout);
+            const auto value = m_cache.get_liquid_output(h2b(utxo.at("txhash")), utxo["pt_idx"]);
             if (!value.empty()) {
                 utxo.update(value.begin(), value.end());
                 utxo["confidential"] = true;
@@ -2301,26 +2299,19 @@ namespace sdk {
         }
         const auto rangeproof = h2b(utxo.at("range_proof"));
         const auto commitment = h2b(utxo.at("commitment"));
-        const auto nonce_commitment_hex = utxo.at("nonce_commitment");
+        const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
         const auto asset_tag = h2b(utxo.at("asset_tag"));
-        const auto extra_commitment_hex = utxo.at("script");
-        const auto extra_commitment = h2b(extra_commitment_hex);
+        const auto script = h2b(utxo.at("script"));
 
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
-        std::shared_ptr<signer> signer = get_signer();
-        boost::optional<priv_key_t> blinding_key;
-
         try {
-            unblind_t unblinded;
-            std::vector<unsigned char> nonce = get_blinding_nonce(nonce_commitment_hex, extra_commitment_hex);
-            if (!nonce.empty()) {
-                unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, extra_commitment, asset_tag);
-            } else {
-                // hw and missing nonce in the map
+            std::vector<unsigned char> nonce = m_cache.get_liquid_blinding_nonce(nonce_commitment, script);
+            if (nonce.empty()) {
                 utxo["error"] = "missing blinding nonce";
                 return false; // Cache not updated
             }
+            const unblind_t unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
 
             utxo["satoshi"] = std::get<3>(unblinded);
             // Return in display order
@@ -2329,15 +2320,8 @@ namespace sdk {
             utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
             utxo["confidential"] = true;
             if (utxo.contains("txhash")) {
-                const auto txhash = h2b(utxo.at("txhash"));
-                const auto vout = utxo["pt_idx"];
-
-                locker_t locker(m_mutex);
-                // check again, we released the lock earlier, so some other thread could have started to unblind too
-                if (m_cache.get_liquid_output(txhash, vout).empty()) {
-                    m_cache.insert_liquid_output(txhash, vout, utxo);
-                    return true; // Cache was updated
-                }
+                m_cache.insert_liquid_output(h2b(utxo.at("txhash")), utxo["pt_idx"], utxo);
+                return true; // Cache was updated
             }
         } catch (const std::exception& ex) {
             utxo["error"] = "failed to unblind utxo";
@@ -2819,15 +2803,6 @@ namespace sdk {
             }
         }
         return answer;
-    }
-
-    std::vector<unsigned char> ga_session::get_blinding_nonce(
-        const std::string& pubkey_hex, const std::string& script_hex)
-    {
-        GDK_RUNTIME_ASSERT(!pubkey_hex.empty() && !script_hex.empty());
-        locker_t locker(m_mutex);
-
-        return m_cache.get_liquid_blinding_nonce(h2b(pubkey_hex), h2b(script_hex));
     }
 
     bool ga_session::set_blinding_nonce(
