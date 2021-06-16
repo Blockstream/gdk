@@ -220,7 +220,6 @@ namespace sdk {
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker);
-        virtual nlohmann::json get_all_unspent_outputs(uint32_t subaccount, uint32_t num_confs, bool all_coins);
         bool unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
         nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
         tx_list_cache::container_type get_tx_list(ga_session::locker_t& locker, uint32_t subaccount, uint32_t page_id,
@@ -252,7 +251,6 @@ namespace sdk {
 
         void update_address_info(nlohmann::json& address, bool is_historic);
         std::shared_ptr<nlocktime_t> update_nlocktime_info();
-        virtual nlohmann::json fetch_nlocktime_json();
 
         void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet);
 
