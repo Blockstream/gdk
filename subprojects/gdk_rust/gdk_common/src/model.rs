@@ -1,4 +1,6 @@
-use crate::be::{AssetId, BEOutPoint, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
+use crate::be::{
+    AssetId, BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos,
+};
 use crate::util::StringSerialized;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::Network;
@@ -512,8 +514,9 @@ pub struct UnspentOutput {
     pub satoshi: u64,
     pub subaccount: u32,
     pub txhash: String,
-    pub derivation_path: String,  // not present in gdk-cpp
-    pub scriptpubkey_hex: String, // not present in gdk-cpp
+    pub derivation_path: String, // not present in gdk-cpp
+    #[serde(skip)]
+    pub scriptpubkey: BEScript,
 }
 
 impl UnspentOutput {
@@ -524,7 +527,7 @@ impl UnspentOutput {
         unspent_output.txhash = format!("{}", outpoint.txid());
         unspent_output.pt_idx = outpoint.vout();
         unspent_output.derivation_path = info.path.to_string();
-        unspent_output.scriptpubkey_hex = info.script.to_hex();
+        unspent_output.scriptpubkey = info.script.clone();
         let childs: Vec<ChildNumber> = info.path.clone().into();
         if let Some(ChildNumber::Normal {
             index,
@@ -548,17 +551,18 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
                     "btc" => BEOutPoint::new_bitcoin(bitcoin::Txid::from_hex(&e.txhash)?, e.pt_idx),
                     _ => BEOutPoint::new_elements(elements::Txid::from_hex(&e.txhash)?, e.pt_idx),
                 };
-                let script_raw = hex::decode(&e.scriptpubkey_hex)?;
-                let script = match outpoint {
-                    BEOutPoint::Bitcoin(_) => bitcoin::Script::from(script_raw).into(),
-                    BEOutPoint::Elements(_) => elements::Script::from(script_raw).into(),
-                };
                 let height = match e.block_height {
                     0 => None,
                     n => Some(n),
                 };
                 let path = DerivationPath::from_str(&e.derivation_path)?;
-                let utxo_info = UTXOInfo::new(asset.to_string(), e.satoshi, script, height, path);
+                let utxo_info = UTXOInfo::new(
+                    asset.to_string(),
+                    e.satoshi,
+                    e.scriptpubkey.clone(),
+                    height,
+                    path,
+                );
                 utxos.push((outpoint, utxo_info));
             }
         }
@@ -572,7 +576,7 @@ mod test {
 
     #[test]
     fn test_unspent() {
-        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "derivation_path": "m", "scriptpubkey_hex": "51"}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "derivation_path": "m", "scriptpubkey_hex": "51"}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "derivation_path": "m", "scriptpubkey_hex": "51"}]}"#;
+        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "derivation_path": "m"}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "derivation_path": "m"}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "derivation_path": "m"}]}"#;
         let json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
         println!("{:#?}", json);
     }

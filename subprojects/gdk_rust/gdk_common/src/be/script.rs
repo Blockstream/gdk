@@ -35,6 +35,12 @@ impl BEScript {
     }
 }
 
+impl Default for BEScript {
+    fn default() -> Self {
+        Self::Bitcoin(Default::default())
+    }
+}
+
 pub trait BEScriptConvert {
     fn into_bitcoin(self) -> bitcoin::Script;
     fn into_elements(self) -> elements::Script;
