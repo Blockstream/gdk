@@ -562,8 +562,6 @@ namespace sdk {
         throw std::runtime_error("get_recovery_pubkeys not implemented");
     }
 
-    nlohmann::json ga_rust::get_blinded_scripts(const nlohmann::json& details) { return nlohmann::json(); }
-
     void ga_rust::upload_confidential_addresses(
         uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
     {

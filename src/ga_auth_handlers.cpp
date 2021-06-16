@@ -759,7 +759,7 @@ namespace sdk {
                     m_fetch_nonces = true;
                     m_state = state_type::resolve_code;
                     set_data();
-                    m_twofactor_data["blinded_scripts"] = m_session.get_blinded_scripts(details);
+                    m_twofactor_data["blinded_scripts"] = m_session.get_nonnull_impl()->get_blinded_scripts(details);
                 } else {
                     m_state = state_type::make_call;
                 }

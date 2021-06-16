@@ -123,7 +123,6 @@ namespace sdk {
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
 
-        nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 
         amount get_min_fee_rate() const;
