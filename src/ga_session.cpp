@@ -2380,8 +2380,10 @@ namespace sdk {
                 }
             }
             utxo.erase("value");
-            if (utxo.find("block_height") != utxo.end() && utxo["block_height"].is_null()) {
-                utxo["block_height"] = 0;
+            utxo.erase("ga_asset_id");
+            auto block_height = utxo.find("block_height");
+            if (block_height != utxo.end() && block_height->is_null()) {
+                *block_height = 0;
             }
             json_add_if_missing(utxo, "subtype", 0u);
             json_add_if_missing(utxo, "is_internal", false);
