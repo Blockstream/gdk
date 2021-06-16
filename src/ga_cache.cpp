@@ -189,11 +189,11 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(sqlite3_step(stmt.get()) == SQLITE_DONE);
         }
 
-        static boost::optional<std::vector<unsigned char>> get_blob(cache::sqlite3_stmt_ptr& stmt, int column)
+        static std::vector<unsigned char> get_blob(cache::sqlite3_stmt_ptr& stmt, int column)
         {
             const int rc = sqlite3_step(stmt.get());
             if (rc == SQLITE_DONE) {
-                return boost::none;
+                return std::vector<unsigned char>();
             }
             GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
 
@@ -234,17 +234,6 @@ namespace sdk {
             bind_blob(stmt, 1, pubkey);
             bind_blob(stmt, 2, script);
         }
-
-        static bool has_result(cache::sqlite3_stmt_ptr& stmt)
-        {
-            const int rc = sqlite3_step(stmt.get());
-            if (rc == SQLITE_DONE) {
-                return false;
-            }
-            GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
-            step_final(stmt);
-            return true;
-        }
     } // namespace
 
     cache::cache(const network_parameters& net_params, const std::string& network_name)
@@ -256,14 +245,10 @@ namespace sdk {
         , m_encryption_key()
         , m_require_write(false)
         , m_db(get_db())
-        , m_stmt_liquid_blinding_nonce_has(get_stmt(
-              m_is_liquid, m_db, "SELECT 1 FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2 LIMIT 1;"))
         , m_stmt_liquid_blinding_nonce_search(
               get_stmt(m_is_liquid, m_db, "SELECT nonce FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2;"))
         , m_stmt_liquid_blinding_nonce_insert(get_stmt(
               m_is_liquid, m_db, "INSERT INTO LiquidBlindingNonce (pubkey, script, nonce) VALUES (?1, ?2, ?3);"))
-        , m_stmt_liquid_output_has(
-              get_stmt(m_is_liquid, m_db, "SELECT 1 FROM LiquidOutput WHERE txid = ?1 AND vout = ?2 LIMIT 1;"))
         , m_stmt_liquid_output_search(get_stmt(
               m_is_liquid, m_db, "SELECT assetid, satoshi, abf, vbf FROM LiquidOutput WHERE txid = ?1 AND vout = ?2;"))
         , m_stmt_liquid_output_insert(get_stmt(m_is_liquid, m_db,
@@ -325,8 +310,8 @@ namespace sdk {
                         const char* blob_key = "client_blob";
                         bind_blob(stmt, 1, ustring_span(blob_key));
                         auto prev_blob = get_blob(stmt, 0);
-                        if (prev_blob) {
-                            upsert_key_value(blob_key, prev_blob.get());
+                        if (!prev_blob.empty()) {
+                            upsert_key_value(blob_key, prev_blob);
                         }
                         GDK_LOG_SEV(log_level::info) << "Copied client blob from previous version";
                     }
@@ -358,18 +343,7 @@ namespace sdk {
         get_blob(m_stmt_key_value_search, 0, callback);
     }
 
-    bool cache::has_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script)
-    {
-        GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
-        if (!m_stmt_liquid_blinding_nonce_has) {
-            return false;
-        }
-        const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_has) };
-        bind_liquid_blinding(m_stmt_liquid_blinding_nonce_has, pubkey, script);
-        return has_result(m_stmt_liquid_blinding_nonce_has);
-    }
-
-    boost::optional<std::vector<unsigned char>> cache::get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script)
+    std::vector<unsigned char> cache::get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script)
     {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_search.get());
@@ -378,20 +352,10 @@ namespace sdk {
         return get_blob(m_stmt_liquid_blinding_nonce_search, 0);
     }
 
-    bool cache::has_liquid_output(byte_span_t txhash, const uint32_t vout)
+    nlohmann::json cache::get_liquid_output(byte_span_t txhash, const uint32_t vout)
     {
-        GDK_RUNTIME_ASSERT(!txhash.empty());
-        if (!m_stmt_liquid_blinding_nonce_has) {
-            return false;
-        }
-        const auto _{ stmt_clean(m_stmt_liquid_output_has) };
-        bind_blob(m_stmt_liquid_output_has, 1, txhash);
-        GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquid_output_has.get(), 2, vout) == SQLITE_OK);
-        return has_result(m_stmt_liquid_output_has);
-    }
+        nlohmann::json utxo;
 
-    boost::optional<nlohmann::json> cache::get_liquid_output(byte_span_t txhash, const uint32_t vout)
-    {
         GDK_RUNTIME_ASSERT(!txhash.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_output_search.get());
         const auto _{ stmt_clean(m_stmt_liquid_output_search) };
@@ -399,10 +363,9 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquid_output_search.get(), 2, vout) == SQLITE_OK);
         const int rc = sqlite3_step(m_stmt_liquid_output_search.get());
         if (rc == SQLITE_DONE) {
-            return boost::none;
+            return utxo;
         }
         GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
-        nlohmann::json utxo;
         const auto _get_reversed_result = [this](const int column, const int size) {
             GDK_RUNTIME_ASSERT(sqlite3_column_bytes(m_stmt_liquid_output_search.get(), column) == size);
             const auto res = reinterpret_cast<const unsigned char*>(

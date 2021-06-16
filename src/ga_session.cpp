@@ -2334,7 +2334,7 @@ namespace sdk {
 
                 locker_t locker(m_mutex);
                 // check again, we released the lock earlier, so some other thread could have started to unblind too
-                if (!m_cache.get_liquid_output(txhash, vout)) {
+                if (m_cache.get_liquid_output(txhash, vout).empty()) {
                     m_cache.insert_liquid_output(txhash, vout, utxo);
                     return true; // Cache was updated
                 }
@@ -2792,9 +2792,11 @@ namespace sdk {
 
             for (const auto& tx : tx_list) {
                 for (const auto& ep : tx.at("eps")) {
-                    if (!json_get_value(ep, "is_relevant", false)
-                        || m_cache.has_liquid_output(h2b(tx.at("txhash")), ep["pt_idx"])) {
-                        continue; // Not relevant or already cached; ignore
+                    if (!json_get_value(ep, "is_relevant", false)) {
+                        continue; // Not relevant; ignore
+                    }
+                    if (!m_cache.get_liquid_output(h2b(tx.at("txhash")), ep["pt_idx"]).empty()) {
+                        continue; // Already cached; ignore
                     }
 
                     const std::string asset_tag = json_get_value(ep, "asset_tag");
@@ -2805,10 +2807,12 @@ namespace sdk {
                     const std::string script = json_get_value(ep, "script");
 
                     if (!nonce_commitment.empty() && !script.empty()) {
-                        bool was_inserted = no_dups.emplace(std::make_pair(nonce_commitment, script)).second;
-                        if (was_inserted && !m_cache.has_liquid_blinding_nonce(h2b(nonce_commitment), h2b(script))) {
-                            // Not previously seen and not cached; add to the list to return
-                            answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+                        if (no_dups.emplace(std::make_pair(nonce_commitment, script)).second) {
+                            // Not previously seen
+                            if (m_cache.get_liquid_blinding_nonce(h2b(nonce_commitment), h2b(script)).empty()) {
+                                // Not cached; add to the list to return
+                                answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+                            }
                         }
                     }
                 }
@@ -2823,8 +2827,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!pubkey_hex.empty() && !script_hex.empty());
         locker_t locker(m_mutex);
 
-        auto nonce = m_cache.get_liquid_blinding_nonce(h2b(pubkey_hex), h2b(script_hex));
-        return nonce == boost::none ? std::vector<unsigned char>() : nonce.get();
+        return m_cache.get_liquid_blinding_nonce(h2b(pubkey_hex), h2b(script_hex));
     }
 
     bool ga_session::set_blinding_nonce(
@@ -2833,8 +2836,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         const auto pubkey = h2b(pubkey_hex);
         const auto script = h2b(script_hex);
-        if (m_cache.has_liquid_blinding_nonce(pubkey, script)) {
-            return false; // Not updated
+        if (!m_cache.get_liquid_blinding_nonce(pubkey, script).empty()) {
+            return false; // Not updated, already present
         }
         m_cache.insert_liquid_blinding_nonce(pubkey, script, h2b(nonce_hex));
         return true; // Updated

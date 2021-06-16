@@ -21,12 +21,10 @@ namespace sdk {
         cache(const network_parameters& net_params, const std::string& network_name);
         ~cache();
 
-        bool has_liquid_output(byte_span_t txhash, const uint32_t vout);
-        boost::optional<nlohmann::json> get_liquid_output(byte_span_t txhash, const uint32_t vout);
+        nlohmann::json get_liquid_output(byte_span_t txhash, const uint32_t vout);
         void insert_liquid_output(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
 
-        bool has_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
-        boost::optional<std::vector<unsigned char>> get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
+        std::vector<unsigned char> get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
         void insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce);
 
         typedef std::function<void(boost::optional<byte_span_t>)> get_key_value_fn;
@@ -47,10 +45,8 @@ namespace sdk {
         std::array<unsigned char, SHA256_LEN> m_encryption_key; // Set on first call to load_db
         bool m_require_write;
         sqlite3_ptr m_db;
-        sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_has;
         sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_search;
         sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_insert;
-        sqlite3_stmt_ptr m_stmt_liquid_output_has;
         sqlite3_stmt_ptr m_stmt_liquid_output_search;
         sqlite3_stmt_ptr m_stmt_liquid_output_insert;
         sqlite3_stmt_ptr m_stmt_key_value_upsert;
