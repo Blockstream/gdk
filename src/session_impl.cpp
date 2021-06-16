@@ -84,5 +84,10 @@ namespace sdk {
         return false; // No nonce caching by default, so return 'not updated'
     }
 
+    nlohmann::json session_impl::get_blinded_scripts(const nlohmann::json& /*details*/)
+    {
+        return nlohmann::json(); // Implementation detail of ga_session
+    }
+
 } // namespace sdk
 } // namespace ga

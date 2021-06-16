@@ -129,7 +129,7 @@ namespace sdk {
 
         virtual bool set_blinding_nonce(
             const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex);
-        virtual nlohmann::json get_blinded_scripts(const nlohmann::json& details) = 0;
+        virtual nlohmann::json get_blinded_scripts(const nlohmann::json& details);
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;
