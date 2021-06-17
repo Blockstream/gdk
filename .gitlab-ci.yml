@@ -194,8 +194,8 @@ test_rust:
     - curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.18.1.8/elements-0.18.1.8-x86_64-linux-gnu.tar.gz | tar -xvz elements-0.18.1.8/bin/elementsd
     - export ELEMENTSD_EXEC=$PWD/elements-0.18.1.8/bin/elementsd
     - cd subprojects/gdk_rust
-    - DEBUG=1 ./launch_integration_tests.sh bitcoin
-    - DEBUG=1 ./launch_integration_tests.sh liquid
+    - DEBUG=1 ./launch_integration_tests.sh roundtrip_bitcoin
+    - DEBUG=1 ./launch_integration_tests.sh roundtrip_liquid
     - DEBUG=1 ./launch_integration_tests.sh subaccounts_bitcoin
     - DEBUG=1 ./launch_integration_tests.sh subaccounts_liquid
     - DEBUG=1 ./launch_integration_tests.sh labels

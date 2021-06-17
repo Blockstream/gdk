@@ -24,7 +24,7 @@ static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
 
 #[test]
-fn bitcoin() {
+fn roundtrip_bitcoin() {
     let mut test_session = setup_session(false, 0, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
@@ -64,7 +64,7 @@ fn bitcoin() {
 }
 
 #[test]
-fn liquid() {
+fn roundtrip_liquid() {
     let mut test_session = setup_session(true, 0, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
