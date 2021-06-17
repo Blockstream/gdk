@@ -131,7 +131,12 @@ namespace sdk {
         static const std::string USER_AGENT_CAPS("[v2,sw,csv,csv_opt]");
         static const std::string USER_AGENT_CAPS_NO_CSV("[v2,sw]");
         // TODO: The server should return these
-        static const std::vector<std::string> ALL_2FA_METHODS = { { "email" }, { "sms" }, { "phone" }, { "gauth" } };
+        static const std::vector<std::string> ALL_2FA_METHODS = {
+            { "email" },
+            { "sms" },
+            { "phone" },
+            { "gauth" },
+        };
 
         static const std::string MASKED_GAUTH_SEED("***");
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
@@ -3156,9 +3161,14 @@ namespace sdk {
         nlohmann::json reset_status
             = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
 
-        nlohmann::json twofactor_config
-            = { { "all_methods", ALL_2FA_METHODS }, { "email", email_config }, { "sms", sms_config },
-                  { "phone", phone_config }, { "gauth", gauth_config }, { "twofactor_reset", reset_status } };
+        nlohmann::json twofactor_config = {
+            { "all_methods", ALL_2FA_METHODS },
+            { "email", email_config },
+            { "sms", sms_config },
+            { "phone", phone_config },
+            { "gauth", gauth_config },
+            { "twofactor_reset", reset_status },
+        };
         std::swap(m_twofactor_config, twofactor_config);
         set_enabled_twofactor_methods(locker);
     }
