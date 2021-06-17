@@ -300,7 +300,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquid/address/" },
-            { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
+            { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "bech32_prefix", "ex" },
             { "bip21_prefix", "liquidnetwork" },
@@ -335,7 +335,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
-            { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
+            { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "bech32_prefix", "ert" },
             { "bip21_prefix", "liquidnetwork" },
@@ -427,7 +427,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquid/address/" },
-            { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
+            { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "bech32_prefix", "ex" },
             { "bip21_prefix", "liquidnetwork" },
@@ -462,7 +462,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
-            { "asset_registry_onion_url", "http://vi5flmr4z3h3luup.onion" },
+            { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "bech32_prefix", "ert" },
             { "bip21_prefix", "liquidregtestnetwork" },
