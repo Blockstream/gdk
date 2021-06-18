@@ -405,8 +405,10 @@ namespace sdk {
         return call_session("set_pin", details);
     }
 
-    nlohmann::json ga_rust::get_unspent_outputs(const nlohmann::json& details)
+    nlohmann::json ga_rust::get_unspent_outputs(
+        const nlohmann::json& details, unique_pubkeys_and_scripts_t& /*missing*/)
     {
+        // FIXME: Use 'missing' once unblinding uses HWW interface
         return call_session("get_unspent_outputs", details);
     }
 

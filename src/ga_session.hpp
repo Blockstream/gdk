@@ -132,7 +132,8 @@ namespace sdk {
         void disable_all_pin_logins();
 
         nlohmann::json get_blinded_scripts(const nlohmann::json& details);
-        nlohmann::json get_unspent_outputs(const nlohmann::json& details);
+        nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing);
+        void process_unspent_outputs(const nlohmann::json& details, nlohmann::json& utxos);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
@@ -220,8 +221,8 @@ namespace sdk {
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker);
-        bool unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset);
-        nlohmann::json cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset);
+        bool unblind_utxo(nlohmann::json& utxo, unique_pubkeys_and_scripts_t& missing);
+        void cleanup_utxos(nlohmann::json& utxos, unique_pubkeys_and_scripts_t& missing);
         tx_list_cache::container_type get_tx_list(ga_session::locker_t& locker, uint32_t subaccount, uint32_t page_id,
             const std::string& start_date, const std::string& end_date, nlohmann::json& state_info);
 

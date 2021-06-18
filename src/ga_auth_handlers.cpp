@@ -901,13 +901,54 @@ namespace sdk {
     // Get unspent outputs
     //
     get_unspent_outputs_call::get_unspent_outputs_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("get_unspent_outputs", session, details)
+        : auth_handler_impl(session, "get_unspent_outputs")
+        , m_details(details)
     {
+        if (m_state != state_type::error) {
+            try {
+                auto impl = session.get_nonnull_impl();
+                unique_pubkeys_and_scripts_t missing;
+                auto utxos = impl->get_unspent_outputs(details, missing);
+                if (missing.empty()) {
+                    impl->process_unspent_outputs(m_details, utxos);
+                    m_result["unspent_outputs"].swap(utxos);
+                    m_state = state_type::done;
+                } else {
+                    // Some utxos need unblinding; resolve them
+                    m_result.swap(utxos);
+                    m_state = state_type::resolve_code;
+                    set_data();
+                    auto& blinded_scripts = m_twofactor_data["blinded_scripts"];
+                    for (const auto& m : missing) {
+                        blinded_scripts.emplace_back(
+                            nlohmann::json({ { "pubkey", b2h(m.first) }, { "script", b2h(m.second) } }));
+                    }
+                }
+            } catch (const std::exception& e) {
+                set_error(e.what());
+            }
+        }
     }
 
-    auth_handler::state_type get_unspent_outputs_call::wrapped_call_impl()
+    auth_handler::state_type get_unspent_outputs_call::call_impl()
     {
-        m_result = { { "unspent_outputs", m_session.get_unspent_outputs(m_details) } };
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        const auto& blinded_scripts = m_twofactor_data.at("blinded_scripts");
+        const auto& nonces = args.at("nonces");
+        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
+
+        // Encache the blinding nonces we got back
+        for (size_t i = 0; i < blinded_scripts.size(); ++i) {
+            if (!nonces[i].empty()) {
+                const auto& it = blinded_scripts[i];
+                m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
+            }
+        }
+        // Unblind the remaining blinded outputs we have nonces for
+        nlohmann::json utxos;
+        m_result.swap(utxos);
+        m_session.get_nonnull_impl()->process_unspent_outputs(m_details, utxos);
+        m_result["unspent_outputs"].swap(utxos);
         return state_type::done;
     }
 

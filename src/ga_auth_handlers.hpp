@@ -137,12 +137,13 @@ namespace sdk {
         state_type wrapped_call_impl() override;
     };
 
-    class get_unspent_outputs_call : public needs_unblind_call {
+    class get_unspent_outputs_call : public auth_handler_impl {
     public:
         get_unspent_outputs_call(session& session, const nlohmann::json& details);
 
     private:
-        state_type wrapped_call_impl() override;
+        state_type call_impl() override;
+        const nlohmann::json m_details;
     };
 
     class set_unspent_outputs_status_call : public auth_handler_impl {
