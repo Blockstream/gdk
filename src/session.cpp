@@ -640,14 +640,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_unspent_outputs(const nlohmann::json& details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_unspent_outputs(details);
-        });
-    }
-
     bool session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
     {
         return exception_wrapper([&] {

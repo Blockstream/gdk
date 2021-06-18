@@ -2040,11 +2040,14 @@ namespace sdk {
             const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
             return { { "btc", satoshi } };
         }
-        const auto utxos_by_asset = get_unspent_outputs(
-            { { "subaccount", subaccount }, { "num_confs", num_confs }, { "confidential", confidential } });
+        unique_pubkeys_and_scripts_t missing; // FIXME: Use this
+        const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs },
+            { "confidential", confidential } };
+        auto asset_utxos = get_unspent_outputs(details, missing);
+        process_unspent_outputs(details, asset_utxos);
 
         nlohmann::json balance({ { m_net_params.policy_asset(), 0 } });
-        for (const auto& asset_utxo : utxos_by_asset.items()) {
+        for (const auto& asset_utxo : asset_utxos.items()) {
             if (asset_utxo.key() != "error") {
                 amount::value_type satoshi = 0;
                 for (const auto& utxo : asset_utxo.value()) {
@@ -2272,7 +2275,7 @@ namespace sdk {
         update_fiat_rate(locker, fiat_rate.get_value_or(std::string()));
     }
 
-    bool ga_session::unblind_utxo(nlohmann::json& utxo, const std::string& policy_asset)
+    bool ga_session::unblind_utxo(nlohmann::json& utxo, unique_pubkeys_and_scripts_t& missing)
     {
         amount::value_type value;
 
@@ -2280,18 +2283,20 @@ namespace sdk {
             utxo["satoshi"] = value;
             utxo["assetblinder"] = ZEROS;
             utxo["amountblinder"] = ZEROS;
-            const auto asset_tag = h2b(utxo.value("asset_tag", policy_asset));
+            const auto asset_tag = h2b(utxo.value("asset_tag", m_net_params.policy_asset()));
             GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag).subspan(1));
             utxo["confidential"] = false;
             return false; // Cache not updated
         }
+        const auto txhash_p = utxo.find("txhash");
         locker_t locker(m_mutex);
-        if (utxo.contains("txhash")) {
-            const auto value = m_cache.get_liquid_output(h2b(utxo.at("txhash")), utxo["pt_idx"]);
-            if (!value.empty()) {
-                utxo.update(value.begin(), value.end());
+        if (txhash_p != utxo.end()) {
+            const auto cached = m_cache.get_liquid_output(h2b(*txhash_p), utxo.at("pt_idx"));
+            if (!cached.empty()) {
+                utxo.update(cached.begin(), cached.end());
                 utxo["confidential"] = true;
+                utxo.erase("error");
                 return false; // Cache not updated
             }
         }
@@ -2307,6 +2312,7 @@ namespace sdk {
             std::vector<unsigned char> nonce = m_cache.get_liquid_blinding_nonce(nonce_commitment, script);
             if (nonce.empty()) {
                 utxo["error"] = "missing blinding nonce";
+                missing.emplace(std::make_pair(nonce_commitment, script));
                 return false; // Cache not updated
             }
             const unblind_t unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
@@ -2317,8 +2323,9 @@ namespace sdk {
             utxo["amountblinder"] = b2h_rev(std::get<1>(unblinded));
             utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
             utxo["confidential"] = true;
-            if (utxo.contains("txhash")) {
-                m_cache.insert_liquid_output(h2b(utxo.at("txhash")), utxo["pt_idx"], utxo);
+            utxo.erase("error");
+            if (txhash_p != utxo.end()) {
+                m_cache.insert_liquid_output(h2b(*txhash_p), utxo.at("pt_idx"), utxo);
                 return true; // Cache was updated
             }
         } catch (const std::exception& ex) {
@@ -2327,71 +2334,82 @@ namespace sdk {
         return false; // Cache not updated
     }
 
-    nlohmann::json ga_session::cleanup_utxos(nlohmann::json& utxos, const std::string& policy_asset)
+    void ga_session::cleanup_utxos(nlohmann::json& utxos, unique_pubkeys_and_scripts_t& missing)
     {
+        const bool is_liquid = m_net_params.is_liquid();
         bool updated_cache = false;
 
+        // Standardise key names and data types of server provided UTXOs.
+        // For Liquid, unblind it if possible. If not, record the pubkey
+        // and script needed to generate its blinding nonce in 'missing'.
         for (auto& utxo : utxos) {
-            // Clean up the type of returned values
-            const bool external = !json_get_value(utxo, "private_key").empty();
+            const bool is_external = !json_get_value(utxo, "private_key").empty();
 
-            const script_type utxo_script_type = utxo["script_type"];
+            auto address_type_p = utxo.find("address_type");
+            if (address_type_p == utxo.end()) {
+                // This UTXO has not been processed yet
+                const script_type utxo_script_type = utxo["script_type"];
 
-            // Address type is generated for spendable UTXOs
-            std::string addr_type;
-            switch (utxo_script_type) {
-            case script_type::ga_p2sh_p2wsh_csv_fortified_out:
-            case script_type::ga_redeem_p2sh_p2wsh_csv_fortified:
-                addr_type = address_type::csv;
-                break;
-            case script_type::ga_p2sh_p2wsh_fortified_out:
-            case script_type::ga_redeem_p2sh_p2wsh_fortified:
-                addr_type = address_type::p2wsh;
-                break;
-            case script_type::ga_p2sh_fortified_out:
-            case script_type::ga_redeem_p2sh_fortified:
-                addr_type = address_type::p2sh;
-                break;
-            case script_type::ga_pubkey_hash_out:
-                if (external) {
-                    // UTXO generated by sweeping, so its spendable
-                    addr_type = address_type::p2pkh;
-                }
-                break;
-            }
-            utxo["address_type"] = addr_type;
-
-            if (external) {
-                json_rename_key(utxo, "tx_hash", "txhash");
-                json_rename_key(utxo, "tx_pos", "pt_idx");
-                utxo["satoshi"] = json_get_value<amount::value_type>(utxo, "value");
-            } else {
-                // TODO: check data returned by server for blinded utxos
-                if (!policy_asset.empty()) {
-                    if (json_get_value(utxo, "is_relevant", true)) {
-                        updated_cache |= unblind_utxo(utxo, policy_asset);
+                // Address type is non-blank for spendable UTXOs
+                std::string addr_type;
+                switch (utxo_script_type) {
+                case script_type::ga_p2sh_p2wsh_csv_fortified_out:
+                case script_type::ga_redeem_p2sh_p2wsh_csv_fortified:
+                    addr_type = address_type::csv;
+                    break;
+                case script_type::ga_p2sh_p2wsh_fortified_out:
+                case script_type::ga_redeem_p2sh_p2wsh_fortified:
+                    addr_type = address_type::p2wsh;
+                    break;
+                case script_type::ga_p2sh_fortified_out:
+                case script_type::ga_redeem_p2sh_fortified:
+                    addr_type = address_type::p2sh;
+                    break;
+                case script_type::ga_pubkey_hash_out:
+                    if (is_external) {
+                        // UTXO generated by sweeping, so its spendable
+                        addr_type = address_type::p2pkh;
                     }
-                } else {
-                    amount::value_type value;
-                    GDK_RUNTIME_ASSERT(boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value));
-                    utxo["satoshi"] = value;
+                    break;
                 }
+                utxo["address_type"] = addr_type;
+
+                if (is_external) {
+                    json_rename_key(utxo, "tx_hash", "txhash");
+                    json_rename_key(utxo, "tx_pos", "pt_idx");
+                    utxo["satoshi"] = json_get_value<amount::value_type>(utxo, "value");
+                } else {
+                    if (is_liquid) {
+                        if (json_get_value(utxo, "is_relevant", true)) {
+                            updated_cache |= unblind_utxo(utxo, missing);
+                        }
+                    } else {
+                        amount::value_type value;
+                        GDK_RUNTIME_ASSERT(
+                            boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value));
+                        utxo["satoshi"] = value;
+                    }
+                }
+                if (!utxo.contains("error")) {
+                    utxo.erase("value"); // Only remove value if we unblinded it
+                }
+                utxo.erase("ga_asset_id");
+                auto block_height = utxo.find("block_height");
+                if (block_height != utxo.end() && block_height->is_null()) {
+                    *block_height = 0;
+                }
+                json_add_if_missing(utxo, "subtype", 0u);
+                json_add_if_missing(utxo, "is_internal", false);
+            } else if (is_liquid && utxo.value("error", std::string()) == "missing blinding nonce") {
+                // UTXO was previously processed but could not be unblinded: try again
+                updated_cache |= unblind_utxo(utxo, missing);
             }
-            utxo.erase("value");
-            utxo.erase("ga_asset_id");
-            auto block_height = utxo.find("block_height");
-            if (block_height != utxo.end() && block_height->is_null()) {
-                *block_height = 0;
-            }
-            json_add_if_missing(utxo, "subtype", 0u);
-            json_add_if_missing(utxo, "is_internal", false);
         }
 
         if (updated_cache) {
             locker_t locker(m_mutex);
             m_cache.save_db();
         }
-        return utxos;
     }
 
     tx_list_cache::container_type ga_session::get_tx_list(ga_session::locker_t& locker, uint32_t subaccount,
@@ -2524,7 +2542,8 @@ namespace sdk {
             std::set<std::string> unique_asset_ids;
 
             // Clean up and categorize the endpoints
-            cleanup_utxos(tx_details["eps"], m_net_params.policy_asset());
+            unique_pubkeys_and_scripts_t missing; // FIXME: Use this
+            cleanup_utxos(tx_details["eps"], missing);
 
             for (auto& ep : tx_details["eps"]) {
                 ep.erase("id");
@@ -2818,16 +2837,11 @@ namespace sdk {
         return true; // Updated
     }
 
-    // Idempotent
-    nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details)
+    nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
     {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
         const bool all_coins = json_get_value(details, "all_coins", false);
-        const bool confidential_only = details.value("confidential", false);
-        const bool is_liquid = m_net_params.is_liquid();
-
-        GDK_RUNTIME_ASSERT(!confidential_only || is_liquid);
 
         auto utxos = wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
 
@@ -2842,10 +2856,26 @@ namespace sdk {
                 }
             };
         }
+        cleanup_utxos(utxos, missing);
+        return utxos;
+    }
 
-        cleanup_utxos(utxos, m_net_params.policy_asset());
+    void ga_session::process_unspent_outputs(const nlohmann::json& details, nlohmann::json& utxos)
+    {
+        const bool confidential_only = details.value("confidential", false);
+        const bool is_liquid = m_net_params.is_liquid();
 
-        nlohmann::json asset_utxos({});
+        GDK_RUNTIME_ASSERT(!confidential_only || is_liquid);
+
+        if (is_liquid) {
+            // Reprocess to unblind any UTXOS we now have the nonces for
+            unique_pubkeys_and_scripts_t missing;
+            cleanup_utxos(utxos, missing);
+        }
+
+        // Return the UTXOs grouped by asset id
+        // FIXME: Move the results from utxos instead of copying
+        nlohmann::json asset_utxos;
         for (const auto& utxo : utxos) {
             if (utxo.contains("error")) {
                 asset_utxos["error"].emplace_back(utxo);
@@ -2859,7 +2889,7 @@ namespace sdk {
             }
         }
 
-        // Sort the utxos such that the oldest are first, with the default
+        // Sort the UTXOs such that the oldest are first, with the default
         // UTXO selection strategy this reduces the number of re-deposits
         // users have to do by recycling UTXOs that are closer to expiry.
         // This also reduces the chance of spending unconfirmed outputs by
@@ -2878,7 +2908,7 @@ namespace sdk {
             });
         });
 
-        return asset_utxos;
+        utxos.swap(asset_utxos);
     }
 
     // Idempotent
@@ -2909,7 +2939,9 @@ namespace sdk {
             utxo["script_type"] = script_type::ga_pubkey_hash_out;
         }
 
-        return cleanup_utxos(utxos, m_net_params.policy_asset());
+        unique_pubkeys_and_scripts_t missing; // Always empty for sweeping
+        cleanup_utxos(utxos, missing);
+        return utxos;
     }
 
     // Idempotent
@@ -3545,7 +3577,9 @@ namespace sdk {
     nlohmann::json ga_session::get_expired_deposits(const nlohmann::json& deposit_details)
     {
         GDK_RUNTIME_ASSERT(!is_watch_only());
-        auto asset_utxos = get_unspent_outputs(deposit_details);
+        unique_pubkeys_and_scripts_t missing; // FIXME: Use this (or more likely nuke this method)
+        auto asset_utxos = get_unspent_outputs(deposit_details, missing);
+        process_unspent_outputs(deposit_details, asset_utxos);
 
         const uint32_t curr_block_height = get_block_height();
         const uint32_t expires_at_block

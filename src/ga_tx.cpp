@@ -495,8 +495,12 @@ namespace sdk {
                 // Fetch the users utxos from the current subaccount.
                 // if RBF/cpfp, require 1 confirmation.
                 const uint32_t num_confs = (is_rbf || is_cpfp) ? 1 : 0;
-                result["utxos"] = session.get_unspent_outputs(nlohmann::json({ { "subaccount", subaccount },
-                    { "num_confs", num_confs }, { "confidential", confidential_utxos_only } }));
+                unique_pubkeys_and_scripts_t missing; // FIXME: pass this in
+                const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs },
+                    { "confidential", confidential_utxos_only } };
+                auto asset_utxos = session.get_unspent_outputs(details, missing);
+                session.process_unspent_outputs(details, asset_utxos);
+                result["utxos"].swap(asset_utxos);
             }
 
             const bool send_all = json_add_if_missing(result, "send_all", false);

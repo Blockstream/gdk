@@ -11,6 +11,8 @@
 namespace ga {
 namespace sdk {
     using ping_fail_t = std::function<void()>;
+    using pubkey_and_script_t = std::pair<std::vector<unsigned char>, std::vector<unsigned char>>;
+    using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
     class ga_pubkeys;
     class ga_user_pubkeys;
@@ -134,7 +136,9 @@ namespace sdk {
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;
 
-        virtual nlohmann::json get_unspent_outputs(const nlohmann::json& details) = 0;
+        virtual nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
+            = 0;
+        virtual void process_unspent_outputs(const nlohmann::json& details, nlohmann::json& utxos);
         virtual nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused)
             = 0;
