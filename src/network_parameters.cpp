@@ -391,7 +391,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "tx_explorer_url", "https://blockstream.info/tx/" },
             { "wamp_cert_pins", wamp_cert_pins },
             { "wamp_cert_roots", wamp_cert_roots },
-            { "wamp_onion_url", "ws://s7a4rvc6425y72d2.onion/v2/ws" },
+            { "wamp_onion_url", "ws://greenv3gx6c2gpsjzl6dkutrc7ruf36x44rbtmemw3pqia76elphbbad.onion:88/v2/ws" },
             { "wamp_url", "wss://prodwss.greenaddress.it/v2/ws" }
         })) },
 
@@ -419,7 +419,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
             { "wamp_cert_pins", wamp_cert_pins },
             { "wamp_cert_roots", wamp_cert_roots },
-            { "wamp_onion_url", "ws://gu5ke7a2aguwfqhz.onion/v2/ws" },
+            { "wamp_onion_url", "ws://greent3qrtvm2qsqr6s6m4jy6curvmkeupn2gqai4u7x33fjfsyeysyd.onion:88/v2/ws" },
             { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" }
         })) },
 
