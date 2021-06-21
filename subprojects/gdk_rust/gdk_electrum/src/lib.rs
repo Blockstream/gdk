@@ -197,10 +197,15 @@ fn socksify(proxy: Option<&str>) -> Option<String> {
 }
 
 impl ElectrumSession {
-    pub fn create_session(network: Network, db_root: &str, url: ElectrumUrl) -> Self {
+    pub fn create_session(
+        network: Network,
+        db_root: &str,
+        proxy: Option<&str>,
+        url: ElectrumUrl,
+    ) -> Self {
         Self {
             data_root: db_root.to_string(),
-            proxy: None,
+            proxy: socksify(proxy),
             network,
             url,
             wallet: None,
@@ -304,13 +309,10 @@ impl Session<Error> for ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
     }
 
-    fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
+    fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
         info!("connect network:{:?} state:{:?}", self.network, self.state);
 
         if self.state == State::Disconnected {
-            self.proxy = socksify(net_params["proxy"].as_str());
-            info!("setting proxy to {:?}", self.proxy);
-
             let mnemonic = match self.get_mnemonic() {
                 Ok(mnemonic) => Some(mnemonic.clone()),
                 Err(_) => None,
@@ -420,7 +422,11 @@ impl Session<Error> for ElectrumSession {
         let mut tip_height = store.read()?.cache.tip.0;
         notify_block(self.notify.clone(), tip_height);
 
-        info!("building client");
+        info!(
+            "building client, url {}, proxy {}",
+            self.url.url(),
+            self.proxy.as_ref().unwrap_or(&"".to_string())
+        );
         if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref()) {
             info!("building built end");
             let fee_store = store.clone();

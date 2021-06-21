@@ -72,6 +72,7 @@ namespace sdk {
         : session_impl(net_params, defaults)
     {
         nlohmann::json network{ m_net_params.get_json() };
+        network["proxy"] = net_params.value("proxy", std::string{});
         network["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
         GDKRUST_create_session(&m_session, convert_json(network).get());
     }

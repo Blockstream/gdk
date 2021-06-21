@@ -311,7 +311,8 @@ fn subaccounts(is_liquid: bool) {
         let url = determine_electrum_url_from_net(&network).unwrap();
         let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
         let db_root = format!("{}", db_root_dir.path().display());
-        ElectrumSession::create_session(network, &db_root, url)
+        let proxy = Some("");
+        ElectrumSession::create_session(network, &db_root, proxy, url)
     };
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     new_session.login(&mnemonic, None).unwrap();
