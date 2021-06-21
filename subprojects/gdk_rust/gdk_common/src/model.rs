@@ -1,6 +1,5 @@
 use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
 use crate::util::StringSerialized;
-use bitcoin::hashes::hex::FromHex;
 use bitcoin::Network;
 use core::mem::transmute;
 use serde::{Deserialize, Serialize};
@@ -96,7 +95,7 @@ pub struct AddressAmount {
 
 impl AddressAmount {
     pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
-        self.asset_id.as_ref().and_then(|a| elements::issuance::AssetId::from_hex(a).ok())
+        self.asset_id.as_ref().and_then(|a| a.parse().ok())
     }
 }
 
@@ -561,7 +560,7 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
                 };
                 let (outpoint, utxo_info) = match &asset[..] {
                     "btc" => (
-                        BEOutPoint::new_bitcoin(bitcoin::Txid::from_hex(&e.txhash)?, e.pt_idx),
+                        BEOutPoint::new_bitcoin(e.txhash.parse()?, e.pt_idx),
                         UTXOInfo::new_bitcoin(
                             e.satoshi,
                             e.scriptpubkey.clone().into(),
@@ -570,9 +569,9 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
                         ),
                     ),
                     _ => (
-                        BEOutPoint::new_elements(elements::Txid::from_hex(&e.txhash)?, e.pt_idx),
+                        BEOutPoint::new_elements(e.txhash.parse()?, e.pt_idx),
                         UTXOInfo::new_elements(
-                            elements::issuance::AssetId::from_hex(asset)?,
+                            asset.parse()?,
                             e.satoshi,
                             e.scriptpubkey.clone().into(),
                             height,
