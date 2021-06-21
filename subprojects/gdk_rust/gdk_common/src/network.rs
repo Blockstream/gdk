@@ -1,5 +1,5 @@
 use crate::error::Error;
-use bitcoin::hashes::{hex::FromHex, sha256, Hash};
+use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use serde::{Deserialize, Serialize};
@@ -76,7 +76,7 @@ impl Network {
 
     pub fn policy_asset_id(&self) -> Result<elements::issuance::AssetId, Error> {
         if let Some(a) = self.policy_asset.as_ref() {
-            Ok(elements::issuance::AssetId::from_hex(a)?)
+            Ok(a.parse()?)
         } else {
             Err("no policy asset".into())
         }
