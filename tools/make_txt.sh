@@ -31,6 +31,10 @@ else
     echo "cross build type not supported" && exit 1
 fi
 
+if [ \( "$HOST_SYSTEM" = "darwin" \) ]; then
+  STRIP="$STRIP -x"
+fi
+
 if [ \( "$3" = "windows" \) ]; then
 cat > $2 << EOF
 
