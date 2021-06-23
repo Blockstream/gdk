@@ -9,7 +9,7 @@ fi
 
 cd "${MESON_BUILD_ROOT}/libevent"
 
-if [ $LTO = "true" ]; then
+if [ "$LTO" = "true" ]; then
     EXTRA_FLAGS="-flto"
 fi
 
@@ -51,4 +51,3 @@ else
     make -j$NUM_JOBS
     make install
 fi
-

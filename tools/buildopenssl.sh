@@ -19,7 +19,7 @@ OPENSSL_NAME="openssl-OpenSSL_1_1_1g"
 OPENSSL_OPTIONS="enable-ec_nistp_64_gcc_128 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
 OPENSSL_MOBILE="no-hw no-engine"
 
-if [ $LTO = "true" ]; then
+if [ "$LTO" = "true" ]; then
     OPENSSL_OPTIONS="$OPENSSL_OPTIONS -flto"
 fi
 
@@ -58,7 +58,7 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     else
         CONFIG_TARGET="ios64-cross"
         NOASM=
-        if [ $LTO = "true" ]; then
+        if [ "$LTO" = "true" ]; then
             OPENSSL_OPTIONS="$OPENSSL_OPTIONS -fembed-bitcode"
         fi
     fi

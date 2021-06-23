@@ -19,7 +19,7 @@ CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/tor/build --disable-system-torrc --
                 ac_cv_c_bigendian=no --disable-unittests --disable-tool-name-check --disable-module-dirauth \
                 --disable-libscrypt --disable-rust"
 
-if [ $LTO = "true" ]; then
+if [ "$LTO" = "true" ]; then
     EXTRA_FLAGS="-flto"
 fi
 
