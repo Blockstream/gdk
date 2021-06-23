@@ -39,6 +39,14 @@ opt-level = 'z'
 codegen-units = 1
 incremental = false
 
+[profile.dev]
+lto = true
+debug = true
+debug-assertions = true
+panic = 'abort'
+opt-level = 0
+codegen-units = 1
+
 # required for https://github.com/rust-bitcoin/rust-bitcoin/pull/511 (merged but unreleased)
 [patch.crates-io]
 bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", rev = "5bd61967b231939626dd847fd82cc5da33052dc1", features = [ "use-serde" ] }
