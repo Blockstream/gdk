@@ -120,7 +120,11 @@ if get_option('b_sanitize') == 'address'
 endif
 
 if debug
-    add_project_arguments(['-ggdb3', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC', '-D_LIBCPP_DEBUG=1'], language : ['c', 'cpp'])
+    add_project_arguments(['-ggdb3', '-fno-omit-frame-pointer', '-D_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC'], language : ['c', 'cpp'])
+    if not is_darwin
+      # Not yet supported on Apple Clang compiler
+      add_project_arguments(['-D_LIBCPP_DEBUG=1'], language : ['c', 'cpp'])
+    endif
     if debug_optimized
         add_project_arguments(['-Og'], language : ['c', 'cpp'])
     endif
