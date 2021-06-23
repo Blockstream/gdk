@@ -1196,8 +1196,6 @@ namespace sdk {
             if (type == "simple") {
                 type = "2of2";
             }
-            const std::string satoshi_str = sa["satoshi"];
-            const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
             const std::string recovery_chain_code = json_get_value(sa, "2of3_backup_chaincode");
             const std::string recovery_pub_key = json_get_value(sa, "2of3_backup_pubkey");
             const std::string recovery_xpub_sig = json_get_value(sa, "2of3_backup_xpub_sig");
@@ -1223,8 +1221,7 @@ namespace sdk {
             const std::string& sa_name = svr_sa_name.empty() ? blob_sa_name : svr_sa_name;
             const bool is_hidden = m_blob.get_subaccount_hidden(subaccount);
             insert_subaccount(locker, subaccount, sa_name, sa["receiving_id"], recovery_pub_key, recovery_chain_code,
-                recovery_xpub, type, satoshi, json_get_value(sa, "has_txs", false), sa.value("required_ca", 0),
-                is_hidden);
+                recovery_xpub, type, sa.value("required_ca", 0), is_hidden);
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -1233,13 +1230,11 @@ namespace sdk {
         ++m_next_subaccount;
 
         // Insert the main account so callers can treat all accounts equally
-        const std::string satoshi_str = login_data["satoshi"];
-        const amount satoshi{ strtoull(satoshi_str.c_str(), nullptr, 10) };
-        const bool has_txs = json_get_value(m_login_data, "has_txs", false);
         const std::string sa_name = m_blob.get_subaccount_name(0);
+        constexpr uint32_t required_ca = 0;
         const bool is_hidden = m_blob.get_subaccount_hidden(0);
         insert_subaccount(locker, 0, sa_name, m_login_data["receiving_id"], std::string(), std::string(), std::string(),
-            "2of2", satoshi, has_txs, 0, is_hidden);
+            "2of2", required_ca, is_hidden);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -1449,10 +1444,6 @@ namespace sdk {
                 const auto p = m_subaccounts.find(subaccount);
                 // TODO: Handle other logged in sessions creating subaccounts
                 GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-
-                // Mark the balances of each affected subaccount dirty
-                p->second["has_transactions"] = true;
-                p->second.erase("satoshi");
 
                 // Update affected subaccounts as required
                 m_tx_list_caches.on_new_transaction(subaccount, details);
@@ -2013,16 +2004,12 @@ namespace sdk {
         details.reserve(m_subaccounts.size());
 
         for (const auto& sa : m_subaccounts) {
-            details.emplace_back(get_subaccount(locker, sa.first));
+            const auto p = m_subaccounts.find(sa.first);
+            GDK_RUNTIME_ASSERT(p != m_subaccounts.end());
+            details.emplace_back(p->second);
         }
 
         return details;
-    }
-
-    nlohmann::json ga_session::get_subaccount(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        return get_subaccount(locker, subaccount);
     }
 
     nlohmann::json ga_session::get_subaccount_balance_from_server(
@@ -2062,43 +2049,12 @@ namespace sdk {
         return balance;
     }
 
-    nlohmann::json ga_session::get_cached_subaccount(uint32_t subaccount) const
+    nlohmann::json ga_session::get_subaccount(uint32_t subaccount)
     {
         locker_t locker(m_mutex);
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         return p->second;
-    }
-
-    nlohmann::json ga_session::get_subaccount(ga_session::locker_t& locker, uint32_t subaccount)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const bool is_liquid = m_net_params.is_liquid();
-
-        const auto p = m_subaccounts.find(subaccount);
-        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        auto& details = p->second;
-
-        const auto p_satoshi = details.find("satoshi");
-        if (p_satoshi == details.end() || is_liquid) {
-            const auto satoshi = [this, &locker, subaccount] {
-                unique_unlock unlocker{ locker };
-                return get_subaccount_balance_from_server(subaccount, 0, false);
-            }();
-
-            // m_subaccounts is no longer guaranteed to be valid after the call above.
-            // e.g. when running concurrently with a reconnection trigger.
-            const auto p = m_subaccounts.find(subaccount);
-            GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-            details = p->second;
-
-            const auto p_satoshi = details.find("satoshi");
-            if (p_satoshi == details.end() || is_liquid) {
-                details["satoshi"] = satoshi;
-            }
-        }
-
-        return details;
     }
 
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
@@ -2134,7 +2090,7 @@ namespace sdk {
     nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,
         const std::string& name, const std::string& receiving_id, const std::string& recovery_pub_key,
         const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
-        amount satoshi, bool has_txs, uint32_t required_ca, bool is_hidden)
+        uint32_t required_ca, bool is_hidden)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
@@ -2147,8 +2103,7 @@ namespace sdk {
         const auto policy_asset = m_net_params.is_liquid() ? m_net_params.policy_asset() : std::string("btc");
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "recovery_xpub", recovery_xpub }, { "satoshi", { { policy_asset, satoshi.value() } } },
-            { "has_transactions", has_txs }, { "required_ca", required_ca }, { "hidden", is_hidden } };
+            { "recovery_xpub", recovery_xpub }, { "required_ca", required_ca }, { "hidden", is_hidden } };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
@@ -2206,11 +2161,11 @@ namespace sdk {
             = wamp_cast(wamp_call("txs.create_subaccount_v2", subaccount, std::string(), type, xpubs, sigs));
 
         locker_t locker(m_mutex);
-        constexpr bool has_txs = false;
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        constexpr uint32_t required_ca = 0;
         constexpr bool is_hidden = false;
         nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
-            recovery_chain_code, recovery_bip32_xpub, type, amount(), has_txs, 0, is_hidden);
+            recovery_chain_code, recovery_bip32_xpub, type, required_ca, is_hidden);
 
         if (type == "2of3") {
             subaccount_details["recovery_mnemonic"] = recovery_mnemonic;
@@ -3085,11 +3040,6 @@ namespace sdk {
         const uint32_t num_confs = details.at("num_confs");
         const uint32_t confidential = json_get_value(details, "confidential", false);
 
-        if (num_confs == 0 && !m_net_params.is_liquid()) {
-            // The subaccount details contains the confs=0 balance
-            return get_subaccount(subaccount)["satoshi"];
-        }
-        // Anything other than confs=0 needs to be fetched from the server
         return get_subaccount_balance_from_server(subaccount, num_confs, confidential);
     }
 
@@ -3129,10 +3079,10 @@ namespace sdk {
 
     bool ga_session::subaccount_allows_csv(uint32_t subaccount) const
     {
-        // subaccounts of type '2of2_no_recovery' (have 'recovery' built in)
-        // and '2of3' do not allow csv addresses.
-        // short-circuit subaccount 0 as it has a known fixed type
-        return subaccount == 0 || get_cached_subaccount(subaccount)["type"] == "2of2";
+        locker_t locker(m_mutex);
+        const auto p = m_subaccounts.find(subaccount);
+        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        return p->second.at("type") == "2of2"; // Only Green 2of2 subaccounts allow CSV
     }
 
     const std::string& ga_session::get_default_address_type(uint32_t subaccount) const

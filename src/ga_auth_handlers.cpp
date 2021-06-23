@@ -253,7 +253,7 @@ namespace sdk {
 
             // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
-            for (const auto& sa : m_session.get_subaccounts()) {
+            for (const auto& sa : m_session.get_nonnull_impl()->get_subaccounts()) {
                 paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
             }
             set_action("get_xpubs");
@@ -277,7 +277,7 @@ namespace sdk {
         }
 
         // Check whether the backend asked for some conf addrs (only 2of2_no_recovery) on some subaccount
-        for (const auto& sa : m_session.get_subaccounts()) {
+        for (const auto& sa : m_session.get_nonnull_impl()->get_subaccounts()) {
             const uint32_t required_ca = sa.value("required_ca", 0);
             if (required_ca > 0) {
                 // add the subaccount number (`pointer`) repeated `required_ca` times. we will pop them one at a time
@@ -857,29 +857,32 @@ namespace sdk {
 
     //
     // Get subaccounts
+    // Note we pass an empty signer to jump straight to state_type::make_call
     //
     get_subaccounts_call::get_subaccounts_call(session& session)
-        : needs_unblind_call("get_subaccounts", session, nlohmann::json::object())
+        : auth_handler_impl(session, "get_subaccounts", std::shared_ptr<signer>())
     {
     }
 
-    auth_handler::state_type get_subaccounts_call::wrapped_call_impl()
+    auth_handler::state_type get_subaccounts_call::call_impl()
     {
-        m_result = nlohmann::json({ { "subaccounts", m_session.get_subaccounts() } });
+        m_result = { { "subaccounts", m_session.get_nonnull_impl()->get_subaccounts() } };
         return state_type::done;
     }
 
     //
     // Get subaccount
+    // Note we pass an empty signer to jump straight to state_type::make_call
     //
     get_subaccount_call::get_subaccount_call(session& session, uint32_t subaccount)
-        : needs_unblind_call("get_subaccount", session, nlohmann::json({ { "index", subaccount } }))
+        : auth_handler_impl(session, "get_subaccount", std::shared_ptr<signer>())
+        , m_subaccount(subaccount)
     {
     }
 
-    auth_handler::state_type get_subaccount_call::wrapped_call_impl()
+    auth_handler::state_type get_subaccount_call::call_impl()
     {
-        m_result = m_session.get_subaccount(m_details["index"]);
+        m_result = m_session.get_nonnull_impl()->get_subaccount(m_subaccount);
         return state_type::done;
     }
 

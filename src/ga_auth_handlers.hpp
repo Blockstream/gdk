@@ -113,20 +113,21 @@ namespace sdk {
         state_type wrapped_call_impl() override;
     };
 
-    class get_subaccounts_call : public needs_unblind_call {
+    class get_subaccounts_call : public auth_handler_impl {
     public:
         get_subaccounts_call(session& session);
 
     private:
-        state_type wrapped_call_impl() override;
+        state_type call_impl() override;
     };
 
-    class get_subaccount_call : public needs_unblind_call {
+    class get_subaccount_call : public auth_handler_impl {
     public:
         get_subaccount_call(session& session, uint32_t subaccount);
 
     private:
-        state_type wrapped_call_impl() override;
+        state_type call_impl() override;
+        const uint32_t m_subaccount;
     };
 
     class get_transactions_call : public needs_unblind_call {
