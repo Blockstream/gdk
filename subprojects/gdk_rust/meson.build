@@ -1,4 +1,4 @@
-project('gdk_rust', 'c', meson_version : '>= 0.51.2')
+project('gdk_rust', 'c', meson_version : '>= 0.58.0')
 
 message('Building gdk_rust...')
 

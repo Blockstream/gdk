@@ -7,4 +7,4 @@ source_hash = 802bebb778d84e1aaeb60b4c5fb184d50fce010478eaac344c8773f07963fa11
 
 patch_url = file:./subprojects/autobahn-cpp-meson/autobahn-cpp-meson-802bebb778d84e1aaeb60b4c5fb184d50fce010478eaac344c8773f07963fa11.tar
 patch_filename = autobahn-cpp-meson-802bebb778d84e1aaeb60b4c5fb184d50fce010478eaac344c8773f07963fa11.tar
-patch_hash = 906a6d506092918db6a08638f20b880a1d22753718321ad4ec5b9916accd560b
+patch_hash = 1c23beaa3891591953a0c7a22e3b94def26c7e187443b0d598f5090e27e58522
