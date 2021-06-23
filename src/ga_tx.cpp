@@ -428,7 +428,7 @@ namespace sdk {
             const auto p_subaccount = result.find("subaccount");
             GDK_RUNTIME_ASSERT(p_subaccount != result.end());
             const uint32_t subaccount = *p_subaccount;
-            result["subaccount_type"] = session.get_cached_subaccount(subaccount)["type"];
+            result["subaccount_type"] = session.get_subaccount(subaccount)["type"];
 
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;

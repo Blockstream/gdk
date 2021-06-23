@@ -68,10 +68,6 @@ namespace sdk {
         nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
         void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
 
-        nlohmann::json get_subaccounts();
-
-        nlohmann::json get_subaccount(uint32_t subaccount);
-
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
 

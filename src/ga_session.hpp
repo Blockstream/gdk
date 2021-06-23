@@ -85,7 +85,6 @@ namespace sdk {
 
         nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
-        nlohmann::json get_cached_subaccount(uint32_t subaccount) const;
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
         uint32_t get_next_subaccount(const std::string& type);
@@ -216,7 +215,6 @@ namespace sdk {
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;
-        nlohmann::json get_subaccount(locker_t& locker, uint32_t subaccount);
         nlohmann::json get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs, bool confidential);
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
@@ -242,7 +240,7 @@ namespace sdk {
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
             const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
-            amount satoshi, bool has_txs, uint32_t required_ca, bool is_hidden);
+            uint32_t required_ca, bool is_hidden);
 
         std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge);
 

@@ -71,8 +71,8 @@ namespace sdk {
         m_is_hw_action = m_signer && m_signer->is_hw_device()
             && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
                    || action == "get_receive_address" || action == "create_transaction" || action == "get_balance"
-                   || action == "get_subaccounts" || action == "get_subaccount" || action == "get_transactions"
-                   || action == "get_unspent_outputs" || action == "get_expired_deposits");
+                   || action == "get_transactions" || action == "get_unspent_outputs"
+                   || action == "get_expired_deposits");
     }
 
     void auth_handler_impl::set_error(const std::string& error_message)

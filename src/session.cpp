@@ -348,22 +348,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_subaccounts()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_subaccounts();
-        });
-    }
-
-    nlohmann::json session::get_subaccount(uint32_t subaccount)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_subaccount(subaccount);
-        });
-    }
-
     void session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         exception_wrapper([&] {
