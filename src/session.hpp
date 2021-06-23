@@ -71,8 +71,6 @@ namespace sdk {
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
 
-        nlohmann::json get_balance(const nlohmann::json& details);
-
         nlohmann::json get_available_currencies();
 
         bool is_rbf_enabled();

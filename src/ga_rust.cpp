@@ -333,8 +333,6 @@ namespace sdk {
         throw std::runtime_error("get_subaccount_full_path not implemented");
     }
 
-    nlohmann::json ga_rust::get_balance(const nlohmann::json& details) { return call_session("get_balance", details); }
-
     nlohmann::json ga_rust::get_available_currencies() const
     {
         return call_session("get_available_currencies", nlohmann::json({}));

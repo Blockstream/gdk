@@ -2012,43 +2012,6 @@ namespace sdk {
         return details;
     }
 
-    nlohmann::json ga_session::get_subaccount_balance_from_server(
-        uint32_t subaccount, uint32_t num_confs, bool confidential)
-    {
-        if (!m_net_params.is_liquid()) {
-            auto balance = wamp_cast_json(wamp_call("txs.get_balance", subaccount, num_confs));
-            // TODO: Make sure another session didn't change fiat currency
-            {
-                // Update our exchange rate from the results
-                locker_t locker(m_mutex);
-                update_fiat_rate(locker, json_get_value(balance, "fiat_exchange"));
-            }
-            const std::string satoshi_str = json_get_value(balance, "satoshi");
-            const amount::value_type satoshi = strtoull(satoshi_str.c_str(), nullptr, 10);
-            return { { "btc", satoshi } };
-        }
-        unique_pubkeys_and_scripts_t missing; // FIXME: Use this
-        const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs },
-            { "confidential", confidential } };
-        auto asset_utxos = get_unspent_outputs(details, missing);
-        process_unspent_outputs(details, asset_utxos);
-
-        nlohmann::json balance({ { m_net_params.policy_asset(), 0 } });
-        for (const auto& asset_utxo : asset_utxos.items()) {
-            if (asset_utxo.key() != "error") {
-                amount::value_type satoshi = 0;
-                for (const auto& utxo : asset_utxo.value()) {
-                    if (!utxo.contains("error")) {
-                        satoshi += amount::value_type(utxo.at("satoshi"));
-                    }
-                }
-                balance[asset_utxo.key()] = satoshi;
-            }
-        }
-
-        return balance;
-    }
-
     nlohmann::json ga_session::get_subaccount(uint32_t subaccount)
     {
         locker_t locker(m_mutex);
@@ -3032,15 +2995,6 @@ namespace sdk {
         update_address_info(address, false);
         GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
         return address;
-    }
-
-    nlohmann::json ga_session::get_balance(const nlohmann::json& details)
-    {
-        const uint32_t subaccount = details.at("subaccount");
-        const uint32_t num_confs = details.at("num_confs");
-        const uint32_t confidential = json_get_value(details, "confidential", false);
-
-        return get_subaccount_balance_from_server(subaccount, num_confs, confidential);
     }
 
     // Idempotent

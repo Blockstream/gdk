@@ -62,7 +62,6 @@ namespace sdk {
         std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
 
-        nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
 
         bool is_rbf_enabled() const;

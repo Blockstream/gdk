@@ -842,20 +842,6 @@ namespace sdk {
     }
 
     //
-    // Get balance
-    //
-    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("get_balance", session, details)
-    {
-    }
-
-    auth_handler::state_type get_balance_call::wrapped_call_impl()
-    {
-        m_result = m_session.get_balance(m_details);
-        return state_type::done;
-    }
-
-    //
     // Get subaccounts
     // Note we pass an empty signer to jump straight to state_type::make_call
     //
@@ -953,6 +939,49 @@ namespace sdk {
         m_session.get_nonnull_impl()->process_unspent_outputs(m_details, utxos);
         m_result["unspent_outputs"].swap(utxos);
         return state_type::done;
+    }
+
+    //
+    // Get balance
+    //
+    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
+        : get_unspent_outputs_call(session, details)
+    {
+        if (m_state == state_type::done) {
+            compute_balance();
+        }
+    }
+
+    auth_handler::state_type get_balance_call::call_impl()
+    {
+        get_unspent_outputs_call::call_impl(); // Get UTXOs using parent call
+        compute_balance();
+        return state_type::done; // get_unspent_outputs_call either returns done or throws
+    }
+
+    void get_balance_call::compute_balance()
+    {
+        const auto& net_params = m_session.get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
+        const auto policy_asset = is_liquid ? net_params.policy_asset() : std::string("btc");
+
+        // Compute the balance data from returned UTXOs
+        nlohmann::json balance({ { policy_asset, 0 } });
+
+        for (const auto& asset : m_result["unspent_outputs"].items()) {
+            if (asset.key() == "error") {
+                // TODO: Should we return whether an unblinding error occurred
+                // when computing the balance?
+                continue;
+            }
+            amount::value_type satoshi = 0;
+            for (const auto& utxo : asset.value()) {
+                GDK_RUNTIME_ASSERT(!utxo.contains("error"));
+                satoshi += amount::value_type(utxo.at("satoshi"));
+            }
+            balance[asset.key()] = satoshi;
+        }
+        m_result.swap(balance); // Return balance data to caller
     }
 
     //
