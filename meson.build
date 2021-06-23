@@ -1,4 +1,4 @@
-project('gdk', ['c', 'cpp'], version: '0.0.42', meson_version : '>= 0.51.2')
+project('gdk', ['c', 'cpp'], version: '0.0.42', meson_version : '>= 0.58.0')
 
 # commonly used checks
 compiler = meson.get_compiler('cpp')
