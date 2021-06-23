@@ -436,14 +436,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_balance(const nlohmann::json& details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_balance(details);
-        });
-    }
-
     nlohmann::json session::get_available_currencies()
     {
         return exception_wrapper([&] {

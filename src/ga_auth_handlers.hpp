@@ -105,14 +105,6 @@ namespace sdk {
         state_type wrapped_call_impl() override;
     };
 
-    class get_balance_call : public needs_unblind_call {
-    public:
-        get_balance_call(session& session, const nlohmann::json& details);
-
-    private:
-        state_type wrapped_call_impl() override;
-    };
-
     class get_subaccounts_call : public auth_handler_impl {
     public:
         get_subaccounts_call(session& session);
@@ -142,9 +134,18 @@ namespace sdk {
     public:
         get_unspent_outputs_call(session& session, const nlohmann::json& details);
 
-    private:
+    protected:
         state_type call_impl() override;
         const nlohmann::json m_details;
+    };
+
+    class get_balance_call : public get_unspent_outputs_call {
+    public:
+        get_balance_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+        void compute_balance();
     };
 
     class set_unspent_outputs_status_call : public auth_handler_impl {

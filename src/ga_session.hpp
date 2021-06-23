@@ -93,7 +93,6 @@ namespace sdk {
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
         void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
-        nlohmann::json get_balance(const nlohmann::json& details);
         nlohmann::json get_available_currencies() const;
         bool is_rbf_enabled() const;
         bool is_watch_only() const;
@@ -215,7 +214,6 @@ namespace sdk {
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;
-        nlohmann::json get_subaccount_balance_from_server(uint32_t subaccount, uint32_t num_confs, bool confidential);
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker);
