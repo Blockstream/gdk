@@ -227,9 +227,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 }
 
 fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
-    if sess.last_xr.is_some()
-        && (SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)))
-    {
+    if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
         debug!("hit exchange rate cache");
     } else {
         info!("missed exchange rate cache");
