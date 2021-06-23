@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:d2de7b5dda6d8a88fec04f8b2b202e8ef7e7d0550afd0ba73c2e70efbbb1f6c1
+image: greenaddress/ci@sha256:51207c27014e0774917fdd97cc40e20e0937833d364876dfb1612656d8322f2b
 
 stages:
   - format
@@ -12,7 +12,7 @@ stages:
   - deploy
 
 .fedora_images:
-  image: greenaddress/fedora_ci@sha256:fa6139647ea2c92e3d744d51f7216e3ea6a2907c119b5fe978f6f1989ac626a9
+  image: greenaddress/fedora_ci@sha256:743681f0be603f1fff58a52e1ccbaa95681d110b7c1eb44a10ef036c0d072585
   tags:
     - ga
 
@@ -96,6 +96,7 @@ release_py3m_ubuntu_18.04:
   image: greenaddress/ci@sha256:c4693baf6d3d1f6ef2acc9a10382c26c60ab8f78b17d6d5c8db6bbd668c4c7e1
   extends: .py_release
   script:
+    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --enable-rust
 
 release_py3m_osx:
@@ -112,6 +113,8 @@ release_py3m_osx:
 test_fedora_gcc:
   extends: .fedora_images
   script:
+    - python3 -m pip install virtualenv
+    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --gcc --enable-rust
 
 test_fedora_debug_gcc:
@@ -120,11 +123,15 @@ test_fedora_debug_gcc:
     refs:
       - master
   script:
+    - python3 -m pip install virtualenv
+    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --buildtype=debugoptimized --gcc --enable-rust
 
 test_fedora_clang:
   extends: .fedora_images
   script:
+    - python3 -m pip install virtualenv
+    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --clang --enable-rust
 
 test_clang:
