@@ -61,9 +61,8 @@ if [ "$1" = "--ndk" ]; then
           ${CONFIGURE_ARGS} ac_cv_c_bigendian=no --enable-swig-java --disable-swig-python --target=${SDK_PLATFORM}
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
-
-    export CFLAGS="${SDK_CFLAGS} -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 -O3 ${EXTRA_FLAGS} -fembed-bitcode"
-    export LDFLAGS="${SDK_LDFLAGS} -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 ${EXTRA_FLAGS}"
+    export CFLAGS="${CFLAGS} ${EXTRA_FLAGS} -O3"
+    export LDFLAGS="${LDFLAGS} ${EXTRA_FLAGS}"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
     ./configure --host=arm-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=${HOST_OS} \
