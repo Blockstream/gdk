@@ -234,23 +234,23 @@ release_osx_ios_sim:
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone-sim --enable-rust
 
-release_osx_ios_debug_norust:
+release_osx_ios_debug:
   extends: .ios_release
   when: manual
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphone static --lto=false --buildtype=debug --install $PWD/gdk-iphone
+    - ./tools/build.sh --iphone static --lto=false --buildtype=debug --install $PWD/gdk-iphone --enable-rust
 
-release_osx_ios_sim_debug_norust:
+release_osx_ios_sim_debug:
   extends: .ios_sim_release
   when: manual
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone-sim
+    - ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone-sim --enable-rust
 
 test_osx_clang_ndk_armeabi-v7a:
   only:
