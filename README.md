@@ -82,14 +82,7 @@ docker build -t greenaddress_sdk - < tools/Dockerfile
 docker run -v $PWD:/sdk greenaddress_sdk
 ```
 
-or if you don't want to build it locally
-
-```
-docker pull greenaddress/ci@sha256:d9f628bdfad8159aafd38139f6de91fa1040f3378ccb813893888dde5d80d13f
-docker run -v $PWD:/sdk greenaddress/ci
-```
-
-in both cases (built or fetched) this will build the sdk with clang by default
+This will build the sdk with clang by default
 
 if you want to change it for example to ndk armeabi-v7a:
 
