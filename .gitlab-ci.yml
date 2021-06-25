@@ -88,10 +88,9 @@ release_py3m_buster_debug:
     - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7 --enable-rust
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ci@sha256:c4693baf6d3d1f6ef2acc9a10382c26c60ab8f78b17d6d5c8db6bbd668c4c7e1
+  image: greenaddress/ubuntu_ci@sha256:3a448884966559456a89a530d19c58be3e0c043bd0b988990cb489dd8f167035
   extends: .py_release
   script:
-    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --enable-rust
 
 release_py3m_osx:
