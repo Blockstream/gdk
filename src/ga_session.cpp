@@ -1007,7 +1007,7 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        if (!m_nlocktimes) {
+        if (!m_nlocktimes && !m_watch_only) {
             nlohmann::json nlocktime_json;
             {
                 unique_unlock unlocker(locker);
@@ -2976,7 +2976,7 @@ namespace sdk {
         nlohmann::json utxos = get_all_unspent_outputs(subaccount, num_confs, all_coins);
 
         const auto nlocktimes = update_nlocktime_info();
-        if (!nlocktimes->empty()) {
+        if (nlocktimes && !nlocktimes->empty()) {
             for (auto& utxo : utxos) {
                 const uint32_t vout = utxo.at("pt_idx");
                 const std::string k{ json_get_value(utxo, "txhash") + ":" + std::to_string(vout) };
@@ -3686,6 +3686,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_expired_deposits(const nlohmann::json& deposit_details)
     {
+        GDK_RUNTIME_ASSERT(!is_watch_only());
         auto asset_utxos = get_unspent_outputs(deposit_details);
 
         const uint32_t curr_block_height = get_block_height();
