@@ -11,11 +11,6 @@ stages:
   - test
   - deploy
 
-.fedora_images:
-  image: greenaddress/fedora_ci@sha256:743681f0be603f1fff58a52e1ccbaa95681d110b7c1eb44a10ef036c0d072585
-  tags:
-    - ga
-
 .ndk_release:
   tags:
     - ga
@@ -110,25 +105,10 @@ release_py3m_osx:
     - pip install -r ./tools/requirements.txt
     - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7 --enable-rust
 
-test_fedora_gcc:
-  extends: .fedora_images
-  script:
-    - python3 -m pip install virtualenv
-    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --gcc --enable-rust
-
-test_fedora_debug_gcc:
-  extends: .fedora_images
-  only:
-    refs:
-      - master
-  script:
-    - python3 -m pip install virtualenv
-    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --buildtype=debugoptimized --gcc --enable-rust
-
 test_fedora_clang:
-  extends: .fedora_images
+  image: greenaddress/fedora_ci@sha256:743681f0be603f1fff58a52e1ccbaa95681d110b7c1eb44a10ef036c0d072585
+  tags:
+    - ga
   script:
     - python3 -m pip install virtualenv
     - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
