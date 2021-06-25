@@ -273,24 +273,6 @@ test_osx_clang_ndk_x86_64:
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - ./tools/build.sh --ndk x86_64 --enable-rust
 
-# TODO: gdk-rust breaks this, figure out why
-#
-# test_freebsd_gcc:
-#   tags:
-#     - freebsd
-#   script:
-#     - cd $CI_PROJECT_DIR
-#     - ./tools/build.sh --gcc --enable-rust
-
-test_freebsd_clang:
-  tags:
-    - freebsd
-  before_script:
-    - export PATH="/usr/local/llvm60/bin:$PATH"
-  script:
-    - cd $CI_PROJECT_DIR
-    - ./tools/build.sh --clang --enable-rust
-
 test_windows_mingw_w64_cross:
   tags:
     - ga
