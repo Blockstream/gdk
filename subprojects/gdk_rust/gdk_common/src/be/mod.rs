@@ -64,7 +64,11 @@ impl UTXOInfo {
     }
 
     pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
-        self.asset.parse().ok()
+        if self.asset == "btc" {
+            None
+        } else {
+            Some(self.asset.parse().expect("Invalid asset"))
+        }
     }
 }
 
