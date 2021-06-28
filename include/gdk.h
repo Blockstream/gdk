@@ -172,37 +172,6 @@ GDK_API int GA_login_user(
     struct GA_session* session, const GA_json* hw_device, const GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Authenticate a user using a hardware wallet/HSM/TPM.
- *
- * :param session: The session to use.
- * :param hw_device: Details about the :ref:`hw-device` being used to login.
- * :param mnemonic: The user's mnemonic passphrase.
- * :param password: The user's password to decrypt a 27 word mnemonic, or a blank string if none.
- * :param call: Destination for the resulting GA_auth_handler to perform the login.
- *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
- *
- * .. note:: This call is deprecated and will be removed in a future release. Use
- *|          `GA_login_user` to login.
- */
-GDK_API int GA_login(struct GA_session* session, const GA_json* hw_device, const char* mnemonic, const char* password,
-    struct GA_auth_handler** call);
-
-/**
- * Authenticate a user.
- *
- * :param session: The session to use.
- * :param pin: The user PIN.
- * :param pin_data: The :ref:`pin-data` returned by `GA_set_pin`.
- * :param call: Destination for the resulting GA_auth_handler to perform the login with pin.
- *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
- *
- * .. note:: This call is deprecated and will be removed in a future release. Use
- *|          `GA_login_user` to login.
- */
-GDK_API int GA_login_with_pin(
-    struct GA_session* session, const char* pin, const GA_json* pin_data, struct GA_auth_handler** call);
-
-/**
  * Set a watch-only login for the wallet.
  *
  * :param session: The session to use.
@@ -219,18 +188,6 @@ GDK_API int GA_set_watch_only(struct GA_session* session, const char* username, 
  *|     Returned string should be freed using `GA_destroy_string`.
  */
 GDK_API int GA_get_watch_only_username(struct GA_session* session, char** username);
-
-/**
- * Authenticate a user in watch only mode.
- *
- * :param session: The session to use.
- * :param username: The username.
- * :param password: The password.
- *
- * .. note:: This call is deprecated and will be removed in a future release. Use
- *|          `GA_login_user` to login.
- */
-GDK_API int GA_login_watch_only(struct GA_session* session, const char* username, const char* password);
 
 /**
  * Remove an account.
