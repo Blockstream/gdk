@@ -71,7 +71,7 @@ namespace sdk {
     ga_rust::ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults)
         : session_impl(net_params, defaults)
     {
-        nlohmann::json network{ m_net_params.get_json() };
+        nlohmann::json network(m_net_params.get_json());
         network["proxy"] = net_params.value("proxy", std::string{});
         network["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
         GDKRUST_create_session(&m_session, convert_json(network).get());
@@ -79,7 +79,7 @@ namespace sdk {
 
     ga_rust::~ga_rust()
     {
-        call_session("destroy_session", nlohmann::json{});
+        call_session("destroy_session", nlohmann::json());
         // gdk_rust cleanup
     }
 
@@ -173,10 +173,10 @@ namespace sdk {
 
     void ga_rust::register_user(const std::string& mnemonic, bool supports_csv)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "mnemonic", mnemonic },
             { "supports_csv", supports_csv },
-        };
+        });
 
         call_session("register_user", details);
     }
@@ -198,10 +198,10 @@ namespace sdk {
     }
     nlohmann::json ga_rust::login(const std::string& mnemonic, const std::string& password)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "mnemonic", mnemonic },
             { "password", password },
-        };
+        });
 
         auto ret = call_session("login", details);
         m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
@@ -209,10 +209,10 @@ namespace sdk {
     }
     nlohmann::json ga_rust::login_with_pin(const std::string& pin, const nlohmann::json& pin_data)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "pin", pin },
             { "pin_data", pin_data },
-        };
+        });
 
         auto ret = call_session("login_with_pin", details);
         m_signer = std::make_shared<software_signer>(m_net_params, get_mnemonic_passphrase(std::string()));
@@ -239,15 +239,15 @@ namespace sdk {
 
     uint32_t ga_rust::get_next_subaccount(const std::string& type)
     {
-        return call_session("get_next_subaccount", nlohmann::json{ { "type", type } });
+        return call_session("get_next_subaccount", nlohmann::json({ { "type", type } }));
     }
 
     nlohmann::json ga_rust::create_subaccount(const nlohmann::json& details, uint32_t subaccount)
     {
-        auto details_c = nlohmann::json{
+        auto details_c = nlohmann::json({
             { "subaccount", subaccount },
             { "name", details.at("name") },
-        };
+        });
         return call_session("create_subaccount", details_c);
     }
     nlohmann::json ga_rust::create_subaccount(
@@ -323,19 +323,19 @@ namespace sdk {
 
     void ga_rust::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "subaccount", subaccount },
             { "new_name", new_name },
-        };
+        });
         call_session("rename_subaccount", details);
     }
 
     void ga_rust::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "subaccount", subaccount },
             { "hidden", is_hidden },
-        };
+        });
         call_session("set_subaccount_hidden", details);
     }
 
@@ -353,19 +353,19 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_available_currencies() const
     {
-        return call_session("get_available_currencies", nlohmann::json{});
+        return call_session("get_available_currencies", nlohmann::json({}));
     }
 
     bool ga_rust::is_rbf_enabled() const { throw std::runtime_error("is_rbf_enabled not implemented"); }
     bool ga_rust::is_watch_only() const { return false; }
 
-    nlohmann::json ga_rust::get_settings() { return call_session("get_settings", nlohmann::json{}); }
+    nlohmann::json ga_rust::get_settings() { return call_session("get_settings", nlohmann::json({})); }
 
     nlohmann::json ga_rust::get_post_login_data() { throw std::runtime_error("get_post_login_data not implemented"); }
 
     void ga_rust::change_settings(const nlohmann::json& settings) { call_session("change_settings", settings); }
 
-    nlohmann::json ga_rust::get_twofactor_config(bool reset_cached) { return nlohmann::json{}; }
+    nlohmann::json ga_rust::get_twofactor_config(bool reset_cached) { return nlohmann::json({}); }
 
     std::vector<std::string> ga_rust::get_all_twofactor_methods() { return {}; }
     std::vector<std::string> ga_rust::get_enabled_twofactor_methods() { return {}; }
@@ -396,25 +396,25 @@ namespace sdk {
     nlohmann::json ga_rust::confirm_twofactor_reset(
         const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
     {
-        return nlohmann::json{};
+        return nlohmann::json({});
     }
 
     nlohmann::json ga_rust::request_undo_twofactor_reset(const std::string& email) { return nlohmann::json{}; }
 
     nlohmann::json ga_rust::confirm_undo_twofactor_reset(const std::string& email, const nlohmann::json& twofactor_data)
     {
-        return nlohmann::json{};
+        return nlohmann::json({});
     }
 
     nlohmann::json ga_rust::cancel_twofactor_reset(const nlohmann::json& twofactor_data) { return nlohmann::json{}; }
 
     nlohmann::json ga_rust::set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "pin", pin },
             { "mnemonic", mnemonic },
             { "device_id", device_id },
-        };
+        });
 
         return call_session("set_pin", details);
     }
@@ -515,21 +515,21 @@ namespace sdk {
 
     void ga_rust::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
     {
-        auto details = nlohmann::json{
+        auto details = nlohmann::json({
             { "txid", txhash_hex },
             { "memo", memo },
-        };
+        });
 
         call_session("set_transaction_memo", details);
     }
 
-    nlohmann::json ga_rust::get_fee_estimates() { return call_session("get_fee_estimates", nlohmann::json{}); }
+    nlohmann::json ga_rust::get_fee_estimates() { return call_session("get_fee_estimates", nlohmann::json({})); }
 
     std::string ga_rust::get_mnemonic_passphrase(const std::string& password)
     {
         if (!password.empty())
             throw std::runtime_error("get_mnemonic_phassphrase: encrypted mnemonics not yet supported in electrum/rpc");
-        return call_session("get_mnemonic", nlohmann::json{}).get<std::string>();
+        return call_session("get_mnemonic", nlohmann::json({})).get<std::string>();
     }
 
     std::string ga_rust::get_system_message()
@@ -556,7 +556,7 @@ namespace sdk {
         auto currency = amount_json.value("fiat_currency", "USD");
         auto rate = amount_json.value("fiat_rate", "");
         if (rate.empty()) {
-            auto currency_query = nlohmann::json{ { "currencies", currency } };
+            auto currency_query = nlohmann::json({ { "currencies", currency } });
             auto xrates = call_session("exchange_rates", currency_query)["currencies"];
             rate = xrates.value(currency, "");
         }
