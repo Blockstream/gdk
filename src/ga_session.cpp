@@ -1686,11 +1686,11 @@ namespace sdk {
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                auto details = wamp_cast_json(event);
+                const auto details = wamp_cast_json(event);
                 locker_t notify_locker(m_mutex);
                 // Check the hmac as we will be notified of our own changes
                 // when more than one session is logged in at a time.
-                if (m_blob_hmac != json_get_value(details, "hmac")) {
+                if (!m_watch_only && m_blob_hmac != json_get_value(details, "hmac")) {
                     // Another session has updated our client blob, mark it dirty.
                     m_blob_outdated = true;
                 }
