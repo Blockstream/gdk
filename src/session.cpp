@@ -682,14 +682,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_expired_deposits(const nlohmann::json& deposit_details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_expired_deposits(deposit_details);
-        });
-    }
-
     void session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
         exception_wrapper([&] {

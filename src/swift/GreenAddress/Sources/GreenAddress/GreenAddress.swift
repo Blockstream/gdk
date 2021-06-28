@@ -371,10 +371,6 @@ public class Session {
         try callWrapper(fun: GA_send_nlocktimes(session))
     }
 
-    public func getExpiredDeposits(details: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: details, fun: GA_get_expired_deposits)
-    }
-
     public func setNlockTime(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_set_nlocktime)
     }

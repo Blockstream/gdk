@@ -825,9 +825,15 @@ Unspent UTXOs Request JSON
   {
     "subaccount": 3,
     "num_confs": 0,
-    "all_coins": false
+    "all_coins": false,
+    "expired_at": 99999
   }
 
+:subaccount: The subaccount to fetch unspent outputs for.
+:num_confs: Pass `0` for unconfirmed UTXOs or `1` for confirmed.
+:all_coins: Pass `true` to include UTXOs with status `frozen`, `false` otherwise.
+:expired_at: If given, only UTXOs where two-factor authentication expires
+    by the given block are returned.
 
 
 .. _unspent-outputs-status:
@@ -1101,17 +1107,6 @@ Locktime Details JSON
 .. code-block:: json
 
   {"value":65535}
-
-
-
-.. _set-deposit-details:
-
-Deposit Details JSON
--------------------------
-
-.. code-block:: json
-
-  {"subaccount":3,"num_confs":0, "expires_at_block":65535}
 
 
 

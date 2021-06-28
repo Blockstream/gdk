@@ -187,12 +187,10 @@ Hardware Get Blinding Nonces Action
 This action describes a request to compute blinding nonces for the given script hashes.
 The ``"action"`` element will be one of the following:
 
-- ``"get_balance"``,
 - ``"get_subaccount"``,
 - ``"get_subaccounts"``,
 - ``"get_transactions"``,
 - ``"get_unspent_outputs"``,
-- ``"get_expired_deposits"``,
 
 .. note:: This action is only returned when using the Liquid network.
 

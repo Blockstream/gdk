@@ -443,17 +443,6 @@ GDK_API int GA_send_transaction(
 GDK_API int GA_send_nlocktimes(struct GA_session* session);
 
 /**
- * Return UTXOs that can be spent/or are spendable without two factor authentication after a block value.
- *
- * :param session: The session to use.
- * :param deposit_details: The :ref:`set-deposit-details` for sending.
- * :param call: Destination for the resulting GA_auth_handler to change the locktime.
- *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
- */
-GDK_API int GA_get_expired_deposits(
-    struct GA_session* session, const GA_json* deposit_details, struct GA_auth_handler** call);
-
-/**
  * Set the number of blocks after which CSV transactions become spendable without two factor authentication.
  *
  * :param session: The session to use.
