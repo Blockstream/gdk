@@ -141,22 +141,12 @@ class Session(object):
     def login_user(self, hw_device, details):
         return Call(login_user(self.session_obj, self._to_json(hw_device), self._to_json(details)))
 
-    def login_with_pin(self, pin, pin_data):
-        return Call(login_with_pin(self.session_obj, pin, self._to_json(pin_data)))
-
-    def login(self, hw_device, mnemonic, password=''):
-        return Call(login(self.session_obj, self._to_json(hw_device), mnemonic, password))
-
     def set_watch_only(self, username, password):
         set_watch_only(self.session_obj, username, password)
         return self
 
     def get_watch_only_username(self):
         return get_watch_only_username(self.session_obj)
-
-    def login_watch_only(self, username, password):
-        login_watch_only(self.session_obj, username, password)
-        return self
 
     def remove_account(self):
         return Call(remove_account(self.session_obj))

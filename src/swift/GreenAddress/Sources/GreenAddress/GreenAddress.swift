@@ -255,30 +255,6 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
-    public func login(mnemonic: String = "", password: String = "", hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
-        var optr: OpaquePointer? = nil;
-        var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)
-        try callWrapper(fun: GA_login(session, hw_device_json, mnemonic, password, &optr))
-        defer {
-            GA_destroy_json(hw_device_json)
-        }
-        return TwoFactorCall(optr: optr!);
-    }
-
-    public func loginWithPin(pin: String, pin_data: [String: Any]) throws -> TwoFactorCall {
-        var optr: OpaquePointer? = nil;
-        var pin_data_json: OpaquePointer = try convertDictToJSON(dict: pin_data)
-        try callWrapper(fun: GA_login_with_pin(session, pin, pin_data_json, &optr))
-        defer {
-            GA_destroy_json(pin_data_json)
-        }
-        return TwoFactorCall(optr: optr!);
-    }
-
-    public func loginWatchOnly(username: String, password: String) throws {
-        try callWrapper(fun: GA_login_watch_only(session, username, password))
-    }
-
     public func setWatchOnly(username: String, password: String) throws {
         try callWrapper(fun: GA_set_watch_only(session, username, password))
     }
