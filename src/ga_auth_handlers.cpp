@@ -901,6 +901,7 @@ namespace sdk {
                 if (missing.empty()) {
                     impl->process_unspent_outputs(m_details, utxos);
                     m_result["unspent_outputs"].swap(utxos);
+                    filter_result();
                     m_state = state_type::done;
                 } else {
                     // Some utxos need unblinding; resolve them
@@ -938,7 +939,29 @@ namespace sdk {
         m_result.swap(utxos);
         m_session.get_nonnull_impl()->process_unspent_outputs(m_details, utxos);
         m_result["unspent_outputs"].swap(utxos);
+        filter_result();
         return state_type::done;
+    }
+
+    void get_unspent_outputs_call::filter_result()
+    {
+        if (m_details.contains("expired_at")) {
+            const uint32_t at = m_details.at("expired_at");
+            // Return only UTXOs that have expired as at block number 'expired_at'.
+            // A UTXO is expired if its nlocktime has been reached; i.e. its
+            // nlocktime is less than or equal to the block number in
+            // 'expired_at'. Therefore we filter out UTXOs where nlocktime
+            // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
+            constexpr uint32_t max_ = 0xffffffff; // 81716 years from genesis
+            auto&& filter = [at, max_](const auto& u) { return u.value("nlocktime_at", max_) > at; };
+
+            for (auto& asset : m_result["unspent_outputs"].items()) {
+                if (asset.key() != "error") {
+                    auto& utxos = asset.value();
+                    utxos.erase(std::remove_if(utxos.begin(), utxos.end(), filter), utxos.end());
+                }
+            }
+        }
     }
 
     //
@@ -1030,20 +1053,6 @@ namespace sdk {
     auth_handler::state_type set_unspent_outputs_status_call::call_impl()
     {
         m_result = m_session.set_unspent_outputs_status(m_details, m_twofactor_data);
-        return state_type::done;
-    }
-
-    //
-    // Get expired deposits
-    //
-    get_expired_deposits_call::get_expired_deposits_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("get_expired_deposits", session, details)
-    {
-    }
-
-    auth_handler::state_type get_expired_deposits_call::wrapped_call_impl()
-    {
-        m_result = m_session.get_expired_deposits(m_details);
         return state_type::done;
     }
 

@@ -3478,26 +3478,6 @@ namespace sdk {
     // Idempotent
     void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.send_nlocktime"))); }
 
-    nlohmann::json ga_session::get_expired_deposits(const nlohmann::json& deposit_details)
-    {
-        GDK_RUNTIME_ASSERT(!is_watch_only());
-        unique_pubkeys_and_scripts_t missing; // FIXME: Use this (or more likely nuke this method)
-        auto asset_utxos = get_unspent_outputs(deposit_details, missing);
-        process_unspent_outputs(deposit_details, asset_utxos);
-
-        const uint32_t curr_block_height = get_block_height();
-        const uint32_t expires_at_block
-            = std::max(curr_block_height, deposit_details.value("expires_at_block", curr_block_height));
-
-        std::for_each(std::begin(asset_utxos), std::end(asset_utxos), [expires_at_block](nlohmann::json& utxos) {
-            utxos.erase(std::remove_if(std::begin(utxos), std::end(utxos),
-                            [expires_at_block](const auto& u) { return u.at("nlocktime_at") > expires_at_block; }),
-                std::end(utxos));
-        });
-
-        return asset_utxos;
-    }
-
     void ga_session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
         const uint32_t value = locktime_details.at("value");

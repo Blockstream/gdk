@@ -219,9 +219,6 @@ class Session(object):
     def send_nlocktimes(self):
         return send_nlocktimes(self.session_obj)
 
-    def get_expired_deposits(self, deposit_details={'subaccount': 0, 'num_confs': 1}):
-        return Call(get_expired_deposits(self.session_obj, self._to_json(deposit_details)))
-
     def set_csvtime(self, locktime_details):
         return Call(set_csvtime(self.session_obj, self._to_json(locktime_details)))
 

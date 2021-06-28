@@ -137,6 +137,9 @@ namespace sdk {
     protected:
         state_type call_impl() override;
         const nlohmann::json m_details;
+
+    private:
+        void filter_result();
     };
 
     class get_balance_call : public get_unspent_outputs_call {
@@ -156,14 +159,6 @@ namespace sdk {
         state_type call_impl() override;
 
         nlohmann::json m_details;
-    };
-
-    class get_expired_deposits_call : public needs_unblind_call {
-    public:
-        get_expired_deposits_call(session& session, const nlohmann::json& details);
-
-    private:
-        state_type wrapped_call_impl() override;
     };
 
     class change_settings_call : public auth_handler_impl {

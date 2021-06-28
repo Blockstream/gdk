@@ -301,12 +301,6 @@ GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const 
 
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_expired_deposits, struct GA_session*, session, const GA_json*, deposit_details,
-    struct GA_auth_handler**, call, {
-        auto call_impl = new ga::sdk::get_expired_deposits_call(*session, *json_cast(deposit_details));
-        *call = auth_cast(new ga::sdk::auto_auth_handler(call_impl));
-    })
-
 GDK_DEFINE_C_FUNCTION_3(GA_set_csvtime, struct GA_session*, session, const GA_json*, locktime_details,
     struct GA_auth_handler**, call,
     { *call = auth_cast(new ga::sdk::csv_time_call(*session, *json_cast(locktime_details))); });

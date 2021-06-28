@@ -144,7 +144,6 @@ namespace sdk {
         std::string broadcast_transaction(const std::string& tx_hex);
 
         void send_nlocktimes();
-        nlohmann::json get_expired_deposits(const nlohmann::json& deposit_details);
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
         void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
 
