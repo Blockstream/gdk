@@ -2256,10 +2256,10 @@ namespace sdk {
         return false; // Cache not updated
     }
 
-    void ga_session::cleanup_utxos(nlohmann::json& utxos, unique_pubkeys_and_scripts_t& missing)
+    bool ga_session::cleanup_utxos(nlohmann::json& utxos, unique_pubkeys_and_scripts_t& missing)
     {
         const bool is_liquid = m_net_params.is_liquid();
-        bool updated_cache = false;
+        bool updated_blinding_cache = false;
 
         // Standardise key names and data types of server provided UTXOs.
         // For Liquid, unblind it if possible. If not, record the pubkey
@@ -2303,7 +2303,7 @@ namespace sdk {
                 } else {
                     if (is_liquid) {
                         if (json_get_value(utxo, "is_relevant", true)) {
-                            updated_cache |= unblind_utxo(utxo, missing);
+                            updated_blinding_cache |= unblind_utxo(utxo, missing);
                         }
                     } else {
                         amount::value_type value;
@@ -2323,14 +2323,11 @@ namespace sdk {
                 json_add_if_missing(utxo, "subtype", 0u);
             } else if (is_liquid && utxo.value("error", std::string()) == "missing blinding nonce") {
                 // UTXO was previously processed but could not be unblinded: try again
-                updated_cache |= unblind_utxo(utxo, missing);
+                updated_blinding_cache |= unblind_utxo(utxo, missing);
             }
         }
 
-        if (updated_cache) {
-            locker_t locker(m_mutex);
-            m_cache.save_db();
-        }
+        return updated_blinding_cache;
     }
 
     tx_list_cache::container_type ga_session::get_tx_list(ga_session::locker_t& locker, uint32_t subaccount,
@@ -2427,6 +2424,8 @@ namespace sdk {
         const auto path = datadir + "/state";
         const bool is_liquid = m_net_params.is_liquid();
         auto is_cached = true;
+        bool updated_blinding_cache = false;
+
         for (auto& tx_details : tx_list) {
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
             // TODO: Server should set subaccount to null if this is a spend from multiple subaccounts
@@ -2464,7 +2463,7 @@ namespace sdk {
 
             // Clean up and categorize the endpoints
             unique_pubkeys_and_scripts_t missing; // FIXME: Use this
-            cleanup_utxos(tx_details["eps"], missing);
+            updated_blinding_cache |= cleanup_utxos(tx_details["eps"], missing);
 
             for (auto& ep : tx_details["eps"]) {
                 ep.erase("id");
@@ -2632,7 +2631,10 @@ namespace sdk {
             tx_details["user_signed"] = true;
             tx_details["server_signed"] = true;
         }
-
+        if (updated_blinding_cache) {
+            locker_t locker(m_mutex);
+            m_cache.save_db(); // Cache was updated; save it
+        }
         return tx_list;
     }
 
@@ -2765,7 +2767,10 @@ namespace sdk {
         const bool all_coins = json_get_value(details, "all_coins", false);
 
         auto utxos = wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
-        cleanup_utxos(utxos, missing);
+        if (cleanup_utxos(utxos, missing)) {
+            locker_t locker(m_mutex);
+            m_cache.save_db(); // Cache was updated; save it
+        }
 
         // Compute the locktime of our UTXOs locally where we can
         bool need_nlocktime_info = false;
@@ -2811,7 +2816,10 @@ namespace sdk {
         if (is_liquid) {
             // Reprocess to unblind any UTXOS we now have the nonces for
             unique_pubkeys_and_scripts_t missing;
-            cleanup_utxos(utxos, missing);
+            if (cleanup_utxos(utxos, missing)) {
+                locker_t locker(m_mutex);
+                m_cache.save_db(); // Cache was updated; save it
+            }
         }
 
         // Return the UTXOs grouped by asset id
@@ -2881,7 +2889,7 @@ namespace sdk {
         }
 
         unique_pubkeys_and_scripts_t missing; // Always empty for sweeping
-        cleanup_utxos(utxos, missing);
+        GDK_RUNTIME_ASSERT(!cleanup_utxos(utxos, missing)); // Should never do unblinding
         return utxos;
     }
 
