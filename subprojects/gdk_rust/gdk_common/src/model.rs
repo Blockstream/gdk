@@ -408,6 +408,29 @@ pub struct Settings {
     pub sound: bool,
 }
 
+impl Settings {
+    pub fn update(&mut self, json: &serde_json::Value) {
+        if let Some(unit) = json.get("unit").and_then(|v| v.as_str()) {
+            self.unit = unit.to_string();
+        }
+        if let Some(required_num_blocks) = json.get("required_num_blocks").and_then(|v| v.as_u64())
+        {
+            self.required_num_blocks = required_num_blocks as u32;
+        }
+        if let Some(altimeout) = json.get("altimeout").and_then(|v| v.as_u64()) {
+            self.altimeout = altimeout as u32;
+        }
+        if let Some(pricing) =
+            json.get("pricing").and_then(|v| serde_json::from_value(v.clone()).ok())
+        {
+            self.pricing = pricing;
+        }
+        if let Some(sound) = json.get("sound").and_then(|v| v.as_bool()) {
+            self.sound = sound;
+        }
+    }
+}
+
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct AccountSettings {
     pub name: String,

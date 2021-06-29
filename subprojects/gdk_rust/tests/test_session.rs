@@ -297,7 +297,14 @@ impl TestSession {
     pub fn settings(&mut self) {
         let mut settings = self.session.get_settings().unwrap();
         settings.altimeout += 1;
-        self.session.change_settings(&settings).unwrap();
+        self.session.change_settings(&serde_json::to_value(settings.clone()).unwrap()).unwrap();
+        let new_settings = self.session.get_settings().unwrap();
+        assert_eq!(settings, new_settings);
+
+        settings.unit = "sats".to_string();
+        let partial =
+            serde_json::from_str(r#"{"unit": "sats", "another_key": "another_value"}"#).unwrap();
+        self.session.change_settings(&partial).unwrap();
         let new_settings = self.session.get_settings().unwrap();
         assert_eq!(settings, new_settings);
     }

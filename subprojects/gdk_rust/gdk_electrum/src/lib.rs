@@ -787,9 +787,12 @@ impl Session<Error> for ElectrumSession {
         Ok(self.get_wallet()?.get_settings()?)
     }
 
-    fn change_settings(&mut self, settings: &Settings) -> Result<(), Error> {
-        self.get_wallet()?.change_settings(settings)?;
-        notify_settings(self.notify.clone(), settings);
+    fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
+        let wallet = self.get_wallet()?;
+        let mut settings = wallet.get_settings()?;
+        settings.update(value);
+        self.get_wallet()?.change_settings(&settings)?;
+        notify_settings(self.notify.clone(), &settings);
         Ok(())
     }
 
