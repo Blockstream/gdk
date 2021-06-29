@@ -895,6 +895,11 @@ namespace sdk {
     {
         if (m_state != state_type::error) {
             try {
+                const uint32_t num_confs = details.value("num_confs", 0xff);
+                if (num_confs != 0 && num_confs != 1u) {
+                    set_error("num_confs must be set to 0 or 1");
+                    return;
+                }
                 auto impl = session.get_nonnull_impl();
                 unique_pubkeys_and_scripts_t missing;
                 auto utxos = impl->get_unspent_outputs(details, missing);
