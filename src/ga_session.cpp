@@ -2193,7 +2193,8 @@ namespace sdk {
         update_fiat_rate(locker, fiat_rate.get_value_or(std::string()));
     }
 
-    bool ga_session::unblind_utxo(nlohmann::json& utxo, unique_pubkeys_and_scripts_t& missing)
+    bool ga_session::unblind_utxo(
+        nlohmann::json& utxo, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing)
     {
         amount::value_type value;
 
@@ -2207,10 +2208,28 @@ namespace sdk {
             utxo["confidential"] = false;
             return false; // Cache not updated
         }
-        const auto txhash_p = utxo.find("txhash");
+
+        // 1) get_unspent_outputs UTXOs have txhash/pt_idx and implicitly
+        // is_output is true but it is not present.
+        // 2) get_transaction tx outputs have for_txhash(passed in)/pt_idx
+        // and is_output is true.
+        // 3) get_transaction tx inputs have prevtxhash/previdx and is_output
+        // is false.
+        // Ensure we use the correct tx/vout pair to unblind and encache.
+        std::string txhash;
+        uint32_t pt_idx = utxo.at("pt_idx");
+        if (utxo.contains("prevtxhash")) {
+            txhash = utxo.at("prevtxhash");
+            pt_idx = utxo.at("previdx");
+        } else if (utxo.contains("txhash")) {
+            txhash = utxo.at("txhash");
+        } else if (utxo.value("is_output", true)) {
+            txhash = for_txhash;
+        }
+
         locker_t locker(m_mutex);
-        if (txhash_p != utxo.end()) {
-            const auto cached = m_cache.get_liquid_output(h2b(*txhash_p), utxo.at("pt_idx"));
+        if (!txhash.empty()) {
+            const auto cached = m_cache.get_liquid_output(h2b(txhash), pt_idx);
             if (!cached.empty()) {
                 utxo.update(cached.begin(), cached.end());
                 utxo["confidential"] = true;
@@ -2242,8 +2261,8 @@ namespace sdk {
             utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
             utxo["confidential"] = true;
             utxo.erase("error");
-            if (txhash_p != utxo.end()) {
-                m_cache.insert_liquid_output(h2b(*txhash_p), utxo.at("pt_idx"), utxo);
+            if (!txhash.empty()) {
+                m_cache.insert_liquid_output(h2b(txhash), pt_idx, utxo);
                 return true; // Cache was updated
             }
         } catch (const std::exception& ex) {
@@ -2252,7 +2271,8 @@ namespace sdk {
         return false; // Cache not updated
     }
 
-    bool ga_session::cleanup_utxos(nlohmann::json& utxos, unique_pubkeys_and_scripts_t& missing)
+    bool ga_session::cleanup_utxos(
+        nlohmann::json& utxos, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing)
     {
         const bool is_liquid = m_net_params.is_liquid();
         bool updated_blinding_cache = false;
@@ -2299,7 +2319,7 @@ namespace sdk {
                 } else {
                     if (is_liquid) {
                         if (json_get_value(utxo, "is_relevant", true)) {
-                            updated_blinding_cache |= unblind_utxo(utxo, missing);
+                            updated_blinding_cache |= unblind_utxo(utxo, for_txhash, missing);
                         }
                     } else {
                         amount::value_type value;
@@ -2320,7 +2340,7 @@ namespace sdk {
                 json_add_if_missing(utxo, "is_internal", false);
             } else if (is_liquid && utxo.value("error", std::string()) == "missing blinding nonce") {
                 // UTXO was previously processed but could not be unblinded: try again
-                updated_blinding_cache |= unblind_utxo(utxo, missing);
+                updated_blinding_cache |= unblind_utxo(utxo, for_txhash, missing);
             }
         }
 
@@ -2424,6 +2444,7 @@ namespace sdk {
         bool updated_blinding_cache = false;
 
         for (auto& tx_details : tx_list) {
+            const std::string txhash = tx_details["txhash"];
             const uint32_t tx_block_height = json_add_if_missing(tx_details, "block_height", 0, true);
             // TODO: Server should set subaccount to null if this is a spend from multiple subaccounts
             json_add_if_missing(tx_details, "has_payment_request", false);
@@ -2460,7 +2481,7 @@ namespace sdk {
 
             // Clean up and categorize the endpoints
             unique_pubkeys_and_scripts_t missing; // FIXME: Use this
-            updated_blinding_cache |= cleanup_utxos(tx_details["eps"], missing);
+            updated_blinding_cache |= cleanup_utxos(tx_details["eps"], txhash, missing);
 
             for (auto& ep : tx_details["eps"]) {
                 ep.erase("id");
@@ -2591,9 +2612,8 @@ namespace sdk {
             if (m_net_params.spv_enabled()) {
                 tx_details["spv_verified"] = "in_progress";
                 if (!datadir.empty() && is_cached) {
-                    const nlohmann::json verify_params
-                        = { { "txid", tx_details["txhash"] }, { "height", tx_details["block_height"] },
-                              { "path", path }, { "network", m_net_params.get_json() }, { "encryption_key", "TBD" } };
+                    const nlohmann::json verify_params = { { "txid", txhash }, { "height", tx_details["block_height"] },
+                        { "path", path }, { "network", m_net_params.get_json() }, { "encryption_key", "TBD" } };
 
                     const auto verify_result = spv_verify_tx(verify_params);
                     GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << verify_result;
@@ -2764,7 +2784,7 @@ namespace sdk {
         const bool all_coins = json_get_value(details, "all_coins", false);
 
         auto utxos = wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
-        if (cleanup_utxos(utxos, missing)) {
+        if (cleanup_utxos(utxos, std::string(), missing)) {
             locker_t locker(m_mutex);
             m_cache.save_db(); // Cache was updated; save it
         }
@@ -2813,7 +2833,7 @@ namespace sdk {
         if (is_liquid) {
             // Reprocess to unblind any UTXOS we now have the nonces for
             unique_pubkeys_and_scripts_t missing;
-            if (cleanup_utxos(utxos, missing)) {
+            if (cleanup_utxos(utxos, std::string(), missing)) {
                 locker_t locker(m_mutex);
                 m_cache.save_db(); // Cache was updated; save it
             }
@@ -2886,7 +2906,7 @@ namespace sdk {
         }
 
         unique_pubkeys_and_scripts_t missing; // Always empty for sweeping
-        GDK_RUNTIME_ASSERT(!cleanup_utxos(utxos, missing)); // Should never do unblinding
+        GDK_RUNTIME_ASSERT(!cleanup_utxos(utxos, std::string(), missing)); // Should never do unblinding
         return utxos;
     }
 
