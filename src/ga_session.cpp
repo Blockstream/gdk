@@ -2762,19 +2762,39 @@ namespace sdk {
         const bool all_coins = json_get_value(details, "all_coins", false);
 
         auto utxos = wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
-
-        const auto nlocktimes = update_nlocktime_info();
-        if (nlocktimes && !nlocktimes->empty()) {
-            for (auto& utxo : utxos) {
-                const uint32_t vout = utxo.at("pt_idx");
-                const std::string k{ json_get_value(utxo, "txhash") + ":" + std::to_string(vout) };
-                const auto it = nlocktimes->find(k);
-                if (it != nlocktimes->end()) {
-                    utxo["nlocktime_at"] = it->second.at("nlocktime_at");
-                }
-            };
-        }
         cleanup_utxos(utxos, missing);
+
+        // Compute the locktime of our UTXOs locally where we can
+        bool need_nlocktime_info = false;
+        for (auto& utxo : utxos) {
+            if (utxo["address_type"] != "csv") {
+                // We must get the nlocktime information from the server for this UTXO
+                need_nlocktime_info = true;
+            } else {
+                const uint32_t block_height = utxo["block_height"];
+                if (block_height != 0) {
+                    // CSV nlocktime is relative to the block the tx confirmed in
+                    const uint32_t csv_blocks = utxo["subtype"];
+                    GDK_RUNTIME_ASSERT(csv_blocks != 0);
+                    utxo["nlocktime_at"] = block_height + csv_blocks;
+                }
+            }
+        }
+
+        if (need_nlocktime_info) {
+            // For non-CSV UTXOs, use nlocktime data provided by the server
+            const auto nlocktimes = update_nlocktime_info();
+            if (nlocktimes && !nlocktimes->empty()) {
+                for (auto& utxo : utxos) {
+                    const uint32_t vout = utxo.at("pt_idx");
+                    const std::string k{ json_get_value(utxo, "txhash") + ":" + std::to_string(vout) };
+                    const auto it = nlocktimes->find(k);
+                    if (it != nlocktimes->end()) {
+                        utxo["nlocktime_at"] = it->second.at("nlocktime_at");
+                    }
+                }
+            }
+        }
         return utxos;
     }
 
