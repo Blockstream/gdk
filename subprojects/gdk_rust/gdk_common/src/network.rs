@@ -69,6 +69,7 @@ impl Network {
     pub fn id(&self) -> NetworkId {
         match (self.liquid, self.mainnet, self.development) {
             (true, true, false) => NetworkId::Elements(ElementsNetwork::Liquid),
+            (true, false, false) => NetworkId::Elements(ElementsNetwork::ElementsRegtest),
             (true, false, true) => NetworkId::Elements(ElementsNetwork::ElementsRegtest),
             (false, true, false) => NetworkId::Bitcoin(bitcoin::Network::Bitcoin),
             (false, false, false) => NetworkId::Bitcoin(bitcoin::Network::Testnet),
