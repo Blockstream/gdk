@@ -39,7 +39,7 @@ pub trait Session<E> {
     fn get_available_currencies(&self) -> Result<Value, E>;
     fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, E>;
     fn get_settings(&self) -> Result<Settings, E>;
-    fn change_settings(&mut self, settings: &Settings) -> Result<(), E>;
+    fn change_settings(&mut self, value: &Value) -> Result<(), E>;
     fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, E>;
     fn block_status(&self) -> Result<(u32, BEBlockHash), E>;
     fn tx_status(&self) -> Result<u64, E>;
