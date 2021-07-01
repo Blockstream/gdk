@@ -549,7 +549,14 @@ pub struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= log::max_level()
+        let level = metadata.level();
+        if level > log::Level::Debug {
+            level <= log::max_level()
+        } else {
+            level <= log::max_level()
+                && !metadata.target().starts_with("rustls")
+                && !metadata.target().starts_with("electrum_client")
+        }
     }
 
     fn log(&self, record: &Record) {
