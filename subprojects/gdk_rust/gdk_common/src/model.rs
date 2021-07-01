@@ -145,7 +145,7 @@ pub struct GetUnspentOpt {
     pub num_confs: Option<u32>,
     #[serde(rename = "confidential")]
     pub confidential_utxos_only: Option<bool>,
-    pub all_coins: Option<usize>, // unused
+    pub all_coins: Option<bool>, // unused
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
