@@ -299,8 +299,7 @@ pub extern "C" fn GDKRUST_call_session(
 
             let ret_val = match e {
                 Error::Electrum(gdk_electrum::error::Error::InvalidPin) => GA_NOT_AUTHORIZED,
-                Error::Electrum(gdk_electrum::error::Error::PinError) => GA_ERROR,
-                _ => GA_OK,
+                _ => GA_ERROR,
             };
 
             info!("rust error {}: {}", code, desc);
