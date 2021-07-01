@@ -743,7 +743,10 @@ impl Session<Error> for ElectrumSession {
         info!("electrum send_transaction {:#?}", tx);
         let client = self.url.build_client(self.proxy.as_deref())?;
         let tx_bytes = hex::decode(&tx.hex)?;
-        client.transaction_broadcast_raw(&tx_bytes)?;
+        let txid = client.transaction_broadcast_raw(&tx_bytes)?;
+        if let Some(memo) = tx.create_transaction.as_ref().and_then(|o| o.memo.as_ref()) {
+            self.get_wallet()?.store.write()?.insert_memo(txid.into(), memo)?;
+        }
         Ok(tx.clone())
     }
 
