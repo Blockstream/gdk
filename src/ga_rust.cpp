@@ -44,26 +44,39 @@ namespace sdk {
             return cppjson;
         }
 
-        static void check_code(const int32_t return_code)
+        static std::pair<std::string, std::string> get_exception_details(GDKRUST_json* json)
         {
-            switch (return_code) {
-            case GA_OK:
-                return;
+            std::pair<std::string, std::string> ret;
+            if (json) {
+                try {
+                    const auto details = convert_serde(json);
+                    ret.first = details.value("error", std::string());
+                    ret.second = details.value("message", std::string());
+                } catch (const std::exception&) {
+                    // Ignore
+                }
+            }
+            return ret;
+        }
 
-            case GA_RECONNECT:
-            case GA_SESSION_LOST:
-                throw reconnect_error();
+        static void check_code(const int32_t return_code, GDKRUST_json* json)
+        {
+            if (return_code != GA_OK) {
+                switch (return_code) {
+                case GA_RECONNECT:
+                case GA_SESSION_LOST:
+                    throw reconnect_error();
 
-            case GA_TIMEOUT:
-                throw timeout_error();
+                case GA_TIMEOUT:
+                    throw timeout_error();
 
-            case GA_NOT_AUTHORIZED:
-                throw login_error(""); // TODO: msg from rust
+                case GA_NOT_AUTHORIZED:
+                    throw login_error(get_exception_details(json).second);
 
-            case GA_ERROR:
-            default:
-                throw std::runtime_error("call failed with: " + std::to_string(return_code));
-                break;
+                case GA_ERROR:
+                default:
+                    throw user_error(get_exception_details(json).second);
+                }
             }
         }
     } // namespace
@@ -120,9 +133,9 @@ namespace sdk {
 
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
     {
-        GDKRUST_json* ret;
+        GDKRUST_json* ret = nullptr;
         int res = GDKRUST_call_session(m_session, method.c_str(), convert_json(input).get(), &ret);
-        check_code(res);
+        check_code(res, ret);
         return convert_serde(ret);
     }
 
