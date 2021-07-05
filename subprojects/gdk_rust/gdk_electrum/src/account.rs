@@ -102,7 +102,6 @@ impl Account {
             account_num: self.account_num,
             script_type: self.script_type,
             settings: settings.unwrap_or_default(),
-            has_transactions: self.has_transactions(),
             satoshi: self.balance(num_confs, false)?,
         })
     }

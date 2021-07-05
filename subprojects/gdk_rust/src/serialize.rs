@@ -24,7 +24,6 @@ pub fn subaccount_value(subaccount: &AccountInfo) -> Value {
         "receiving_id": "",
         "name": subaccount.settings.name,
         "hidden": subaccount.settings.hidden,
-        "has_transactions": subaccount.has_transactions,
         "satoshi": balance_result_value(&subaccount.satoshi)
     })
 }
