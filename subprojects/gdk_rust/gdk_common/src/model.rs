@@ -371,6 +371,8 @@ pub struct AccountInfo {
     pub script_type: ScriptType,
     #[serde(flatten)]
     pub settings: AccountSettings,
+    pub required_ca: u32,     // unused, always 0
+    pub receiving_id: String, // unused, always ""
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -102,6 +102,8 @@ impl Account {
             account_num: self.account_num,
             script_type: self.script_type,
             settings: settings.unwrap_or_default(),
+            required_ca: 0,
+            receiving_id: "".to_string(),
         })
     }
 
