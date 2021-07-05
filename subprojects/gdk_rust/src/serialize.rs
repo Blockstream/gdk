@@ -8,10 +8,6 @@ pub fn txs_result_value(txs: &TxsResult) -> Value {
     json!(txs.0.clone())
 }
 
-pub fn subaccounts_value(subaccounts: &[AccountInfo]) -> Value {
-    Value::Array(subaccounts.iter().map(subaccount_value).collect())
-}
-
 pub fn subaccount_value(subaccount: &AccountInfo) -> Value {
     json!({
         "type": subaccount.script_type,

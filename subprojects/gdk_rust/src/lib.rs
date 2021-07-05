@@ -383,9 +383,7 @@ where
             .map(|v| json!(v))
             .map_err(Into::into),
 
-        "get_subaccounts" => {
-            session.get_subaccounts().map(|x| serialize::subaccounts_value(&x)).map_err(Into::into)
-        }
+        "get_subaccounts" => session.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
 
         "get_subaccount" => get_subaccount(session, input),
 
