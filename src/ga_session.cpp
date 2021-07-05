@@ -2776,7 +2776,7 @@ namespace sdk {
                     // CSV nlocktime is relative to the block the tx confirmed in
                     const uint32_t csv_blocks = utxo["subtype"];
                     GDK_RUNTIME_ASSERT(csv_blocks != 0);
-                    utxo["nlocktime_at"] = block_height + csv_blocks;
+                    utxo["expiry_height"] = block_height + csv_blocks;
                 }
             }
         }
@@ -2790,7 +2790,7 @@ namespace sdk {
                     const std::string k{ json_get_value(utxo, "txhash") + ":" + std::to_string(vout) };
                     const auto it = nlocktimes->find(k);
                     if (it != nlocktimes->end()) {
-                        utxo["nlocktime_at"] = it->second.at("nlocktime_at");
+                        utxo["expiry_height"] = it->second.at("nlocktime_at");
                     }
                 }
             }
