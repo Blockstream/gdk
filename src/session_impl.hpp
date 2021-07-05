@@ -41,7 +41,7 @@ namespace sdk {
         virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
         virtual void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler) = 0;
-        virtual void emit_notification(nlohmann::json details) = 0;
+        virtual void emit_notification(nlohmann::json details, bool async);
         virtual bool reconnect() = 0;
         virtual void reconnect_hint(bool enable, bool restart) = 0;
         virtual void try_reconnect() = 0;

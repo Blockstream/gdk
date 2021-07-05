@@ -149,7 +149,8 @@ namespace sdk {
                 = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
                       nlohmann::json tor_json(
                           { { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
-                      emit_notification({ { "event", "tor" }, { "tor", tor_json } });
+                      constexpr bool async = false; // Note: ga_session sends this async
+                      emit_notification({ { "event", "tor" }, { "tor", tor_json } }, async);
                   });
 
             if (full_socks5.empty()) {
@@ -266,22 +267,8 @@ namespace sdk {
 
     void ga_rust::GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json)
     {
-        // "new" needed because we want that to be on the heap. the notif handler will free it
-        nlohmann::json* converted_heap = new nlohmann::json(convert_serde(json));
-        GA_json* as_ptr = reinterpret_cast<GA_json*>(converted_heap);
-
         ga_rust* self = static_cast<ga_rust*>(self_context);
-        if (self->m_notification_handler) {
-            self->m_notification_handler(self->m_notification_context, as_ptr);
-        }
-    }
-
-    void ga_rust::emit_notification(nlohmann::json details)
-    {
-        if (m_notification_handler) {
-            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
-            m_notification_handler(m_notification_context, details_p);
-        }
+        self->emit_notification(convert_serde(json), false);
     }
 
     void ga_rust::set_notification_handler(GA_notification_handler handler, void* context)

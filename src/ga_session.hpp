@@ -167,7 +167,7 @@ namespace sdk {
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& details);
 
-        void emit_notification(nlohmann::json details);
+        void emit_notification(nlohmann::json details, bool async);
 
         std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
@@ -217,7 +217,6 @@ namespace sdk {
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
-        void call_notification_handler(nlohmann::json details);
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
