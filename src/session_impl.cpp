@@ -80,6 +80,16 @@ namespace sdk {
         m_notification_context = context;
     }
 
+    void session_impl::emit_notification(nlohmann::json details, bool /*async*/)
+    {
+        // By default, ignore the async flag
+        if (m_notification_handler) {
+            // We use 'new' here as it is the handlers responsibility to 'delete'
+            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
+            m_notification_handler(m_notification_context, details_p);
+        }
+    }
+
     void session_impl::register_user(const std::string& /*master_pub_key_hex*/,
         const std::string& /*master_chain_code_hex*/, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {

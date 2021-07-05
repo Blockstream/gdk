@@ -567,7 +567,7 @@ namespace sdk {
             m_tor_ctrl = tor_controller::get_shared_ref();
             m_proxy = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
                 nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
-                emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } });
+                emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
             });
             if (m_proxy.empty()) {
                 m_tor_ctrl->tor_sleep_hint("wakeup");
@@ -726,9 +726,15 @@ namespace sdk {
 
     void ga_session::set_ping_fail_handler(ping_fail_t handler) { m_ping_fail_handler = std::move(handler); }
 
-    void ga_session::emit_notification(nlohmann::json details)
+    void ga_session::emit_notification(nlohmann::json details, bool async)
     {
-        asio::post(m_pool, [this, details] { call_notification_handler(details); });
+        if (m_notification_handler) {
+            if (async) {
+                asio::post(m_pool, [this, details] { emit_notification(details, false); });
+            } else {
+                session_impl::emit_notification(details, false);
+            }
+        }
     }
 
     void ga_session::try_reconnect()
@@ -744,7 +750,7 @@ namespace sdk {
             GDK_LOG_SEV(log_level::info) << "attempting to reconnect but transport still connected. backing off...";
             nlohmann::json net_json(
                 { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
-            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } });
+            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
             return;
         }
 
@@ -767,7 +773,7 @@ namespace sdk {
                 const auto backoff_time = bo.backoff(n++);
                 nlohmann::json net_json({ { "connected", false }, { "elapsed", bo.elapsed().count() },
                     { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
-                emit_notification({ { "event", "network" }, { "network", std::move(net_json) } });
+                emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
                 if (!m_network_control->retrying(backoff_time)) {
                     GDK_LOG_SEV(log_level::info)
@@ -818,7 +824,7 @@ namespace sdk {
             }
             nlohmann::json net_json(
                 { { "connected", true }, { "login_required", !logged_in }, { "heartbeat_timeout", false } });
-            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } });
+            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
             return true;
         } catch (const std::exception&) {
@@ -837,10 +843,8 @@ namespace sdk {
     void ga_session::disconnect()
     {
         {
-
             nlohmann::json details{ { "connected", false } };
-            call_notification_handler(
-                    nlohmann::json({ { "event", "session" }, { "session", std::move(details) } }));
+            emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
 
             locker_t locker(m_mutex);
             m_signer.reset();
@@ -1268,8 +1272,7 @@ namespace sdk {
         if (m_notification_handler != nullptr) {
             auto settings = get_settings(locker);
             unique_unlock unlocker(locker);
-            call_notification_handler(
-                nlohmann::json({ { "event", "settings" }, { "settings", std::move(settings) } }));
+            emit_notification({ { "event", "settings" }, { "settings", std::move(settings) } }, false);
         }
 
         // Notify the caller of 2fa reset status
@@ -1279,8 +1282,8 @@ namespace sdk {
             nlohmann::json reset_status
                 = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
             unique_unlock unlocker(locker);
-            call_notification_handler(
-                nlohmann::json({ { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }));
+            emit_notification(
+                { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
         }
 
         // Notify the caller of the current fees
@@ -1464,8 +1467,7 @@ namespace sdk {
                 // TODO: figure out what type is for liquid
             }
             unique_unlock unlocker(locker);
-            call_notification_handler(
-                nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
+            emit_notification({ { "event", "transaction" }, { "transaction", std::move(details) } }, false);
         });
     }
 
@@ -1495,9 +1497,9 @@ namespace sdk {
                 m_block_height = block_height;
             }
 
-            details.erase("diverged_count");
             unique_unlock unlocker(locker);
-            call_notification_handler(nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
+            details.erase("diverged_count");
+            emit_notification({ { "event", "block" }, { "block", std::move(details) } }, false);
         });
     }
 
@@ -1508,8 +1510,7 @@ namespace sdk {
             auto new_estimates = set_fee_estimates(locker, details);
 
             unique_unlock unlocker(locker);
-            call_notification_handler(
-                    nlohmann::json({ { "event", "fees" }, { "fees", std::move(new_estimates) } }));
+            emit_notification({ { "event", "fees" }, { "fees", std::move(new_estimates) } }, false);
         });
     }
 
@@ -2658,14 +2659,6 @@ namespace sdk {
         subscribe_future.get();
         GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
         return sub;
-    }
-
-    void ga_session::call_notification_handler(nlohmann::json details)
-    {
-        if (m_notification_handler) {
-            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
-            m_notification_handler(m_notification_context, details_p);
-        }
     }
 
     amount ga_session::get_dust_threshold() const
