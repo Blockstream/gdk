@@ -47,7 +47,7 @@ where
     E: Into<Error>,
     S: Session<E>,
 {
-    let index = input["index"]
+    let index = input["subaccount"]
         .as_u64()
         .ok_or_else(|| Error::Other("get_subaccount: index argument not found".into()))?;
 

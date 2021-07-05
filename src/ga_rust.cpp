@@ -291,7 +291,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_subaccount(uint32_t subaccount)
     {
-        return call_session("get_subaccount", nlohmann::json{ { "index", subaccount } });
+        return call_session("get_subaccount", nlohmann::json{ { "subaccount", subaccount } });
     }
 
     void ga_rust::rename_subaccount(uint32_t subaccount, const std::string& new_name)
