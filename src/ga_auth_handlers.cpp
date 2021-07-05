@@ -953,7 +953,7 @@ namespace sdk {
             // 'expired_at'. Therefore we filter out UTXOs where nlocktime
             // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
             constexpr uint32_t max_ = 0xffffffff; // 81716 years from genesis
-            auto&& filter = [at, max_](const auto& u) { return u.value("nlocktime_at", max_) > at; };
+            auto&& filter = [at, max_](const auto& u) { return u.value("expiry_height", max_) > at; };
 
             for (auto& asset : m_result["unspent_outputs"].items()) {
                 if (asset.key() != "error") {
