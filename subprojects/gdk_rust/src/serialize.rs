@@ -8,17 +8,6 @@ pub fn txs_result_value(txs: &TxsResult) -> Value {
     json!(txs.0.clone())
 }
 
-pub fn subaccount_value(subaccount: &AccountInfo) -> Value {
-    json!({
-        "type": subaccount.script_type,
-        "pointer": subaccount.account_num,
-        "required_ca": subaccount.required_ca,
-        "receiving_id": subaccount.receiving_id,
-        "name": subaccount.settings.name,
-        "hidden": subaccount.settings.hidden,
-    })
-}
-
 pub fn login<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
@@ -62,7 +51,7 @@ where
         .as_u64()
         .ok_or_else(|| Error::Other("get_subaccount: index argument not found".into()))?;
 
-    session.get_subaccount(index as u32).map(|x| subaccount_value(&x)).map_err(Into::into)
+    session.get_subaccount(index as u32).map(|v| json!(v)).map_err(Into::into)
 }
 
 pub fn get_transaction_details<S, E>(session: &S, input: &Value) -> Result<Value, Error>

@@ -389,10 +389,7 @@ where
 
         "create_subaccount" => {
             let opt: CreateAccountOpt = serde_json::from_value(input.clone())?;
-            session
-                .create_subaccount(opt)
-                .map(|x| serialize::subaccount_value(&x))
-                .map_err(Into::into)
+            session.create_subaccount(opt).map(|v| json!(v)).map_err(Into::into)
         }
         "get_next_subaccount" => {
             let opt: GetNextAccountOpt = serde_json::from_value(input.clone())?;
