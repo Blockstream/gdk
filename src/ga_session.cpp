@@ -316,7 +316,7 @@ namespace sdk {
         }
 
         // Make sure appearance settings match our expectations
-        static void cleanup_appearance_settings(const ga_session::locker_t& locker, nlohmann::json& appearance)
+        static void cleanup_appearance_settings(const session_impl::locker_t& locker, nlohmann::json& appearance)
         {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -433,8 +433,6 @@ namespace sdk {
         , m_ping_timer(m_io)
         , m_network_control(new network_control_context())
         , m_pool(DEFAULT_THREADPOOL_SIZE)
-        , m_notification_handler(nullptr)
-        , m_notification_context(nullptr)
         , m_blob()
         , m_blob_hmac()
         , m_blob_outdated(false)
@@ -567,11 +565,10 @@ namespace sdk {
     {
         if (m_net_params.use_tor() && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
-            m_proxy
-                = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
-                      emit_notification("tor",
-                          { { "tag", phase->tag }, { "summary", phase->summary }, { "progress", phase->progress } });
-                  });
+            m_proxy = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
+                nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
+                emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } });
+            });
             if (m_proxy.empty()) {
                 m_tor_ctrl->tor_sleep_hint("wakeup");
             }
@@ -729,14 +726,9 @@ namespace sdk {
 
     void ga_session::set_ping_fail_handler(ping_fail_t handler) { m_ping_fail_handler = std::move(handler); }
 
-    void ga_session::emit_notification(std::string event, nlohmann::json details)
+    void ga_session::emit_notification(nlohmann::json details)
     {
-        asio::post(m_pool, [this, event, details] {
-            locker_t locker(m_mutex);
-            if (m_notification_handler != nullptr) {
-                call_notification_handler(locker, new nlohmann::json({ { "event", event }, { event, details } }));
-            }
-        });
+        asio::post(m_pool, [this, details] { call_notification_handler(details); });
     }
 
     void ga_session::try_reconnect()
@@ -750,8 +742,9 @@ namespace sdk {
 
         if (is_connected()) {
             GDK_LOG_SEV(log_level::info) << "attempting to reconnect but transport still connected. backing off...";
-            emit_notification(
-                "network", { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
+            nlohmann::json net_json(
+                { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
+            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } });
             return;
         }
 
@@ -772,9 +765,9 @@ namespace sdk {
             uint32_t n = 0;
             for (;;) {
                 const auto backoff_time = bo.backoff(n++);
-                nlohmann::json network_status = { { "connected", false }, { "elapsed", bo.elapsed().count() },
-                    { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } };
-                emit_notification("network", network_status);
+                nlohmann::json net_json({ { "connected", false }, { "elapsed", bo.elapsed().count() },
+                    { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
+                emit_notification({ { "event", "network" }, { "network", std::move(net_json) } });
 
                 if (!m_network_control->retrying(backoff_time)) {
                     GDK_LOG_SEV(log_level::info)
@@ -823,8 +816,9 @@ namespace sdk {
             if (!logged_in) {
                 on_failed_login();
             }
-            emit_notification(
-                "network", { { "connected", true }, { "login_required", !logged_in }, { "heartbeat_timeout", false } });
+            nlohmann::json net_json(
+                { { "connected", true }, { "login_required", !logged_in }, { "heartbeat_timeout", false } });
+            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } });
 
             return true;
         } catch (const std::exception&) {
@@ -843,14 +837,12 @@ namespace sdk {
     void ga_session::disconnect()
     {
         {
+
+            nlohmann::json details{ { "connected", false } };
+            call_notification_handler(
+                    nlohmann::json({ { "event", "session" }, { "session", std::move(details) } }));
+
             locker_t locker(m_mutex);
-
-            if (m_notification_handler != nullptr) {
-                const nlohmann::json details{ { "connected", false } };
-                call_notification_handler(
-                    locker, new nlohmann::json({ { "event", "session" }, { "session", details } }));
-            }
-
             m_signer.reset();
             m_local_encryption_key = boost::none;
             m_blob_aes_key = boost::none;
@@ -1059,7 +1051,7 @@ namespace sdk {
     }
 
     std::pair<std::string, std::string> ga_session::sign_challenge(
-        ga_session::locker_t& locker, const std::string& challenge)
+        session_impl::locker_t& locker, const std::string& challenge)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
@@ -1075,7 +1067,7 @@ namespace sdk {
         return { sig_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
     }
 
-    nlohmann::json ga_session::set_fee_estimates(ga_session::locker_t& locker, const nlohmann::json& fee_estimates)
+    nlohmann::json ga_session::set_fee_estimates(session_impl::locker_t& locker, const nlohmann::json& fee_estimates)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1274,9 +1266,10 @@ namespace sdk {
 
         // Notify the caller of their settings
         if (m_notification_handler != nullptr) {
-            const auto settings = get_settings(locker);
+            auto settings = get_settings(locker);
+            unique_unlock unlocker(locker);
             call_notification_handler(
-                locker, new nlohmann::json({ { "event", "settings" }, { "settings", settings } }));
+                nlohmann::json({ { "event", "settings" }, { "settings", std::move(settings) } }));
         }
 
         // Notify the caller of 2fa reset status
@@ -1285,15 +1278,16 @@ namespace sdk {
             const auto& disputed = login_data["reset_2fa_disputed"];
             nlohmann::json reset_status
                 = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+            unique_unlock unlocker(locker);
             call_notification_handler(
-                locker, new nlohmann::json({ { "event", "twofactor_reset" }, { "twofactor_reset", reset_status } }));
+                nlohmann::json({ { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }));
         }
 
         // Notify the caller of the current fees
         on_new_fees(locker, m_login_data["fee_estimates"]);
     }
 
-    void ga_session::update_fiat_rate(ga_session::locker_t& locker, const std::string& rate_str)
+    void ga_session::update_fiat_rate(session_impl::locker_t& locker, const std::string& rate_str)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         try {
@@ -1305,7 +1299,7 @@ namespace sdk {
         }
     }
 
-    void ga_session::update_spending_limits(ga_session::locker_t& locker, const nlohmann::json& limits)
+    void ga_session::update_spending_limits(session_impl::locker_t& locker, const nlohmann::json& limits)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         if (limits.is_null()) {
@@ -1377,7 +1371,8 @@ namespace sdk {
         return convert_amount(locker, details)["satoshi"] <= current_total;
     }
 
-    std::unique_ptr<ga_session::locker_t> ga_session::get_multi_call_locker(uint32_t category_flags, bool wait_for_lock)
+    std::unique_ptr<session_impl::locker_t> ga_session::get_multi_call_locker(
+        uint32_t category_flags, bool wait_for_lock)
     {
         std::unique_ptr<locker_t> locker{ new locker_t(m_mutex, std::defer_lock) };
         for (;;) {
@@ -1468,8 +1463,9 @@ namespace sdk {
             } else {
                 // TODO: figure out what type is for liquid
             }
+            unique_unlock unlocker(locker);
             call_notification_handler(
-                locker, new nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
+                nlohmann::json({ { "event", "transaction" }, { "transaction", std::move(details) } }));
         });
     }
 
@@ -1499,11 +1495,9 @@ namespace sdk {
                 m_block_height = block_height;
             }
 
-            if (m_notification_handler != nullptr) {
-                details.erase("diverged_count");
-                call_notification_handler(
-                    locker, new nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
-            }
+            details.erase("diverged_count");
+            unique_unlock unlocker(locker);
+            call_notification_handler(nlohmann::json({ { "event", "block" }, { "block", std::move(details) } }));
         });
     }
 
@@ -1513,11 +1507,9 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
             auto new_estimates = set_fee_estimates(locker, details);
 
-            // Note: notification recipient must destroy the passed JSON
-            if (m_notification_handler != nullptr) {
-                call_notification_handler(
-                    locker, new nlohmann::json({ { "event", "fees" }, { "fees", new_estimates } }));
-            }
+            unique_unlock unlocker(locker);
+            call_notification_handler(
+                    nlohmann::json({ { "event", "fees" }, { "fees", std::move(new_estimates) } }));
         });
     }
 
@@ -1527,7 +1519,7 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    void ga_session::push_appearance_to_server(ga_session::locker_t& locker) const
+    void ga_session::push_appearance_to_server(session_impl::locker_t& locker) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const auto appearance = mp_cast(m_login_data["appearance"]);
@@ -1662,7 +1654,7 @@ namespace sdk {
         return get_post_login_data();
     }
 
-    void ga_session::load_client_blob(ga_session::locker_t& locker, bool encache)
+    void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)
     {
         // Load the latest blob from the server
         GDK_LOG_SEV(log_level::info) << "Fetching client blob from server";
@@ -1681,7 +1673,7 @@ namespace sdk {
         m_blob_outdated = false; // Blob is now current with the servers view
     }
 
-    bool ga_session::save_client_blob(ga_session::locker_t& locker, const std::string& old_hmac)
+    bool ga_session::save_client_blob(session_impl::locker_t& locker, const std::string& old_hmac)
     {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1703,7 +1695,7 @@ namespace sdk {
         return true;
     }
 
-    void ga_session::encache_client_blob(ga_session::locker_t& locker, const std::vector<unsigned char>& data)
+    void ga_session::encache_client_blob(session_impl::locker_t& locker, const std::vector<unsigned char>& data)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         m_cache.upsert_key_value("client_blob", data);
@@ -1717,7 +1709,7 @@ namespace sdk {
     }
 
     void ga_session::set_local_encryption_keys(
-        ga_session::locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
+        session_impl::locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
@@ -1765,7 +1757,7 @@ namespace sdk {
         return get_settings(locker);
     }
 
-    nlohmann::json ga_session::get_settings(ga_session::locker_t& locker)
+    nlohmann::json ga_session::get_settings(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1815,7 +1807,7 @@ namespace sdk {
     // still expects to find them there, but logically they don't belong there at all so
     // a more consistent scheme is presented via the gdk
     void ga_session::remap_appearance_settings(
-        ga_session::locker_t& locker, const nlohmann::json& src_json, nlohmann::json& dst_json, bool from_settings)
+        session_impl::locker_t& locker, const nlohmann::json& src_json, nlohmann::json& dst_json, bool from_settings)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1951,7 +1943,7 @@ namespace sdk {
     }
 
     void ga_session::ack_system_message(
-        ga_session::locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex)
+        session_impl::locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const auto ack_id = m_system_message_ack_id;
@@ -1973,7 +1965,7 @@ namespace sdk {
         return amount::convert(amount_json, m_fiat_currency, m_fiat_rate);
     }
 
-    nlohmann::json ga_session::convert_fiat_cents(ga_session::locker_t& locker, amount::value_type fiat_cents) const
+    nlohmann::json ga_session::convert_fiat_cents(session_impl::locker_t& locker, amount::value_type fiat_cents) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         return amount::convert_fiat_cents(fiat_cents, m_fiat_currency, m_fiat_rate);
@@ -2050,7 +2042,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::insert_subaccount(ga_session::locker_t& locker, uint32_t subaccount,
+    nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
         const std::string& name, const std::string& receiving_id, const std::string& recovery_pub_key,
         const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
         uint32_t required_ca, bool is_hidden)
@@ -2180,7 +2172,7 @@ namespace sdk {
     }
 
     void ga_session::change_settings_pricing_source(
-        ga_session::locker_t& locker, const std::string& currency, const std::string& exchange)
+        session_impl::locker_t& locker, const std::string& currency, const std::string& exchange)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -2345,7 +2337,7 @@ namespace sdk {
         return updated_blinding_cache;
     }
 
-    tx_list_cache::container_type ga_session::get_tx_list(ga_session::locker_t& locker, uint32_t subaccount,
+    tx_list_cache::container_type ga_session::get_tx_list(session_impl::locker_t& locker, uint32_t subaccount,
         uint32_t page_id, const std::string& start_date, const std::string& end_date, nlohmann::json& state_info)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -2654,7 +2646,7 @@ namespace sdk {
     }
 
     autobahn::wamp_subscription ga_session::subscribe(
-        ga_session::locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback)
+        session_impl::locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
@@ -2668,34 +2660,11 @@ namespace sdk {
         return sub;
     }
 
-    void ga_session::set_notification_handler(GA_notification_handler handler, void* context)
+    void ga_session::call_notification_handler(nlohmann::json details)
     {
-        locker_t locker(m_mutex);
-        set_notification_handler(locker, handler, context);
-    }
-
-    void ga_session::set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        m_notification_handler = handler;
-        m_notification_context = context;
-    }
-
-    void ga_session::call_notification_handler(locker_t& locker, nlohmann::json* details)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_notification_handler != nullptr);
-        // Note: notification recipient must destroy the passed JSON
-        const auto details_c = reinterpret_cast<GA_json*>(details);
-        {
-            GA_notification_handler handler = m_notification_handler;
-            void* context = m_notification_context;
-
-            unique_unlock unlocker(locker);
-            handler(context, details_c);
-        }
-        if (details_c == nullptr) {
-            set_notification_handler(locker, nullptr, nullptr);
+        if (m_notification_handler) {
+            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
+            m_notification_handler(m_notification_context, details_p);
         }
     }
 

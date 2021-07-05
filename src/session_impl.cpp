@@ -66,11 +66,19 @@ namespace sdk {
     session_impl::session_impl(const nlohmann::json& net_params, nlohmann::json& defaults)
         : m_net_params(get_network_overrides(net_params, defaults))
         , m_debug_logging(m_net_params.log_level() == "debug")
+        , m_notification_handler(nullptr)
+        , m_notification_context(nullptr)
     {
         configure_logging(m_net_params);
     }
 
     session_impl::~session_impl() {}
+
+    void session_impl::set_notification_handler(GA_notification_handler handler, void* context)
+    {
+        m_notification_handler = handler;
+        m_notification_context = context;
+    }
 
     void session_impl::register_user(const std::string& /*master_pub_key_hex*/,
         const std::string& /*master_chain_code_hex*/, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
