@@ -4,10 +4,6 @@ use gdk_common::model::*;
 use gdk_common::session::Session;
 use serde_json::Value;
 
-pub fn balance_result_value(bal: &Balances) -> Value {
-    json!(bal)
-}
-
 pub fn txs_result_value(txs: &TxsResult) -> Value {
     json!(txs.0.clone())
 }
@@ -24,7 +20,6 @@ pub fn subaccount_value(subaccount: &AccountInfo) -> Value {
         "receiving_id": "",
         "name": subaccount.settings.name,
         "hidden": subaccount.settings.hidden,
-        "satoshi": balance_result_value(&subaccount.satoshi)
     })
 }
 
@@ -71,12 +66,7 @@ where
         .as_u64()
         .ok_or_else(|| Error::Other("get_subaccount: index argument not found".into()))?;
 
-    let num_confs = input["num_confs"].as_u64().unwrap_or(0);
-
-    session
-        .get_subaccount(index as u32, num_confs as u32)
-        .map(|x| subaccount_value(&x))
-        .map_err(Into::into)
+    session.get_subaccount(index as u32).map(|x| subaccount_value(&x)).map_err(Into::into)
 }
 
 pub fn get_transaction_details<S, E>(session: &S, input: &Value) -> Result<Value, Error>

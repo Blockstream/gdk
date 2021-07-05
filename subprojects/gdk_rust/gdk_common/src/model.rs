@@ -371,7 +371,6 @@ pub struct AccountInfo {
     pub script_type: ScriptType,
     #[serde(flatten)]
     pub settings: AccountSettings,
-    pub satoshi: Balances,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -846,8 +846,8 @@ impl TestSession {
 
     /// test get_subaccount
     pub fn get_subaccount(&mut self) {
-        assert!(self.session.get_subaccount(0, 0).is_ok());
-        assert!(self.session.get_subaccount(1, 0).is_err());
+        assert!(self.session.get_subaccount(0).is_ok());
+        assert!(self.session.get_subaccount(1).is_err());
     }
 
     /// mine a block with the node and check if gdk session see the change

@@ -1,8 +1,8 @@
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, GetNextAccountOpt, GetTransactionsOpt,
-    RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
+    AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
+    GetTransactionsOpt, RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -144,8 +144,8 @@ fn subaccounts_liquid() {
 fn subaccounts(is_liquid: bool) {
     let mut test_session = setup_session(is_liquid, 0, |_| ());
 
-    assert!(test_session.session.get_subaccount(0, 0).is_ok());
-    assert!(test_session.session.get_subaccount(1, 0).is_err());
+    assert!(test_session.session.get_subaccount(0).is_ok());
+    assert!(test_session.session.get_subaccount(1).is_err());
 
     // Create subaccounts
     let account1 = test_session
@@ -172,8 +172,8 @@ fn subaccounts(is_liquid: bool) {
     assert_eq!(account2.settings.name, "Account 2");
     assert_eq!(account2.script_type, ScriptType::P2pkh);
     assert_eq!(account2.settings.hidden, false);
-    assert_eq!(test_session.session.get_subaccount(1, 0).unwrap().script_type, ScriptType::P2wpkh);
-    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().settings.name, "Account 2");
+    assert_eq!(test_session.session.get_subaccount(1).unwrap().script_type, ScriptType::P2wpkh);
+    assert_eq!(test_session.session.get_subaccount(2).unwrap().settings.name, "Account 2");
 
     // Update subaccount settings
     test_session
@@ -184,7 +184,7 @@ fn subaccounts(is_liquid: bool) {
             ..Default::default()
         })
         .unwrap();
-    let acc2 = test_session.session.get_subaccount(2, 0).unwrap();
+    let acc2 = test_session.session.get_subaccount(2).unwrap();
     assert_eq!(acc2.settings.hidden, true);
     // update_subaccount should not affect unspecified fields
     assert_eq!(acc2.settings.name, "Account 2");
@@ -197,7 +197,7 @@ fn subaccounts(is_liquid: bool) {
             new_name: "Account 2@".into(),
         })
         .unwrap();
-    assert_eq!(test_session.session.get_subaccount(2, 0).unwrap().settings.name, "Account 2@");
+    assert_eq!(test_session.session.get_subaccount(2).unwrap().settings.name, "Account 2@");
 
     // Get addresses & check they match the expected types
     let acc0_address = test_session.get_receive_address(0);
@@ -327,18 +327,16 @@ fn subaccounts(is_liquid: bool) {
     } else {
         "btc".to_string()
     };
-    let mut recovered_balances = subaccounts
-        .into_iter()
-        .map(|mut subaccount| {
-            (subaccount.account_num, subaccount.satoshi.remove(&btc_key).unwrap())
-        })
-        .collect::<HashMap<_, _>>();
-    info!("recovered subaccounts: {:?}", recovered_balances);
-    assert_eq!(recovered_balances.remove(&0).unwrap(), *balances.get(&0).unwrap() as i64);
-    assert_eq!(recovered_balances.remove(&1).unwrap(), *balances.get(&1).unwrap() as i64);
-    assert_eq!(recovered_balances.remove(&2).unwrap(), *balances.get(&2).unwrap() as i64);
-    assert_eq!(recovered_balances.remove(&18).unwrap(), *balances.get(&18).unwrap() as i64);
-    assert!(recovered_balances.is_empty());
+
+    for subaccount in subaccounts.iter() {
+        let opt = GetBalanceOpt {
+            subaccount: subaccount.account_num,
+            num_confs: 0,
+            confidential_utxos_only: None,
+        };
+        let balance = *new_session.get_balance(&opt).unwrap().get(&btc_key).unwrap_or(&0i64) as u64;
+        assert_eq!(balance, *balances.get(&subaccount.account_num).unwrap());
+    }
 
     new_session.disconnect().unwrap();
     test_session.stop();

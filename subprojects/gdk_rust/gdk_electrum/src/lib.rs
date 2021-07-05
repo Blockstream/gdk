@@ -666,18 +666,18 @@ impl Session<Error> for ElectrumSession {
 
     fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, Error> {
         let wallet = self.get_wallet()?;
-        wallet.iter_accounts_sorted().map(|a| a.info(0)).collect()
+        wallet.iter_accounts_sorted().map(|a| a.info()).collect()
     }
 
-    fn get_subaccount(&self, account_num: u32, num_confs: u32) -> Result<AccountInfo, Error> {
+    fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
         let wallet = self.get_wallet()?;
-        wallet.get_account(account_num)?.info(num_confs)
+        wallet.get_account(account_num)?.info()
     }
 
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let mut wallet = self.get_wallet_mut()?;
         let account = wallet.create_account(opt)?;
-        account.info(0)
+        account.info()
     }
 
     fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {

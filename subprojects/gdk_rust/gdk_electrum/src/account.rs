@@ -95,14 +95,13 @@ impl Account {
         self.account_num
     }
 
-    pub fn info(&self, num_confs: u32) -> Result<AccountInfo, Error> {
+    pub fn info(&self) -> Result<AccountInfo, Error> {
         let settings = self.store.read()?.get_account_settings(self.account_num).cloned();
 
         Ok(AccountInfo {
             account_num: self.account_num,
             script_type: self.script_type,
             settings: settings.unwrap_or_default(),
-            satoshi: self.balance(num_confs, false)?,
         })
     }
 
