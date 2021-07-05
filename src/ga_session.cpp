@@ -2919,12 +2919,15 @@ namespace sdk {
     // Idempotent
     nlohmann::json ga_session::get_transaction_details(const std::string& txhash) const
     {
-        const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
-
-        const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
-        nlohmann::json ret = { { "txhash", txhash } };
-        update_tx_info(m_net_params, tx, ret);
-        return ret;
+        try {
+            const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
+            const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
+            nlohmann::json ret = { { "txhash", txhash } };
+            update_tx_size_info(tx, ret);
+            return ret;
+        } catch (const std::exception&) {
+            throw user_error("Transaction not found");
+        }
     }
 
     static script_type set_addr_script_type(nlohmann::json& address, const std::string& addr_type)
