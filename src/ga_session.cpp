@@ -2101,7 +2101,6 @@ namespace sdk {
     {
         const std::string name = details.at("name");
         const std::string type = details.at("type");
-        std::string recovery_mnemonic = json_get_value(details, "recovery_mnemonic");
         std::string recovery_bip32_xpub = json_get_value(details, "recovery_xpub");
         std::string recovery_pub_key;
         std::string recovery_chain_code;
@@ -2131,7 +2130,6 @@ namespace sdk {
             recovery_chain_code, recovery_bip32_xpub, type, required_ca, is_hidden);
 
         if (type == "2of3") {
-            subaccount_details["recovery_mnemonic"] = recovery_mnemonic;
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
         if (!name.empty()) {
