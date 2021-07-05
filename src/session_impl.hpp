@@ -2,6 +2,7 @@
 #define GDK_SESSION_IMPL_HPP
 
 #pragma once
+#include <thread>
 
 #include "amount.hpp"
 #include "autobahn_wrapper.hpp"
@@ -20,6 +21,8 @@ namespace sdk {
 
     class session_impl {
     public:
+        using locker_t = std::unique_lock<std::mutex>;
+
         explicit session_impl(const nlohmann::json& net_params, nlohmann::json& defaults);
         session_impl(const session_impl& other) = delete;
         session_impl(session_impl&& other) noexcept = delete;
@@ -38,7 +41,7 @@ namespace sdk {
         virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
         virtual void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler) = 0;
-        virtual void emit_notification(std::string event, nlohmann::json details) = 0;
+        virtual void emit_notification(nlohmann::json details) = 0;
         virtual bool reconnect() = 0;
         virtual void reconnect_hint(bool enable, bool restart) = 0;
         virtual void try_reconnect() = 0;
@@ -75,7 +78,7 @@ namespace sdk {
             = 0;
         virtual nlohmann::json get_transactions(const nlohmann::json& details) = 0;
 
-        virtual void set_notification_handler(GA_notification_handler handler, void* context) = 0;
+        virtual void set_notification_handler(GA_notification_handler handler, void* context);
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer) = 0;
@@ -184,9 +187,34 @@ namespace sdk {
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
 
     protected:
+        // Locking per-session assumes the following thread safety model:
+        // 1) Implementations noted "idempotent" can be called from multiple
+        //    threads at once
+        // 2) Implementations noted "post-login idempotent" can be called
+        //    from multiple threads after login has completed.
+        // 3) Implementations that take a locker_t as the first parameter
+        //    assume that the caller holds the lock and will leave it
+        //    locked upon return.
+        //
+        // The safest way to strictly adhere to the above is to serialize all
+        // access to the session. Everything up to login should be serialized
+        // otherwise. Logical wallet operations that span more than one api call
+        // (such as those handled by two factor call objects) do not lock the
+        // session for the entire operation. In general we must assume that
+        // local state can be out of sync with the server, whether this is due
+        // to multiple threads in a single process or actions in another
+        // process (e.g. the user is logged in twice in different apps)
+        //
+        // ** Under no circumstances must this mutex ever be made recursive **
+        mutable std::mutex m_mutex;
+
         // Immutable upon construction
         const network_parameters m_net_params;
         const bool m_debug_logging;
+
+        // Immutable once set by the caller (prior to connect)
+        GA_notification_handler m_notification_handler;
+        void* m_notification_context;
 
         // Immutable post-login
         std::shared_ptr<signer> m_signer;

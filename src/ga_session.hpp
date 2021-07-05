@@ -6,7 +6,6 @@
 #include <chrono>
 #include <map>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "amount.hpp"
@@ -36,7 +35,6 @@ namespace sdk {
     class ga_session final : public session_impl {
     public:
         using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
-        using locker_t = std::unique_lock<std::mutex>;
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
@@ -80,8 +78,6 @@ namespace sdk {
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
         nlohmann::json get_transactions(const nlohmann::json& details);
-
-        void set_notification_handler(GA_notification_handler handler, void* context);
 
         nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
@@ -171,7 +167,7 @@ namespace sdk {
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& details);
 
-        void emit_notification(std::string event, nlohmann::json details);
+        void emit_notification(nlohmann::json details);
 
         std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
@@ -192,8 +188,6 @@ namespace sdk {
         bool is_connected() const;
         bool reconnect();
         void stop_reconnect();
-
-        void set_notification_handler(locker_t& locker, GA_notification_handler handler, void* context);
 
         void load_client_blob(locker_t& locker, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
@@ -218,12 +212,12 @@ namespace sdk {
         nlohmann::json get_settings(locker_t& locker);
         bool unblind_utxo(nlohmann::json& utxo, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing);
         bool cleanup_utxos(nlohmann::json& utxos, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing);
-        tx_list_cache::container_type get_tx_list(ga_session::locker_t& locker, uint32_t subaccount, uint32_t page_id,
+        tx_list_cache::container_type get_tx_list(session_impl::locker_t& locker, uint32_t subaccount, uint32_t page_id,
             const std::string& start_date, const std::string& end_date, nlohmann::json& state_info);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
-        void call_notification_handler(locker_t& locker, nlohmann::json* details);
+        void call_notification_handler(nlohmann::json details);
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
@@ -231,8 +225,8 @@ namespace sdk {
         void on_new_fees(locker_t& locker, const nlohmann::json& details);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
-        void remap_appearance_settings(
-            ga_session::locker_t& locker, const nlohmann::json& src_json, nlohmann::json& dst_json, bool from_settings);
+        void remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,
+            nlohmann::json& dst_json, bool from_settings);
 
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
@@ -288,27 +282,6 @@ namespace sdk {
 
         void ping_timer_handler(const boost::system::error_code& ec);
 
-        // Locking per-session assumes the following thread safety model:
-        // 1) wamp_call is assumed thread-safe
-        // 2) Implementations noted "idempotent" can be called from multiple
-        //    threads at once
-        // 3) Implementations noted "post-login idempotent" can be called
-        //    from multiple threads after login has completed.
-        // 4) Implementations that take a locker_t as the first parameter
-        //    assume that the caller holds the lock and will leave it
-        //    locked upon return.
-        //
-        // The safest way to strictly adhere to the above is to serialize all
-        // access to the session. Everything up to login should be serialized
-        // otherwise. Logical wallet operation that span more than one api call
-        // (such as those handled by two factor call objects) do not lock the
-        // session for the entire operation. In general we must assume that
-        // local state can be out of sync with the server, whether this is due
-        // to multiple threads in a single process or actions in another
-        // process (e.g. the user is logged in twice in different apps)
-        //
-        // ** Under no circumstances must this mutex ever be made recursive **
-        mutable std::mutex m_mutex;
         std::string m_proxy;
         const bool m_has_network_proxy;
 
@@ -325,9 +298,6 @@ namespace sdk {
 
         std::unique_ptr<network_control_context> m_network_control;
         boost::asio::thread_pool m_pool;
-
-        GA_notification_handler m_notification_handler;
-        void* m_notification_context;
 
         nlohmann::json m_login_data;
         boost::optional<pbkdf2_hmac512_t> m_local_encryption_key;

@@ -18,7 +18,7 @@ namespace sdk {
         bool is_connected() const;
         void set_ping_fail_handler(ping_fail_t handler);
         void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler);
-        void emit_notification(std::string event, nlohmann::json details);
+        void emit_notification(nlohmann::json details);
         bool reconnect();
         void try_reconnect();
         void reconnect_hint(bool, bool);
@@ -50,8 +50,6 @@ namespace sdk {
 
         void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transactions(const nlohmann::json& details);
-
-        void set_notification_handler(GA_notification_handler handler, void* context);
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
@@ -144,13 +142,12 @@ namespace sdk {
         nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
 
         static void GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json);
+        void set_notification_handler(GA_notification_handler handler, void* context);
 
         std::shared_ptr<tor_controller> m_tor_ctrl;
         bool m_reconnect_restart;
 
         struct GDKRUST_session* m_session;
-        GA_notification_handler m_ga_notif_handler;
-        void* m_ga_notif_context;
     };
 
 } // namespace sdk

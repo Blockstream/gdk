@@ -146,9 +146,10 @@ namespace sdk {
         if (m_net_params.use_tor() && m_net_params.socks5().empty()) {
             m_tor_ctrl = tor_controller::get_shared_ref();
             std::string full_socks5
-                = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> phase) {
-                      emit_notification("tor",
-                          { { "tag", phase->tag }, { "summary", phase->summary }, { "progress", phase->progress } });
+                = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
+                      nlohmann::json tor_json(
+                          { { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
+                      emit_notification({ { "event", "tor" }, { "tor", tor_json } });
                   });
 
             if (full_socks5.empty()) {
@@ -263,33 +264,29 @@ namespace sdk {
         return call_session("get_transactions", actual_details);
     }
 
-    void ga_rust::GDKRUST_notif_handler(void* self_context, GDKRUST_json* json)
+    void ga_rust::GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json)
     {
         // "new" needed because we want that to be on the heap. the notif handler will free it
         nlohmann::json* converted_heap = new nlohmann::json(convert_serde(json));
         GA_json* as_ptr = reinterpret_cast<GA_json*>(converted_heap);
 
         ga_rust* self = static_cast<ga_rust*>(self_context);
-        if (self->m_ga_notif_handler) {
-            self->m_ga_notif_handler(self->m_ga_notif_context, as_ptr);
+        if (self->m_notification_handler) {
+            self->m_notification_handler(self->m_notification_context, as_ptr);
         }
     }
 
-    void ga_rust::emit_notification(std::string event, nlohmann::json details)
+    void ga_rust::emit_notification(nlohmann::json details)
     {
-        nlohmann::json* heap_json = new nlohmann::json({ { "event", event }, { event, details } });
-        GA_json* as_ptr = reinterpret_cast<GA_json*>(heap_json);
-
-        if (m_ga_notif_handler) {
-            m_ga_notif_handler(m_ga_notif_context, as_ptr);
+        if (m_notification_handler) {
+            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
+            m_notification_handler(m_notification_context, details_p);
         }
     }
 
     void ga_rust::set_notification_handler(GA_notification_handler handler, void* context)
     {
-        m_ga_notif_handler = handler;
-        m_ga_notif_context = context;
-
+        session_impl::set_notification_handler(handler, context);
         GDKRUST_set_notification_handler(m_session, ga::sdk::ga_rust::GDKRUST_notif_handler, this);
     }
 
