@@ -13,7 +13,7 @@ a ``"required_data"`` element present.
 Required Data JSON
 ------------------
 
-Returned as an element ``"required_data"`` of :ref:`twofactor-status` when
+Returned as an element ``"required_data"`` of :ref:`auth-handler-status` when
 data is required from a registered hardware device.
 
 .. code-block:: json
