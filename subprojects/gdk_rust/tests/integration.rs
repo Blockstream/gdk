@@ -25,7 +25,7 @@ static MEMO2: &str = "hello memo2";
 
 #[test]
 fn roundtrip_bitcoin() {
-    let mut test_session = setup_session(false, 0, |_| ());
+    let mut test_session = setup_session(false, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -65,7 +65,7 @@ fn roundtrip_bitcoin() {
 
 #[test]
 fn roundtrip_liquid() {
-    let mut test_session = setup_session(true, 0, |_| ());
+    let mut test_session = setup_session(true, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -142,7 +142,7 @@ fn subaccounts_liquid() {
 }
 
 fn subaccounts(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, 0, |_| ());
+    let mut test_session = setup_session(is_liquid, |_| ());
 
     assert!(test_session.session.get_subaccount(0).is_ok());
     assert!(test_session.session.get_subaccount(1).is_err());
@@ -345,7 +345,7 @@ fn subaccounts(is_liquid: bool) {
 #[test]
 fn labels() {
     // Create a session and two accounts
-    let mut test_session = setup_session(false, 0, |_| ());
+    let mut test_session = setup_session(false, |_| ());
     let account1 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
@@ -396,7 +396,7 @@ fn labels() {
 #[test]
 fn rbf() {
     // Create session/account and fund id
-    let mut test_session = setup_session(false, 0, |_| ());
+    let mut test_session = setup_session(false, |_| ());
     test_session
         .session
         .create_subaccount(CreateAccountOpt {
@@ -458,7 +458,8 @@ fn rbf() {
 
     // Transactions that are not properly signed should be rejected, to prevent the user from
     // being tricked into fee-bumping them.
-    let mut tx = test_session.electrs.transaction_get(&txitem.txhash.parse().unwrap()).unwrap();
+    let mut tx =
+        test_session.electrs.client.transaction_get(&txitem.txhash.parse().unwrap()).unwrap();
     tx.input[0].witness[0][5] = tx.input[0].witness[0][5].wrapping_add(1);
     let tx = BETransaction::Bitcoin(tx);
     let wallet = test_session.session.get_wallet().unwrap();
@@ -489,7 +490,8 @@ fn spv_cross_validate() {
         assert_eq!(session1_chain.height(), 126);
 
         // Cross-validate session1's chain against session'2 electrum server
-        let session2_electrum_url = ElectrumUrl::Plaintext(test_session2.electrs_url.clone());
+        let session2_electrum_url =
+            ElectrumUrl::Plaintext(test_session2.electrs.electrum_url.clone());
         let result = spv::spv_cross_validate(
             &session1_chain,
             &session1_chain.tip().block_hash(),
@@ -516,7 +518,8 @@ fn spv_cross_validate() {
         assert_eq!(session1_chain.height(), 121);
 
         // Cross-validate session1's chain against session'2 electrum server
-        let session2_electrum_url = ElectrumUrl::Plaintext(test_session2.electrs_url.clone());
+        let session2_electrum_url =
+            ElectrumUrl::Plaintext(test_session2.electrs.electrum_url.clone());
         let result = spv::spv_cross_validate(
             &session1_chain,
             &session1_chain.tip().block_hash(),
@@ -609,12 +612,12 @@ fn spv_cross_validation_session() {
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
-    let mut test_session2 = setup_session(false, 2, |_| ());
+    let mut test_session2 = setup_session(false, |_| ());
 
-    let mut test_session1 = setup_session(false, 1, |network| {
+    let mut test_session1 = setup_session(false, |network| {
         if enable_session_cross {
             network.spv_multi = Some(true);
-            network.spv_servers = Some(vec![test_session2.electrs_url.clone()]);
+            network.spv_servers = Some(vec![test_session2.electrs.electrum_url.clone()]);
         }
     });
 
@@ -633,11 +636,7 @@ fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSessi
     (test_session1, test_session2)
 }
 
-fn setup_session(
-    is_liquid: bool,
-    num_client: u16,
-    network_conf: impl FnOnce(&mut Network),
-) -> TestSession {
+fn setup_session(is_liquid: bool, network_conf: impl FnOnce(&mut Network)) -> TestSession {
     let electrs_exec = if !is_liquid {
         env::var("ELECTRS_EXEC")
             .expect("env ELECTRS_EXEC pointing to electrs executable is required")
@@ -657,7 +656,7 @@ fn setup_session(
     env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
     let debug = env::var("DEBUG").is_ok();
 
-    test_session::setup(is_liquid, debug, &electrs_exec, &node_exec, num_client, network_conf)
+    test_session::setup(is_liquid, debug, &electrs_exec, &node_exec, network_conf)
 }
 
 fn get_chain(test_session: &mut TestSession) -> HeadersChain {

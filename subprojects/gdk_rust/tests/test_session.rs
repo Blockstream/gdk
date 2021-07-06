@@ -1,7 +1,6 @@
 use bitcoin::{self, Amount};
-use bitcoind::bitcoincore_rpc::{Auth, Client, RpcApi};
 use chrono::Utc;
-use electrum_client::raw_client::{ElectrumPlaintextStream, RawClient};
+use electrsd::bitcoind::bitcoincore_rpc::{Auth, Client, RpcApi};
 use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
@@ -17,8 +16,6 @@ use log::{info, warn, Metadata, Record};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::process::Child;
-use std::process::Command;
 use std::str::FromStr;
 use std::sync::Once;
 use std::thread;
@@ -30,19 +27,15 @@ const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
 pub struct TestSession {
-    node: bitcoind::BitcoinD,
-    pub electrs: RawClient<ElectrumPlaintextStream>,
-    electrs_header: RawClient<ElectrumPlaintextStream>,
+    node: electrsd::bitcoind::BitcoinD,
+    pub electrs: electrsd::ElectrsD,
     pub session: ElectrumSession,
     tx_status: u64,
     block_status: (u32, BEBlockHash),
-    electrs_process: Child,
-    electrs_work_dir: TempDir,
     db_root_dir: TempDir,
     network_id: NetworkId,
     network: Network,
     pub p2p_port: u16,
-    pub electrs_url: String,
 }
 
 //TODO duplicated why I cannot import?
@@ -69,7 +62,6 @@ pub fn setup(
     is_debug: bool,
     electrs_exec: &str,
     node_exec: &str,
-    num_client: u16,
     network_conf: impl FnOnce(&mut Network),
 ) -> TestSession {
     START.call_once(|| {
@@ -95,13 +87,13 @@ pub fn setup(
         args.extend_from_slice(&["-regtest"]);
         "regtest"
     };
-    let conf = bitcoind::Conf {
+    let conf = electrsd::bitcoind::Conf {
         args,
         view_stdout: is_debug,
-        p2p: bitcoind::P2P::Yes,
+        p2p: electrsd::bitcoind::P2P::Yes,
         network,
     };
-    let node = bitcoind::BitcoinD::with_conf(&node_exec, &conf).unwrap();
+    let node = electrsd::bitcoind::BitcoinD::with_conf(&node_exec, &conf).unwrap();
     info!("node spawned");
 
     node_generate(&node.client, 1);
@@ -120,67 +112,38 @@ pub fn setup(
     }
 
     let p2p_port = node.params.p2p_socket.unwrap().port();
-    let node_work_dir_str = format!("{}", &node.params.datadir.display());
-    let cookie_value = std::fs::read_to_string(&node.params.cookie_file).unwrap();
 
-    let sum_port = num_client * 10 + is_liquid as u16;
-    let monitor_port = 28901u16 + sum_port;
-    let electrs_port = 62431u16 + sum_port;
-    let electrs_work_dir = TempDir::new("electrum_integration_tests").unwrap();
-    let electrs_work_dir_str = format!("{}", &electrs_work_dir.path().display());
-    let electrs_url = format!("127.0.0.1:{}", electrs_port);
-    let daemon_url = format!("127.0.0.1:{}", node.params.rpc_socket.port());
-    let monitor_url = format!("127.0.0.1:{}", monitor_port);
-    let mut args: Vec<&str> = vec![
-        "--db-dir",
-        &electrs_work_dir_str,
-        "--daemon-dir",
-        &node_work_dir_str,
-        "--electrum-rpc-addr",
-        &electrs_url,
-        "--daemon-rpc-addr",
-        &daemon_url,
-        "--monitoring-addr",
-        &monitor_url,
-        "--network",
-        network,
-        "--cookie",
-        &cookie_value,
-        "--jsonrpc-import",
-    ];
+    let mut args = vec![];
     if is_debug {
         args.push("-v");
     }
-
-    info!("LAUNCHING: {} {}", electrs_exec, args.join(" "));
-    let electrs_process = Command::new(electrs_exec).args(args).spawn().unwrap();
+    let conf = electrsd::Conf {
+        args,
+        view_stderr: is_debug,
+        http_enabled: false,
+        network,
+    };
+    let electrs = electrsd::ElectrsD::with_conf(&electrs_exec, &node, &conf).unwrap();
     info!("Electrs spawned");
 
     node_generate(&node.client, 100);
 
-    info!("creating electrs client");
     let mut i = 120;
-    let electrs_header = loop {
+    loop {
         assert!(i > 0, "1 minute without updates");
         i -= 1;
-        match RawClient::new(&electrs_url, None) {
-            Ok(c) => {
-                let header = c.block_headers_subscribe_raw().unwrap();
-                if header.height == 101 {
-                    break c;
-                }
-            }
-            Err(e) => {
-                warn!("{:?}", e);
-            }
+        let height = electrs.client.block_headers_subscribe_raw().unwrap().height;
+        if height == 101 {
+            break;
+        } else {
+            warn!("height: {}", height);
         }
         thread::sleep(Duration::from_millis(500));
-    };
-    let electrs = RawClient::new(&electrs_url, None).unwrap();
-    info!("done creating electrs client");
+    }
+    info!("Electrs synced with node");
 
     let mut network = Network::default();
-    network.electrum_url = Some(electrs_url.to_string());
+    network.electrum_url = Some(electrs.electrum_url.clone());
     network.sync_interval = Some(1);
     network.development = true;
     network.ct_bits = Some(52);
@@ -239,15 +202,11 @@ pub fn setup(
         block_status,
         node,
         electrs,
-        electrs_header,
         session,
-        electrs_process,
-        electrs_work_dir,
         db_root_dir,
         network_id,
         network,
         p2p_port,
-        electrs_url,
     }
 }
 
@@ -917,7 +876,7 @@ impl TestSession {
     /// ask the blockcain tip to electrs
     fn electrs_tip(&mut self) -> usize {
         for _ in 0..10 {
-            match self.electrs_header.block_headers_subscribe_raw() {
+            match self.electrs.client.block_headers_subscribe_raw() {
                 Ok(header) => return header.height,
                 Err(e) => {
                     warn!("electrs_tip {:?}", e); // fixme, for some reason it errors once every two try
@@ -1079,7 +1038,6 @@ impl TestSession {
     pub fn stop(&mut self) {
         self.session.disconnect().unwrap();
         self.node.stop().unwrap();
-        self.electrs_process.kill().unwrap();
     }
 
     pub fn check_decryption(&mut self, tip: u32, txids: &[&str]) {
