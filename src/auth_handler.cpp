@@ -116,6 +116,7 @@ namespace sdk {
     void auth_handler_impl::operator()()
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::make_call);
+        bool is_invalid_code = false;
         try {
 
             if (m_code.empty() || m_method.empty()) {
@@ -133,25 +134,32 @@ namespace sdk {
         } catch (const autobahn::call_error& e) {
             auto details = get_error_details(e);
             if (is_twofactor_invalid_code_error(details.second)) {
-                // The caller entered the wrong code
-                // FIXME: Error if the methods time limit is up or we are rate limited
-                if (m_method != "gauth" && --m_attempts_remaining == 0) {
-                    // No more attempts left, caller should try the action again
-                    set_error(res::id_invalid_twofactor_code);
-                } else {
-                    // Caller should try entering the code again
-                    m_state = state_type::resolve_code;
-                }
+                is_invalid_code = true;
             } else {
                 details = remap_ga_server_error(details);
                 set_error(details.second.empty() ? e.what() : details.second);
             }
         } catch (const user_error& e) {
-            // Just set the undecorated error string as it should be an id for a
-            // translatable string resource, displayed as appropriate by the client.
-            set_error(e.what());
+            if (is_twofactor_invalid_code_error(e.what())) {
+                is_invalid_code = true;
+            } else {
+                // Just set the undecorated error string as it should be an id for a
+                // translatable string resource, displayed as appropriate by the client.
+                set_error(e.what());
+            }
         } catch (const std::exception& e) {
             set_error(m_action + std::string(" exception:") + e.what());
+        }
+        if (is_invalid_code) {
+            // The caller entered the wrong code
+            // FIXME: Error if the methods time limit is up or we are rate limited
+            if (m_method != "gauth" && --m_attempts_remaining == 0) {
+                // No more attempts left, caller should try the action again
+                set_error(res::id_invalid_twofactor_code);
+            } else {
+                // Caller should try entering the code again
+                m_state = state_type::resolve_code;
+            }
         }
     }
 
