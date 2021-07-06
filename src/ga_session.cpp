@@ -728,12 +728,10 @@ namespace sdk {
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {
-        if (m_notification_handler) {
-            if (async) {
-                asio::post(m_pool, [this, details] { emit_notification(details, false); });
-            } else {
-                session_impl::emit_notification(details, false);
-            }
+        if (async) {
+            asio::post(m_pool, [this, details] { emit_notification(details, false); });
+        } else {
+            session_impl::emit_notification(details, false);
         }
     }
 
@@ -1268,20 +1266,17 @@ namespace sdk {
             m_nlocktime = m_login_data["nlocktime_blocks"];
         }
 
-        // Notify the caller of their settings
-        if (m_notification_handler != nullptr) {
-            auto settings = get_settings(locker);
+        // Notify the caller of their settings / 2fa reset status
+        auto settings = get_settings(locker);
+
+        const auto& days_remaining = login_data["reset_2fa_days_remaining"];
+        const auto& disputed = login_data["reset_2fa_disputed"];
+        nlohmann::json reset_status
+            = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+
+        {
             unique_unlock unlocker(locker);
             emit_notification({ { "event", "settings" }, { "settings", std::move(settings) } }, false);
-        }
-
-        // Notify the caller of 2fa reset status
-        if (m_notification_handler != nullptr) {
-            const auto& days_remaining = login_data["reset_2fa_days_remaining"];
-            const auto& disputed = login_data["reset_2fa_disputed"];
-            nlohmann::json reset_status
-                = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
-            unique_unlock unlocker(locker);
             emit_notification(
                 { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
         }
@@ -1447,10 +1442,6 @@ namespace sdk {
                 m_tx_list_caches.on_new_transaction(subaccount, details);
             }
             m_nlocktimes.reset();
-
-            if (m_notification_handler == nullptr) {
-                return;
-            }
 
             const std::string value_str = details.value("value", std::string{});
             if (!value_str.empty()) {
