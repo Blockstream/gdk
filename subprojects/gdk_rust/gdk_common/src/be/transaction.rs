@@ -8,6 +8,7 @@ use crate::{ElementsNetwork, NetworkId};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
@@ -15,7 +16,7 @@ use bitcoin::{PublicKey, SigHashType};
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
-use elements::{confidential, issuance, AddressParams};
+use elements::{confidential, AddressParams};
 use elements::{TxInWitness, TxOutWitness};
 use log::{info, trace};
 use rand::seq::SliceRandom;
@@ -174,11 +175,11 @@ impl BETransaction {
         }
     }
 
-    pub fn output_asset_hex(
+    pub fn output_asset(
         &self,
         vout: u32,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-    ) -> Option<String> {
+    ) -> Option<elements::issuance::AssetId> {
         match self {
             Self::Bitcoin(_) => None,
             Self::Elements(tx) => {
@@ -186,7 +187,7 @@ impl BETransaction {
                     txid: tx.txid(),
                     vout,
                 };
-                Some(all_unblinded.get(&outpoint).unwrap().asset_hex())
+                Some(all_unblinded.get(&outpoint).unwrap().asset())
             }
         }
     }
@@ -210,7 +211,7 @@ impl BETransaction {
         &mut self,
         address: &str,
         value: u64,
-        asset_hex: Option<String>,
+        asset: Option<elements::issuance::AssetId>,
     ) -> Result<(), Error> {
         match self {
             BETransaction::Bitcoin(tx) => {
@@ -227,10 +228,8 @@ impl BETransaction {
                 let blinding_pubkey = address.blinding_pubkey.ok_or(Error::InvalidAddress)?;
                 let bytes = blinding_pubkey.serialize();
                 let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
-                let asset =
-                    asset_hex.expect("add_output must be called with a non empty asset in liquid");
-                let asset = asset_to_bin(&asset).expect("invalid asset hex");
-                let asset_id = issuance::AssetId::from_slice(&asset)?;
+                let asset_id =
+                    asset.expect("add_output must be called with a non empty asset in liquid");
                 let new_out = elements::TxOut {
                     asset: confidential::Asset::Explicit(asset_id),
                     value: confidential::Value::Explicit(value),
@@ -342,10 +341,10 @@ impl BETransaction {
             Self::Elements(tx) => {
                 let mut different_assets = HashSet::new();
                 for input in tx.input.iter() {
-                    let asset_hex = all_txs
-                        .get_previous_output_asset_hex(input.previous_output, unblinded)
+                    let asset = all_txs
+                        .get_previous_output_asset(input.previous_output, unblinded)
                         .unwrap();
-                    different_assets.insert(asset_hex.clone());
+                    different_assets.insert(asset);
                 }
                 if different_assets.is_empty() {
                     0
@@ -363,7 +362,7 @@ impl BETransaction {
         &self,
         fee_rate: f64,
         no_change: bool,
-        policy_asset: Option<String>,
+        policy_asset: Option<elements::issuance::AssetId>,
         all_txs: &BETransactions,
         unblinded: &HashMap<elements::OutPoint, Unblinded>,
         script_type: ScriptType,
@@ -385,22 +384,21 @@ impl BETransaction {
             }
             Self::Elements(tx) => {
                 let policy_asset = policy_asset.expect("policy asset empty in elements");
-                let mut outputs: HashMap<String, u64> = HashMap::new();
+                let mut outputs: HashMap<elements::issuance::AssetId, u64> = HashMap::new();
                 for output in tx.output.iter() {
                     match (output.asset, output.value) {
                         (Asset::Explicit(asset), Value::Explicit(value)) => {
-                            let asset_hex = asset_to_hex(&asset.into_inner());
-                            *outputs.entry(asset_hex).or_insert(0) += value;
+                            *outputs.entry(asset.clone()).or_insert(0) += value;
                         }
                         _ => panic!("asset and value should be explicit here"),
                     }
                 }
 
-                let mut inputs: HashMap<String, u64> = HashMap::new();
+                let mut inputs: HashMap<elements::issuance::AssetId, u64> = HashMap::new();
 
                 for input in tx.input.iter() {
-                    let asset_hex = all_txs
-                        .get_previous_output_asset_hex(input.previous_output, unblinded)
+                    let asset = all_txs
+                        .get_previous_output_asset(input.previous_output, unblinded)
                         .unwrap();
                     let value = all_txs
                         .get_previous_output_value(
@@ -408,7 +406,7 @@ impl BETransaction {
                             unblinded,
                         )
                         .unwrap();
-                    *inputs.entry(asset_hex).or_insert(0) += value;
+                    *inputs.entry(asset).or_insert(0) += value;
                 }
 
                 let estimated_fee = self.estimated_fee(
@@ -422,12 +420,12 @@ impl BETransaction {
                 for (asset, value) in outputs.iter() {
                     if let Some(sum) = value.checked_sub(inputs.remove(asset).unwrap_or(0)) {
                         if sum > 0 {
-                            result.push(AssetValue::new(asset.to_string(), sum));
+                            result.push(AssetValue::new(*asset, sum));
                         }
                     }
                 }
 
-                if let Some(index) = result.iter().position(|e| e.asset == policy_asset) {
+                if let Some(index) = result.iter().position(|e| e.asset == Some(policy_asset)) {
                     let last_index = result.len() - 1;
                     if index != last_index {
                         result.swap(index, last_index); // put the policy asset last
@@ -443,7 +441,7 @@ impl BETransaction {
     pub fn changes(
         &self,
         estimated_fee: u64,
-        policy_asset: Option<String>,
+        policy_asset: Option<elements::issuance::AssetId>,
         all_txs: &BETransactions,
         unblinded: &HashMap<elements::OutPoint, Unblinded>,
     ) -> Vec<AssetValue> {
@@ -459,21 +457,22 @@ impl BETransaction {
                 }
             }
             Self::Elements(tx) => {
-                let mut outputs_asset_amounts: HashMap<String, u64> = HashMap::new();
+                let mut outputs_asset_amounts: HashMap<elements::issuance::AssetId, u64> =
+                    HashMap::new();
                 for output in tx.output.iter() {
                     match (output.asset, output.value) {
                         (Asset::Explicit(asset), Value::Explicit(value)) => {
-                            let asset_hex = asset_to_hex(&asset.into_inner());
-                            *outputs_asset_amounts.entry(asset_hex).or_insert(0) += value;
+                            *outputs_asset_amounts.entry(asset).or_insert(0) += value;
                         }
                         _ => panic!("asset and value should be explicit here"),
                     }
                 }
 
-                let mut inputs_asset_amounts: HashMap<String, u64> = HashMap::new();
+                let mut inputs_asset_amounts: HashMap<elements::issuance::AssetId, u64> =
+                    HashMap::new();
                 for input in tx.input.iter() {
-                    let asset_hex = all_txs
-                        .get_previous_output_asset_hex(input.previous_output, unblinded)
+                    let asset = all_txs
+                        .get_previous_output_asset(input.previous_output, unblinded)
                         .unwrap();
                     let value = all_txs
                         .get_previous_output_value(
@@ -481,21 +480,21 @@ impl BETransaction {
                             unblinded,
                         )
                         .unwrap();
-                    *inputs_asset_amounts.entry(asset_hex).or_insert(0) += value;
+                    *inputs_asset_amounts.entry(asset).or_insert(0) += value;
                 }
                 let mut result = vec![];
                 for (asset, value) in inputs_asset_amounts.iter() {
                     let mut sum = value - outputs_asset_amounts.remove(asset).unwrap_or(0);
-                    if asset == policy_asset.as_ref().unwrap() {
+                    if asset == &policy_asset.unwrap() {
                         // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
                         // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
                         sum -= estimated_fee;
                         if sum > DUST_VALUE {
                             // we apply dust rules for liquid bitcoin as elements do
-                            result.push(AssetValue::new(asset.to_string(), sum));
+                            result.push(AssetValue::new(*asset, sum));
                         }
                     } else if sum > 0 {
-                        result.push(AssetValue::new(asset.to_string(), sum));
+                        result.push(AssetValue::new(*asset, sum));
                     }
                 }
                 assert!(outputs_asset_amounts.is_empty());
@@ -507,13 +506,13 @@ impl BETransaction {
     pub fn add_fee_if_elements(
         &mut self,
         value: u64,
-        policy_asset: &Option<Asset>,
+        policy_asset: &Option<elements::issuance::AssetId>,
     ) -> Result<(), Error> {
         if let BETransaction::Elements(tx) = self {
             let policy_asset =
                 policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
             let new_out = elements::TxOut {
-                asset: policy_asset,
+                asset: confidential::Asset::Explicit(policy_asset),
                 value: confidential::Value::Explicit(value),
                 ..Default::default()
             };
@@ -559,7 +558,7 @@ impl BETransaction {
         &self,
         all_txs: &BETransactions,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-        policy_asset: &Option<Asset>,
+        policy_asset: &Option<elements::issuance::AssetId>,
     ) -> Result<u64, Error> {
         Ok(match self {
             Self::Bitcoin(tx) => {
@@ -571,8 +570,10 @@ impl BETransaction {
                 let has_fee = tx.output.iter().any(|o| o.is_fee());
 
                 if has_fee {
-                    let policy_asset = policy_asset
-                        .ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
+                    let policy_asset = elements::confidential::Asset::Explicit(
+                        policy_asset
+                            .ok_or_else(|| Error::Generic("Missing policy asset".into()))?,
+                    );
                     tx.output
                         .iter()
                         .filter(|o| o.is_fee())
@@ -691,7 +692,7 @@ impl BETransaction {
                             outpoint,
                             unblinded.value
                         );
-                        let asset_id_str = unblinded.asset_hex();
+                        let asset_id_str = unblinded.asset().to_hex();
                         *result.entry(asset_id_str).or_default() -= unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -708,7 +709,7 @@ impl BETransaction {
                             outpoint,
                             unblinded.value
                         );
-                        let asset_id_str = unblinded.asset_hex();
+                        let asset_id_str = unblinded.asset().to_hex();
                         *result.entry(asset_id_str).or_default() += unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -727,12 +728,11 @@ impl BETransaction {
         mut f: F,
     ) -> BETransaction
     where
-        F: FnMut(u32, BEScript, Option<String>) -> bool,
+        F: FnMut(u32, BEScript, Option<elements::issuance::AssetId>) -> bool,
     {
         let mut vout = 0u32;
         let mut predicate = || {
-            let matched =
-                f(vout, self.output_script(vout), self.output_asset_hex(vout, all_unblinded));
+            let matched = f(vout, self.output_script(vout), self.output_asset(vout, all_unblinded));
             vout += 1;
             matched
         };
@@ -832,14 +832,14 @@ impl BETransactions {
         self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_value(outpoint.vout(), &all_unblinded))
     }
 
-    pub fn get_previous_output_asset_hex(
+    pub fn get_previous_output_asset(
         &self,
         outpoint: elements::OutPoint,
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
-    ) -> Option<String> {
+    ) -> Option<elements::issuance::AssetId> {
         self.0
             .get(&outpoint.txid.into())
-            .map(|txe| txe.tx.output_asset_hex(outpoint.vout, &all_unblinded).unwrap())
+            .map(|txe| txe.tx.output_asset(outpoint.vout, &all_unblinded).unwrap())
     }
 }
 
@@ -859,21 +859,20 @@ impl From<BETransaction> for BETransactionEntry {
 //TODO remove this, `fn needs` could return BTreeMap<String, u64> instead
 #[derive(Debug)]
 pub struct AssetValue {
-    pub asset: String,
+    pub asset: Option<elements::issuance::AssetId>,
     pub satoshi: u64,
 }
 
 impl AssetValue {
     fn new_bitcoin(satoshi: u64) -> Self {
-        let asset = "btc".to_string();
         AssetValue {
-            asset,
+            asset: None,
             satoshi,
         }
     }
-    fn new(asset: String, satoshi: u64) -> Self {
+    fn new(asset: elements::issuance::AssetId, satoshi: u64) -> Self {
         AssetValue {
-            asset,
+            asset: Some(asset),
             satoshi,
         }
     }

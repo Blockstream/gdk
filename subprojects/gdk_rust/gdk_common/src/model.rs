@@ -1,8 +1,5 @@
-use crate::be::{
-    AssetId, BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos,
-};
+use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
 use crate::util::StringSerialized;
-use bitcoin::hashes::hex::FromHex;
 use bitcoin::Network;
 use core::mem::transmute;
 use serde::{Deserialize, Serialize};
@@ -13,7 +10,7 @@ use crate::scripts::ScriptType;
 use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -94,6 +91,12 @@ pub struct AddressAmount {
     pub satoshi: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_id: Option<String>,
+}
+
+impl AddressAmount {
+    pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
+        self.asset_id.as_ref().and_then(|a| a.parse().ok())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -468,19 +471,6 @@ impl Default for Settings {
     }
 }
 
-impl AddressAmount {
-    pub fn asset(&self) -> Option<AssetId> {
-        if let Some(asset_id) = self.asset_id.as_ref() {
-            let vec = hex::decode(asset_id).ok();
-            if let Some(mut vec) = vec {
-                vec.reverse();
-                return (&vec[..]).try_into().ok();
-            }
-        }
-        None
-    }
-}
-
 fn now() -> u32 {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
@@ -564,21 +554,31 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
         let mut utxos = vec![];
         for (asset, v) in unspent_outputs.0.iter() {
             for e in v {
-                let outpoint = match &asset[..] {
-                    "btc" => BEOutPoint::new_bitcoin(bitcoin::Txid::from_hex(&e.txhash)?, e.pt_idx),
-                    _ => BEOutPoint::new_elements(elements::Txid::from_hex(&e.txhash)?, e.pt_idx),
-                };
                 let height = match e.block_height {
                     0 => None,
                     n => Some(n),
                 };
-                let utxo_info = UTXOInfo::new(
-                    asset.to_string(),
-                    e.satoshi,
-                    e.scriptpubkey.clone(),
-                    height,
-                    e.derivation_path.clone(),
-                );
+                let (outpoint, utxo_info) = match &asset[..] {
+                    "btc" => (
+                        BEOutPoint::new_bitcoin(e.txhash.parse()?, e.pt_idx),
+                        UTXOInfo::new_bitcoin(
+                            e.satoshi,
+                            e.scriptpubkey.clone().into(),
+                            height,
+                            e.derivation_path.clone(),
+                        ),
+                    ),
+                    _ => (
+                        BEOutPoint::new_elements(e.txhash.parse()?, e.pt_idx),
+                        UTXOInfo::new_elements(
+                            asset.parse()?,
+                            e.satoshi,
+                            e.scriptpubkey.clone().into(),
+                            height,
+                            e.derivation_path.clone(),
+                        ),
+                    ),
+                };
                 utxos.push((outpoint, utxo_info));
             }
         }

@@ -7,6 +7,7 @@ use log::{debug, info, trace, warn};
 use rand::Rng;
 
 use bitcoin::blockdata::script;
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -207,7 +208,7 @@ impl Account {
             let fee = tx.fee(
                 &acc_store.all_txs,
                 &acc_store.unblinded,
-                &self.network.policy_asset().ok(),
+                &self.network.policy_asset_id().ok(),
             )?;
             trace!("tx_id {} fee {}", tx_id, fee);
 
@@ -301,8 +302,7 @@ impl Account {
                     .map(|(outpoint, output, path)| {
                         (
                             outpoint,
-                            UTXOInfo::new(
-                                "btc".to_string(),
+                            UTXOInfo::new_bitcoin(
                                 output.value,
                                 output.script_pubkey.into(),
                                 height.clone(),
@@ -340,8 +340,8 @@ impl Account {
                                     }
                                     return Some((
                                         outpoint,
-                                        UTXOInfo::new(
-                                            unblinded.asset_hex(),
+                                        UTXOInfo::new_elements(
+                                            unblinded.asset(),
                                             unblinded.value,
                                             output.script_pubkey.into(),
                                             height.clone(),
@@ -863,7 +863,7 @@ pub fn create_tx(
     }
 
     let mut template_tx = None;
-    let mut change_addresses = HashMap::new();
+    let mut change_addresses = vec![];
 
     // When a previous transaction is replaced, use it as a template for the new transaction
     if let Some(ref prev_txitem) = request.previous_transaction {
@@ -872,20 +872,17 @@ pub fn create_tx(
         }
 
         let prev_tx = BETransaction::from_hex(&prev_txitem.transaction, network.id())?;
-        let policy_asset = network.policy_asset.as_deref().unwrap_or("btc");
 
         let store_read = account.store.read()?;
         let acc_store = store_read.account_cache(account.num())?;
 
         // Strip the mining fee change output from the transaction, keeping the change address for reuse
         template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
-            if asset.map_or(true, |a| a == policy_asset)
-                && account.get_wallet_chain_type(&script) == Some(1)
-            {
+            if asset == None && account.get_wallet_chain_type(&script) == Some(1) {
                 let change_address = prev_tx
                     .output_address(vout, network.id())
                     .expect("own change addresses to have address representation");
-                change_addresses.insert(policy_asset.to_string(), change_address);
+                change_addresses.push(change_address);
                 false
             } else {
                 true
@@ -959,19 +956,19 @@ pub fn create_tx(
         if request.addressees.len() != 1 {
             return Err(Error::SendAll);
         }
-        let asset = request.addressees[0].asset_id.as_deref().unwrap_or("btc");
+        let asset = request.addressees[0].asset_id();
         let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> =
-            utxos.iter().filter(|(_, i)| i.asset == asset).collect();
+            utxos.iter().filter(|(_, i)| i.asset_id() == asset).collect();
         let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
 
-        let to_send = if asset == "btc" || Some(asset.to_string()) == network.policy_asset {
+        let to_send = if asset == network.policy_asset_id().ok() {
             let mut dummy_tx = BETransaction::new(network.id());
             for utxo in all_utxos.iter() {
                 dummy_tx.add_input(utxo.0.clone());
             }
             let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
             dummy_tx
-                .add_output(&out.address, out.satoshi, out.asset_id.clone())
+                .add_output(&out.address, out.satoshi, out.asset_id())
                 .map_err(|_| Error::InvalidAddress)?;
             // estimating 2 satoshi more as estimating less would later result in InsufficientFunds
             let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 2;
@@ -980,7 +977,7 @@ pub fn create_tx(
             total_amount_utxos
         };
 
-        info!("send_all asset: {} to_send:{}", asset, to_send);
+        info!("send_all asset: {:?} to_send:{}", asset, to_send);
 
         request.addressees[0].satoshi = to_send;
     }
@@ -997,7 +994,7 @@ pub fn create_tx(
             let mut new_tx = BETransaction::new(network.id());
             for out in request.addressees.iter() {
                 new_tx
-                    .add_output(&out.address, out.satoshi, out.asset_id.clone())
+                    .add_output(&out.address, out.satoshi, out.asset_id())
                     .map_err(|_| Error::InvalidAddress)?;
             }
             Ok(new_tx)
@@ -1013,11 +1010,11 @@ pub fn create_tx(
         let mut needs = tx.needs(
             fee_rate,
             send_all,
-            network.policy_asset.clone(),
+            network.policy_asset_id().ok(),
             &acc_store.all_txs,
             &acc_store.unblinded,
             account.script_type,
-        ); // Vec<(asset_string, satoshi)  "policy asset" is last, in bitcoin asset_string="btc" and max 1 element
+        ); // Vec<(asset_id, satoshi) "policy asset" is last, in bitcoin max 1 element
         info!("needs: {:?}", needs);
         if needs.is_empty() {
             // SUCCESS tx doesn't need other inputs
@@ -1028,7 +1025,7 @@ pub fn create_tx(
         // taking only utxos of current asset considered, filters also utxos used in this loop
         let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
             .iter()
-            .filter(|(o, i)| i.asset == current_need.asset && !used_utxo.contains(o))
+            .filter(|(o, i)| i.asset_id() == current_need.asset && !used_utxo.contains(o))
             .collect();
 
         // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
@@ -1065,12 +1062,12 @@ pub fn create_tx(
     );
     let changes = tx.changes(
         estimated_fee,
-        network.policy_asset.clone(),
+        network.policy_asset_id().ok(),
         &acc_store.all_txs,
         &acc_store.unblinded,
     ); // Vec<Change> asset, value
     for (i, change) in changes.iter().enumerate() {
-        let change_address = change_addresses.remove(&change.asset).map_or_else(
+        let change_address = change_addresses.pop().map_or_else(
             || -> Result<_, Error> {
                 let change_index = acc_store.indexes.internal + i as u32 + 1;
                 Ok(account.derive_address(true, change_index)?.to_string())
@@ -1081,14 +1078,15 @@ pub fn create_tx(
             "adding change to {} of {} asset {:?}",
             &change_address, change.satoshi, change.asset
         );
-        tx.add_output(&change_address, change.satoshi, Some(change.asset.clone()))?;
+        tx.add_output(&change_address, change.satoshi, change.asset)?;
     }
 
     // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
     tx.scramble();
 
-    let policy_asset = network.policy_asset().ok();
-    let fee_val = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?; // recompute exact fee_val from built tx
+    let policy_asset = network.policy_asset_id().ok();
+    // recompute exact fee_val from built tx
+    let fee_val = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?;
     tx.add_fee_if_elements(fee_val, &policy_asset)?;
 
     info!("created tx fee {:?}", fee_val);
@@ -1229,10 +1227,10 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
             .unblinded
             .get(&input.previous_output)
             .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
-        info!("unblinded value: {} asset:{}", unblinded.value, hex::encode(&unblinded.asset[..]));
+        info!("unblinded value: {} asset:{}", unblinded.value, unblinded.asset.to_hex());
 
         input_values.push(unblinded.value);
-        input_assets.extend(unblinded.asset.to_vec());
+        input_assets.extend(unblinded.asset.into_inner().to_vec());
         input_abfs.extend(unblinded.abf.to_vec());
         input_vbfs.extend(unblinded.vbf.to_vec());
         let input_asset = asset_generator_from_bytes(&unblinded.asset, &unblinded.abf);
@@ -1285,10 +1283,8 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     output_abf.copy_from_slice(&(&output_abfs[i])[..]);
                     let mut output_vbf = [0u8; 32];
                     output_vbf.copy_from_slice(&(&output_vbfs[i])[..]);
-                    let asset = asset.clone().into_inner();
 
-                    let output_generator =
-                        asset_generator_from_bytes(&asset.into_inner(), &output_abf);
+                    let output_generator = asset_generator_from_bytes(&asset, &output_abf);
                     let output_value_commitment =
                         asset_value_commitment(value, output_vbf, output_generator);
                     let min_value = if output.script_pubkey.is_provably_unspendable() {
@@ -1301,7 +1297,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                         value,
                         blinding_pubkey.key,
                         ephemeral_sk,
-                        asset.into_inner(),
+                        &asset,
                         output_abf,
                         output_vbf,
                         output_value_commitment,
@@ -1311,7 +1307,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                         ct_exp,
                         ct_bits,
                     );
-                    trace!("asset: {}", hex::encode(&asset));
+                    trace!("asset: {}", asset.to_hex());
                     trace!("output_abf: {}", hex::encode(&output_abf));
                     trace!(
                         "output_generator: {}",
@@ -1323,7 +1319,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     trace!("in_num: {}", in_num);
 
                     let surjectionproof = asset_surjectionproof(
-                        asset.into_inner(),
+                        &asset,
                         output_abf,
                         output_generator,
                         output_abf,
