@@ -123,7 +123,7 @@ GDK_API int GA_get_tor_socks5(struct GA_session* session, char** socks5);
  * Make a request to an http server.
  *
  * :param session: The session to use.
- * :param params: the :ref:`params-data` of the server to connect to.
+ * :param params: the :ref:`http-params` of the server to connect to.
  * :param output: Destination for the output JSON.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
@@ -202,7 +202,7 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  * Create a subaccount.
  *
  * :param session: The session to use.
- * :param details: The :ref:`subaccount`. ``"name"`` (which must not be already used in
+ * :param details: The subaccount ``"name"`` (which must not be already used in
  *|     the wallet) and ``"type"`` (either ``"2of2"``, ``"2of2_no_recovery"`` or ``"2of3"``) must be
  *|     populated. Type ``"2of2_no_recovery"`` is available only for Liquid networks and
  *|     always requires both keys for spending. For type ``"2of3"`` the caller may provide
@@ -224,6 +224,7 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
  *
  * :param session: The session to use.
  * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     The call handlers result is :ref:`subaccount-list`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_get_subaccounts(struct GA_session* session, struct GA_auth_handler** call);
@@ -234,6 +235,7 @@ GDK_API int GA_get_subaccounts(struct GA_session* session, struct GA_auth_handle
  * :param session: The session to use.
  * :param subaccount: The value of ``"pointer"`` from :ref:`subaccount-list` for the subaccount.
  * :param call: Destination for the resulting GA_auth_handler to perform the creation.
+ *|     The call handlers result is :ref:`subaccount-detail`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, struct GA_auth_handler** call);
@@ -339,7 +341,7 @@ GDK_API int GA_set_unspent_outputs_status(
  *
  * :param session: The session to use.
  * :param txhash_hex: The transaction hash of the transaction to fetch.
- * :param transaction: Destination for the :ref:`tx-detail`.
+ * :param transaction: Destination for the :ref:`external-tx-detail`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_transaction_details(struct GA_session* session, const char* txhash_hex, GA_json** transaction);
@@ -396,7 +398,7 @@ GDK_API int GA_disable_all_pin_logins(struct GA_session* session);
  * Construct a transaction.
  *
  * :param session: The session to use.
- * :param transaction_details: The :ref:`transaction-details` for constructing.
+ * :param transaction_details: The :ref:`create-tx-details` for constructing.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
@@ -603,7 +605,7 @@ GDK_API int GA_destroy_json(GA_json* json);
  * Get the status/result of an action requiring authorization.
  *
  * :param call: The auth_handler whose status is to be queried.
- * :param output: Destination for the resulting :ref:`twofactor-status`.
+ * :param output: Destination for the resulting :ref:`auth-handler-status`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * Methods in the api that may require two factor or hardware authentication

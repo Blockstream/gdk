@@ -22,8 +22,8 @@ Passed to `GA_init` when initializing the library.
 
 .. _net-params:
 
-Connection parameter JSON
--------------------------
+Connection parameters JSON
+--------------------------
 
 .. code-block:: json
 
@@ -38,7 +38,7 @@ Connection parameter JSON
 
 .. _login-credentials:
 
-Login Credentials JSON
+Login credentials JSON
 ----------------------
 
 To authenticate with a hardware wallet, pass empty JSON and provide :ref:`hw-device`.
@@ -122,58 +122,60 @@ allow a PIN login.
       "salt": "a99/9Qy6P7ON4Umk2FafVQ=="
    }
 
-.. _subaccount:
-
-Subaccount detail JSON
-----------------------
-
-.. code-block:: json
-
-   {
-      "name": "subaccount name",
-      "type": "2of2"
-   }
 
 .. _subaccount-detail:
 
 Subaccount JSON
 ---------------
 
+Describes a subaccount within the users wallet. Returned by `GA_get_subaccount` and
+as the array elements of `GA_get_subaccounts`.
+
 .. code-block:: json
 
-   {
-     "satoshi": {
-       "btc": 2034469
-       },
-     "has_transactions": true,
-     "hidden": false,
-     "name": "",
-     "pointer": 0,
-     "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
-     "recovery_chain_code": "",
-     "recovery_pub_key": "",
-     "recovery_xpub": "",
-     "type": "2of2"
-   }
+  {
+    "hidden": false,
+    "name": "Subaccount Name",
+    "pointer": 0,
+    "receiving_id": "GA7ZnuhsieSMNp2XAB3oEyLy75peM",
+    "recovery_chain_code": "",
+    "recovery_pub_key": "",
+    "recovery_xpub": "",
+    "required_ca": 0,
+    "type": "2of2"
+  }
 
+:hidden: Whether the subaccount is hidden.
+:name: The name of the subaccount.
+:pointer: The subaccount number.
+:receiving_id: The Green receiving ID for the subaccount.
+:recovery_chain_code: For ``"2of3"`` subaccounts, the BIP32 chaincode of the users recovery key.
+:recovery_pub_key: For ``"2of3"`` subaccounts, the BIP32 public key of the users recovery key.
+:recovery_xpub: For ``"2of3"`` subaccounts, the BIP32 xpub of the users recovery key.
+:required_ca: For ``"2of2_no_recovery"`` subaccounts, the number of confidential addresses
+    that the user must upload to the server before transacting.
+:type: For multisig subaccounts, one of ``"2of2"``, ``"2of3"`` or ``"2of2_no_recovery"``.
+    For singlesig subaccounts, one of ``"p2pkh"``, ``"p2wpkh"`` or ``"p2sh-p2wpkh"``.
 
 
 .. _subaccount-update:
 
-Subaccount Update JSON
+Subaccount update JSON
 ----------------------
+
+Describes updates to be made to a subaccount via `GA_update_subaccount`.
 
 .. code-block:: json
 
    {
-     "subaccount": 1,
      "hidden": true,
-     "name": "New name"
+     "name": "New name",
+     "subaccount": 1
    }
 
-:subaccount: The subaccount to update.
 :hidden: If present, updates whether the subaccount will be marked hidden.
 :name: If present, updates the name of the subaccount.
+:subaccount: The subaccount to update.
 
 
 
@@ -184,41 +186,19 @@ Subaccounts list JSON
 
 .. code-block:: json
 
-   [
-     {
-       "satoshi": {
-         "btc": 2034469
-         },
-       "has_transactions": true,
-       "hidden": false,
-       "name": "",
-       "pointer": 0,
-       "receiving_id": "GA3wd2nqwZ8FVwrB8GBsDDh4v8AtdV",
-       "recovery_chain_code": "",
-       "recovery_pub_key": "",
-       "recovery_xpub": "",
-       "type": "2of2"
-     },
-     {
-       "satoshi": {
-         "btc": 977907
-         },
-       "has_transactions": true,
-       "hidden": false,
-       "name": "Nuovo",
-       "pointer": 1,
-       "receiving_id": "GA36xH9spaXv3HCUcjbh7UEPxf1f6t",
-       "recovery_chain_code": "",
-       "recovery_pub_key": "",
-       "recovery_xpub": "",
-       "type": "2of2"
-     }
-   ]
+  {
+    "subaccounts": [
+      { },
+      { }
+    ]
+  }
+
+:subaccounts: An array of :ref:`subaccount-detail` elements for each of the users subaccounts.
 
 .. _tx-list:
 
-Transactions list JSON
-----------------------
+Transaction list JSON
+---------------------
 
 .. code-block:: json
 
@@ -302,10 +282,13 @@ Transactions list JSON
     ]
 
 
-.. _tx-detail:
+.. _external-tx-detail:
 
 Transaction details JSON
 ------------------------
+
+Contains information about a transaction that may not be associated with the
+users wallet. Returned by `GA_get_transaction_details`.
 
 .. code-block:: json
 
@@ -321,9 +304,9 @@ Transaction details JSON
   }
 
 
-.. _transaction-details:
+.. _create-tx-details:
 
-Create Transaction JSON
+Create transaction JSON
 -----------------------
 
 .. code-block:: json
@@ -350,7 +333,7 @@ Create Transaction JSON
 
 .. _sign-tx-details:
 
-Sign Transaction JSON
+Sign transaction JSON
 ---------------------
 
 .. code-block:: json
@@ -472,7 +455,7 @@ Sign Transaction JSON
 
 .. _send-tx-details:
 
-Send Transaction JSON
+Send transaction JSON
 ---------------------
 
 .. code-block:: json
@@ -611,7 +594,7 @@ Send Transaction JSON
 
 .. _estimates:
 
-Fee Estimates JSON
+Fee estimates JSON
 ------------------
 
 .. code-block:: json
@@ -620,7 +603,7 @@ Fee Estimates JSON
 
 .. _configuration:
 
-Two-Factor Config JSON
+Two-Factor config JSON
 ----------------------
 
 .. code-block:: json
@@ -635,7 +618,7 @@ Two-Factor Config JSON
   "any_enabled": true,
   "email": {
     "confirmed": true,
-    "data": "test@test.com",
+    "data": "***@@g***",
     "enabled": true
   },
   "enabled_methods": [
@@ -706,7 +689,7 @@ Settings JSON
 
 .. _balance-details:
 
-Balance Details JSON
+Balance details JSON
 --------------------
 
 .. code-block:: json
@@ -725,7 +708,7 @@ Balance Details JSON
 
 .. _receive-address-details:
 
-Receive Address Details JSON
+Receive address details JSON
 ----------------------------
 
 .. code-block:: json
@@ -748,7 +731,7 @@ Receive Address Details JSON
 
 .. _previous-addresses-request:
 
-Previous Addresses Request JSON
+Previous addresses request JSON
 -------------------------------
 
 Contains the query parameters for requesting previously generated addresses using `GA_get_previous_addresses`.
@@ -770,7 +753,7 @@ Contains the query parameters for requesting previously generated addresses usin
 
 .. _previous-addresses:
 
-Previous Addresses JSON
+Previous addresses JSON
 -----------------------
 
 Contains a page of previously generated addresses, from newest to oldest.
@@ -816,8 +799,8 @@ Contains a page of previously generated addresses, from newest to oldest.
 
 .. _unspent-outputs-request:
 
-Unspent UTXOs Request JSON
---------------------------
+Unspent outputs request JSON
+----------------------------
 
 .. code-block:: json
 
@@ -829,15 +812,15 @@ Unspent UTXOs Request JSON
   }
 
 :subaccount: The subaccount to fetch unspent outputs for.
-:num_confs: Pass `0` for unconfirmed UTXOs or `1` for confirmed.
-:all_coins: Pass `true` to include UTXOs with status `frozen`, `false` otherwise.
+:num_confs: Pass ``0`` for unconfirmed UTXOs or ``1`` for confirmed.
+:all_coins: Pass ``true`` to include UTXOs with status ``frozen``, ``false`` otherwise.
 :expired_at: If given, only UTXOs where two-factor authentication expires
     by the given block are returned.
 
 
 .. _unspent-outputs-status:
 
-Unspent Ouputs Set Status JSON
+Unspent ouputs set status JSON
 ------------------------------
 
 Valid status values are ``"default"`` for normal behaviour or ``"frozen"``. Frozen
@@ -865,7 +848,7 @@ deleted, any frozen outputs it contained will be unspendable forever.
 
 .. _transactions-details:
 
-Transactions Details JSON
+Transactions details JSON
 -------------------------
 
 .. code-block:: json
@@ -914,8 +897,8 @@ Network JSON
 
 .. _networks-list:
 
-Networks list JSON
-------------------
+Network list JSON
+-----------------
 
 Contains a list of all available networks the API can connect to.
 
@@ -939,7 +922,7 @@ the networks information.
 
 .. _transaction-limits:
 
-Transaction Limits JSON
+Transaction limits JSON
 -----------------------
 
 .. code-block:: json
@@ -956,14 +939,23 @@ Two-factor detail JSON
 
   {"confirmed":true,"data":"mail@example.com","enabled":true}
 
-.. _twofactor-status:
+.. _auth-handler-status:
 
-Two-factor status JSON
-----------------------
+Auth handler status JSON
+------------------------
+
+Describes the status of a GA_auth_handler. Returned by `GA_auth_handler_get_status`.
 
 .. code-block:: json
 
-  {"action":"disable_2fa","device":null,"methods":["gauth"],"status":"request_code"}
+  {
+    "action": "disable_2fa",
+    "device": null,
+    "methods": [
+      "gauth"
+    ],
+    "status": "request_code"
+  }
 
 .. _hint:
 
@@ -990,7 +982,7 @@ Reconnect hint JSON
 
 .. _convert-amount:
 
-Convert Amount JSON
+Convert amount JSON
 -------------------
 
 Amounts to convert are passed with a single key containing the unit value
@@ -1077,10 +1069,10 @@ Session event notification JSON
 
 
 
-.. _params-data:
+.. _http-params:
 
-HTTP params JSON
-----------------
+HTTP parameters JSON
+--------------------
 
 .. code-block:: json
 
@@ -1100,19 +1092,20 @@ HTTP params JSON
 
 .. _set-locktime-details:
 
-Locktime Details JSON
+Locktime details JSON
 -------------------------
 
 .. code-block:: json
 
-  {"value":65535}
-
+  {
+    "value":65535
+  }
 
 
 .. _assets-params-data:
 
-Assets Params JSON
-------------------
+Asset parameters JSON
+---------------------
 
 .. code-block:: json
 
@@ -1125,7 +1118,7 @@ Assets Params JSON
 
 .. _error-details:
 
-Error Details JSON
+Error details JSON
 ------------------
 
 .. code-block:: json
