@@ -94,6 +94,9 @@ namespace sdk {
                 // Server sends this response if the PIN is incorrect
                 throw login_error(details.second);
             }
+            if (!details.second.empty()) {
+                throw user_error(details.second);
+            }
             std::rethrow_exception(std::current_exception());
         } catch (const assertion_error& e) {
             // Already logged by the assertion that failed
