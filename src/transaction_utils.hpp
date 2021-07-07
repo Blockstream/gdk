@@ -97,7 +97,7 @@ namespace sdk {
         const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs);
 
     // Update the json tx size/fee rate information from tx
-    void update_tx_size_info(const wally_tx_ptr& tx, nlohmann::json& result);
+    void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
 
     // Update the json tx representation with info from tx
     void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);

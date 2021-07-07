@@ -2860,7 +2860,7 @@ namespace sdk {
             const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
             const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
             nlohmann::json ret = { { "txhash", txhash } };
-            update_tx_size_info(tx, ret);
+            update_tx_size_info(m_net_params, tx, ret);
             return ret;
         } catch (const std::exception&) {
             throw user_error("Transaction not found");
@@ -3416,7 +3416,7 @@ namespace sdk {
         // FIXME: test weight and return error in create_transaction, not here
         const std::string tx_hex = result.at("transaction");
         const size_t MAX_TX_WEIGHT = 400000;
-        const uint32_t flags = tx_flags(details.at("liquid"));
+        const uint32_t flags = tx_flags(m_net_params.is_liquid());
         const auto unsigned_tx = tx_from_hex(tx_hex, flags);
         GDK_RUNTIME_ASSERT(tx_get_weight(unsigned_tx) < MAX_TX_WEIGHT);
 
@@ -3438,7 +3438,7 @@ namespace sdk {
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
         const auto tx = tx_from_hex(tx_details["tx"], flags);
-        update_tx_size_info(tx, result);
+        update_tx_size_info(m_net_params, tx, result);
         result["server_signed"] = true;
 
         locker_t locker(m_mutex);

@@ -626,7 +626,7 @@ namespace sdk {
         m_result.swap(m_twofactor_data["transaction"]);
         m_result["user_signed"] = true;
         m_result["blinded"] = true;
-        update_tx_size_info(tx, m_result);
+        update_tx_size_info(net_params, tx, m_result);
         return state_type::done;
     }
 
