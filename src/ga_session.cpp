@@ -2433,28 +2433,12 @@ namespace sdk {
             const std::string fee_str = tx_details["fee"];
             const amount::value_type fee = strtoull(fee_str.c_str(), nullptr, 10);
             tx_details["fee"] = fee;
-            const std::string tx_data = json_get_value(tx_details, "data");
-            tx_details.erase("data");
-            const uint32_t tx_size = tx_details["size"];
-            tx_details.erase("size");
-            if (!tx_data.empty()) {
-                // Only unconfirmed transactions are returned with the tx hex.
-                // In this case update the size, weight etc.
-                // At the moment to fetch the correct info for confirmed
-                // transactions, callers must call get_transaction_details
-                // on the hash of the confirmed transaction.
-                // Once caching is implemented this info can be populated up
-                // front so callers can always expect it.
-                const auto tx = tx_from_hex(tx_data, tx_flags(is_liquid));
-
-                update_tx_info(m_net_params, tx, tx_details);
-            } else {
-                tx_details["transaction_size"] = tx_size;
-                tx_details["transaction_weight"] = tx_details["vsize"].get<uint32_t>() * 4;
-                json_rename_key(tx_details, "vsize", "transaction_vsize");
-            }
+            json_rename_key(tx_details, "data", "transaction");
+            json_rename_key(tx_details, "size", "transaction_size");
+            const uint32_t tx_vsize = tx_details["vsize"];
+            json_rename_key(tx_details, "vsize", "transaction_vsize");
+            tx_details["transaction_weight"] = tx_vsize * 4;
             // Compute fee in satoshi/kb, with the best integer accuracy we can
-            const uint32_t tx_vsize = tx_details["transaction_vsize"];
             tx_details["fee_rate"] = fee * 1000 / tx_vsize;
 
             std::map<std::string, amount> received, spent;
