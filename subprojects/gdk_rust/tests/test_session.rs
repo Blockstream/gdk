@@ -127,6 +127,7 @@ pub fn setup(
     info!("Electrs spawned");
 
     node_generate(&node.client, 100);
+    electrs.trigger().unwrap();
 
     let mut i = 120;
     loop {
@@ -843,7 +844,8 @@ impl TestSession {
         node_issueasset(&self.node.client, satoshi)
     }
     pub fn node_generate(&self, block_num: u32) {
-        node_generate(&self.node.client, block_num)
+        node_generate(&self.node.client, block_num);
+        self.electrs.trigger().unwrap();
     }
     pub fn node_connect(&self, port: u16) {
         self.node.client.call::<Value>("clearbanned", &[]).unwrap();
