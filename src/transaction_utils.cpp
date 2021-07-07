@@ -420,7 +420,7 @@ namespace sdk {
             net_params, result, tx, address, satoshi.value(), asset_id_from_json(net_params, addressee));
     }
 
-    void update_tx_size_info(const wally_tx_ptr& tx, nlohmann::json& result)
+    void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
         result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
@@ -431,13 +431,12 @@ namespace sdk {
         result["transaction_vsize"] = tx_vsize;
         result["transaction_version"] = tx->version;
         result["transaction_locktime"] = tx->locktime;
-        const bool is_liquid = tx_is_elements(tx);
-        result["liquid"] = is_liquid;
-        if (result.find("fee") != result.end()) {
-            if (is_liquid) {
-                result["calculated_fee_rate"] = result["fee"];
+        const auto fee_p = result.find("fee");
+        if (fee_p != result.end()) {
+            if (net_params.is_liquid()) {
+                result["calculated_fee_rate"] = *fee_p;
             } else {
-                const amount::value_type fee = result["fee"];
+                const amount::value_type fee = *fee_p;
                 result["calculated_fee_rate"] = valid ? (fee * 1000 / tx_vsize) : 0;
             }
         }
@@ -462,7 +461,7 @@ namespace sdk {
 
     void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
     {
-        update_tx_size_info(tx, result);
+        update_tx_size_info(net_params, tx, result);
 
         const bool is_liquid = net_params.is_liquid();
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;

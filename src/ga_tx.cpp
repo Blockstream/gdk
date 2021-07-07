@@ -422,7 +422,6 @@ namespace sdk {
             result["error"] = std::string(); // Clear any previous error
             result["user_signed"] = false;
             result["server_signed"] = false;
-            result["liquid"] = is_liquid;
 
             // Must specify subaccount to use
             const auto p_subaccount = result.find("subaccount");
@@ -1019,7 +1018,8 @@ namespace sdk {
     std::pair<std::vector<std::string>, wally_tx_ptr> sign_ga_transaction(
         session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs)
     {
-        wally_tx_ptr tx = tx_from_hex(details.at("transaction"), tx_flags(details.at("liquid")));
+        const bool is_liquid = session.get_network_parameters().is_liquid();
+        wally_tx_ptr tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
         std::vector<std::string> sigs;
         sigs.reserve(inputs.size());
 
@@ -1038,7 +1038,8 @@ namespace sdk {
         nlohmann::json result(details);
         result.erase("utxos");
         result["user_signed"] = true;
-        update_tx_size_info(tx, result);
+        const auto& net_params = session.get_network_parameters();
+        update_tx_size_info(net_params, tx, result);
         return result;
     }
 
@@ -1139,7 +1140,7 @@ namespace sdk {
         if (authorized_assets) {
             result["blinding_nonces"] = blinding_nonces;
         }
-        update_tx_size_info(tx, result);
+        update_tx_size_info(net_params, tx, result);
         return result;
     }
 
