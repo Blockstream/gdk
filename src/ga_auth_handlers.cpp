@@ -340,7 +340,7 @@ namespace sdk {
             impl = new login_call(session, hw_device, mnemonic, password);
         } else if (credential_data.contains("pin")) {
             const auto pin = credential_data.at("pin");
-            const auto pin_data = credential_data.at("pin_data");
+            const auto& pin_data = credential_data.at("pin_data");
             const auto mnemonic = session.mnemonic_from_pin_data(pin, pin_data);
             const auto password = std::string();
             impl = new login_call(session, hw_device, mnemonic, password);

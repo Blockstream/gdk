@@ -140,7 +140,7 @@ namespace sdk {
             if (!is_segwit_script_type(type)) {
                 // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
                 // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
-                const auto input = tx->inputs[index];
+                const auto& input = tx->inputs[index];
                 return get_sigs_from_multisig_script_sig(gsl::make_span(input.script, input.script_len));
             }
             // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
@@ -1076,7 +1076,8 @@ namespace sdk {
         }
 
         size_t num_outputs{ 0 };
-        const auto transaction_outputs = details.at("transaction_outputs");
+        const auto& transaction_outputs = details.at("transaction_outputs");
+
         for (const auto& output : transaction_outputs) {
             if (output.at("is_fee")) {
                 continue;
