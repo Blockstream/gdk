@@ -183,9 +183,9 @@ namespace sdk {
                 return nlohmann::json();
             }
             const auto obj = result.template argument<msgpack::object>(0);
-            std::stringstream ss;
-            ss << obj;
-            return nlohmann::json::parse(ss.str());
+            msgpack::sbuffer sbuf;
+            msgpack::pack(sbuf, obj);
+            return nlohmann::json::from_msgpack(sbuf.data(), sbuf.data() + sbuf.size());
         }
 
         template <typename T = std::string> inline T wamp_cast(const autobahn::wamp_call_result& result)
