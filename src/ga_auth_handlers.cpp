@@ -945,8 +945,20 @@ namespace sdk {
         return state_type::done;
     }
 
+    template <typename T> static void filter_utxos(nlohmann::json& outputs, T&& filter)
+    {
+        for (auto& asset : outputs.items()) {
+            if (asset.key() != "error") {
+                auto& utxos = asset.value();
+                utxos.erase(std::remove_if(utxos.begin(), utxos.end(), filter), utxos.end());
+            }
+        }
+    }
+
     void get_unspent_outputs_call::filter_result()
     {
+        auto& outputs = m_result.at("unspent_outputs");
+
         if (m_details.contains("expired_at")) {
             const uint32_t at = m_details.at("expired_at");
             // Return only UTXOs that have expired as at block number 'expired_at'.
@@ -955,14 +967,13 @@ namespace sdk {
             // 'expired_at'. Therefore we filter out UTXOs where nlocktime
             // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
             constexpr uint32_t max_ = 0xffffffff; // 81716 years from genesis
-            auto&& filter = [at, max_](const auto& u) { return u.value("expiry_height", max_) > at; };
+            filter_utxos(outputs, [at, max_](const auto& u) { return u.value("expiry_height", max_) > at; });
+        }
 
-            for (auto& asset : m_result["unspent_outputs"].items()) {
-                if (asset.key() != "error") {
-                    auto& utxos = asset.value();
-                    utxos.erase(std::remove_if(utxos.begin(), utxos.end(), filter), utxos.end());
-                }
-            }
+        const amount::value_type dust_limit = m_details.value("dust_limit", 0);
+        if (dust_limit != 0) {
+            // The user passed a dust limit, filter UTXOs that are below it
+            filter_utxos(outputs, [dust_limit](const auto& u) { return u.at("satoshi") <= dust_limit; });
         }
     }
 
