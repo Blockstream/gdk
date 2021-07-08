@@ -2524,6 +2524,7 @@ namespace sdk {
                 utxo["block_height"] = 0;
             }
             json_add_if_missing(utxo, "subtype", 0u);
+            json_add_if_missing(utxo, "is_internal", false);
         }
 
         if (updated_cache) {
