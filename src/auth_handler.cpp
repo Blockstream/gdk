@@ -31,6 +31,7 @@ namespace sdk {
         : m_session(session)
         , m_action(action)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
+        , m_is_hw_action(false)
         , m_use_anti_exfil(false)
     {
         try {
