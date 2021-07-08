@@ -489,14 +489,12 @@ namespace sdk {
                 }
             }
 
-            const bool confidential_utxos_only = json_add_if_missing(result, "confidential_utxos_only", false);
             if (!is_sweep && result.find("utxos") == result.end()) {
                 // Fetch the users utxos from the current subaccount.
                 // if RBF/cpfp, require 1 confirmation.
                 const uint32_t num_confs = (is_rbf || is_cpfp) ? 1 : 0;
                 unique_pubkeys_and_scripts_t missing; // FIXME: pass this in
-                const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs },
-                    { "confidential", confidential_utxos_only } };
+                const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs } };
                 auto asset_utxos = session.get_unspent_outputs(details, missing);
                 session.process_unspent_outputs(asset_utxos);
                 result["utxos"].swap(asset_utxos);
