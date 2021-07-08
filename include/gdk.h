@@ -350,7 +350,8 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  * The sum of unspent outputs destined to user's wallet.
  *
  * :param session: The session to use.
- * :param details: :ref:`balance-details` giving the subaccount details to get the balance for.
+ * :param details: :ref:`unspent-outputs-request` detailing the unspent transaction outputs to
+ *|    compute the balance from.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */

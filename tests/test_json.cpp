@@ -44,5 +44,12 @@ int main()
     GDK_RUNTIME_ASSERT(nlohmann::json::object().empty());
     GDK_RUNTIME_ASSERT(!nlohmann::json::object().is_null());
 
+    // Verify that an object with its keys erased is empty but *not* null
+    auto obj = nlohmann::json::object();
+    obj["foo"] = "bar";
+    obj.erase("foo");
+    GDK_RUNTIME_ASSERT(obj.empty());
+    GDK_RUNTIME_ASSERT(!obj.is_null());
+
     return 0;
 }

@@ -107,9 +107,9 @@ namespace sdk {
         return nlohmann::json(); // Implementation detail of ga_session
     }
 
-    void session_impl::process_unspent_outputs(const nlohmann::json& /*details*/, nlohmann::json& /*utxos*/)
+    void session_impl::process_unspent_outputs(nlohmann::json& /*utxos*/)
     {
-        // Only needed for multisig currently
+        // Only needed for multisig until singlesig supports HWW
     }
 
 } // namespace sdk

@@ -901,7 +901,7 @@ namespace sdk {
                 unique_pubkeys_and_scripts_t missing;
                 auto utxos = impl->get_unspent_outputs(details, missing);
                 if (missing.empty()) {
-                    impl->process_unspent_outputs(m_details, utxos);
+                    impl->process_unspent_outputs(utxos);
                     m_result["unspent_outputs"].swap(utxos);
                     filter_result();
                     m_state = state_type::done;
@@ -939,7 +939,7 @@ namespace sdk {
         // Unblind the remaining blinded outputs we have nonces for
         nlohmann::json utxos;
         m_result.swap(utxos);
-        m_session.get_nonnull_impl()->process_unspent_outputs(m_details, utxos);
+        m_session.get_nonnull_impl()->process_unspent_outputs(utxos);
         m_result["unspent_outputs"].swap(utxos);
         filter_result();
         return state_type::done;
@@ -957,15 +957,26 @@ namespace sdk {
 
     void get_unspent_outputs_call::filter_result()
     {
+        const auto& net_params = m_session.get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
+
         auto& outputs = m_result.at("unspent_outputs");
+        if (outputs.is_null()) {
+            outputs = nlohmann::json::object();
+        }
+
+        if (is_liquid && m_details.value("confidential", false)) {
+            // The user wants only confidential UTXOs, filter out non-confidential
+            filter_utxos(outputs, [](const auto& u) { return !u.value("confidential", false); });
+        }
 
         if (m_details.contains("expired_at")) {
-            const uint32_t at = m_details.at("expired_at");
             // Return only UTXOs that have expired as at block number 'expired_at'.
             // A UTXO is expired if its nlocktime has been reached; i.e. its
             // nlocktime is less than or equal to the block number in
             // 'expired_at'. Therefore we filter out UTXOs where nlocktime
             // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
+            const uint32_t at = m_details.at("expired_at");
             constexpr uint32_t max_ = 0xffffffff; // 81716 years from genesis
             filter_utxos(outputs, [at, max_](const auto& u) { return u.value("expiry_height", max_) > at; });
         }
@@ -975,6 +986,10 @@ namespace sdk {
             // The user passed a dust limit, filter UTXOs that are below it
             filter_utxos(outputs, [dust_limit](const auto& u) { return u.at("satoshi") <= dust_limit; });
         }
+
+        // Remove any keys that have become empty
+        auto&& filter = [](const auto& assets) { return assets.empty(); };
+        outputs.erase(std::remove_if(outputs.begin(), outputs.end(), filter), outputs.end());
     }
 
     //

@@ -140,7 +140,7 @@ namespace sdk {
 
         virtual nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
             = 0;
-        virtual void process_unspent_outputs(const nlohmann::json& details, nlohmann::json& utxos);
+        virtual void process_unspent_outputs(nlohmann::json& utxos);
         virtual nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused)
             = 0;

@@ -2758,14 +2758,9 @@ namespace sdk {
         return utxos;
     }
 
-    void ga_session::process_unspent_outputs(const nlohmann::json& details, nlohmann::json& utxos)
+    void ga_session::process_unspent_outputs(nlohmann::json& utxos)
     {
-        const bool confidential_only = details.value("confidential", false);
-        const bool is_liquid = m_net_params.is_liquid();
-
-        GDK_RUNTIME_ASSERT(!confidential_only || is_liquid);
-
-        if (is_liquid) {
+        if (m_net_params.is_liquid()) {
             // Reprocess to unblind any UTXOS we now have the nonces for
             unique_pubkeys_and_scripts_t missing;
             if (cleanup_utxos(utxos, std::string(), missing)) {
@@ -2781,12 +2776,8 @@ namespace sdk {
             if (utxo.contains("error")) {
                 asset_utxos["error"].emplace_back(utxo);
             } else {
-                const bool confidential_utxo = is_liquid && utxo.at("confidential");
-                // Either return all or only confidential UTXOs
-                if (!confidential_only || confidential_utxo) {
-                    const auto utxo_asset_id = asset_id_from_json(m_net_params, utxo);
-                    asset_utxos[utxo_asset_id].emplace_back(utxo);
-                }
+                const auto utxo_asset_id = asset_id_from_json(m_net_params, utxo);
+                asset_utxos[utxo_asset_id].emplace_back(utxo);
             }
         }
 

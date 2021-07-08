@@ -498,7 +498,7 @@ namespace sdk {
                 const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs },
                     { "confidential", confidential_utxos_only } };
                 auto asset_utxos = session.get_unspent_outputs(details, missing);
-                session.process_unspent_outputs(details, asset_utxos);
+                session.process_unspent_outputs(asset_utxos);
                 result["utxos"].swap(asset_utxos);
             }
 
