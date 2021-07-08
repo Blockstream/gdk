@@ -19,6 +19,7 @@ namespace sdk {
         using sqlite3_stmt_ptr = std::shared_ptr<struct ::sqlite3_stmt>;
 
         cache(const network_parameters& net_params, const std::string& network_name);
+        ~cache();
 
         bool has_liquid_output(byte_span_t txhash, const uint32_t vout);
         boost::optional<nlohmann::json> get_liquid_output(byte_span_t txhash, const uint32_t vout);

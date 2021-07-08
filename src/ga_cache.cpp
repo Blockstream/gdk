@@ -25,7 +25,7 @@ namespace sdk {
             sqlite3* tmpdb = nullptr;
             const int rc = sqlite3_open(":memory:", &tmpdb);
             GDK_RUNTIME_ASSERT(rc == SQLITE_OK);
-            return cache::sqlite3_ptr{ tmpdb, [](sqlite3* p) { sqlite3_free(p); } };
+            return cache::sqlite3_ptr{ tmpdb, [](sqlite3* p) { sqlite3_close(p); } };
         }
 
         static auto get_db()
@@ -274,6 +274,8 @@ namespace sdk {
         , m_stmt_key_value_delete(get_stmt(true, m_db, "DELETE FROM KeyValue WHERE key = ?1;"))
     {
     }
+
+    cache::~cache() {}
 
     void cache::save_db()
     {
