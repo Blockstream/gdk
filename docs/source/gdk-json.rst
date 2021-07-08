@@ -682,26 +682,6 @@ Settings JSON
   }
 
 
-
-.. _balance-details:
-
-Balance details JSON
---------------------
-
-.. code-block:: json
-
-  {
-    "subaccount":4,
-    "num_confs":0,
-    "confidential": false
-  }
-
-:subaccount: The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to get the balance for.
-:num_confs: Number of confirmations needed to include an output in the balance.
-:confidential: If true, include only confidential outputs in the balance. Default false.
-
-
-
 .. _receive-address-details:
 
 Receive address details JSON
@@ -798,20 +778,27 @@ Contains a page of previously generated addresses, from newest to oldest.
 Unspent outputs request JSON
 ----------------------------
 
+Describes which unspent outputs to return from `GA_get_unspent_outputs`,
+or which unspent outputs to include in the balance returned by `GA_get_balance`.
+
 .. code-block:: json
 
   {
     "subaccount": 3,
     "num_confs": 0,
     "all_coins": false,
-    "expired_at": 99999
+    "expired_at": 99999,
+    "confidential": false,
+    "dust_limit": 546
   }
 
 :subaccount: The subaccount to fetch unspent outputs for.
 :num_confs: Pass ``0`` for unconfirmed UTXOs or ``1`` for confirmed.
-:all_coins: Pass ``true`` to include UTXOs with status ``frozen``, ``false`` otherwise.
+:all_coins: Pass ``true`` to include UTXOs with status ``frozen``. Defaults to ``false``.
 :expired_at: If given, only UTXOs where two-factor authentication expires
     by the given block are returned.
+:confidential: Pass ``true`` to include only confidential UTXOs. Defaults to ``false``.
+:dust_limit: If given, only UTXOs with a value greater than the limit value are returned.
 
 
 .. _unspent-outputs-status:
