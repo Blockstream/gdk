@@ -18,18 +18,18 @@ int main()
     // Perform each test in new buffers so valgrind can find any overruns
     for (size_t i = 1; i <= 1024; ++i) {
         // Encrypt
-        unsigned char *plaintext = reinterpret_cast<unsigned char*>(malloc(i));
+        unsigned char* plaintext = reinterpret_cast<unsigned char*>(malloc(i));
         const auto plaintext_span = gsl::make_span(plaintext, i);
         memcpy(plaintext, buff, i);
         const size_t encrypted_length = aes_gcm_encrypt_get_length(plaintext_span);
-        unsigned char *cyphertext = reinterpret_cast<unsigned char*>(malloc(encrypted_length));
+        unsigned char* cyphertext = reinterpret_cast<unsigned char*>(malloc(encrypted_length));
         auto cyphertext_span = gsl::make_span(cyphertext, encrypted_length);
         size_t written = aes_gcm_encrypt(key, plaintext_span, cyphertext_span);
         GDK_RUNTIME_ASSERT(written == encrypted_length);
 
         // Decrypt
         const size_t decrypted_length = aes_gcm_decrypt_get_length(cyphertext_span);
-        unsigned char *decrypted = reinterpret_cast<unsigned char*>(malloc(decrypted_length));
+        unsigned char* decrypted = reinterpret_cast<unsigned char*>(malloc(decrypted_length));
         auto decrypted_span = gsl::make_span(decrypted, decrypted_length);
         written = aes_gcm_decrypt(key, cyphertext_span, decrypted_span);
         GDK_RUNTIME_ASSERT(written == i);

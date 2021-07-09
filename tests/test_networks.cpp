@@ -1,7 +1,7 @@
 #include "src/network_parameters.hpp"
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <set>
-#include <iostream>
 
 // Verify that liquid/non-liquid network parameters contain all expected keys
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-clang-format -i src/*.{c,h}pp include/*.h
+clang-format -i src/*.{c,h}pp include/*.h tests/*cpp
 
 if [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env

@@ -4,10 +4,9 @@
 #include <string.h>
 
 // Tests for gdk exposed JSON functions
-static const char *SAMPLE_JSON = "{"
-    "    \"string_key\": \"string value\""
-    "}";
-
+static const char* SAMPLE_JSON = "{"
+                                 "    \"string_key\": \"string value\""
+                                 "}";
 
 int main()
 {
