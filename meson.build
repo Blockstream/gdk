@@ -326,14 +326,20 @@ if get_option('enable-tests')
                     dependencies: dependencies
         ))
 
+    test('test multisession',
+         executable('test_multi_session', 'tests/test_multi_session.cpp',
+                    link_with: libga.get_static_lib(),
+                    dependencies: dependencies
+        ))
+
     test('test networks',
          executable('test_networks', 'tests/test_networks.cpp',
                     link_with: libga.get_static_lib(),
                     dependencies: dependencies
         ))
 
-    test('test multisession',
-         executable('test_multi_session', 'tests/test_multi_session.cpp',
+    test('test session',
+         executable('test_session', 'tests/test_session.cpp',
                     link_with: libga.get_static_lib(),
                     dependencies: dependencies
         ))
