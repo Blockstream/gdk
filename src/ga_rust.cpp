@@ -268,7 +268,13 @@ namespace sdk {
     void ga_rust::GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json)
     {
         ga_rust* self = static_cast<ga_rust*>(self_context);
-        self->emit_notification(convert_serde(json), false);
+        auto notification = convert_serde(json);
+        if (notification.at("event") == "transaction") {
+            // FIXME: Get the actual subaccounts affected from the notification
+            // See gdk_rust/gdk_electrum/src/lib.rs: "// TODO account number"
+            self->remove_cached_utxos(std::vector<uint32_t>());
+        }
+        self->emit_notification(notification, false);
     }
 
     void ga_rust::set_notification_handler(GA_notification_handler handler, void* context)

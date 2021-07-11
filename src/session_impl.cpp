@@ -107,6 +107,53 @@ namespace sdk {
         return nlohmann::json(); // Implementation detail of ga_session
     }
 
+    session_impl::utxo_cache_value_t session_impl::get_cached_utxos(uint32_t subaccount, uint32_t num_confs) const
+    {
+        locker_t locker(m_utxo_cache_mutex);
+        // FIXME: If we have no unconfirmed txs, 0 and 1 conf results are
+        // identical, so we could share 0 & 1 conf storage
+        auto p = m_utxo_cache.find({ subaccount, num_confs });
+        return p == m_utxo_cache.end() ? utxo_cache_value_t() : p->second;
+    }
+
+    session_impl::utxo_cache_value_t session_impl::set_cached_utxos(
+        uint32_t subaccount, uint32_t num_confs, nlohmann::json& utxos)
+    {
+        // Convert null UTXOs into an empty element
+        auto& outputs = utxos.at("unspent_outputs");
+        if (outputs.is_null()) {
+            outputs = nlohmann::json::object();
+        }
+        // Encache
+        locker_t locker(m_utxo_cache_mutex);
+        auto entry = std::make_shared<const nlohmann::json>(std::move(utxos));
+        m_utxo_cache[std::make_pair(subaccount, num_confs)] = entry;
+        return entry;
+    }
+
+    void session_impl::remove_cached_utxos(const std::vector<uint32_t>& subaccounts)
+    {
+        std::vector<utxo_cache_value_t> tmp_values; // Delete outside of lock
+        utxo_cache_t tmp_cache;
+        {
+            locker_t locker(m_utxo_cache_mutex);
+            if (subaccounts.empty()) {
+                // Empty subaccount list means clear the entire cache
+                std::swap(m_utxo_cache, tmp_cache);
+            } else {
+                // Remove all entries for affected subaccounts
+                for (auto p = m_utxo_cache.begin(); p != m_utxo_cache.end(); /* no-op */) {
+                    if (std::find(subaccounts.begin(), subaccounts.end(), p->first.first) != subaccounts.end()) {
+                        tmp_values.push_back(p->second);
+                        m_utxo_cache.erase(p++);
+                    } else {
+                        ++p;
+                    }
+                }
+            }
+        }
+    }
+
     void session_impl::process_unspent_outputs(nlohmann::json& /*utxos*/)
     {
         // Only needed for multisig until singlesig supports HWW

@@ -898,23 +898,33 @@ namespace sdk {
                     return;
                 }
                 auto impl = session.get_nonnull_impl();
+                auto p = impl->get_cached_utxos(m_details.at("subaccount"), num_confs);
+                if (p) {
+                    // Return the cached result, after filtering it
+                    m_result = *p;
+                    filter_result(false);
+                    m_state = state_type::done;
+                    return;
+                }
                 unique_pubkeys_and_scripts_t missing;
                 auto utxos = impl->get_unspent_outputs(details, missing);
                 if (missing.empty()) {
+                    // All results are unblinded/Don't need unblinding.
+                    // Encache and return them
                     impl->process_unspent_outputs(utxos);
                     m_result["unspent_outputs"].swap(utxos);
-                    filter_result();
+                    filter_result(true);
                     m_state = state_type::done;
-                } else {
-                    // Some utxos need unblinding; resolve them
-                    m_result.swap(utxos);
-                    m_state = state_type::resolve_code;
-                    set_data();
-                    auto& blinded_scripts = m_twofactor_data["blinded_scripts"];
-                    for (const auto& m : missing) {
-                        blinded_scripts.emplace_back(
-                            nlohmann::json({ { "pubkey", b2h(m.first) }, { "script", b2h(m.second) } }));
-                    }
+                    return;
+                }
+                // Some utxos need unblinding; resolve them
+                m_result.swap(utxos);
+                m_state = state_type::resolve_code;
+                set_data();
+                auto& blinded_scripts = m_twofactor_data["blinded_scripts"];
+                for (const auto& m : missing) {
+                    blinded_scripts.emplace_back(
+                        nlohmann::json({ { "pubkey", b2h(m.first) }, { "script", b2h(m.second) } }));
                 }
             } catch (const std::exception& e) {
                 set_error(e.what());
@@ -937,11 +947,12 @@ namespace sdk {
             }
         }
         // Unblind the remaining blinded outputs we have nonces for
+        // and encache the result
         nlohmann::json utxos;
         m_result.swap(utxos);
         m_session.get_nonnull_impl()->process_unspent_outputs(utxos);
         m_result["unspent_outputs"].swap(utxos);
-        filter_result();
+        filter_result(true);
         return state_type::done;
     }
 
@@ -955,14 +966,23 @@ namespace sdk {
         }
     }
 
-    void get_unspent_outputs_call::filter_result()
+    void get_unspent_outputs_call::filter_result(bool encache)
     {
-        const auto& net_params = m_session.get_network_parameters();
-        const bool is_liquid = net_params.is_liquid();
+        auto impl = m_session.get_nonnull_impl();
+        if (encache) {
+            // Encache the unfiltered results, and set our result to a copy
+            // for filtering.
+            auto p = impl->set_cached_utxos(m_details.at("subaccount"), m_details.at("num_confs"), m_result);
+            m_result = *p;
+        }
 
+        const auto& net_params = impl->get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
         auto& outputs = m_result.at("unspent_outputs");
-        if (outputs.is_null()) {
+        if (outputs.is_null() || outputs.empty()) {
+            // Nothing to filter, return an empty json object
             outputs = nlohmann::json::object();
+            return;
         }
 
         if (is_liquid && m_details.value("confidential", false)) {

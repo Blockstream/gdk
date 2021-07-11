@@ -139,7 +139,7 @@ namespace sdk {
         const nlohmann::json m_details;
 
     private:
-        void filter_result();
+        void filter_result(bool encache);
     };
 
     class get_balance_call : public get_unspent_outputs_call {

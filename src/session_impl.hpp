@@ -34,6 +34,26 @@ namespace sdk {
         // Factory method
         static boost::shared_ptr<session_impl> create(const nlohmann::json& net_params);
 
+        // UTXOs
+        using utxo_cache_value_t = std::shared_ptr<const nlohmann::json>;
+
+        // Lookup cached UTXOs
+        utxo_cache_value_t get_cached_utxos(uint32_t subaccount, uint32_t num_confs) const;
+        // Encache UTXOs. Takes ownership of utxos, returns the encached value
+        utxo_cache_value_t set_cached_utxos(uint32_t subaccount, uint32_t num_confs, nlohmann::json& utxos);
+        // Un-encache UTXOs
+        void remove_cached_utxos(const std::vector<uint32_t>& subaccounts);
+
+        virtual nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
+            = 0;
+        virtual void process_unspent_outputs(nlohmann::json& utxos);
+        virtual nlohmann::json get_unspent_outputs_for_private_key(
+            const std::string& private_key, const std::string& password, uint32_t unused)
+            = 0;
+        virtual nlohmann::json set_unspent_outputs_status(
+            const nlohmann::json& details, const nlohmann::json& twofactor_data)
+            = 0;
+
         virtual void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
 
@@ -41,6 +61,7 @@ namespace sdk {
         virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
         virtual void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler) = 0;
+        // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
         virtual bool reconnect() = 0;
         virtual void reconnect_hint(bool enable, bool restart) = 0;
@@ -138,15 +159,6 @@ namespace sdk {
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;
 
-        virtual nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
-            = 0;
-        virtual void process_unspent_outputs(nlohmann::json& utxos);
-        virtual nlohmann::json get_unspent_outputs_for_private_key(
-            const std::string& private_key, const std::string& password, uint32_t unused)
-            = 0;
-        virtual nlohmann::json set_unspent_outputs_status(
-            const nlohmann::json& details, const nlohmann::json& twofactor_data)
-            = 0;
         virtual nlohmann::json get_transaction_details(const std::string& txhash_hex) const = 0;
 
         virtual nlohmann::json create_transaction(const nlohmann::json& details) = 0;
@@ -218,6 +230,14 @@ namespace sdk {
 
         // Immutable post-login
         std::shared_ptr<signer> m_signer;
+
+        // Mutable
+
+        // UTXOs
+        using utxo_cache_key_t = std::pair<uint32_t, uint32_t>; // subaccount, num_confs
+        using utxo_cache_t = std::map<utxo_cache_key_t, utxo_cache_value_t>;
+        mutable std::mutex m_utxo_cache_mutex;
+        utxo_cache_t m_utxo_cache;
     };
 
 } // namespace sdk

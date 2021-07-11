@@ -1458,6 +1458,7 @@ namespace sdk {
                 // TODO: figure out what type is for liquid
             }
             unique_unlock unlocker(locker);
+            remove_cached_utxos(subaccounts);
             emit_notification({ { "event", "transaction" }, { "transaction", std::move(details) } }, false);
         });
     }
@@ -1479,8 +1480,8 @@ namespace sdk {
             details["initial_timestamp"] = m_earliest_block_time;
 
             // Update the tx list cache before we update our own block height,
-            // in case this is a reorg (in which case 'diverged_count'refers to
-            // blocks diverged from the current GA tip)
+            // in case this is a reorg (in which case 'diverged_count' refers
+            // to blocks diverged from the current GA tip)
             m_tx_list_caches.on_new_block(m_block_height, details);
 
             const uint32_t block_height = details["block_height"];
@@ -1489,6 +1490,10 @@ namespace sdk {
             }
 
             unique_unlock unlocker(locker);
+            if (details.value("diverged_count", 0)) {
+                // In the event of a re-org, nuke the entire UTXO cache
+                remove_cached_utxos(std::vector<uint32_t>());
+            }
             details.erase("diverged_count");
             emit_notification({ { "event", "block" }, { "block", std::move(details) } }, false);
         });
@@ -3426,6 +3431,10 @@ namespace sdk {
         update_tx_size_info(m_net_params, tx, result);
         result["server_signed"] = true;
 
+        std::vector<uint32_t> subaccounts; // TODO: Handle multi-account spends
+        subaccounts.push_back(details.at("subaccount"));
+        remove_cached_utxos(subaccounts);
+
         locker_t locker(m_mutex);
         if (!memo.empty()) {
             update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
@@ -3435,7 +3444,7 @@ namespace sdk {
         }
 
         // Notify the tx cache that a new tx is expected
-        m_tx_list_caches.on_new_transaction(details.at("subaccount"), { { "txhash", txhash_hex } });
+        m_tx_list_caches.on_new_transaction(subaccounts[0], { { "txhash", txhash_hex } });
 
         return result;
     }
