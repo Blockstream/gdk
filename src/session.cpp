@@ -262,11 +262,11 @@ namespace sdk {
     }
 
     nlohmann::json session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer)
+        const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->authenticate(sig_der_hex, path_hex, root_xpub_bip32, device_id, signer);
+            return p->authenticate(sig_der_hex, path_hex, root_xpub_bip32, signer);
         });
     }
 

@@ -249,7 +249,7 @@ namespace sdk {
             }
 
             // Log in and set up the session
-            m_result = m_session.authenticate(args.at("signature"), "GA", m_master_xpub_bip32, std::string(), m_signer);
+            m_result = m_session.authenticate(args.at("signature"), "GA", m_master_xpub_bip32, m_signer);
 
             // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;

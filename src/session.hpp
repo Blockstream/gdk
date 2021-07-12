@@ -45,7 +45,7 @@ namespace sdk {
 
         std::string get_challenge(const std::string& address);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer);
+            const std::string& root_xpub_bip32, std::shared_ptr<signer> signer);
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
         std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);

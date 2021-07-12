@@ -1519,19 +1519,18 @@ namespace sdk {
     }
 
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, const std::string& device_id, std::shared_ptr<signer> signer)
+        const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
 
         GDK_RUNTIME_ASSERT(m_signer == nullptr);
         m_signer = signer;
 
-        // TODO: If no device id is given, generate one, update our settings and
-        // call the storage interface to store the settings (once storage/caching is implemented)
-        std::string id = device_id.empty() ? "fake_dev_id" : device_id;
+        constexpr bool minimal = true; // Don't return balance/nlocktime info
+        const std::string id; // Device id, no longer used
         const auto user_agent = get_user_agent(m_signer->supports_arbitrary_scripts(), m_user_agent);
 
-        auto result = wamp_call(locker, "login.authenticate", sig_der_hex, false, path_hex, device_id, user_agent);
+        auto result = wamp_call(locker, "login.authenticate", sig_der_hex, minimal, path_hex, id, user_agent);
         nlohmann::json login_data = wamp_cast_json(result);
 
         if (login_data.is_boolean()) {
