@@ -589,15 +589,28 @@ namespace sdk {
                 // Add all outputs and compute the total amount of satoshi to be sent
                 amount required_total{ 0 };
 
+                uint32_t explicit_change_index = NO_CHANGE_INDEX;
                 if (num_addressees) {
+                    size_t addressee_index = 0;
                     for (auto& addressee : *addressees_p) {
                         const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
                         if (addressee_asset_id == asset_id) {
-                            required_total += add_tx_addressee(session, net_params, result, tx, addressee);
+                            const auto amount = add_tx_addressee(session, net_params, result, tx, addressee);
+                            if (!json_get_value(addressee, "is_change", false)) {
+                                required_total += amount;
+                            } else {
+                                if (explicit_change_index != NO_CHANGE_INDEX) {
+                                    set_tx_error(result, "Only one explicit change addressee allowed");
+                                    break;
+                                }
+                                explicit_change_index = addressee_index;
+                            }
                             reordered_addressees.push_back(addressee);
                         }
+                        ++addressee_index;
                     }
                 }
+                result["change_type"][asset_id] = explicit_change_index == NO_CHANGE_INDEX ? "generated" : "explicit";
 
                 // TODO: filter per asset or assume always single asset
                 if (manual_selection) {
@@ -734,11 +747,7 @@ namespace sdk {
                             // so compute what we can send (everything minus the
                             // fee) and exit the loop
                             required_total = available_total - fee;
-                            if (is_liquid) {
-                                set_tx_output_commitment(tx, 0, asset_id, required_total.value());
-                            } else {
-                                tx->outputs[0].satoshi = required_total.value();
-                            }
+                            set_tx_output_value(net_params, tx, 0, asset_id, required_total.value());
                             if (num_addressees == 1u) {
                                 addressees_p->at(0)["satoshi"] = required_total.value();
                             }
@@ -794,17 +803,30 @@ namespace sdk {
                         continue;
                     }
 
-                    // We have more than the dust amount of change. Add a change
-                    // output to collect it, then loop again in case the amount
-                    // this increases the fee by requires more UTXOs.
-                    const auto change_address = result.at("change_address").at(asset_id).at("address");
-                    add_tx_output(net_params, result, tx, change_address, is_liquid ? 1 : 0, asset_id);
-                    have_change_output = true;
-                    change_index = tx->num_outputs - 1;
-                    if (is_liquid && include_fee) {
-                        std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
-                        std::swap(fee_index, change_index);
+                    // We have more than the dust amount of change. First look for an explicit change
+                    // output in the addressees and if present send the change there
+                    amount::value_type change_amount = (total - required_total - fee).value();
+
+                    if (explicit_change_index == NO_CHANGE_INDEX) {
+                        // No explicit change output specified, add a change output using the generated change
+                        // address
+                        add_tx_output(net_params, result, tx, result.at("change_address").at(asset_id).at("address"),
+                            is_liquid ? 1 : 0, asset_id == "btc" ? std::string{} : asset_id);
+                        have_change_output = true;
+                        change_index = tx->num_outputs - 1;
+                        if (is_liquid && include_fee) {
+                            std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
+                            std::swap(fee_index, change_index);
+                        }
+                    } else {
+                        // Use explicit change output
+                        set_tx_output_value(net_params, tx, explicit_change_index, asset_id, change_amount);
+                        auto addressees = *addressees_p;
+                        addressees[explicit_change_index]["satoshi"] = change_amount;
+                        change_index = explicit_change_index;
+                        have_change_output = true;
                     }
+
                     result["have_change"][asset_id] = have_change_output;
                     result["change_index"][asset_id] = change_index;
                 }
@@ -826,11 +848,13 @@ namespace sdk {
                         } else {
                             auto& change_output = tx->outputs[change_index];
                             change_output.satoshi = change_amount;
-                            const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
-                            // Randomize change output
-                            if (change_index != new_change_index) {
-                                std::swap(tx->outputs[new_change_index], change_output);
-                                change_index = new_change_index;
+                            if (explicit_change_index == NO_CHANGE_INDEX) {
+                                // Randomize change output for non-explicit change
+                                const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
+                                if (change_index != new_change_index) {
+                                    std::swap(tx->outputs[new_change_index], change_output);
+                                    change_index = new_change_index;
+                                }
                             }
                         }
                     }
