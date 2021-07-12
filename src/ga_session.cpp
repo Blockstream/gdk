@@ -1629,8 +1629,7 @@ namespace sdk {
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
 
         //#if 0 // Just for testing pre-segwit txs
-        if (json_get_value(m_login_data, "segwit_server", true)
-            && !json_get_value(m_login_data["appearance"], "use_segwit", false)) {
+        if (!json_get_value(m_login_data["appearance"], "use_segwit", false)) {
             // Enable segwit
             m_login_data["appearance"]["use_segwit"] = true;
             push_appearance_to_server(locker);
