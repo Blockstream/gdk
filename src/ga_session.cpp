@@ -1834,7 +1834,8 @@ namespace sdk {
 
     nlohmann::json ga_session::login_watch_only(const std::string& username, const std::string& password)
     {
-        const std::map<std::string, std::string> args = { { "username", username }, { "password", password } };
+        const std::map<std::string, std::string> args
+            = { { "username", username }, { "password", password }, { "minimal", "true" } };
         const auto user_agent = get_user_agent(true, m_user_agent);
         nlohmann::json login_data = wamp_cast_json(wamp_call("login.watch_only_v2", "custom", args, user_agent));
 
