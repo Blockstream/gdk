@@ -2625,12 +2625,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
-        autobahn::wamp_subscription sub;
-        auto subscribe_future
-            = m_session->subscribe(topic, callback, autobahn::wamp_subscribe_options("exact"))
-                  .then(boost::launch::deferred,
-                      [&sub](boost::future<autobahn::wamp_subscription> subscription) { sub = subscription.get(); });
-        subscribe_future.get();
+        auto sub = m_session->subscribe(topic, callback, autobahn::wamp_subscribe_options("exact")).get();
         GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
         return sub;
     }
