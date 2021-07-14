@@ -98,10 +98,16 @@ static INIT_LOGGER: Once = Once::new();
 #[no_mangle]
 pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const GdkSession,
-    network: *const GDKRUST_json,
+    network: *const c_char,
 ) -> i32 {
     const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Off;
-    let network = &safe_ref!(network).0;
+    let network: Value = match serde_json::from_str(&read_str(network)) {
+        Ok(x) => x,
+        Err(err) => {
+            error!("error: {:?}", err);
+            return GA_ERROR;
+        }
+    };
     let level = if network.is_object() {
         match network.as_object().unwrap().get("log_level") {
             Some(Value::String(val)) => LevelFilter::from_str(val).unwrap_or(DEFAULT_LOG_LEVEL),

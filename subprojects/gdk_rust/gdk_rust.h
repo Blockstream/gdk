@@ -37,7 +37,7 @@ typedef void (*GDKRUST_notification_handler)(void *self_context, GDKRUST_json* d
  * :param session: Destination for the resulting session.
  *|     Returned session should be freed using `GA_destroy_session`.
  */
-GDK_API int GDKRUST_create_session(struct GDKRUST_session** session, GDKRUST_json *networks);
+GDK_API int GDKRUST_create_session(struct GDKRUST_session** session, const char* network);
 
 GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *method, const GDKRUST_json* input, GDKRUST_json** output);
 
