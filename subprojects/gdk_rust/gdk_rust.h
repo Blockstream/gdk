@@ -50,13 +50,6 @@ GDK_API int GDKRUST_spv_verify_tx(const char *input);
 GDK_API int GDKRUST_set_notification_handler(struct GDKRUST_session* session, GDKRUST_notification_handler handler, void *self_context);
 
 /**
- * Free a GDKRUST_json object.
- *
- * :param json: GDKRUST_json object to free.
- */
-GDK_API int GDKRUST_destroy_json(GDKRUST_json* json);
-
-/**
  * Free a string returned by the api.
  *
  * :param str: The string to free.

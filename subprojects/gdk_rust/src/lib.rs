@@ -23,8 +23,8 @@ use std::sync::Once;
 use std::time::{Duration, SystemTime};
 
 use gdk_common::model::{
-    CreateAccountOpt, GDKRUST_json, GetNextAccountOpt, GetTransactionsOpt, RenameAccountOpt,
-    SPVVerifyTx, SetAccountHiddenOpt, UpdateAccountOpt,
+    CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, RenameAccountOpt, SPVVerifyTx,
+    SetAccountHiddenOpt, UpdateAccountOpt,
 };
 use gdk_common::session::Session;
 
@@ -431,16 +431,6 @@ where
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),
     }
-}
-
-#[no_mangle]
-pub extern "C" fn GDKRUST_destroy_json(ptr: *mut GDKRUST_json) -> i32 {
-    trace!("GA_destroy_json({:?})", ptr);
-    // TODO make sure this works
-    unsafe {
-        drop(&*ptr);
-    }
-    GA_OK
 }
 
 #[no_mangle]
