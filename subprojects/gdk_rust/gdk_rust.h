@@ -41,7 +41,7 @@ GDK_API int GDKRUST_create_session(struct GDKRUST_session** session, const char*
 
 GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *method, const char *input, char** output);
 
-GDK_API int GDKRUST_spv_verify_tx(const GDKRUST_json* json);
+GDK_API int GDKRUST_spv_verify_tx(const char *input);
 
 #ifndef SWIG
 /**

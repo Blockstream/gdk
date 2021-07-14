@@ -21,17 +21,6 @@ namespace sdk {
     namespace {
         static const std::string TOR_SOCKS5_PREFIX("socks5://");
 
-        using json_ptr = std::shared_ptr<GDKRUST_json>;
-
-        inline json_ptr convert_json(const std::string& v)
-        {
-            GDKRUST_json* p;
-            GDKRUST_convert_string_to_json(v.c_str(), &p);
-            return json_ptr(p, GDKRUST_destroy_json);
-        }
-
-        inline json_ptr convert_json(const nlohmann::json& v) { return convert_json(v.dump()); }
-
         static nlohmann::json convert_serde(GDKRUST_json* json)
         {
             char* output;
@@ -582,7 +571,7 @@ namespace sdk {
 
     int32_t ga_rust::spv_verify_tx(const nlohmann::json& details)
     {
-        return GDKRUST_spv_verify_tx(convert_json(details).get());
+        return GDKRUST_spv_verify_tx(details.dump().c_str());
     }
 
 } // namespace sdk

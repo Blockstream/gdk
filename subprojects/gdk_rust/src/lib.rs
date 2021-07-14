@@ -71,15 +71,6 @@ macro_rules! json_res {
     }};
 }
 
-macro_rules! safe_ref {
-    ($t:expr) => {{
-        if $t.is_null() {
-            return GA_ERROR;
-        }
-        unsafe { &*$t }
-    }};
-}
-
 macro_rules! safe_mut_ref {
     ($t:expr) => {{
         if $t.is_null() {
@@ -499,10 +490,16 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn GDKRUST_spv_verify_tx(input: *const GDKRUST_json) -> i32 {
+pub extern "C" fn GDKRUST_spv_verify_tx(input: *const c_char) -> i32 {
     init_logging(LevelFilter::Info);
     info!("GDKRUST_spv_verify_tx");
-    let input: &Value = &safe_ref!(input).0;
+    let input: Value = match serde_json::from_str(&read_str(input)) {
+        Ok(x) => x,
+        Err(err) => {
+            error!("error: {:?}", err);
+            return GA_ERROR;
+        }
+    };
     let input: SPVVerifyTx = match serde_json::from_value(input.clone()) {
         Ok(val) => val,
         Err(e) => {
