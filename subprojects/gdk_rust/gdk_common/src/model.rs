@@ -1,7 +1,6 @@
 use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
 use crate::util::StringSerialized;
 use bitcoin::Network;
-use core::mem::transmute;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -14,16 +13,6 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct GDKRUST_json(pub serde_json::Value);
-
-impl GDKRUST_json {
-    pub fn new(data: serde_json::Value) -> *const GDKRUST_json {
-        unsafe { transmute(Box::new(GDKRUST_json(data))) }
-    }
-}
 
 pub type Balances = HashMap<String, i64>;
 

@@ -25,9 +25,6 @@ extern "C" {
 /** A server session */
 typedef struct GDKRUST_session GDKRUST_session;
 
-/** A Parsed JSON object */
-typedef struct GDKRUST_json GDKRUST_json;
-
 /** A notification handler */
 typedef void (*GDKRUST_notification_handler)(void *self_context, char *details);
 
