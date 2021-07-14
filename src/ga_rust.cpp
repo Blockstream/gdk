@@ -44,12 +44,11 @@ namespace sdk {
             return cppjson;
         }
 
-        static std::pair<std::string, std::string> get_exception_details(GDKRUST_json* json)
+        static std::pair<std::string, std::string> get_exception_details(const nlohmann::json& details)
         {
             std::pair<std::string, std::string> ret;
-            if (json) {
+            if (details.is_null()) {
                 try {
-                    const auto details = convert_serde(json);
                     ret.first = details.value("error", std::string());
                     ret.second = details.value("message", std::string());
                 } catch (const std::exception&) {
@@ -59,7 +58,7 @@ namespace sdk {
             return ret;
         }
 
-        static void check_code(const int32_t return_code, GDKRUST_json* json)
+        static void check_code(const int32_t return_code, const nlohmann::json& json)
         {
             if (return_code != GA_OK) {
                 switch (return_code) {
@@ -133,10 +132,19 @@ namespace sdk {
 
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
     {
-        GDKRUST_json* ret = nullptr;
-        int res = GDKRUST_call_session(m_session, method.c_str(), convert_json(input).get(), &ret);
-        check_code(res, ret);
-        return convert_serde(ret);
+        char* output = nullptr;
+        int res = GDKRUST_call_session(m_session, method.c_str(), input.dump().c_str(), &output);
+        if (!output) {
+            // output was not set by calling `std::ffi::CString::into_raw`;
+            // avoid calling GDKRUST_destroy_string.
+            const auto cppjson = nlohmann::json();
+            check_code(res, cppjson);
+            return cppjson;
+        }
+        const nlohmann::json cppjson = nlohmann::json::parse(output);
+        GDKRUST_destroy_string(output);
+        check_code(res, cppjson);
+        return cppjson;
     }
 
     void ga_rust::connect()

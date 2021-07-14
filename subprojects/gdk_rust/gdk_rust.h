@@ -39,7 +39,7 @@ typedef void (*GDKRUST_notification_handler)(void *self_context, GDKRUST_json* d
  */
 GDK_API int GDKRUST_create_session(struct GDKRUST_session** session, const char* network);
 
-GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *method, const GDKRUST_json* input, GDKRUST_json** output);
+GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *method, const char *input, char** output);
 
 GDK_API int GDKRUST_spv_verify_tx(const GDKRUST_json* json);
 

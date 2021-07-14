@@ -217,17 +217,23 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
 pub extern "C" fn GDKRUST_call_session(
     sess: *mut GdkSession,
     method: *const c_char,
-    input: *const GDKRUST_json,
-    output: *mut *const GDKRUST_json,
+    input: *const c_char,
+    output: *mut *const c_char,
 ) -> i32 {
     let method = read_str(method);
-    let input = &safe_ref!(input).0;
+    let input: Value = match serde_json::from_str(&read_str(input)) {
+        Ok(x) => x,
+        Err(err) => {
+            error!("error: {:?}", err);
+            return GA_ERROR;
+        }
+    };
 
     let sess = safe_mut_ref!(sess);
 
     if method == "exchange_rates" {
         let rates = fetch_cached_exchange_rates(sess).unwrap_or_default();
-        return json_res!(output, tickers_to_json(rates), GA_OK);
+        return ok!(output, make_str(tickers_to_json(rates).to_string()), GA_OK);
     }
 
     // Redact inputs containing private data
@@ -257,7 +263,7 @@ pub extern "C" fn GDKRUST_call_session(
     info!("GDKRUST_call_session {} output {:?}", method, output_redacted);
 
     match res {
-        Ok(ref val) => json_res!(output, val, GA_OK),
+        Ok(ref val) => ok!(output, make_str(val.to_string()), GA_OK),
         Err(ref e) => {
             let code = e.to_gdk_code();
             let desc = e.gdk_display();
@@ -268,7 +274,7 @@ pub extern "C" fn GDKRUST_call_session(
             };
 
             info!("rust error {}: {}", code, desc);
-            json_res!(output, json!({ "error": code, "message": desc }), ret_val)
+            ok!(output, make_str(json!({ "error": code, "message": desc }).to_string()), ret_val)
         }
     }
 }
