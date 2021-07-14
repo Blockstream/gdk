@@ -49,31 +49,6 @@ pub enum GdkBackend {
     Electrum(ElectrumSession),
 }
 
-#[derive(Debug)]
-#[repr(C)]
-pub enum GA_auth_handler {
-    Error(String),
-    Done(Value),
-}
-
-impl GA_auth_handler {
-    fn _done(res: Value) -> *const GA_auth_handler {
-        info!("GA_auth_handler::done() {:?}", res);
-        let handler = GA_auth_handler::Done(res);
-        unsafe { transmute(Box::new(handler)) }
-    }
-    fn _success() -> *const GA_auth_handler {
-        GA_auth_handler::_done(Value::Null)
-    }
-
-    fn _to_json(&self) -> Value {
-        match self {
-            GA_auth_handler::Error(err) => json!({ "status": "error", "error": err }),
-            GA_auth_handler::Done(res) => json!({ "status": "done", "result": res }),
-        }
-    }
-}
-
 //
 // Macros
 //
