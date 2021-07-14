@@ -53,22 +53,6 @@ pub enum GdkBackend {
 // Macros
 //
 
-macro_rules! tryit {
-    ($x:expr) => {
-        match $x {
-            Err(err) => {
-                error!("error: {:?}", err);
-                return GA_ERROR;
-            }
-            Ok(x) => {
-                // can't easily print x because bitcoincore_rpc::Client is not serializable :(
-                // should be fixed with https://github.com/rust-bitcoin/rust-bitcoincore-rpc/pull/51
-                x
-            }
-        }
-    };
-}
-
 macro_rules! ok {
     ($t:expr, $x:expr, $ret:expr) => {
         unsafe {
@@ -469,7 +453,17 @@ pub extern "C" fn GDKRUST_convert_string_to_json(
     ret: *mut *const GDKRUST_json,
 ) -> i32 {
     let jstr = read_str(jstr);
-    let json: Value = tryit!(serde_json::from_str(&jstr));
+    let json: Value = match serde_json::from_str(&jstr) {
+        Err(err) => {
+            error!("error: {:?}", err);
+            return GA_ERROR;
+        }
+        Ok(x) => {
+            // can't easily print x because bitcoincore_rpc::Client is not serializable :(
+            // should be fixed with https://github.com/rust-bitcoin/rust-bitcoincore-rpc/pull/51
+            x
+        }
+    };
     json_res!(ret, json, GA_OK)
 }
 
