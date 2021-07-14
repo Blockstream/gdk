@@ -64,13 +64,6 @@ macro_rules! ok {
     };
 }
 
-macro_rules! json_res {
-    ($t:expr, $x:expr, $ret:expr) => {{
-        let x = json!($x);
-        ok!($t, GDKRUST_json::new(x), $ret)
-    }};
-}
-
 macro_rules! safe_mut_ref {
     ($t:expr) => {{
         if $t.is_null() {
@@ -438,36 +431,6 @@ where
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::Other(format!("handle_call method not found: {}", method))),
     }
-}
-
-#[no_mangle]
-pub extern "C" fn GDKRUST_convert_json_to_string(
-    json: *const GDKRUST_json,
-    ret: *mut *const c_char,
-) -> i32 {
-    let json = &unsafe { &*json }.0;
-    let res = json.to_string();
-    ok!(ret, make_str(res), GA_OK)
-}
-
-#[no_mangle]
-pub extern "C" fn GDKRUST_convert_string_to_json(
-    jstr: *const c_char,
-    ret: *mut *const GDKRUST_json,
-) -> i32 {
-    let jstr = read_str(jstr);
-    let json: Value = match serde_json::from_str(&jstr) {
-        Err(err) => {
-            error!("error: {:?}", err);
-            return GA_ERROR;
-        }
-        Ok(x) => {
-            // can't easily print x because bitcoincore_rpc::Client is not serializable :(
-            // should be fixed with https://github.com/rust-bitcoin/rust-bitcoincore-rpc/pull/51
-            x
-        }
-    };
-    json_res!(ret, json, GA_OK)
 }
 
 #[no_mangle]

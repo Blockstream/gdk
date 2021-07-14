@@ -49,9 +49,6 @@ GDK_API int GDKRUST_spv_verify_tx(const char *input);
  */
 GDK_API int GDKRUST_set_notification_handler(struct GDKRUST_session* session, GDKRUST_notification_handler handler, void *self_context);
 
-GDK_API int GDKRUST_convert_json_to_string(const GDKRUST_json* json, char** output);
-
-GDK_API int GDKRUST_convert_string_to_json(const char* input, GDKRUST_json** output);
 /**
  * Free a GDKRUST_json object.
  *
