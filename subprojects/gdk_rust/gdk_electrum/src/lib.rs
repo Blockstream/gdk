@@ -36,7 +36,7 @@ use gdk_common::password::Password;
 use gdk_common::session::Session;
 use gdk_common::wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, asset_unblind,
-    MasterBlindingKey,
+    make_str, MasterBlindingKey,
 };
 
 use elements::confidential::{self, Asset, Nonce};
@@ -90,7 +90,7 @@ pub struct Headers {
 
 #[derive(Clone)]
 pub struct NativeNotif(
-    pub Option<(extern "C" fn(*const libc::c_void, *const GDKRUST_json), *const libc::c_void)>,
+    pub Option<(extern "C" fn(*const libc::c_void, *const libc::c_char), *const libc::c_void)>,
 );
 unsafe impl Send for NativeNotif {}
 
@@ -133,7 +133,7 @@ fn notify(notif: NativeNotif, data: Value) {
     info!("push notification: {:?}", data);
     if let Some((handler, self_context)) = notif.0 {
         // TODO check the native pointer is still alive
-        handler(self_context, GDKRUST_json::new(data));
+        handler(self_context, make_str(data.to_string()));
     } else {
         warn!("no registered handler to receive notification");
     }

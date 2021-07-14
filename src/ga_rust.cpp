@@ -21,18 +21,6 @@ namespace sdk {
     namespace {
         static const std::string TOR_SOCKS5_PREFIX("socks5://");
 
-        static nlohmann::json convert_serde(GDKRUST_json* json)
-        {
-            char* output;
-            GDKRUST_convert_json_to_string(json, &output);
-            GDKRUST_destroy_json(json);
-
-            auto cppjson = nlohmann::json::parse(output);
-            GDKRUST_destroy_string(output);
-
-            return cppjson;
-        }
-
         static std::pair<std::string, std::string> get_exception_details(const nlohmann::json& details)
         {
             std::pair<std::string, std::string> ret;
@@ -262,10 +250,10 @@ namespace sdk {
         return call_session("get_transactions", actual_details);
     }
 
-    void ga_rust::GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json)
+    void ga_rust::GDKRUST_notif_handler(void* self_context, char* json)
     {
         ga_rust* self = static_cast<ga_rust*>(self_context);
-        auto notification = convert_serde(json);
+        auto notification = nlohmann::json::parse(json);
         if (notification.at("event") == "transaction") {
             // FIXME: Get the actual subaccounts affected from the notification
             // See gdk_rust/gdk_electrum/src/lib.rs: "// TODO account number"

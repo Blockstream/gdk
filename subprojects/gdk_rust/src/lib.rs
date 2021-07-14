@@ -273,7 +273,7 @@ pub extern "C" fn GDKRUST_call_session(
 #[no_mangle]
 pub extern "C" fn GDKRUST_set_notification_handler(
     sess: *mut GdkSession,
-    handler: extern "C" fn(*const libc::c_void, *const GDKRUST_json),
+    handler: extern "C" fn(*const libc::c_void, *const c_char),
     self_context: *const libc::c_void,
 ) -> i32 {
     let sess = safe_mut_ref!(sess);

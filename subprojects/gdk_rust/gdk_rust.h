@@ -29,7 +29,7 @@ typedef struct GDKRUST_session GDKRUST_session;
 typedef struct GDKRUST_json GDKRUST_json;
 
 /** A notification handler */
-typedef void (*GDKRUST_notification_handler)(void *self_context, GDKRUST_json* details);
+typedef void (*GDKRUST_notification_handler)(void *self_context, char *details);
 
 /**
  * Create a new session.

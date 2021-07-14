@@ -139,7 +139,7 @@ namespace sdk {
     private:
         nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
 
-        static void GDKRUST_notif_handler(void* self_context, struct GDKRUST_json* json);
+        static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         std::shared_ptr<tor_controller> m_tor_ctrl;
