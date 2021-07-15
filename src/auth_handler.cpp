@@ -154,7 +154,7 @@ namespace sdk {
         if (is_invalid_code) {
             // The caller entered the wrong code
             // FIXME: Error if the methods time limit is up or we are rate limited
-            if (m_method != "gauth" && --m_attempts_remaining == 0) {
+            if (has_retry_counter() && --m_attempts_remaining == 0) {
                 // No more attempts left, caller should try the action again
                 set_error(res::id_invalid_twofactor_code);
             } else {
@@ -169,6 +169,8 @@ namespace sdk {
     session& auth_handler_impl::get_session() const { return m_session; }
 
     std::shared_ptr<signer> auth_handler_impl::get_signer() const { return m_signer; }
+
+    bool auth_handler_impl::has_retry_counter() const { return m_method != "gauth" && m_method != "telegram"; }
 
     nlohmann::json auth_handler_impl::get_status() const
     {
@@ -196,7 +198,7 @@ namespace sdk {
                 // Caller should resolve the code the user has entered
                 status["method"] = m_method;
                 status["auth_data"] = m_auth_data;
-                if (m_method != "gauth") {
+                if (has_retry_counter()) {
                     status["attempts_remaining"] = m_attempts_remaining;
                 }
             }

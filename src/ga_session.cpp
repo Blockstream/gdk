@@ -136,6 +136,7 @@ namespace sdk {
             { "sms" },
             { "phone" },
             { "gauth" },
+            { "telegram" },
         };
 
         static const std::string MASKED_GAUTH_SEED("***");
@@ -3086,6 +3087,7 @@ namespace sdk {
         append_2fa_config("sms", "sms", "sms", "sms_number", config, twofactor_config);
         append_2fa_config("phone", "phone", "phone", "phone_number", config, twofactor_config);
         append_2fa_config("gauth", "gauth", "gauth", "gauth_url", config, twofactor_config);
+        append_2fa_config("telegram", "telegram", "telegram", "", config, twofactor_config);
 
         std::swap(m_twofactor_config, twofactor_config);
         set_enabled_twofactor_methods(locker);

@@ -86,6 +86,7 @@ namespace sdk {
 
     private:
         void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);
+        bool has_retry_counter() const;
     };
 
     struct auto_auth_handler : public auth_handler {
