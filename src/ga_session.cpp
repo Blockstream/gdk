@@ -130,14 +130,6 @@ namespace sdk {
         static const std::string SOCKS5("socks5://");
         static const std::string USER_AGENT_CAPS("[v2,sw,csv,csv_opt]");
         static const std::string USER_AGENT_CAPS_NO_CSV("[v2,sw]");
-        // TODO: The server should return these
-        static const std::vector<std::string> ALL_2FA_METHODS = {
-            { "email" },
-            { "sms" },
-            { "phone" },
-            { "gauth" },
-            { "telegram" },
-        };
 
         static const std::string MASKED_GAUTH_SEED("***");
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
@@ -3107,12 +3099,6 @@ namespace sdk {
         }
         m_twofactor_config["enabled_methods"] = enabled_methods;
         m_twofactor_config["any_enabled"] = !enabled_methods.empty();
-    }
-
-    std::vector<std::string> ga_session::get_all_twofactor_methods()
-    {
-        // TODO: Return from 2fa config when methods are returned from the server
-        return ALL_2FA_METHODS;
     }
 
     std::vector<std::string> ga_session::get_enabled_twofactor_methods()

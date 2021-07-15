@@ -352,7 +352,6 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_twofactor_config(bool reset_cached) { return nlohmann::json({}); }
 
-    std::vector<std::string> ga_rust::get_all_twofactor_methods() { return {}; }
     std::vector<std::string> ga_rust::get_enabled_twofactor_methods() { return {}; }
 
     void ga_rust::set_email(const std::string& email, const nlohmann::json& twofactor_data) {}

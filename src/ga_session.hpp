@@ -95,7 +95,6 @@ namespace sdk {
 
         nlohmann::json get_twofactor_config(bool reset_cached);
         nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false);
-        std::vector<std::string> get_all_twofactor_methods();
         std::vector<std::string> get_enabled_twofactor_methods();
 
         nlohmann::json get_settings();

@@ -119,7 +119,6 @@ namespace sdk {
         virtual void change_settings(const nlohmann::json& settings) = 0;
 
         virtual nlohmann::json get_twofactor_config(bool reset_cached = false) = 0;
-        virtual std::vector<std::string> get_all_twofactor_methods() = 0;
         virtual std::vector<std::string> get_enabled_twofactor_methods() = 0;
 
         virtual void set_email(const std::string& email, const nlohmann::json& twofactor_data) = 0;

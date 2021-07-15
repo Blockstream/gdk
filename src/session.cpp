@@ -479,14 +479,6 @@ namespace sdk {
         });
     }
 
-    std::vector<std::string> session::get_all_twofactor_methods()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_all_twofactor_methods();
-        });
-    }
-
     std::vector<std::string> session::get_enabled_twofactor_methods()
     {
         return exception_wrapper([&] {
