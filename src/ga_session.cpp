@@ -3047,26 +3047,31 @@ namespace sdk {
         return ret;
     }
 
-    void ga_session::set_twofactor_config(locker_t& locker, const nlohmann::json& config)
+    void append_2fa_config(const std::string& name, const std::string& enabled_key, const std::string& confirmed_key,
+        const std::string& data_key, const nlohmann::json& config, nlohmann::json& out)
+    {
+        if (config.contains(enabled_key)) {
+            out[name] = nlohmann::json{
+                { "enabled", config[enabled_key] },
+                { "confirmed", config[confirmed_key] },
+                { "data", data_key.empty() ? std::string() : std::string(config[data_key]) },
+            };
+            out["all_methods"].push_back(name);
+        }
+    }
+
+    void ga_session::set_twofactor_config(locker_t& locker, const nlohmann::json& config_)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        const auto email_addr = json_get_value(config, "email_addr");
-        nlohmann::json email_config
-            = { { "enabled", config["email"] }, { "confirmed", config["email_confirmed"] }, { "data", email_addr } };
-        nlohmann::json sms_config
-            = { { "enabled", config["sms"] }, { "confirmed", config["sms"] }, { "data", config["sms_number"] } };
-        nlohmann::json phone_config
-            = { { "enabled", config["phone"] }, { "confirmed", config["phone"] }, { "data", config["phone_number"] } };
-        // Return the server generated gauth URL until gauth is enabled
-        // (after being enabled, the server will no longer return it)
+        // Make non-const copy for gauth hack
+        // FIXME: when gauth is fixed
+        nlohmann::json config = config_;
+
         const bool gauth_enabled = config["gauth"];
-        std::string gauth_data = MASKED_GAUTH_SEED;
-        if (!gauth_enabled) {
-            gauth_data = config["gauth_url"];
+        if (gauth_enabled) {
+            config["gauth_url"] = MASKED_GAUTH_SEED;
         }
-        nlohmann::json gauth_config
-            = { { "enabled", gauth_enabled }, { "confirmed", gauth_enabled }, { "data", gauth_data } };
 
         const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
         const auto& disputed = m_login_data["reset_2fa_disputed"];
@@ -3074,13 +3079,14 @@ namespace sdk {
             = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
 
         nlohmann::json twofactor_config = {
-            { "all_methods", ALL_2FA_METHODS },
-            { "email", email_config },
-            { "sms", sms_config },
-            { "phone", phone_config },
-            { "gauth", gauth_config },
+            { "all_methods", std::vector<std::string>() },
             { "twofactor_reset", reset_status },
         };
+        append_2fa_config("email", "email", "email_confirmed", "email_addr", config, twofactor_config);
+        append_2fa_config("sms", "sms", "sms", "sms_number", config, twofactor_config);
+        append_2fa_config("phone", "phone", "phone", "phone_number", config, twofactor_config);
+        append_2fa_config("gauth", "gauth", "gauth", "gauth_url", config, twofactor_config);
+
         std::swap(m_twofactor_config, twofactor_config);
         set_enabled_twofactor_methods(locker);
     }
@@ -3090,8 +3096,9 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         std::vector<std::string> enabled_methods;
-        enabled_methods.reserve(ALL_2FA_METHODS.size());
-        for (const auto& m : ALL_2FA_METHODS) {
+        const std::vector<std::string> all_methods = m_twofactor_config["all_methods"];
+        enabled_methods.reserve(all_methods.size());
+        for (const auto& m : all_methods) {
             if (json_get_value(m_twofactor_config[m], "enabled", false)) {
                 enabled_methods.emplace_back(m);
             }
