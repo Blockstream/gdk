@@ -223,23 +223,6 @@ namespace sdk {
             std::chrono::seconds m_waiting{ 0s };
         };
 
-        static nlohmann::json get_fees_as_json(const autobahn::wamp_event& event)
-        {
-            const auto obj = event.argument<msgpack::object>(0);
-            std::stringstream ss;
-            ss << obj;
-            std::string fee_json = ss.str();
-            // TODO: Remove this once the server is fixed to use string keys
-            fee_json.reserve(fee_json.size() + 6 * 2); // 6 pairs of quotes
-            boost::algorithm::replace_first(fee_json, "1:", "\"1\":");
-            boost::algorithm::replace_first(fee_json, "2:", "\"2\":");
-            boost::algorithm::replace_first(fee_json, "3:", "\"3\":");
-            boost::algorithm::replace_first(fee_json, "6:", "\"6\":");
-            boost::algorithm::replace_first(fee_json, "12:", "\"12\":");
-            boost::algorithm::replace_first(fee_json, "24:", "\"24\":");
-            return nlohmann::json::parse(fee_json);
-        }
-
         static bool ignore_tx_notification(const nlohmann::json& details)
         {
             for (const auto& item : details.items()) {
@@ -1620,7 +1603,7 @@ namespace sdk {
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.fee_estimates", [this](const autobahn::wamp_event& event) {
                 locker_t notify_locker(m_mutex);
-                on_new_fees(notify_locker, get_fees_as_json(event));
+                on_new_fees(notify_locker, wamp_cast_json(event));
             }));
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
