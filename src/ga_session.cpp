@@ -931,15 +931,19 @@ namespace sdk {
                 { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since), last_modified } } } });
         }
 
-        const nlohmann::json data = http_request(get_params);
+        GDK_LOG_SEV(log_level::debug) << "http_request: " << get_params.dump();
+        nlohmann::json data = http_request(get_params);
 
-        GDK_RUNTIME_ASSERT_MSG(!data.contains("error"), "error during refresh");
+        const std::string error = data.value("error", std::string());
+        if (!error.empty()) {
+            throw user_error(std::string("refresh error: ") + error);
+        }
         if (data.value("not_modified", false)) {
             // Our cached copy is up to date, return it
             return cached_data;
         }
 
-        GDK_RUNTIME_ASSERT_MSG(data["body"].is_object(), "expected JSON");
+        GDK_RUNTIME_ASSERT_MSG(data.at("body").is_object(), "expected JSON");
         locker_t locker(m_mutex);
         m_cache.upsert_key_value(type, nlohmann::json::to_msgpack(data));
         m_cache.save_db();
@@ -948,32 +952,32 @@ namespace sdk {
 
     nlohmann::json ga_session::refresh_assets(const nlohmann::json& params)
     {
-        GDK_RUNTIME_ASSERT(params.value("assets", false) || params.value("icons", false));
-
-        nlohmann::json result;
+        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
         const bool refresh = params.value("refresh", true);
+        const std::array<const char*, 2> keys = { "assets", "icons" };
+        const std::array<const char*, 2> pages = { "index", "icons" };
 
-        if (params.value("assets", false)) {
-            const auto assets = refresh_http_data("index", refresh);
-            nlohmann::json json_assets;
-            if (assets.find("error") == assets.end()) {
-                json_assets = assets.value("body", nlohmann::json::object());
-                json_assets.update({ { m_net_params.policy_asset(),
-                    { { "asset_id", m_net_params.policy_asset() }, { "name", "btc" } } } });
+        nlohmann::json result;
+        bool found_key = false;
+
+        for (size_t i = 0; i < pages.size(); ++i) {
+            if (params.value(keys[i], false)) {
+                found_key = true;
+                auto data = refresh_http_data(pages[i], refresh);
+                nlohmann::json body = nlohmann::json::object();
+                if (data.contains("body")) {
+                    body = std::move(data.at("body"));
+                }
+                if (i == 0) {
+                    // Add the policy asset to asset data
+                    const auto policy_asset = m_net_params.policy_asset();
+                    body[policy_asset] = { { "asset_id", policy_asset }, { "name", "btc" } };
+                }
+                result.emplace(keys[i], std::move(body));
             }
-            result["assets"] = json_assets;
         }
-
-        if (params.value("icons", false)) {
-            const auto icons = refresh_http_data("icons", refresh);
-            nlohmann::json json_icons;
-            if (icons.find("error") == icons.end()) {
-                json_icons = icons.value("body", nlohmann::json::object());
-            }
-            result["icons"] = json_icons;
-        }
-
+        GDK_RUNTIME_ASSERT_MSG(found_key, "Either assets or icons must be requested");
         return result;
     }
 
