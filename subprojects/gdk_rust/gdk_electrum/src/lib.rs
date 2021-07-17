@@ -149,10 +149,6 @@ fn notify_settings(notif: NativeNotif, settings: &Settings) {
     notify(notif, data);
 }
 
-fn notify_fee(notif: NativeNotif, fees: &[FeeEstimate]) {
-    let data = json!({"fees":fees,"event":"fees"});
-    notify(notif, data);
-}
 fn notify_updated_txs(notif: NativeNotif, account_num: u32) {
     // This is used as a signal to trigger syncing via get_transactions, the transaction
     // list contained here is ignored and can be just a mock.
@@ -420,8 +416,6 @@ impl Session<Error> for ElectrumSession {
             )?)),
         };
 
-        let estimates = store.read()?.fee_estimates().clone();
-        notify_fee(self.notify.clone(), &estimates);
         let mut tip_height = store.read()?.cache.tip.0;
         notify_block(self.notify.clone(), tip_height);
 
