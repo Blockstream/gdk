@@ -220,7 +220,6 @@ namespace sdk {
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
         void on_new_block(nlohmann::json details);
-        void on_new_fees(locker_t& locker, const nlohmann::json& details);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
         void remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,
@@ -233,7 +232,7 @@ namespace sdk {
 
         std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge);
 
-        nlohmann::json set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
+        void set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
         nlohmann::json refresh_http_data(const std::string& type, bool refresh);
 
@@ -324,6 +323,7 @@ namespace sdk {
         std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys;
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
+        std::chrono::system_clock::time_point m_fee_estimates_ts;
         uint32_t m_block_height;
 
         uint32_t m_system_message_id; // Next system message

@@ -1049,9 +1049,10 @@ namespace sdk {
         return { sig_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
     }
 
-    nlohmann::json ga_session::set_fee_estimates(session_impl::locker_t& locker, const nlohmann::json& fee_estimates)
+    void ga_session::set_fee_estimates(session_impl::locker_t& locker, const nlohmann::json& fee_estimates)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_LOG_SEV(log_level::debug) << "Set fee estimates " << fee_estimates.dump();
 
         // Convert server estimates into an array of NUM_FEE_ESTIMATES estimates
         // ordered by block, with the minimum allowable fee at position 0
@@ -1096,7 +1097,7 @@ namespace sdk {
 
             std::swap(m_fee_estimates, new_estimates);
         }
-        return m_fee_estimates;
+        m_fee_estimates_ts = std::chrono::system_clock::now();
     }
 
     void ga_session::register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
@@ -1261,8 +1262,7 @@ namespace sdk {
                 { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
         }
 
-        // Notify the caller of the current fees
-        on_new_fees(locker, m_login_data["fee_estimates"]);
+        set_fee_estimates(locker, m_login_data["fee_estimates"]);
     }
 
     void ga_session::update_fiat_rate(session_impl::locker_t& locker, const std::string& rate_str)
@@ -1479,17 +1479,6 @@ namespace sdk {
         });
     }
 
-    void ga_session::on_new_fees(locker_t& locker, const nlohmann::json& details)
-    {
-        no_std_exception_escape([&]() {
-            GDK_RUNTIME_ASSERT(locker.owns_lock());
-            auto new_estimates = set_fee_estimates(locker, details);
-
-            unique_unlock unlocker(locker);
-            emit_notification({ { "event", "fees" }, { "fees", std::move(new_estimates) } }, false);
-        });
-    }
-
     nlohmann::json ga_session::login(const std::string& /*mnemonic*/)
     {
         GDK_RUNTIME_ASSERT(false);
@@ -1604,11 +1593,15 @@ namespace sdk {
         subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
             [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
 
-        subscriptions.emplace_back(
-            subscribe(locker, "com.greenaddress.fee_estimates", [this](const autobahn::wamp_event& event) {
-                locker_t notify_locker(m_mutex);
-                on_new_fees(notify_locker, wamp_cast_json(event));
-            }));
+        if (!m_login_data.contains("prev_block_hash")) {
+            // Server is not yet updated to support fee fetching, so subscribe to get fee updates
+            // TODO: Remove this when all servers are updated.
+            subscriptions.emplace_back(
+                subscribe(locker, "com.greenaddress.fee_estimates", [this](const autobahn::wamp_event& event) {
+                    locker_t notify_locker(m_mutex);
+                    set_fee_estimates(notify_locker, wamp_cast_json(event));
+                }));
+        }
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
 
@@ -1873,6 +1866,17 @@ namespace sdk {
     nlohmann::json ga_session::get_fee_estimates()
     {
         locker_t locker(m_mutex);
+
+        if (m_login_data.contains("prev_block_hash")) {
+            // Server supports fee requests, so check if we need to update
+            // TODO: Remove this check when all servers are updated
+            const auto now = std::chrono::system_clock::now();
+            if (now < m_fee_estimates_ts || now - m_fee_estimates_ts > 120s) {
+                // Time adjusted or more than 2 minutes old: Update
+                auto fee_estimates = wamp_call(locker, "login.get_fee_estimates");
+                set_fee_estimates(locker, wamp_cast_json(fee_estimates));
+            }
+        }
 
         // TODO: augment with last_updated, user preference for display?
         return { { "fees", m_fee_estimates } };
