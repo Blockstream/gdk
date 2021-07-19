@@ -17,7 +17,6 @@ use android_logger::{Config, FilterBuilder};
 use log::Level;
 use std::ffi::CString;
 use std::fmt;
-use std::mem::transmute;
 use std::os::raw::c_char;
 use std::sync::Once;
 use std::time::{Duration, SystemTime};
@@ -81,7 +80,7 @@ static INIT_LOGGER: Once = Once::new();
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_create_session(
-    ret: *mut *const GdkSession,
+    ret: *mut *const libc::c_void,
     network: *const c_char,
 ) -> i32 {
     const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Off;
@@ -103,16 +102,19 @@ pub extern "C" fn GDKRUST_create_session(
     init_logging(level);
     debug!("init logging");
 
-    let sess = create_session(&network);
-
-    if let Err(err) = sess {
-        error!("create_session error: {}", err);
-        return GA_ERROR;
+    match create_session(&network) {
+        Err(err) => {
+            error!("create_session error: {}", err);
+            GA_ERROR
+        }
+        Ok(session) => {
+            let session = Box::new(session);
+            unsafe {
+                *ret = Box::into_raw(session) as *mut libc::c_void;
+            };
+            GA_OK
+        }
     }
-
-    let sess = unsafe { transmute(Box::new(sess.unwrap())) };
-
-    ok!(ret, sess, GA_OK)
 }
 
 /// Initialize the logging framework.
