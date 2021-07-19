@@ -49,19 +49,6 @@ pub enum GdkBackend {
 }
 
 //
-// Macros
-//
-
-macro_rules! safe_mut_ref {
-    ($t:expr) => {{
-        if $t.is_null() {
-            return GA_ERROR;
-        }
-        unsafe { &mut *$t }
-    }};
-}
-
-//
 // Session & account management
 //
 
@@ -190,7 +177,7 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_call_session(
-    sess: *mut GdkSession,
+    ptr: *mut libc::c_void,
     method: *const c_char,
     input: *const c_char,
     output: *mut *const c_char,
@@ -204,7 +191,10 @@ pub extern "C" fn GDKRUST_call_session(
         }
     };
 
-    let sess = safe_mut_ref!(sess);
+    if ptr.is_null() {
+        return GA_ERROR;
+    }
+    let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
 
     if method == "exchange_rates" {
         let rates = fetch_cached_exchange_rates(sess).unwrap_or_default();
@@ -265,11 +255,14 @@ pub extern "C" fn GDKRUST_call_session(
 
 #[no_mangle]
 pub extern "C" fn GDKRUST_set_notification_handler(
-    sess: *mut GdkSession,
+    ptr: *mut libc::c_void,
     handler: extern "C" fn(*const libc::c_void, *const c_char),
     self_context: *const libc::c_void,
 ) -> i32 {
-    let sess = safe_mut_ref!(sess);
+    if ptr.is_null() {
+        return GA_ERROR;
+    }
+    let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
     let backend = &mut sess.backend;
 
     match backend {
