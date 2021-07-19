@@ -2,8 +2,6 @@
 
 #include "session_impl.hpp"
 
-struct GDKRUST_session;
-
 namespace ga {
 namespace sdk {
     struct tor_controller;
@@ -145,7 +143,7 @@ namespace sdk {
         std::shared_ptr<tor_controller> m_tor_ctrl;
         bool m_reconnect_restart;
 
-        struct GDKRUST_session* m_session;
+        void* m_session;
     };
 
 } // namespace sdk

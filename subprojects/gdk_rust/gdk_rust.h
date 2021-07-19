@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 /** A server session */
-typedef struct GDKRUST_session GDKRUST_session;
+typedef void* GDKRUST_session;
 
 /** A notification handler */
 typedef void (*GDKRUST_notification_handler)(void *self_context, char *details);
@@ -34,9 +34,9 @@ typedef void (*GDKRUST_notification_handler)(void *self_context, char *details);
  * :param session: Destination for the resulting session.
  *|     Returned session should be freed using `GA_destroy_session`.
  */
-GDK_API int GDKRUST_create_session(struct GDKRUST_session** session, const char* network);
+GDK_API int GDKRUST_create_session(GDKRUST_session* session, const char* network);
 
-GDK_API int GDKRUST_call_session(struct GDKRUST_session* session, const char *method, const char *input, char** output);
+GDK_API int GDKRUST_call_session(GDKRUST_session session, const char *method, const char *input, char** output);
 
 GDK_API int GDKRUST_spv_verify_tx(const char *input);
 
@@ -44,7 +44,7 @@ GDK_API int GDKRUST_spv_verify_tx(const char *input);
 /**
  * Set a handler to be called when notifications arrive.
  */
-GDK_API int GDKRUST_set_notification_handler(struct GDKRUST_session* session, GDKRUST_notification_handler handler, void *self_context);
+GDK_API int GDKRUST_set_notification_handler(GDKRUST_session session, GDKRUST_notification_handler handler, void *self_context);
 
 /**
  * Free a string returned by the api.
