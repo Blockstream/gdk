@@ -297,11 +297,6 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
 impl Session<Error> for ElectrumSession {
     // type Value = ElectrumSession;
 
-    fn destroy_session(&mut self) -> Result<(), Error> {
-        self.wallet = None;
-        Ok(())
-    }
-
     fn poll_session(&self) -> Result<(), Error> {
         Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
     }

@@ -8,7 +8,6 @@ use serde_json::Value;
 
 pub trait Session<E> {
     // fn create_session(network: Network) -> Result<Self::Value, E>;
-    fn destroy_session(&mut self) -> Result<(), E>;
     fn poll_session(&self) -> Result<(), E>;
     fn connect(&mut self, net_params: &Value) -> Result<(), E>;
     fn disconnect(&mut self) -> Result<(), E>;

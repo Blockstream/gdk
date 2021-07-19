@@ -1,5 +1,6 @@
 GDKRUST_create_session
 GDKRUST_call_session
 GDKRUST_destroy_string
+GDKRUST_destroy_session
 GDKRUST_set_notification_handler
 GDKRUST_spv_verify_tx

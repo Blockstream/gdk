@@ -69,7 +69,7 @@ namespace sdk {
 
     ga_rust::~ga_rust()
     {
-        call_session("destroy_session", nlohmann::json());
+        GDKRUST_destroy_session(m_session);
         // gdk_rust cleanup
     }
 

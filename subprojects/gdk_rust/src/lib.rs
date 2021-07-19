@@ -316,8 +316,6 @@ where
     match method {
         "poll_session" => session.poll_session().map(|v| json!(v)).map_err(Into::into),
 
-        "destroy_session" => session.destroy_session().map(|v| json!(v)).map_err(Into::into),
-
         "connect" => session.connect(input).map(|v| json!(v)).map_err(Into::into),
 
         "disconnect" => session.disconnect().map(|v| json!(v)).map_err(Into::into),
@@ -431,6 +429,14 @@ pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) {
     unsafe {
         // retake pointer and drop
         let _ = CString::from_raw(ptr);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn GDKRUST_destroy_session(ptr: *mut libc::c_void) {
+    unsafe {
+        // retake pointer and drop
+        let _ = Box::from_raw(ptr as *mut GdkSession);
     }
 }
 
