@@ -427,12 +427,11 @@ where
 }
 
 #[no_mangle]
-pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) -> i32 {
+pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) {
     unsafe {
         // retake pointer and drop
         let _ = CString::from_raw(ptr);
     }
-    GA_OK
 }
 
 #[no_mangle]
