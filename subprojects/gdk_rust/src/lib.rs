@@ -52,17 +52,6 @@ pub enum GdkBackend {
 // Macros
 //
 
-macro_rules! ok {
-    ($t:expr, $x:expr, $ret:expr) => {
-        unsafe {
-            let x = $x;
-            trace!("ok!() {:?}", x);
-            *$t = x;
-            $ret
-        }
-    };
-}
-
 macro_rules! safe_mut_ref {
     ($t:expr) => {{
         if $t.is_null() {
@@ -219,7 +208,11 @@ pub extern "C" fn GDKRUST_call_session(
 
     if method == "exchange_rates" {
         let rates = fetch_cached_exchange_rates(sess).unwrap_or_default();
-        return ok!(output, make_str(tickers_to_json(rates).to_string()), GA_OK);
+        let s = make_str(tickers_to_json(rates).to_string());
+        unsafe {
+            *output = s;
+        }
+        return GA_OK;
     }
 
     // Redact inputs containing private data
@@ -248,8 +241,8 @@ pub extern "C" fn GDKRUST_call_session(
     output_redacted.truncate(200);
     info!("GDKRUST_call_session {} output {:?}", method, output_redacted);
 
-    match res {
-        Ok(ref val) => ok!(output, make_str(val.to_string()), GA_OK),
+    let (s, ret) = match res {
+        Ok(ref val) => (val.to_string(), GA_OK),
         Err(ref e) => {
             let code = e.to_gdk_code();
             let desc = e.gdk_display();
@@ -260,9 +253,14 @@ pub extern "C" fn GDKRUST_call_session(
             };
 
             info!("rust error {}: {}", code, desc);
-            ok!(output, make_str(json!({ "error": code, "message": desc }).to_string()), ret_val)
+            (json!({ "error": code, "message": desc }).to_string(), ret_val)
         }
+    };
+    let s = make_str(s);
+    unsafe {
+        *output = s;
     }
+    ret
 }
 
 #[no_mangle]
