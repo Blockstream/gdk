@@ -63,7 +63,8 @@ namespace sdk {
         nlohmann::json network(m_net_params.get_json());
         network["proxy"] = net_params.value("proxy", std::string{});
         network["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
-        GDKRUST_create_session(&m_session, network.dump().c_str());
+        const auto res = GDKRUST_create_session(&m_session, network.dump().c_str());
+        GDK_RUNTIME_ASSERT(res == GA_OK);
     }
 
     ga_rust::~ga_rust()
