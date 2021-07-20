@@ -15,6 +15,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_cbor = "0.11.1"
 sha2 = "0.8.0"
+# FIXME: unpin zeroize once we bump MSRV (needs rebuild of docker images)
+zeroize = "<1.4.0"
 aes-gcm-siv = "0.5.0"
 gdk-common = { path = "../gdk_common" }
 libc = "0.2"
