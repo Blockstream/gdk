@@ -21,10 +21,12 @@ namespace sdk {
         return ret;
     }
 
+    template <typename T> void swap_with_default(T& obj) { T().swap(obj); }
+
     template <typename T> void bzero_and_free(std::vector<T>& data)
     {
         wally_bzero(data.data(), data.size());
-        std::vector<T>().swap(data);
+        swap_with_default(data);
     }
 
     template <typename T, typename U, typename V> inline void init_container(T& dst, const U& arg1, const V& arg2)

@@ -323,6 +323,40 @@ namespace sdk {
 
             // Clean up old versions only on initial DB creation
             clean_up_old_db(m_data_dir, m_db_name);
+        } else {
+            // Loaded DB successfully
+            if (VERSION == 1) {
+                if (m_is_liquid) {
+                    // Remove old assets keys if present. Note we don't bother
+                    // marking dirty here, since that would force a write on every
+                    // DB load. The DB will be saved at some point during normal
+                    // wallet operation, after which these two calls are no-ops.
+                    clear_key_value("index");
+                    clear_key_value("icons");
+                    bool clean = false;
+                    get_key_value("http_assets_modified", { [&clean](const auto& db_blob) {
+                        clean |= !db_blob
+                            || !std::equal(db_blob->begin(), db_blob->end(), inbuilt_assets_modified.begin());
+                    } });
+                    if (!clean) {
+                        get_key_value("http_icons_modified", { [&clean](const auto& db_blob) {
+                            clean |= !db_blob
+                                || !std::equal(db_blob->begin(), db_blob->end(), inbuilt_icons_modified.begin());
+                        } });
+                    }
+                    if (clean) {
+                        // Our compiled-in assets have changed, nuke our diff data.
+                        GDK_LOG_SEV(log_level::info) << "Deleting cached http data";
+                        clear_key_value("http_assets");
+                        upsert_key_value("http_assets_modified", ustring_span(inbuilt_assets_modified));
+                        clear_key_value("http_icons");
+                        upsert_key_value("http_icons_modified", ustring_span(inbuilt_icons_modified));
+                        // Force this change to be written, it will not be
+                        // required again until the next gdk upgrade.
+                        m_require_write = true;
+                    }
+                }
+            }
         }
     }
 

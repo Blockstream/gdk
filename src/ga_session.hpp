@@ -238,7 +238,7 @@ namespace sdk {
 
         void set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
-        nlohmann::json refresh_http_data(const std::string& type, bool refresh);
+        nlohmann::json refresh_http_data(const std::string& page, const std::string& key, bool refresh);
 
         void update_address_info(nlohmann::json& address, bool is_historic);
         std::shared_ptr<nlocktime_t> update_nlocktime_info();

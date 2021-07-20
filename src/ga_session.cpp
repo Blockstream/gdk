@@ -23,6 +23,7 @@
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
 #include "ga_tx.hpp"
+#include "generated_assets.hpp"
 #include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
@@ -899,55 +900,85 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json ga_session::refresh_http_data(const std::string& type, bool refresh)
+    nlohmann::json ga_session::refresh_http_data(const std::string& page, const std::string& key, bool refresh)
     {
-        nlohmann::json cached_data = nlohmann::json::object();
-        std::string last_modified;
+        const std::string cache_key = "http_" + key;
 
+        GDK_LOG_SEV(log_level::debug) << "Refreshing " << key;
+
+        // Load our compiled-in base data
+        std::vector<unsigned char> base_data;
+        if (key == "assets") {
+            base_data = decompress({ inbuilt_assets, sizeof(inbuilt_assets) });
+        } else if (key == "icons") {
+            base_data = decompress({ inbuilt_icons, sizeof(inbuilt_icons) });
+        } else {
+            GDK_RUNTIME_ASSERT(false);
+        }
+        auto base = nlohmann::json::from_msgpack(base_data.begin(), base_data.end());
+        swap_with_default(base_data); // Free memory
+
+        // Load the cached update to the base data, if we have one
+        nlohmann::json cached = nlohmann::json::object();
         {
             locker_t locker(m_mutex);
-            m_cache.get_key_value(type, { [&cached_data, &last_modified](const auto& db_blob) {
-                if (!db_blob) {
-                    return;
-                }
-                try {
-                    cached_data = nlohmann::json::from_msgpack(db_blob->begin(), db_blob->end());
-                    last_modified = cached_data.at("headers").at("last-modified");
-                } catch (const std::exception& e) {
-                    GDK_LOG_SEV(log_level::warning) << "Error reading cached json: " << e.what();
-                    cached_data = nlohmann::json::object();
+            m_cache.get_key_value(cache_key, { [&cached, &key](const auto& db_blob) {
+                if (db_blob) {
+                    try {
+                        auto uncompressed = decompress(db_blob.get());
+                        cached = nlohmann::json::from_msgpack(uncompressed.begin(), uncompressed.end());
+                        GDK_LOG_SEV(log_level::debug) << "Cached " << key << " update found";
+                    } catch (const std::exception& e) {
+                        GDK_LOG_SEV(log_level::warning) << "Error reading " << key << " : " << e.what();
+                    }
                 }
             } });
         }
 
-        if (!refresh) {
-            return cached_data;
+        if (refresh) {
+            // Check the server to see if the data has been updated
+            const std::string last_modified = (cached.empty() ? base : cached).at("headers").at("last-modified");
+            const std::string url = m_net_params.get_registry_connection_string() + "/" + page + ".json";
+            const nlohmann::json get_params = { { "method", "GET" }, { "urls", { url } }, { "accept", "json" },
+                { "headers", { { "If-Modified-Since", last_modified } } } };
+
+            GDK_LOG_SEV(log_level::debug) << "http_request: " << get_params.dump();
+            nlohmann::json server_data = http_request(get_params);
+
+            const auto error = server_data.value("error", std::string());
+            if (!error.empty()) {
+                throw user_error(std::string("refresh error: ") + error);
+            }
+
+            if (server_data.value("not_modified", false)) {
+                // Our compiled-in data (plus any cached update) is up to date
+                GDK_LOG_SEV(log_level::debug) << "No server update found for " << key;
+            } else {
+                // Server data is newer than our compiled-in data plus any cached update
+                GDK_LOG_SEV(log_level::debug) << "Server update found for " << key;
+                auto& server_body = server_data.at("body");
+                GDK_RUNTIME_ASSERT_MSG(server_body.is_object(), "expected JSON");
+
+                // Compute the diff between our compiled-in data and the updated data
+                auto patch = nlohmann::json::diff(base.at("body"), server_body);
+                cached = nlohmann::json(
+                    { { "headers", std::move(server_data.at("headers")) }, { "body", std::move(patch) } });
+                swap_with_default(server_data); // Free memory
+
+                // Encache the update
+                auto compressed = compress(byte_span_t(), nlohmann::json::to_msgpack(cached));
+                locker_t locker(m_mutex);
+                m_cache.upsert_key_value(cache_key, compressed);
+            }
         }
 
-        const std::string url = m_net_params.get_registry_connection_string() + "/" + type + ".json";
-        nlohmann::json get_params = { { "method", "GET" }, { "urls", { url } }, { "accept", "json" } };
-        if (!last_modified.empty()) {
-            get_params.update({ { "headers",
-                { { boost::beast::http::to_string(boost::beast::http::field::if_modified_since), last_modified } } } });
+        if (!cached.empty()) {
+            // We have an update to the base data, return it
+            return base.at("body").patch(cached.at("body"));
         }
-
-        GDK_LOG_SEV(log_level::debug) << "http_request: " << get_params.dump();
-        nlohmann::json data = http_request(get_params);
-
-        const std::string error = data.value("error", std::string());
-        if (!error.empty()) {
-            throw user_error(std::string("refresh error: ") + error);
-        }
-        if (data.value("not_modified", false)) {
-            // Our cached copy is up to date, return it
-            return cached_data;
-        }
-
-        GDK_RUNTIME_ASSERT_MSG(data.at("body").is_object(), "expected JSON");
-        locker_t locker(m_mutex);
-        m_cache.upsert_key_value(type, nlohmann::json::to_msgpack(data));
-        m_cache.save_db();
-        return data;
+        // Return the unchanged base data
+        auto result(std::move(base.at("body")));
+        return result;
     }
 
     nlohmann::json ga_session::refresh_assets(const nlohmann::json& params)
@@ -964,11 +995,7 @@ namespace sdk {
         for (size_t i = 0; i < pages.size(); ++i) {
             if (params.value(keys[i], false)) {
                 found_key = true;
-                auto data = refresh_http_data(pages[i], refresh);
-                nlohmann::json body = nlohmann::json::object();
-                if (data.contains("body")) {
-                    body = std::move(data.at("body"));
-                }
+                auto body = refresh_http_data(pages[i], keys[i], refresh);
                 if (i == 0) {
                     // Add the policy asset to asset data
                     const auto policy_asset = m_net_params.policy_asset();
@@ -978,6 +1005,8 @@ namespace sdk {
             }
         }
         GDK_RUNTIME_ASSERT_MSG(found_key, "Either assets or icons must be requested");
+        locker_t locker(m_mutex);
+        m_cache.save_db(); // Save any updated cached data
         return result;
     }
 
