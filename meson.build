@@ -312,6 +312,9 @@ foreach n : subdirs
     subdir(n)
 endforeach
 
+executable('make_generated_assets', 'tools/make_generated_assets.cpp',
+           link_with: libga.get_static_lib(),
+           dependencies: dependencies)
 
 if get_option('enable-tests')
     test('test aes_gcm',
