@@ -24,7 +24,7 @@ namespace sdk {
         static std::pair<std::string, std::string> get_exception_details(const nlohmann::json& details)
         {
             std::pair<std::string, std::string> ret;
-            if (details.is_null()) {
+            if (!details.is_null()) {
                 try {
                     ret.first = details.value("error", std::string());
                     ret.second = details.value("message", std::string());
