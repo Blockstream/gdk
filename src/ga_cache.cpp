@@ -314,6 +314,7 @@ namespace sdk {
                             upsert_key_value(blob_key, prev_blob);
                         }
                         GDK_LOG_SEV(log_level::info) << "Copied client blob from previous version";
+                        m_require_write = true;
                     }
                 } catch (const std::exception&) {
                     // Ignore errors; fetch blob from server or recreate instead
@@ -332,6 +333,7 @@ namespace sdk {
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_delete, 1, key_span);
         step_final(m_stmt_key_value_delete);
+        m_require_write = true;
     }
 
     void cache::get_key_value(const std::string& key, const cache::get_key_value_fn& callback)
