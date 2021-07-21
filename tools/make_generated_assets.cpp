@@ -48,6 +48,24 @@ static std::string generate(sdk::session& session, const std::string& page, cons
     const auto url = session.get_network_parameters().get_registry_connection_string() + "/" + page + ".json";
     auto data = session.http_request({ { "method", "GET" }, { "urls", { url } }, { "accept", "json" } });
     data.at("headers").erase("date"); // Make the generated data reproducible
+
+#if 0 // Enable to mutate the generated asset data so patching can be tested
+    if (key == "assets") {
+        // Change the modified header so refreshing causes an update
+        data.at("headers")["last-modified"] = "Wed, 07 Jul 2021 01:01:01 GMT";
+        // Rename one asset, refreshing should patch it back
+        const auto start_asset = "002452cb8f56a0a5628240edfb3d1e966c9b1959adcfb95b5726e5e9688611bf";
+        const auto end_asset =   "0001000100010001000100010001000100010001000100010001000100010001";
+        auto &body = data.at("body");
+        auto p = body.find(start_asset);
+        GDK_RUNTIME_ASSERT(p != body.end());
+        p->at("asset_id") = end_asset;
+        body[end_asset].swap(*p);
+        body.erase(p);
+        // Update an assets version, refreshing should revert it
+        body["005302fd8aa65fec1883ba93911dd1fb28763650205c67109fee66017c90899c"]["version"] = 99;
+    }
+#endif
     auto compressed = sdk::compress(sdk::byte_span_t(), nlohmann::json::to_msgpack(data));
     return get_code(key, compressed, data.at("headers").at("last-modified"));
 }
