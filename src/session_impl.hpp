@@ -197,6 +197,10 @@ namespace sdk {
         virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
 
+        // Cached data
+        virtual std::pair<std::string, bool> get_cached_master_blinding_key();
+        virtual void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
+
     protected:
         // Locking per-session assumes the following thread safety model:
         // 1) Implementations noted "idempotent" can be called from multiple

@@ -71,6 +71,8 @@ namespace sdk {
         // Returns how this signer supports the Anti-Exfil protocol
         ae_protocol_support_level get_ae_protocol_support() const;
 
+        bool is_liquid() const;
+
         // Returns true if this signer is watch-only (cannot sign)
         bool is_watch_only() const;
 
@@ -94,7 +96,8 @@ namespace sdk {
         std::vector<unsigned char> get_blinding_pubkey_from_script(byte_span_t script);
 
         bool has_master_blinding_key() const;
-        void set_master_blinding_key(const blinding_key_t& blinding_key);
+        blinding_key_t get_master_blinding_key() const;
+        void set_master_blinding_key(const std::string& blinding_key_hex);
 
     private:
         const bool m_is_main_net;

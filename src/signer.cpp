@@ -39,7 +39,7 @@ namespace sdk {
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "device_type", "software" }, { "supports_low_r", true },
-            { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
+            { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
             { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
     } // namespace
@@ -73,7 +73,7 @@ namespace sdk {
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
-                set_master_blinding_key(asset_blinding_key_from_seed(seed));
+                m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
         } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
             // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
@@ -87,7 +87,7 @@ namespace sdk {
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
-                set_master_blinding_key(asset_blinding_key_from_seed(seed));
+                m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
         } else {
             // xpub
@@ -140,6 +140,8 @@ namespace sdk {
 
     ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device["supports_ae_protocol"]; }
 
+    bool signer::is_liquid() const { return m_is_liquid; }
+
     bool signer::is_watch_only() const { return m_device["device_type"] == "watch-only"; }
 
     bool signer::is_hardware() const { return m_device["device_type"] == "hardware"; }
@@ -179,7 +181,24 @@ namespace sdk {
 
     bool signer::has_master_blinding_key() const { return m_master_blinding_key.has_value(); }
 
-    void signer::set_master_blinding_key(const blinding_key_t& blinding_key) { m_master_blinding_key = blinding_key; }
+    blinding_key_t signer::get_master_blinding_key() const
+    {
+        GDK_RUNTIME_ASSERT(has_master_blinding_key());
+        return m_master_blinding_key.get();
+    }
+
+    void signer::set_master_blinding_key(const std::string& blinding_key_hex)
+    {
+        if (!blinding_key_hex.empty()) {
+            const auto key_bytes = h2b(blinding_key_hex);
+            const auto key_size = key_bytes.size();
+            GDK_RUNTIME_ASSERT(key_size == SHA512_LEN || key_size == SHA512_LEN / 2);
+            blinding_key_t key{ 0 };
+            // Handle both full and half-size blinding keys
+            std::copy(key_bytes.begin(), key_bytes.end(), key.begin() + (SHA512_LEN - key_size));
+            m_master_blinding_key = key;
+        }
+    }
 
     priv_key_t signer::get_blinding_key_from_script(byte_span_t script)
     {

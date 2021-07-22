@@ -159,5 +159,16 @@ namespace sdk {
         // Only needed for multisig until singlesig supports HWW
     }
 
+    std::pair<std::string, bool> session_impl::get_cached_master_blinding_key()
+    {
+        // Overriden for multisig
+        return std::make_pair(std::string(), false);
+    }
+
+    void session_impl::set_cached_master_blinding_key(const std::string& /*master_blinding_key_hex*/)
+    {
+        // Overriden for multisig
+    }
+
 } // namespace sdk
 } // namespace ga

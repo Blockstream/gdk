@@ -181,6 +181,9 @@ namespace sdk {
         std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
+        std::pair<std::string, bool> get_cached_master_blinding_key();
+        void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
+
     private:
         void reset();
 

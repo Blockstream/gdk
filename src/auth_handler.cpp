@@ -72,7 +72,7 @@ namespace sdk {
         m_is_hw_action = m_signer && !m_signer->is_watch_only()
             && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
                    || action == "get_receive_address" || action == "create_transaction" || action == "get_transactions"
-                   || action == "get_unspent_outputs");
+                   || action == "get_unspent_outputs" || action == "get_master_blinding_key");
     }
 
     void auth_handler_impl::set_error(const std::string& error_message)
@@ -289,6 +289,8 @@ namespace sdk {
 
     void auto_auth_handler::step()
     {
+        nlohmann::json result;
+
         // Step through states resolving any software wallet actions automatically
         const auto status = get_status();
         if (!status.contains("required_data")) {
@@ -297,13 +299,26 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(is_hw_action());
         GDK_RUNTIME_ASSERT(status.at("status") == "resolve_code");
         const auto& required_data = status["required_data"];
-        if (!required_data.at("device").value("name", std::string()).empty()) {
+        const std::string action = status.at("action");
+
+        if (action == "get_master_blinding_key") {
+            // Allow the session to handle this action with cached data if it can
+            auto impl = get_session().get_nonnull_impl();
+            std::string blinding_key;
+            bool denied;
+            std::tie(blinding_key, denied) = impl->get_cached_master_blinding_key();
+            if (!blinding_key.empty() || denied) {
+                // We have a cached blinding key or the user has denied access
+                result.emplace("master_blinding_key", blinding_key); // Blank if denied
+                resolve_code(result.dump());
+                return;
+            }
+        }
+
+        if (required_data.at("device").at("device_type") == "hardware") {
             return; // Caller provided HW device, let the caller resolve
         }
         // We have an action to resolve with the internal software wallet
-        nlohmann::json result;
-
-        const std::string action = status.at("action");
         const auto signer = get_signer();
         if (action == "get_xpubs") {
             GDK_RUNTIME_ASSERT(required_data.contains("paths"));
@@ -343,6 +358,8 @@ namespace sdk {
                 nonces.emplace_back(b2h(sha256(ecdh(h2b(it.at("pubkey")), blinding_key))));
             }
             result["nonces"] = nonces;
+        } else if (action == "get_master_blinding_key") {
+            result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
         } else {
             GDK_RUNTIME_ASSERT(action == "sign_tx");
             auto impl = get_session().get_nonnull_impl();

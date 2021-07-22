@@ -207,22 +207,24 @@ namespace sdk {
 
             // fall-through down to upload them
         } else if (m_action == "get_xpubs") {
-            if (m_session.get_network_parameters().is_electrum()) {
+            auto impl = m_session.get_nonnull_impl();
+            if (impl->get_network_parameters().is_electrum()) {
                 // FIXME: Implement rust login via authenticate()
-                m_result = m_session.get_nonnull_impl()->login(m_signer->get_mnemonic(std::string()));
+                m_result = impl->login(m_signer->get_mnemonic(std::string()));
             } else {
                 const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
 
                 if (m_challenge.empty()) {
+                    // We have a result from our first get_xpubs request for the challenge
                     // Compute the challenge with the master pubkey
                     m_master_xpub_bip32 = xpubs.at(0);
-                    const auto btc_version = m_session.get_network_parameters().btc_version();
+                    const auto btc_version = impl->get_network_parameters().btc_version();
                     const auto public_key = get_xpub(m_master_xpub_bip32).second;
-                    m_challenge = m_session.get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
+                    m_challenge = impl->get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
                     const auto local_xpub = get_xpub(xpubs.at(1));
                     const bool is_hw_wallet = m_signer->is_hardware();
-                    m_session.set_local_encryption_keys(local_xpub.second, is_hw_wallet);
+                    impl->set_local_encryption_keys(local_xpub.second, is_hw_wallet);
 
                     // Ask the caller to sign the challenge
                     set_action("sign_message");
@@ -232,10 +234,29 @@ namespace sdk {
                     m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
                     return state_type::resolve_code;
                 }
+                // Otherwise, this result is from our second get_xpubs request for subaccounts.
                 // Register the xpub for each of our subaccounts
-                m_session.register_subaccount_xpubs(xpubs);
+                impl->register_subaccount_xpubs(xpubs);
+
+                if (m_signer->is_liquid() && m_signer->supports_host_unblinding()) {
+                    // Ask the HW device to provide the master unblinding key.
+                    // If we are a software wallet, we already have it, but we
+                    // use the HW interface to ensure we exercise the same
+                    // fetching and caching logic.
+                    set_action("get_master_blinding_key");
+                    set_data();
+                    return state_type::resolve_code;
+                }
             }
-            // fall through to the required_ca check down there...
+            // fall through to the required_ca check below ...
+        } else if (m_action == "get_master_blinding_key") {
+            // We either had the master blinding key cached, have fetched it
+            // from the HWW, or the user has denied the request (if its blank).
+            // Tell the session to cache the key or denial, and add it to
+            // our signer if present to allow host unblinding.
+            const std::string key_hex = nlohmann::json::parse(m_code).at("master_blinding_key");
+            m_session.get_nonnull_impl()->set_cached_master_blinding_key(key_hex);
+            // fall through to the required_ca check below ...
         } else if (m_action == "sign_message") {
             // If we are using the Anti-Exfil protocol we verify the signature
             const nlohmann::json args = nlohmann::json::parse(m_code);
