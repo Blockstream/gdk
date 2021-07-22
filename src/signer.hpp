@@ -62,11 +62,11 @@ namespace sdk {
         // Returns how this signer supports the Anti-Exfil protocol
         ae_protocol_support_level get_ae_protocol_support() const;
 
-        // Returns true if this is an external hardware device
-        virtual bool is_hw_device() const;
+        // Returns true if this signer can sign (i.e. its not watch-only)
+        bool can_sign() const;
 
         // Get the HW device description for this signer (empty if not HW)
-        virtual nlohmann::json get_hw_device() const;
+        nlohmann::json get_hw_device() const;
 
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
@@ -108,9 +108,6 @@ namespace sdk {
     public:
         hardware_signer(const network_parameters& net_params, const nlohmann::json& hw_device);
         ~hardware_signer() override;
-
-        bool is_hw_device() const override;
-        nlohmann::json get_hw_device() const override;
     };
 
     //
@@ -124,7 +121,6 @@ namespace sdk {
 
         std::string get_mnemonic(const std::string& password) override;
 
-        nlohmann::json get_hw_device() const override;
         std::string get_challenge() override;
 
         xpub_t get_xpub(uint32_span_t path) override;

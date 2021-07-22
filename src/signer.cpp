@@ -25,15 +25,16 @@ namespace sdk {
             json_add_if_missing(ret, "supports_host_unblinding", false, overwrite_null);
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
+            json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
             return ret;
         }
 
-        static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "supports_low_r", true },
+        static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "device_type", "watch-only" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
             { "supports_liquid", liquid_support_level::none },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
-        static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "supports_low_r", true },
+        static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "device_type", "software" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
             { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
@@ -85,11 +86,11 @@ namespace sdk {
 
     ae_protocol_support_level signer::get_ae_protocol_support() const { return m_hw_device["supports_ae_protocol"]; }
 
-    bool signer::is_hw_device() const { return false; }
+    bool signer::can_sign() const { return m_hw_device["device_type"] != "watch-only"; }
 
     nlohmann::json signer::get_hw_device() const
     {
-        return nlohmann::json::object(); // No HW device unless we are a HW signer
+        return m_hw_device["device_type"] == "hardware" ? m_hw_device : nlohmann::json::object();
     }
 
     std::string signer::get_challenge()
@@ -151,10 +152,6 @@ namespace sdk {
 
     hardware_signer::~hardware_signer() = default;
 
-    bool hardware_signer::is_hw_device() const { return true; }
-
-    nlohmann::json hardware_signer::get_hw_device() const { return m_hw_device; }
-
     //
     // Software signer
     //
@@ -200,11 +197,6 @@ namespace sdk {
             return std::string(); // Not available
         }
         return password.empty() ? m_mnemonic : encrypt_mnemonic(m_mnemonic, password);
-    }
-
-    nlohmann::json software_signer::get_hw_device() const
-    {
-        return nlohmann::json::object(); // No HW device unless we are a HW signer
     }
 
     std::string software_signer::get_challenge()

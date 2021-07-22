@@ -69,7 +69,7 @@ namespace sdk {
     void auth_handler_impl::set_action(const std::string& action)
     {
         m_action = action;
-        m_is_hw_action = m_signer && m_signer->is_hw_device()
+        m_is_hw_action = m_signer && m_signer->can_sign()
             && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
                    || action == "get_receive_address" || action == "create_transaction" || action == "get_transactions"
                    || action == "get_unspent_outputs");
