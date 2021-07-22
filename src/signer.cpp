@@ -28,6 +28,11 @@ namespace sdk {
             return ret;
         }
 
+        static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "supports_low_r", true },
+            { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
+            { "supports_liquid", liquid_support_level::none },
+            { "supports_ae_protocol", ae_protocol_support_level::none } };
+
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
             { "supports_liquid", liquid_support_level::lite },
@@ -43,10 +48,11 @@ namespace sdk {
         { 0x62, 0x6c, 0x6f, 0x62, 0x73, 0x61, 0x6c, 0x74 } // 'blobsalt'
     };
 
-    signer::signer(const network_parameters& net_params)
+    signer::signer(const network_parameters& net_params, const nlohmann::json& hw_device)
         : m_is_main_net(net_params.is_main_net())
         , m_is_liquid(net_params.is_liquid())
         , m_btc_version(net_params.btc_version())
+        , m_hw_device(get_hw_device_json(hw_device))
     {
     }
 
@@ -65,34 +71,49 @@ namespace sdk {
 
     bool signer::supports_low_r() const
     {
-        return false; // assume not unless overridden
+        if (get_ae_protocol_support() != ae_protocol_support_level::none) {
+            return false; // Always use AE if the HW supports it
+        }
+        return m_hw_device["supports_low_r"];
     }
 
-    bool signer::supports_arbitrary_scripts() const
-    {
-        return false; // assume not unless overridden
-    }
+    bool signer::supports_arbitrary_scripts() const { return m_hw_device["supports_arbitrary_scripts"]; }
 
-    bool signer::supports_host_unblinding() const
-    {
-        return false; // assume not unless overridden
-    }
+    liquid_support_level signer::get_liquid_support() const { return m_hw_device["supports_liquid"]; }
 
-    liquid_support_level signer::get_liquid_support() const
-    {
-        return liquid_support_level::none; // assume none unless overridden
-    }
+    bool signer::supports_host_unblinding() const { return m_hw_device["supports_host_unblinding"]; }
 
-    ae_protocol_support_level signer::get_ae_protocol_support() const
-    {
-        return ae_protocol_support_level::none; // assume not unless overridden
-    }
+    ae_protocol_support_level signer::get_ae_protocol_support() const { return m_hw_device["supports_ae_protocol"]; }
 
     bool signer::is_hw_device() const { return false; }
 
     nlohmann::json signer::get_hw_device() const
     {
         return nlohmann::json::object(); // No HW device unless we are a HW signer
+    }
+
+    std::string signer::get_challenge()
+    {
+        GDK_RUNTIME_ASSERT(false);
+        return std::string();
+    }
+
+    xpub_t signer::get_xpub(uint32_span_t /*path*/)
+    {
+        GDK_RUNTIME_ASSERT(false);
+        return xpub_t();
+    }
+
+    std::string signer::get_bip32_xpub(uint32_span_t /*path*/)
+    {
+        GDK_RUNTIME_ASSERT(false);
+        return std::string();
+    }
+
+    ecdsa_sig_t signer::sign_hash(uint32_span_t /*path*/, byte_span_t /*hash*/)
+    {
+        GDK_RUNTIME_ASSERT(false);
+        return ecdsa_sig_t();
     }
 
     bool signer::has_master_blinding_key() const { return m_master_blinding_key.has_value(); }
@@ -114,115 +135,25 @@ namespace sdk {
     // Watch-only signer
     //
     watch_only_signer::watch_only_signer(const network_parameters& net_params)
-        : signer(net_params)
+        : signer(net_params, WATCH_ONLY_DEVICE_JSON)
     {
     }
 
     watch_only_signer::~watch_only_signer() = default;
 
-    // Watch-only can only sign sweep txs, which are low r
-    bool watch_only_signer::supports_low_r() const { return true; }
-    bool watch_only_signer::supports_arbitrary_scripts() const { return true; }
-
-    liquid_support_level watch_only_signer::get_liquid_support() const
-    {
-        return liquid_support_level::none;
-    } // we don't support Liquid in watch-only
-
-    ae_protocol_support_level watch_only_signer::get_ae_protocol_support() const
-    {
-        return ae_protocol_support_level::none;
-    } // we don't support ae-protocol in watch-only
-
-    std::string watch_only_signer::get_challenge()
-    {
-        GDK_RUNTIME_ASSERT(false);
-        return std::string();
-    }
-
-    xpub_t watch_only_signer::get_xpub(uint32_span_t path)
-    {
-        (void)path;
-        GDK_RUNTIME_ASSERT(false);
-        return xpub_t();
-    }
-
-    std::string watch_only_signer::get_bip32_xpub(uint32_span_t path)
-    {
-        (void)path;
-        GDK_RUNTIME_ASSERT(false);
-        return std::string();
-    }
-
-    ecdsa_sig_t watch_only_signer::sign_hash(uint32_span_t path, byte_span_t hash)
-    {
-        (void)path;
-        (void)hash;
-        GDK_RUNTIME_ASSERT(false);
-        return ecdsa_sig_t();
-    }
-
     //
     // Hardware signer
     //
     hardware_signer::hardware_signer(const network_parameters& net_params, const nlohmann::json& hw_device)
-        : signer(net_params)
-        , m_hw_device(get_hw_device_json(hw_device))
+        : signer(net_params, hw_device)
     {
     }
 
     hardware_signer::~hardware_signer() = default;
 
-    bool hardware_signer::supports_low_r() const
-    {
-        if (get_ae_protocol_support() != ae_protocol_support_level::none) {
-            return false; // Always use AE if the HW supports it
-        }
-        return m_hw_device["supports_low_r"];
-    }
-
-    bool hardware_signer::supports_arbitrary_scripts() const { return m_hw_device["supports_arbitrary_scripts"]; }
-
-    liquid_support_level hardware_signer::get_liquid_support() const { return m_hw_device["supports_liquid"]; }
-
-    bool hardware_signer::supports_host_unblinding() const { return m_hw_device["supports_host_unblinding"]; }
-
-    ae_protocol_support_level hardware_signer::get_ae_protocol_support() const
-    {
-        return m_hw_device["supports_ae_protocol"];
-    }
-
     bool hardware_signer::is_hw_device() const { return true; }
 
     nlohmann::json hardware_signer::get_hw_device() const { return m_hw_device; }
-
-    std::string hardware_signer::get_challenge()
-    {
-        GDK_RUNTIME_ASSERT(false);
-        return std::string();
-    }
-
-    xpub_t hardware_signer::get_xpub(uint32_span_t path)
-    {
-        (void)path;
-        GDK_RUNTIME_ASSERT(false);
-        return xpub_t();
-    }
-
-    std::string hardware_signer::get_bip32_xpub(uint32_span_t path)
-    {
-        (void)path;
-        GDK_RUNTIME_ASSERT(false);
-        return std::string();
-    }
-
-    ecdsa_sig_t hardware_signer::sign_hash(uint32_span_t path, byte_span_t hash)
-    {
-        (void)path;
-        (void)hash;
-        GDK_RUNTIME_ASSERT(false);
-        return ecdsa_sig_t();
-    }
 
     //
     // Software signer
@@ -269,15 +200,6 @@ namespace sdk {
             return std::string(); // Not available
         }
         return password.empty() ? m_mnemonic : encrypt_mnemonic(m_mnemonic, password);
-    }
-
-    bool software_signer::supports_low_r() const { return true; }
-    bool software_signer::supports_arbitrary_scripts() const { return true; }
-    bool software_signer::supports_host_unblinding() const { return false; }
-    liquid_support_level software_signer::get_liquid_support() const { return liquid_support_level::lite; }
-    ae_protocol_support_level software_signer::get_ae_protocol_support() const
-    {
-        return ae_protocol_support_level::none;
     }
 
     nlohmann::json software_signer::get_hw_device() const
