@@ -22,13 +22,15 @@ namespace sdk {
             const bool overwrite_null = true;
             json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
             json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
+            json_add_if_missing(ret, "supports_host_unblinding", false, overwrite_null);
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             return ret;
         }
 
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "supports_low_r", true },
-            { "supports_arbitrary_scripts", true }, { "supports_liquid", liquid_support_level::lite },
+            { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
+            { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
     } // namespace
 
@@ -62,6 +64,11 @@ namespace sdk {
     }
 
     bool signer::supports_arbitrary_scripts() const
+    {
+        return false; // assume not unless overridden
+    }
+
+    bool signer::supports_host_unblinding() const
     {
         return false; // assume not unless overridden
     }
@@ -170,6 +177,8 @@ namespace sdk {
 
     liquid_support_level hardware_signer::get_liquid_support() const { return m_hw_device["supports_liquid"]; }
 
+    bool hardware_signer::supports_host_unblinding() const { return m_hw_device["supports_host_unblinding"]; }
+
     ae_protocol_support_level hardware_signer::get_ae_protocol_support() const
     {
         return m_hw_device["supports_ae_protocol"];
@@ -268,6 +277,7 @@ namespace sdk {
 
     bool software_signer::supports_low_r() const { return true; }
     bool software_signer::supports_arbitrary_scripts() const { return true; }
+    bool software_signer::supports_host_unblinding() const { return false; }
     liquid_support_level software_signer::get_liquid_support() const { return liquid_support_level::lite; }
     ae_protocol_support_level software_signer::get_ae_protocol_support() const
     {

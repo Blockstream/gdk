@@ -56,6 +56,9 @@ namespace sdk {
         // Returns the level of liquid support
         virtual liquid_support_level get_liquid_support() const;
 
+        // Returns true if if this signer can export the master blinding key
+        virtual bool supports_host_unblinding() const;
+
         // Returns how this signer supports the Anti-Exfil protocol
         virtual ae_protocol_support_level get_ae_protocol_support() const;
 
@@ -123,6 +126,7 @@ namespace sdk {
 
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
+        bool supports_host_unblinding() const override;
         liquid_support_level get_liquid_support() const override;
         ae_protocol_support_level get_ae_protocol_support() const override;
 
@@ -154,6 +158,7 @@ namespace sdk {
 
         bool supports_low_r() const override;
         bool supports_arbitrary_scripts() const override;
+        bool supports_host_unblinding() const override;
         liquid_support_level get_liquid_support() const override;
         ae_protocol_support_level get_ae_protocol_support() const override;
 

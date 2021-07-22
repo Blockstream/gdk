@@ -91,6 +91,7 @@ Describes the capabilities of an external signing device.
          "name": "Ledger",
          "supports_ae_protocol": 0,
          "supports_arbitrary_scripts": true,
+         "supports_host_unblinding": false,
          "supports_liquid": 1,
          "supports_low_r": false,
       }
@@ -99,7 +100,8 @@ Describes the capabilities of an external signing device.
 :name: The unique name of the hardware device.
 :supports_arbitrary_scripts: True if the device can sign non-standard scripts such as CSV.
 :supports_low_r: True if the device can produce low-R ECDSA signatures.
-:supports_liquid: See the "liquid_support_level" enum in the gdk source for details.
+:supports_liquid: 0 if the device does not support Liquid, 1 otherwise.
+:supports_host_unblinding: True if the device supports returning the Liquid master blinding key.
 :supports_ae_protocol: See "ae_protocol_support_level" enum  in the gdk source for details.
 
 The default for any value not provided is false or 0.
