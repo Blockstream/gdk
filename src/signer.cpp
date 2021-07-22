@@ -57,6 +57,40 @@ namespace sdk {
     {
     }
 
+    signer::signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub)
+        : signer(net_params, SOFTWARE_DEVICE_JSON)
+    {
+        // FIXME: Allocate m_master_key in mlocked memory
+        if (mnemonic_or_xpub.find(' ') != std::string::npos) {
+            // mnemonic
+            // FIXME: secure_array
+            m_mnemonic = mnemonic_or_xpub;
+            const auto seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
+            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+            m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
+            if (m_is_liquid) {
+                set_master_blinding_key(asset_blinding_key_from_seed(seed));
+            }
+        } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
+            // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
+            // FIXME: Some previously supported HWs do not have bip39 support.
+            // Entering the hex seed in the recover phase should provide access
+            // to the wallet. A better approach could be to separate the bip32
+            // seed derivation from 'mnemonic to seed' derivation, which should
+            // facilitate non-bip39 mnemonic future integration. For these
+            // reasons this is a temporary solution.
+            const auto seed = h2b(mnemonic_or_xpub.substr(0, 128));
+            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+            m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
+            if (m_is_liquid) {
+                set_master_blinding_key(asset_blinding_key_from_seed(seed));
+            }
+        } else {
+            // xpub
+            m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
+        }
+    }
+
     signer::~signer()
     {
         if (m_master_blinding_key) {
@@ -66,8 +100,7 @@ namespace sdk {
 
     std::string signer::get_mnemonic(const std::string& password)
     {
-        (void)password;
-        return std::string(); // Not available
+        return m_mnemonic.empty() || password.empty() ? m_mnemonic : encrypt_mnemonic(m_mnemonic, password);
     }
 
     bool signer::supports_low_r() const
@@ -95,26 +128,42 @@ namespace sdk {
 
     std::string signer::get_challenge()
     {
-        GDK_RUNTIME_ASSERT(false);
-        return std::string();
+        GDK_RUNTIME_ASSERT(m_master_key.get());
+        std::array<unsigned char, 1 + sizeof(m_master_key->hash160)> vpkh;
+        vpkh[0] = m_btc_version;
+        std::copy(std::begin(m_master_key->hash160), std::end(m_master_key->hash160), vpkh.data() + 1);
+        return base58check_from_bytes(vpkh);
     }
 
-    xpub_t signer::get_xpub(uint32_span_t /*path*/)
+    xpub_t signer::get_xpub(uint32_span_t path)
     {
-        GDK_RUNTIME_ASSERT(false);
-        return xpub_t();
+        ext_key* hdkey = m_master_key.get();
+        GDK_RUNTIME_ASSERT(hdkey);
+        wally_ext_key_ptr derived;
+        if (!path.empty()) {
+            derived = derive(m_master_key, path);
+            hdkey = derived.get();
+        }
+        return make_xpub(hdkey);
     }
 
-    std::string signer::get_bip32_xpub(uint32_span_t /*path*/)
+    std::string signer::get_bip32_xpub(uint32_span_t path)
     {
-        GDK_RUNTIME_ASSERT(false);
-        return std::string();
+        ext_key* hdkey = m_master_key.get();
+        GDK_RUNTIME_ASSERT(hdkey);
+        wally_ext_key_ptr derived;
+        if (!path.empty()) {
+            derived = derive(m_master_key, path);
+            hdkey = derived.get();
+        }
+        return base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
     }
 
-    ecdsa_sig_t signer::sign_hash(uint32_span_t /*path*/, byte_span_t /*hash*/)
+    ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
-        GDK_RUNTIME_ASSERT(false);
-        return ecdsa_sig_t();
+        GDK_RUNTIME_ASSERT(m_master_key.get());
+        wally_ext_key_ptr derived = derive(m_master_key, path);
+        return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
     }
 
     bool signer::has_master_blinding_key() const { return m_master_blinding_key.has_value(); }
@@ -156,84 +205,10 @@ namespace sdk {
     // Software signer
     //
     software_signer::software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub)
-        : hardware_signer(net_params, SOFTWARE_DEVICE_JSON)
+        : signer(net_params, mnemonic_or_xpub)
     {
-        // FIXME: Allocate m_master_key in mlocked memory
-        if (mnemonic_or_xpub.find(' ') != std::string::npos) {
-            // mnemonic
-            // FIXME: secure_array
-            m_mnemonic = mnemonic_or_xpub;
-            const auto seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
-            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
-            m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
-            if (m_is_liquid) {
-                set_master_blinding_key(asset_blinding_key_from_seed(seed));
-            }
-        } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
-            // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
-            // FIXME: Some previously supported HWs do not have bip39 support.
-            // Entering the hex seed in the recover phase should provide access
-            // to the wallet. A better approach could be to separate the bip32
-            // seed derivation from 'mnemonic to seed' derivation, which should
-            // facilitate non-bip39 mnemonic future integration. For these
-            // reasons this is a temporary solution.
-            const auto seed = h2b(mnemonic_or_xpub.substr(0, 128));
-            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
-            m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
-            if (m_is_liquid) {
-                set_master_blinding_key(asset_blinding_key_from_seed(seed));
-            }
-        } else {
-            // xpub
-            m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
-        }
     }
 
     software_signer::~software_signer() = default;
-
-    std::string software_signer::get_mnemonic(const std::string& password)
-    {
-        if (m_mnemonic.empty()) {
-            return std::string(); // Not available
-        }
-        return password.empty() ? m_mnemonic : encrypt_mnemonic(m_mnemonic, password);
-    }
-
-    std::string software_signer::get_challenge()
-    {
-        std::array<unsigned char, 1 + sizeof(m_master_key->hash160)> vpkh;
-        vpkh[0] = m_btc_version;
-        std::copy(std::begin(m_master_key->hash160), std::end(m_master_key->hash160), vpkh.data() + 1);
-        return base58check_from_bytes(vpkh);
-    }
-
-    xpub_t software_signer::get_xpub(uint32_span_t path)
-    {
-        wally_ext_key_ptr derived;
-        ext_key* hdkey = m_master_key.get();
-        if (!path.empty()) {
-            derived = derive(m_master_key, path);
-            hdkey = derived.get();
-        }
-        return make_xpub(hdkey);
-    }
-
-    std::string software_signer::get_bip32_xpub(uint32_span_t path)
-    {
-        wally_ext_key_ptr derived;
-        ext_key* hdkey = m_master_key.get();
-        if (!path.empty()) {
-            derived = derive(m_master_key, path);
-            hdkey = derived.get();
-        }
-        return base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
-    }
-
-    ecdsa_sig_t software_signer::sign_hash(uint32_span_t path, byte_span_t hash)
-    {
-        wally_ext_key_ptr derived = derive(m_master_key, path);
-        return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
-    }
-
 } // namespace sdk
 } // namespace ga

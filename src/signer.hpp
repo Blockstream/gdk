@@ -34,6 +34,7 @@ namespace sdk {
         static const std::array<unsigned char, 8> BLOB_SALT;
 
         signer(const network_parameters& net_params, const nlohmann::json& hw_device);
+        signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
 
         signer(const signer&) = delete;
         signer& operator=(const signer&) = delete;
@@ -42,10 +43,10 @@ namespace sdk {
         virtual ~signer();
 
         // Return the mnemonic associated with this signer (empty if none available)
-        virtual std::string get_mnemonic(const std::string& password);
+        std::string get_mnemonic(const std::string& password);
 
         // Get the challenge to sign for GA authentication
-        virtual std::string get_challenge();
+        std::string get_challenge();
 
         // Returns true if if this signer produces only low-r signatures
         bool supports_low_r() const;
@@ -71,11 +72,11 @@ namespace sdk {
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
         // hardware. Use xpub_hdkeys_base to quickly derive from the resulting key.
-        virtual xpub_t get_xpub(uint32_span_t path);
-        virtual std::string get_bip32_xpub(uint32_span_t path);
+        xpub_t get_xpub(uint32_span_t path);
+        std::string get_bip32_xpub(uint32_span_t path);
 
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
-        virtual ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
+        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
 
         priv_key_t get_blinding_key_from_script(byte_span_t script);
 
@@ -89,6 +90,8 @@ namespace sdk {
         const bool m_is_liquid;
         const unsigned char m_btc_version;
         const nlohmann::json m_hw_device;
+        std::string m_mnemonic;
+        wally_ext_key_ptr m_master_key;
         boost::optional<blinding_key_t> m_master_blinding_key;
     };
 
@@ -113,24 +116,11 @@ namespace sdk {
     //
     // A signer that signs using a private key held in memory
     //
-    class software_signer final : public hardware_signer {
+    class software_signer final : public signer {
     public:
         // FIXME: Take mnemonic/xpub as a char* to avoid copying
         software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
         ~software_signer() override;
-
-        std::string get_mnemonic(const std::string& password) override;
-
-        std::string get_challenge() override;
-
-        xpub_t get_xpub(uint32_span_t path) override;
-        std::string get_bip32_xpub(uint32_span_t path) override;
-
-        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
-
-    private:
-        std::string m_mnemonic;
-        wally_ext_key_ptr m_master_key;
     };
 
 } // namespace sdk
