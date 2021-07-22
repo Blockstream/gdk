@@ -74,8 +74,8 @@ namespace sdk {
         // Returns how this signer supports the Anti-Exfil protocol
         ae_protocol_support_level get_ae_protocol_support() const;
 
-        // Returns true if this signer can sign (i.e. its not watch-only)
-        bool can_sign() const;
+        // Returns true if this signer is watch-only (cannot sign)
+        bool is_watch_only() const;
 
         // Get the HW device description for this signer (empty if not HW)
         nlohmann::json get_hw_device() const;

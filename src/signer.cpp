@@ -136,7 +136,7 @@ namespace sdk {
 
     ae_protocol_support_level signer::get_ae_protocol_support() const { return m_hw_device["supports_ae_protocol"]; }
 
-    bool signer::can_sign() const { return m_hw_device["device_type"] != "watch-only"; }
+    bool signer::is_watch_only() const { return m_hw_device["device_type"] == "watch-only"; }
 
     nlohmann::json signer::get_hw_device() const
     {
