@@ -1,4 +1,5 @@
 #include "signer.hpp"
+#include "exception.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
 
@@ -26,6 +27,9 @@ namespace sdk {
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
+            if (ret.at("device_type") == "hardware" && ret.value("name", std::string()).empty()) {
+                throw user_error("Hardware device JSON requires a non-empty 'name' element");
+            }
             return ret;
         }
 
