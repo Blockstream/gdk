@@ -1458,15 +1458,15 @@ impl Syncer {
     ) -> Result<Unblinded, Error> {
         match (output.asset, output.value, output.nonce) {
             (
-                Asset::Confidential(_, _),
-                confidential::Value::Confidential(_, _),
-                Nonce::Confidential(_, _),
+                Asset::Confidential(_),
+                confidential::Value::Confidential(_),
+                Nonce::Confidential(_),
             ) => {
                 let master_blinding = self.master_blinding.as_ref().unwrap();
 
                 let script = output.script_pubkey.clone();
                 let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
-                let rangeproof = output.witness.rangeproof.clone();
+                let rangeproof = output.witness.rangeproof.clone().unwrap().serialize();
                 let value_commitment = elements::encode::serialize(&output.value);
                 let asset_commitment = elements::encode::serialize(&output.asset);
                 let nonce_commitment = elements::encode::serialize(&output.nonce);

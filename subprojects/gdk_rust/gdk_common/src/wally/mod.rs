@@ -296,10 +296,10 @@ pub fn asset_generator_from_bytes(asset: &elements::issuance::AssetId, abf: &[u8
     };
     assert_eq!(ret, ffi::WALLY_OK);
 
-    let prefix = generator[0];
-    let mut suffix = [0u8; 32];
-    suffix.copy_from_slice(&generator[1..]);
-    Asset::Confidential(prefix, suffix)
+    // TODO: consider replacing this function with secp256k1_zkp::Generator::new_blinded
+    // this removes the unsafe block and the unwrap.
+    let generator = elements::secp256k1_zkp::Generator::from_slice(&generator).unwrap();
+    Asset::Confidential(generator)
 }
 
 pub fn asset_final_vbf(values: Vec<u64>, num_inputs: u32, abf: Vec<u8>, vbf: Vec<u8>) -> [u8; 32] {
@@ -340,10 +340,12 @@ pub fn asset_value_commitment(value: u64, vbf: [u8; 32], generator: Asset) -> Va
         )
     };
     assert_eq!(ret, ffi::WALLY_OK);
-    let prefix = value_commitment[0];
-    let mut suffix = [0u8; 32];
-    suffix.copy_from_slice(&value_commitment[1..]);
-    Value::Confidential(prefix, suffix)
+
+    // TODO: consider replacing this function with secp256k1_zkp::PedersenCommitment::new_blinded
+    // this removes the unsafe block and the unwrap.
+    let pedersen_commitment =
+        elements::secp256k1_zkp::PedersenCommitment::from_slice(&value_commitment).unwrap();
+    Value::Confidential(pedersen_commitment)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -621,7 +623,7 @@ mod tests {
             hex::decode("d0cc21df08e33340042c17899ee20939cedb71a820bac322591a41265ea14cd2")
                 .unwrap();
 
-        let rangeproof = change.witness.rangeproof.clone();
+        let rangeproof = change.witness.rangeproof.clone().unwrap().serialize();
         let value_commitment = elements::encode::serialize(&change.value);
         let asset_commitment = elements::encode::serialize(&change.asset);
         let script = change.script_pubkey.clone();
@@ -700,8 +702,8 @@ mod tests {
             elements::encode::deserialize(&hex::decode(tx_hex).unwrap()).unwrap();
         println!("{}", tx.txid());
         for output in tx.output {
-            println!("surj size: {}", output.witness.surjection_proof.len());
-            println!("rangeproof size: {}", output.witness.rangeproof.len());
+            println!("surj size: {}", output.witness.surjection_proof.map_or(0, |p| p.len()));
+            println!("rangeproof size: {}", output.witness.rangeproof.map_or(0, |p| p.len()));
         }
     }
 

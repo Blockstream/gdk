@@ -2,7 +2,6 @@ use crate::be::*;
 use crate::error::Error;
 use crate::model::Balances;
 use crate::scripts::{p2pkh_script, ScriptType};
-use crate::wally::asset_surjectionproof_size;
 use crate::{bail, ensure};
 use crate::{ElementsNetwork, NetworkId, LIQUID_TESTNET};
 use bitcoin::blockdata::script::Instruction;
@@ -276,14 +275,12 @@ impl BETransaction {
                 let address =
                     elements::Address::from_str(&address).map_err(|_| Error::InvalidAddress)?;
                 let blinding_pubkey = address.blinding_pubkey.ok_or(Error::InvalidAddress)?;
-                let bytes = blinding_pubkey.serialize();
-                let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
                 let asset_id =
                     asset.expect("add_output must be called with a non empty asset in liquid");
                 let new_out = elements::TxOut {
                     asset: confidential::Asset::Explicit(asset_id),
                     value: confidential::Value::Explicit(value),
-                    nonce: confidential::Nonce::Confidential(bytes[0], byte32),
+                    nonce: confidential::Nonce::Confidential(blinding_pubkey),
                     script_pubkey: address.script_pubkey(),
                     witness: TxOutWitness::default(),
                 };
@@ -342,21 +339,24 @@ impl BETransaction {
                     input.witness = tx_wit;
                     input.script_sig = script_type.mock_script_sig().into();
                 }
+                let mock_asset = confidential::Asset::Confidential(mock_asset());
+                let mock_value = confidential::Value::Confidential(mock_value());
+                let mock_nonce = confidential::Nonce::Confidential(mock_pubkey());
                 for _ in 0..more_changes {
                     let new_out = elements::TxOut {
-                        asset: confidential::Asset::Confidential(0u8, [0u8; 32]),
-                        value: confidential::Value::Confidential(0u8, [0u8; 32]),
-                        nonce: confidential::Nonce::Confidential(0u8, [0u8; 32]),
+                        asset: mock_asset,
+                        value: mock_value,
+                        nonce: mock_nonce,
                         script_pubkey: script_type.mock_script_pubkey().into(),
                         ..Default::default()
                     };
                     tx.output.push(new_out);
                 }
-                let sur_size = asset_surjectionproof_size(std::cmp::max(1, tx.input.len()));
+
                 for output in tx.output.iter_mut() {
                     output.witness = TxOutWitness {
-                        surjection_proof: vec![0u8; sur_size],
-                        rangeproof: vec![0u8; 4174],
+                        surjection_proof: Some(mock_surjectionproof(tx.input.len())),
+                        rangeproof: Some(mock_rangeproof()),
                     };
                 }
 
@@ -367,12 +367,11 @@ impl BETransaction {
                 let vbytes = tx.get_weight() as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
                 info!(
-                    "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} sur_size:{} fee_val:{}",
+                    "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
                     tx.input.len(),
                     tx.output.len(),
                     more_changes,
                     vbytes,
-                    sur_size,
                     fee_val
                 );
                 fee_val
@@ -840,6 +839,69 @@ impl BETransaction {
         secp.verify(&message, &Signature::from_der(&sig)?, &public_key.key)?;
         Ok(())
     }
+}
+
+fn mock_pubkey() -> secp256k1::PublicKey {
+    secp256k1::PublicKey::from_slice(&[2u8; 33]).unwrap()
+}
+
+fn mock_asset() -> elements::secp256k1_zkp::Generator {
+    let mut mock_asset = [2u8; 33];
+    mock_asset[0] = 10;
+    elements::secp256k1_zkp::Generator::from_slice(&mock_asset).unwrap()
+}
+
+fn mock_value() -> elements::secp256k1_zkp::PedersenCommitment {
+    let mut mock_value = [2u8; 33];
+    mock_value[0] = 8;
+    elements::secp256k1_zkp::PedersenCommitment::from_slice(&mock_value).unwrap()
+}
+
+fn mock_rangeproof() -> elements::secp256k1_zkp::RangeProof {
+    elements::secp256k1_zkp::RangeProof::from_slice(&[0u8; 4174]).unwrap()
+}
+
+fn random_tag() -> elements::secp256k1_zkp::Tag {
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    thread_rng().fill_bytes(&mut bytes);
+    elements::secp256k1_zkp::Tag::from(bytes)
+}
+
+fn random_domain() -> (
+    elements::secp256k1_zkp::Generator,
+    elements::secp256k1_zkp::Tag,
+    elements::secp256k1_zkp::Tweak,
+) {
+    let secp = secp256k1::Secp256k1::new();
+    let tag = random_tag();
+    let tweak = elements::secp256k1_zkp::Tweak::new(&mut thread_rng());
+    let gen = elements::secp256k1_zkp::Generator::new_blinded(&secp, tag, tweak);
+    (gen, tag, tweak)
+}
+
+fn mock_surjectionproof(num_inputs: usize) -> elements::secp256k1_zkp::SurjectionProof {
+    let secp = secp256k1::Secp256k1::new();
+    let mut rng = thread_rng();
+    let num_inputs = std::cmp::max(1, num_inputs);
+    let mut domain: Vec<(
+        elements::secp256k1_zkp::Generator,
+        elements::secp256k1_zkp::Tag,
+        elements::secp256k1_zkp::Tweak,
+    )> = vec![];
+    for _ in 0..num_inputs {
+        domain.push(random_domain());
+    }
+    let codomain_tag = domain[0].1;
+    let codomain_tweak = elements::secp256k1_zkp::Tweak::new(&mut rng);
+    elements::secp256k1_zkp::SurjectionProof::new(
+        &secp,
+        &mut rng,
+        codomain_tag,
+        codomain_tweak,
+        &domain,
+    )
+    .unwrap()
 }
 
 fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {

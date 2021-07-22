@@ -1307,10 +1307,12 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
         info!("output {:?}", output);
         if !output.is_fee() {
             match (output.value, output.asset, output.nonce) {
-                (Value::Explicit(value), Asset::Explicit(asset), Nonce::Confidential(_, _)) => {
+                (
+                    Value::Explicit(value),
+                    Asset::Explicit(asset),
+                    Nonce::Confidential(blinding_pubkey),
+                ) => {
                     info!("value: {}", value);
-                    let nonce = elements::encode::serialize(&output.nonce);
-                    let blinding_pubkey = PublicKey::from_slice(&nonce).unwrap();
                     let ephemeral_sk = secp256k1::SecretKey::new(&mut rng);
                     let ephemeral_pk = secp256k1::PublicKey::from_secret_key(&EC, &ephemeral_sk);
                     let mut output_abf = [0u8; 32];
@@ -1329,7 +1331,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
 
                     let rangeproof = asset_rangeproof(
                         value,
-                        blinding_pubkey.key,
+                        blinding_pubkey,
                         ephemeral_sk,
                         &asset,
                         output_abf,
@@ -1364,9 +1366,7 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                     );
                     trace!("surjectionproof: {}", hex::encode(&surjectionproof));
 
-                    let bytes = ephemeral_pk.serialize();
-                    let byte32: [u8; 32] = bytes[1..].as_ref().try_into().unwrap();
-                    output.nonce = elements::confidential::Nonce::Confidential(bytes[0], byte32);
+                    output.nonce = elements::confidential::Nonce::Confidential(ephemeral_pk);
                     output.asset = output_generator;
                     output.value = output_value_commitment;
                     info!(
@@ -1374,8 +1374,12 @@ fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Err
                         surjectionproof.len(),
                         rangeproof.len()
                     );
-                    output.witness.surjection_proof = surjectionproof;
-                    output.witness.rangeproof = rangeproof;
+                    output.witness.surjection_proof = Some(
+                        elements::secp256k1_zkp::SurjectionProof::from_slice(&surjectionproof)
+                            .unwrap(),
+                    );
+                    output.witness.rangeproof =
+                        Some(elements::secp256k1_zkp::RangeProof::from_slice(&rangeproof).unwrap());
                 }
                 _ => panic!("create_tx created things not right"),
             }

@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 mod address;
 mod blockhash;
 mod blockheader;
