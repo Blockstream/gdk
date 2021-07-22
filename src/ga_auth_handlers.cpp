@@ -95,13 +95,13 @@ namespace sdk {
         {
             std::shared_ptr<signer> ret;
             if (hw_device.empty() || hw_device.value("device", nlohmann::json::object()).empty()) {
-                ret = std::make_shared<software_signer>(net_params, mnemonic);
+                ret = signer::make_software_signer(net_params, mnemonic);
             } else {
                 const auto& device = hw_device.at("device");
                 if (device.value("name", std::string()).empty()) {
                     throw user_error("Hardware device JSON requires a non-empty 'name' element");
                 }
-                ret = std::make_shared<hardware_signer>(net_params, device);
+                ret = signer::make_hardware_signer(net_params, device);
             }
             if (net_params.is_liquid() && ret->get_liquid_support() == liquid_support_level::none) {
                 throw user_error(res::id_the_hardware_wallet_you_are);
@@ -375,9 +375,10 @@ namespace sdk {
                     }
 
                     if (recovery_xpub.empty()) {
-                        software_signer subsigner(m_session.get_network_parameters(), recovery_mnemonic);
+                        auto subsigner
+                            = signer::make_software_signer(m_session.get_network_parameters(), recovery_mnemonic);
                         const uint32_t mnemonic_path[2] = { harden(3), harden(m_subaccount) };
-                        m_details["recovery_xpub"] = subsigner.get_bip32_xpub(mnemonic_path);
+                        m_details["recovery_xpub"] = subsigner->get_bip32_xpub(mnemonic_path);
                         m_details.erase("recovery_mnemonic");
                     }
                 }

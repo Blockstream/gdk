@@ -26,12 +26,23 @@ namespace sdk {
     //
     // Interface to signing and deriving privately derived xpub keys
     //
-    class signer {
+    class signer final {
     public:
         static const std::array<uint32_t, 1> LOGIN_PATH;
         static const std::array<uint32_t, 1> CLIENT_SECRET_PATH;
         static const std::array<unsigned char, 8> PASSWORD_SALT;
         static const std::array<unsigned char, 8> BLOB_SALT;
+
+        // A software watch-only signer for watch-only sessions
+        static std::shared_ptr<signer> make_watch_only_signer(const network_parameters& net_params);
+
+        // A proxy for a hardware signer controlled by the caller
+        static std::shared_ptr<signer> make_hardware_signer(
+            const network_parameters& net_params, const nlohmann::json& hw_device);
+
+        // A software signer that signs using a private key held in memory
+        static std::shared_ptr<signer> make_software_signer(
+            const network_parameters& net_params, const std::string& mnemonic_or_xpub);
 
         signer(const network_parameters& net_params, const nlohmann::json& hw_device);
         signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
@@ -85,7 +96,7 @@ namespace sdk {
         bool has_master_blinding_key() const;
         void set_master_blinding_key(const blinding_key_t& blinding_key);
 
-    protected:
+    private:
         const bool m_is_main_net;
         const bool m_is_liquid;
         const unsigned char m_btc_version;
@@ -93,34 +104,6 @@ namespace sdk {
         std::string m_mnemonic;
         wally_ext_key_ptr m_master_key;
         boost::optional<blinding_key_t> m_master_blinding_key;
-    };
-
-    //
-    // Watch-only signer for watch-only sessions
-    //
-    class watch_only_signer final : public signer {
-    public:
-        explicit watch_only_signer(const network_parameters& net_params);
-        ~watch_only_signer() override;
-    };
-
-    //
-    // A proxy for a hardware signer controlled by the caller
-    //
-    class hardware_signer : public signer {
-    public:
-        hardware_signer(const network_parameters& net_params, const nlohmann::json& hw_device);
-        ~hardware_signer() override;
-    };
-
-    //
-    // A signer that signs using a private key held in memory
-    //
-    class software_signer final : public signer {
-    public:
-        // FIXME: Take mnemonic/xpub as a char* to avoid copying
-        software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
-        ~software_signer() override;
     };
 
 } // namespace sdk

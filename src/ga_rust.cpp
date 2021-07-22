@@ -187,7 +187,7 @@ namespace sdk {
         auto details = nlohmann::json({ { "mnemonic", mnemonic }, { "password", std::string() } });
 
         auto ret = call_session("login", details);
-        m_signer = std::make_shared<software_signer>(m_net_params, mnemonic);
+        m_signer = signer::make_software_signer(m_net_params, mnemonic);
         return ret;
     }
     std::string ga_rust::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)

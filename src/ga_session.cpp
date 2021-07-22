@@ -1849,7 +1849,7 @@ namespace sdk {
             throw login_error(res::id_login_failed);
         }
         locker_t locker(m_mutex);
-        m_signer = std::make_shared<watch_only_signer>(m_net_params);
+        m_signer = signer::make_watch_only_signer(m_net_params);
         constexpr bool watch_only = true;
         update_login_data(locker, login_data, std::string(), watch_only);
 

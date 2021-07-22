@@ -91,6 +91,23 @@ namespace sdk {
         }
     }
 
+    std::shared_ptr<signer> signer::make_watch_only_signer(const network_parameters& net_params)
+    {
+        return std::make_shared<signer>(net_params, WATCH_ONLY_DEVICE_JSON);
+    }
+
+    std::shared_ptr<signer> signer::make_hardware_signer(
+        const network_parameters& net_params, const nlohmann::json& hw_device)
+    {
+        return std::make_shared<signer>(net_params, hw_device);
+    }
+
+    std::shared_ptr<signer> signer::make_software_signer(
+        const network_parameters& net_params, const std::string& mnemonic_or_xpub)
+    {
+        return std::make_shared<signer>(net_params, mnemonic_or_xpub);
+    }
+
     signer::~signer()
     {
         if (m_master_blinding_key) {
@@ -181,34 +198,5 @@ namespace sdk {
         return ec_public_key_from_private_key(get_blinding_key_from_script(script));
     }
 
-    //
-    // Watch-only signer
-    //
-    watch_only_signer::watch_only_signer(const network_parameters& net_params)
-        : signer(net_params, WATCH_ONLY_DEVICE_JSON)
-    {
-    }
-
-    watch_only_signer::~watch_only_signer() = default;
-
-    //
-    // Hardware signer
-    //
-    hardware_signer::hardware_signer(const network_parameters& net_params, const nlohmann::json& hw_device)
-        : signer(net_params, hw_device)
-    {
-    }
-
-    hardware_signer::~hardware_signer() = default;
-
-    //
-    // Software signer
-    //
-    software_signer::software_signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub)
-        : signer(net_params, mnemonic_or_xpub)
-    {
-    }
-
-    software_signer::~software_signer() = default;
 } // namespace sdk
 } // namespace ga
