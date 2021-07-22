@@ -143,15 +143,6 @@ namespace sdk {
         return m_hw_device["device_type"] == "hardware" ? m_hw_device : nlohmann::json::object();
     }
 
-    std::string signer::get_challenge()
-    {
-        GDK_RUNTIME_ASSERT(m_master_key.get());
-        std::array<unsigned char, 1 + sizeof(m_master_key->hash160)> vpkh;
-        vpkh[0] = m_btc_version;
-        std::copy(std::begin(m_master_key->hash160), std::end(m_master_key->hash160), vpkh.data() + 1);
-        return base58check_from_bytes(vpkh);
-    }
-
     xpub_t signer::get_xpub(uint32_span_t path)
     {
         ext_key* hdkey = m_master_key.get();

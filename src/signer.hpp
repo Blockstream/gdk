@@ -56,9 +56,6 @@ namespace sdk {
         // Return the mnemonic associated with this signer (empty if none available)
         std::string get_mnemonic(const std::string& password);
 
-        // Get the challenge to sign for GA authentication
-        std::string get_challenge();
-
         // Returns true if if this signer produces only low-r signatures
         bool supports_low_r() const;
 
