@@ -50,7 +50,12 @@ namespace sdk {
     {
     }
 
-    signer::~signer() = default;
+    signer::~signer()
+    {
+        if (m_master_blinding_key) {
+            wally_bzero(m_master_blinding_key->data(), m_master_blinding_key->size());
+        }
+    }
 
     std::string signer::get_mnemonic(const std::string& password)
     {
@@ -90,11 +95,14 @@ namespace sdk {
         return nlohmann::json::object(); // No HW device unless we are a HW signer
     }
 
+    bool signer::has_master_blinding_key() const { return m_master_blinding_key.has_value(); }
+
+    void signer::set_master_blinding_key(const blinding_key_t& blinding_key) { m_master_blinding_key = blinding_key; }
+
     priv_key_t signer::get_blinding_key_from_script(byte_span_t script)
     {
-        (void)script;
-        GDK_RUNTIME_ASSERT(false);
-        return priv_key_t();
+        GDK_RUNTIME_ASSERT(has_master_blinding_key());
+        return asset_blinding_key_to_ec_private_key(*m_master_blinding_key, script);
     }
 
     std::vector<unsigned char> signer::get_blinding_pubkey_from_script(byte_span_t script)
@@ -216,13 +224,6 @@ namespace sdk {
         return ecdsa_sig_t();
     }
 
-    priv_key_t hardware_signer::get_blinding_key_from_script(byte_span_t script)
-    {
-        (void)script;
-        GDK_RUNTIME_ASSERT(false);
-        return priv_key_t();
-    }
-
     //
     // Software signer
     //
@@ -238,7 +239,7 @@ namespace sdk {
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
-                m_master_blinding_key = asset_blinding_key_from_seed(seed);
+                set_master_blinding_key(asset_blinding_key_from_seed(seed));
             }
         } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
             // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
@@ -252,7 +253,7 @@ namespace sdk {
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
-                m_master_blinding_key = asset_blinding_key_from_seed(seed);
+                set_master_blinding_key(asset_blinding_key_from_seed(seed));
             }
         } else {
             // xpub
@@ -260,12 +261,7 @@ namespace sdk {
         }
     }
 
-    software_signer::~software_signer()
-    {
-        if (m_master_blinding_key) {
-            wally_bzero(m_master_blinding_key->data(), m_master_blinding_key->size());
-        }
-    }
+    software_signer::~software_signer() = default;
 
     std::string software_signer::get_mnemonic(const std::string& password)
     {
@@ -323,12 +319,6 @@ namespace sdk {
     {
         wally_ext_key_ptr derived = derive(m_master_key, path);
         return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
-    }
-
-    priv_key_t software_signer::get_blinding_key_from_script(byte_span_t script)
-    {
-        GDK_RUNTIME_ASSERT(m_master_blinding_key.has_value());
-        return asset_blinding_key_to_ec_private_key(*m_master_blinding_key, script);
     }
 
 } // namespace sdk

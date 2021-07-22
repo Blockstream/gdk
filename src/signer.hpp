@@ -77,14 +77,18 @@ namespace sdk {
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
         virtual ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) = 0;
 
-        virtual priv_key_t get_blinding_key_from_script(byte_span_t script);
+        priv_key_t get_blinding_key_from_script(byte_span_t script);
 
-        virtual std::vector<unsigned char> get_blinding_pubkey_from_script(byte_span_t script);
+        std::vector<unsigned char> get_blinding_pubkey_from_script(byte_span_t script);
+
+        bool has_master_blinding_key() const;
+        void set_master_blinding_key(const blinding_key_t& blinding_key);
 
     protected:
         const bool m_is_main_net;
         const bool m_is_liquid;
         const unsigned char m_btc_version;
+        boost::optional<blinding_key_t> m_master_blinding_key;
     };
 
     //
@@ -139,7 +143,6 @@ namespace sdk {
         std::string get_bip32_xpub(uint32_span_t path) override;
 
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
-        priv_key_t get_blinding_key_from_script(byte_span_t script) override;
 
     private:
         const nlohmann::json m_hw_device;
@@ -169,12 +172,10 @@ namespace sdk {
         std::string get_bip32_xpub(uint32_span_t path) override;
 
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash) override;
-        priv_key_t get_blinding_key_from_script(byte_span_t script) override;
 
     private:
         std::string m_mnemonic;
         wally_ext_key_ptr m_master_key;
-        boost::optional<blinding_key_t> m_master_blinding_key;
     };
 
 } // namespace sdk
