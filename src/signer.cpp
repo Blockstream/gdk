@@ -142,6 +142,8 @@ namespace sdk {
 
     bool signer::is_watch_only() const { return m_hw_device["device_type"] == "watch-only"; }
 
+    bool signer::is_hardware() const { return m_hw_device["device_type"] == "hardware"; }
+
     nlohmann::json signer::get_hw_device() const
     {
         return m_hw_device["device_type"] == "hardware" ? m_hw_device : nlohmann::json::object();

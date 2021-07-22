@@ -221,7 +221,7 @@ namespace sdk {
                     m_challenge = m_session.get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
                     const auto local_xpub = get_xpub(xpubs.at(1));
-                    const bool is_hw_wallet = !m_signer->get_hw_device().empty();
+                    const bool is_hw_wallet = m_signer->is_hardware();
                     m_session.set_local_encryption_keys(local_xpub.second, is_hw_wallet);
 
                     // Ask the caller to sign the challenge
@@ -577,7 +577,7 @@ namespace sdk {
         const bool is_liquid = net_params.is_liquid();
         const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
-        if (is_liquid && !get_signer()->get_hw_device().empty()) {
+        if (is_liquid && get_signer()->is_hardware()) {
             // FIMXE: We skip re-blinding for the internal software signer here,
             // since we have already done it. It should be possible to avoid blinding
             // the tx twice in the general HWW case.

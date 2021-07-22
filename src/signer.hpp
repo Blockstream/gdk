@@ -74,6 +74,9 @@ namespace sdk {
         // Returns true if this signer is watch-only (cannot sign)
         bool is_watch_only() const;
 
+        // Returns true if this signer is hardware (i.e. externally implemented)
+        bool is_hardware() const;
+
         // Get the HW device description for this signer (empty if not HW)
         nlohmann::json get_hw_device() const;
 
