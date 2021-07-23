@@ -82,10 +82,15 @@ namespace sdk {
         m_error = error_message;
     }
 
+    nlohmann::json auth_handler_impl::get_hw_device_json() const
+    {
+        // Device json is only returned for HW actions
+        return m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json();
+    }
+
     void auth_handler_impl::set_data()
     {
-        m_twofactor_data
-            = { { "action", m_action }, { "device", m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json() } };
+        m_twofactor_data = { { "action", m_action }, { "device", get_hw_device_json() } };
     }
 
     void auth_handler_impl::request_code(const std::string& method)
@@ -219,9 +224,9 @@ namespace sdk {
             break;
         }
         GDK_RUNTIME_ASSERT(!status_str.empty());
-        status["status"] = status_str;
-        status["action"] = m_action;
-        status["device"] = m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json();
+        status.emplace("status", status_str);
+        status.emplace("action", m_action);
+        status.emplace("device", get_hw_device_json());
         return status;
     }
 
