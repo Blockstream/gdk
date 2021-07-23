@@ -15,6 +15,7 @@ namespace sdk {
         constexpr uint32_t SA_NAMES = 1; // Subaccount names
         constexpr uint32_t TX_MEMOS = 2; // Transaction memos
         constexpr uint32_t SA_HIDDEN = 3; // Subaccounts that are hidden
+        constexpr uint32_t SLIP77KEY = 4; // Master blinding key
 
         // blob prefix: 1 byte version, 3 reserved bytes
         static const std::array<unsigned char, 4> PREFIX{ 1, 0, 0, 0 };
@@ -84,6 +85,24 @@ namespace sdk {
     std::string client_blob::get_tx_memo(const std::string& txhash_hex) const
     {
         return json_get_value(m_data[TX_MEMOS], txhash_hex);
+    }
+
+    bool client_blob::set_master_blinding_key(const std::string& master_blinding_key_hex)
+    {
+        auto& unblinder = m_data[SLIP77KEY];
+        bool changed = json_add_non_default(unblinder, "key", master_blinding_key_hex);
+        changed |= json_add_non_default(unblinder, "denied", master_blinding_key_hex.empty());
+        return changed ? increment_version(m_data) : changed;
+    }
+
+    std::string client_blob::get_master_blinding_key() const
+    {
+        return json_get_value(m_data[SLIP77KEY], "key"); // Blank if denied
+    }
+
+    bool client_blob::is_master_blinding_key_denied() const
+    {
+        return json_get_value(m_data[SLIP77KEY], "denied", false); // False if not explicitly denied
     }
 
     bool client_blob::is_zero_hmac(const std::string& hmac) { return hmac == ZERO_HMAC_BASE64; }

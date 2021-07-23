@@ -16,7 +16,7 @@ namespace ga {
 namespace sdk {
 
     // Client-only data, stored on the server as a server-unreadable blob
-    class client_blob {
+    class client_blob final {
     public:
         client_blob();
         client_blob(const client_blob&) = delete;
@@ -37,6 +37,10 @@ namespace sdk {
 
         bool set_tx_memo(const std::string& txhash_hex, const std::string& memo);
         std::string get_tx_memo(const std::string& txhash_hex) const;
+
+        bool set_master_blinding_key(const std::string& master_blinding_key_hex);
+        std::string get_master_blinding_key() const;
+        bool is_master_blinding_key_denied() const;
 
         void load(byte_span_t key, byte_span_t data);
         std::pair<std::vector<unsigned char>, std::string> save(byte_span_t key, byte_span_t hmac_key) const;
