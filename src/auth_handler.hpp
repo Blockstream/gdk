@@ -87,7 +87,7 @@ namespace sdk {
     private:
         void init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login);
         bool has_retry_counter() const;
-        nlohmann::json get_hw_device_json() const;
+        nlohmann::json get_device_json() const;
     };
 
     struct auto_auth_handler : public auth_handler {

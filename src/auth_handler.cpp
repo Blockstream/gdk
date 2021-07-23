@@ -82,15 +82,15 @@ namespace sdk {
         m_error = error_message;
     }
 
-    nlohmann::json auth_handler_impl::get_hw_device_json() const
+    nlohmann::json auth_handler_impl::get_device_json() const
     {
         // Device json is only returned for HW actions
-        return m_is_hw_action ? m_signer->get_hw_device() : nlohmann::json();
+        return m_is_hw_action ? m_signer->get_device() : nlohmann::json();
     }
 
     void auth_handler_impl::set_data()
     {
-        m_twofactor_data = { { "action", m_action }, { "device", get_hw_device_json() } };
+        m_twofactor_data = { { "action", m_action }, { "device", get_device_json() } };
     }
 
     void auth_handler_impl::request_code(const std::string& method)
@@ -197,7 +197,7 @@ namespace sdk {
             if (m_is_hw_action) {
                 // Caller must interact with the hardware and return
                 // the returning data to us
-                status["method"] = m_signer->get_hw_device().value("name", std::string());
+                status["method"] = m_signer->get_device().value("name", std::string());
                 status["required_data"] = m_twofactor_data;
             } else {
                 // Caller should resolve the code the user has entered
@@ -226,7 +226,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!status_str.empty());
         status.emplace("status", status_str);
         status.emplace("action", m_action);
-        status.emplace("device", get_hw_device_json());
+        status.emplace("device", get_device_json());
         return status;
     }
 

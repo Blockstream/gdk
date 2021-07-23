@@ -13,7 +13,7 @@ namespace sdk {
             return bip32_key_from_parent_path_alloc(hdkey, path, BIP32_FLAG_KEY_PRIVATE | BIP32_FLAG_SKIP_HASH);
         }
 
-        static nlohmann::json get_hw_device_json(const nlohmann::json& hw_device)
+        static nlohmann::json get_device_json(const nlohmann::json& hw_device)
         {
             GDK_RUNTIME_ASSERT(!hw_device.empty());
 
@@ -57,7 +57,7 @@ namespace sdk {
         : m_is_main_net(net_params.is_main_net())
         , m_is_liquid(net_params.is_liquid())
         , m_btc_version(net_params.btc_version())
-        , m_hw_device(get_hw_device_json(hw_device))
+        , m_device(get_device_json(hw_device))
     {
     }
 
@@ -129,25 +129,22 @@ namespace sdk {
         if (get_ae_protocol_support() != ae_protocol_support_level::none) {
             return false; // Always use AE if the HW supports it
         }
-        return m_hw_device["supports_low_r"];
+        return m_device["supports_low_r"];
     }
 
-    bool signer::supports_arbitrary_scripts() const { return m_hw_device["supports_arbitrary_scripts"]; }
+    bool signer::supports_arbitrary_scripts() const { return m_device["supports_arbitrary_scripts"]; }
 
-    liquid_support_level signer::get_liquid_support() const { return m_hw_device["supports_liquid"]; }
+    liquid_support_level signer::get_liquid_support() const { return m_device["supports_liquid"]; }
 
-    bool signer::supports_host_unblinding() const { return m_hw_device["supports_host_unblinding"]; }
+    bool signer::supports_host_unblinding() const { return m_device["supports_host_unblinding"]; }
 
-    ae_protocol_support_level signer::get_ae_protocol_support() const { return m_hw_device["supports_ae_protocol"]; }
+    ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device["supports_ae_protocol"]; }
 
-    bool signer::is_watch_only() const { return m_hw_device["device_type"] == "watch-only"; }
+    bool signer::is_watch_only() const { return m_device["device_type"] == "watch-only"; }
 
-    bool signer::is_hardware() const { return m_hw_device["device_type"] == "hardware"; }
+    bool signer::is_hardware() const { return m_device["device_type"] == "hardware"; }
 
-    nlohmann::json signer::get_hw_device() const
-    {
-        return m_hw_device["device_type"] == "hardware" ? m_hw_device : nlohmann::json::object();
-    }
+    const nlohmann::json& signer::get_device() const { return m_device; }
 
     xpub_t signer::get_xpub(uint32_span_t path)
     {

@@ -77,8 +77,8 @@ namespace sdk {
         // Returns true if this signer is hardware (i.e. externally implemented)
         bool is_hardware() const;
 
-        // Get the HW device description for this signer (empty if not HW)
-        nlohmann::json get_hw_device() const;
+        // Get the device description for this signer
+        const nlohmann::json& get_device() const;
 
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
@@ -100,7 +100,7 @@ namespace sdk {
         const bool m_is_main_net;
         const bool m_is_liquid;
         const unsigned char m_btc_version;
-        const nlohmann::json m_hw_device;
+        const nlohmann::json m_device;
         std::string m_mnemonic;
         wally_ext_key_ptr m_master_key;
         boost::optional<blinding_key_t> m_master_blinding_key;
