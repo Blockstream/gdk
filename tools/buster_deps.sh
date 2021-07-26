@@ -14,7 +14,7 @@ echo "b65ea2d5c5b68fb603626adcbcea6e4d12c68eb8a73e373bbb9d23c252fc647b ndk.zip" 
 unzip ndk.zip
 rm ndk.zip
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.42.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.49.0
 
 source /root/.cargo/env
 rustup component add rustfmt clippy
