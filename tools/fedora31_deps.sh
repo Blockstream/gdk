@@ -2,7 +2,7 @@
 set -e
 
 dnf update -yq
-dnf install -yq @development-tools wget autoconf pkg-config libtool ninja-build clang which python python3-pip libatomic curl perl-FindBin
+dnf install -yq @development-tools wget autoconf pkg-config libtool ninja-build clang which python python3-pip libatomic curl perl-core
 pip install --require-hashes -r /requirements.txt
 
 curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.49.0

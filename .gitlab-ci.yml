@@ -105,7 +105,7 @@ release_py3m_osx:
     - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7 --enable-rust
 
 test_fedora_clang:
-  image: greenaddress/fedora_ci@sha256:743681f0be603f1fff58a52e1ccbaa95681d110b7c1eb44a10ef036c0d072585
+  image: greenaddress/fedora_ci@sha256:da48654c02d38c570811fd42b7e2dabc5ac2ca91854982be9544c19b659e8abb
   tags:
     - ga
   script:
