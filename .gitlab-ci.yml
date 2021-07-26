@@ -99,7 +99,7 @@ release_py3m_osx:
     - osx
   script:
     - cd $CI_PROJECT_DIR
-    - /usr/local/opt/python@3.7/bin/python3 -m venv venv
+    - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
     - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7 --enable-rust
