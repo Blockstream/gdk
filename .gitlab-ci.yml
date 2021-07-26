@@ -88,7 +88,7 @@ release_py3m_buster_debug:
     - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7 --enable-rust
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ubuntu_ci@sha256:3a448884966559456a89a530d19c58be3e0c043bd0b988990cb489dd8f167035
+  image: greenaddress/ubuntu_ci@sha256:fa4942de35b0cc54817d1ce94e568d13e5a00777b78b94542141099817e1a81f
   extends: .py_release
   script:
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --enable-rust
