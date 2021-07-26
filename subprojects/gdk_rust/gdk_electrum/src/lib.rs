@@ -341,7 +341,7 @@ impl Session<Error> for ElectrumSession {
         let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
         let iv = hex::decode(&details.salt)?;
-        let decipher = Aes256Cbc::new_var(&server_key[..], &iv).unwrap();
+        let decipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         // If the pin is wrong, pinserver returns a random key and decryption fails, return a
         // specific error to signal the caller to update its pin counter.
         let mnemonic = decipher
@@ -650,7 +650,7 @@ impl Session<Error> for ElectrumSession {
         let client_key = SecretKey::new(&mut thread_rng());
         let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
         let iv = thread_rng().gen::<[u8; 16]>();
-        let cipher = Aes256Cbc::new_var(&server_key[..], &iv).unwrap();
+        let cipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         let encrypted = cipher.encrypt_vec(details.mnemonic.as_bytes());
 
         let result = PinGetDetails {

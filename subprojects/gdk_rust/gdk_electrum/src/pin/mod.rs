@@ -147,7 +147,7 @@ impl PinManager {
         assert_eq!(payload.len(), 129);
 
         let iv = self.rng.gen::<[u8; 16]>();
-        let cipher = Aes256Cbc::new_var(&self.request_encryption_key[..], &iv).unwrap();
+        let cipher = Aes256Cbc::new_from_slices(&self.request_encryption_key[..], &iv).unwrap();
         let encrypted = cipher.encrypt_vec(&payload);
         let mut iv_encrypted: Vec<u8> = vec![];
         iv_encrypted.extend(&iv[..]);
@@ -193,7 +193,7 @@ impl ResponseData {
         }
 
         let iv = hex::decode(&self.encrypted_key[..32])?;
-        let decipher = Aes256Cbc::new_var(&enc_key[..], &iv).unwrap();
+        let decipher = Aes256Cbc::new_from_slices(&enc_key[..], &iv).unwrap();
         let decrypted = decipher.decrypt_vec(&hex::decode(&self.encrypted_key[32..])?)?;
 
         Ok(decrypted)

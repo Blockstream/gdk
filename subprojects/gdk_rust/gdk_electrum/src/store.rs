@@ -1,7 +1,7 @@
 use crate::spv::CrossValidationResult;
 use crate::Error;
-use aes_gcm_siv::aead::{generic_array::GenericArray, AeadInPlace, NewAead};
-use aes_gcm_siv::Aes256GcmSiv;
+use aes_gcm_siv::aead::{AeadInPlace, NewAead};
+use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use bitcoin::Transaction;
@@ -180,7 +180,7 @@ fn load_decrypt<P: AsRef<Path>>(
     let mut file = File::open(&store_path)?;
     let mut nonce_bytes = [0u8; 12];
     file.read_exact(&mut nonce_bytes)?;
-    let nonce = GenericArray::from_slice(&nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
     let mut ciphertext = vec![];
     file.read_to_end(&mut ciphertext)?;
 
@@ -197,7 +197,7 @@ fn get_cipher(xpub: &ExtendedPubKey) -> Aes256GcmSiv {
     enc_key_data.extend(&xpub.chain_code.to_bytes());
     enc_key_data.extend(&xpub.network.magic().to_be_bytes());
     let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
-    let key = GenericArray::from_slice(&key_bytes);
+    let key = Key::from_slice(&key_bytes);
     Aes256GcmSiv::new(&key)
 }
 
@@ -236,7 +236,7 @@ impl StoreMeta {
         let now = Instant::now();
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
-        let nonce = GenericArray::from_slice(&nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
         let mut plaintext = serde_cbor::to_vec(value)?;
 
         self.cipher.encrypt_in_place(nonce, b"", &mut plaintext)?;
