@@ -3,8 +3,8 @@ use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use ::bitcoin::hashes::{sha256, sha256d, Hash};
-use aes_gcm_siv::aead::{generic_array::GenericArray, Aead, NewAead};
-use aes_gcm_siv::Aes256GcmSiv;
+use aes_gcm_siv::aead::{Aead, NewAead};
+use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use electrum_client::{ElectrumApi, GetMerkleRes};
 use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
@@ -149,7 +149,7 @@ impl VerifiedCache {
         let filename = hex::encode(sha256::Hash::hash(filename_preimage.as_bytes()));
         let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
         filepath.push(format!("verified_cache_{}", filename));
-        let cipher = Aes256GcmSiv::new(GenericArray::from_slice(&key_bytes));
+        let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes));
         let set = match VerifiedCache::read_and_decrypt(&mut filepath, &cipher) {
             Ok(set) => set,
             Err(_) => HashSet::new(),
@@ -168,7 +168,7 @@ impl VerifiedCache {
         let mut file = File::open(&filepath)?;
         let mut nonce_bytes = [0u8; 12]; // 96 bits
         file.read_exact(&mut nonce_bytes)?;
-        let nonce = GenericArray::from_slice(&nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
         let mut ciphertext = vec![];
         file.read_to_end(&mut ciphertext)?;
         let plaintext = cipher.decrypt(nonce, ciphertext.as_ref())?;
@@ -194,7 +194,7 @@ impl VerifiedCache {
         let mut nonce_bytes = [0u8; 12]; // 96 bits
         thread_rng().fill(&mut nonce_bytes);
         let plaintext = serde_cbor::to_vec(&self.set)?;
-        let nonce = GenericArray::from_slice(&nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
         let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref())?;
         file.write(&nonce)?;
         file.write(&ciphertext)?;

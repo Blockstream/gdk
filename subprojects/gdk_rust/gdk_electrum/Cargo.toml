@@ -17,14 +17,14 @@ serde_cbor = "0.11.1"
 sha2 = "0.8.0"
 # FIXME: unpin zeroize once we bump MSRV (needs rebuild of docker images)
 zeroize = "<1.4.0"
-aes-gcm-siv = "0.5.0"
+aes-gcm-siv = "0.10.0"
 gdk-common = { path = "../gdk_common" }
 libc = "0.2"
 android_logger = { version = "0.8.6", optional = true }
 electrum-client = "0.7.0"
 ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
-block-modes = "0.3.3"
-aes = "0.3.2"
+block-modes = "0.8.0"
+aes = "0.7.0"
 tempdir = "0.3.7"
 secp256k1 = { version = "0.20.0", features = [ "recovery", "rand"] }
 lazy_static = "1.4.0"
