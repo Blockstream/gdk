@@ -59,7 +59,6 @@ if [ \( "$1" = "--ndk" \) ]; then
     fi
 elif [ \( "$1" = "--windows" \) ]; then
     RUSTTARGET=x86_64-pc-windows-gnu
-    OUT_LIB_FILE="gdk_rust.lib"
 elif [ \( "$1" = "--iphone" \) ]; then
     RUSTTARGET=aarch64-apple-ios
     LD_ARCH="-arch arm64 -platform_version ios 11.0 11.0"
