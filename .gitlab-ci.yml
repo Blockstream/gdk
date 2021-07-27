@@ -102,7 +102,7 @@ release_py3m_osx:
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.7 --enable-rust
+    - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9 --enable-rust
 
 test_fedora_clang:
   image: greenaddress/fedora_ci@sha256:da48654c02d38c570811fd42b7e2dabc5ac2ca91854982be9544c19b659e8abb
