@@ -931,16 +931,93 @@ Auth handler status JSON
 
 Describes the status of a GA_auth_handler. Returned by `GA_auth_handler_get_status`.
 
+The data returned depends on the current state of the handler, as follows:
+
+* ``"done"``:
+
 .. code-block:: json
 
   {
+    "status": "done",
     "action": "disable_2fa",
-    "device": null,
-    "methods": [
-      "gauth"
-    ],
-    "status": "request_code"
+    "result": {}
   }
+
+:action: The action being processed.
+:result: The data returned from the call, if any.
+
+* ``"error"``:
+
+.. code-block:: json
+
+  {
+    "status": "error",
+    "action": "disable_2fa",
+    "error": "Incorrect code"
+  }
+
+:action: The action being processed.
+:error: A text description of the error that occured.
+
+* ``"call"``:
+
+.. code-block:: json
+
+  {
+    "status": "call",
+    "action": "disable_2fa"
+  }
+
+:action: The action being processed.
+
+* ``"request_code"``:
+
+.. code-block:: json
+
+  {
+    "status": "request_code",
+    "action": "disable_2fa",
+    "methods": [ "email", "sms", "phone", "gauth", "telegram" ]
+  }
+
+:action: The action being processed.
+:methods: A list of the two factor methods the user has enabled.
+
+* ``"resolve_code"`` (two factor):
+
+.. code-block:: json
+
+  {
+    "status": "resolve_code",
+    "action": "disable_2fa",
+    "method": "email",
+    "auth_data": {},
+    "attempts_remaining": "3"
+  }
+
+:action: The action being processed.
+:method: The two factor method the user should fetch the code to enter from.
+:auth_data: Method-specific ancillary data for resolving the call.
+:attempts_remaining: If present, the number of incorrect attempts that can be
+    made before the call fails.
+
+
+* ``"resolve_code"`` (hardware wallet/external device):
+
+.. code-block:: json
+
+  {
+    "status": "resolve_code",
+    "action": "disable_2fa",
+    "required_data": {
+        "action": "get_xpubs",
+        "device": {}
+    }
+  }
+
+:action: The action being processed.
+:required_data: Contains the data the HWW must provide, see :ref:`hw-resolve-overview`.
+
 
 .. _hint:
 

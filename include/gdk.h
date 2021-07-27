@@ -629,11 +629,13 @@ GDK_API int GA_destroy_json(GA_json* json);
  *
  * * ``"done"``: The action has been completed successfully. Any data returned
  *|  from the action is present in the ``"result"`` element of the status JSON.
+ *| The auth_handler object should be destroyed using `GA_destroy_auth_handler`
+ *| after receiving this status.
  *
  * * ``"error"``: A non-recoverable error occurred performing the action. The
  *| associated error message is given in the status element ``"error"``. The
- *| auth_handler object should be destroyed and the action restarted from
- *| scratch if this state is returned.
+ *| auth_handler object should be destroyed using `GA_destroy_auth_handler` and
+ *| the action restarted from scratch if this state is returned.
  *
  * * ``"request_code"``: Two factor authorization is required. The caller should
  *| prompt the user to choose a two factor method from the ``"methods"`` element
