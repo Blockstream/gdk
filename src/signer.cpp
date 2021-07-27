@@ -17,9 +17,7 @@ namespace sdk {
         {
             GDK_RUNTIME_ASSERT(!hw_device.empty());
 
-            // FIXME: Remove key rename when the wallets are upgraded to use "supports_ae_protocol"
             nlohmann::json ret = hw_device;
-            json_rename_key(ret, "ae_protocol_support_level", "supports_ae_protocol");
             const bool overwrite_null = true;
             json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
             json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
