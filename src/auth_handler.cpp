@@ -181,30 +181,28 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::error || m_error.empty());
 
-        std::string status_str;
+        const char* status_str = nullptr;
         nlohmann::json status;
 
         switch (m_state) {
         case state_type::request_code:
-            GDK_RUNTIME_ASSERT(!m_is_hw_action);
-
             // Caller should ask the user to pick 2fa and request a code
+            GDK_RUNTIME_ASSERT(!m_is_hw_action);
             status_str = "request_code";
-            status["methods"] = m_methods;
+            status.emplace("methods", m_methods);
             break;
         case state_type::resolve_code:
             status_str = "resolve_code";
             if (m_is_hw_action) {
                 // Caller must interact with the hardware and return
                 // the returning data to us
-                status["method"] = m_signer->get_device().value("name", std::string());
                 status["required_data"] = m_twofactor_data;
             } else {
                 // Caller should resolve the code the user has entered
-                status["method"] = m_method;
-                status["auth_data"] = m_auth_data;
+                status.emplace("method", m_method);
+                status.emplace("auth_data", m_auth_data);
                 if (has_retry_counter()) {
-                    status["attempts_remaining"] = m_attempts_remaining;
+                    status.emplace("attempts_remaining", m_attempts_remaining);
                 }
             }
             break;
@@ -215,18 +213,17 @@ namespace sdk {
         case state_type::done:
             // Caller should destroy the call and continue
             status_str = "done";
-            status["result"] = m_result;
+            status.emplace("result", m_result);
             break;
         case state_type::error:
             // Caller should handle the error
             status_str = "error";
-            status["error"] = m_error;
+            status.emplace("error", m_error);
             break;
         }
-        GDK_RUNTIME_ASSERT(!status_str.empty());
+        GDK_RUNTIME_ASSERT(status_str != nullptr);
         status.emplace("status", status_str);
         status.emplace("action", m_action);
-        status.emplace("device", get_device_json());
         return status;
     }
 

@@ -57,7 +57,7 @@ class Call(object):
                 method = select_method_fn(status['methods'])
                 auth_handler_request_code(self.call_obj, method)
             elif state == 'resolve_code':
-                if status['device']:
+                if 'required_data' in status:
                     # Hardware device authorization requested
                     code = resolve_code_fn(status['required_data'])
                 else:
