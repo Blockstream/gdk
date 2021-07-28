@@ -689,9 +689,8 @@ namespace sdk {
     // Get previous addresses
     //
     get_previous_addresses_call::get_previous_addresses_call(session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, "get_receive_address")
+        : auth_handler_impl(session, "get_blinding_public_keys")
         , m_details(details)
-        , m_index(0)
     {
         if (m_state == state_type::error) {
             return;
@@ -716,37 +715,29 @@ namespace sdk {
                 m_state = state_type::done;
                 return; // Nothing further to do
             }
-            // Otherwise, start iterating to get the blinding keys for each address
-            m_state = set_address_to_blind();
+            // Otherwise, request the the blinding keys for each address
+            set_data();
+            auto& scripts = m_twofactor_data["scripts"];
+            for (const auto& it : m_result.at("list")) {
+                scripts.push_back(it.at("blinding_script_hash"));
+            }
+            m_state = state_type::resolve_code;
         } catch (const std::exception& e) {
             set_error(e.what());
-            return;
         }
-    }
-
-    auth_handler::state_type get_previous_addresses_call::set_address_to_blind()
-    {
-        const auto& current = m_result["list"][m_index];
-        set_data();
-        m_twofactor_data["address"] = current;
-        // Ask the HW to provide the blinding key
-        return state_type::resolve_code;
     }
 
     auth_handler::state_type get_previous_addresses_call::call_impl()
     {
-        auto& current = m_result["list"][m_index];
-
-        // Liquid: blind the address Using the blinding key from the HW
-        current["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
-        current["address"] = get_blinded_address(m_session, current);
-
-        ++m_index; // Move to the next address
-        if (m_index == m_result["list"].size()) {
-            // All addresses have been blinded
-            return state_type::done;
+        // Liquid: blind the address using the blinding key from the HW
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        const auto& public_keys = args.at("public_keys");
+        size_t i = 0;
+        for (auto& it : m_result.at("list")) {
+            it["blinding_key"] = public_keys.at(i);
+            it["address"] = get_blinded_address(m_session, it);
         }
-        return set_address_to_blind();
+        return state_type::done;
     }
 
     static bool has_unblinded_change(const nlohmann::json& tx)
