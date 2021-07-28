@@ -220,6 +220,7 @@ namespace sdk {
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
         void on_new_block(nlohmann::json details);
+        void on_new_tickers(nlohmann::json details);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
         void remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,

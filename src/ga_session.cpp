@@ -1479,6 +1479,30 @@ namespace sdk {
         });
     }
 
+    void ga_session::on_new_tickers(nlohmann::json details)
+    {
+        bool found = false;
+        {
+            locker_t locker(m_mutex);
+
+            no_std_exception_escape([&]() {
+                const auto exchange_p = details.find(m_fiat_source);
+                if (exchange_p != details.end()) {
+                    const auto rate_p = exchange_p->find(m_fiat_currency);
+                    if (rate_p != exchange_p->end()) {
+                        update_fiat_rate(locker, *rate_p);
+                        found = true;
+                    }
+                }
+            });
+        }
+        if (found) {
+            emit_notification({ { "event", "tickers" }, { "tickers", std::move(details) } }, false);
+        } else {
+            GDK_LOG_SEV(log_level::warning) << "Ignoring irrelevant ticker update";
+        }
+    }
+
     nlohmann::json ga_session::login(const std::string& /*mnemonic*/)
     {
         GDK_RUNTIME_ASSERT(false);
@@ -1601,6 +1625,10 @@ namespace sdk {
                     locker_t notify_locker(m_mutex);
                     set_fee_estimates(notify_locker, wamp_cast_json(event));
                 }));
+        } else {
+            // Servers that supply prev_block_hash also support ticker subscriptions
+            subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
+                [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
         }
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
