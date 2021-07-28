@@ -652,17 +652,24 @@ namespace sdk {
     // Get receive address
     //
     get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, "get_receive_address")
+        : auth_handler_impl(session, "get_blinding_public_keys")
         , m_details(details)
     {
         if (m_state != state_type::error) {
             try {
-                nlohmann::json address = m_session.get_receive_address(details);
-                set_data();
-                m_twofactor_data["address"] = address;
+                auto impl = session.get_nonnull_impl();
+                const auto& net_params = impl->get_network_parameters();
+                m_result = impl->get_receive_address(details);
 
-                // Make the call directly unless we are Liquid and so need to blind
-                m_state = m_session.is_liquid() ? state_type::resolve_code : state_type::make_call;
+                if (net_params.is_liquid() && !net_params.is_electrum()) {
+                    // Ask the caller to provide the blinding key
+                    set_data();
+                    m_twofactor_data["scripts"].push_back(m_result.at("blinding_script_hash"));
+                    m_state = state_type::resolve_code;
+                } else {
+                    // We are done
+                    m_state = state_type::done;
+                }
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
@@ -671,15 +678,10 @@ namespace sdk {
 
     auth_handler::state_type get_receive_address_call::call_impl()
     {
-        // initially our result is what we generated earlier
-        m_result = m_twofactor_data["address"];
-
-        if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
-            // Liquid: blind the address using the blinding key from the HW
-            m_result["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
-            m_result["address"] = get_blinded_address(m_session, m_result);
-        }
-
+        // Liquid: blind the address using the blinding key from the caller
+        const nlohmann::json args = nlohmann::json::parse(m_code);
+        m_result["blinding_key"] = args.at("public_keys").at(0);
+        m_result["address"] = get_blinded_address(m_session, m_result);
         return state_type::done;
     }
 

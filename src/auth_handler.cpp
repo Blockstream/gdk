@@ -72,7 +72,8 @@ namespace sdk {
         m_is_hw_action = m_signer && !m_signer->is_watch_only()
             && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
                    || action == "get_receive_address" || action == "create_transaction" || action == "get_transactions"
-                   || action == "get_unspent_outputs" || action == "get_master_blinding_key");
+                   || action == "get_unspent_outputs" || action == "get_master_blinding_key"
+                   || action == "get_blinding_public_keys");
     }
 
     void auth_handler_impl::set_error(const std::string& error_message)
@@ -297,6 +298,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(status.at("status") == "resolve_code");
         const auto& required_data = status["required_data"];
         const std::string action = status.at("action");
+        const auto signer = get_signer();
+        const bool have_master_blinding_key = signer->has_master_blinding_key();
 
         if (action == "get_master_blinding_key") {
             // Allow the session to handle this action with cached data if it can
@@ -310,13 +313,20 @@ namespace sdk {
                 resolve_code(result.dump());
                 return;
             }
+        } else if (have_master_blinding_key && action == "get_blinding_public_keys") {
+            auto& public_keys = result["public_keys"];
+            for (const auto& script : required_data.at("scripts")) {
+                public_keys.push_back(b2h(signer->get_blinding_pubkey_from_script(h2b(script))));
+            }
+            resolve_code(result.dump());
+            return;
         }
 
         if (required_data.at("device").at("device_type") == "hardware") {
             return; // Caller provided HW device, let the caller resolve
         }
+
         // We have an action to resolve with the internal software wallet
-        const auto signer = get_signer();
         if (action == "get_xpubs") {
             GDK_RUNTIME_ASSERT(required_data.contains("paths"));
             std::vector<std::string> xpubs;
