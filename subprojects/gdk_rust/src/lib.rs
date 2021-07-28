@@ -206,9 +206,11 @@ pub extern "C" fn GDKRUST_call_session(
     }
 
     // Redact inputs containing private data
-    let methods_to_redact = vec!["login", "register_user", "set_pin", "create_subaccount"];
+    let methods_to_redact_in =
+        vec!["login", "register_user", "set_pin", "create_subaccount", "mnemonic_from_pin_data"];
     let input_str = format!("{:?}", &input);
-    let input_redacted = if methods_to_redact.contains(&method.as_str())
+    let input_redacted = if methods_to_redact_in.contains(&method.as_str())
+        || input_str.contains("pin")
         || input_str.contains("mnemonic")
         || input_str.contains("xprv")
     {
@@ -223,7 +225,8 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    let mut output_redacted = if method == "get_mnemonic" {
+    let methods_to_redact_out = vec!["get_mnemonic", "mnemonic_from_pin_data"];
+    let mut output_redacted = if methods_to_redact_out.contains(&method.as_str()) {
         "redacted".to_string()
     } else {
         format!("{:?}", res)
