@@ -2961,13 +2961,10 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(addr_script_type == script_type::ga_p2sh_p2wsh_csv_fortified_out
                 || addr_script_type == script_type::ga_p2sh_p2wsh_fortified_out);
 
-            const auto script_sha = sha256(server_script);
-            std::vector<unsigned char> witness_program = { 0x00, 0x20 };
-            witness_program.insert(witness_program.end(), script_sha.begin(), script_sha.end());
-
-            const auto script_hash = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
-            address["blinding_script_hash"] = b2h(script_hash);
-            // We will add the blinding key later
+            const auto witness_program = witness_program_from_bytes(server_script, WALLY_SCRIPT_SHA256);
+            const auto p2sh = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
+            address["blinding_script"] = b2h(p2sh);
+            // The blinding key will be added later once fetched from the sessions signer
         }
     }
 

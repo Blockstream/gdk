@@ -44,10 +44,10 @@ namespace sdk {
                 // Use the blinding key provided by the hardware
                 blinding_key_hex = addr.at("blinding_key");
             } else {
-                // Derive the blinding key from the blinding_script_hash
+                // Derive the blinding key from the blinding_script
                 auto signer = session.get_nonnull_impl()->get_signer();
-                const auto script_hash = h2b(addr.at("blinding_script_hash"));
-                blinding_key_hex = b2h(signer->get_blinding_pubkey_from_script(script_hash));
+                const auto script = h2b(addr.at("blinding_script"));
+                blinding_key_hex = b2h(signer->get_blinding_pubkey_from_script(script));
             }
             return blind_address(session, addr["address"], blinding_key_hex);
         }
@@ -286,7 +286,7 @@ namespace sdk {
             const uint32_t required_ca = sa.value("required_ca", 0);
             for (size_t i = 0; i < required_ca; ++i) {
                 m_addresses.push_back(impl->get_receive_address({ { "subaccount", sa["pointer"] } }));
-                scripts.push_back(m_addresses.back().at("blinding_script_hash"));
+                scripts.push_back(m_addresses.back().at("blinding_script"));
             }
         }
         if (scripts.empty()) {
@@ -448,7 +448,7 @@ namespace sdk {
             auto scripts = nlohmann::json::array();
             for (size_t i = 0; i < INITIAL_UPLOAD_CA; ++i) {
                 m_addresses.push_back(m_session.get_receive_address({ { "subaccount", m_subaccount } }));
-                scripts.push_back(m_addresses.back().at("blinding_script_hash"));
+                scripts.push_back(m_addresses.back().at("blinding_script"));
             }
             set_action("get_blinding_public_keys");
             set_data();
@@ -662,7 +662,7 @@ namespace sdk {
                 if (net_params.is_liquid() && !net_params.is_electrum()) {
                     // Ask the caller to provide the blinding key
                     set_data();
-                    m_twofactor_data["scripts"].push_back(m_result.at("blinding_script_hash"));
+                    m_twofactor_data["scripts"].push_back(m_result.at("blinding_script"));
                     m_state = state_type::resolve_code;
                 } else {
                     // We are done
@@ -717,7 +717,7 @@ namespace sdk {
             set_data();
             auto& scripts = m_twofactor_data["scripts"];
             for (const auto& it : m_result.at("list")) {
-                scripts.push_back(it.at("blinding_script_hash"));
+                scripts.push_back(it.at("blinding_script"));
             }
             m_state = state_type::resolve_code;
         } catch (const std::exception& e) {
@@ -815,7 +815,7 @@ namespace sdk {
             auto& scripts = m_twofactor_data["scripts"];
             for (auto& it : m_result.at("change_address").items()) {
                 if (!it.value().value("is_blinded", false)) {
-                    scripts.push_back(it.value().at("blinding_script_hash"));
+                    scripts.push_back(it.value().at("blinding_script"));
                 }
             }
             return scripts.empty() ? state_type::done : state_type::resolve_code;
