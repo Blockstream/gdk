@@ -117,17 +117,21 @@ namespace sdk {
         , m_mnemonic(mnemonic)
     {
         if (m_state != state_type::error) {
-            if (m_session.get_network_parameters().is_electrum()) {
-                // Register is a no-op for electrum sessions
-                m_state = state_type::done;
-            } else {
-                // To register, we need the master xpub to identify the wallet,
-                // and the registration xpub to compute the gait_path.
-                m_state = state_type::resolve_code;
-                set_data();
-                auto paths = get_paths_json();
-                paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
-                m_twofactor_data["paths"] = paths;
+            try {
+                if (m_session.get_network_parameters().is_electrum()) {
+                    // Register is a no-op for electrum sessions
+                    m_state = state_type::done;
+                } else {
+                    // To register, we need the master xpub to identify the wallet,
+                    // and the registration xpub to compute the gait_path.
+                    m_state = state_type::resolve_code;
+                    set_data();
+                    auto paths = get_paths_json();
+                    paths.emplace_back(std::vector<uint32_t>{ harden(0x4741) });
+                    m_twofactor_data["paths"] = paths;
+                }
+            } catch (const std::exception& e) {
+                set_error(e.what());
             }
         }
     }
@@ -174,18 +178,22 @@ namespace sdk {
               make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
     {
         if (m_state != state_type::error) {
-            if (m_session.get_network_parameters().is_electrum()) {
-                // FIXME: Implement rust login via authenticate()
-                m_result = m_session.get_nonnull_impl()->login(m_signer->get_mnemonic(std::string()));
-                m_state = state_type::done;
-            } else {
-                // We first need the challenge, so ask the caller for the master pubkey.
-                m_state = state_type::resolve_code;
-                set_action("get_xpubs");
-                set_data();
-                auto paths = get_paths_json();
-                paths.emplace_back(signer::CLIENT_SECRET_PATH);
-                m_twofactor_data["paths"] = std::move(paths);
+            try {
+                if (m_session.get_network_parameters().is_electrum()) {
+                    // FIXME: Implement rust login via authenticate()
+                    m_result = m_session.get_nonnull_impl()->login(m_signer->get_mnemonic(std::string()));
+                    m_state = state_type::done;
+                } else {
+                    // We first need the challenge, so ask the caller for the master pubkey.
+                    m_state = state_type::resolve_code;
+                    set_action("get_xpubs");
+                    set_data();
+                    auto paths = get_paths_json();
+                    paths.emplace_back(signer::CLIENT_SECRET_PATH);
+                    m_twofactor_data["paths"] = std::move(paths);
+                }
+            } catch (const std::exception& e) {
+                set_error(e.what());
             }
         }
     }
@@ -1089,7 +1097,7 @@ namespace sdk {
         }
 
         try {
-            GDK_RUNTIME_ASSERT(details["list"].is_array());
+            GDK_RUNTIME_ASSERT(details.at("list").is_array());
 
             nlohmann::json args = details;
             bool seen_frozen = false;
@@ -1134,25 +1142,27 @@ namespace sdk {
         : auth_handler_impl(session, std::string())
         , m_settings(settings)
     {
-        if (m_state == state_type::error) {
-            return;
-        }
+        if (m_state != state_type::error) {
+            try {
+                m_state = state_type::make_call;
 
-        m_state = state_type::make_call;
+                const auto nlocktime_p = settings.find("nlocktime");
+                if (nlocktime_p != settings.end()) {
+                    const uint64_t new_nlocktime = nlocktime_p->get<uint64_t>();
+                    const uint64_t current_nlocktime = m_session.get_settings()["nlocktime"];
+                    if (new_nlocktime != current_nlocktime) {
+                        m_nlocktime_value = { { "value", new_nlocktime } };
 
-        const auto nlocktime_p = settings.find("nlocktime");
-        if (nlocktime_p != settings.end()) {
-            const uint64_t new_nlocktime = nlocktime_p->get<uint64_t>();
-            const uint64_t current_nlocktime = m_session.get_settings()["nlocktime"];
-            if (new_nlocktime != current_nlocktime) {
-                m_nlocktime_value = { { "value", new_nlocktime } };
-
-                // If 2fa enabled trigger resolution for set_nlocktime
-                if (!m_methods.empty()) {
-                    set_action("set_nlocktime");
-                    m_state = state_type::request_code;
-                    m_twofactor_data = m_nlocktime_value;
+                        // If 2fa enabled trigger resolution for set_nlocktime
+                        if (!m_methods.empty()) {
+                            set_action("set_nlocktime");
+                            m_state = state_type::request_code;
+                            m_twofactor_data = m_nlocktime_value;
+                        }
+                    }
                 }
+            } catch (const std::exception& e) {
+                set_error(e.what());
             }
         }
     }
@@ -1406,11 +1416,11 @@ namespace sdk {
             return;
         }
 
-        const auto& net_params = m_session.get_network_parameters();
-        const bool is_liquid = net_params.is_liquid();
-        const bool is_electrum = net_params.is_electrum();
-
         try {
+            const auto& net_params = m_session.get_network_parameters();
+            const bool is_liquid = net_params.is_liquid();
+            const bool is_electrum = net_params.is_electrum();
+
             if (!is_liquid && !is_electrum) {
                 const uint64_t limit
                     = m_twofactor_required ? session.get_spending_limits()["satoshi"].get<uint64_t>() : 0;
