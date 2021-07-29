@@ -1,5 +1,6 @@
 #include "signer.hpp"
 #include "exception.hpp"
+#include "memory.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
 
@@ -62,17 +63,12 @@ namespace sdk {
     signer::signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub)
         : signer(net_params, SOFTWARE_DEVICE_JSON)
     {
-        // FIXME: Allocate m_master_key in mlocked memory
+        std::vector<unsigned char> seed;
+
         if (mnemonic_or_xpub.find(' ') != std::string::npos) {
             // mnemonic
-            // FIXME: secure_array
-            m_mnemonic = mnemonic_or_xpub;
-            const auto seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
-            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
-            m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
-            if (m_is_liquid) {
-                m_master_blinding_key = asset_blinding_key_from_seed(seed);
-            }
+            m_mnemonic = mnemonic_or_xpub; // FIXME: secure_array
+            seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
         } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
             // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
             // FIXME: Some previously supported HWs do not have bip39 support.
@@ -81,15 +77,21 @@ namespace sdk {
             // seed derivation from 'mnemonic to seed' derivation, which should
             // facilitate non-bip39 mnemonic future integration. For these
             // reasons this is a temporary solution.
-            const auto seed = h2b(mnemonic_or_xpub.substr(0, 128));
+            m_mnemonic = mnemonic_or_xpub; // FIXME: secure_array
+            seed = h2b(mnemonic_or_xpub.substr(0, 128));
+        } else {
+            // xpub
+            m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
+        }
+
+        if (!seed.empty()) {
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+            // FIXME: Allocate m_master_key in mlocked memory
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
                 m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
-        } else {
-            // xpub
-            m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
+            bzero_and_free(seed);
         }
     }
 
