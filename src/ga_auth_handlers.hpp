@@ -34,9 +34,8 @@ namespace sdk {
         std::string m_master_xpub_bip32;
         std::string m_subaccount_xpub;
 
-        // used when a new authorized-assets-enabled subaccount is created
-        std::vector<std::string> m_ca_addrs;
-        uint32_t m_remaining_ca_addrs;
+        // Used when a new authorized-assets-enabled subaccount is created
+        std::vector<nlohmann::json> m_addresses;
     };
 
     class ack_system_message_call : public auth_handler_impl {

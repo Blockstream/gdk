@@ -144,7 +144,7 @@ namespace sdk {
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo);
 
-        void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
+        void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& addresses);
 
         void change_settings_pricing_source(const std::string& currency, const std::string& exchange);
 

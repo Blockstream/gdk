@@ -163,7 +163,7 @@ namespace sdk {
         std::string m_master_xpub_bip32;
 
         // used for 2of2_no_recovery
-        std::unordered_map<uint32_t, std::vector<std::string>> m_ca_addrs;
+        std::unordered_map<uint32_t, std::vector<std::string>> m_confidential_addresses;
         std::vector<uint32_t> m_ca_reqs;
     };
 
@@ -196,7 +196,7 @@ namespace sdk {
             addr["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
 
             // save it and pop the request
-            m_ca_addrs[m_ca_reqs.back()].emplace_back(get_blinded_address(m_session, addr));
+            m_confidential_addresses[m_ca_reqs.back()].emplace_back(get_blinded_address(m_session, addr));
             m_ca_reqs.pop_back();
 
             // prepare the next one
@@ -284,9 +284,9 @@ namespace sdk {
             return state_type::done;
         }
 
-        if (!m_ca_addrs.empty()) {
+        if (!m_confidential_addresses.empty()) {
             // done, upload and exit
-            for (auto const& entry : m_ca_addrs) {
+            for (auto const& entry : m_confidential_addresses) {
                 m_session.upload_confidential_addresses(entry.first, entry.second);
             }
 
@@ -375,13 +375,11 @@ namespace sdk {
         : auth_handler_impl(session, "get_xpubs")
         , m_details(details)
         , m_subaccount(0)
-        , m_remaining_ca_addrs(0)
     {
         if (m_state != state_type::error) {
             try {
                 const std::string type = details.at("type");
-                m_remaining_ca_addrs = type == "2of2_no_recovery" ? INITIAL_UPLOAD_CA : 0;
-                m_subaccount = session.get_next_subaccount(type);
+                m_subaccount = m_session.get_next_subaccount(type);
 
                 if (type == "2of3") {
                     // The user can provide a recovery mnemonic or bip32 xpub, but not both
@@ -403,8 +401,8 @@ namespace sdk {
                 m_state = state_type::resolve_code;
                 set_data();
                 auto paths = get_paths_json();
-                paths.emplace_back(session.get_subaccount_root_path(m_subaccount));
-                m_twofactor_data["paths"] = paths;
+                paths.emplace_back(m_session.get_subaccount_root_path(m_subaccount));
+                m_twofactor_data["paths"] = std::move(paths);
             } catch (const std::exception& e) {
                 set_error(e.what());
             }
@@ -416,10 +414,11 @@ namespace sdk {
         const nlohmann::json args = nlohmann::json::parse(m_code);
 
         if (m_action == "get_xpubs") {
+            // Caller has provided the xpubs for the new subaccount
             m_master_xpub_bip32 = args.at("xpubs").at(0);
             m_subaccount_xpub = args.at("xpubs").at(1);
             if (m_details.at("type") == "2of3") {
-                // ask the caller to sign recovery key with login key
+                // Ask the caller to sign the recovery key with the login key
                 set_action("sign_message");
                 set_data();
                 m_twofactor_data["message"] = format_recovery_key_message(m_details["recovery_xpub"], m_subaccount);
@@ -427,36 +426,49 @@ namespace sdk {
                 m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
                 return state_type::resolve_code;
             }
-            m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
+            // Fall through to create the subaccount
         } else if (m_action == "sign_message") {
-            // If we are using the Anti-Exfil protocol we verify the signature
+            // 2of3 subaccount: Caller has signed the recovery key
             if (m_use_anti_exfil) {
+                // Anti-Exfil protocol: verify the signature
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
                     m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
             }
 
             m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
-            m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
-        } else if (m_action == "get_receive_address") {
-            auto& addr = m_twofactor_data["address"];
-            addr["blinding_key"] = args["blinding_key"];
-            m_ca_addrs.emplace_back(get_blinded_address(m_session, addr));
-            m_remaining_ca_addrs--;
+            // Fall through to create the subaccount
+        } else if (m_action == "get_blinding_public_keys") {
+            // AMP: Caller has provided the blinding keys for confidential address uploading: blind them
+            std::vector<std::string> addresses;
+            const auto& public_keys = args.at("public_keys");
+            size_t i = 0;
+            for (auto& it : m_addresses) {
+                it["blinding_key"] = public_keys.at(i);
+                addresses.emplace_back(get_blinded_address(m_session, it));
+            }
+            // Upload the blinded addresses to the server
+            m_session.upload_confidential_addresses(m_subaccount, addresses);
+            return state_type::done;
         }
 
-        if (m_remaining_ca_addrs > 0) {
-            set_action("get_receive_address");
-            set_data();
-            m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_result["pointer"] } });
+        // Create the subaccount
+        m_result = m_session.create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
+        // Ensure the server created the subaccount number we expected
+        GDK_RUNTIME_ASSERT(m_subaccount == m_result.at("pointer"));
 
+        if (m_details.at("type") == "2of2_no_recovery") {
+            // AMP: We need to upload confidential addresses, get the keys for blinding
+            // TODO: Server support for returning multiple addresses for AMP subaccounts
+            auto scripts = nlohmann::json::array();
+            for (size_t i = 0; i < INITIAL_UPLOAD_CA; ++i) {
+                m_addresses.push_back(m_session.get_receive_address({ { "subaccount", m_subaccount } }));
+                scripts.push_back(m_addresses.back().at("blinding_script_hash"));
+            }
+            set_action("get_blinding_public_keys");
+            set_data();
+            m_twofactor_data["scripts"] = std::move(scripts);
             return state_type::resolve_code;
         }
-
-        // we prepared a few addresses, upload them to the backend
-        if (m_ca_addrs.size() > 0) {
-            m_session.upload_confidential_addresses(m_result["pointer"], m_ca_addrs);
-        }
-
         return state_type::done;
     }
 

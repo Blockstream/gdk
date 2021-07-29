@@ -1115,21 +1115,19 @@ namespace sdk {
         return wamp_cast(wamp_call("login.get_trezor_challenge", address, nlocktime_support));
     }
 
-    void ga_session::upload_confidential_addresses(
-        uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
+    void ga_session::upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& addresses)
     {
-        GDK_RUNTIME_ASSERT(confidential_addresses.size() > 0);
+        GDK_RUNTIME_ASSERT(!addresses.empty());
 
-        auto result
-            = wamp_call("txs.upload_authorized_assets_confidential_address", subaccount, confidential_addresses);
+        auto result = wamp_call("txs.upload_authorized_assets_confidential_address", subaccount, addresses);
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
-        // subtract from the required_ca
+        // Update required_ca
         locker_t locker(m_mutex);
-        const uint32_t remaining = m_subaccounts[subaccount]["required_ca"];
+        auto& required = m_subaccounts[subaccount]["required_ca"];
+        const uint32_t remaining = required.get<uint32_t>();
         if (remaining) {
-            m_subaccounts[subaccount]["required_ca"]
-                = confidential_addresses.size() > remaining ? 0 : remaining - confidential_addresses.size();
+            required = addresses.size() > remaining ? 0u : remaining - addresses.size();
         }
     }
 
