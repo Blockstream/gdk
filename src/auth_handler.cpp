@@ -71,8 +71,8 @@ namespace sdk {
         m_action = action;
         m_is_hw_action = m_signer && !m_signer->is_watch_only()
             && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
-                   || action == "create_transaction" || action == "get_transactions" || action == "get_unspent_outputs"
-                   || action == "get_master_blinding_key" || action == "get_blinding_public_keys");
+                   || action == "get_blinding_public_keys" || action == "get_transactions"
+                   || action == "get_unspent_outputs" || action == "get_master_blinding_key");
     }
 
     void auth_handler_impl::set_error(const std::string& error_message)
@@ -340,16 +340,6 @@ namespace sdk {
             const std::string message = required_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
             result["signature"] = sig_to_der_hex(signer->sign_hash(path, message_hash));
-        } else if (action == "create_transaction") {
-            auto& blinding_keys = result["blinding_keys"];
-            const auto& addresses = required_data.at("transaction").at("change_address");
-            for (auto& it : addresses.items()) {
-                const auto& addr = it.value();
-                if (!addr.value("is_blinded", false)) {
-                    const auto script_hash = h2b(addr.at("blinding_script_hash"));
-                    blinding_keys[it.key()] = b2h(signer->get_blinding_pubkey_from_script(script_hash));
-                }
-            }
         } else if (action == "get_subaccount" || action == "get_subaccounts" || action == "get_transactions"
             || action == "get_unspent_outputs") {
             const auto& blinded_scripts = required_data.at("blinded_scripts");
