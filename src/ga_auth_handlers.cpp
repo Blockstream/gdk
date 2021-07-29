@@ -739,16 +739,6 @@ namespace sdk {
         return state_type::done;
     }
 
-    static bool has_unblinded_change(const nlohmann::json& tx)
-    {
-        for (const auto& it : tx.at("change_address").items()) {
-            if (!it.value().value("is_blinded", false)) {
-                return true; // At least one change output is unblinded
-            }
-        }
-        return false; // All change ouputs are blinded
-    }
-
     //
     // Generic parent for calls that need blinding nonces
     // FIXME: We should not need to fetch all txs before every call
@@ -813,38 +803,45 @@ namespace sdk {
 
     auth_handler::state_type create_transaction_call::wrapped_call_impl()
     {
-        if (!m_twofactor_data.contains("transaction")) {
-            auto tx = m_session.create_transaction(m_details);
-            if (!tx.contains("change_address") || !m_session.is_liquid() || !has_unblinded_change(tx)) {
-                m_result.swap(tx);
+        if (m_result.empty()) {
+            // Create the transaction from the provided details
+            m_result = m_session.create_transaction(m_details);
+            if (!m_result.contains("change_address") || !m_session.is_liquid()) {
                 return state_type::done; // No blinding needed
             }
-            // Ask the HW to blind the change address(es)
-            set_action("create_transaction");
+            // Ask the HW to blind any unblinded change addresses
+            set_action("get_blinding_public_keys");
             set_data();
-            m_twofactor_data["transaction"].swap(tx);
-            return state_type::resolve_code;
+            auto& scripts = m_twofactor_data["scripts"];
+            for (auto& it : m_result.at("change_address").items()) {
+                if (!it.value().value("is_blinded", false)) {
+                    scripts.push_back(it.value().at("blinding_script_hash"));
+                }
+            }
+            return scripts.empty() ? state_type::done : state_type::resolve_code;
         }
 
         const auto blinded_prefix = m_session.get_network_parameters().blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
+        const auto& public_keys = args.at("public_keys");
 
         // Blind the change addresseses
-        auto& tx = m_twofactor_data["transaction"];
-        for (auto& it : tx.at("change_address").items()) {
+        size_t i = 0;
+        for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
             if (!addr.value("is_blinded", false)) {
-                addr["blinding_key"] = args.at("blinding_keys").at(it.key());
+                addr["blinding_key"] = public_keys.at(i);
 
                 auto& address = addr.at("address");
                 address = confidential_addr_to_addr(address, blinded_prefix);
                 address = get_blinded_address(m_session, addr);
                 addr["is_blinded"] = true;
+                ++i;
             }
         }
 
         // Update the transaction
-        m_result = m_session.create_transaction(tx);
+        m_result = m_session.create_transaction(m_result);
         return state_type::done;
     }
 
