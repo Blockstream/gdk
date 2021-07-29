@@ -164,9 +164,8 @@ namespace sdk {
         std::string m_challenge;
         std::string m_master_xpub_bip32;
 
-        // used for 2of2_no_recovery
-        std::unordered_map<uint32_t, std::vector<std::string>> m_confidential_addresses;
-        std::vector<uint32_t> m_ca_reqs;
+        // Used when AMP subaccounts require new addresses
+        std::vector<nlohmann::json> m_addresses;
     };
 
     login_call::login_call(
@@ -176,8 +175,9 @@ namespace sdk {
     {
         if (m_state != state_type::error) {
             if (m_session.get_network_parameters().is_electrum()) {
-                // Electrum sessions do not use a challenge
-                m_state = state_type::make_call;
+                // FIXME: Implement rust login via authenticate()
+                m_result = m_session.get_nonnull_impl()->login(m_signer->get_mnemonic(std::string()));
+                m_state = state_type::done;
             } else {
                 // We first need the challenge, so ask the caller for the master pubkey.
                 m_state = state_type::resolve_code;
@@ -185,136 +185,120 @@ namespace sdk {
                 set_data();
                 auto paths = get_paths_json();
                 paths.emplace_back(signer::CLIENT_SECRET_PATH);
-                m_twofactor_data["paths"] = paths;
+                m_twofactor_data["paths"] = std::move(paths);
             }
         }
     }
 
     auth_handler::state_type login_call::call_impl()
     {
-        if (m_action == "get_receive_address") {
-            // Blind the address
-            auto& addr = m_twofactor_data["address"];
-            addr["blinding_key"] = nlohmann::json::parse(m_code).at("blinding_key");
+        auto impl = m_session.get_nonnull_impl();
+        if (m_action == "get_xpubs" && m_challenge.empty()) {
+            // We have a result from our first get_xpubs request for the challenge.
+            // Compute the challenge with the master pubkey
+            const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
 
-            // save it and pop the request
-            m_confidential_addresses[m_ca_reqs.back()].emplace_back(get_blinded_address(m_session, addr));
-            m_ca_reqs.pop_back();
+            m_master_xpub_bip32 = xpubs.at(0);
+            const auto btc_version = impl->get_network_parameters().btc_version();
+            const auto public_key = get_xpub(m_master_xpub_bip32).second;
+            m_challenge = impl->get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
 
-            // prepare the next one
-            if (!m_ca_reqs.empty()) {
-                m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
+            const auto local_xpub = get_xpub(xpubs.at(1));
+            const bool is_hw_wallet = m_signer->is_hardware();
+            impl->set_local_encryption_keys(local_xpub.second, is_hw_wallet);
+
+            // Ask the caller to sign the challenge
+            set_action("sign_message");
+            set_data();
+            m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
+            m_twofactor_data["path"] = signer::LOGIN_PATH;
+            m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
+            return state_type::resolve_code;
+        } else if (m_action == "sign_message") {
+            // Caller has signed the challenge
+            const nlohmann::json args = nlohmann::json::parse(m_code);
+            if (m_use_anti_exfil) {
+                // Anti-Exfil protocol: verify the signature
+                verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
+                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+            }
+
+            // Log in and set up the session
+            m_result = impl->authenticate(args.at("signature"), "GA", m_master_xpub_bip32, m_signer);
+
+            // Ask the caller for the xpubs for each subaccount
+            std::vector<nlohmann::json> paths;
+            for (const auto& sa : impl->get_subaccounts()) {
+                paths.emplace_back(impl->get_subaccount_root_path(sa["pointer"]));
+            }
+            set_action("get_xpubs");
+            set_data();
+            m_twofactor_data["paths"] = paths;
+            return state_type::resolve_code;
+        } else if (m_action == "get_xpubs") {
+            // Caller has provided the xpubs for each subaccount
+            impl->register_subaccount_xpubs(nlohmann::json::parse(m_code).at("xpubs"));
+
+            if (m_signer->is_liquid() && m_signer->supports_host_unblinding()) {
+                // Ask the HW device to provide the master blinding key.
+                // If we are a software wallet, we already have it, but we
+                // use the HW interface to ensure we exercise the same
+                // fetching and caching logic.
+                set_action("get_master_blinding_key");
+                set_data();
                 return state_type::resolve_code;
             }
-
-            // fall-through down to upload them
-        } else if (m_action == "get_xpubs") {
-            auto impl = m_session.get_nonnull_impl();
-            if (impl->get_network_parameters().is_electrum()) {
-                // FIXME: Implement rust login via authenticate()
-                m_result = impl->login(m_signer->get_mnemonic(std::string()));
-            } else {
-                const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
-
-                if (m_challenge.empty()) {
-                    // We have a result from our first get_xpubs request for the challenge
-                    // Compute the challenge with the master pubkey
-                    m_master_xpub_bip32 = xpubs.at(0);
-                    const auto btc_version = impl->get_network_parameters().btc_version();
-                    const auto public_key = get_xpub(m_master_xpub_bip32).second;
-                    m_challenge = impl->get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
-
-                    const auto local_xpub = get_xpub(xpubs.at(1));
-                    const bool is_hw_wallet = m_signer->is_hardware();
-                    impl->set_local_encryption_keys(local_xpub.second, is_hw_wallet);
-
-                    // Ask the caller to sign the challenge
-                    set_action("sign_message");
-                    set_data();
-                    m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
-                    m_twofactor_data["path"] = signer::LOGIN_PATH;
-                    m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
-                    return state_type::resolve_code;
-                }
-                // Otherwise, this result is from our second get_xpubs request for subaccounts.
-                // Register the xpub for each of our subaccounts
-                impl->register_subaccount_xpubs(xpubs);
-
-                if (m_signer->is_liquid() && m_signer->supports_host_unblinding()) {
-                    // Ask the HW device to provide the master unblinding key.
-                    // If we are a software wallet, we already have it, but we
-                    // use the HW interface to ensure we exercise the same
-                    // fetching and caching logic.
-                    set_action("get_master_blinding_key");
-                    set_data();
-                    return state_type::resolve_code;
-                }
-            }
-            // fall through to the required_ca check below ...
+            //
+            // Completed Login. FALL THROUGH to check for confidential address upload below
+            //
         } else if (m_action == "get_master_blinding_key") {
             // We either had the master blinding key cached, have fetched it
             // from the HWW, or the user has denied the request (if its blank).
             // Tell the session to cache the key or denial, and add it to
             // our signer if present to allow host unblinding.
             const std::string key_hex = nlohmann::json::parse(m_code).at("master_blinding_key");
-            m_session.get_nonnull_impl()->set_cached_master_blinding_key(key_hex);
-            // fall through to the required_ca check below ...
-        } else if (m_action == "sign_message") {
-            // If we are using the Anti-Exfil protocol we verify the signature
+            impl->set_cached_master_blinding_key(key_hex);
+            //
+            // Completed Login. FALL THROUGH to check for confidential address upload below
+            //
+        } else if (m_action == "get_blinding_public_keys") {
+            // AMP: Caller has provided the blinding keys for confidential address uploading.
+            // Blind them and upload the blinded addresses to the server
+            std::map<uint32_t, std::vector<std::string>> addresses;
             const nlohmann::json args = nlohmann::json::parse(m_code);
-            if (m_use_anti_exfil) {
-                verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
-                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+            const auto& public_keys = args.at("public_keys");
+            size_t i = 0;
+            for (auto& it : m_addresses) {
+                it["blinding_key"] = public_keys.at(i);
+                addresses[it.at("subaccount")].emplace_back(get_blinded_address(m_session, it));
+                ++i;
             }
-
-            // Log in and set up the session
-            m_result = m_session.authenticate(args.at("signature"), "GA", m_master_xpub_bip32, m_signer);
-
-            // Ask the caller for the xpubs for each subaccount
-            std::vector<nlohmann::json> paths;
-            for (const auto& sa : m_session.get_nonnull_impl()->get_subaccounts()) {
-                paths.emplace_back(m_session.get_subaccount_root_path(sa["pointer"]));
+            for (auto& it : addresses) {
+                impl->upload_confidential_addresses(it.first, it.second);
             }
-            set_action("get_xpubs");
-            set_data();
-            m_twofactor_data["paths"] = paths;
-            return state_type::resolve_code;
-        }
-
-        if (m_session.get_network_parameters().is_electrum()) {
-            // Skip checking for 2of2_no_recovery confidential address upload
             return state_type::done;
         }
 
-        if (!m_confidential_addresses.empty()) {
-            // done, upload and exit
-            for (auto const& entry : m_confidential_addresses) {
-                m_session.upload_confidential_addresses(entry.first, entry.second);
-            }
-
-            return state_type::done;
-        }
-
-        // Check whether the backend asked for some conf addrs (only 2of2_no_recovery) on some subaccount
-        for (const auto& sa : m_session.get_nonnull_impl()->get_subaccounts()) {
+        // We are logged in,
+        // Check whether we need to upload confidential addresses.
+        auto scripts = nlohmann::json::array();
+        for (const auto& sa : impl->get_subaccounts()) {
             const uint32_t required_ca = sa.value("required_ca", 0);
-            if (required_ca > 0) {
-                // add the subaccount number (`pointer`) repeated `required_ca` times. we will pop them one at a time
-                // and then resolve their blinding keys
-                m_ca_reqs.insert(m_ca_reqs.end(), required_ca, sa["pointer"]);
+            for (size_t i = 0; i < required_ca; ++i) {
+                m_addresses.push_back(impl->get_receive_address({ { "subaccount", sa["pointer"] } }));
+                scripts.push_back(m_addresses.back().at("blinding_script_hash"));
             }
         }
-
-        if (m_ca_reqs.size() > 0) {
-            // prepare the first request
-            set_action("get_receive_address");
-            set_data();
-            m_twofactor_data["address"] = m_session.get_receive_address({ { "subaccount", m_ca_reqs.back() } });
-
-            return m_session.is_liquid() ? state_type::resolve_code : state_type::make_call;
+        if (scripts.empty()) {
+            // No addresses to upload, so we are done
+            return state_type::done;
         }
 
-        return state_type::done;
+        // Ask the caller to provide the blinding keys
+        set_action("get_blinding_public_keys");
+        set_data();
+        m_twofactor_data["scripts"] = std::move(scripts);
+        return state_type::resolve_code;
     }
 
     //
@@ -750,6 +734,7 @@ namespace sdk {
         for (auto& it : m_result.at("list")) {
             it["blinding_key"] = public_keys.at(i);
             it["address"] = get_blinded_address(m_session, it);
+            ++i;
         }
         return state_type::done;
     }
