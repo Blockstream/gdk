@@ -804,28 +804,17 @@ namespace sdk {
     auth_handler::state_type create_transaction_call::wrapped_call_impl()
     {
         if (m_result.empty()) {
-            // Create the transaction from the provided details
+            // Initial call: Create the transaction from the provided details
             m_result = m_session.create_transaction(m_details);
-            if (!m_result.contains("change_address") || !m_session.is_liquid()) {
-                return state_type::done; // No blinding needed
-            }
-            // Ask the HW to blind any unblinded change addresses
-            set_action("get_blinding_public_keys");
-            set_data();
-            auto& scripts = m_twofactor_data["scripts"];
-            for (auto& it : m_result.at("change_address").items()) {
-                if (!it.value().value("is_blinded", false)) {
-                    scripts.push_back(it.value().at("blinding_script"));
-                }
-            }
-            return scripts.empty() ? state_type::done : state_type::resolve_code;
+            return check_change_outputs();
         }
 
+        // Otherwise, we have been called after resolving our blinding keys
         const auto blinded_prefix = m_session.get_network_parameters().blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const auto& public_keys = args.at("public_keys");
 
-        // Blind the change addresseses
+        // Blind any unblinded change addresseses
         size_t i = 0;
         for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
@@ -842,7 +831,34 @@ namespace sdk {
 
         // Update the transaction
         m_result = m_session.create_transaction(m_result);
-        return state_type::done;
+        return check_change_outputs();
+    }
+
+    auth_handler::state_type create_transaction_call::check_change_outputs()
+    {
+        auto scripts = nlohmann::json::array();
+
+        if (m_session.is_liquid()) {
+            // Check whether we have any unblinded change outputs
+            const auto change_addresses_p = m_result.find("change_address");
+            if (change_addresses_p != m_result.end()) {
+                for (auto& it : change_addresses_p->items()) {
+                    if (!it.value().value("is_blinded", false)) {
+                        scripts.push_back(it.value().at("blinding_script"));
+                    }
+                }
+            }
+        }
+
+        if (scripts.empty()) {
+            // All change outputs are blinded, so we are done
+            return state_type::done;
+        }
+        // We have unblinded change outputs, request the blinding keys
+        set_action("get_blinding_public_keys");
+        set_data();
+        m_twofactor_data.emplace("scripts", std::move(scripts));
+        return state_type::resolve_code;
     }
 
     //

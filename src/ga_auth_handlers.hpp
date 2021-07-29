@@ -100,6 +100,7 @@ namespace sdk {
 
     private:
         state_type wrapped_call_impl() override;
+        state_type check_change_outputs();
     };
 
     class get_subaccounts_call : public auth_handler_impl {
