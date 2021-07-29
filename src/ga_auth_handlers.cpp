@@ -18,8 +18,10 @@ namespace ga {
 namespace sdk {
     namespace {
         static const std::string CHALLENGE_PREFIX("greenaddress.it      login ");
-        // Addresses uploaded after creation of 2of2_no_recovery subaccounts
-        static const uint32_t INITIAL_UPLOAD_CA = 5;
+        // Addresses uploaded after creation of 2of2_no_recovery subaccounts.
+        // Note that this is deliberately less than the server default (25) so
+        // that the code path to upload on login is always executed/doesn't bitrot.
+        static const uint32_t INITIAL_UPLOAD_CA = 20;
 
         static auto get_xpub(const std::string& bip32_xpub_str)
         {
