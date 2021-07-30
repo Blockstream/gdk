@@ -29,27 +29,18 @@ namespace sdk {
             return make_xpub(hdkey.get());
         }
 
-        static std::string blind_address(
-            const session& session, const std::string& addr, const std::string& blinding_key_hex)
+        static std::string get_confidential_address(
+            const std::string& address, uint32_t prefix, const std::string& blinding_key_hex)
         {
-            const auto blinded_prefix = session.get_network_parameters().blinded_prefix();
-            const auto blinding_key = h2b(blinding_key_hex);
-            return confidential_addr_from_addr(addr, blinded_prefix, blinding_key);
+            return confidential_addr_from_addr(address, prefix, h2b(blinding_key_hex));
         }
 
-        static std::string get_blinded_address(const session& session, const nlohmann::json& addr)
+        static void blind_address(nlohmann::json& addr, uint32_t prefix, const std::string& blinding_key_hex)
         {
-            std::string blinding_key_hex;
-            if (addr.contains("blinding_key")) {
-                // Use the blinding key provided by the hardware
-                blinding_key_hex = addr.at("blinding_key");
-            } else {
-                // Derive the blinding key from the blinding_script
-                auto signer = session.get_nonnull_impl()->get_signer();
-                const auto script = h2b(addr.at("blinding_script"));
-                blinding_key_hex = b2h(signer->get_blinding_pubkey_from_script(script));
-            }
-            return blind_address(session, addr["address"], blinding_key_hex);
+            addr["blinding_key"] = blinding_key_hex;
+            auto& address = addr.at("address");
+            address = get_confidential_address(address, prefix, blinding_key_hex);
+            addr["is_blinded"] = true;
         }
 
         static auto get_paths_json(bool include_root = true)
@@ -272,16 +263,17 @@ namespace sdk {
         } else if (m_action == "get_blinding_public_keys") {
             // AMP: Caller has provided the blinding keys for confidential address uploading.
             // Blind them and upload the blinded addresses to the server
-            std::map<uint32_t, std::vector<std::string>> addresses;
+            const auto prefix = impl->get_network_parameters().blinded_prefix();
             const nlohmann::json args = nlohmann::json::parse(m_code);
             const auto& public_keys = args.at("public_keys");
+            std::map<uint32_t, std::vector<std::string>> addresses_by_subaccount;
             size_t i = 0;
-            for (auto& it : m_addresses) {
-                it["blinding_key"] = public_keys.at(i);
-                addresses[it.at("subaccount")].emplace_back(get_blinded_address(m_session, it));
+            for (const auto& it : m_addresses) {
+                auto address = get_confidential_address(it.at("address"), prefix, public_keys.at(i));
+                addresses_by_subaccount[it.at("subaccount")].emplace_back(address);
                 ++i;
             }
-            for (auto& it : addresses) {
+            for (auto& it : addresses_by_subaccount) {
                 impl->upload_confidential_addresses(it.first, it.second);
             }
             return state_type::done;
@@ -433,12 +425,13 @@ namespace sdk {
             // Fall through to create the subaccount
         } else if (m_action == "get_blinding_public_keys") {
             // AMP: Caller has provided the blinding keys for confidential address uploading: blind them
-            std::vector<std::string> addresses;
+            const auto prefix = m_session.get_network_parameters().blinded_prefix();
             const auto& public_keys = args.at("public_keys");
+            std::vector<std::string> addresses;
             size_t i = 0;
-            for (auto& it : m_addresses) {
-                it["blinding_key"] = public_keys.at(i);
-                addresses.emplace_back(get_blinded_address(m_session, it));
+            for (const auto& it : m_addresses) {
+                auto address = get_confidential_address(it.at("address"), prefix, public_keys.at(i));
+                addresses.emplace_back(std::move(address));
             }
             // Upload the blinded addresses to the server
             m_session.upload_confidential_addresses(m_subaccount, addresses);
@@ -685,9 +678,9 @@ namespace sdk {
     auth_handler::state_type get_receive_address_call::call_impl()
     {
         // Liquid: blind the address using the blinding key from the caller
+        const auto prefix = m_session.get_network_parameters().blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
-        m_result["blinding_key"] = args.at("public_keys").at(0);
-        m_result["address"] = get_blinded_address(m_session, m_result);
+        blind_address(m_result, prefix, args.at("public_keys").at(0));
         return state_type::done;
     }
 
@@ -735,13 +728,13 @@ namespace sdk {
 
     auth_handler::state_type get_previous_addresses_call::call_impl()
     {
-        // Liquid: blind the address using the blinding key from the HW
+        // Liquid: blind the addresses using the blinding key from the HW
+        const auto prefix = m_session.get_network_parameters().blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const auto& public_keys = args.at("public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("list")) {
-            it["blinding_key"] = public_keys.at(i);
-            it["address"] = get_blinded_address(m_session, it);
+            blind_address(it, prefix, public_keys.at(i));
             ++i;
         }
         return state_type::done;
@@ -818,7 +811,7 @@ namespace sdk {
         }
 
         // Otherwise, we have been called after resolving our blinding keys
-        const auto blinded_prefix = m_session.get_network_parameters().blinded_prefix();
+        const auto prefix = m_session.get_network_parameters().blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const auto& public_keys = args.at("public_keys");
 
@@ -827,12 +820,9 @@ namespace sdk {
         for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
             if (!addr.value("is_blinded", false)) {
-                addr["blinding_key"] = public_keys.at(i);
-
                 auto& address = addr.at("address");
-                address = confidential_addr_to_addr(address, blinded_prefix);
-                address = get_blinded_address(m_session, addr);
-                addr["is_blinded"] = true;
+                address = confidential_addr_to_addr(address, prefix); // Remove fake blinding
+                blind_address(addr, prefix, public_keys.at(i));
                 ++i;
             }
         }
