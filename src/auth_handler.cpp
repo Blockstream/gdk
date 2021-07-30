@@ -71,8 +71,8 @@ namespace sdk {
         m_action = action;
         m_is_hw_action = m_signer && !m_signer->is_watch_only()
             && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
-                   || action == "get_blinding_public_keys" || action == "get_transactions"
-                   || action == "get_unspent_outputs" || action == "get_master_blinding_key");
+                   || action == "get_blinding_public_keys" || action == "get_blinding_nonces"
+                   || action == "get_master_blinding_key");
     }
 
     void auth_handler_impl::set_error(const std::string& error_message)
@@ -313,9 +313,21 @@ namespace sdk {
                 return;
             }
         } else if (have_master_blinding_key && action == "get_blinding_public_keys") {
+            // Host unblinding: generate pubkeys
             auto& public_keys = result["public_keys"];
             for (const auto& script : required_data.at("scripts")) {
                 public_keys.push_back(b2h(signer->get_blinding_pubkey_from_script(h2b(script))));
+            }
+            resolve_code(result.dump());
+            return;
+        } else if (have_master_blinding_key && action == "get_blinding_nonces") {
+            // Host unblinding: generate nonces
+            const auto& public_keys = required_data.at("public_keys");
+            const auto& scripts = required_data.at("scripts");
+            auto& nonces = result["nonces"];
+            for (size_t i = 0; i < public_keys.size(); ++i) {
+                const auto blinding_key = signer->get_blinding_key_from_script(h2b(scripts.at(i)));
+                nonces.push_back(b2h(sha256(ecdh(h2b(public_keys.at(i)), blinding_key))));
             }
             resolve_code(result.dump());
             return;
@@ -340,16 +352,6 @@ namespace sdk {
             const std::string message = required_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
             result["signature"] = sig_to_der_hex(signer->sign_hash(path, message_hash));
-        } else if (action == "get_subaccount" || action == "get_subaccounts" || action == "get_transactions"
-            || action == "get_unspent_outputs") {
-            const auto& blinded_scripts = required_data.at("blinded_scripts");
-            std::vector<std::string> nonces;
-            nonces.reserve(blinded_scripts.size());
-            for (const auto& it : blinded_scripts) {
-                const auto blinding_key = signer->get_blinding_key_from_script(h2b(it.at("script")));
-                nonces.emplace_back(b2h(sha256(ecdh(h2b(it.at("pubkey")), blinding_key))));
-            }
-            result["nonces"] = nonces;
         } else if (action == "get_master_blinding_key") {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
         } else {

@@ -2677,7 +2677,7 @@ namespace sdk {
         return amount(v);
     }
 
-    nlohmann::json ga_session::get_blinded_scripts(const nlohmann::json& details)
+    void ga_session::get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
@@ -2694,7 +2694,9 @@ namespace sdk {
             }
         }
 
-        nlohmann::json answer = nlohmann::json::array();
+        auto& scripts = twofactor_data["scripts"];
+        auto& public_keys = twofactor_data["public_keys"];
+
         std::set<std::pair<std::string, std::string>> no_dups;
 
         for (const uint32_t sa : subaccounts) {
@@ -2715,22 +2717,22 @@ namespace sdk {
                     if (asset_tag.empty() || boost::algorithm::starts_with(asset_tag, "01")) {
                         continue; // Unblinded or not an asset; ignore
                     }
-                    const std::string nonce_commitment = json_get_value(ep, "nonce_commitment");
-                    const std::string script = json_get_value(ep, "script");
+                    std::string nonce_commitment = json_get_value(ep, "nonce_commitment");
+                    std::string script = json_get_value(ep, "script");
 
                     if (!nonce_commitment.empty() && !script.empty()) {
                         if (no_dups.emplace(std::make_pair(nonce_commitment, script)).second) {
                             // Not previously seen
                             if (m_cache.get_liquid_blinding_nonce(h2b(nonce_commitment), h2b(script)).empty()) {
                                 // Not cached; add to the list to return
-                                answer.push_back({ { "script", script }, { "pubkey", nonce_commitment } });
+                                scripts.push_back(std::move(script));
+                                public_keys.push_back(std::move(nonce_commitment));
                             }
                         }
                     }
                 }
             }
         }
-        return answer;
     }
 
     bool ga_session::set_blinding_nonce(

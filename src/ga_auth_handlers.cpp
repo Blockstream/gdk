@@ -82,6 +82,25 @@ namespace sdk {
             return using_ae_protocol;
         }
 
+        static void encache_blinding_nonces(session& session, nlohmann::json& twofactor_data, const std::string& code)
+        {
+            const nlohmann::json args = nlohmann::json::parse(code);
+            const auto& scripts = twofactor_data.at("scripts");
+            const auto& public_keys = twofactor_data.at("public_keys");
+            const auto& nonces = args.at("nonces");
+
+            // Encache the blinding nonces we got back
+            bool updated = false;
+            for (size_t i = 0; i < scripts.size(); ++i) {
+                if (!nonces.at(i).empty()) {
+                    updated |= session.set_blinding_nonce(public_keys.at(i), scripts.at(i), nonces.at(i));
+                }
+            }
+            if (updated) {
+                session.get_nonnull_impl()->save_cache();
+            }
+        }
+
         // Make a temporary signer for login and register calls
         static std::shared_ptr<signer> make_login_signer(
             const network_parameters& net_params, const nlohmann::json& hw_device, const std::string& mnemonic)
@@ -757,7 +776,7 @@ namespace sdk {
                     m_fetch_nonces = true;
                     m_state = state_type::resolve_code;
                     set_data();
-                    m_twofactor_data["blinded_scripts"] = m_session.get_nonnull_impl()->get_blinded_scripts(details);
+                    m_session.get_nonnull_impl()->get_uncached_blinding_nonces(details, m_twofactor_data);
                 } else {
                     m_state = state_type::make_call;
                 }
@@ -770,20 +789,8 @@ namespace sdk {
     auth_handler::state_type needs_unblind_call::call_impl()
     {
         if (m_fetch_nonces) {
-            // Parse and set the nonces we got back
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            const auto& blinded_scripts = m_twofactor_data.at("blinded_scripts");
-            const auto& nonces = args.at("nonces");
-            GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
-
-            bool updated = false;
-            for (size_t i = 0; i < blinded_scripts.size(); ++i) {
-                const auto& it = blinded_scripts[i];
-                updated = m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
-            }
-            if (updated) {
-                m_session.get_nonnull_impl()->save_cache();
-            }
+            // Parse and cache the nonces we got back
+            encache_blinding_nonces(m_session, m_twofactor_data, m_code);
             m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
         }
 
@@ -794,7 +801,7 @@ namespace sdk {
     // Create transaction
     //
     create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("get_transactions", session, details)
+        : needs_unblind_call("get_blinding_nonces", session, details)
     {
         if (m_state != state_type::error) {
             if (m_fetch_nonces && m_details.contains("utxos")) {
@@ -868,7 +875,7 @@ namespace sdk {
     // Note we pass an empty signer to jump straight to state_type::make_call
     //
     get_subaccounts_call::get_subaccounts_call(session& session)
-        : auth_handler_impl(session, "get_subaccounts", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "get_blinding_nonces", std::shared_ptr<signer>())
     {
     }
 
@@ -883,7 +890,7 @@ namespace sdk {
     // Note we pass an empty signer to jump straight to state_type::make_call
     //
     get_subaccount_call::get_subaccount_call(session& session, uint32_t subaccount)
-        : auth_handler_impl(session, "get_subaccount", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "get_blinding_nonces", std::shared_ptr<signer>())
         , m_subaccount(subaccount)
     {
     }
@@ -898,7 +905,7 @@ namespace sdk {
     // Get transactions
     //
     get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("get_transactions", session, details)
+        : needs_unblind_call("get_blinding_nonces", session, details)
     {
     }
 
@@ -912,7 +919,7 @@ namespace sdk {
     // Get unspent outputs
     //
     get_unspent_outputs_call::get_unspent_outputs_call(session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, "get_unspent_outputs")
+        : auth_handler_impl(session, "get_blinding_nonces")
         , m_details(details)
     {
         if (m_state != state_type::error) {
@@ -946,10 +953,11 @@ namespace sdk {
                 m_result.swap(utxos);
                 m_state = state_type::resolve_code;
                 set_data();
-                auto& blinded_scripts = m_twofactor_data["blinded_scripts"];
+                auto& scripts = m_twofactor_data["scripts"];
+                auto& public_keys = m_twofactor_data["public_keys"];
                 for (const auto& m : missing) {
-                    blinded_scripts.emplace_back(
-                        nlohmann::json({ { "pubkey", b2h(m.first) }, { "script", b2h(m.second) } }));
+                    public_keys.emplace_back(b2h(m.first));
+                    scripts.emplace_back(b2h(m.second));
                 }
             } catch (const std::exception& e) {
                 set_error(e.what());
@@ -959,22 +967,9 @@ namespace sdk {
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
     {
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-        const auto& blinded_scripts = m_twofactor_data.at("blinded_scripts");
-        const auto& nonces = args.at("nonces");
-        GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
+        // Parse and cache the nonces we got back
+        encache_blinding_nonces(m_session, m_twofactor_data, m_code);
 
-        // Encache the blinding nonces we got back
-        bool updated = false;
-        for (size_t i = 0; i < blinded_scripts.size(); ++i) {
-            if (!nonces[i].empty()) {
-                const auto& it = blinded_scripts[i];
-                updated |= m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
-            }
-        }
-        if (updated) {
-            m_session.get_nonnull_impl()->save_cache();
-        }
         // Unblind the remaining blinded outputs we have nonces for
         // and encache the result
         nlohmann::json utxos;

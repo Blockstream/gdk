@@ -102,9 +102,10 @@ namespace sdk {
         return false; // No nonce caching by default, so return 'not updated'
     }
 
-    nlohmann::json session_impl::get_blinded_scripts(const nlohmann::json& /*details*/)
+    void session_impl::get_uncached_blinding_nonces(
+        const nlohmann::json& /*details*/, nlohmann::json& /*twofactor_data*/)
     {
-        return nlohmann::json(); // Implementation detail of ga_session
+        // Implementation detail of ga_session
     }
 
     void session_impl::save_cache()
