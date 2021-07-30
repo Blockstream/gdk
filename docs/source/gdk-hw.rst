@@ -152,39 +152,28 @@ compute blinding public keys from wallet scripts.
 Hardware Get Blinding Nonces Action
 -----------------------------------
 
-This action describes a request to compute blinding nonces for the given script hashes.
-The ``"action"`` element will be one of the following:
-
-- ``"get_subaccount"``,
-- ``"get_subaccounts"``,
-- ``"get_transactions"``,
-- ``"get_unspent_outputs"``,
+When ``"action"`` is ``"get_blinding_nonces"``, this describes a request to
+compute blinding nonces for the given scripts and shared public keys.
 
 .. note:: This action is only returned when using the Liquid network.
 
 .. code-block:: json
 
      {
-       "blinded_scripts": [
-         {
-           "pubkey": "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27",
-           "script": "a91403f650e2434916d5b7f124de8f673442b696282887"
-         }
-       ]
+       "scripts": [ "a91403f650e2434916d5b7f124de8f673442b696282887" ]
+       "public_keys": [ "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27" ]
      }
 
-:blinded_scripts: An array of public key and script hashes to return the nonces for.
-:pubkey: hex-encoded compressed public key.
-:script: hex-encoded script hash to compute the nonce for.
+:public_keys: An array of hex-encoded compressed shared public keys for computing the nonces.
+:scripts: An array of hex-encoded scripts for which a blinding key should be generated and then
+    the nonce computed using the public key given.
 
 **Expected response**:
 
 .. code-block:: json
 
      {
-       "nonces": [
-           "8d940a5ec4ad122394cd2596ecfbf933a8d8fb0196015cc0a35399e3c326758c"
-       ]
+       "nonces": [ "8d940a5ec4ad122394cd2596ecfbf933a8d8fb0196015cc0a35399e3c326758c" ]
      }
 
 :nonces: An array of hex-encoded 256 bit blinding nonces.
