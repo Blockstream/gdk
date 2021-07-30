@@ -244,6 +244,7 @@ namespace sdk {
         std::shared_ptr<nlocktime_t> update_nlocktime_info();
 
         void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet);
+        void save_cache();
 
         context_ptr tls_init_handler_impl(
             const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins);

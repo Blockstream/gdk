@@ -1720,6 +1720,12 @@ namespace sdk {
         m_nlocktimes.reset();
     }
 
+    void ga_session::save_cache()
+    {
+        locker_t locker(m_mutex);
+        m_cache.save_db(); // No-op if unchanged
+    }
+
     void ga_session::on_failed_login()
     {
         try {

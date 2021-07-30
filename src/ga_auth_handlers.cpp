@@ -776,9 +776,13 @@ namespace sdk {
             const auto& nonces = args.at("nonces");
             GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
 
+            bool updated = false;
             for (size_t i = 0; i < blinded_scripts.size(); ++i) {
                 const auto& it = blinded_scripts[i];
-                m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
+                updated = m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
+            }
+            if (updated) {
+                m_session.get_nonnull_impl()->save_cache();
             }
             m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
         }
@@ -961,11 +965,15 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(blinded_scripts.size() == nonces.size());
 
         // Encache the blinding nonces we got back
+        bool updated = false;
         for (size_t i = 0; i < blinded_scripts.size(); ++i) {
             if (!nonces[i].empty()) {
                 const auto& it = blinded_scripts[i];
-                m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
+                updated |= m_session.set_blinding_nonce(it.at("pubkey"), it.at("script"), nonces[i]);
             }
+        }
+        if (updated) {
+            m_session.get_nonnull_impl()->save_cache();
         }
         // Unblind the remaining blinded outputs we have nonces for
         // and encache the result

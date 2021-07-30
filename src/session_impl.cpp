@@ -107,6 +107,11 @@ namespace sdk {
         return nlohmann::json(); // Implementation detail of ga_session
     }
 
+    void session_impl::save_cache()
+    {
+        // Refers to the ga_session cache at the moment, so a no-op for rust sessions
+    }
+
     session_impl::utxo_cache_value_t session_impl::get_cached_utxos(uint32_t subaccount, uint32_t num_confs) const
     {
         locker_t locker(m_utxo_cache_mutex);

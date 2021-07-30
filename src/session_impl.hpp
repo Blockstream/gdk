@@ -189,6 +189,7 @@ namespace sdk {
         virtual bool is_spending_limits_decrease(const nlohmann::json& limit_details) = 0;
 
         virtual void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet) = 0;
+        virtual void save_cache();
         virtual void disable_all_pin_logins() = 0;
 
         const network_parameters& get_network_parameters() const { return m_net_params; }
