@@ -2591,12 +2591,12 @@ namespace sdk {
                     std::string addressee;
                     if (!json_get_value(ep, "is_relevant", false)) {
                         // Add unique addressees that aren't ourselves
-                        const auto& social_destination = ep.find("social_destination");
-                        if (social_destination != ep.end()) {
-                            if (social_destination->is_object()) {
-                                addressee = (*social_destination)["name"];
+                        const auto social_destination_p = ep.find("social_destination");
+                        if (social_destination_p != ep.end()) {
+                            if (social_destination_p->is_object()) {
+                                addressee = (*social_destination_p)["name"];
                             } else {
-                                addressee = *social_destination;
+                                addressee = *social_destination_p;
                             }
                         } else {
                             addressee = ep["address"];
