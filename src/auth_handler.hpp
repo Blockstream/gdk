@@ -13,24 +13,7 @@ namespace sdk {
     class signer;
 
     struct auth_handler {
-        auth_handler();
-        auth_handler(const auth_handler&) = delete;
-        auth_handler& operator=(const auth_handler&) = delete;
-        auth_handler(auth_handler&&) = delete;
-        auth_handler& operator=(auth_handler&&) = delete;
-        virtual ~auth_handler();
-
-        virtual void request_code(const std::string& method) = 0;
-        virtual void resolve_code(const std::string& code) = 0;
-
-        virtual nlohmann::json get_status() const = 0;
-
-        virtual void operator()() = 0;
-        virtual bool is_hw_action() const = 0;
-        virtual session& get_session() const = 0;
-        virtual std::shared_ptr<signer> get_signer() const = 0;
-
-    protected:
+        // Enum representing the current state of the handler
         enum class state_type : uint32_t {
             request_code, // Caller should ask the user to pick 2fa and request a code
             resolve_code, // Caller should resolve the code the user has entered
@@ -50,6 +33,25 @@ namespace sdk {
             get_blinding_nonces = 6
         };
 
+        auth_handler();
+        auth_handler(const auth_handler&) = delete;
+        auth_handler& operator=(const auth_handler&) = delete;
+        auth_handler(auth_handler&&) = delete;
+        auth_handler& operator=(auth_handler&&) = delete;
+        virtual ~auth_handler();
+
+        virtual void request_code(const std::string& method) = 0;
+        virtual void resolve_code(const std::string& code) = 0;
+
+        virtual nlohmann::json get_status() const = 0;
+        virtual state_type get_state() const = 0;
+        virtual hw_request get_hw_request() const = 0;
+
+        virtual void operator()() = 0;
+        virtual session& get_session() const = 0;
+        virtual std::shared_ptr<signer> get_signer() const = 0;
+
+    protected:
         virtual void signal_hw_request(hw_request request);
         virtual void signal_2fa_request(const std::string& action);
         virtual void set_error(const std::string& error_message);
@@ -63,22 +65,23 @@ namespace sdk {
         auth_handler_impl(session& session, const std::string& action);
         ~auth_handler_impl();
 
-        virtual void request_code(const std::string& method) override;
-        virtual void resolve_code(const std::string& code) final;
+        void request_code(const std::string& method) override;
+        void resolve_code(const std::string& code) final;
 
-        virtual nlohmann::json get_status() const final;
+        nlohmann::json get_status() const final;
+        state_type get_state() const final;
+        hw_request get_hw_request() const final;
 
-        virtual void operator()() final;
-        virtual bool is_hw_action() const final;
-        virtual session& get_session() const final;
-        virtual std::shared_ptr<signer> get_signer() const final;
+        void operator()() final;
+        session& get_session() const final;
+        std::shared_ptr<signer> get_signer() const final;
 
     protected:
-        virtual void signal_hw_request(hw_request request) final;
-        virtual void signal_2fa_request(const std::string& action) final;
-        virtual void set_error(const std::string& error_message) final;
+        void signal_hw_request(hw_request request) final;
+        void signal_2fa_request(const std::string& action) final;
+        void set_error(const std::string& error_message) final;
 
-        virtual void request_code_impl(const std::string& method) final;
+        void request_code_impl(const std::string& method) final;
 
         session& m_session;
         std::shared_ptr<signer> m_signer;
@@ -107,9 +110,10 @@ namespace sdk {
         void resolve_code(const std::string& code) final;
 
         nlohmann::json get_status() const final;
+        state_type get_state() const final;
+        hw_request get_hw_request() const final;
 
         void operator()() final;
-        bool is_hw_action() const final;
         virtual session& get_session() const final;
         virtual std::shared_ptr<signer> get_signer() const final;
 

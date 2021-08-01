@@ -199,7 +199,8 @@ namespace sdk {
         }
     }
 
-    bool auth_handler_impl::is_hw_action() const { return m_hw_request != hw_request::none; }
+    auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
+    auth_handler::state_type auth_handler_impl::get_state() const { return m_state; }
 
     session& auth_handler_impl::get_session() const { return m_session; }
 
@@ -218,14 +219,14 @@ namespace sdk {
         switch (m_state) {
         case state_type::request_code:
             // Caller should ask the user to pick 2fa and request a code
-            GDK_RUNTIME_ASSERT(!is_hw_action());
+            GDK_RUNTIME_ASSERT(get_hw_request() == hw_request::none);
             GDK_RUNTIME_ASSERT(m_methods && !m_methods->empty());
             status_str = "request_code";
             status.emplace("methods", *m_methods);
             break;
         case state_type::resolve_code:
             status_str = "resolve_code";
-            if (is_hw_action()) {
+            if (get_hw_request() != hw_request::none) {
                 // Caller must interact with the hardware and return
                 // the returning data to us
                 action = m_twofactor_data.at("action");
@@ -261,7 +262,7 @@ namespace sdk {
     }
 
     //
-    // An auth handler that auto-resolves HW actions against a SW implementation
+    // An auth handler that auto-resolves HW actions where possible
     //
     auto_auth_handler::auto_auth_handler(auth_handler* handler)
         : auth_handler()
@@ -283,32 +284,32 @@ namespace sdk {
         step();
     }
 
-    bool auto_auth_handler::is_hw_action() const { return m_handler->is_hw_action(); }
+    nlohmann::json auto_auth_handler::get_status() const { return m_handler->get_status(); }
+    auth_handler::state_type auto_auth_handler::get_state() const { return m_handler->get_state(); }
+    auth_handler::hw_request auto_auth_handler::get_hw_request() const { return m_handler->get_hw_request(); }
 
     session& auto_auth_handler::get_session() const { return m_handler->get_session(); }
 
     std::shared_ptr<signer> auto_auth_handler::get_signer() const { return m_handler->get_signer(); }
 
-    nlohmann::json auto_auth_handler::get_status() const { return m_handler->get_status(); }
-
     void auto_auth_handler::step()
     {
-        nlohmann::json result;
-
-        // Step through states resolving any software wallet actions automatically
-        const auto status = get_status();
-        if (!status.contains("required_data")) {
-            return; // Not a HW action, let the caller resolve
+        // Step through the resolver state machine, resolving any actions that
+        // can be satisfied on the host without involving the external device.
+        const auto request = get_hw_request();
+        if (request == hw_request::none || get_state() != state_type::resolve_code) {
+            return; // Not a HW request, let the caller resolve
         }
-        GDK_RUNTIME_ASSERT(is_hw_action());
-        GDK_RUNTIME_ASSERT(status.at("status") == "resolve_code");
-        const auto& required_data = status["required_data"];
-        const auto& action = status.at("action");
+
+        const auto status = get_status();
+        const auto& required_data = status.at("required_data");
         const auto signer = get_signer();
         const bool have_master_blinding_key = signer->has_master_blinding_key();
+        nlohmann::json result;
 
-        if (action == "get_master_blinding_key") {
-            // Allow the session to handle this action with cached data if it can
+        if (request == hw_request::get_master_blinding_key) {
+            // Host unblinding: fetch master blinding key
+            // Allow the session to handle this request with cached data if it can
             auto impl = get_session().get_nonnull_impl();
             std::string blinding_key;
             bool denied;
@@ -319,7 +320,7 @@ namespace sdk {
                 resolve_code(result.dump());
                 return;
             }
-        } else if (have_master_blinding_key && action == "get_blinding_public_keys") {
+        } else if (have_master_blinding_key && request == hw_request::get_blinding_public_keys) {
             // Host unblinding: generate pubkeys
             auto& public_keys = result["public_keys"];
             for (const auto& script : required_data.at("scripts")) {
@@ -327,7 +328,7 @@ namespace sdk {
             }
             resolve_code(result.dump());
             return;
-        } else if (have_master_blinding_key && action == "get_blinding_nonces") {
+        } else if (have_master_blinding_key && request == hw_request::get_blinding_nonces) {
             // Host unblinding: generate nonces
             const auto& public_keys = required_data.at("public_keys");
             const auto& scripts = required_data.at("scripts");
@@ -344,9 +345,8 @@ namespace sdk {
             return; // Caller provided HW device, let the caller resolve
         }
 
-        // We have an action to resolve with the internal software wallet
-        if (action == "get_xpubs") {
-            GDK_RUNTIME_ASSERT(required_data.contains("paths"));
+        // We have a request to resolve with the internal software wallet
+        if (request == hw_request::get_xpubs) {
             std::vector<std::string> xpubs;
             const std::vector<nlohmann::json> paths = required_data.at("paths");
             for (const auto& p : paths) {
@@ -354,19 +354,21 @@ namespace sdk {
                 xpubs.emplace_back(signer->get_bip32_xpub(path));
             }
             result["xpubs"] = xpubs;
-        } else if (action == "sign_message") {
+        } else if (request == hw_request::sign_message) {
             const std::vector<uint32_t> path = required_data.at("path");
             const std::string message = required_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
             result["signature"] = sig_to_der_hex(signer->sign_hash(path, message_hash));
-        } else if (action == "get_master_blinding_key") {
+        } else if (request == hw_request::get_master_blinding_key) {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
-        } else if (action == "sign_tx") {
+        } else if (request == hw_request::sign_tx) {
             auto impl = get_session().get_nonnull_impl();
-            auto sigs = sign_ga_transaction(*impl, required_data["transaction"], required_data["signing_inputs"]).first;
+            auto sigs
+                = sign_ga_transaction(*impl, required_data.at("transaction"), required_data.at("signing_inputs")).first;
             result["signatures"] = sigs;
         } else {
-            GDK_RUNTIME_ASSERT_MSG(false, "Unknown 2FA action");
+            GDK_LOG_SEV(log_level::warning) << "Unknown hardware request " << status.dump();
+            GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");
         }
         resolve_code(result.dump());
     }
