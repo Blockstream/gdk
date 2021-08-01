@@ -1283,7 +1283,6 @@ namespace sdk {
     change_limits_call::change_limits_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "twofactor_change_limits")
         , m_limit_details(details)
-        , m_is_decrease(m_session.is_spending_limits_decrease(details))
     {
         try {
             // Transform the details json that is passed in into the json that the api expects
@@ -1298,7 +1297,7 @@ namespace sdk {
                 m_limit_details["total"] = session.convert_amount(details)["satoshi"];
             }
 
-            if (!m_is_decrease) {
+            if (!m_session.is_spending_limits_decrease(details)) {
                 // Limit increases require 2fa
                 signal_2fa_request("change_tx_limits");
                 m_twofactor_data = m_limit_details;
@@ -1306,14 +1305,6 @@ namespace sdk {
         } catch (const std::exception& e) {
             set_error(e.what());
         }
-    }
-
-    void change_limits_call::request_code(const std::string& method)
-    {
-        // If we are requesting a code, then our limits changed elsewhere and
-        // this is not a limit decrease
-        m_is_decrease = false;
-        auth_handler_impl::request_code(method);
     }
 
     auth_handler::state_type change_limits_call::call_impl()

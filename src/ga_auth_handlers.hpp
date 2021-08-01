@@ -45,7 +45,6 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
-        std::string m_message;
         std::pair<std::string, std::vector<uint32_t>> m_message_info;
 
         std::string m_master_xpub_bip32;
@@ -202,13 +201,10 @@ namespace sdk {
     public:
         change_limits_call(session& session, const nlohmann::json& details);
 
-        void request_code(const std::string& method) override;
-
     private:
         state_type call_impl() override;
 
         nlohmann::json m_limit_details;
-        bool m_is_decrease;
     };
 
     class remove_account_call : public auth_handler_impl {
