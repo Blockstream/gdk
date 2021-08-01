@@ -130,7 +130,8 @@ namespace sdk {
 
     class get_unspent_outputs_call : public auth_handler_impl {
     public:
-        get_unspent_outputs_call(session& session, const nlohmann::json& details);
+        get_unspent_outputs_call(
+            session& session, const nlohmann::json& details, const std::string& name = std::string());
 
     protected:
         state_type call_impl() override;

@@ -27,52 +27,85 @@ namespace sdk {
 
     auth_handler::~auth_handler() {}
 
+    void auth_handler::signal_hw_request(hw_request /*request*/) { GDK_RUNTIME_ASSERT(false); }
+
     auth_handler_impl::auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer)
         : m_session(session)
+        , m_signer(signer)
         , m_action(action)
+        , m_state(state_type::make_call)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
-        , m_is_hw_action(false)
+        , m_hw_request(hw_request::none)
         , m_use_anti_exfil(false)
     {
-        try {
-            init(action, signer, true);
-        } catch (const std::exception& e) {
-            set_error(e.what());
-        }
     }
 
     auth_handler_impl::auth_handler_impl(session& session, const std::string& action)
         : m_session(session)
+        , m_signer(session.get_nonnull_impl()->get_signer())
         , m_action(action)
+        , m_state(state_type::make_call)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
+        , m_hw_request(hw_request::none)
+        , m_use_anti_exfil(false)
     {
-        try {
-            init(action, m_session.get_nonnull_impl()->get_signer(), false);
-        } catch (const std::exception& e) {
-            set_error(e.what());
-        }
     }
 
     auth_handler_impl::~auth_handler_impl() {}
 
-    void auth_handler_impl::init(const std::string& action, std::shared_ptr<signer> signer, bool is_pre_login)
-    {
-        m_signer = signer;
-        set_action(action);
+    void auth_handler::signal_2fa_request(const std::string& /*action*/) { GDK_RUNTIME_ASSERT(false); }
 
-        if (!is_pre_login && !m_session.is_watch_only()) {
-            m_methods = m_session.get_enabled_twofactor_methods();
-        }
-        m_state = m_methods.empty() ? state_type::make_call : state_type::request_code;
+    void auth_handler::set_error(const std::string& /*error_message*/) { GDK_RUNTIME_ASSERT(false); }
+
+    void auth_handler::request_code_impl(const std::string& /*method*/) { GDK_RUNTIME_ASSERT(false); }
+
+    auth_handler::state_type auth_handler::call_impl()
+    {
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
     }
 
-    void auth_handler_impl::set_action(const std::string& action)
+    void auth_handler_impl::signal_hw_request(hw_request request)
     {
+        m_hw_request = request;
+        const char* action = nullptr;
+        switch (request) {
+        case hw_request::get_xpubs:
+            action = "get_xpubs";
+            break;
+        case hw_request::sign_message:
+            action = "sign_message";
+            break;
+        case hw_request::sign_tx:
+            action = "sign_tx";
+            break;
+        case hw_request::get_master_blinding_key:
+            action = "get_master_blinding_key";
+            break;
+        case hw_request::get_blinding_public_keys:
+            action = "get_blinding_public_keys";
+            break;
+        case hw_request::get_blinding_nonces:
+            action = "get_blinding_nonces";
+            break;
+        case hw_request::none:
+        default:
+            GDK_RUNTIME_ASSERT(false);
+        }
+        auto hw_device = m_signer ? m_signer->get_device() : nlohmann::json();
+        m_twofactor_data = { { "action", action }, { "device", hw_device } };
+        m_state = state_type::resolve_code;
+    }
+
+    void auth_handler_impl::signal_2fa_request(const std::string& action)
+    {
+        m_hw_request = hw_request::none;
         m_action = action;
-        m_is_hw_action = m_signer && !m_signer->is_watch_only()
-            && (action == "get_xpubs" || action == "sign_message" || action == "sign_tx"
-                   || action == "get_blinding_public_keys" || action == "get_blinding_nonces"
-                   || action == "get_master_blinding_key");
+        if (!m_methods && !m_session.is_watch_only()) {
+            m_methods.reset(new std::vector<std::string>(m_session.get_enabled_twofactor_methods()));
+        }
+        m_twofactor_data = nlohmann::json::object();
+        m_state = !m_methods || m_methods->empty() ? state_type::make_call : state_type::request_code;
     }
 
     void auth_handler_impl::set_error(const std::string& error_message)
@@ -82,21 +115,18 @@ namespace sdk {
         m_error = error_message;
     }
 
-    nlohmann::json auth_handler_impl::get_device_json() const
-    {
-        // Device json is only returned for HW actions
-        return m_is_hw_action ? m_signer->get_device() : nlohmann::json();
-    }
-
-    void auth_handler_impl::set_data()
-    {
-        m_twofactor_data = { { "action", m_action }, { "device", get_device_json() } };
-    }
-
     void auth_handler_impl::request_code(const std::string& method)
     {
-        request_code_impl(method);
-        m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
+        try {
+            if (!m_methods || std::find(m_methods->begin(), m_methods->end(), method) == m_methods->end()) {
+                set_error(std::string("Cannot request a code using disabled Two-Factor method ") + method);
+                return;
+            }
+            request_code_impl(method);
+            m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
+        } catch (const std::exception& e) {
+            set_error(e.what());
+        }
     }
 
     void auth_handler_impl::request_code_impl(const std::string& method)
@@ -154,7 +184,7 @@ namespace sdk {
                 set_error(e.what());
             }
         } catch (const std::exception& e) {
-            set_error(m_action + std::string(" exception:") + e.what());
+            set_error(e.what());
         }
         if (is_invalid_code) {
             // The caller entered the wrong code
@@ -169,7 +199,7 @@ namespace sdk {
         }
     }
 
-    bool auth_handler_impl::is_hw_action() const { return m_is_hw_action; }
+    bool auth_handler_impl::is_hw_action() const { return m_hw_request != hw_request::none; }
 
     session& auth_handler_impl::get_session() const { return m_session; }
 
@@ -182,20 +212,23 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_state == state_type::error || m_error.empty());
 
         const char* status_str = nullptr;
+        std::string action(m_action);
         nlohmann::json status;
 
         switch (m_state) {
         case state_type::request_code:
             // Caller should ask the user to pick 2fa and request a code
-            GDK_RUNTIME_ASSERT(!m_is_hw_action);
+            GDK_RUNTIME_ASSERT(!is_hw_action());
+            GDK_RUNTIME_ASSERT(m_methods && !m_methods->empty());
             status_str = "request_code";
-            status.emplace("methods", m_methods);
+            status.emplace("methods", *m_methods);
             break;
         case state_type::resolve_code:
             status_str = "resolve_code";
-            if (m_is_hw_action) {
+            if (is_hw_action()) {
                 // Caller must interact with the hardware and return
                 // the returning data to us
+                action = m_twofactor_data.at("action");
                 status["required_data"] = m_twofactor_data;
             } else {
                 // Caller should resolve the code the user has entered
@@ -223,7 +256,7 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT(status_str != nullptr);
         status.emplace("status", status_str);
-        status.emplace("action", m_action);
+        status.emplace("action", action);
         return status;
     }
 
@@ -240,27 +273,7 @@ namespace sdk {
 
     auto_auth_handler::~auto_auth_handler() { delete m_handler; }
 
-    void auto_auth_handler::set_action(const std::string& action)
-    {
-        (void)action;
-        GDK_RUNTIME_ASSERT(false);
-    }
-
-    void auto_auth_handler::set_error(const std::string& error_message)
-    {
-        (void)error_message;
-        GDK_RUNTIME_ASSERT(false);
-    }
-
-    void auto_auth_handler::set_data() { GDK_RUNTIME_ASSERT(false); }
-
     void auto_auth_handler::request_code(const std::string& method) { return m_handler->request_code(method); }
-
-    void auto_auth_handler::request_code_impl(const std::string& method)
-    {
-        (void)method;
-        GDK_RUNTIME_ASSERT(false);
-    }
 
     void auto_auth_handler::resolve_code(const std::string& code) { return m_handler->resolve_code(code); }
 
@@ -268,12 +281,6 @@ namespace sdk {
     {
         (*m_handler)();
         step();
-    }
-
-    auth_handler::state_type auto_auth_handler::call_impl()
-    {
-        GDK_RUNTIME_ASSERT(false);
-        __builtin_unreachable();
     }
 
     bool auto_auth_handler::is_hw_action() const { return m_handler->is_hw_action(); }
@@ -296,7 +303,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(is_hw_action());
         GDK_RUNTIME_ASSERT(status.at("status") == "resolve_code");
         const auto& required_data = status["required_data"];
-        const std::string action = status.at("action");
+        const auto& action = status.at("action");
         const auto signer = get_signer();
         const bool have_master_blinding_key = signer->has_master_blinding_key();
 
@@ -354,11 +361,12 @@ namespace sdk {
             result["signature"] = sig_to_der_hex(signer->sign_hash(path, message_hash));
         } else if (action == "get_master_blinding_key") {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
-        } else {
-            GDK_RUNTIME_ASSERT(action == "sign_tx");
+        } else if (action == "sign_tx") {
             auto impl = get_session().get_nonnull_impl();
             auto sigs = sign_ga_transaction(*impl, required_data["transaction"], required_data["signing_inputs"]).first;
             result["signatures"] = sigs;
+        } else {
+            GDK_RUNTIME_ASSERT_MSG(false, "Unknown 2FA action");
         }
         resolve_code(result.dump());
     }
