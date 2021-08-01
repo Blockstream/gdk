@@ -467,7 +467,6 @@ namespace sdk {
 
     ack_system_message_call::ack_system_message_call(session& session, const std::string& msg)
         : auth_handler_impl(session, "ack_system_message")
-        , m_message(msg)
     {
         if (m_state != state_type::error) { // TODO: Remove
             try {
