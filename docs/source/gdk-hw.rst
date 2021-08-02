@@ -70,7 +70,7 @@ Hardware Get Master Blinding Key Action
 ---------------------------------------
 
 When ``"action"`` is ``"get_master_blinding_key"``, this describes a request
-to return the wallet's master blinding key if the user allows this.
+to return the wallet's SLIP0077 master blinding key if the user allows this.
 
 .. note:: This action is only returned when using the Liquid network.
 
@@ -84,8 +84,11 @@ No request data is currently associated with this request.
        "master_blinding_key": "512cd6c0b73452a2414e9d86d37cdcc8283b44f0b6dd2b1eec23c59ff12b4f7e5949569b3430220dafce1e0e299a2a6f3fb3e62b2e8c860c82512cdf2d8b2fbc"
      }
 
-:master_blinding_key: The 512-bit master blinding key for the wallet, hex-encoded. If
-    the user denies the request to share the key, an empty string should be returned.
+:master_blinding_key: The 512-bit or 256-bit master blinding key for the wallet, hex-encoded.
+    If a 256-bit key is returned, it should be the lower 256-bits of the SLIP0021 derived ``node``
+    as specified in https://github.com/satoshilabs/slips/blob/master/slip-0077.md.
+
+.. note:: If the user denies the request to share the key, an empty string should be returned.
 
 
 .. _hw-action-sign-message:
