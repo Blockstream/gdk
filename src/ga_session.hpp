@@ -124,7 +124,7 @@ namespace sdk {
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
         void disable_all_pin_logins();
 
-        void get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data);
+        bool get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing);
         void process_unspent_outputs(nlohmann::json& utxos);
         nlohmann::json get_unspent_outputs_for_private_key(

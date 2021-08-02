@@ -2677,7 +2677,7 @@ namespace sdk {
         return amount(v);
     }
 
-    void ga_session::get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data)
+    bool ga_session::get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
@@ -2698,6 +2698,7 @@ namespace sdk {
         auto& public_keys = twofactor_data["public_keys"];
 
         std::set<std::pair<std::string, std::string>> no_dups;
+        bool any_required = false;
 
         for (const uint32_t sa : subaccounts) {
             const auto tx_list = get_raw_transactions(sa, 0, 0xffffffff);
@@ -2727,12 +2728,14 @@ namespace sdk {
                                 // Not cached; add to the list to return
                                 scripts.push_back(std::move(script));
                                 public_keys.push_back(std::move(nonce_commitment));
+                                any_required = true;
                             }
                         }
                     }
                 }
             }
         }
+        return any_required;
     }
 
     bool ga_session::set_blinding_nonce(

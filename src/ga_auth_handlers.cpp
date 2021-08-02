@@ -732,11 +732,14 @@ namespace sdk {
         try {
             // TODO: Electrum is skipped here as it does its own unblinding
             if (m_session.is_liquid() && !m_session.get_network_parameters().is_electrum()) {
-                m_fetch_nonces = true;
-                signal_hw_request(hw_request::get_blinding_nonces);
-                m_session.get_nonnull_impl()->get_uncached_blinding_nonces(details, m_twofactor_data);
-            } else {
-                m_state = state_type::make_call;
+                nlohmann::json twofactor_data;
+                if (m_session.get_nonnull_impl()->get_uncached_blinding_nonces(details, twofactor_data)) {
+                    // We have missing nonces we need to fetch, request them
+                    m_fetch_nonces = true;
+                    signal_hw_request(hw_request::get_blinding_nonces);
+                    m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
+                    m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
+                }
             }
         } catch (const std::exception& e) {
             set_error(e.what());
