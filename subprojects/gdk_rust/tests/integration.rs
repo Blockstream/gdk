@@ -138,7 +138,7 @@ fn subaccounts_bitcoin() {
 
 #[test]
 fn subaccounts_liquid() {
-    subaccounts(false);
+    subaccounts(true);
 }
 
 fn subaccounts(is_liquid: bool) {
