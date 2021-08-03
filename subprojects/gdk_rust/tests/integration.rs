@@ -218,15 +218,15 @@ fn subaccounts(is_liquid: bool) {
 
     // Send some to account #1
     let sat = 98766;
-    test_session.node_sendtoaddress(&acc1_address.address, sat, None);
-    test_session.wait_tx_status_change();
+    let txid = test_session.node_sendtoaddress(&acc1_address.address, sat, None);
+    test_session.wait_account_tx(1, &txid);
     *balances.entry(1).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
 
     // Send some to account #2
     let sat = 67899;
-    test_session.node_sendtoaddress(&acc2_address.address, sat, None);
-    test_session.wait_tx_status_change();
+    let txid = test_session.node_sendtoaddress(&acc2_address.address, sat, None);
+    test_session.wait_account_tx(2, &txid);
     *balances.entry(2).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
 
@@ -389,8 +389,8 @@ fn labels() {
 
     // Fund account #1
     let acc1_address = test_session.get_receive_address(account1.account_num);
-    test_session.node_sendtoaddress(&acc1_address.address, 9876543, None);
-    test_session.wait_tx_status_change();
+    let txid = test_session.node_sendtoaddress(&acc1_address.address, 9876543, None);
+    test_session.wait_account_tx(account1.account_num, &txid);
 
     // Send from account #1 to account #2 with a memo
     let mut create_opt = CreateTransaction::default();
@@ -429,8 +429,12 @@ fn rbf() {
             subaccount: 1,
         })
         .unwrap();
-    test_session.node_sendtoaddress(&test_session.get_receive_address(1).address, 9876543, None);
-    test_session.wait_tx_status_change();
+    let txid = test_session.node_sendtoaddress(
+        &test_session.get_receive_address(1).address,
+        9876543,
+        None,
+    );
+    test_session.wait_account_tx(1, &txid);
 
     // Create transaction for replacement
     let mut create_opt = CreateTransaction::default();
@@ -566,7 +570,7 @@ fn spv_cross_validation_session() {
     // Send a payment to session1
     let ap = test_session1.get_receive_address(0);
     let txid = test_session1.node_sendtoaddress(&ap.address, 999999, None);
-    test_session1.wait_tx_status_change();
+    test_session1.wait_account_tx(0, &txid);
     let txitem = test_session1.get_tx_from_list(0, &txid);
     assert_eq!(txitem.block_height, 0);
     assert_eq!(txitem.spv_verified, "unconfirmed");

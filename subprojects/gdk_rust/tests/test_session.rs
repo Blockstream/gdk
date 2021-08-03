@@ -217,20 +217,6 @@ impl TestSession {
         &self.network
     }
 
-    /// wait gdk session block status to change (max 1 min)
-    pub fn wait_tx_status_change(&mut self) {
-        self.tx_status = self.session.tx_status().unwrap();
-        for _ in 0..120 {
-            if let Ok(new_status) = self.session.tx_status() {
-                if self.tx_status != new_status {
-                    self.tx_status = new_status;
-                    break;
-                }
-            }
-            thread::sleep(Duration::from_millis(500));
-        }
-    }
-
     /// wait gdk session tx status to change (max 1 min)
     pub fn wait_block_status_change(&mut self) {
         for _ in 0..120 {
@@ -274,14 +260,14 @@ impl TestSession {
         let initial_satoshis = self.balance_gdk(None);
         let ap = self.get_receive_address(0);
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
-        self.wait_tx_status_change();
+        self.wait_account_tx(0, &funding_tx);
         self.list_tx_contains(&funding_tx, &vec![], false);
         let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
             let asset = self.node_issueasset(satoshi);
-            self.node_sendtoaddress(&ap.address, satoshi, Some(asset.clone()));
-            self.wait_tx_status_change();
+            let txid = self.node_sendtoaddress(&ap.address, satoshi, Some(asset.clone()));
+            self.wait_account_tx(0, &txid);
             assets_issued.push(asset);
         }
 
@@ -373,7 +359,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx_status_change();
+        self.wait_account_tx(create_opt.subaccount, &txid);
 
         self.tx_checks(&signed_tx.hex);
 
@@ -392,7 +378,7 @@ impl TestSession {
         for _ in 0..5 {
             if expected != self.balance_gdk(asset.clone()) {
                 // FIXME I should not wait again, but apparently after reconnect it's needed
-                self.wait_tx_status_change();
+                thread::sleep(Duration::from_secs(1));
             }
         }
         assert_eq!(self.balance_gdk(asset.clone()), expected, "gdk balance does not match");
@@ -532,7 +518,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx_status_change();
+        self.wait_account_tx(create_opt.subaccount, &txid);
         self.tx_checks(&signed_tx.hex);
 
         if assets.is_empty() {
@@ -567,7 +553,7 @@ impl TestSession {
         let unconf_address = to_unconfidential(ap.address);
         let unconf_sat = 10_000;
         let unconf_txid = self.node_sendtoaddress(&unconf_address, unconf_sat, None);
-        self.wait_tx_status_change();
+        self.wait_account_tx(0, &unconf_txid);
         // confidential balance
         assert_eq!(init_sat, self.balance_account(0, None, Some(true)));
         utxos_opt.confidential_utxos_only = Some(true);
@@ -646,10 +632,10 @@ impl TestSession {
 
         let utxo_satoshi = 100_000;
         let ap = self.get_receive_address(0);
-        self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_tx_status_change();
-        self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_tx_status_change();
+        let txid = self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
+        self.wait_account_tx(0, &txid);
+        let txid = self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
+        self.wait_account_tx(0, &txid);
         let satoshi = 50_000; // one utxo would be enough
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
@@ -663,8 +649,8 @@ impl TestSession {
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
-        self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx_status_change();
+        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
+        self.wait_account_tx(create_opt.subaccount, &txid);
         self.tx_checks(&signed_tx.hex);
 
         let transaction = BETransaction::from_hex(&signed_tx.hex, self.network_id).unwrap();
@@ -1069,7 +1055,7 @@ impl TestSession {
             }
             thread::sleep(Duration::from_millis(500));
         }
-        panic!("1 minute with on spv cross-validation change");
+        panic!("1 minute with no spv cross-validation change");
     }
 
     /// wait for the spv validation status of a transaction to change (max 1 min)
