@@ -317,11 +317,18 @@ fn subaccounts(is_liquid: bool) {
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     new_session.login(&mnemonic, None).unwrap();
 
-    // Allow some time for the new session to catch up
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    // Wait until all subaccounts have been recovered
+    let mut i = 120;
+    let subaccounts = loop {
+        assert!(i > 0, "1 minute without updates");
+        i -= 1;
+        let subaccounts = new_session.get_subaccounts().unwrap();
+        if subaccounts.len() == balances.len() {
+            break subaccounts;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    };
 
-    // Check all the accounts were properly recovered
-    let subaccounts = new_session.get_subaccounts().unwrap();
     let btc_key = if is_liquid {
         new_session.network.policy_asset.clone().unwrap()
     } else {
@@ -329,6 +336,23 @@ fn subaccounts(is_liquid: bool) {
     };
 
     for subaccount in subaccounts.iter() {
+        // Wait until the subaccount has a transaction
+        let opt = GetTransactionsOpt {
+            first: 0,
+            count: 100,
+            subaccount: subaccount.account_num,
+            num_confs: None,
+        };
+        let mut i = 120;
+        loop {
+            assert!(i > 0, "1 minute without updates");
+            i -= 1;
+            if new_session.get_transactions(&opt).unwrap().0.len() > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+
         let opt = GetBalanceOpt {
             subaccount: subaccount.account_num,
             num_confs: 0,
