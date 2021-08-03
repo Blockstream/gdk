@@ -1508,7 +1508,7 @@ namespace sdk {
 
     void ga_session::on_new_tickers(nlohmann::json details)
     {
-        bool found = false;
+        std::string fiat_source, fiat_currency, fiat_rate;
         {
             locker_t locker(m_mutex);
 
@@ -1517,14 +1517,20 @@ namespace sdk {
                 if (exchange_p != details.end()) {
                     const auto rate_p = exchange_p->find(m_fiat_currency);
                     if (rate_p != exchange_p->end()) {
-                        update_fiat_rate(locker, *rate_p);
-                        found = true;
+                        fiat_source = m_fiat_source;
+                        fiat_currency = m_fiat_currency;
+                        fiat_rate = *rate_p;
+                        if (!fiat_rate.empty()) {
+                            update_fiat_rate(locker, fiat_rate);
+                        }
                     }
                 }
             });
         }
-        if (found) {
-            emit_notification({ { "event", "tickers" }, { "tickers", std::move(details) } }, false);
+        if (!fiat_rate.empty()) {
+            emit_notification({ { "event", "ticker" }, { "exchange", std::move(fiat_source) },
+                                  { "currency", std::move(fiat_currency) }, { "rate", std::move(fiat_rate) } },
+                false);
         } else {
             GDK_LOG_SEV(log_level::warning) << "Ignoring irrelevant ticker update";
         }
