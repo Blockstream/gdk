@@ -1153,7 +1153,7 @@ namespace sdk {
 
         // Update required_ca
         locker_t locker(m_mutex);
-        auto& required = m_subaccounts[subaccount]["required_ca"];
+        auto& required = m_subaccounts.at(subaccount)["required_ca"];
         const uint32_t remaining = required.get<uint32_t>();
         if (remaining) {
             required = addresses.size() > remaining ? 0u : remaining - addresses.size();
@@ -1924,9 +1924,17 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(bip32_xpubs.size() == m_subaccounts.size());
         GDK_RUNTIME_ASSERT(!m_user_pubkeys);
 
-        m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, make_xpub(bip32_xpubs[0]));
-        for (size_t i = 1; i < m_subaccounts.size(); ++i) {
-            m_user_pubkeys->add_subaccount(m_subaccounts[i]["pointer"], make_xpub(bip32_xpubs[i]));
+        size_t i = 0;
+        for (const auto& sa : m_subaccounts) {
+            auto xpub = make_xpub(bip32_xpubs[i]);
+            if (i == 0) {
+                // Main account
+                m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, std::move(xpub));
+            } else {
+                // Subaccount
+                m_user_pubkeys->add_subaccount(sa.first, std::move(xpub));
+            }
+            ++i;
         }
     }
 
