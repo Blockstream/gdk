@@ -217,19 +217,6 @@ impl TestSession {
         &self.network
     }
 
-    /// wait gdk session tx status to change (max 1 min)
-    pub fn wait_block_status_change(&mut self) {
-        for _ in 0..120 {
-            if let Ok(new_status) = self.session.block_status() {
-                if self.block_status != new_status {
-                    self.block_status = new_status;
-                    break;
-                }
-            }
-            thread::sleep(Duration::from_millis(500));
-        }
-    }
-
     /// test fees are 25 elements and greater than relay_fee
     pub fn fees(&mut self) {
         let fees = self.session.get_fee_estimates().unwrap();
@@ -798,25 +785,24 @@ impl TestSession {
 
     /// mine a block with the node and check if gdk session see the change
     pub fn mine_block(&mut self) {
-        let initial_height = self.electrs_tip();
-        info!("mine_block initial_height {}", initial_height);
+        let initial_height_electrs = self.electrs_tip() as u32;
+        let initial_height_wallet = self.session.block_status().unwrap().0;
+        assert_eq!(initial_height_electrs, initial_height_wallet);
         self.node_generate(1);
-        self.wait_block_status_change();
+        let height = initial_height_electrs + 1;
+        // Wait until electrs has updated
         let mut i = 120;
-        let new_height = loop {
-            assert!(i > 0, "1 minute without updates");
+        loop {
+            assert!(i > 0, "1 minute waiting for electrs block height {}", height);
             i -= 1;
-            // apparently even if gdk session status changed (thus new height come in)
-            // it could happend this is the old height (maybe due to caching) thus we loop wait
-            let new_height = self.electrs_tip();
-            if new_height != initial_height {
-                break new_height;
+            if height == self.electrs_tip() as u32 {
+                break;
             }
-            info!("height still the same");
             thread::sleep(Duration::from_millis(500));
-        };
-        info!("mine_block new_height {}", new_height);
-        assert_eq!(initial_height + 1, new_height);
+        }
+
+        // Wait until wallet has updated
+        self.wait_blockheight(height);
     }
 
     pub fn node_getnewaddress(&self, kind: Option<&str>) -> String {
@@ -1082,6 +1068,18 @@ impl TestSession {
             thread::sleep(Duration::from_millis(500));
         }
         panic!("tx {} did not show up in account {} after 1 minute", txid, subaccount);
+    }
+
+    pub fn wait_blockheight(&self, height: u32) {
+        let mut i = 120;
+        loop {
+            assert!(i > 0, "1 minute waiting for wallet block height {}", height);
+            i -= 1;
+            if height == self.session.block_status().unwrap().0 {
+                return;
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
     }
 }
 fn node_sendtoaddress(

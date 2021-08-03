@@ -509,10 +509,8 @@ fn spv_cross_validate() {
         let (mut test_session1, mut test_session2) = setup_forking_sessions(false);
         test_session1.node_generate(5); // session1 is on a minority fork
         test_session2.node_generate(1020); // session2 is on the most-work chain
-        test_session1.wait_block_status_change();
-        test_session2.wait_block_status_change();
-        assert_eq!(test_session1.session.block_status().unwrap().0, 126);
-        assert_eq!(test_session2.session.block_status().unwrap().0, 1141);
+        test_session1.wait_blockheight(126);
+        test_session2.wait_blockheight(1141);
 
         // Grab direct access to session1's HeadersChain
         let session1_chain = get_chain(&mut test_session1);
@@ -540,7 +538,7 @@ fn spv_cross_validate() {
         // Setup two nodes, make session2 ahead by 12 blocks
         let (mut test_session1, mut test_session2) = setup_forking_sessions(false);
         test_session2.node_generate(12);
-        test_session2.wait_block_status_change();
+        test_session2.wait_blockheight(133);
 
         // Grab direct access to session1's HeadersChain
         let session1_chain = get_chain(&mut test_session1);
@@ -578,14 +576,15 @@ fn spv_cross_validation_session() {
 
     // Confirm it, wait for it to SPV-validate
     test_session1.node_generate(1);
-    test_session1.wait_block_status_change();
+    test_session1.wait_blockheight(122);
     test_session1.wait_tx_spv_change(&txid, "verified");
     assert_eq!(test_session1.get_tx_from_list(0, &txid).block_height, 122);
     info!("tx confirmed and spv validated");
 
     // Extend session2, putting session1 on a minority fork
     test_session2.node_generate(10);
-    test_session1.wait_block_status_change();
+    test_session2.wait_blockheight(131);
+    test_session1.wait_blockheight(122);
     let cross_result = test_session1.wait_spv_cross_validation_change(false);
     let inv = assert_unwrap_invalid(cross_result);
     assert_eq!(inv.common_ancestor, 121);
@@ -595,7 +594,7 @@ fn spv_cross_validation_session() {
 
     // Extend session1, making it the best chain
     test_session1.node_generate(11);
-    test_session1.wait_block_status_change();
+    test_session1.wait_blockheight(133);
     let cross_result = test_session1.wait_spv_cross_validation_change(true);
     assert!(cross_result.is_valid());
     assert_eq!(test_session1.get_tx_from_list(0, &txid).spv_verified, "verified");
@@ -642,9 +641,9 @@ fn spv_cross_validation_session() {
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
-    let mut test_session2 = setup_session(false, |_| ());
+    let test_session2 = setup_session(false, |_| ());
 
-    let mut test_session1 = setup_session(false, |network| {
+    let test_session1 = setup_session(false, |network| {
         if enable_session_cross {
             network.spv_multi = Some(true);
             network.spv_servers = Some(vec![test_session2.electrs.electrum_url.clone()]);
@@ -655,10 +654,8 @@ fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSessi
     test_session2.node_connect(test_session1.p2p_port);
     test_session1.node_generate(20);
 
-    test_session1.wait_block_status_change();
-    test_session2.wait_block_status_change();
-    assert_eq!(test_session2.session.block_status().unwrap().0, 121);
-    assert_eq!(test_session2.session.block_status().unwrap().0, 121);
+    test_session1.wait_blockheight(121);
+    test_session2.wait_blockheight(121);
 
     // Disconnect so they don't learn about eachother blocks
     test_session1.node_disconnect_all();
