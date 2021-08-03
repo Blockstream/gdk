@@ -381,6 +381,7 @@ fn labels() {
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
     let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
     test_session.wait_account_tx(account1.account_num, &txid);
+    test_session.wait_account_tx(account2.account_num, &txid);
 
     // Memos should be set across all accounts
     assert_eq!(test_session.get_tx_from_list(account1.account_num, &txid).memo, "Foo, Bar Foo");
@@ -566,6 +567,7 @@ fn spv_cross_validation_session() {
 
     // Extend session1, making it the best chain
     test_session1.node_generate(11);
+    test_session1.wait_block_status_change();
     let cross_result = test_session1.wait_spv_cross_validation_change(true);
     assert!(cross_result.is_valid());
     assert_eq!(test_session1.get_tx_from_list(0, &txid).spv_verified, "verified");
