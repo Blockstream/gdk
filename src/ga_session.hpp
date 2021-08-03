@@ -215,7 +215,7 @@ namespace sdk {
         bool unblind_utxo(nlohmann::json& utxo, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing);
         bool cleanup_utxos(nlohmann::json& utxos, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing);
         tx_list_cache::container_type get_tx_list(session_impl::locker_t& locker, uint32_t subaccount, uint32_t page_id,
-            const std::string& start_date, const std::string& end_date, nlohmann::json& state_info);
+            const std::string& start_date, const std::string& end_date);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);

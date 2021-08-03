@@ -2404,7 +2404,7 @@ namespace sdk {
     }
 
     tx_list_cache::container_type ga_session::get_tx_list(session_impl::locker_t& locker, uint32_t subaccount,
-        uint32_t page_id, const std::string& start_date, const std::string& end_date, nlohmann::json& state_info)
+        uint32_t page_id, const std::string& start_date, const std::string& end_date)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const std::vector<std::string> date_range{ start_date, end_date };
@@ -2412,16 +2412,6 @@ namespace sdk {
         auto result
             = wamp_call(locker, "txs.get_list_v2", page_id, std::string(), std::string(), date_range, subaccount);
         nlohmann::json txs = wamp_cast_json(result);
-
-        // Update block height and fiat rate in our state info
-        const uint32_t block_height = txs["cur_block"];
-        if (block_height > state_info["cur_block"]) {
-            state_info["cur_block"] = block_height;
-        }
-        // Note: fiat_value is actually the fiat exchange rate
-        if (!txs["fiat_value"].is_null()) {
-            state_info["fiat_exchange"] = txs["fiat_value"];
-        }
 
         auto& tx_list = txs["list"];
         return tx_list_cache::container_type{ std::make_move_iterator(tx_list.begin()),
@@ -2441,28 +2431,12 @@ namespace sdk {
         m_multi_call_category |= MC_TX_CACHE;
         const auto cleanup = gsl::finally([this]() { m_multi_call_category &= ~MC_TX_CACHE; });
 
-        auto&& server_get = [this, &locker, subaccount](uint32_t page_id, const std::string& start_date,
-                                const std::string& end_date, nlohmann::json& state_info) {
-            return get_tx_list(locker, subaccount, page_id, start_date, end_date, state_info);
+        auto&& server_get = [this, &locker, subaccount](
+                                uint32_t page_id, const std::string& start_date, const std::string& end_date) {
+            return get_tx_list(locker, subaccount, page_id, start_date, end_date);
         };
 
-        tx_list_cache::container_type tx_list;
-        nlohmann::json state_info;
-        std::tie(tx_list, state_info) = m_tx_list_caches.get(subaccount)->get(first, count, server_get);
-
-        // Update our local block height from the returned results
-        // TODO: Use block_hash/height reversal to detect reorgs & uncache
-
-        if (state_info.contains("cur_block") && state_info["cur_block"] > m_block_height) {
-            m_block_height = state_info["cur_block"];
-        }
-
-        if (!state_info.at("fiat_exchange").is_null()) {
-            const double fiat_rate = state_info["fiat_exchange"];
-            update_fiat_rate(locker, std::to_string(fiat_rate));
-        }
-
-        return tx_list;
+        return m_tx_list_caches.get(subaccount)->get(first, count, server_get);
     }
 
     nlohmann::json ga_session::get_transactions(const nlohmann::json& details)

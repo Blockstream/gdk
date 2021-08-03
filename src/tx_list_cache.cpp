@@ -131,8 +131,7 @@ namespace sdk {
 #endif
         }
 
-        static auto fetch_txs(
-            const value_type* start_tx, const value_type* end_tx, nlohmann::json& state_info, get_txs_fn_t get_txs)
+        static auto fetch_txs(const value_type* start_tx, const value_type* end_tx, get_txs_fn_t get_txs)
         {
             const std::string start_at = start_tx ? json_get_value(*start_tx, "created_at") : std::string();
             const std::string start_date = start_tx ? get_query_date(start_at, 0) : std::string();
@@ -146,7 +145,7 @@ namespace sdk {
             size_t page_tx_count;
             container_type page_txs;
             do {
-                container_type tmp(get_txs(page, start_date, end_date, state_info));
+                container_type tmp(get_txs(page, start_date, end_date));
                 if (!tmp.empty()) {
                     latest_end_at = json_get_value(tmp.front(), "created_at");
                 }
@@ -189,12 +188,11 @@ namespace sdk {
         }
     } // namespace
 
-    tx_list_cache::get_fn_ret_t tx_list_cache::get(uint32_t first, uint32_t count, get_txs_fn_t get_txs)
+    tx_list_cache::container_type tx_list_cache::get(uint32_t first, uint32_t count, get_txs_fn_t get_txs)
     {
         const auto move_iter = std::make_move_iterator<iterator>;
 
         const uint32_t required_cache_size = first + count;
-        nlohmann::json state_info = { { "cur_block", 0u }, { "fiat_exchange", nullptr } };
         container_type page_txs;
         bool is_last_page;
 
@@ -216,7 +214,7 @@ namespace sdk {
                 // B) Have loaded up to 'required_cache_size' items (if our cache is empty)
                 const value_type* start_tx = m_tx_cache.empty() ? nullptr : &m_tx_cache.front();
                 const value_type* end_tx = txs.empty() ? nullptr : &txs.back();
-                std::tie(page_txs, is_last_page) = fetch_txs(start_tx, end_tx, state_info, get_txs);
+                std::tie(page_txs, is_last_page) = fetch_txs(start_tx, end_tx, get_txs);
 
                 // Add the loaded txs to our collection
                 check_for_duplicates(txs, page_txs, "cache:get newest (inner): Duplicate detected");
@@ -241,7 +239,7 @@ namespace sdk {
 
         if (m_tx_cache.empty()) {
             // The caller has no txs.
-            return std::make_pair(container_type(), state_info);
+            return container_type();
         }
 
         // Load any older txs we need from the server
@@ -249,7 +247,7 @@ namespace sdk {
             // We need to load more txs from the server to fulfill the callers
             // request, and we have more txs available to fetch.
             const value_type* end_tx = &m_tx_cache.back();
-            std::tie(page_txs, is_last_page) = fetch_txs(nullptr, end_tx, state_info, get_txs);
+            std::tie(page_txs, is_last_page) = fetch_txs(nullptr, end_tx, get_txs);
 
             // Add the loaded txs to the end of the tx cache.
             check_for_duplicates(m_tx_cache, page_txs, "cache:get oldest: Duplicate detected");
@@ -264,7 +262,7 @@ namespace sdk {
 
         if (first >= m_tx_cache.size()) {
             // Caller is asking for txs beyond the cache size.
-            return std::make_pair(container_type(), state_info);
+            return container_type();
         }
 
         // return results from the cached txs
@@ -273,7 +271,7 @@ namespace sdk {
         const auto finish = start + std::min<size_t>(count, remaining);
 
         dump_cache(m_tx_cache, " after get");
-        return std::make_pair(container_type{ start, finish }, state_info);
+        return container_type{ start, finish };
     }
 
     void tx_list_cache::on_new_block(uint32_t ga_block_height, const nlohmann::json& details)
