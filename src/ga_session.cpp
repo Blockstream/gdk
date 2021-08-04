@@ -1866,15 +1866,20 @@ namespace sdk {
 
     std::string ga_session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
     {
-        // FIXME: clear password after use
-        const auto password = get_pin_password(pin, pin_data.at("pin_identifier"));
-        const std::string salt = pin_data.at("salt");
-        const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt));
+        try {
+            // FIXME: clear password after use
+            const auto password = get_pin_password(pin, pin_data.at("pin_identifier"));
+            const std::string salt = pin_data.at("salt");
+            const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt));
 
-        // FIXME: clear data after use
-        const auto data = nlohmann::json::parse(aes_cbc_decrypt(key, pin_data.at("encrypted_data")));
+            // FIXME: clear data after use
+            const auto data = nlohmann::json::parse(aes_cbc_decrypt(key, pin_data.at("encrypted_data")));
 
-        return data.at("mnemonic");
+            return data.at("mnemonic");
+        } catch (const autobahn::call_error& e) {
+            GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
+            throw login_error(res::id_invalid_pin);
+        }
     }
 
     nlohmann::json ga_session::login_watch_only(const std::string& username, const std::string& password)
