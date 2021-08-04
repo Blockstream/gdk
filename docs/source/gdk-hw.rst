@@ -163,7 +163,7 @@ compute blinding nonces for the given scripts and shared public keys.
 .. code-block:: json
 
      {
-       "scripts": [ "a91403f650e2434916d5b7f124de8f673442b696282887" ]
+       "scripts": [ "a91403f650e2434916d5b7f124de8f673442b696282887" ],
        "public_keys": [ "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27" ]
      }
 
