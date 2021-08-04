@@ -318,15 +318,15 @@ fn subaccounts(is_liquid: bool) {
     new_session.login(&mnemonic, None).unwrap();
 
     // Wait until all subaccounts have been recovered
-    let mut i = 120;
+    let mut i = 60;
     let subaccounts = loop {
-        assert!(i > 0, "1 minute without updates");
+        assert!(i > 0, "timeout waiting for updates");
         i -= 1;
         let subaccounts = new_session.get_subaccounts().unwrap();
         if subaccounts.len() == balances.len() {
             break subaccounts;
         }
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_secs(1));
     };
 
     let btc_key = if is_liquid {
@@ -343,14 +343,14 @@ fn subaccounts(is_liquid: bool) {
             subaccount: subaccount.account_num,
             num_confs: None,
         };
-        let mut i = 120;
+        let mut i = 60;
         loop {
-            assert!(i > 0, "1 minute without updates");
+            assert!(i > 0, "timeout waiting for updates");
             i -= 1;
             if new_session.get_transactions(&opt).unwrap().0.len() > 0 {
                 break;
             }
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
 
         let opt = GetBalanceOpt {
@@ -482,7 +482,7 @@ fn rbf() {
         if list.iter().all(|e| e.txhash != txid1) {
             break;
         }
-        assert!(i < 59, "replaced transaction didn't disappear after 1 minute");
+        assert!(i < 59, "timeout waiting for replaced transaction to disappear");
     }
 
     // Transactions that are not properly signed should be rejected, to prevent the user from

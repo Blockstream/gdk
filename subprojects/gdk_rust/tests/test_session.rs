@@ -129,9 +129,9 @@ pub fn setup(
     node_generate(&node.client, 100);
     electrs.trigger().unwrap();
 
-    let mut i = 120;
+    let mut i = 60;
     loop {
-        assert!(i > 0, "1 minute without updates");
+        assert!(i > 0, "timeout waiting for updates");
         i -= 1;
         let height = electrs.client.block_headers_subscribe_raw().unwrap().height;
         if height == 101 {
@@ -139,7 +139,7 @@ pub fn setup(
         } else {
             warn!("height: {}", height);
         }
-        thread::sleep(Duration::from_millis(500));
+        thread::sleep(Duration::from_secs(1));
     }
     info!("Electrs synced with node");
 
@@ -178,15 +178,15 @@ pub fn setup(
     );
     let tx_status = session.tx_status().unwrap();
     assert_eq!(tx_status, 15130871412783076140);
-    let mut i = 120;
+    let mut i = 60;
     let block_status = loop {
-        assert!(i > 0, "1 minute without updates");
+        assert!(i > 0, "timeout waiting for updates");
         i -= 1;
         let block_status = session.block_status().unwrap();
         if block_status.0 == 101 {
             break block_status;
         } else {
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_secs(1));
         }
     };
     assert_eq!(block_status.0, 101);
@@ -791,14 +791,14 @@ impl TestSession {
         self.node_generate(1);
         let height = initial_height_electrs + 1;
         // Wait until electrs has updated
-        let mut i = 120;
+        let mut i = 60;
         loop {
-            assert!(i > 0, "1 minute waiting for electrs block height {}", height);
+            assert!(i > 0, "timeout waiting for electrs block height {}", height);
             i -= 1;
             if height == self.electrs_tip() as u32 {
                 break;
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_secs(1));
         }
 
         // Wait until wallet has updated
@@ -853,7 +853,7 @@ impl TestSession {
                 Ok(header) => return header.height,
                 Err(e) => {
                     warn!("electrs_tip {:?}", e); // fixme, for some reason it errors once every two try
-                    thread::sleep(Duration::from_millis(500));
+                    thread::sleep(Duration::from_secs(1));
                 }
             }
         }
@@ -1031,28 +1031,28 @@ impl TestSession {
         store.cache.cross_validation_result.clone()
     }
 
-    /// wait for the spv cross validation status to change (max 1 min)
+    /// wait for the spv cross validation status to change
     pub fn wait_spv_cross_validation_change(&self, wait_for: bool) -> spv::CrossValidationResult {
-        for _ in 0..120 {
+        for _ in 0..60 {
             if let Some(result) = self.get_spv_cross_validation() {
                 if result.is_valid() == wait_for {
                     return result;
                 }
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_secs(1));
         }
-        panic!("1 minute with no spv cross-validation change");
+        panic!("timeout waiting for spv cross-validation change");
     }
 
-    /// wait for the spv validation status of a transaction to change (max 1 min)
+    /// wait for the spv validation status of a transaction to change
     pub fn wait_tx_spv_change(&self, txid: &str, wait_for: &str) {
-        for _ in 0..120 {
+        for _ in 0..60 {
             if self.get_tx_from_list(0, txid).spv_verified == wait_for {
                 return;
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_secs(1));
         }
-        panic!("1 minute with no tx spv change");
+        panic!("timeout waiting for tx spv change");
     }
 
     /// wait for the txid to show up in the given account
@@ -1060,25 +1060,25 @@ impl TestSession {
         let mut opt = GetTransactionsOpt::default();
         opt.subaccount = subaccount;
         opt.count = 100;
-        for _ in 0..120 {
+        for _ in 0..60 {
             let txs = self.session.get_transactions(&opt).unwrap().0;
             if txs.iter().any(|tx| tx.txhash == txid) {
                 return;
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_secs(1));
         }
-        panic!("tx {} did not show up in account {} after 1 minute", txid, subaccount);
+        panic!("timeout waiting for tx {} to show up in account {}", txid, subaccount);
     }
 
     pub fn wait_blockheight(&self, height: u32) {
-        let mut i = 120;
+        let mut i = 60;
         loop {
-            assert!(i > 0, "1 minute waiting for wallet block height {}", height);
+            assert!(i > 0, "timeout waiting for wallet block height {}", height);
             i -= 1;
             if height == self.session.block_status().unwrap().0 {
                 return;
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_secs(1));
         }
     }
 }
