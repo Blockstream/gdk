@@ -17,7 +17,7 @@ namespace sdk {
     class login_error : public std::runtime_error {
     public:
         explicit login_error(const std::string& what)
-            : std::runtime_error("login failed:" + what)
+            : std::runtime_error(what)
         {
         }
     };
