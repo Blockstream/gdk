@@ -163,7 +163,9 @@ impl Account {
         let mut my_txids: Vec<(&BETxid, &Option<u32>)> = acc_store
             .heights
             .iter()
-            .filter(|(_, height)| num_confs <= height.map_or(0, |height| tip_height - height + 1))
+            .filter(|(_, height)| {
+                num_confs <= height.map_or(0, |height| (tip_height + 1).saturating_sub(height))
+            })
             .collect();
         my_txids.sort_by(|a, b| {
             let height_cmp = b.1.unwrap_or(std::u32::MAX).cmp(&a.1.unwrap_or(std::u32::MAX));
@@ -275,7 +277,7 @@ impl Account {
         let mut utxos = vec![];
         let spent = self.spent()?;
         for (tx_id, height) in acc_store.heights.iter() {
-            if num_confs > height.map_or(0, |height| tip_height - height + 1) {
+            if num_confs > height.map_or(0, |height| (tip_height + 1).saturating_sub(height)) {
                 continue;
             }
 
