@@ -4,10 +4,8 @@ use std::convert::TryInto;
 use std::str::FromStr;
 
 use log::{debug, info, trace, warn};
-use rand::Rng;
 
 use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -464,8 +462,8 @@ impl Account {
                 info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
                 tx.into()
             }
-            BETransaction::Elements(mut tx) => {
-                blind_tx(self, &mut tx)?;
+            BETransaction::Elements(tx) => {
+                let mut tx = blind_tx(self, &tx)?;
 
                 for i in 0..tx.input.len() {
                     let prev_output = tx.input[i].previous_output;
@@ -798,10 +796,6 @@ pub fn discover_accounts(
     info!("discovered accounts: {:?}", discovered_accounts);
 
     Ok(discovered_accounts)
-}
-
-fn random32() -> Vec<u8> {
-    rand::thread_rng().gen::<[u8; 32]>().to_vec()
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -1236,156 +1230,49 @@ fn prepare_input(
     }
 }
 
-fn blind_tx(account: &Account, tx: &mut elements::Transaction) -> Result<(), Error> {
-    use elements::confidential::{Asset, Nonce};
-    use gdk_common::wally::{
-        asset_final_vbf, asset_generator_from_bytes, asset_rangeproof, asset_surjectionproof,
-        asset_value_commitment,
-    };
-
+fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::Transaction, Error> {
     info!("blind_tx {}", tx.txid());
 
     let store_read = account.store.read()?;
     let acc_store = store_read.account_cache(account.num())?;
 
-    let mut input_assets = vec![];
-    let mut input_abfs = vec![];
-    let mut input_vbfs = vec![];
-    let mut input_ags = vec![];
-    let mut input_values = vec![];
+    let mut pset = elements::pset::PartiallySignedTransaction::from_tx(tx.clone());
+    let mut inp_txout_sec: Vec<Option<elements::TxOutSecrets>> = vec![];
 
-    for input in tx.input.iter() {
-        info!("input {:?}", input);
-
+    for input in pset.inputs.iter_mut() {
+        let previous_output =
+            elements::OutPoint::new(input.previous_txid, input.previous_output_index);
         let unblinded = acc_store
             .unblinded
-            .get(&input.previous_output)
+            .get(&previous_output)
             .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
-        info!("unblinded value: {} asset:{}", unblinded.value, unblinded.asset.to_hex());
 
-        input_values.push(unblinded.value);
-        input_assets.extend(unblinded.asset.into_inner().to_vec());
-        input_abfs.extend(unblinded.abf.to_vec());
-        input_vbfs.extend(unblinded.vbf.to_vec());
-        let input_asset = asset_generator_from_bytes(&unblinded.asset, &unblinded.abf);
-        input_ags.extend(elements::encode::serialize(&input_asset));
+        // TODO: replace Unblinded with TxOutSecrets in the db
+        inp_txout_sec.push(Some(elements::TxOutSecrets::new(
+            unblinded.asset,
+            elements::confidential::AssetBlindingFactor::from_slice(&unblinded.abf)?,
+            unblinded.value,
+            elements::confidential::ValueBlindingFactor::from_slice(&unblinded.vbf)?,
+        )));
+
+        let prev_tx = acc_store.get_liquid_tx(&input.previous_txid)?;
+        let txout = prev_tx.output[input.previous_output_index as usize].clone();
+        input.witness_utxo = Some(txout);
+    }
+    for output in pset.outputs.iter_mut() {
+        // Elements Core when adding a new confidential output puts the receiver blinding
+        // key in the nonce field, then when blinding this is replaced by the sender ephemeral
+        // public key (ecdh_pubkey). We do the same in transaction creation. However when creating
+        // the PSET from the transaction, the value stored in the nonce field is the receiver
+        // blinding key not the ecdh_pubkey, so we swap them.
+        std::mem::swap(&mut output.blinding_key, &mut output.ecdh_pubkey);
+        // We are the owner of all inputs and outputs
+        output.blinder_index = Some(0);
     }
 
-    let ct_exp = account.network.ct_exponent.expect("ct_exponent not set in network");
-    let ct_bits = account.network.ct_bits.expect("ct_bits not set in network");
-    info!("ct params ct_exp:{}, ct_bits:{}", ct_exp, ct_bits);
-
-    let mut output_blinded_values = vec![];
-    for output in tx.output.iter() {
-        if !output.is_fee() {
-            output_blinded_values.push(output.minimum_value());
-        }
-    }
-    info!("output_blinded_values {:?}", output_blinded_values);
-    let mut all_values = vec![];
-    all_values.extend(input_values);
-    all_values.extend(output_blinded_values);
-    let in_num = tx.input.len();
-    let out_num = tx.output.len();
-
-    let output_abfs: Vec<Vec<u8>> = (0..out_num - 1).map(|_| random32()).collect();
-    let mut output_vbfs: Vec<Vec<u8>> = (0..out_num - 2).map(|_| random32()).collect();
-
-    let mut all_abfs = vec![];
-    all_abfs.extend(input_abfs.to_vec());
-    all_abfs.extend(output_abfs.iter().cloned().flatten().collect::<Vec<u8>>());
-
-    let mut all_vbfs = vec![];
-    all_vbfs.extend(input_vbfs.to_vec());
-    all_vbfs.extend(output_vbfs.iter().cloned().flatten().collect::<Vec<u8>>());
-
-    let last_vbf = asset_final_vbf(all_values, in_num as u32, all_abfs, all_vbfs);
-    output_vbfs.push(last_vbf.to_vec());
-
-    let mut rng = rand::thread_rng();
-    for (i, mut output) in tx.output.iter_mut().enumerate() {
-        info!("output {:?}", output);
-        if !output.is_fee() {
-            match (output.value, output.asset, output.nonce) {
-                (
-                    Value::Explicit(value),
-                    Asset::Explicit(asset),
-                    Nonce::Confidential(blinding_pubkey),
-                ) => {
-                    info!("value: {}", value);
-                    let ephemeral_sk = secp256k1::SecretKey::new(&mut rng);
-                    let ephemeral_pk = secp256k1::PublicKey::from_secret_key(&EC, &ephemeral_sk);
-                    let mut output_abf = [0u8; 32];
-                    output_abf.copy_from_slice(&(&output_abfs[i])[..]);
-                    let mut output_vbf = [0u8; 32];
-                    output_vbf.copy_from_slice(&(&output_vbfs[i])[..]);
-
-                    let output_generator = asset_generator_from_bytes(&asset, &output_abf);
-                    let output_value_commitment =
-                        asset_value_commitment(value, output_vbf, output_generator);
-                    let min_value = if output.script_pubkey.is_provably_unspendable() {
-                        0
-                    } else {
-                        1
-                    };
-
-                    let rangeproof = asset_rangeproof(
-                        value,
-                        blinding_pubkey,
-                        ephemeral_sk,
-                        &asset,
-                        output_abf,
-                        output_vbf,
-                        output_value_commitment,
-                        &output.script_pubkey,
-                        output_generator,
-                        min_value,
-                        ct_exp,
-                        ct_bits,
-                    );
-                    trace!("asset: {}", asset.to_hex());
-                    trace!("output_abf: {}", hex::encode(&output_abf));
-                    trace!(
-                        "output_generator: {}",
-                        hex::encode(&elements::encode::serialize(&output_generator))
-                    );
-                    trace!("input_assets: {}", hex::encode(&input_assets));
-                    trace!("input_abfs: {}", hex::encode(&input_abfs));
-                    trace!("input_ags: {}", hex::encode(&input_ags));
-                    trace!("in_num: {}", in_num);
-
-                    let surjectionproof = asset_surjectionproof(
-                        &asset,
-                        output_abf,
-                        output_generator,
-                        output_abf,
-                        &input_assets,
-                        &input_abfs,
-                        &input_ags,
-                        in_num,
-                    );
-                    trace!("surjectionproof: {}", hex::encode(&surjectionproof));
-
-                    output.nonce = elements::confidential::Nonce::Confidential(ephemeral_pk);
-                    output.asset = output_generator;
-                    output.value = output_value_commitment;
-                    info!(
-                        "added size len: surjectionproof:{} rangeproof:{}",
-                        surjectionproof.len(),
-                        rangeproof.len()
-                    );
-                    output.witness.surjection_proof = Some(
-                        elements::secp256k1_zkp::SurjectionProof::from_slice(&surjectionproof)
-                            .unwrap(),
-                    );
-                    output.witness.rangeproof =
-                        Some(elements::secp256k1_zkp::RangeProof::from_slice(&rangeproof).unwrap());
-                }
-                _ => panic!("create_tx created things not right"),
-            }
-        }
-    }
-    Ok(())
+    let inp_txout_sec: Vec<_> = inp_txout_sec.iter().map(|e| e.as_ref()).collect();
+    pset.blind_last(&mut rand::thread_rng(), &EC, &inp_txout_sec[..])?;
+    pset.extract_tx().map_err(Into::into)
 }
 
 #[cfg(test)]
