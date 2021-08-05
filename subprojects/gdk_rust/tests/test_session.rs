@@ -107,7 +107,7 @@ pub fn setup(
         // send initialfreecoins from wallet "" to the wallet created by BitcoinD::new
         let node_url = format!("http://127.0.0.1:{}/wallet/", node.params.rpc_socket.port());
         let client =
-            Client::new(node_url, Auth::CookieFile(node.params.cookie_file.clone())).unwrap();
+            Client::new(&node_url, Auth::CookieFile(node.params.cookie_file.clone())).unwrap();
         let address = node_getnewaddress(&node.client, None);
         client
             .call::<Value>(

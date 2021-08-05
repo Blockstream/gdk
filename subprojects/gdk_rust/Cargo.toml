@@ -29,11 +29,11 @@ half = "~1.7"
 
 [dev-dependencies]
 tempdir = "0.3.7"
-electrum-client = { version = "0.7.0", default-features = false, features = [ "proxy", "use-openssl" ] }
-bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
-elements = { version = "0.17", features = ["serde-feature"] }
+electrum-client = { version = "0.8.0", default-features = false, features = [ "proxy", "use-openssl" ] }
+bitcoin = { version = "0.27.0", features = [ "use-serde" ] }
+elements = { version = "0.18", features = ["serde-feature"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
-electrsd = { version = "0.7.0", features = [ "legacy", "trigger" ] }
+electrsd = { version = "0.10.0", features = [ "legacy", "trigger" ] }
 # We need to pin ureq (transitive dep from electrsd) to stay compatible with Rust 1.49.0
 ureq = "~2.2"
 
@@ -50,7 +50,3 @@ lto = true
 debug = true
 debug-assertions = true
 panic = 'abort'
-
-# required for https://github.com/rust-bitcoin/rust-bitcoin/pull/511 (merged but unreleased)
-[patch.crates-io]
-bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", rev = "5bd61967b231939626dd847fd82cc5da33052dc1", features = [ "use-serde" ] }
