@@ -340,23 +340,21 @@ namespace sdk {
     auth_handler* get_login_call(
         session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
     {
-        auth_handler* call;
         if (!hw_device.empty() || credential_data.contains("mnemonic")) {
             const auto mnemonic = json_get_value(credential_data, "mnemonic");
             const auto password = json_get_value(credential_data, "password");
             // FIXME: Allow a "bip39_passphrase" element to enable bip39 logins
-            call = new login_call(session, hw_device, mnemonic, password);
+            return new login_call(session, hw_device, mnemonic, password);
         } else if (credential_data.contains("pin")) {
             const auto pin = credential_data.at("pin");
             const auto& pin_data = credential_data.at("pin_data");
             const auto mnemonic = session.mnemonic_from_pin_data(pin, pin_data);
             const auto password = std::string();
-            call = new login_call(session, hw_device, mnemonic, password);
+            return new login_call(session, hw_device, mnemonic, password);
         } else {
             // Assume watch-only
-            call = new watch_only_login_call(session, credential_data);
+            return new watch_only_login_call(session, credential_data);
         }
-        return new ga::sdk::auto_auth_handler(call);
     }
 
     //
