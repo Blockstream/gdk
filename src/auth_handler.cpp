@@ -148,6 +148,8 @@ namespace sdk {
     void auth_handler_impl::operator()()
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::make_call);
+        // This handler can not be used if the session has been disconnected via GA_disconnect()
+        GDK_RUNTIME_ASSERT(m_session.get() == m_session_parent.get_nonnull_impl().get());
         bool is_invalid_code = false;
         try {
 
