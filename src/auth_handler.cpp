@@ -165,8 +165,13 @@ namespace sdk {
                 m_twofactor_data["method"] = m_method;
                 m_twofactor_data["code"] = m_code;
             }
-            m_state = call_impl();
-            m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
+            try {
+                m_state = call_impl();
+                m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
+            } catch (...) {
+                // Handle session level exceptions
+                m_session.exception_handler(std::current_exception());
+            }
         } catch (const autobahn::call_error& e) {
             auto details = get_error_details(e);
             if (is_twofactor_invalid_code_error(details.second)) {
