@@ -146,19 +146,7 @@ namespace sdk {
 
         const network_parameters& get_network_parameters() const;
 
-        auto get_nonnull_impl()
-        {
-            auto p = m_impl.load();
-            GDK_RUNTIME_ASSERT(p != nullptr);
-            return p;
-        }
-
-        auto get_nonnull_impl() const
-        {
-            auto p = m_impl.load();
-            GDK_RUNTIME_ASSERT(p != nullptr);
-            return p;
-        }
+        boost::shared_ptr<session_impl> get_nonnull_impl() const;
 
         void exception_handler(std::exception_ptr ex_p);
 
@@ -167,10 +155,8 @@ namespace sdk {
 
         void reconnect();
 
-        auto get_impl() { return m_impl.load(); }
-        auto get_impl() const { return m_impl.load(); }
+        boost::shared_ptr<session_impl> get_impl() const { return m_impl.load(); }
 
-        using session_ptr = boost::shared_ptr<session_impl>;
         using session_atomic_ptr = boost::atomic_shared_ptr<session_impl>;
 
         session_atomic_ptr m_impl;

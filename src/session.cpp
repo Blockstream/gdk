@@ -67,7 +67,7 @@ namespace sdk {
             throw reconnect_error();
         } catch (const login_error& e) {
             {
-                session_ptr p = m_impl.load();
+                boost::shared_ptr<session_impl> p = m_impl.load();
                 if (p) {
                     p->on_failed_login();
                 }
@@ -134,7 +134,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(init_done, "You must call GA_init first");
             GDK_RUNTIME_ASSERT_MSG(!get_impl(), "session already connected");
 
-            session_ptr session_p = session_impl::create(net_params);
+            boost::shared_ptr<session_impl> session_p = session_impl::create(net_params);
 
             boost::weak_ptr<session_impl> weak_session = session_p;
             session_p->set_ping_fail_handler([weak_session] {
@@ -155,7 +155,7 @@ namespace sdk {
             });
             session_p->set_notification_handler(m_notification_handler, m_notification_context);
 
-            session_ptr empty;
+            boost::shared_ptr<session_impl> empty;
             GDK_RUNTIME_ASSERT_MSG(m_impl.compare_exchange_strong(empty, session_p), "unable to allocate session");
             session_p->connect();
         } catch (const std::exception& ex) {
@@ -190,7 +190,7 @@ namespace sdk {
     {
         GDK_LOG_SEV(log_level::debug) << "session disconnect...";
         auto p = get_impl();
-        while (p && !m_impl.compare_exchange_strong(p, session_ptr{})) {
+        while (p && !m_impl.compare_exchange_strong(p, boost::shared_ptr<session_impl>{})) {
         }
         if (p && p->get_network_parameters().is_electrum()) {
             GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
@@ -819,6 +819,13 @@ namespace sdk {
     {
         auto p = get_nonnull_impl();
         return p->get_network_parameters(); // Note no exception_wrapper
+    }
+
+    boost::shared_ptr<session_impl> session::get_nonnull_impl() const
+    {
+        auto p = get_impl();
+        GDK_RUNTIME_ASSERT(p != nullptr);
+        return p;
     }
 
 } // namespace sdk
