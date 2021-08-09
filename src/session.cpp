@@ -58,10 +58,10 @@ namespace sdk {
 
     const nlohmann::json& gdk_config() { return global_config; }
 
-    template <typename F, typename... Args> auto session::exception_wrapper(F&& f, Args&&... args)
+    void session::exception_handler(std::exception_ptr ex_p)
     {
         try {
-            return f(std::forward<Args>(args)...);
+            std::rethrow_exception(ex_p);
         } catch (const autobahn::abort_error& e) {
             reconnect();
             throw reconnect_error();
@@ -72,7 +72,7 @@ namespace sdk {
                     p->on_failed_login();
                 }
             }
-            std::rethrow_exception(std::current_exception());
+            std::rethrow_exception(ex_p);
         } catch (const autobahn::network_error& e) {
             reconnect();
             throw reconnect_error();
@@ -97,15 +97,15 @@ namespace sdk {
             if (!details.second.empty()) {
                 throw user_error(details.second);
             }
-            std::rethrow_exception(std::current_exception());
+            std::rethrow_exception(ex_p);
         } catch (const assertion_error& e) {
             // Already logged by the assertion that failed
-            std::rethrow_exception(std::current_exception());
+            std::rethrow_exception(ex_p);
         } catch (const user_error& e) {
             log_exception("user error:", e);
-            std::rethrow_exception(std::current_exception());
+            std::rethrow_exception(ex_p);
         } catch (const reconnect_error& e) {
-            std::rethrow_exception(std::current_exception());
+            std::rethrow_exception(ex_p);
         } catch (const timeout_error& e) {
             reconnect();
             throw reconnect_error();
@@ -114,7 +114,16 @@ namespace sdk {
             throw reconnect_error();
         } catch (const std::exception& e) {
             log_exception("uncaught exception:", e);
-            std::rethrow_exception(std::current_exception());
+            std::rethrow_exception(ex_p);
+        }
+    }
+
+    template <typename F, typename... Args> auto session::exception_wrapper(F&& f, Args&&... args)
+    {
+        try {
+            return f(std::forward<Args>(args)...);
+        } catch (...) {
+            exception_handler(std::current_exception());
         }
         __builtin_unreachable();
     }

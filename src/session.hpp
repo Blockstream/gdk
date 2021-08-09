@@ -160,6 +160,8 @@ namespace sdk {
             return p;
         }
 
+        void exception_handler(std::exception_ptr ex_p);
+
     private:
         template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
 
