@@ -253,53 +253,11 @@ namespace sdk {
         });
     }
 
-    void session::register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-        const std::string& gait_path_hex, bool supports_csv)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
-        });
-    }
-
-    std::string session::get_challenge(const std::string& address)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_challenge(address);
-        });
-    }
-
-    nlohmann::json session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->authenticate(sig_der_hex, path_hex, root_xpub_bip32, signer);
-        });
-    }
-
-    void session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->register_subaccount_xpubs(bip32_xpubs);
-        });
-    }
-
     std::string session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
             return p->mnemonic_from_pin_data(pin, pin_data);
-        });
-    }
-
-    nlohmann::json session::login_watch_only(const std::string& username, const std::string& password)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->login_watch_only(username, password);
         });
     }
 
@@ -319,60 +277,11 @@ namespace sdk {
         });
     }
 
-    bool session::remove_account(const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->remove_account(twofactor_data);
-        });
-    }
-
-    nlohmann::json session::create_subaccount(
-        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->create_subaccount(details, subaccount, xpub);
-        });
-    }
-
-    std::vector<uint32_t> session::get_subaccount_root_path(uint32_t subaccount)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_subaccount_root_path(subaccount);
-        });
-    }
-
-    std::vector<uint32_t> session::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_subaccount_full_path(subaccount, pointer);
-        });
-    }
-
-    uint32_t session::get_next_subaccount(const std::string& type)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_next_subaccount(type);
-        });
-    }
-
     void session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();
             p->rename_subaccount(subaccount, new_name);
-        });
-    }
-
-    void session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->set_subaccount_hidden(subaccount, is_hidden);
         });
     }
 
@@ -384,68 +293,12 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_post_login_data()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_post_login_data();
-        });
-    }
-
-    void session::change_settings(const nlohmann::json& settings)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->change_settings(settings);
-        });
-    }
-
-    void session::change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->change_settings_limits(limit_details, twofactor_data);
-        });
-    }
-
-    nlohmann::json session::get_transactions(const nlohmann::json& details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_transactions(details);
-        });
-    }
-
     void session::set_notification_handler(GA_notification_handler handler, void* context)
     {
         auto p = get_impl();
         GDK_RUNTIME_ASSERT(p == nullptr);
         m_notification_handler = handler;
         m_notification_context = context;
-    }
-
-    nlohmann::json session::get_receive_address(const nlohmann::json& details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_receive_address(details);
-        });
-    }
-
-    nlohmann::json session::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_previous_addresses(subaccount, last_pointer);
-        });
-    }
-
-    void session::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->set_local_encryption_keys(public_key, is_hw_wallet);
-        });
     }
 
     nlohmann::json session::get_available_currencies()
@@ -456,151 +309,11 @@ namespace sdk {
         });
     }
 
-    bool session::is_rbf_enabled()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->is_rbf_enabled();
-        });
-    }
-
-    bool session::is_watch_only()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->is_watch_only();
-        });
-    }
-
-    bool session::is_liquid()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_network_parameters().is_liquid();
-        });
-    }
-
     nlohmann::json session::get_twofactor_config(bool reset_cached)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
             return p->get_twofactor_config(reset_cached);
-        });
-    }
-
-    std::vector<std::string> session::get_enabled_twofactor_methods()
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_enabled_twofactor_methods();
-        });
-    }
-
-    void session::set_email(const std::string& email, const nlohmann::json& twofactor_data)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->set_email(email, twofactor_data);
-        });
-    }
-
-    void session::activate_email(const std::string& code)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->activate_email(code);
-        });
-    }
-
-    nlohmann::json session::init_enable_twofactor(
-        const std::string& method, const std::string& data, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->init_enable_twofactor(method, data, twofactor_data);
-        });
-    }
-
-    void session::enable_twofactor(const std::string& method, const std::string& code)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->enable_twofactor(method, code);
-        });
-    }
-
-    void session::enable_gauth(const std::string& code, const nlohmann::json& twofactor_data)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->enable_gauth(code, twofactor_data);
-        });
-    }
-
-    void session::disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->disable_twofactor(method, twofactor_data);
-        });
-    }
-
-    nlohmann::json session::auth_handler_request_code(
-        const std::string& method, const std::string& action, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->auth_handler_request_code(method, action, twofactor_data);
-        });
-    }
-
-    std::string session::auth_handler_request_proxy_code(
-        const std::string& action, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->auth_handler_request_proxy_code(action, twofactor_data);
-        });
-    }
-
-    nlohmann::json session::request_twofactor_reset(const std::string& email)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->request_twofactor_reset(email);
-        });
-    }
-
-    nlohmann::json session::confirm_twofactor_reset(
-        const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->confirm_twofactor_reset(email, is_dispute, twofactor_data);
-        });
-    }
-
-    nlohmann::json session::request_undo_twofactor_reset(const std::string& email)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->request_undo_twofactor_reset(email);
-        });
-    }
-
-    nlohmann::json session::confirm_undo_twofactor_reset(const std::string& email, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->confirm_undo_twofactor_reset(email, twofactor_data);
-        });
-    }
-
-    nlohmann::json session::cancel_twofactor_reset(const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->cancel_twofactor_reset(twofactor_data);
         });
     }
 
@@ -620,53 +333,12 @@ namespace sdk {
         });
     }
 
-    bool session::set_blinding_nonce(const std::string& pubkey, const std::string& script, const std::string& nonce)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->set_blinding_nonce(pubkey, script, nonce);
-        });
-    }
-
     nlohmann::json session::get_unspent_outputs_for_private_key(
         const std::string& private_key, const std::string& password, uint32_t unused)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
             return p->get_unspent_outputs_for_private_key(private_key, password, unused);
-        });
-    }
-
-    nlohmann::json session::set_unspent_outputs_status(
-        const nlohmann::json& details, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->set_unspent_outputs_status(details, twofactor_data);
-        });
-    }
-
-    nlohmann::json session::create_transaction(const nlohmann::json& details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->create_transaction(details);
-        });
-    }
-
-    nlohmann::json session::sign_transaction(const nlohmann::json& details)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->sign_transaction(details);
-        });
-    }
-
-    nlohmann::json session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->send_transaction(details, twofactor_data);
         });
     }
 
@@ -686,36 +358,11 @@ namespace sdk {
         });
     }
 
-    void session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->set_csvtime(locktime_details, twofactor_data);
-        });
-    }
-
-    void session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->set_nlocktime(locktime_details, twofactor_data);
-        });
-    }
-
     void session::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
     {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();
             p->set_transaction_memo(txhash_hex, memo);
-        });
-    }
-
-    void session::upload_confidential_addresses(
-        uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->upload_confidential_addresses(subaccount, confidential_addresses);
         });
     }
 
@@ -752,20 +399,6 @@ namespace sdk {
         });
     }
 
-    std::pair<std::string, std::vector<uint32_t>> session::get_system_message_info(const std::string& system_message)
-    {
-        auto p = get_nonnull_impl();
-        return p->get_system_message_info(system_message); // Note no exception wrapper
-    }
-
-    void session::ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->ack_system_message(message_hash_hex, sig_der_hex);
-        });
-    }
-
     nlohmann::json session::convert_amount(const nlohmann::json& amount_json)
     {
         return exception_wrapper([&] {
@@ -777,42 +410,6 @@ namespace sdk {
             // be attempted using any provided fallback fiat values.
             return amount::convert(amount_json, std::string(), std::string());
         });
-    }
-
-    amount session::get_min_fee_rate() const
-    {
-        auto p = get_nonnull_impl();
-        return p->get_min_fee_rate(); // Note no exception_wrapper
-    }
-
-    amount session::get_default_fee_rate() const
-    {
-        auto p = get_nonnull_impl();
-        return p->get_default_fee_rate(); // Note no exception_wrapper
-    }
-
-    uint32_t session::get_block_height() const
-    {
-        auto p = get_nonnull_impl();
-        return p->get_block_height(); // Note no exception_wrapper
-    }
-
-    amount session::get_dust_threshold() const
-    {
-        auto p = get_nonnull_impl();
-        return p->get_dust_threshold(); // Note no exception_wrapper
-    }
-
-    nlohmann::json session::get_spending_limits() const
-    {
-        auto p = get_nonnull_impl();
-        return p->get_spending_limits(); // Note no exception_wrapper
-    }
-
-    bool session::is_spending_limits_decrease(const nlohmann::json& limit_details)
-    {
-        auto p = get_nonnull_impl();
-        return p->is_spending_limits_decrease(limit_details); // Note no exception_wrapper
     }
 
     const network_parameters& session::get_network_parameters() const
