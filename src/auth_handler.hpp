@@ -2,6 +2,7 @@
 #define GDK_AUTH_HANDLER_HPP
 #pragma once
 
+#include "boost_wrapper.hpp"
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -9,7 +10,9 @@
 
 namespace ga {
 namespace sdk {
+    class network_parameters;
     class session;
+    class session_impl;
     class signer;
 
     struct auth_handler {
@@ -48,7 +51,7 @@ namespace sdk {
         virtual hw_request get_hw_request() const = 0;
 
         virtual void operator()() = 0;
-        virtual session& get_session() const = 0;
+        virtual session_impl& get_session() const = 0;
         virtual std::shared_ptr<signer> get_signer() const = 0;
 
     protected:
@@ -73,7 +76,7 @@ namespace sdk {
         hw_request get_hw_request() const final;
 
         void operator()() final;
-        session& get_session() const final;
+        session_impl& get_session() const final;
         std::shared_ptr<signer> get_signer() const final;
 
     protected:
@@ -83,7 +86,12 @@ namespace sdk {
 
         void request_code_impl(const std::string& method) final;
 
-        session& m_session;
+    private:
+        session& m_session_parent;
+
+    protected:
+        boost::shared_ptr<session_impl> m_session;
+        const network_parameters& m_net_params;
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<std::vector<std::string>> m_methods; // All available methods
         std::string m_method; // Selected 2fa method
@@ -114,7 +122,7 @@ namespace sdk {
         hw_request get_hw_request() const final;
 
         void operator()() final;
-        virtual session& get_session() const final;
+        virtual session_impl& get_session() const final;
         virtual std::shared_ptr<signer> get_signer() const final;
 
     private:

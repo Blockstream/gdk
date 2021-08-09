@@ -30,7 +30,9 @@ namespace sdk {
     void auth_handler::signal_hw_request(hw_request /*request*/) { GDK_RUNTIME_ASSERT(false); }
 
     auth_handler_impl::auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer)
-        : m_session(session)
+        : m_session_parent(session)
+        , m_session(session.get_nonnull_impl())
+        , m_net_params(session.get_network_parameters())
         , m_signer(signer)
         , m_action(action)
         , m_state(state_type::make_call)
@@ -41,13 +43,7 @@ namespace sdk {
     }
 
     auth_handler_impl::auth_handler_impl(session& session, const std::string& action)
-        : m_session(session)
-        , m_signer(session.get_nonnull_impl()->get_signer())
-        , m_action(action)
-        , m_state(state_type::make_call)
-        , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
-        , m_hw_request(hw_request::none)
-        , m_use_anti_exfil(false)
+        : auth_handler_impl(session, action, session.get_nonnull_impl()->get_signer())
     {
     }
 
@@ -101,8 +97,8 @@ namespace sdk {
     {
         m_hw_request = hw_request::none;
         m_action = action;
-        if (!m_methods && !m_session.is_watch_only()) {
-            m_methods.reset(new std::vector<std::string>(m_session.get_enabled_twofactor_methods()));
+        if (!m_methods && !m_session->is_watch_only()) {
+            m_methods.reset(new std::vector<std::string>(m_session->get_enabled_twofactor_methods()));
         }
         m_twofactor_data = nlohmann::json::object();
         m_state = !m_methods || m_methods->empty() ? state_type::make_call : state_type::request_code;
@@ -135,7 +131,7 @@ namespace sdk {
 
         // For gauth request code is a no-op
         if (method != "gauth") {
-            m_auth_data = m_session.auth_handler_request_code(method, m_action, m_twofactor_data);
+            m_auth_data = m_session->auth_handler_request_code(method, m_action, m_twofactor_data);
         }
 
         m_method = method;
@@ -170,7 +166,7 @@ namespace sdk {
                 m_attempts_remaining = TWO_FACTOR_ATTEMPTS;
             } catch (...) {
                 // Handle session level exceptions
-                m_session.exception_handler(std::current_exception());
+                m_session_parent.exception_handler(std::current_exception());
             }
         } catch (const autobahn::call_error& e) {
             auto details = get_error_details(e);
@@ -207,7 +203,7 @@ namespace sdk {
     auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
     auth_handler::state_type auth_handler_impl::get_state() const { return m_state; }
 
-    session& auth_handler_impl::get_session() const { return m_session; }
+    session_impl& auth_handler_impl::get_session() const { return *m_session; }
 
     std::shared_ptr<signer> auth_handler_impl::get_signer() const { return m_signer; }
 
@@ -293,7 +289,7 @@ namespace sdk {
     auth_handler::state_type auto_auth_handler::get_state() const { return m_handler->get_state(); }
     auth_handler::hw_request auto_auth_handler::get_hw_request() const { return m_handler->get_hw_request(); }
 
-    session& auto_auth_handler::get_session() const { return m_handler->get_session(); }
+    session_impl& auto_auth_handler::get_session() const { return m_handler->get_session(); }
 
     std::shared_ptr<signer> auto_auth_handler::get_signer() const { return m_handler->get_signer(); }
 
@@ -315,10 +311,9 @@ namespace sdk {
         if (request == hw_request::get_master_blinding_key) {
             // Host unblinding: fetch master blinding key
             // Allow the session to handle this request with cached data if it can
-            auto impl = get_session().get_nonnull_impl();
             std::string blinding_key;
             bool denied;
-            std::tie(blinding_key, denied) = impl->get_cached_master_blinding_key();
+            std::tie(blinding_key, denied) = get_session().get_cached_master_blinding_key();
             if (!blinding_key.empty() || denied) {
                 // We have a cached blinding key or the user has denied access
                 result.emplace("master_blinding_key", blinding_key); // Blank if denied
@@ -367,9 +362,9 @@ namespace sdk {
         } else if (request == hw_request::get_master_blinding_key) {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
         } else if (request == hw_request::sign_tx) {
-            auto impl = get_session().get_nonnull_impl();
-            auto sigs
-                = sign_ga_transaction(*impl, required_data.at("transaction"), required_data.at("signing_inputs")).first;
+            auto sigs = sign_ga_transaction(
+                get_session(), required_data.at("transaction"), required_data.at("signing_inputs"))
+                            .first;
             result["signatures"] = sigs;
         } else {
             GDK_LOG_SEV(log_level::warning) << "Unknown hardware request " << status.dump();
