@@ -208,9 +208,8 @@ namespace sdk {
             const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
 
             m_master_xpub_bip32 = xpubs.at(0);
-            const auto btc_version = m_net_params.btc_version();
             const auto public_key = get_xpub(m_master_xpub_bip32).second;
-            m_challenge = m_session->get_challenge(public_key_to_p2pkh_addr(btc_version, public_key));
+            m_challenge = m_session->get_challenge(public_key);
 
             const auto local_xpub = get_xpub(xpubs.at(1));
             const bool is_hw_wallet = m_signer->is_hardware();

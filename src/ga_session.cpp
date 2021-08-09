@@ -1137,9 +1137,9 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
     }
 
-    // Idempotent
-    std::string ga_session::get_challenge(const std::string& address)
+    std::string ga_session::get_challenge(const pub_key_t& public_key)
     {
+        const std::string address = public_key_to_p2pkh_addr(m_net_params.btc_version(), public_key);
         const bool nlocktime_support = true;
         return wamp_cast(wamp_call("login.get_trezor_challenge", address, nlocktime_support));
     }

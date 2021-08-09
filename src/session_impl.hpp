@@ -78,7 +78,7 @@ namespace sdk {
         virtual nlohmann::json refresh_assets(const nlohmann::json& params) = 0;
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
 
-        virtual std::string get_challenge(const std::string& address) = 0;
+        virtual std::string get_challenge(const pub_key_t& public_key) = 0;
         virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
             = 0;

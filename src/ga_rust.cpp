@@ -172,7 +172,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
 
-    std::string ga_rust::get_challenge(const std::string& address) { throw std::runtime_error("not implemented"); }
+    std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
     {

@@ -31,7 +31,7 @@ namespace sdk {
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
-        std::string get_challenge(const std::string& address);
+        std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_xpub_bip32, std::shared_ptr<signer> signer);
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
