@@ -301,13 +301,17 @@ GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const 
 
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_set_csvtime, struct GA_session*, session, const GA_json*, locktime_details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::csv_time_call(*session, *json_cast(locktime_details))); });
+GDK_DEFINE_C_FUNCTION_3(
+    GA_set_csvtime, struct GA_session*, session, const GA_json*, locktime_details, struct GA_auth_handler**, call, {
+        constexpr bool is_csv = true;
+        *call = auth_cast(new ga::sdk::locktime_call(*session, *json_cast(locktime_details), is_csv));
+    });
 
-GDK_DEFINE_C_FUNCTION_3(GA_set_nlocktime, struct GA_session*, session, const GA_json*, locktime_details,
-    struct GA_auth_handler**, call,
-    { *call = auth_cast(new ga::sdk::nlocktime_call(*session, *json_cast(locktime_details))); });
+GDK_DEFINE_C_FUNCTION_3(
+    GA_set_nlocktime, struct GA_session*, session, const GA_json*, locktime_details, struct GA_auth_handler**, call, {
+        constexpr bool is_csv = false;
+        *call = auth_cast(new ga::sdk::locktime_call(*session, *json_cast(locktime_details), is_csv));
+    });
 
 GDK_DEFINE_C_FUNCTION_4(GA_set_transaction_memo, struct GA_session*, session, const char*, txhash_hex, const char*,
     memo, uint32_t, memo_type, {

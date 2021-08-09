@@ -213,6 +213,7 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        bool m_initialized;
     };
 
     class send_transaction_call final : public auth_handler_impl {
@@ -252,26 +253,18 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        bool m_initialized;
     };
 
-    class csv_time_call : public auth_handler_impl {
+    class locktime_call : public auth_handler_impl {
     public:
-        explicit csv_time_call(session& session, const nlohmann::json& params);
+        locktime_call(session& session, const nlohmann::json& params, bool is_csv);
 
     private:
         state_type call_impl() override;
 
         nlohmann::json m_params;
-    };
-
-    class nlocktime_call : public auth_handler_impl {
-    public:
-        explicit nlocktime_call(session& session, const nlohmann::json& params);
-
-    private:
-        state_type call_impl() override;
-
-        nlohmann::json m_params;
+        bool m_initialized;
     };
 } // namespace sdk
 } // namespace ga

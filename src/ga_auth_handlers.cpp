@@ -1294,16 +1294,17 @@ namespace sdk {
     //
     remove_account_call::remove_account_call(session& session)
         : auth_handler_impl(session, "remove_account")
+        , m_initialized(false)
     {
-        try {
-            signal_2fa_request("remove_account");
-        } catch (const std::exception& e) {
-            set_error(e.what());
-        }
     }
 
     auth_handler::state_type remove_account_call::call_impl()
     {
+        if (!m_initialized) {
+            signal_2fa_request("remove_account");
+            m_initialized = true;
+            return m_state;
+        }
         m_session->remove_account(m_twofactor_data);
         return state_type::done;
     }
@@ -1467,59 +1468,44 @@ namespace sdk {
     //
     twofactor_cancel_reset_call::twofactor_cancel_reset_call(session& session)
         : auth_handler_impl(session, "twofactor_cancel_reset")
+        , m_initialized(false)
     {
-        try {
-            signal_2fa_request("cancel_reset");
-        } catch (const std::exception& e) {
-            set_error(e.what());
-        }
     }
 
     auth_handler::state_type twofactor_cancel_reset_call::call_impl()
     {
+        if (!m_initialized) {
+            signal_2fa_request("cancel_reset");
+            m_initialized = true;
+            return m_state;
+        }
         m_result = m_session->cancel_twofactor_reset(m_twofactor_data);
         return state_type::done;
     }
 
     //
-    // Set CSV time
+    // Set nlocktime/csvtime
     //
-    csv_time_call::csv_time_call(session& session, const nlohmann::json& params)
-        : auth_handler_impl(session, "set_csvtime")
+    locktime_call::locktime_call(session& session, const nlohmann::json& params, bool is_csv)
+        : auth_handler_impl(session, is_csv ? "set_csvtime" : "set_nlocktime")
         , m_params(params)
+        , m_initialized(false)
     {
-        try {
-            signal_2fa_request("set_csvtime");
+    }
+
+    auth_handler::state_type locktime_call::call_impl()
+    {
+        if (!m_initialized) {
+            signal_2fa_request(m_action);
             m_twofactor_data = { { "value", m_params.at("value") } };
-        } catch (const std::exception& e) {
-            set_error(e.what());
+            m_initialized = true;
+            return m_state;
         }
-    }
-
-    auth_handler::state_type csv_time_call::call_impl()
-    {
-        m_session->set_csvtime(m_params, m_twofactor_data);
-        return state_type::done;
-    }
-
-    //
-    // Set nlocktime time
-    //
-    nlocktime_call::nlocktime_call(session& session, const nlohmann::json& params)
-        : auth_handler_impl(session, "set_nlocktime")
-        , m_params(params)
-    {
-        try {
-            signal_2fa_request("set_nlocktime");
-            m_twofactor_data = { { "value", m_params.at("value") } };
-        } catch (const std::exception& e) {
-            set_error(e.what());
+        if (m_action == "set_csvtime") {
+            m_session->set_csvtime(m_params, m_twofactor_data);
+        } else {
+            m_session->set_nlocktime(m_params, m_twofactor_data);
         }
-    }
-
-    auth_handler::state_type nlocktime_call::call_impl()
-    {
-        m_session->set_nlocktime(m_params, m_twofactor_data);
         return state_type::done;
     }
 } // namespace sdk
