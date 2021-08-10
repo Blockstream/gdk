@@ -29,12 +29,13 @@ namespace sdk {
 
     void auth_handler::signal_hw_request(hw_request /*request*/) { GDK_RUNTIME_ASSERT(false); }
 
-    auth_handler_impl::auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer)
+    auth_handler_impl::auth_handler_impl(session& session, const std::string& name, std::shared_ptr<signer> signer)
         : m_session_parent(session)
         , m_session(session.get_nonnull_impl())
         , m_net_params(session.get_network_parameters())
+        , m_name(name)
         , m_signer(signer)
-        , m_action(action)
+        , m_action(name)
         , m_state(state_type::make_call)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
         , m_hw_request(hw_request::none)
@@ -42,8 +43,8 @@ namespace sdk {
     {
     }
 
-    auth_handler_impl::auth_handler_impl(session& session, const std::string& action)
-        : auth_handler_impl(session, action, session.get_nonnull_impl()->get_signer())
+    auth_handler_impl::auth_handler_impl(session& session, const std::string& name)
+        : auth_handler_impl(session, name, session.get_nonnull_impl()->get_signer())
     {
     }
 
@@ -106,7 +107,7 @@ namespace sdk {
 
     void auth_handler_impl::set_error(const std::string& error_message)
     {
-        GDK_LOG_SEV(log_level::warning) << m_action << " call exception: " << error_message;
+        GDK_LOG_SEV(log_level::warning) << m_name << " call exception: " << error_message;
         m_state = state_type::error;
         m_error = error_message;
     }
@@ -260,6 +261,7 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT(status_str != nullptr);
         status.emplace("status", status_str);
+        status.emplace("name", m_name);
         status.emplace("action", action);
         return status;
     }

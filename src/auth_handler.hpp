@@ -92,6 +92,7 @@ namespace sdk {
     protected:
         boost::shared_ptr<session_impl> m_session;
         const network_parameters& m_net_params;
+        const std::string m_name; // Name of the method being resolved
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<std::vector<std::string>> m_methods; // All available methods
         std::string m_method; // Selected 2fa method
