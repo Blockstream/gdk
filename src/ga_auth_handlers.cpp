@@ -1025,38 +1025,43 @@ namespace sdk {
     //
     set_unspent_outputs_status_call::set_unspent_outputs_status_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "set_unspent_output_status")
+        , m_details(details)
+        , m_initialized(false)
     {
-        try {
-            GDK_RUNTIME_ASSERT(details.at("list").is_array());
+    }
 
-            nlohmann::json args = details;
-            bool seen_frozen = false;
+    void set_unspent_outputs_status_call::initialize()
+    {
+        GDK_RUNTIME_ASSERT(m_details.at("list").is_array());
+        bool seen_frozen = false;
 
-            for (auto& item : args["list"]) {
-                auto& status = item["user_status"];
-                if (status == "default") {
-                    status = 0;
-                } else if (status == "frozen") {
-                    status = 1;
-                    seen_frozen = true;
-                } else {
-                    GDK_RUNTIME_ASSERT_MSG(false, "Unknown UTXO status");
-                }
+        for (auto& item : m_details["list"]) {
+            auto& status = item["user_status"];
+            if (status == "default") {
+                status = 0;
+            } else if (status == "frozen") {
+                status = 1;
+                seen_frozen = true;
+            } else {
+                GDK_RUNTIME_ASSERT_MSG(false, "Unknown UTXO status");
             }
+        }
 
-            m_details = args;
-            if (seen_frozen) {
-                // 2FA only needed to un-freeze a UTXO
-                signal_2fa_request("set_utxo_status");
-                m_twofactor_data = { { "list", args["list"] } };
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+        if (seen_frozen) {
+            // 2FA only needed to un-freeze a UTXO
+            signal_2fa_request("set_utxo_status");
+            m_twofactor_data = { { "list", m_details["list"] } };
         }
     }
 
     auth_handler::state_type set_unspent_outputs_status_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         m_result = m_session->set_unspent_outputs_status(m_details, m_twofactor_data);
         return state_type::done;
     }

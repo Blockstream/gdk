@@ -156,7 +156,10 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
+        void initialize();
+
         nlohmann::json m_details;
+        bool m_initialized;
     };
 
     class change_settings_call : public auth_handler_impl {
