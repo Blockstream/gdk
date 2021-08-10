@@ -178,13 +178,15 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
+        void initialize();
         state_type on_init_done(const std::string& new_action);
 
         nlohmann::json m_current_config;
-        std::string m_method_to_update;
+        const std::string m_method_to_update;
         nlohmann::json m_details;
         nlohmann::json m_gauth_data;
         bool m_enabling;
+        bool m_initialized;
     };
 
     class update_subaccount_call : public auth_handler_impl {

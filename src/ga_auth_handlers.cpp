@@ -1103,61 +1103,60 @@ namespace sdk {
         , m_method_to_update(method_to_update)
         , m_details(details)
         , m_enabling(m_details.value("enabled", true))
+        , m_initialized(false)
     {
-        try {
-            m_current_config = session.get_twofactor_config();
-            GDK_RUNTIME_ASSERT(m_current_config.find(method_to_update) != m_current_config.end());
+    }
 
-            const auto& current_subconfig = m_current_config[method_to_update];
+    void change_settings_twofactor_call::initialize()
+    {
+        m_current_config = m_session->get_twofactor_config();
+        const auto& current_subconfig = m_current_config.at(m_method_to_update);
 
-            const bool set_email = !m_enabling && method_to_update == "email" && m_details.value("confirmed", false)
-                && !current_subconfig.value("confirmed", false);
+        const bool set_email = !m_enabling && m_method_to_update == "email" && m_details.value("confirmed", false)
+            && !current_subconfig.value("confirmed", false);
 
-            if (!set_email && current_subconfig.value("enabled", !m_enabling) == m_enabling) {
-                // Caller is attempting to enable or disable when thats already the current state
-                set_error(method_to_update + " is already " + (m_enabling ? "enabled" : "disabled"));
-                return;
+        if (!set_email && current_subconfig.value("enabled", !m_enabling) == m_enabling) {
+            // Caller is attempting to enable or disable when thats already the current state
+            set_error(m_method_to_update + " is already " + (m_enabling ? "enabled" : "disabled"));
+            return;
+        }
+
+        // The data associated with m_method_to_update e.g. email, phone etc
+        const std::string data = json_get_value(m_details, "data");
+
+        if (m_enabling) {
+            signal_2fa_request("enable_2fa");
+            if (m_method_to_update == "gauth") {
+                // For gauth the user must pass in the current seed returned by the
+                // server.
+                // FIXME: Allow the user to specify their own seed in the future.
+                if (data != json_get_value(current_subconfig, "data")) {
+                    set_error(res::id_inconsistent_data_provided_for);
+                    return;
+                }
             }
-
-            // The data associated with method_to_update e.g. email, phone etc
-            const std::string data = json_get_value(m_details, "data");
-
-            if (m_enabling) {
-                signal_2fa_request("enable_2fa");
-                if (method_to_update == "gauth") {
-                    // For gauth the user must pass in the current seed returned by the
-                    // server.
-                    // FIXME: Allow the user to specify their own seed in the future.
-                    if (data != json_get_value(current_subconfig, "data")) {
-                        set_error(res::id_inconsistent_data_provided_for);
-                        return;
-                    }
+            m_twofactor_data = { { "method", m_method_to_update } };
+        } else {
+            if (set_email) {
+                // The caller set confirmed=true but enabled=false: they only want
+                // to set the email associated with twofactor but not enable it for 2fa.
+                // This is useful since notifications and 2fa currently share the
+                // same 2fa email address.
+                signal_2fa_request("set_email");
+                m_twofactor_data = { { "address", data } };
+            } else {
+                signal_2fa_request("disable_2fa");
+                if (m_methods && m_methods->size() > 1) {
+                    // If disabling 'm_method_to_update' will leave other methods enabled, insist
+                    // the disable action is confirmed using one of the remaining methods to
+                    // prevent the user accidentally leaving the wallet with 2fa enabled that they
+                    // can't access
+                    const auto being_disabled = std::find(m_methods->begin(), m_methods->end(), m_method_to_update);
+                    GDK_RUNTIME_ASSERT(being_disabled != m_methods->end());
+                    m_methods->erase(being_disabled);
                 }
                 m_twofactor_data = { { "method", m_method_to_update } };
-            } else {
-                if (set_email) {
-                    // The caller set confirmed=true but enabled=false: they only want
-                    // to set the email associated with twofactor but not enable it for 2fa.
-                    // This is useful since notifications and 2fa currently share the
-                    // same 2fa email address.
-                    signal_2fa_request("set_email");
-                    m_twofactor_data = { { "address", data } };
-                } else {
-                    signal_2fa_request("disable_2fa");
-                    if (m_methods && m_methods->size() > 1) {
-                        // If disabling 'method_to_update' will leave other methods enabled, insist
-                        // the disable action is confirmed using one of the remaining methods to
-                        // prevent the user accidentally leaving the wallet with 2fa enabled that they
-                        // can't access
-                        const auto being_disabled = std::find(m_methods->begin(), m_methods->end(), method_to_update);
-                        GDK_RUNTIME_ASSERT(being_disabled != m_methods->end());
-                        m_methods->erase(being_disabled);
-                    }
-                    m_twofactor_data = { { "method", method_to_update } };
-                }
             }
-        } catch (const std::exception& e) {
-            set_error(e.what());
         }
     }
 
@@ -1178,6 +1177,12 @@ namespace sdk {
 
     auth_handler::state_type change_settings_twofactor_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         if (m_action == "set_email") {
             const std::string data = json_get_value(m_details, "data");
             m_session->set_email(data, m_twofactor_data);
