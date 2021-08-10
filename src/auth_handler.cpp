@@ -115,6 +115,7 @@ namespace sdk {
     void auth_handler_impl::request_code(const std::string& method)
     {
         try {
+            GDK_RUNTIME_ASSERT(m_state == state_type::request_code);
             if (!m_methods || std::find(m_methods->begin(), m_methods->end(), method) == m_methods->end()) {
                 set_error(std::string("Cannot request a code using disabled Two-Factor method ") + method);
                 return;
@@ -128,8 +129,6 @@ namespace sdk {
 
     void auth_handler_impl::request_code_impl(const std::string& method)
     {
-        GDK_RUNTIME_ASSERT(m_state == state_type::request_code);
-
         // For gauth request code is a no-op
         if (method != "gauth") {
             m_auth_data = m_session->auth_handler_request_code(method, m_action, m_twofactor_data);
