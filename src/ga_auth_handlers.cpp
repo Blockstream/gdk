@@ -1312,54 +1312,53 @@ namespace sdk {
     send_transaction_call::send_transaction_call(session& session, const nlohmann::json& tx_details)
         : auth_handler_impl(session, "send_transaction")
         , m_tx_details(tx_details)
+        , m_bump_amount(0)
         , m_twofactor_required(false)
         , m_under_limit(false)
+        , m_initialized(false)
     {
-        try {
-            signal_2fa_request("send_raw_tx");
-            m_twofactor_required = m_state == state_type::request_code;
+    }
 
-            const bool is_liquid = m_net_params.is_liquid();
-            const bool is_electrum = m_net_params.is_electrum();
+    void send_transaction_call::initialize()
+    {
+        signal_2fa_request("send_raw_tx");
+        m_twofactor_required = m_state == state_type::request_code;
 
-            if (!is_liquid && !is_electrum) {
-                const uint64_t limit
-                    = m_twofactor_required ? m_session->get_spending_limits()["satoshi"].get<uint64_t>() : 0;
-                const uint64_t satoshi = m_tx_details["satoshi"]["btc"];
-                const uint64_t fee = m_tx_details["fee"];
-                const uint32_t change_index = m_tx_details["change_index"]["btc"];
+        if (!m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+            const uint64_t limit
+                = m_twofactor_required ? m_session->get_spending_limits()["satoshi"].get<uint64_t>() : 0;
+            const uint64_t satoshi = m_tx_details.at("satoshi").at("btc");
+            const uint64_t fee = m_tx_details.at("fee");
+            const uint32_t change_index = m_tx_details.at("change_index").at("btc");
 
-                m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
-                    { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
+            m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
+                { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
 
-                // If this transaction has a previous transaction, i.e. it is replacing a previous transaction
-                // for example by RBF, then define m_bump_amount as the additional cost of this transaction
-                // compared to the original
-                const auto previous_transaction = tx_details.find("previous_transaction");
-                if (previous_transaction != tx_details.end()) {
-                    const auto previous_fee = previous_transaction->at("fee").get<uint64_t>();
-                    GDK_RUNTIME_ASSERT(previous_fee < fee);
-                    m_bump_amount = fee - previous_fee;
-                }
-
-                // limit_delta is the amount to deduct from the current spending limit for this tx
-                // For a fee bump (RBF) it is just the bump amount, i.e. the additional fee, because the
-                // previous fee and tx amount has already been deducted from the limits
-                const uint64_t limit_delta = m_bump_amount != 0u ? m_bump_amount : satoshi + fee;
-
-                if (limit != 0 && limit_delta <= limit) {
-                    // 2fa is enabled and we have a spending limit, but this tx is under it.
-                    m_under_limit = true;
-                    m_state = state_type::make_call;
-                }
+            // If this transaction has a previous transaction, i.e. it is replacing a previous transaction
+            // for example by RBF, then define m_bump_amount as the additional cost of this transaction
+            // compared to the original
+            const auto previous_transaction = m_tx_details.find("previous_transaction");
+            if (previous_transaction != m_tx_details.end()) {
+                const auto previous_fee = previous_transaction->at("fee").get<uint64_t>();
+                GDK_RUNTIME_ASSERT(previous_fee < fee);
+                m_bump_amount = fee - previous_fee;
             }
 
-            if (m_state == state_type::make_call) {
-                // We are ready to call, so make the required twofactor data
-                create_twofactor_data();
+            // limit_delta is the amount to deduct from the current spending limit for this tx
+            // For a fee bump (RBF) it is just the bump amount, i.e. the additional fee, because the
+            // previous fee and tx amount has already been deducted from the limits
+            const uint64_t limit_delta = m_bump_amount != 0u ? m_bump_amount : satoshi + fee;
+
+            if (limit != 0 && limit_delta <= limit) {
+                // 2fa is enabled and we have a spending limit, but this tx is under it.
+                m_under_limit = true;
+                m_state = state_type::make_call;
             }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+        }
+
+        if (m_state == state_type::make_call) {
+            // We are ready to call, so make the required twofactor data
+            create_twofactor_data();
         }
     }
 
@@ -1380,9 +1379,8 @@ namespace sdk {
 
     void send_transaction_call::create_twofactor_data()
     {
-        const bool is_liquid = m_net_params.is_liquid();
         m_twofactor_data = nlohmann::json::object();
-        if (m_twofactor_required && !is_liquid) {
+        if (m_twofactor_required && !m_net_params.is_liquid()) {
             if (m_bump_amount != 0u) {
                 signal_2fa_request("bump_fee");
                 const auto amount_key = m_under_limit ? "try_under_limits_bump" : "amount";
@@ -1405,8 +1403,13 @@ namespace sdk {
 
     auth_handler::state_type send_transaction_call::call_impl()
     {
-        const bool is_liquid = m_net_params.is_liquid();
-        if (!is_liquid) {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
+        if (!m_net_params.is_liquid()) {
             // The api requires the request and action data to differ, which is non-optimal
             json_rename_key(m_twofactor_data, "fee", "send_raw_tx_fee");
             json_rename_key(m_twofactor_data, "change_idx", "send_raw_tx_change_idx");

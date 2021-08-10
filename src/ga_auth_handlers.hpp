@@ -225,13 +225,15 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
+        void initialize();
         void create_twofactor_data();
 
         nlohmann::json m_tx_details;
         nlohmann::json m_limit_details;
-        uint64_t m_bump_amount = 0;
+        uint64_t m_bump_amount;
         bool m_twofactor_required;
         bool m_under_limit;
+        bool m_initialized;
     };
 
     class twofactor_reset_call : public auth_handler_impl {
