@@ -1067,26 +1067,33 @@ namespace sdk {
     change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
         : auth_handler_impl(session, "change_settings")
         , m_settings(settings)
+        , m_initialized(false)
     {
-        try {
-            const auto nlocktime_p = settings.find("nlocktime");
-            if (nlocktime_p != settings.end()) {
-                const uint64_t new_nlocktime = nlocktime_p->get<uint64_t>();
-                const uint64_t current_nlocktime = m_session->get_settings()["nlocktime"];
-                if (new_nlocktime != current_nlocktime) {
-                    m_nlocktime_value = { { "value", new_nlocktime } };
+    }
 
-                    signal_2fa_request("set_nlocktime");
-                    m_twofactor_data = m_nlocktime_value;
-                }
+    void change_settings_call::initialize()
+    {
+        const auto nlocktime_p = m_settings.find("nlocktime");
+        if (nlocktime_p != m_settings.end()) {
+            const uint64_t new_nlocktime = nlocktime_p->get<uint64_t>();
+            const uint64_t current_nlocktime = m_session->get_settings()["nlocktime"];
+            if (new_nlocktime != current_nlocktime) {
+                m_nlocktime_value = { { "value", new_nlocktime } };
+
+                signal_2fa_request("set_nlocktime");
+                m_twofactor_data = m_nlocktime_value;
             }
-        } catch (const std::exception& e) {
-            set_error(e.what());
         }
     }
 
     auth_handler::state_type change_settings_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         m_session->change_settings(m_settings);
         if (!m_nlocktime_value.is_null()) {
             m_session->set_nlocktime(m_nlocktime_value, m_twofactor_data);
