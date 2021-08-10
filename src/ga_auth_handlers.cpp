@@ -865,48 +865,55 @@ namespace sdk {
         session& session, const nlohmann::json& details, const std::string& name)
         : auth_handler_impl(session, name.empty() ? "get_unspent_outputs" : name)
         , m_details(details)
+        , m_initialized(false)
     {
-        try {
-            const uint32_t num_confs = details.value("num_confs", 0xff);
-            if (num_confs != 0 && num_confs != 1u) {
-                set_error("num_confs must be set to 0 or 1");
-                return;
-            }
-            auto p = m_session->get_cached_utxos(m_details.at("subaccount"), num_confs);
-            if (p) {
-                // Return the cached result, after filtering it
-                m_result = *p;
-                filter_result(false);
-                m_state = state_type::done;
-                return;
-            }
-            unique_pubkeys_and_scripts_t missing;
-            auto utxos = m_session->get_unspent_outputs(details, missing);
-            if (missing.empty()) {
-                // All results are unblinded/Don't need unblinding.
-                // Encache and return them
-                m_session->process_unspent_outputs(utxos);
-                m_result["unspent_outputs"].swap(utxos);
-                filter_result(true);
-                m_state = state_type::done;
-                return;
-            }
-            // Some utxos need unblinding; ask the caller to resolve them
-            m_result.swap(utxos);
-            signal_hw_request(hw_request::get_blinding_nonces);
-            auto& scripts = m_twofactor_data["scripts"];
-            auto& public_keys = m_twofactor_data["public_keys"];
-            for (const auto& m : missing) {
-                public_keys.emplace_back(b2h(m.first));
-                scripts.emplace_back(b2h(m.second));
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+    }
+
+    void get_unspent_outputs_call::initialize()
+    {
+        const uint32_t num_confs = m_details.value("num_confs", 0xff);
+        if (num_confs != 0 && num_confs != 1u) {
+            set_error("num_confs must be set to 0 or 1");
+            return;
+        }
+        auto p = m_session->get_cached_utxos(m_details.at("subaccount"), num_confs);
+        if (p) {
+            // Return the cached result, after filtering it
+            m_result = *p;
+            filter_result(false);
+            m_state = state_type::done;
+            return;
+        }
+        unique_pubkeys_and_scripts_t missing;
+        auto utxos = m_session->get_unspent_outputs(m_details, missing);
+        if (missing.empty()) {
+            // All results are unblinded/Don't need unblinding.
+            // Encache and return them
+            m_session->process_unspent_outputs(utxos);
+            m_result["unspent_outputs"].swap(utxos);
+            filter_result(true);
+            m_state = state_type::done;
+            return;
+        }
+        // Some utxos need unblinding; ask the caller to resolve them
+        m_result.swap(utxos);
+        signal_hw_request(hw_request::get_blinding_nonces);
+        auto& scripts = m_twofactor_data["scripts"];
+        auto& public_keys = m_twofactor_data["public_keys"];
+        for (const auto& m : missing) {
+            public_keys.emplace_back(b2h(m.first));
+            scripts.emplace_back(b2h(m.second));
         }
     }
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         // Parse and cache the nonces we got back
         encache_blinding_nonces(*m_session, m_twofactor_data, m_code);
 
@@ -980,20 +987,15 @@ namespace sdk {
     get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
         : get_unspent_outputs_call(session, details, "get_balance")
     {
-        if (m_state == state_type::done) {
-            try {
-                compute_balance();
-            } catch (const std::exception& e) {
-                set_error(e.what());
-            }
-        }
     }
 
     auth_handler::state_type get_balance_call::call_impl()
     {
-        get_unspent_outputs_call::call_impl(); // Get UTXOs using parent call
-        compute_balance();
-        return state_type::done; // get_unspent_outputs_call either returns done or throws
+        auto state = get_unspent_outputs_call::call_impl(); // Get UTXOs using parent call
+        if (state == state_type::done) {
+            compute_balance();
+        }
+        return state;
     }
 
     void get_balance_call::compute_balance()

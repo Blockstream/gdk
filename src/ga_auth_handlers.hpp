@@ -134,10 +134,13 @@ namespace sdk {
 
     protected:
         state_type call_impl() override;
-        const nlohmann::json m_details;
 
     private:
+        void initialize();
         void filter_result(bool encache);
+
+        const nlohmann::json m_details;
+        bool m_initialized;
     };
 
     class get_balance_call : public get_unspent_outputs_call {
