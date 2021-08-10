@@ -1255,11 +1255,17 @@ namespace sdk {
     change_limits_call::change_limits_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "twofactor_change_limits")
         , m_limit_details(details)
+        , m_initialized(false)
     {
-        try {
+    }
+
+    auth_handler::state_type change_limits_call::call_impl()
+    {
+        if (!m_initialized) {
             // Transform the details json that is passed in into the json that the api expects
             // The api expects {is_fiat: bool, total: in satoshis, per_tx: not really used}
             // This function takes a full amount json, e.g. {'btc': 1234}
+            auto details = m_limit_details;
             const bool is_fiat = details.at("is_fiat").get<bool>();
             GDK_RUNTIME_ASSERT(is_fiat == (details.find("fiat") != details.end()));
             m_limit_details = { { "is_fiat", is_fiat }, { "per_tx", 0 } };
@@ -1274,13 +1280,10 @@ namespace sdk {
                 signal_2fa_request("change_tx_limits");
                 m_twofactor_data = m_limit_details;
             }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+            m_initialized = true;
+            return m_state;
         }
-    }
 
-    auth_handler::state_type change_limits_call::call_impl()
-    {
         m_session->change_settings_limits(m_limit_details, m_twofactor_data);
         m_result = m_session->get_spending_limits();
         return state_type::done;

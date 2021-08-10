@@ -205,6 +205,7 @@ namespace sdk {
         state_type call_impl() override;
 
         nlohmann::json m_limit_details;
+        bool m_initialized;
     };
 
     class remove_account_call : public auth_handler_impl {
