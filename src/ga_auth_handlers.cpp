@@ -171,37 +171,46 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        void initialize();
 
         std::string m_challenge;
         std::string m_master_xpub_bip32;
 
         // Used when AMP subaccounts require new addresses
         std::vector<nlohmann::json> m_addresses;
+        bool m_initialized;
     };
 
     login_call::login_call(
         session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
         : auth_handler_impl(session, "login_user",
               make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
+        , m_initialized(false)
     {
-        try {
-            if (m_net_params.is_electrum()) {
-                // FIXME: Implement rust login via authenticate()
-                m_result = m_session->login(m_signer->get_mnemonic(std::string()));
-                m_state = state_type::done;
-            } else {
-                // We first need the challenge, so ask the caller for the master pubkey.
-                signal_hw_request(hw_request::get_xpubs);
-                m_twofactor_data["paths"] = get_paths_json();
-                m_twofactor_data["paths"].emplace_back(signer::CLIENT_SECRET_PATH);
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+    }
+
+    void login_call::initialize()
+    {
+        if (m_net_params.is_electrum()) {
+            // FIXME: Implement rust login via authenticate()
+            m_result = m_session->login(m_signer->get_mnemonic(std::string()));
+            m_state = state_type::done;
+        } else {
+            // We first need the challenge, so ask the caller for the master pubkey.
+            signal_hw_request(hw_request::get_xpubs);
+            m_twofactor_data["paths"] = get_paths_json();
+            m_twofactor_data["paths"].emplace_back(signer::CLIENT_SECRET_PATH);
         }
     }
 
     auth_handler::state_type login_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         if (m_hw_request == hw_request::get_xpubs && m_challenge.empty()) {
             // We have a result from our first get_xpubs request for the challenge.
             // Compute the challenge with the master pubkey
