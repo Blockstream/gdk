@@ -663,39 +663,46 @@ namespace sdk {
     get_previous_addresses_call::get_previous_addresses_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_previous_addresses")
         , m_details(details)
+        , m_initialized(false)
     {
-        try {
-            const uint32_t subaccount = json_get_value(details, "subaccount", 0);
-            const uint32_t last_pointer = json_get_value(details, "last_pointer", 0);
-            if (last_pointer == 1) {
-                // Prevent a server call if the user iterates until empty results
-                m_result = { { "subaccount", subaccount }, { "list", nlohmann::json::array() }, { "last_pointer", 1 } };
-                m_state = state_type::done;
-                return; // Nothing further to do
+    }
+
+    void get_previous_addresses_call::initialize()
+    {
+        const uint32_t subaccount = json_get_value(m_details, "subaccount", 0);
+        const uint32_t last_pointer = json_get_value(m_details, "last_pointer", 0);
+        if (last_pointer == 1) {
+            // Prevent a server call if the user iterates until empty results
+            m_result = { { "subaccount", subaccount }, { "list", nlohmann::json::array() }, { "last_pointer", 1 } };
+            m_state = state_type::done;
+            return; // Nothing further to do
+        }
+        // Fetch the list of previous addresses from the server
+        m_result = m_session->get_previous_addresses(subaccount, last_pointer);
+        if (!m_net_params.is_liquid() || m_result["list"].empty()) {
+            if (m_result["list"].empty()) {
+                // FIXME: The server returns 0 if there are no addresses generated
+                m_result["last_pointer"] = 1;
             }
-            // Fetch the list of previous addresses from the server
-            m_result = m_session->get_previous_addresses(subaccount, last_pointer);
-            if (!m_net_params.is_liquid() || m_result["list"].empty()) {
-                if (m_result["list"].empty()) {
-                    // FIXME: The server returns 0 if there are no addresses generated
-                    m_result["last_pointer"] = 1;
-                }
-                m_state = state_type::done;
-                return; // Nothing further to do
-            }
-            // Otherwise, request the the blinding keys for each address
-            signal_hw_request(hw_request::get_blinding_public_keys);
-            auto& scripts = m_twofactor_data["scripts"];
-            for (const auto& it : m_result.at("list")) {
-                scripts.push_back(it.at("blinding_script"));
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+            m_state = state_type::done;
+            return; // Nothing further to do
+        }
+        // Otherwise, request the the blinding keys for each address
+        signal_hw_request(hw_request::get_blinding_public_keys);
+        auto& scripts = m_twofactor_data["scripts"];
+        for (const auto& it : m_result.at("list")) {
+            scripts.push_back(it.at("blinding_script"));
         }
     }
 
     auth_handler::state_type get_previous_addresses_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         // Liquid: blind the addresses using the blinding key from the HW
         const auto prefix = m_net_params.blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);

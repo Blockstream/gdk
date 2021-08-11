@@ -76,8 +76,10 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        void initialize();
 
         const nlohmann::json m_details;
+        bool m_initialized;
     };
 
     class needs_unblind_call : public auth_handler_impl {
