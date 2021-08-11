@@ -56,8 +56,10 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        void initialize();
 
         nlohmann::json m_tx_details;
+        bool m_initialized;
     };
 
     class get_receive_address_call : public auth_handler_impl {

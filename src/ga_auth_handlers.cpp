@@ -505,68 +505,74 @@ namespace sdk {
     //
     sign_transaction_call::sign_transaction_call(session& session, const nlohmann::json& tx_details)
         : auth_handler_impl(session, "sign_transaction")
+        , m_tx_details(tx_details)
+        , m_initialized(false)
     {
-        try {
-            if (json_get_value(tx_details, "is_sweep", false) || m_net_params.is_electrum()) {
-                // TODO: Once tx aggregation is implemented, merge the sweep logic
-                // with general tx construction to allow HW devices to sign individual
-                // inputs (currently HW expects to sign all tx inputs)
-                // FIXME: Sign rust txs using the standard code path
-                m_result = m_session->sign_transaction(tx_details);
-                m_state = state_type::done;
-            } else {
-                // Compute the data we need for the hardware to sign the transaction
-                m_tx_details = tx_details;
-                // We use the Anti-Exfil protocol if the hw supports it
-                m_use_anti_exfil = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
-                signal_hw_request(hw_request::sign_tx);
-                m_twofactor_data["transaction"] = tx_details;
-                m_twofactor_data["use_ae_protocol"] = m_use_anti_exfil;
+    }
 
-                // We need the inputs, augmented with types, scripts and paths
-                auto signing_inputs = get_ga_signing_inputs(tx_details);
-                std::set<std::string> addr_types;
-                nlohmann::json prev_txs;
-                for (auto& input : signing_inputs) {
-                    const auto& addr_type = input.at("address_type");
-                    GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
-                    addr_types.insert(addr_type.get<std::string>());
+    void sign_transaction_call::initialize()
+    {
+        if (json_get_value(m_tx_details, "is_sweep", false) || m_net_params.is_electrum()) {
+            // TODO: Once tx aggregation is implemented, merge the sweep logic
+            // with general tx construction to allow HW devices to sign individual
+            // inputs (currently HW expects to sign all tx inputs)
+            // FIXME: Sign rust txs using the standard code path
+            m_result = m_session->sign_transaction(m_tx_details);
+            m_state = state_type::done;
+        } else {
+            // Compute the data we need for the hardware to sign the transaction
+            // We use the Anti-Exfil protocol if the hw supports it
+            m_use_anti_exfil = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
+            signal_hw_request(hw_request::sign_tx);
+            m_twofactor_data["transaction"] = m_tx_details;
+            m_twofactor_data["use_ae_protocol"] = m_use_anti_exfil;
 
-                    // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-                    if (m_use_anti_exfil) {
-                        add_ae_host_data(input);
-                    }
-                }
-                if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
-                    // TODO: Support mixed/batched sweep transactions with non-sweep inputs
-                    GDK_RUNTIME_ASSERT(false);
-                }
+            // We need the inputs, augmented with types, scripts and paths
+            auto signing_inputs = get_ga_signing_inputs(m_tx_details);
+            std::set<std::string> addr_types;
+            nlohmann::json prev_txs;
+            for (auto& input : signing_inputs) {
+                const auto& addr_type = input.at("address_type");
+                GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
+                addr_types.insert(addr_type.get<std::string>());
 
-                if (!m_net_params.is_liquid()) {
-                    // BTC: Provide the previous txs data for validation, even
-                    // for segwit, in order to mitigate the segwit fee attack.
-                    // (Liquid txs are segwit+explicit fee and so not affected)
-                    for (const auto& input : signing_inputs) {
-                        const std::string txhash = input.at("txhash");
-                        if (prev_txs.find(txhash) == prev_txs.end()) {
-                            prev_txs.emplace(txhash, m_session->get_transaction_details(txhash).at("transaction"));
-                        }
-                    }
+                // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
+                if (m_use_anti_exfil) {
+                    add_ae_host_data(input);
                 }
-                m_twofactor_data["signing_address_types"]
-                    = std::vector<std::string>(addr_types.begin(), addr_types.end());
-                m_twofactor_data["signing_inputs"] = signing_inputs;
-                m_twofactor_data["signing_transactions"] = prev_txs;
-                // FIXME: Do not duplicate the transaction_outputs in required_data
-                m_twofactor_data["transaction_outputs"] = tx_details["transaction_outputs"];
             }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+            if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
+                // TODO: Support mixed/batched sweep transactions with non-sweep inputs
+                GDK_RUNTIME_ASSERT(false);
+            }
+
+            if (!m_net_params.is_liquid()) {
+                // BTC: Provide the previous txs data for validation, even
+                // for segwit, in order to mitigate the segwit fee attack.
+                // (Liquid txs are segwit+explicit fee and so not affected)
+                for (const auto& input : signing_inputs) {
+                    const std::string txhash = input.at("txhash");
+                    if (prev_txs.find(txhash) == prev_txs.end()) {
+                        prev_txs.emplace(txhash, m_session->get_transaction_details(txhash).at("transaction"));
+                    }
+                }
+            }
+            m_twofactor_data["signing_address_types"] = std::vector<std::string>(addr_types.begin(), addr_types.end());
+            m_twofactor_data["signing_inputs"] = signing_inputs;
+            m_twofactor_data["signing_transactions"] = prev_txs;
+            // FIXME: Do not duplicate the transaction_outputs in required_data
+            m_twofactor_data["transaction_outputs"] = m_tx_details["transaction_outputs"];
         }
     }
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const auto& inputs = m_twofactor_data["signing_inputs"];
         const auto& signatures = get_sized_array(args, "signatures", inputs.size());
