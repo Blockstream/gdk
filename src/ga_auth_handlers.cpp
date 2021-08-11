@@ -631,25 +631,32 @@ namespace sdk {
     get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_receive_address")
         , m_details(details)
+        , m_initialized(false)
     {
-        try {
-            m_result = m_session->get_receive_address(details);
+    }
 
-            if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
-                // Ask the caller to provide the blinding key
-                signal_hw_request(hw_request::get_blinding_public_keys);
-                m_twofactor_data["scripts"].push_back(m_result.at("blinding_script"));
-            } else {
-                // We are done
-                m_state = state_type::done;
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+    void get_receive_address_call::initialize()
+    {
+        m_result = m_session->get_receive_address(m_details);
+
+        if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+            // Ask the caller to provide the blinding key
+            signal_hw_request(hw_request::get_blinding_public_keys);
+            m_twofactor_data["scripts"].push_back(m_result.at("blinding_script"));
+        } else {
+            // We are done
+            m_state = state_type::done;
         }
     }
 
     auth_handler::state_type get_receive_address_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         // Liquid: blind the address using the blinding key from the caller
         const auto prefix = m_net_params.blinded_prefix();
         const nlohmann::json args = nlohmann::json::parse(m_code);
