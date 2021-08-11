@@ -457,29 +457,37 @@ namespace sdk {
 
     ack_system_message_call::ack_system_message_call(session& session, const std::string& msg)
         : auth_handler_impl(session, "ack_system_message")
+        , m_msg(msg)
+        , m_initialized(false)
     {
-        try {
-            m_message_info = m_session->get_system_message_info(msg);
-            m_use_anti_exfil = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
+    }
 
-            // If using Anti-Exfil protocol we need to get the root xpub
-            // Otherwise just sign the message
-            if (m_use_anti_exfil) {
-                signal_hw_request(hw_request::get_xpubs);
-                m_twofactor_data["paths"] = get_paths_json();
-            } else {
-                signal_hw_request(hw_request::sign_message);
-                m_twofactor_data["message"] = m_message_info.first;
-                m_twofactor_data["path"] = m_message_info.second;
-                add_required_ae_data(m_signer, m_twofactor_data);
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+    void ack_system_message_call::initialize()
+    {
+        m_message_info = m_session->get_system_message_info(m_msg);
+        m_use_anti_exfil = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
+
+        // If using Anti-Exfil protocol we need to get the root xpub
+        // Otherwise just sign the message
+        if (m_use_anti_exfil) {
+            signal_hw_request(hw_request::get_xpubs);
+            m_twofactor_data["paths"] = get_paths_json();
+        } else {
+            signal_hw_request(hw_request::sign_message);
+            m_twofactor_data["message"] = m_message_info.first;
+            m_twofactor_data["path"] = m_message_info.second;
+            add_required_ae_data(m_signer, m_twofactor_data);
         }
     }
 
     auth_handler::state_type ack_system_message_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         const nlohmann::json args = nlohmann::json::parse(m_code);
         if (m_hw_request == hw_request::get_xpubs) {
             m_master_xpub_bip32 = args.at("xpubs").at(0);

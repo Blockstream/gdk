@@ -44,10 +44,12 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        void initialize();
 
+        const std::string m_msg;
         std::pair<std::string, std::vector<uint32_t>> m_message_info;
-
         std::string m_master_xpub_bip32;
+        bool m_initialized;
     };
 
     class sign_transaction_call : public auth_handler_impl {
