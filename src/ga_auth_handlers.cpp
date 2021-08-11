@@ -126,25 +126,32 @@ namespace sdk {
         : auth_handler_impl(
               session, "register_user", make_login_signer(session.get_network_parameters(), hw_device, mnemonic))
         , m_mnemonic(mnemonic)
+        , m_initialized(false)
     {
-        try {
-            if (m_net_params.is_electrum()) {
-                // Register is a no-op for electrum sessions
-                m_state = state_type::done;
-            } else {
-                // To register, we need the master xpub to identify the wallet,
-                // and the registration xpub to compute the gait_path.
-                signal_hw_request(hw_request::get_xpubs);
-                m_twofactor_data["paths"] = get_paths_json();
-                m_twofactor_data["paths"].emplace_back(std::vector<uint32_t>{ harden(0x4741) });
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
+    }
+
+    void register_call::initialize()
+    {
+        if (m_net_params.is_electrum()) {
+            // Register is a no-op for electrum sessions
+            m_state = state_type::done;
+        } else {
+            // To register, we need the master xpub to identify the wallet,
+            // and the registration xpub to compute the gait_path.
+            signal_hw_request(hw_request::get_xpubs);
+            m_twofactor_data["paths"] = get_paths_json();
+            m_twofactor_data["paths"].emplace_back(std::vector<uint32_t>{ harden(0x4741) });
         }
     }
 
     auth_handler::state_type register_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const std::vector<std::string> xpubs = args.at("xpubs");
         const auto master_xpub = get_xpub(xpubs.at(0));

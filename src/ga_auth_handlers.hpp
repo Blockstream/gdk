@@ -12,8 +12,10 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        void initialize();
 
         std::string m_mnemonic;
+        bool m_initialized;
     };
 
     // Return an auth handler for logging in a user (caller must delete it)
