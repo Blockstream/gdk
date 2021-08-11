@@ -364,37 +364,44 @@ namespace sdk {
         : auth_handler_impl(session, "create_subaccount")
         , m_details(details)
         , m_subaccount(0)
+        , m_initialized(false)
     {
-        try {
-            const std::string type = details.at("type");
-            m_subaccount = m_session->get_next_subaccount(type);
+    }
 
-            if (type == "2of3") {
-                // The user can provide a recovery mnemonic or bip32 xpub, but not both
-                const std::string recovery_mnemonic = json_get_value(m_details, "recovery_mnemonic");
-                const std::string recovery_xpub = json_get_value(m_details, "recovery_xpub");
-                if (!(recovery_xpub.empty() ^ recovery_mnemonic.empty())) {
-                    throw user_error("2of3 accounts require either recovery_mnemonic or recovery_xpub");
-                }
+    void create_subaccount_call::initialize()
+    {
+        const std::string type = m_details.at("type");
+        m_subaccount = m_session->get_next_subaccount(type);
 
-                if (recovery_xpub.empty()) {
-                    auto subsigner = signer::make_software_signer(m_net_params, recovery_mnemonic);
-                    const uint32_t mnemonic_path[2] = { harden(3), harden(m_subaccount) };
-                    m_details["recovery_xpub"] = subsigner->get_bip32_xpub(mnemonic_path);
-                    m_details.erase("recovery_mnemonic");
-                }
+        if (type == "2of3") {
+            // The user can provide a recovery mnemonic or bip32 xpub, but not both
+            const std::string recovery_mnemonic = json_get_value(m_details, "recovery_mnemonic");
+            const std::string recovery_xpub = json_get_value(m_details, "recovery_xpub");
+            if (!(recovery_xpub.empty() ^ recovery_mnemonic.empty())) {
+                throw user_error("2of3 accounts require either recovery_mnemonic or recovery_xpub");
             }
 
-            signal_hw_request(hw_request::get_xpubs);
-            m_twofactor_data["paths"] = get_paths_json();
-            m_twofactor_data["paths"].emplace_back(m_session->get_subaccount_root_path(m_subaccount));
-        } catch (const std::exception& e) {
-            set_error(e.what());
+            if (recovery_xpub.empty()) {
+                auto subsigner = signer::make_software_signer(m_net_params, recovery_mnemonic);
+                const uint32_t mnemonic_path[2] = { harden(3), harden(m_subaccount) };
+                m_details["recovery_xpub"] = subsigner->get_bip32_xpub(mnemonic_path);
+                m_details.erase("recovery_mnemonic");
+            }
         }
+
+        signal_hw_request(hw_request::get_xpubs);
+        m_twofactor_data["paths"] = get_paths_json();
+        m_twofactor_data["paths"].emplace_back(m_session->get_subaccount_root_path(m_subaccount));
     }
 
     auth_handler::state_type create_subaccount_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         const nlohmann::json args = nlohmann::json::parse(m_code);
 
         if (m_hw_request == hw_request::get_xpubs) {

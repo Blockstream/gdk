@@ -26,6 +26,7 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        void initialize();
 
         nlohmann::json m_details;
         uint32_t m_subaccount;
@@ -36,6 +37,7 @@ namespace sdk {
 
         // Used when a new authorized-assets-enabled subaccount is created
         std::vector<nlohmann::json> m_addresses;
+        bool m_initialized;
     };
 
     class ack_system_message_call : public auth_handler_impl {
