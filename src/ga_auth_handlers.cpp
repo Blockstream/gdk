@@ -808,16 +808,12 @@ namespace sdk {
     // Create transaction
     //
     create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("create_transaction", session, details)
+        : auth_handler_impl(session, "create_transaction")
+        , m_details(details)
     {
-        if (m_fetch_nonces && m_details.contains("utxos")) {
-            // Skip fetching txs to get blinding nonces if the tx already contains
-            // utxos (since fetching the utxos will have cached the nonces already)
-            m_fetch_nonces = false;
-        }
     }
 
-    auth_handler::state_type create_transaction_call::wrapped_call_impl()
+    auth_handler::state_type create_transaction_call::call_impl()
     {
         if (m_result.empty()) {
             // Initial call: Create the transaction from the provided details

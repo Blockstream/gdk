@@ -93,26 +93,15 @@ namespace sdk {
         bool m_initialized;
     };
 
-    class needs_unblind_call : public auth_handler_impl {
-    protected:
-        needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
-
-        virtual state_type wrapped_call_impl() = 0;
-
-        const nlohmann::json m_details;
-        bool m_fetch_nonces;
-
-    private:
-        state_type call_impl() override;
-    };
-
-    class create_transaction_call : public needs_unblind_call {
+    class create_transaction_call : public auth_handler_impl {
     public:
         create_transaction_call(session& session, const nlohmann::json& details);
 
     private:
-        state_type wrapped_call_impl() override;
+        state_type call_impl() override;
         state_type check_change_outputs();
+
+        const nlohmann::json m_details;
     };
 
     class get_subaccounts_call : public auth_handler_impl {
@@ -130,6 +119,19 @@ namespace sdk {
     private:
         state_type call_impl() override;
         const uint32_t m_subaccount;
+    };
+
+    class needs_unblind_call : public auth_handler_impl {
+    protected:
+        needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details);
+
+        virtual state_type wrapped_call_impl() = 0;
+
+        const nlohmann::json m_details;
+        bool m_fetch_nonces;
+
+    private:
+        state_type call_impl() override;
     };
 
     class get_transactions_call : public needs_unblind_call {

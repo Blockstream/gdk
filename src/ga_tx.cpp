@@ -457,23 +457,23 @@ namespace sdk {
                     return;
                 }
 
-                if (result.find("utxos") != result.end() && !result["utxos"][policy_asset].empty()) {
+                if (result.contains("utxos") && !result["utxos"][policy_asset].empty()) {
                     // check for sweep related keys
                     for (const auto& utxo : result["utxos"][policy_asset]) {
                         GDK_RUNTIME_ASSERT(!json_get_value(utxo, "private_key").empty());
                     }
                 } else {
-                    nlohmann::json utxos;
+                    nlohmann::json sweep_utxos;
                     try {
-                        utxos = session.get_unspent_outputs_for_private_key(
+                        sweep_utxos = session.get_unspent_outputs_for_private_key(
                             result["private_key"], json_get_value(result, "passphrase"), 0);
                     } catch (const assertion_error& ex) {
                         set_tx_error(result, res::id_invalid_private_key); // Invalid private key
                     } catch (const std::exception& ex) {
                         GDK_LOG_SEV(log_level::error) << "Exception getting outputs for private key: " << ex.what();
                     }
-                    result["utxos"][policy_asset] = utxos;
-                    if (utxos.empty()) {
+                    result["utxos"][policy_asset] = sweep_utxos;
+                    if (sweep_utxos.empty()) {
                         set_tx_error(result, res::id_no_utxos_found); // No UTXOs found
                     }
                 }
@@ -487,17 +487,6 @@ namespace sdk {
                     create_send_to_self(session, subaccount, result);
                     addressees_p = result.find("addressees");
                 }
-            }
-
-            if (!is_sweep && result.find("utxos") == result.end()) {
-                // Fetch the users utxos from the current subaccount.
-                // if RBF/cpfp, require 1 confirmation.
-                const uint32_t num_confs = (is_rbf || is_cpfp) ? 1 : 0;
-                unique_pubkeys_and_scripts_t missing; // FIXME: pass this in
-                const nlohmann::json details{ { "subaccount", subaccount }, { "num_confs", num_confs } };
-                auto asset_utxos = session.get_unspent_outputs(details, missing);
-                session.process_unspent_outputs(asset_utxos);
-                result["utxos"].swap(asset_utxos);
             }
 
             const bool send_all = json_add_if_missing(result, "send_all", false);
