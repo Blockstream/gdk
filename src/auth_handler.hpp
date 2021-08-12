@@ -126,8 +126,10 @@ namespace sdk {
         virtual session_impl& get_session() const final;
         virtual std::shared_ptr<signer> get_signer() const final;
 
+        void advance();
+
     private:
-        void step();
+        bool step();
 
         auth_handler* m_handler;
     };

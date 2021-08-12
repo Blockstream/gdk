@@ -273,19 +273,22 @@ namespace sdk {
         , m_handler(handler)
     {
         GDK_RUNTIME_ASSERT(handler != nullptr);
-        step();
     }
 
     auto_auth_handler::~auto_auth_handler() { delete m_handler; }
 
-    void auto_auth_handler::request_code(const std::string& method) { return m_handler->request_code(method); }
+    void auto_auth_handler::request_code(const std::string& method) { m_handler->request_code(method); }
 
-    void auto_auth_handler::resolve_code(const std::string& code) { return m_handler->resolve_code(code); }
+    void auto_auth_handler::resolve_code(const std::string& code)
+    {
+        m_handler->resolve_code(code);
+        advance();
+    }
 
     void auto_auth_handler::operator()()
     {
-        (*m_handler)();
-        step();
+        GDK_RUNTIME_ASSERT(get_state() == state_type::make_call);
+        advance();
     }
 
     nlohmann::json auto_auth_handler::get_status() const { return m_handler->get_status(); }
@@ -296,13 +299,28 @@ namespace sdk {
 
     std::shared_ptr<signer> auto_auth_handler::get_signer() const { return m_handler->get_signer(); }
 
-    void auto_auth_handler::step()
+    void auto_auth_handler::advance()
+    {
+        while (step()) {
+            // No-op
+        }
+    }
+
+    bool auto_auth_handler::step()
     {
         // Step through the resolver state machine, resolving any actions that
-        // can be satisfied on the host without involving the external device.
+        // can be satisfied on the host without involving the caller.
+        // Returns whether we resolved an action, i.e. whether we should loop
+        // attempting to step() again.
+        const auto state = get_state();
+        if (state == state_type::make_call) {
+            (*m_handler)();
+            return true;
+        }
+
         const auto request = get_hw_request();
-        if (request == hw_request::none || get_state() != state_type::resolve_code) {
-            return; // Not a HW request, let the caller resolve
+        if (request == hw_request::none || state != state_type::resolve_code) {
+            return false; // Not a HW request, let the caller resolve
         }
 
         const auto status = get_status();
@@ -321,7 +339,7 @@ namespace sdk {
                 // We have a cached blinding key or the user has denied access
                 result.emplace("master_blinding_key", blinding_key); // Blank if denied
                 resolve_code(result.dump());
-                return;
+                return true;
             }
         } else if (have_master_blinding_key && request == hw_request::get_blinding_public_keys) {
             // Host unblinding: generate pubkeys
@@ -330,7 +348,7 @@ namespace sdk {
                 public_keys.push_back(b2h(signer->get_blinding_pubkey_from_script(h2b(script))));
             }
             resolve_code(result.dump());
-            return;
+            return true;
         } else if (have_master_blinding_key && request == hw_request::get_blinding_nonces) {
             // Host unblinding: generate nonces
             const auto& public_keys = required_data.at("public_keys");
@@ -341,11 +359,11 @@ namespace sdk {
                 nonces.push_back(b2h(sha256(ecdh(h2b(public_keys.at(i)), blinding_key))));
             }
             resolve_code(result.dump());
-            return;
+            return true;
         }
 
         if (required_data.at("device").at("device_type") == "hardware") {
-            return; // Caller provided HW device, let the caller resolve
+            return false; // Caller provided HW device, let the caller resolve
         }
 
         // We have a request to resolve with the internal software wallet
@@ -374,6 +392,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");
         }
         resolve_code(result.dump());
+        return true;
     }
 
 } // namespace sdk

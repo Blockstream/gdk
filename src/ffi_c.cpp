@@ -97,9 +97,10 @@ static ga::sdk::auth_handler* auth_cast(struct GA_auth_handler* call)
 static struct GA_auth_handler* make_call(ga::sdk::auth_handler* call_impl)
 {
     std::unique_ptr<ga::sdk::auth_handler> tmp(call_impl);
-    auto wrapped_call = new ga::sdk::auto_auth_handler(tmp.get());
+    std::unique_ptr<ga::sdk::auto_auth_handler> wrapped(new ga::sdk::auto_auth_handler(tmp.get()));
     tmp.release();
-    return auth_cast(wrapped_call);
+    wrapped->advance();
+    return auth_cast(wrapped.release());
 }
 
 struct call_timer {
