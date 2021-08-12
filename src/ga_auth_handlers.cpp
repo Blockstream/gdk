@@ -867,28 +867,34 @@ namespace sdk {
         : auth_handler_impl(session, "get_transactions")
         , m_details(details)
         , m_fetch_nonces(false)
+        , m_initialized(false)
     {
-        try {
-            // FIXME: We should not need to fetch all txs before every call
-            // using this base class.
-            // TODO: Electrum is skipped here as it does its own unblinding
-            if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
-                nlohmann::json twofactor_data;
-                if (m_session->get_uncached_blinding_nonces(details, twofactor_data)) {
-                    // We have missing nonces we need to fetch, request them
-                    m_fetch_nonces = true;
-                    signal_hw_request(hw_request::get_blinding_nonces);
-                    m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
-                    m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
-                }
+    }
+
+    void get_transactions_call::initialize()
+    {
+        // FIXME: We should not need to fetch all txs before every call
+        // TODO: Electrum is skipped here as it does its own unblinding
+        if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+            nlohmann::json twofactor_data;
+            if (m_session->get_uncached_blinding_nonces(m_details, twofactor_data)) {
+                // We have missing nonces we need to fetch, request them
+                m_fetch_nonces = true;
+                signal_hw_request(hw_request::get_blinding_nonces);
+                m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
+                m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
             }
-        } catch (const std::exception& e) {
-            set_error(e.what());
         }
     }
 
     auth_handler::state_type get_transactions_call::call_impl()
     {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
         if (m_fetch_nonces) {
             // Parse and cache the nonces we got back
             encache_blinding_nonces(*m_session, m_twofactor_data, m_code);
