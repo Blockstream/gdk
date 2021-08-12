@@ -767,44 +767,6 @@ namespace sdk {
     }
 
     //
-    // Generic parent for calls that need blinding nonces
-    // FIXME: We should not need to fetch all txs before every call
-    // using this base class.
-    //
-    needs_unblind_call::needs_unblind_call(const std::string& name, session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, name)
-        , m_details(details)
-        , m_fetch_nonces(false)
-    {
-        try {
-            // TODO: Electrum is skipped here as it does its own unblinding
-            if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
-                nlohmann::json twofactor_data;
-                if (m_session->get_uncached_blinding_nonces(details, twofactor_data)) {
-                    // We have missing nonces we need to fetch, request them
-                    m_fetch_nonces = true;
-                    signal_hw_request(hw_request::get_blinding_nonces);
-                    m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
-                    m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
-                }
-            }
-        } catch (const std::exception& e) {
-            set_error(e.what());
-        }
-    }
-
-    auth_handler::state_type needs_unblind_call::call_impl()
-    {
-        if (m_fetch_nonces) {
-            // Parse and cache the nonces we got back
-            encache_blinding_nonces(*m_session, m_twofactor_data, m_code);
-            m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
-        }
-
-        return wrapped_call_impl(); // run the actual wrapped call
-    }
-
-    //
     // Create transaction
     //
     create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
@@ -902,12 +864,37 @@ namespace sdk {
     // Get transactions
     //
     get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
-        : needs_unblind_call("get_transactions", session, details)
+        : auth_handler_impl(session, "get_transactions")
+        , m_details(details)
+        , m_fetch_nonces(false)
     {
+        try {
+            // FIXME: We should not need to fetch all txs before every call
+            // using this base class.
+            // TODO: Electrum is skipped here as it does its own unblinding
+            if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+                nlohmann::json twofactor_data;
+                if (m_session->get_uncached_blinding_nonces(details, twofactor_data)) {
+                    // We have missing nonces we need to fetch, request them
+                    m_fetch_nonces = true;
+                    signal_hw_request(hw_request::get_blinding_nonces);
+                    m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
+                    m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
+                }
+            }
+        } catch (const std::exception& e) {
+            set_error(e.what());
+        }
     }
 
-    auth_handler::state_type get_transactions_call::wrapped_call_impl()
+    auth_handler::state_type get_transactions_call::call_impl()
     {
+        if (m_fetch_nonces) {
+            // Parse and cache the nonces we got back
+            encache_blinding_nonces(*m_session, m_twofactor_data, m_code);
+            m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
+        }
+
         m_result = { { "transactions", m_session->get_transactions(m_details) } };
         return state_type::done;
     }
