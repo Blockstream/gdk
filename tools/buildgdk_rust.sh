@@ -66,7 +66,7 @@ elif [ \( "$1" = "--iphonesim" \) ]; then
     RUSTTARGET=x86_64-apple-ios
     LD_ARCH="-arch x86_64 -platform_version ios-simulator 11.0 11.0"
 else
-    LD_ARCH="-arch x86_64 -platform_version macos 11.0 11.0"
+    LD_ARCH="-arch x86_64 -platform_version macos 10.13 10.13"
 fi
 
 if [ "$BUILDTYPE" == "release" ]; then
