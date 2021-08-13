@@ -91,6 +91,11 @@ if (is_darwin or cross_iphone_build) and not cross_android_build
   add_project_link_arguments(['-Wl,-framework,Security'], language : 'cpp')
 endif
 
+if is_darwin and not cross_android_build and not cross_iphone_build
+  add_project_arguments(['-mmacosx-version-min=10.13'], language : ['c', 'cpp'])
+  add_project_link_arguments(['-mmacosx-version-min=10.13'], language : ['c', 'cpp'])
+endif
+
 if cross_iphone_build
   add_project_arguments(['-miphoneos-version-min=11.0'], language : ['c', 'cpp'])
   add_project_link_arguments(['-miphoneos-version-min=11.0'], language : ['c', 'cpp'])

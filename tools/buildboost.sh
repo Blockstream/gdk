@@ -116,7 +116,6 @@ else
         TOOLSET=gcc
     fi
 
-
     EXTRAFLAGS=""
     LINKFLAGS=""
     if [ "$LTO" = "true" ]; then
@@ -124,8 +123,7 @@ else
         LINKFLAGS="linkflags=-flto"
     fi
 
-    cxxflags="$EXTRAFLAGS -DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
-
+    cxxflags="$SDK_CFLAGS $EXTRAFLAGS -DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread --with-toolset=${TOOLSET}
     ./b2 --clean
     ./b2 -j$NUM_JOBS --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install
