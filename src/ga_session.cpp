@@ -438,7 +438,11 @@ namespace sdk {
     ga_session::~ga_session()
     {
         no_std_exception_escape([this] {
-            reset();
+            stop_reconnect();
+            m_pool.join();
+            on_failed_login();
+            unsubscribe();
+            disconnect();
             m_controller->reset();
         });
     }
@@ -1050,15 +1054,6 @@ namespace sdk {
         }
 
         return result;
-    }
-
-    void ga_session::reset()
-    {
-        stop_reconnect();
-        m_pool.join();
-        on_failed_login();
-        unsubscribe();
-        disconnect();
     }
 
     std::pair<std::string, std::string> ga_session::sign_challenge(

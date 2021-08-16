@@ -185,8 +185,6 @@ namespace sdk {
         void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
     private:
-        void reset();
-
         bool is_connected() const;
         bool reconnect();
         void stop_reconnect();
