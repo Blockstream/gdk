@@ -319,7 +319,9 @@ impl Session<Error> for ElectrumSession {
 
     fn disconnect(&mut self) -> Result<(), Error> {
         info!("disconnect state:{:?}", self.state);
-        info!("disconnect STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
+        if self.state == State::Logged {
+            info!("disconnect STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
+        }
         if self.state != State::Disconnected {
             self.closer.close()?;
             self.state = State::Disconnected;
