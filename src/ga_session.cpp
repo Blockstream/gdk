@@ -1716,22 +1716,32 @@ namespace sdk {
         set_local_encryption_keys(locker, public_key, is_hw_wallet);
     }
 
+    template <typename T> static bool set_optional_member(boost::optional<T>& member, T&& new_value)
+    {
+        // Allow changing the value only if it is not already set
+        GDK_RUNTIME_ASSERT(member == boost::none || member == new_value);
+        if (member == boost::none) {
+            member.emplace(std::move(new_value));
+            return true;
+        }
+        return false;
+    }
+
     void ga_session::set_local_encryption_keys(
         session_impl::locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_local_encryption_key == boost::none);
-        GDK_RUNTIME_ASSERT(m_blob_aes_key == boost::none);
-        GDK_RUNTIME_ASSERT(m_blob_hmac_key == boost::none);
-        m_local_encryption_key = pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT);
-        auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
-        auto tmp_span = gsl::make_span(tmp_key);
-        m_blob_aes_key.emplace(sha256(tmp_span.subspan(SHA256_LEN)));
-        m_blob_hmac_key.emplace(make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+        if (!set_optional_member(m_local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT))) {
+            // Already set, we are re-logging in with the same credentials
+            return;
+        }
+        const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+        const auto tmp_span = gsl::make_span(tmp_key);
+        set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
+        set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
         m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
         // Save the cache in case we carried forward data from a previous version
         m_cache.save_db(); // No-op if unchanged
-        m_nlocktimes.reset();
     }
 
     void ga_session::save_cache()
@@ -1765,6 +1775,7 @@ namespace sdk {
             swap_with_default(m_tx_notifications);
             m_tx_last_notification = now;
             m_tx_list_caches.purge_all();
+            m_nlocktimes.reset();
         } catch (const std::exception& ex) {
         }
     }
