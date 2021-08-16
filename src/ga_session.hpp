@@ -64,10 +64,8 @@ namespace sdk {
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
         nlohmann::json login(const std::string& mnemonic);
-        bool login_from_cached(const std::string& mnemonic);
         std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data);
         nlohmann::json login_watch_only(const std::string& username, const std::string& password);
-        void on_failed_login();
 
         bool set_watch_only(const std::string& username, const std::string& password);
         std::string get_watch_only_username();
@@ -185,6 +183,8 @@ namespace sdk {
         void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
     private:
+        void reset_all_session_data();
+
         bool is_connected() const;
         bool reconnect();
         void stop_reconnect();

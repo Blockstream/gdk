@@ -11,8 +11,6 @@ namespace sdk {
         ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults);
         ~ga_rust();
 
-        void on_failed_login();
-
         bool is_connected() const;
         void set_ping_fail_handler(ping_fail_t handler);
         void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler);

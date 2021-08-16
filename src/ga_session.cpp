@@ -416,6 +416,7 @@ namespace sdk {
         , m_min_fee_rate(DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
+        , m_fee_estimates_ts(std::chrono::system_clock::now())
         , m_block_height(0)
         , m_system_message_id(0)
         , m_system_message_ack_id(0)
@@ -440,8 +441,8 @@ namespace sdk {
         no_std_exception_escape([this] {
             stop_reconnect();
             m_pool.join();
-            on_failed_login();
             unsubscribe();
+            reset_all_session_data();
             disconnect();
             m_controller->reset();
         });
@@ -796,13 +797,9 @@ namespace sdk {
             disconnect();
             connect();
 
-            // FIXME: Re-login using signer, call authenticate directly
-            const bool logged_in = false; // FIXME !m_mnemonic.empty() && login_from_cached(m_mnemonic);
-            if (!logged_in) {
-                on_failed_login();
-            }
+            // FIXME: Re-work re-login
             nlohmann::json net_json(
-                { { "connected", true }, { "login_required", !logged_in }, { "heartbeat_timeout", false } });
+                { { "connected", true }, { "login_required", true }, { "heartbeat_timeout", false } });
             emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
             return true;
@@ -821,24 +818,8 @@ namespace sdk {
 
     void ga_session::disconnect()
     {
-        {
-            nlohmann::json details{ { "connected", false } };
-            emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
-
-            locker_t locker(m_mutex);
-            m_signer.reset();
-            m_local_encryption_key = boost::none;
-            m_blob_aes_key = boost::none;
-            m_blob_hmac_key = boost::none;
-            m_blob_hmac.clear();
-            m_blob.reset();
-            m_blob_outdated = false;
-            m_tx_list_caches.purge_all();
-            // FIXME: securely destroy all held data
-            // TODO: pass in whether we are disconnecting in order to reconnect,
-            //       and if so, only securely destroy data not needed to re-login
-            //       (e.g. leave signer alone).
-        }
+        nlohmann::json details{ { "connected", false } };
+        emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
 
         m_ping_timer.cancel();
 
@@ -1560,6 +1541,9 @@ namespace sdk {
         nlohmann::json login_data = wamp_cast_json(result);
 
         if (login_data.is_boolean()) {
+            // Login failed
+            locker.unlock();
+            reset_all_session_data();
             throw login_error(res::id_login_failed);
         }
 
@@ -1756,28 +1740,32 @@ namespace sdk {
         m_cache.save_db(); // No-op if unchanged
     }
 
-    void ga_session::on_failed_login()
+    void ga_session::reset_all_session_data()
     {
         try {
             locker_t locker(m_mutex);
             m_signer.reset();
+            remove_cached_utxos(std::vector<uint32_t>());
+            swap_with_default(m_login_data);
             m_user_pubkeys.reset();
             m_local_encryption_key = boost::none;
+            m_blob.reset();
+            m_blob_hmac.clear();
             m_blob_aes_key = boost::none;
             m_blob_hmac_key = boost::none;
             m_blob_outdated = false; // Blob will be reloaded if needed when login succeeds
+            swap_with_default(m_limits_data);
+            swap_with_default(m_twofactor_config);
+            swap_with_default(m_subaccounts);
+            m_ga_pubkeys.reset();
+            m_user_pubkeys.reset();
+            m_recovery_pubkeys.reset();
+            const auto now = std::chrono::system_clock::now();
+            m_fee_estimates_ts = now;
+            swap_with_default(m_tx_notifications);
+            m_tx_last_notification = now;
+            m_tx_list_caches.purge_all();
         } catch (const std::exception& ex) {
-        }
-    }
-
-    bool ga_session::login_from_cached(const std::string& mnemonic)
-    {
-        try {
-            locker_t locker(m_mutex);
-            login(mnemonic);
-            return true;
-        } catch (const std::exception&) {
-            return false;
         }
     }
 
@@ -1873,6 +1861,7 @@ namespace sdk {
             return data.at("mnemonic");
         } catch (const autobahn::call_error& e) {
             GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
+            reset_all_session_data();
             throw login_error(res::id_invalid_pin);
         }
     }
@@ -1885,6 +1874,7 @@ namespace sdk {
         nlohmann::json login_data = wamp_cast_json(wamp_call("login.watch_only_v2", "custom", args, user_agent));
 
         if (login_data.is_boolean()) {
+            reset_all_session_data();
             throw login_error(res::id_login_failed);
         }
         locker_t locker(m_mutex);

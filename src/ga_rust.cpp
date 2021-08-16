@@ -73,8 +73,6 @@ namespace sdk {
         // gdk_rust cleanup
     }
 
-    void ga_rust::on_failed_login() {}
-
     bool ga_rust::is_connected() const { throw std::runtime_error("is_connected not implemented"); }
 
     void ga_rust::set_ping_fail_handler(ping_fail_t handler) {}

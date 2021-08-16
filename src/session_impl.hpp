@@ -57,7 +57,6 @@ namespace sdk {
         virtual void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
 
-        virtual void on_failed_login() = 0;
         virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
         virtual void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler) = 0;

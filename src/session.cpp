@@ -66,12 +66,6 @@ namespace sdk {
             reconnect();
             throw reconnect_error();
         } catch (const login_error& e) {
-            {
-                boost::shared_ptr<session_impl> p = m_impl.load();
-                if (p) {
-                    p->on_failed_login();
-                }
-            }
             std::rethrow_exception(ex_p);
         } catch (const autobahn::network_error& e) {
             reconnect();
