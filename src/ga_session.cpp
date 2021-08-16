@@ -1530,8 +1530,14 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        GDK_RUNTIME_ASSERT(m_signer == nullptr);
-        m_signer = signer;
+        const bool is_initial_login = m_signer == nullptr;
+        if (is_initial_login) {
+            m_signer = signer;
+        } else {
+            // Re-login, ensure we are doing so with the same signer
+            GDK_RUNTIME_ASSERT(m_signer->get_mnemonic(std::string()) == signer->get_mnemonic(std::string())
+                && m_signer->get_device() == signer->get_device());
+        }
 
         constexpr bool minimal = true; // Don't return balance/nlocktime info
         const std::string id; // Device id, no longer used
@@ -1551,7 +1557,7 @@ namespace sdk {
         const std::string server_hmac = login_data["client_blob_hmac"];
         bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
 
-        if (!is_wallet_locked && !is_blob_on_server) {
+        if (!is_wallet_locked && !is_blob_on_server && m_blob_hmac.empty()) {
             // No client blob: create one, save it to the server and cache it,
             // but only if the wallet isn't locked for a two factor reset.
             // Subaccount names
@@ -1806,7 +1812,8 @@ namespace sdk {
 
     nlohmann::json ga_session::get_post_login_data()
     {
-        return nlohmann::json{ { "wallet_hash_id", m_login_data["wallet_hash_id"] } };
+        const bool relogin = m_user_pubkeys != nullptr;
+        return nlohmann::json{ { "wallet_hash_id", m_login_data["wallet_hash_id"] }, { "is_relogin", relogin } };
     }
 
     void ga_session::change_settings(const nlohmann::json& settings)

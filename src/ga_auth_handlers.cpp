@@ -249,7 +249,11 @@ namespace sdk {
             // Log in and set up the session
             m_result = m_session->authenticate(args.at("signature"), "GA", m_master_xpub_bip32, m_signer);
 
-            // Ask the caller for the xpubs for each subaccount
+            if (m_result.at("is_relogin")) {
+                // Re-logging in. Skip fetching xpubs etc as we already have them
+                return state_type::done;
+            }
+            // Not re-logging in. Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
             for (const auto& sa : m_session->get_subaccounts()) {
                 paths.emplace_back(m_session->get_subaccount_root_path(sa["pointer"]));
