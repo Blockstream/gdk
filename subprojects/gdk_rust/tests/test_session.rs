@@ -338,12 +338,13 @@ impl TestSession {
         create_opt.utxos = unspent_outputs;
         create_opt.confidential_utxos_only = confidential_utxos_only.unwrap_or(false);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
-        assert!(tx.user_signed, "tx is not marked as user_signed");
+        assert!(!tx.user_signed, "tx is marked as user_signed");
         match self.network.id() {
             NetworkId::Elements(_) => assert!(!tx.rbf_optin),
             NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
         };
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
+        assert!(signed_tx.user_signed, "tx is not marked as user_signed");
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_account_tx(create_opt.subaccount, &txid);

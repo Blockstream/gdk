@@ -505,6 +505,7 @@ impl Account {
 
         betx.fee = request.fee;
         betx.create_transaction = request.create_transaction.clone();
+        betx.user_signed = true;
 
         drop(acc_store);
         drop(store_read);
@@ -1109,7 +1110,7 @@ pub fn create_tx(
         network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
         "outgoing".to_string(),
         request.clone(),
-        true,
+        false,
         SPVVerifyResult::InProgress,
     );
     created_tx.changes_used = Some(changes.len() as u32);
