@@ -568,7 +568,7 @@ impl ElectrumSession {
 
             let headers_url = self.url.clone();
             let proxy = self.proxy.clone();
-            let notify_txs = self.notify.clone();
+            let notify_blocks = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let user_wants_to_sync = self.user_wants_to_sync.clone();
             let max_reorg_blocks = self.network.max_reorg_blocks.unwrap_or(144);
@@ -634,8 +634,11 @@ impl ElectrumSession {
                         if round % CROSS_VALIDATION_RATE == 0 {
                             let status_changed = headers.cross_validate();
                             if status_changed {
-                                // TODO account number
-                                notify_txs.updated_txs(0u32.into());
+                                // TODO: improve block notification
+                                if let Ok(store_read) = headers.store.read() {
+                                    let (tip_height, tip_hash) = store_read.cache.tip;
+                                    notify_blocks.block(tip_height, tip_hash);
+                                }
                             }
                         }
 
