@@ -1150,9 +1150,11 @@ namespace sdk {
         adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), m_gait_path.begin(),
             [](auto first, auto second) { return uint32_t((first << 8u) + second); });
 
-        // Create our GA and recovery pubkey collections
-        m_ga_pubkeys = std::make_unique<ga_pubkeys>(m_net_params, m_gait_path);
-        m_recovery_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params);
+        if (!m_ga_pubkeys) {
+            // Create our GA and recovery pubkey collections
+            m_ga_pubkeys = std::make_unique<ga_pubkeys>(m_net_params, m_gait_path);
+            m_recovery_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params);
+        }
 
         const uint32_t min_fee_rate = m_login_data["min_fee"];
         if (min_fee_rate != m_min_fee_rate) {
@@ -1551,6 +1553,9 @@ namespace sdk {
             locker.unlock();
             reset_all_session_data();
             throw login_error(res::id_login_failed);
+        } else if (!is_initial_login) {
+            // Re-login. Discard all cached data which may be out of date
+            reset_cached_session_data();
         }
 
         const bool is_wallet_locked = json_get_value(login_data, "reset_2fa_active", false);
@@ -1754,6 +1759,18 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
         m_cache.save_db(); // No-op if unchanged
+    }
+
+    void ga_session::reset_cached_session_data()
+    {
+        // FIXME: Reduce the amount of cached data we discard here.
+        // For example, if we haven't missed any blocks since we were
+        // last logged in, then we only need to clear mempool data
+        // (as we may have missed a mempool tx notification)
+        remove_cached_utxos(std::vector<uint32_t>());
+        swap_with_default(m_tx_notifications);
+        m_tx_list_caches.purge_all();
+        m_nlocktimes.reset();
     }
 
     void ga_session::reset_all_session_data()

@@ -183,6 +183,7 @@ namespace sdk {
         void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
     private:
+        void reset_cached_session_data();
         void reset_all_session_data();
 
         bool is_connected() const;
