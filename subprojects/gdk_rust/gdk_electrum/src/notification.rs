@@ -1,9 +1,11 @@
 use crate::State;
 use gdk_common::wally::make_str;
-use gdk_common::{be::BEBlockHash, model::Settings};
+use gdk_common::{be::BEBlockHash, be::BETxid, model::Settings};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 type NativeType = (extern "C" fn(*const libc::c_void, *const libc::c_char), *const libc::c_void);
 #[derive(Clone)]
@@ -88,10 +90,10 @@ impl NativeNotif {
         self.notify(data);
     }
 
-    pub fn updated_txs(&self, account_num: u32) {
+    pub fn updated_txs(&self, txid: BETxid, accounts: &HashSet<u32>) {
         // This is used as a signal to trigger syncing via get_transactions, the transaction
         // list contained here is ignored and can be just a mock.
-        let data = json!({"event":"transaction","transaction":{"subaccounts":[account_num]}});
+        let data = json!({"event":"transaction","transaction":{"txhash":txid.to_hex(),"subaccounts":Vec::from_iter(accounts)}});
         self.notify(data);
     }
 

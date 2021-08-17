@@ -711,11 +711,12 @@ impl ElectrumSession {
             loop {
                 match syncer_url.build_client(proxy.as_deref(), None) {
                     Ok(client) => match syncer.sync(&client) {
-                        Ok(updated_accounts) => {
+                        Ok(updated_txs) => {
                             state_updater.update_if_needed(true);
-                            for account_num in updated_accounts {
+                            for (txid, accounts) in updated_txs.iter() {
                                 info!("there are new transactions");
-                                notify_txs.updated_txs(account_num);
+                                // TODO: limit the number of notifications
+                                notify_txs.updated_txs(txid.clone(), accounts);
                             }
                         }
                         Err(e) => {
@@ -1393,12 +1394,12 @@ struct DownloadTxResult {
 
 impl Syncer {
     /// Sync the wallet, return the set of updated accounts
-    pub fn sync(&self, client: &Client) -> Result<HashSet<u32>, Error> {
+    pub fn sync(&self, client: &Client) -> Result<HashMap<BETxid, HashSet<u32>>, Error> {
         debug!("start sync");
         let start = Instant::now();
 
         let accounts = self.accounts.read().unwrap();
-        let mut updated_accounts = HashSet::new();
+        let mut updated_txs: HashMap<BETxid, HashSet<u32>> = HashMap::new();
 
         for account in accounts.values() {
             let mut history_txs_id = HashSet::<BETxid>::new();
@@ -1508,7 +1509,15 @@ impl Syncer {
                 store_write.flush()?;
                 drop(store_write);
 
-                updated_accounts.insert(account.num());
+                for tx in new_txs.txs.iter() {
+                    if let Some(accounts) = updated_txs.get_mut(&tx.0) {
+                        accounts.insert(account.num());
+                    } else {
+                        let mut accounts = HashSet::new();
+                        accounts.insert(account.num());
+                        updated_txs.insert(tx.0, accounts);
+                    }
+                }
 
                 // the transactions are first indexed into the db and then verified so that all the prevouts
                 // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
@@ -1525,7 +1534,7 @@ impl Syncer {
             );
         }
 
-        Ok(updated_accounts)
+        Ok(updated_txs)
     }
 
     fn download_headers(
