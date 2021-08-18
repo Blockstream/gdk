@@ -376,7 +376,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidtestnet" },
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
-            { "csv_buckets", std::vector<uint32_t>{ 65535 } }, // TODO: Allow shorter csv times?
+            { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
             { "ct_bits", 52 },
             { "ct_exponent", 0 },
             { "development", false },
