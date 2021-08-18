@@ -182,14 +182,16 @@ namespace sdk {
 
     void session::disconnect()
     {
-        GDK_LOG_SEV(log_level::debug) << "session disconnect...";
-        auto p = get_impl();
-        while (p && !m_impl.compare_exchange_strong(p, boost::shared_ptr<session_impl>{})) {
-        }
-        if (p && p->get_network_parameters().is_electrum()) {
-            GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
-            p->disconnect();
-        }
+        no_std_exception_escape([this]() {
+            GDK_LOG_SEV(log_level::debug) << "session disconnect...";
+            auto p = get_impl();
+            while (p && !m_impl.compare_exchange_strong(p, boost::shared_ptr<session_impl>{})) {
+            }
+            if (p && p->get_network_parameters().is_electrum()) {
+                GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
+                p->disconnect();
+            }
+        });
     }
 
     void session::reconnect_hint(const nlohmann::json& hint)
