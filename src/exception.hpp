@@ -8,12 +8,6 @@
 namespace ga {
 namespace sdk {
 
-    using abort_error = autobahn::abort_error;
-    using network_error = autobahn::network_error;
-    using no_session_error = autobahn::no_session_error;
-    using no_transport_error = autobahn::no_transport_error;
-    using protocol_error = autobahn::protocol_error;
-
     class login_error : public std::runtime_error {
     public:
         explicit login_error(const std::string& what)
