@@ -249,14 +249,6 @@ namespace sdk {
         });
     }
 
-    std::string session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->mnemonic_from_pin_data(pin, pin_data);
-        });
-    }
-
     bool session::set_watch_only(const std::string& username, const std::string& password)
     {
         return exception_wrapper([&] {

@@ -1514,12 +1514,6 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::login(const std::string& /*mnemonic*/)
-    {
-        GDK_RUNTIME_ASSERT(false);
-        return nlohmann::json();
-    }
-
     void ga_session::push_appearance_to_server(session_impl::locker_t& locker) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1882,18 +1876,19 @@ namespace sdk {
         remap_appearance_setting("required_num_blocks", "required_num_blocks");
     }
 
-    std::string ga_session::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
+    std::string ga_session::mnemonic_from_pin_data(const nlohmann::json& pin_data)
     {
         try {
             // FIXME: clear password after use
-            const auto password = get_pin_password(pin, pin_data.at("pin_identifier"));
-            const std::string salt = pin_data.at("salt");
+            const auto& pin = pin_data.at("pin");
+            const auto& data = pin_data.at("pin_data");
+            const auto password = get_pin_password(pin, data.at("pin_identifier"));
+            const std::string salt = data.at("salt");
             const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt));
 
             // FIXME: clear data after use
-            const auto data = nlohmann::json::parse(aes_cbc_decrypt(key, pin_data.at("encrypted_data")));
-
-            return data.at("mnemonic");
+            const auto decrypted = nlohmann::json::parse(aes_cbc_decrypt(key, data.at("encrypted_data")));
+            return decrypted.at("mnemonic");
         } catch (const autobahn::call_error& e) {
             GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
             reset_all_session_data();

@@ -123,8 +123,8 @@ namespace sdk {
     // Register
     //
     register_call::register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic)
-        : auth_handler_impl(
-              session, "register_user", make_login_signer(session.get_network_parameters(), hw_device, mnemonic))
+        : auth_handler_impl(session, "register_user", std::shared_ptr<signer>())
+        , m_hw_device(hw_device)
         , m_mnemonic(mnemonic)
         , m_initialized(false)
     {
@@ -136,6 +136,9 @@ namespace sdk {
             // Register is a no-op for electrum sessions
             m_state = state_type::done;
         } else {
+            // Create our signer to handle xpub deriving
+            m_signer = make_login_signer(m_net_params, m_hw_device, m_mnemonic);
+
             // To register, we need the master xpub to identify the wallet,
             // and the registration xpub to compute the gait_path.
             signal_hw_request(hw_request::get_xpubs);
@@ -173,13 +176,14 @@ namespace sdk {
     //
     class login_call : public auth_handler_impl {
     public:
-        login_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic,
-            const std::string& password);
+        login_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
 
     private:
         state_type call_impl() override;
         void initialize();
 
+        const nlohmann::json m_hw_device;
+        const nlohmann::json m_credential_data;
         std::string m_challenge;
         std::string m_master_xpub_bip32;
 
@@ -188,19 +192,33 @@ namespace sdk {
         bool m_initialized;
     };
 
-    login_call::login_call(
-        session& session, const nlohmann::json& hw_device, const std::string& mnemonic, const std::string& password)
-        : auth_handler_impl(session, "login_user",
-              make_login_signer(session.get_network_parameters(), hw_device, decrypt_mnemonic(mnemonic, password)))
+    login_call::login_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& m_credential_data)
+        : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
+        , m_hw_device(hw_device)
+        , m_credential_data(m_credential_data)
         , m_initialized(false)
     {
     }
 
     void login_call::initialize()
     {
+        std::string mnemonic;
+        std::string password;
+
+        if (!m_hw_device.empty() || m_credential_data.contains("mnemonic")) {
+            mnemonic = json_get_value(m_credential_data, "mnemonic");
+            password = json_get_value(m_credential_data, "password");
+            // FIXME: Allow a "bip39_passphrase" element to enable bip39 logins
+        } else if (m_credential_data.contains("pin")) {
+            mnemonic = m_session->mnemonic_from_pin_data(m_credential_data);
+        } else {
+            GDK_RUNTIME_ASSERT_MSG(false, "Invalid credentials");
+        }
+        m_signer = make_login_signer(m_net_params, m_hw_device, decrypt_mnemonic(mnemonic, password));
+
         if (m_net_params.is_electrum()) {
             // FIXME: Implement rust login via authenticate()
-            m_result = m_session->login(m_signer->get_mnemonic(std::string()));
+            m_result = m_session->login(m_signer);
             m_state = state_type::done;
         } else {
             // We first need the challenge, so ask the caller for the master pubkey.
@@ -360,17 +378,8 @@ namespace sdk {
     auth_handler* get_login_call(
         session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
     {
-        if (!hw_device.empty() || credential_data.contains("mnemonic")) {
-            const auto mnemonic = json_get_value(credential_data, "mnemonic");
-            const auto password = json_get_value(credential_data, "password");
-            // FIXME: Allow a "bip39_passphrase" element to enable bip39 logins
-            return new login_call(session, hw_device, mnemonic, password);
-        } else if (credential_data.contains("pin")) {
-            const auto pin = credential_data.at("pin");
-            const auto& pin_data = credential_data.at("pin_data");
-            const auto mnemonic = session.mnemonic_from_pin_data(pin, pin_data);
-            const auto password = std::string();
-            return new login_call(session, hw_device, mnemonic, password);
+        if (!hw_device.empty() || credential_data.contains("mnemonic") || credential_data.contains("pin")) {
+            return new login_call(session, hw_device, credential_data);
         } else {
             // Assume watch-only
             return new watch_only_login_call(session, credential_data);

@@ -14,7 +14,8 @@ namespace sdk {
         state_type call_impl() override;
         void initialize();
 
-        std::string m_mnemonic;
+        const nlohmann::json m_hw_device;
+        const std::string m_mnemonic;
         bool m_initialized;
     };
 

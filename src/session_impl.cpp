@@ -96,6 +96,12 @@ namespace sdk {
         // Default impl is a no-op; registration is only meaningful in multisig
     }
 
+    nlohmann::json session_impl::login(std::shared_ptr<signer> /*signer*/)
+    {
+        GDK_RUNTIME_ASSERT(false); // Only used by rust until it supports HWW
+        return nlohmann::json();
+    }
+
     bool session_impl::set_blinding_nonce(
         const std::string& /*pubkey_hex*/, const std::string& /*script_hex*/, const std::string& /*nonce_hex*/)
     {

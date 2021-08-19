@@ -180,22 +180,16 @@ namespace sdk {
     {
         throw std::runtime_error("register_subaccount_xpubs not implemented");
     }
-    nlohmann::json ga_rust::login(const std::string& mnemonic)
+    nlohmann::json ga_rust::login(std::shared_ptr<signer> signer)
     {
-        auto details = nlohmann::json({ { "mnemonic", mnemonic }, { "password", std::string() } });
-
-        auto ret = call_session("login", details);
-        m_signer = signer::make_software_signer(m_net_params, mnemonic);
-        return ret;
+        m_signer = signer;
+        auto details
+            = nlohmann::json({ { "mnemonic", signer->get_mnemonic(std::string()) }, { "password", std::string() } });
+        return call_session("login", details);
     }
-    std::string ga_rust::mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data)
+    std::string ga_rust::mnemonic_from_pin_data(const nlohmann::json& pin_data)
     {
-        auto details = nlohmann::json({
-            { "pin", pin },
-            { "pin_data", pin_data },
-        });
-
-        return call_session("mnemonic_from_pin_data", details);
+        return call_session("mnemonic_from_pin_data", pin_data);
     }
     nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
     {

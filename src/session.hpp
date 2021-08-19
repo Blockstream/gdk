@@ -40,8 +40,6 @@ namespace sdk {
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
-        std::string mnemonic_from_pin_data(const std::string& pin, const nlohmann::json& pin_data);
-
         bool set_watch_only(const std::string& username, const std::string& password);
         std::string get_watch_only_username();
 
