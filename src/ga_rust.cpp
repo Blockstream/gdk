@@ -184,6 +184,8 @@ namespace sdk {
     {
         {
             locker_t locker(m_mutex);
+            // Re-login must use the same signer
+            GDK_RUNTIME_ASSERT(!m_signer.get() || m_signer.get() == signer.get());
             m_signer = signer;
         }
         auto details

@@ -1533,9 +1533,8 @@ namespace sdk {
         if (is_initial_login) {
             m_signer = signer;
         } else {
-            // Re-login, ensure we are doing so with the same signer
-            GDK_RUNTIME_ASSERT(m_signer->get_mnemonic(std::string()) == signer->get_mnemonic(std::string())
-                && m_signer->get_device() == signer->get_device());
+            // Re-login must use the same signer
+            GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
         }
 
         constexpr bool minimal = true; // Don't return balance/nlocktime info
@@ -1832,8 +1831,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_post_login_data()
     {
-        const bool relogin = m_user_pubkeys != nullptr;
-        return nlohmann::json{ { "wallet_hash_id", m_login_data["wallet_hash_id"] }, { "is_relogin", relogin } };
+        return nlohmann::json{ { "wallet_hash_id", m_login_data["wallet_hash_id"] } };
     }
 
     void ga_session::change_settings(const nlohmann::json& settings)

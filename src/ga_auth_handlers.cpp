@@ -208,7 +208,15 @@ namespace sdk {
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "Invalid credentials");
         }
-        m_signer = make_login_signer(m_net_params, m_hw_device, decrypt_mnemonic(mnemonic, password));
+        auto signer = make_login_signer(m_net_params, m_hw_device, decrypt_mnemonic(mnemonic, password));
+        if (m_session->get_signer() != nullptr) {
+            // Re-login: ensure we are doing so with the same login details and HW/SW device
+            auto session_signer = m_session->get_signer();
+            GDK_RUNTIME_ASSERT(signer->get_mnemonic(std::string()) == session_signer->get_mnemonic(std::string()));
+            GDK_RUNTIME_ASSERT(signer->get_device() == session_signer->get_device());
+            signer = session_signer; // Use the existing session signer
+        }
+        m_signer = signer;
 
         if (m_net_params.is_electrum()) {
             // FIXME: Implement rust login via authenticate()
@@ -261,11 +269,7 @@ namespace sdk {
             // Log in and set up the session
             m_result = m_session->authenticate(args.at("signature"), "GA", m_master_xpub_bip32, m_signer);
 
-            if (m_result.at("is_relogin")) {
-                // Re-logging in. Skip fetching xpubs etc as we already have them
-                return state_type::done;
-            }
-            // Not re-logging in. Ask the caller for the xpubs for each subaccount
+            // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
             for (const auto& sa : m_session->get_subaccounts()) {
                 paths.emplace_back(m_session->get_subaccount_root_path(sa["pointer"]));
