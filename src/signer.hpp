@@ -85,7 +85,6 @@ namespace sdk {
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
         // hardware. Use xpub_hdkeys_base to quickly derive from the resulting key.
-        xpub_t get_xpub(uint32_span_t path);
         std::string get_bip32_xpub(uint32_span_t path);
 
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'

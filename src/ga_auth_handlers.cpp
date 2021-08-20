@@ -23,12 +23,6 @@ namespace sdk {
         // that the code path to upload on login is always executed/doesn't bitrot.
         static const uint32_t INITIAL_UPLOAD_CA = 20;
 
-        static auto get_xpub(const std::string& bip32_xpub_str)
-        {
-            const auto hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub_str);
-            return make_xpub(hdkey.get());
-        }
-
         static std::string get_confidential_address(
             const std::string& address, uint32_t prefix, const std::string& blinding_key_hex)
         {
@@ -157,13 +151,13 @@ namespace sdk {
 
         const nlohmann::json args = nlohmann::json::parse(m_code);
         const std::vector<std::string> xpubs = args.at("xpubs");
-        const auto master_xpub = get_xpub(xpubs.at(0));
+        const auto master_xpub = make_xpub(xpubs.at(0));
 
         const auto master_chain_code_hex = b2h(master_xpub.first);
         const auto master_pub_key_hex = b2h(master_xpub.second);
 
         // Get our gait path xpub and compute gait_path from it
-        const auto gait_xpub = get_xpub(xpubs.at(1));
+        const auto gait_xpub = make_xpub(xpubs.at(1));
         const auto gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
 
         const bool supports_csv = m_signer->supports_arbitrary_scripts();
@@ -242,10 +236,10 @@ namespace sdk {
             const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
 
             m_master_xpub_bip32 = xpubs.at(0);
-            const auto public_key = get_xpub(m_master_xpub_bip32).second;
+            const auto public_key = make_xpub(m_master_xpub_bip32).second;
             m_challenge = m_session->get_challenge(public_key);
 
-            const auto local_xpub = get_xpub(xpubs.at(1));
+            const auto local_xpub = make_xpub(xpubs.at(1));
             const bool is_hw_wallet = m_signer->is_hardware();
             m_session->set_local_encryption_keys(local_xpub.second, is_hw_wallet);
 

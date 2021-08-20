@@ -148,18 +148,6 @@ namespace sdk {
 
     const nlohmann::json& signer::get_device() const { return m_device; }
 
-    xpub_t signer::get_xpub(uint32_span_t path)
-    {
-        ext_key* hdkey = m_master_key.get();
-        GDK_RUNTIME_ASSERT(hdkey);
-        wally_ext_key_ptr derived;
-        if (!path.empty()) {
-            derived = derive(m_master_key, path);
-            hdkey = derived.get();
-        }
-        return make_xpub(hdkey);
-    }
-
     std::string signer::get_bip32_xpub(uint32_span_t path)
     {
         ext_key* hdkey = m_master_key.get();
