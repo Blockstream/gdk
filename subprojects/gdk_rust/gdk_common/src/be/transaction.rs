@@ -147,7 +147,7 @@ impl BETransaction {
     pub fn output_value(
         &self,
         vout: u32,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<u64> {
         match self {
             Self::Bitcoin(tx) => Some(tx.output[vout as usize].value),
@@ -193,7 +193,7 @@ impl BETransaction {
     pub fn output_asset(
         &self,
         vout: u32,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<elements::issuance::AssetId> {
         match self {
             Self::Bitcoin(_) => None,
@@ -202,7 +202,7 @@ impl BETransaction {
                     txid: tx.txid(),
                     vout,
                 };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.asset())
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.asset.clone())
             }
         }
     }
@@ -210,7 +210,7 @@ impl BETransaction {
     pub fn output_assetblinder_hex(
         &self,
         vout: u32,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<String> {
         match self {
             Self::Bitcoin(_) => None,
@@ -219,7 +219,7 @@ impl BETransaction {
                     txid: tx.txid(),
                     vout,
                 };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.assetblinder_hex())
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.asset_bf.to_hex())
             }
         }
     }
@@ -227,7 +227,7 @@ impl BETransaction {
     pub fn output_amountblinder_hex(
         &self,
         vout: u32,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<String> {
         match self {
             Self::Bitcoin(_) => None,
@@ -236,7 +236,7 @@ impl BETransaction {
                     txid: tx.txid(),
                     vout,
                 };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.amountblinder_hex())
+                all_unblinded.get(&outpoint).map(|unblinded| unblinded.value_bf.to_hex())
             }
         }
     }
@@ -383,7 +383,7 @@ impl BETransaction {
         &self,
         send_all: bool,
         all_txs: &BETransactions,
-        unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> u8 {
         match self {
             Self::Bitcoin(_) => 1u8 - send_all as u8,
@@ -413,7 +413,7 @@ impl BETransaction {
         no_change: bool,
         policy_asset: Option<elements::issuance::AssetId>,
         all_txs: &BETransactions,
-        unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
         script_type: ScriptType,
     ) -> Vec<AssetValue> {
         match self {
@@ -492,7 +492,7 @@ impl BETransaction {
         estimated_fee: u64,
         policy_asset: Option<elements::issuance::AssetId>,
         all_txs: &BETransactions,
-        unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Vec<AssetValue> {
         match self {
             Self::Bitcoin(tx) => {
@@ -606,7 +606,7 @@ impl BETransaction {
     pub fn fee(
         &self,
         all_txs: &BETransactions,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
         policy_asset: &Option<elements::issuance::AssetId>,
     ) -> Result<u64, Error> {
         match self {
@@ -700,7 +700,7 @@ impl BETransaction {
         &self,
         all_txs: &BETransactions,
         all_scripts: &HashMap<BEScript, DerivationPath>,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Balances {
         match self {
             Self::Bitcoin(tx) => {
@@ -742,7 +742,7 @@ impl BETransaction {
                             outpoint,
                             unblinded.value
                         );
-                        let asset_id_str = unblinded.asset().to_hex();
+                        let asset_id_str = unblinded.asset.to_hex();
                         *result.entry(asset_id_str).or_default() -= unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -759,7 +759,7 @@ impl BETransaction {
                             outpoint,
                             unblinded.value
                         );
-                        let asset_id_str = unblinded.asset().to_hex();
+                        let asset_id_str = unblinded.asset.to_hex();
                         *result.entry(asset_id_str).or_default() += unblinded.value as i64;
                         // TODO check overflow
                     }
@@ -774,7 +774,7 @@ impl BETransaction {
     /// Return a copy of the transaction with the outputs matched by `f` only
     pub fn filter_outputs<F>(
         &self,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
         mut f: F,
     ) -> BETransaction
     where
@@ -940,7 +940,7 @@ impl BETransactions {
     pub fn get_previous_output_value(
         &self,
         outpoint: &BEOutPoint,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<u64> {
         match self.0.get(&outpoint.txid()) {
             None => None,
@@ -951,7 +951,7 @@ impl BETransactions {
     pub fn get_previous_output_asset(
         &self,
         outpoint: elements::OutPoint,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<elements::issuance::AssetId> {
         match self.0.get(&outpoint.txid.into()) {
             None => None,
@@ -962,7 +962,7 @@ impl BETransactions {
     pub fn get_previous_output_assetblinder_hex(
         &self,
         outpoint: elements::OutPoint,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<String> {
         match self.0.get(&outpoint.txid.into()) {
             None => None,
@@ -973,7 +973,7 @@ impl BETransactions {
     pub fn get_previous_output_amountblinder_hex(
         &self,
         outpoint: elements::OutPoint,
-        all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<String> {
         match self.0.get(&outpoint.txid.into()) {
             None => None,

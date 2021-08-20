@@ -261,7 +261,7 @@ fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
 pub fn make_txlist_item(
     tx: &TransactionMeta,
     all_txs: &BETransactions,
-    all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     all_scripts: &HashMap<BEScript, DerivationPath>,
     network_id: NetworkId,
 ) -> TxListItem {
@@ -1200,7 +1200,7 @@ impl Headers {
 #[derive(Default)]
 struct DownloadTxResult {
     txs: Vec<(BETxid, BETransaction)>,
-    unblinds: Vec<(elements::OutPoint, Unblinded)>,
+    unblinds: Vec<(elements::OutPoint, elements::TxOutSecrets)>,
 }
 
 impl Syncer {
@@ -1459,7 +1459,7 @@ impl Syncer {
         &self,
         outpoint: elements::OutPoint,
         output: elements::TxOut,
-    ) -> Result<Unblinded, Error> {
+    ) -> Result<elements::TxOutSecrets, Error> {
         match (output.asset, output.value, output.nonce) {
             (
                 Asset::Confidential(_),
@@ -1478,23 +1478,15 @@ impl Syncer {
                     txout_secrets.value
                 );
 
-                // TODO: Unblinded -> TxOutSecrets
-                let unblinded = Unblinded {
-                    asset: txout_secrets.asset.clone(),
-                    value: txout_secrets.value,
-                    abf: *txout_secrets.asset_bf.into_inner().as_ref(),
-                    vbf: *txout_secrets.value_bf.into_inner().as_ref(),
-                };
-                Ok(unblinded)
+                Ok(txout_secrets)
             }
             (Asset::Explicit(asset_id), confidential::Value::Explicit(satoshi), _) => {
-                let unblinded = Unblinded {
+                Ok(elements::TxOutSecrets {
                     asset: asset_id,
                     value: satoshi,
-                    abf: [0u8; 32],
-                    vbf: [0u8; 32],
-                };
-                Ok(unblinded)
+                    asset_bf: elements::confidential::AssetBlindingFactor::zero(),
+                    value_bf: elements::confidential::ValueBlindingFactor::zero(),
+                })
             }
             _ => Err(Error::Generic("Unexpected asset/value/nonce".into())),
         }

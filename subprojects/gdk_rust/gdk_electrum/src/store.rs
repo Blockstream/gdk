@@ -5,8 +5,9 @@ use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use bitcoin::Transaction;
+use elements::TxOutSecrets;
+use gdk_common::be::BETxidConvert;
 use gdk_common::be::{BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactions, BETxid};
-use gdk_common::be::{BETxidConvert, Unblinded};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::NetworkId;
 use log::{info, warn};
@@ -71,7 +72,7 @@ pub struct RawAccountCache {
     pub heights: HashMap<BETxid, Option<u32>>,
 
     /// unblinded values (only for liquid)
-    pub unblinded: HashMap<elements::OutPoint, Unblinded>,
+    pub unblinded: HashMap<elements::OutPoint, TxOutSecrets>,
 
     /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
     pub indexes: Indexes,

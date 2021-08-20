@@ -24,6 +24,7 @@ use gdk_common::model::{
     SPVVerifyResult, TransactionMeta, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
+use gdk_common::util::is_confidential_txoutsecrets;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
@@ -336,18 +337,21 @@ impl Account {
                                     {
                                         return None;
                                     }
-                                    if confidential_utxos_only && !unblinded.confidential() {
+                                    if confidential_utxos_only
+                                        && is_confidential_txoutsecrets(unblinded)
+                                    {
                                         return None;
                                     }
                                     return Some((
                                         outpoint,
                                         UTXOInfo::new_elements(
-                                            unblinded.asset(),
+                                            unblinded.asset,
                                             unblinded.value,
                                             output.script_pubkey.into(),
                                             height.clone(),
                                             path.clone(),
-                                            unblinded.confidential(),
+                                            output.asset.is_confidential()
+                                                && output.value.is_confidential(),
                                         ),
                                     ));
                                 }
@@ -1247,13 +1251,7 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
             .get(&previous_output)
             .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
 
-        // TODO: replace Unblinded with TxOutSecrets in the db
-        inp_txout_sec.push(Some(elements::TxOutSecrets::new(
-            unblinded.asset,
-            elements::confidential::AssetBlindingFactor::from_slice(&unblinded.abf)?,
-            unblinded.value,
-            elements::confidential::ValueBlindingFactor::from_slice(&unblinded.vbf)?,
-        )));
+        inp_txout_sec.push(Some(unblinded.clone()));
 
         let prev_tx = acc_store.get_liquid_tx(&input.previous_txid)?;
         let txout = prev_tx.output[input.previous_output_index as usize].clone();

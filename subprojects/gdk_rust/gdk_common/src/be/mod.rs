@@ -13,7 +13,6 @@ pub use blockhash::*;
 pub use blockheader::*;
 pub use outpoint::*;
 pub use script::*;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 pub use transaction::*;
 pub use txid::*;
@@ -71,42 +70,6 @@ impl UTXOInfo {
         } else {
             Some(self.asset.parse().expect("Invalid asset"))
         }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Unblinded {
-    pub asset: elements::issuance::AssetId,
-    pub abf: [u8; 32],
-    pub vbf: [u8; 32],
-    pub value: u64,
-}
-
-impl Unblinded {
-    pub fn asset(&self) -> elements::issuance::AssetId {
-        self.asset.clone()
-    }
-
-    pub fn confidential(&self) -> bool {
-        self.abf != [0u8; 32] || self.vbf != [0u8; 32]
-    }
-
-    pub fn assetblinder_hex(&self) -> String {
-        let mut abf = self.abf.to_vec();
-        abf.reverse();
-        hex::encode(abf)
-    }
-
-    pub fn amountblinder_hex(&self) -> String {
-        let mut vbf = self.vbf.to_vec();
-        vbf.reverse();
-        hex::encode(vbf)
-    }
-}
-
-impl Debug for Unblinded {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.asset.to_hex(), self.value)
     }
 }
 
