@@ -24,23 +24,11 @@ impl fmt::Debug for MasterBlindingKey {
     }
 }
 
-/// The max entropy size in bytes for BIP39 mnemonics.
-const BIP39_MAX_ENTROPY_BYTES: usize = 32;
 /// The size of BIP39-derived seeds in bytes.
 const BIP39_SEED_BYTES: usize = 64;
 
-/// Generate a BIP39 mnemonic from entropy bytes.
-pub fn bip39_mnemonic_from_bytes(entropy: &[u8]) -> String {
-    let mut out = ptr::null();
-    let ret = unsafe {
-        ffi::bip39_mnemonic_from_bytes(ptr::null(), entropy.as_ptr(), entropy.len(), &mut out)
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    read_str(out)
-}
-
-/// Validate the validity of a BIP-39 mnemonic.
-pub fn bip39_mnemonic_validate(mnemonic: &str) -> bool {
+/// Validate a BIP-39 mnemonic.
+fn bip39_mnemonic_validate(mnemonic: &str) -> bool {
     let c_mnemonic = make_str(mnemonic);
     let ret = unsafe {
         let ret = ffi::bip39_mnemonic_validate(ptr::null(), c_mnemonic);
@@ -48,34 +36,6 @@ pub fn bip39_mnemonic_validate(mnemonic: &str) -> bool {
         ret
     };
     ret == ffi::WALLY_OK
-}
-
-/// Convert the mnemonic back into the entropy bytes.
-pub fn bip39_mnemonic_to_bytes(mnemonic: &str) -> Option<Vec<u8>> {
-    if !bip39_mnemonic_validate(mnemonic) {
-        return None;
-    }
-
-    let c_mnemonic = make_str(mnemonic);
-    let mut out = Vec::with_capacity(BIP39_MAX_ENTROPY_BYTES);
-    let mut written = 0usize;
-    let ret = unsafe {
-        let ret = ffi::bip39_mnemonic_to_bytes(
-            ptr::null(),
-            c_mnemonic,
-            out.as_mut_ptr(),
-            BIP39_MAX_ENTROPY_BYTES,
-            &mut written,
-        );
-        let _ = CString::from_raw(c_mnemonic);
-        ret
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    assert!(written <= BIP39_MAX_ENTROPY_BYTES);
-    unsafe {
-        out.set_len(written);
-    }
-    Some(out)
 }
 
 /// Convert the mnemonic phrase and passphrase to a binary seed.
@@ -479,16 +439,11 @@ mod tests {
     #[test]
     fn test_bip39_mnemonic_to_seed() {
         // test vector from the BIP spec
-        let v_entropy = "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c";
         let v_mnem = "hamster diagram private dutch cause delay private meat slide toddler razor book happy fancy gospel tennis maple dilemma loan word shrug inflict delay length";
         let v_seed = "64c87cde7e12ecf6704ab95bb1408bef047c22db4cc7491c4271d170a1b213d20b385bc1588d9c7b38f1b39d415665b8a9030c9ec653d75e65f847d8fc1fc440";
         let v_passphrase = "TREZOR";
 
-        let mnemonic = bip39_mnemonic_from_bytes(&hex::decode(v_entropy).unwrap());
-        assert_eq!(mnemonic, v_mnem);
-        assert!(bip39_mnemonic_validate(&mnemonic));
-        assert_eq!(hex::encode(&bip39_mnemonic_to_bytes(&mnemonic).unwrap()), v_entropy);
-        let seed = bip39_mnemonic_to_seed(&mnemonic, &v_passphrase).unwrap();
+        let seed = bip39_mnemonic_to_seed(&v_mnem, &v_passphrase).unwrap();
         assert_eq!(v_seed, &hex::encode(&seed[..]));
     }
 

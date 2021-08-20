@@ -24,32 +24,6 @@ pub struct WallyTx {
 }
 
 extern "C" {
-    //WALLY_CORE_API int bip39_mnemonic_from_bytes(
-    //    const struct words *w,
-    //    const unsigned char *bytes,
-    //    size_t bytes_len,
-    //    char **output);
-    pub fn bip39_mnemonic_from_bytes(
-        word_list: *const c_void,
-        bytes: *const c_uchar,
-        bytes_len: size_t,
-        output: *mut *const c_char,
-    ) -> c_int;
-
-    //WALLY_CORE_API int bip39_mnemonic_to_bytes(
-    //    const struct words *w,
-    //    const char *mnemonic,
-    //    unsigned char *bytes_out,
-    //    size_t len,
-    //    size_t *written);
-    pub fn bip39_mnemonic_to_bytes(
-        word_list: *const c_void,
-        mnemonic: *const c_char,
-        bytes_out: *mut c_uchar,
-        len: size_t,
-        written: *mut size_t,
-    ) -> c_int;
-
     //WALLY_CORE_API int bip39_mnemonic_to_seed(
     //    const char *mnemonic,
     //    const char *passphrase,
