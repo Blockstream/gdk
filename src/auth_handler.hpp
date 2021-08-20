@@ -130,6 +130,8 @@ namespace sdk {
 
     private:
         bool step();
+        bool are_all_paths_cached(std::shared_ptr<signer> signer, const nlohmann::json& paths) const;
+        nlohmann::json get_xpubs(std::shared_ptr<signer> signer, const nlohmann::json& paths) const;
 
         auth_handler* m_handler;
     };

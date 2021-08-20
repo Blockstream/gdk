@@ -325,7 +325,10 @@ namespace sdk {
 
         const auto status = get_status();
         const auto& required_data = status.at("required_data");
+        // TODO: When multiple signers are supported, get the signer indicated by the
+        //       required_data's "device" element
         const auto signer = get_signer();
+        const bool is_hardware = signer->is_hardware();
         const bool have_master_blinding_key = signer->has_master_blinding_key();
         nlohmann::json result;
 
@@ -360,22 +363,23 @@ namespace sdk {
             }
             resolve_code(result.dump());
             return true;
+        } else if (request == hw_request::get_xpubs) {
+            const auto& paths = required_data.at("paths");
+            if (!is_hardware || are_all_paths_cached(signer, paths)) {
+                // A HWW request to compute xpubs which we have cached, or
+                // A SWW request to compute xpubs which we can compute if not cached
+                result.emplace("xpubs", get_xpubs(signer, paths));
+                resolve_code(result.dump());
+                return true;
+            }
         }
 
-        if (required_data.at("device").at("device_type") == "hardware") {
+        if (is_hardware) {
             return false; // Caller provided HW device, let the caller resolve
         }
 
         // We have a request to resolve with the internal software wallet
-        if (request == hw_request::get_xpubs) {
-            std::vector<std::string> xpubs;
-            const std::vector<nlohmann::json> paths = required_data.at("paths");
-            for (const auto& p : paths) {
-                const std::vector<uint32_t> path = p;
-                xpubs.emplace_back(signer->get_bip32_xpub(path));
-            }
-            result["xpubs"] = xpubs;
-        } else if (request == hw_request::sign_message) {
+        if (request == hw_request::sign_message) {
             const std::vector<uint32_t> path = required_data.at("path");
             const std::string message = required_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
@@ -393,6 +397,25 @@ namespace sdk {
         }
         resolve_code(result.dump());
         return true;
+    } // namespace sdk
+
+    bool auto_auth_handler::are_all_paths_cached(std::shared_ptr<signer> signer, const nlohmann::json& paths) const
+    {
+        for (const auto& p : paths) {
+            if (!signer->has_bip32_xpub(p.get<std::vector<uint32_t>>())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    nlohmann::json auto_auth_handler::get_xpubs(std::shared_ptr<signer> signer, const nlohmann::json& paths) const
+    {
+        nlohmann::json xpubs = nlohmann::json::array();
+        for (const auto& p : paths) {
+            xpubs.emplace_back(signer->get_bip32_xpub(p.get<std::vector<uint32_t>>()));
+        }
+        return xpubs;
     }
 
 } // namespace sdk
