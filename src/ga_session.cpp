@@ -2164,7 +2164,7 @@ namespace sdk {
         if (subaccount != 0) {
             // Add user and recovery pubkeys for the subaccount
             if (m_user_pubkeys != nullptr && !m_user_pubkeys->have_subaccount(subaccount)) {
-                const uint32_t path[2] = { harden(3), harden(subaccount) };
+                const std::vector<uint32_t> path{ harden(3), harden(subaccount) };
                 // TODO: Investigate whether this code path can ever execute
                 m_user_pubkeys->add_subaccount(subaccount, make_xpub(m_signer->get_bip32_xpub(path)));
             }

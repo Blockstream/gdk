@@ -85,7 +85,13 @@ namespace sdk {
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
         // hardware. Use xpub_hdkeys_base to quickly derive from the resulting key.
-        std::string get_bip32_xpub(uint32_span_t path);
+        std::string get_bip32_xpub(const std::vector<uint32_t>& path);
+
+        // Whether this signer has a pre-computed cached xpub for the given path
+        bool has_bip32_xpub(const std::vector<uint32_t>& path);
+
+        // Cache an xpub for a given path
+        bool cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub);
 
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
@@ -99,13 +105,17 @@ namespace sdk {
         void set_master_blinding_key(const std::string& blinding_key_hex);
 
     private:
+        // Immutable
         const bool m_is_main_net;
         const bool m_is_liquid;
         const unsigned char m_btc_version;
         const nlohmann::json m_device;
         std::string m_mnemonic;
         wally_ext_key_ptr m_master_key;
+        // Mutable post construction
+        mutable std::mutex m_mutex;
         boost::optional<blinding_key_t> m_master_blinding_key;
+        std::map<std::vector<uint32_t>, std::string> m_cached_pubkeys;
     };
 
 } // namespace sdk

@@ -148,8 +148,15 @@ namespace sdk {
 
     const nlohmann::json& signer::get_device() const { return m_device; }
 
-    std::string signer::get_bip32_xpub(uint32_span_t path)
+    std::string signer::get_bip32_xpub(const std::vector<uint32_t>& path)
     {
+        {
+            std::unique_lock<std::mutex> locker{ m_mutex };
+            auto cached = m_cached_pubkeys.find(path);
+            if (cached != m_cached_pubkeys.end()) {
+                return cached->second;
+            }
+        }
         ext_key* hdkey = m_master_key.get();
         GDK_RUNTIME_ASSERT(hdkey);
         wally_ext_key_ptr derived;
@@ -157,7 +164,28 @@ namespace sdk {
             derived = derive(m_master_key, path);
             hdkey = derived.get();
         }
-        return base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
+        auto ret = base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        m_cached_pubkeys.emplace(path, ret);
+        return ret;
+    }
+
+    bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
+    {
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        return m_cached_pubkeys.find(path) != m_cached_pubkeys.end();
+    }
+
+    bool signer::cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub)
+    {
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        auto ret = m_cached_pubkeys.emplace(path, bip32_xpub);
+        if (!ret.second) {
+            // Already present, verify that the value matches
+            GDK_RUNTIME_ASSERT(ret.first->second == bip32_xpub);
+            return false; // Not updated
+        }
+        return true; // Updated
     }
 
     ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
@@ -167,11 +195,16 @@ namespace sdk {
         return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
     }
 
-    bool signer::has_master_blinding_key() const { return m_master_blinding_key.has_value(); }
+    bool signer::has_master_blinding_key() const
+    {
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        return m_master_blinding_key.has_value();
+    }
 
     blinding_key_t signer::get_master_blinding_key() const
     {
-        GDK_RUNTIME_ASSERT(has_master_blinding_key());
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        GDK_RUNTIME_ASSERT(m_master_blinding_key.has_value());
         return m_master_blinding_key.get();
     }
 
@@ -184,13 +217,15 @@ namespace sdk {
             blinding_key_t key{ 0 };
             // Handle both full and half-size blinding keys
             std::copy(key_bytes.begin(), key_bytes.end(), key.begin() + (SHA512_LEN - key_size));
+            std::unique_lock<std::mutex> locker{ m_mutex };
             m_master_blinding_key = key;
         }
     }
 
     priv_key_t signer::get_blinding_key_from_script(byte_span_t script)
     {
-        GDK_RUNTIME_ASSERT(has_master_blinding_key());
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        GDK_RUNTIME_ASSERT(m_master_blinding_key.has_value());
         return asset_blinding_key_to_ec_private_key(*m_master_blinding_key, script);
     }
 

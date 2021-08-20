@@ -406,7 +406,7 @@ namespace sdk {
 
             if (recovery_xpub.empty()) {
                 auto subsigner = signer::make_software_signer(m_net_params, recovery_mnemonic);
-                const uint32_t mnemonic_path[2] = { harden(3), harden(m_subaccount) };
+                const std::vector<uint32_t> mnemonic_path{ harden(3), harden(m_subaccount) };
                 m_details["recovery_xpub"] = subsigner->get_bip32_xpub(mnemonic_path);
                 m_details.erase("recovery_mnemonic");
             }
