@@ -85,38 +85,6 @@ extern "C" {
         len: size_t,
     ) -> c_int;
 
-    //WALLY_CORE_API int wally_asset_unblind(const unsigned char *pub_key, size_t pub_key_len,
-    //                        const unsigned char *priv_key, size_t priv_key_len,
-    //                        const unsigned char *proof, size_t proof_len,
-    //                        const unsigned char *commitment, size_t commitment_len,
-    //                        const unsigned char *extra, size_t extra_len,
-    //                        const unsigned char *generator, size_t generator_len,
-    //                        unsigned char *asset_out, size_t asset_out_len,
-    //                        unsigned char *abf_out, size_t abf_out_len,
-    //                        unsigned char *vbf_out, size_t vbf_out_len,
-    //                        uint64_t *value_out)
-    pub fn wally_asset_unblind(
-        pub_key: *const c_uchar,
-        pub_key_len: size_t,
-        priv_key: *const c_uchar,
-        priv_key_len: size_t,
-        proof: *const c_uchar,
-        proof_len: size_t,
-        commitment: *const c_uchar,
-        commitment_len: size_t,
-        extra: *const c_uchar,
-        extra_len: size_t,
-        generator: *const c_uchar,
-        generator_len: size_t,
-        asset_out: *mut c_uchar,
-        asset_out_len: size_t,
-        abf_out: *mut c_uchar,
-        abf_out_len: size_t,
-        vbf_out: *mut c_uchar,
-        vbf_out_len: size_t,
-        value_out: *mut u64,
-    ) -> c_int;
-
     //WALLY_CORE_API int wally_ec_public_key_from_private_key(const unsigned char *priv_key, size_t priv_key_len,
     //                                         unsigned char *bytes_out, size_t len)
     pub fn wally_ec_public_key_from_private_key(
