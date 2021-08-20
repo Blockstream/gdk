@@ -80,30 +80,6 @@ pub fn asset_blinding_key_from_seed(seed: &[u8]) -> MasterBlindingKey {
     MasterBlindingKey(out)
 }
 
-pub fn confidential_addr_from_addr(
-    address: &str,
-    prefix: u32,
-    pub_key: secp256k1::PublicKey,
-) -> String {
-    let mut out = ptr::null();
-    let pub_key = pub_key.serialize();
-
-    let c_address = make_str(address);
-    let ret = unsafe {
-        let ret = ffi::wally_confidential_addr_from_addr(
-            c_address,
-            prefix,
-            pub_key.as_ptr(),
-            pub_key.len(),
-            &mut out,
-        );
-        let _ = CString::from_raw(c_address);
-        ret
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    read_str(out)
-}
-
 pub fn asset_blinding_key_to_ec_private_key(
     master_blinding_key: &MasterBlindingKey,
     script_pubkey: &elements::Script,
@@ -433,9 +409,6 @@ mod tests {
     use hex;
     use std::str::FromStr;
 
-    const _CA_PREFIX_LIQUID: u32 = 0x0c;
-    const CA_PREFIX_LIQUID_REGTEST: u32 = 0x04;
-
     #[test]
     fn test_bip39_mnemonic_to_seed() {
         // test vector from the BIP spec
@@ -468,14 +441,15 @@ mod tests {
             hex::decode("76a914a579388225827d9f2fe9014add644487808c695d88ac").unwrap().into();
         let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
         let public_key = ec_public_key_from_private_key(blinding_key);
-        let conf_addr =
-            confidential_addr_from_addr(unconfidential_addr, CA_PREFIX_LIQUID_REGTEST, public_key);
+        let unconfidential_addr = elements::Address::from_str(&unconfidential_addr).unwrap();
+        let conf_addr = unconfidential_addr.to_confidential(public_key);
         assert_eq!(
             conf_addr,
-            "CTEkf75DFff5ReB7juTg2oehrj41aMj21kvvJaQdWsEAQohz1EDhu7Ayh6goxpz3GZRVKidTtaXaXYEJ"
+            elements::Address::from_str(
+                "CTEkf75DFff5ReB7juTg2oehrj41aMj21kvvJaQdWsEAQohz1EDhu7Ayh6goxpz3GZRVKidTtaXaXYEJ"
+            )
+            .unwrap()
         );
-        let addr = elements::Address::from_str(&conf_addr);
-        assert!(addr.is_ok());
     }
 
     #[test]

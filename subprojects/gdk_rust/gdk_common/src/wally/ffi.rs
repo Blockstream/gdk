@@ -146,20 +146,6 @@ extern "C" {
         len: size_t,
     ) -> c_int;
 
-    //WALLY_CORE_API int wally_confidential_addr_from_addr(
-    //    const char *address,
-    //    uint32_t prefix,
-    //    const unsigned char *pub_key,
-    //    size_t pub_key_len,
-    //    char **output)
-    pub fn wally_confidential_addr_from_addr(
-        address: *const c_char,
-        prefix: u32,
-        pub_key: *const c_uchar,
-        pub_key_len: size_t,
-        output: *mut *const c_char,
-    ) -> c_int;
-
     // WALLY_CORE_API int wally_asset_unblind_with_nonce(
     //     const unsigned char *nonce_hash,
     //     size_t nonce_hash_len,
