@@ -24,7 +24,7 @@ use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
 use bitcoin::hashes::hex::ToHex;
-use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
+use bitcoin::secp256k1::{Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
 use electrum_client::GetHistoryRes;
@@ -35,8 +35,8 @@ use gdk_common::network::{aqua_unique_id_and_xpub, Network};
 use gdk_common::password::Password;
 use gdk_common::session::Session;
 use gdk_common::wally::{
-    self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, asset_unblind,
-    make_str, MasterBlindingKey,
+    self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, make_str,
+    MasterBlindingKey,
 };
 
 use elements::confidential::{self, Asset, Nonce};
@@ -67,6 +67,10 @@ use std::sync::{mpsc, Arc, RwLock};
 use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
+
+lazy_static! {
+    static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
+}
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
@@ -1466,34 +1470,20 @@ impl Syncer {
 
                 let script = output.script_pubkey.clone();
                 let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
-                let rangeproof = output.witness.rangeproof.clone().unwrap().serialize();
-                let value_commitment = elements::encode::serialize(&output.value);
-                let asset_commitment = elements::encode::serialize(&output.asset);
-                let nonce_commitment = elements::encode::serialize(&output.nonce);
+                let txout_secrets = output.unblind(&EC, blinding_key)?;
                 info!(
-                    "commitments len {} {} {}",
-                    value_commitment.len(),
-                    asset_commitment.len(),
-                    nonce_commitment.len()
+                    "Unblinded outpoint:{} asset:{} value:{}",
+                    outpoint,
+                    txout_secrets.asset.to_hex(),
+                    txout_secrets.value
                 );
-                let sender_pk = secp256k1::PublicKey::from_slice(&nonce_commitment).unwrap();
 
-                let (asset, abf, vbf, value) = asset_unblind(
-                    sender_pk,
-                    blinding_key,
-                    rangeproof,
-                    value_commitment,
-                    script,
-                    asset_commitment,
-                )?;
-
-                info!("Unblinded outpoint:{} asset:{} value:{}", outpoint, asset.to_hex(), value);
-
+                // TODO: Unblinded -> TxOutSecrets
                 let unblinded = Unblinded {
-                    asset,
-                    value,
-                    abf,
-                    vbf,
+                    asset: txout_secrets.asset.clone(),
+                    value: txout_secrets.value,
+                    abf: *txout_secrets.asset_bf.into_inner().as_ref(),
+                    vbf: *txout_secrets.value_bf.into_inner().as_ref(),
                 };
                 Ok(unblinded)
             }

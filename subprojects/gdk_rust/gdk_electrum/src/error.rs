@@ -41,6 +41,7 @@ pub enum Error {
     ElementsEncode(elements::encode::Error),
     ElementsPset(elements::pset::Error),
     PsetBlindError(elements::pset::PsetBlindError),
+    UnblindError(elements::UnblindError),
     Common(gdk_common::error::Error),
     Send(std::sync::mpsc::SendError<()>),
     Encryption(block_modes::BlockModeError),
@@ -81,6 +82,7 @@ impl Display for Error {
             Error::ElementsEncode(ref el_err) => write!(f, "el_err: {}", el_err),
             Error::ElementsPset(ref el_err) => write!(f, "el_err_pset: {}", el_err),
             Error::PsetBlindError(ref el_err) => write!(f, "pset_blind_err: {}", el_err),
+            Error::UnblindError(ref unbl_err) => write!(f, "Unblind_err: {}", unbl_err),
             Error::Common(ref cmn_err) => write!(f, "cmn_err: {:?}", cmn_err),
             Error::Send(ref send_err) => write!(f, "send_err: {:?}", send_err),
             Error::Encryption(ref send_err) => write!(f, "encryption_err: {:?}", send_err),
@@ -180,6 +182,12 @@ impl From<elements::pset::Error> for Error {
 impl From<elements::pset::PsetBlindError> for Error {
     fn from(err: elements::pset::PsetBlindError) -> Self {
         Error::PsetBlindError(err)
+    }
+}
+
+impl From<elements::UnblindError> for Error {
+    fn from(err: elements::UnblindError) -> Self {
+        Error::UnblindError(err)
     }
 }
 
