@@ -380,11 +380,7 @@ namespace sdk {
 
     std::string session::get_mnemonic_passphrase(const std::string& password)
     {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            auto s = p->get_signer();
-            return s ? s->get_mnemonic(password) : std::string();
-        });
+        return exception_wrapper([&] { return get_nonnull_impl()->get_nonnull_signer()->get_mnemonic(password); });
     }
 
     nlohmann::json session::convert_amount(const nlohmann::json& amount_json)

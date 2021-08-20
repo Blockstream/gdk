@@ -44,7 +44,7 @@ namespace sdk {
     }
 
     auth_handler_impl::auth_handler_impl(session& session, const std::string& name)
-        : auth_handler_impl(session, name, session.get_nonnull_impl()->get_signer())
+        : auth_handler_impl(session, name, session.get_nonnull_impl()->get_nonnull_signer())
     {
     }
 

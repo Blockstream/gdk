@@ -182,7 +182,10 @@ namespace sdk {
     }
     nlohmann::json ga_rust::login(std::shared_ptr<signer> signer)
     {
-        m_signer = signer;
+        {
+            locker_t locker(m_mutex);
+            m_signer = signer;
+        }
         auto details
             = nlohmann::json({ { "mnemonic", signer->get_mnemonic(std::string()) }, { "password", std::string() } });
         return call_session("login", details);
@@ -529,11 +532,6 @@ namespace sdk {
         throw std::runtime_error("is_spending_limits_decrease not implemented");
     }
 
-    std::shared_ptr<signer> ga_rust::get_signer()
-    {
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer;
-    }
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
     user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
     ga_user_pubkeys& ga_rust::get_recovery_pubkeys()

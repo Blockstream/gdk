@@ -165,7 +165,6 @@ namespace sdk {
 
         void emit_notification(nlohmann::json details, bool async);
 
-        std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();

@@ -122,7 +122,6 @@ namespace sdk {
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
 
-        std::shared_ptr<signer> get_signer();
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();

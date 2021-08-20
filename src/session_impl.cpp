@@ -172,6 +172,19 @@ namespace sdk {
         // Only needed for multisig until singlesig supports HWW
     }
 
+    std::shared_ptr<signer> session_impl::get_nonnull_signer()
+    {
+        auto signer = get_signer();
+        GDK_RUNTIME_ASSERT(signer != nullptr);
+        return signer;
+    }
+
+    std::shared_ptr<signer> session_impl::get_signer()
+    {
+        locker_t locker(m_mutex);
+        return m_signer;
+    }
+
     std::pair<std::string, bool> session_impl::get_cached_master_blinding_key()
     {
         // Overriden for multisig

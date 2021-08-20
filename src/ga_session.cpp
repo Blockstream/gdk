@@ -3396,13 +3396,6 @@ namespace sdk {
         return std::vector<unsigned char>(password.begin(), password.end());
     }
 
-    std::shared_ptr<signer> ga_session::get_signer()
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
-        return m_signer;
-    }
-
     // Post-login idempotent
     ga_pubkeys& ga_session::get_ga_pubkeys()
     {

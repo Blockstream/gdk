@@ -192,7 +192,8 @@ namespace sdk {
         virtual void disable_all_pin_logins() = 0;
 
         const network_parameters& get_network_parameters() const { return m_net_params; }
-        virtual std::shared_ptr<signer> get_signer() = 0;
+        std::shared_ptr<signer> get_nonnull_signer();
+        std::shared_ptr<signer> get_signer();
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
         virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;

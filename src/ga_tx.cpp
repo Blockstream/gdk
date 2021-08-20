@@ -52,7 +52,7 @@ namespace sdk {
             const auto txid = h2b_rev(txhash);
             const uint32_t index = utxo.at("pt_idx");
             const auto type = script_type(utxo.at("script_type"));
-            const bool low_r = session.get_signer()->supports_low_r();
+            const bool low_r = session.get_nonnull_signer()->supports_low_r();
             const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
             const bool external = !json_get_value(utxo, "private_key").empty();
             const uint32_t sequence = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
@@ -893,7 +893,7 @@ namespace sdk {
             const auto type = script_type(u.at("script_type"));
             const auto script = h2b(u.at("prevout_script"));
             const std::string private_key = json_get_value(u, "private_key");
-            auto signer = session.get_signer();
+            auto signer = session.get_nonnull_signer();
             const bool low_r = signer->supports_low_r();
 
             std::array<unsigned char, SHA256_LEN> tx_hash;
