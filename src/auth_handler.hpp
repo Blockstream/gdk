@@ -49,6 +49,9 @@ namespace sdk {
         virtual nlohmann::json get_status() const = 0;
         virtual state_type get_state() const = 0;
         virtual hw_request get_hw_request() const = 0;
+        virtual const nlohmann::json& get_twofactor_data() const = 0;
+        virtual const std::string& get_code() const = 0;
+        nlohmann::json get_hw_reply() const;
 
         virtual void operator()() = 0;
         virtual session_impl& get_session() const = 0;
@@ -74,6 +77,8 @@ namespace sdk {
         nlohmann::json get_status() const final;
         state_type get_state() const final;
         hw_request get_hw_request() const final;
+        const nlohmann::json& get_twofactor_data() const final;
+        const std::string& get_code() const final;
 
         void operator()() final;
         session_impl& get_session() const final;
@@ -121,6 +126,8 @@ namespace sdk {
         nlohmann::json get_status() const final;
         state_type get_state() const final;
         hw_request get_hw_request() const final;
+        const nlohmann::json& get_twofactor_data() const final;
+        const std::string& get_code() const final;
 
         void operator()() final;
         virtual session_impl& get_session() const final;

@@ -29,6 +29,15 @@ namespace sdk {
 
     void auth_handler::signal_hw_request(hw_request /*request*/) { GDK_RUNTIME_ASSERT(false); }
 
+    nlohmann::json auth_handler::get_hw_reply() const
+    {
+        try {
+            return nlohmann::json::parse(get_code());
+        } catch (const std::exception&) {
+            throw user_error("Invalid hardware reply");
+        }
+    }
+
     auth_handler_impl::auth_handler_impl(session& session, const std::string& name, std::shared_ptr<signer> signer)
         : m_session_parent(session)
         , m_session(session.get_nonnull_impl())
@@ -202,8 +211,10 @@ namespace sdk {
         }
     }
 
-    auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
     auth_handler::state_type auth_handler_impl::get_state() const { return m_state; }
+    auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
+    const nlohmann::json& auth_handler_impl::get_twofactor_data() const { return m_twofactor_data; }
+    const std::string& auth_handler_impl::get_code() const { return m_code; };
 
     session_impl& auth_handler_impl::get_session() const { return *m_session; }
 
@@ -292,8 +303,14 @@ namespace sdk {
     }
 
     nlohmann::json auto_auth_handler::get_status() const { return m_handler->get_status(); }
+
     auth_handler::state_type auto_auth_handler::get_state() const { return m_handler->get_state(); }
+
     auth_handler::hw_request auto_auth_handler::get_hw_request() const { return m_handler->get_hw_request(); }
+
+    const nlohmann::json& auto_auth_handler::get_twofactor_data() const { return m_handler->get_twofactor_data(); }
+
+    const std::string& auto_auth_handler::get_code() const { return m_handler->get_code(); };
 
     session_impl& auto_auth_handler::get_session() const { return m_handler->get_session(); }
 
@@ -312,23 +329,42 @@ namespace sdk {
         // can be satisfied on the host without involving the caller.
         // Returns whether we resolved an action, i.e. whether we should loop
         // attempting to step() again.
+        // TODO: When multiple signers are supported, get the signer indicated by the
+        //       required_data's "device" element
+        const auto signer = get_signer();
+        const bool is_hardware = signer && signer->is_hardware();
+        const auto request = get_hw_request();
         const auto state = get_state();
+
         if (state == state_type::make_call) {
-            (*m_handler)();
+            if (is_hardware && request == hw_request::get_xpubs) {
+                // Caller has resolved a get_xpubs request, cache the results
+                const auto& paths = get_twofactor_data().at("paths");
+                const auto reply = get_hw_reply();
+                const auto& xpubs = reply.at("xpubs");
+                bool updated = false;
+                size_t i = 0;
+                GDK_RUNTIME_ASSERT(paths.size() == xpubs.size());
+                for (const auto& path : paths) {
+                    updated |= signer->cache_bip32_xpub(path.get<std::vector<uint32_t>>(), xpubs.at(i));
+                    ++i;
+                }
+                if (updated) {
+                    GDK_LOG_SEV(log_level::debug) << "signer xpub cache updated";
+                    // FIXME: Ask the session to persist the signer's cache
+                }
+            }
+
+            (*m_handler)(); // Make the call
             return true;
         }
 
-        const auto request = get_hw_request();
         if (request == hw_request::none || state != state_type::resolve_code) {
             return false; // Not a HW request, let the caller resolve
         }
 
         const auto status = get_status();
         const auto& required_data = status.at("required_data");
-        // TODO: When multiple signers are supported, get the signer indicated by the
-        //       required_data's "device" element
-        const auto signer = get_signer();
-        const bool is_hardware = signer->is_hardware();
         const bool have_master_blinding_key = signer->has_master_blinding_key();
         nlohmann::json result;
 
