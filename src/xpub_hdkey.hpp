@@ -27,6 +27,7 @@ namespace sdk {
 
         pub_key_t derive(uint32_t pointer);
 
+        xpub_t to_xpub_t() const;
         std::string to_base58() const;
         std::string to_hashed_identifier(const std::string& network) const;
 

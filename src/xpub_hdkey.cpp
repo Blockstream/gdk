@@ -35,6 +35,8 @@ namespace sdk {
         return ret;
     }
 
+    xpub_t xpub_hdkey::to_xpub_t() const { return make_xpub(&m_ext_key); }
+
     std::string xpub_hdkey::to_base58() const { return bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC); }
 
     std::string xpub_hdkey::to_hashed_identifier(const std::string& network) const
@@ -143,7 +145,12 @@ namespace sdk {
     void ga_user_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
     {
         std::array<uint32_t, 1> path{ { 1 } };
-        m_subaccounts.emplace(subaccount, xpub_hdkey(m_is_main_net, xpub, path));
+        auto user_key = xpub_hdkey(m_is_main_net, xpub, path);
+        const auto ret = m_subaccounts.emplace(subaccount, std::move(user_key));
+        if (!ret.second) {
+            // Subaccount is already present; xpub must match whats already there
+            GDK_RUNTIME_ASSERT(ret.first->second.to_xpub_t() == user_key.to_xpub_t());
+        }
     }
 
     void ga_user_pubkeys::remove_subaccount(uint32_t subaccount)
