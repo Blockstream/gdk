@@ -185,6 +185,11 @@ namespace sdk {
         return m_signer;
     }
 
+    void session_impl::encache_signer_xpubs(std::shared_ptr<signer> /*signer*/)
+    {
+        // Overriden for multisig
+    }
+
     std::pair<std::string, bool> session_impl::get_cached_master_blinding_key()
     {
         // Overriden for multisig

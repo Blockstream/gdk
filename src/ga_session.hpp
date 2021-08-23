@@ -85,7 +85,7 @@ namespace sdk {
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
-        void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
+        void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
         nlohmann::json get_available_currencies() const;
         bool is_rbf_enabled() const;
         bool is_watch_only() const;
@@ -180,6 +180,8 @@ namespace sdk {
         std::pair<std::string, bool> get_cached_master_blinding_key();
         void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
+        void encache_signer_xpubs(std::shared_ptr<signer> signer);
+
     private:
         void reset_cached_session_data();
         void reset_all_session_data();
@@ -192,6 +194,8 @@ namespace sdk {
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
         void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data);
         void update_blob(locker_t& locker, std::function<bool()> update_fn);
+
+        void load_signer_xpubs(locker_t& locker, std::shared_ptr<signer> signer);
 
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
@@ -240,7 +244,7 @@ namespace sdk {
         void update_address_info(nlohmann::json& address, bool is_historic);
         std::shared_ptr<nlocktime_t> update_nlocktime_info();
 
-        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet);
+        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
         void save_cache();
 
         context_ptr tls_init_handler_impl(

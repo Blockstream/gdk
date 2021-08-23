@@ -547,7 +547,7 @@ namespace sdk {
         throw std::runtime_error("upload_confidential_addresses not yet implemented");
     }
 
-    void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet) {}
+    void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer) {}
 
     void ga_rust::disable_all_pin_logins() {}
 

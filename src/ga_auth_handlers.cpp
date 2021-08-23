@@ -248,8 +248,7 @@ namespace sdk {
             m_challenge = m_session->get_challenge(public_key);
 
             const auto local_xpub = make_xpub(xpubs.at(1));
-            const bool is_hw_wallet = m_signer->is_hardware();
-            m_session->set_local_encryption_keys(local_xpub.second, is_hw_wallet);
+            m_session->set_local_encryption_keys(local_xpub.second, m_signer);
 
             // Ask the caller to sign the challenge
             signal_hw_request(hw_request::sign_message);

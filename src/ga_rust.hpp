@@ -126,7 +126,7 @@ namespace sdk {
         user_pubkeys& get_user_pubkeys();
         ga_user_pubkeys& get_recovery_pubkeys();
 
-        void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet);
+        void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
         void disable_all_pin_logins();
 
         static int32_t spv_verify_tx(const nlohmann::json& details);

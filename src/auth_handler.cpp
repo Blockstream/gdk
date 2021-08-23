@@ -351,7 +351,7 @@ namespace sdk {
                 }
                 if (updated) {
                     GDK_LOG_SEV(log_level::debug) << "signer xpub cache updated";
-                    // FIXME: Ask the session to persist the signer's cache
+                    get_session().encache_signer_xpubs(signer);
                 }
             }
 

@@ -33,6 +33,8 @@ namespace sdk {
         static const std::array<unsigned char, 8> PASSWORD_SALT;
         static const std::array<unsigned char, 8> BLOB_SALT;
 
+        using cache_t = std::map<std::vector<uint32_t>, std::string>;
+
         // A software watch-only signer for watch-only sessions
         static std::shared_ptr<signer> make_watch_only_signer(const network_parameters& net_params);
 
@@ -93,6 +95,9 @@ namespace sdk {
         // Cache an xpub for a given path
         bool cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub);
 
+        // Get all cached xpubs and their paths
+        cache_t get_cached_bip32_xpubs();
+
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
 
@@ -115,7 +120,7 @@ namespace sdk {
         // Mutable post construction
         mutable std::mutex m_mutex;
         boost::optional<blinding_key_t> m_master_blinding_key;
-        std::map<std::vector<uint32_t>, std::string> m_cached_pubkeys;
+        cache_t m_cached_pubkeys;
     };
 
 } // namespace sdk

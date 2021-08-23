@@ -1753,10 +1753,10 @@ namespace sdk {
         m_cache.save_db();
     }
 
-    void ga_session::set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet)
+    void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
-        set_local_encryption_keys(locker, public_key, is_hw_wallet);
+        set_local_encryption_keys(locker, public_key, signer);
     }
 
     template <typename T> static bool set_optional_member(boost::optional<T>& member, T&& new_value)
@@ -1771,7 +1771,7 @@ namespace sdk {
     }
 
     void ga_session::set_local_encryption_keys(
-        session_impl::locker_t& locker, const pub_key_t& public_key, bool is_hw_wallet)
+        session_impl::locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         if (!set_optional_member(m_local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT))) {
@@ -1782,9 +1782,10 @@ namespace sdk {
         const auto tmp_span = gsl::make_span(tmp_key);
         set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
         set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
-        m_cache.load_db(m_local_encryption_key.get(), is_hw_wallet ? 1 : 0);
+        m_cache.load_db(m_local_encryption_key.get(), signer->is_hardware() ? 1 : 0);
         // Save the cache in case we carried forward data from a previous version
         m_cache.save_db(); // No-op if unchanged
+        load_signer_xpubs(locker, signer);
     }
 
     void ga_session::save_cache()
@@ -2300,6 +2301,39 @@ namespace sdk {
         // Note: this update is a no-op if the key is already cached
         locker_t locker(m_mutex);
         update_blob(locker, std::bind(&client_blob::set_master_blinding_key, &m_blob, master_blinding_key_hex));
+    }
+
+    void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
+    {
+        locker_t locker(m_mutex);
+        auto paths_and_xpubs = signer->get_cached_bip32_xpubs();
+        nlohmann::json cached_xpubs;
+        for (auto& item : paths_and_xpubs) {
+            // Note that we cache the values inverted as the master key is empty
+            cached_xpubs.emplace(item.second, item.first);
+        }
+        m_cache.upsert_key_value("xpubs", nlohmann::json::to_msgpack(cached_xpubs));
+        m_cache.save_db();
+    }
+
+    void ga_session::load_signer_xpubs(session_impl::locker_t& locker, std::shared_ptr<signer> signer)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(signer.get());
+        m_cache.get_key_value("xpubs", { [&signer](const auto& db_blob) {
+            if (db_blob) {
+                try {
+                    auto cached = nlohmann::json::from_msgpack(db_blob.get().begin(), db_blob.get().end());
+                    for (auto& item : cached.items()) {
+                        // Inverted: See encache_signer_xpubs()
+                        signer->cache_bip32_xpub(item.value(), item.key());
+                    }
+                    GDK_LOG_SEV(log_level::debug) << "Loaded " << cached.size() << " cached xpubs";
+                } catch (const std::exception& e) {
+                    GDK_LOG_SEV(log_level::warning) << "Error reading xpubs: " << e.what();
+                }
+            }
+        } });
     }
 
     // Idempotent

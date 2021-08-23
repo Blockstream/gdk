@@ -187,13 +187,15 @@ namespace sdk {
         virtual nlohmann::json get_spending_limits() const = 0;
         virtual bool is_spending_limits_decrease(const nlohmann::json& limit_details) = 0;
 
-        virtual void set_local_encryption_keys(const pub_key_t& public_key, bool is_hw_wallet) = 0;
+        virtual void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer) = 0;
         virtual void save_cache();
         virtual void disable_all_pin_logins() = 0;
 
         const network_parameters& get_network_parameters() const { return m_net_params; }
         std::shared_ptr<signer> get_nonnull_signer();
         std::shared_ptr<signer> get_signer();
+        virtual void encache_signer_xpubs(std::shared_ptr<signer> signer);
+
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
         virtual user_pubkeys& get_user_pubkeys() = 0;
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;

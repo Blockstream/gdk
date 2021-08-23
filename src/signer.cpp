@@ -188,6 +188,12 @@ namespace sdk {
         return true; // Updated
     }
 
+    signer::cache_t signer::get_cached_bip32_xpubs()
+    {
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        return m_cached_pubkeys;
+    }
+
     ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         GDK_RUNTIME_ASSERT(m_master_key.get());
