@@ -1598,6 +1598,10 @@ namespace sdk {
         if (is_blob_on_server) {
             // The server has a blob for this wallet. If we havent got an
             // up to date copy of it loaded yet, do so.
+            if (!is_initial_login && m_blob_hmac != server_hmac) {
+                // Re-login, and our blob has been updated on the server: re-load below
+                m_blob_hmac.clear();
+            }
             if (m_blob_hmac.empty()) {
                 // No cached blob, or our cached blob is out of date:
                 // Load the latest blob from the server and cache it
