@@ -1996,17 +1996,20 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(!m_subaccounts.empty());
         GDK_RUNTIME_ASSERT(bip32_xpubs.size() == m_subaccounts.size());
-        GDK_RUNTIME_ASSERT(!m_user_pubkeys);
 
         size_t i = 0;
         for (const auto& sa : m_subaccounts) {
             auto xpub = make_xpub(bip32_xpubs[i]);
             if (i == 0) {
                 // Main account
-                m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, std::move(xpub));
+                if (m_user_pubkeys) {
+                    m_user_pubkeys->add_subaccount(0, xpub);
+                } else {
+                    m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, std::move(xpub));
+                }
             } else {
                 // Subaccount
-                m_user_pubkeys->add_subaccount(sa.first, std::move(xpub));
+                m_user_pubkeys->add_subaccount(sa.first, xpub);
             }
             ++i;
         }
