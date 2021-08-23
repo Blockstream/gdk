@@ -1506,8 +1506,11 @@ namespace sdk {
             });
         }
         if (!fiat_rate.empty()) {
-            emit_notification({ { "event", "ticker" }, { "exchange", std::move(fiat_source) },
-                                  { "currency", std::move(fiat_currency) }, { "rate", std::move(fiat_rate) } },
+            emit_notification(
+                { { "event", "ticker" },
+                    { "ticker",
+                        { { "exchange", std::move(fiat_source) }, { "currency", std::move(fiat_currency) },
+                            { "rate", std::move(fiat_rate) } } } },
                 false);
         } else {
             GDK_LOG_SEV(log_level::warning) << "Ignoring irrelevant ticker update";
