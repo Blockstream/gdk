@@ -201,8 +201,8 @@ namespace sdk {
         void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
         void set_enabled_twofactor_methods(locker_t& locker);
-        void update_login_data(
-            locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32, bool watch_only);
+        void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
+            bool watch_only, bool is_initial_login);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;

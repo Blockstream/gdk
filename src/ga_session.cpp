@@ -1136,19 +1136,32 @@ namespace sdk {
         }
     }
 
-    void ga_session::update_login_data(
-        locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32, bool watch_only)
+    void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
+        bool watch_only, bool is_initial_login)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
-        m_login_data = login_data;
+        nlohmann::json old_settings;
+        if (!is_initial_login) {
+            GDK_RUNTIME_ASSERT(m_watch_only == watch_only);
+            old_settings = get_settings(locker);
+        }
+
+        // Swap current login data with new; for relogin 'login_data' holds the old values
+        m_login_data.swap(login_data);
 
         // Parse gait_path into a derivation path
+        decltype(m_gait_path) gait_path;
         const auto gait_path_bytes = h2b(m_login_data["gait_path"]);
-        GDK_RUNTIME_ASSERT(gait_path_bytes.size() == m_gait_path.size() * 2);
-        adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), m_gait_path.begin(),
+        GDK_RUNTIME_ASSERT(gait_path_bytes.size() == gait_path.size() * 2);
+        adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), gait_path.begin(),
             [](auto first, auto second) { return uint32_t((first << 8u) + second); });
+        if (is_initial_login) {
+            m_gait_path = gait_path;
+        } else {
+            GDK_RUNTIME_ASSERT(m_gait_path == gait_path);
+        }
 
         if (!m_ga_pubkeys) {
             // Create our GA and recovery pubkey collections
@@ -1161,9 +1174,9 @@ namespace sdk {
             m_min_fee_rate = min_fee_rate;
             m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
         }
-        m_fiat_source = login_data["exchange"];
-        m_fiat_currency = login_data["fiat_currency"];
-        update_fiat_rate(locker, json_get_value(login_data, "fiat_exchange"));
+        m_fiat_source = m_login_data["exchange"];
+        m_fiat_currency = m_login_data["fiat_currency"];
+        update_fiat_rate(locker, json_get_value(m_login_data, "fiat_exchange"));
 
         const uint32_t block_height = m_login_data["block_height"];
         m_block_height = block_height;
@@ -1222,7 +1235,8 @@ namespace sdk {
         m_watch_only = watch_only;
         // TODO: Assert we aren't locked in all calls that should be disabled
         // (the server prevents these calls but its faster to reject them locally)
-        m_is_locked = json_get_value(login_data, "reset_2fa_active", false);
+        const bool old_m_is_locked = m_is_locked;
+        m_is_locked = json_get_value(m_login_data, "reset_2fa_active", false);
 
         const auto p = m_login_data.find("limits");
         update_spending_limits(locker, p == m_login_data.end() ? nlohmann::json::object() : *p);
@@ -1236,7 +1250,12 @@ namespace sdk {
         const chain_code_t main_chaincode{ h2b_array<32>(m_login_data["chain_code"]) };
         const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(m_login_data["public_key"]) };
         const xpub_hdkey main_hdkey(m_net_params.is_main_net(), std::make_pair(main_chaincode, main_pubkey));
-        m_login_data["wallet_hash_id"] = main_hdkey.to_hashed_identifier(m_net_params.network());
+        const auto wallet_hash_id = main_hdkey.to_hashed_identifier(m_net_params.network());
+        if (is_initial_login) {
+            m_login_data["wallet_hash_id"] = wallet_hash_id;
+        } else {
+            GDK_RUNTIME_ASSERT(login_data["wallet_hash_id"] == wallet_hash_id);
+        }
 
         // Check that csv blocks used are recoverable and provided by the server
         const auto net_csv_buckets = m_net_params.csv_buckets();
@@ -1252,22 +1271,29 @@ namespace sdk {
             m_nlocktime = m_login_data["nlocktime_blocks"];
         }
 
+        set_fee_estimates(locker, m_login_data["fee_estimates"]);
+
         // Notify the caller of their settings / 2fa reset status
         auto settings = get_settings(locker);
+        const bool must_notify_settings = old_settings != settings;
 
-        const auto& days_remaining = login_data["reset_2fa_days_remaining"];
-        const auto& disputed = login_data["reset_2fa_disputed"];
-        nlohmann::json reset_status
-            = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+        const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
+        const auto& disputed = m_login_data["reset_2fa_disputed"];
+        const bool must_notify_reset = is_initial_login || old_m_is_locked != m_is_locked
+            || days_remaining != login_data["reset_2fa_days_remaining"] || disputed != login_data["reset_2fa_disputed"];
 
-        {
+        if (must_notify_settings || must_notify_reset) {
             unique_unlock unlocker(locker);
-            emit_notification({ { "event", "settings" }, { "settings", std::move(settings) } }, false);
-            emit_notification(
-                { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
+            if (must_notify_settings) {
+                emit_notification({ { "event", "settings" }, { "settings", std::move(settings) } }, false);
+            }
+            if (must_notify_reset) {
+                nlohmann::json reset_status = { { "is_active", m_is_locked }, { "days_remaining", days_remaining },
+                    { "is_disputed", disputed } };
+                emit_notification(
+                    { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
+            }
         }
-
-        set_fee_estimates(locker, m_login_data["fee_estimates"]);
     }
 
     void ga_session::update_fiat_rate(session_impl::locker_t& locker, const std::string& rate_str)
@@ -1611,7 +1637,7 @@ namespace sdk {
         }
 
         constexpr bool watch_only = false;
-        update_login_data(locker, login_data, root_xpub_bip32, watch_only);
+        update_login_data(locker, login_data, root_xpub_bip32, watch_only, is_initial_login);
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
@@ -1921,7 +1947,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         m_signer = signer::make_watch_only_signer(m_net_params);
         constexpr bool watch_only = true;
-        update_login_data(locker, login_data, std::string(), watch_only);
+        constexpr bool is_initial_login = true; // FIXME: Re-login for watch only
+        update_login_data(locker, login_data, std::string(), watch_only, is_initial_login);
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
