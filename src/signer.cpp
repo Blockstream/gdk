@@ -43,7 +43,9 @@ namespace sdk {
             { "supports_ae_protocol", ae_protocol_support_level::none } };
     } // namespace
 
+    const std::array<uint32_t, 0> signer::EMPTY_PATH{};
     const std::array<uint32_t, 1> signer::LOGIN_PATH{ { 0x4741b11e } };
+    const std::array<uint32_t, 1> signer::REGISTER_PATH{ { harden(0x4741) } }; // 'GA'
     const std::array<uint32_t, 1> signer::CLIENT_SECRET_PATH{ { harden(0x70617373) } }; // 'pass'
     const std::array<unsigned char, 8> signer::PASSWORD_SALT = {
         { 0x70, 0x61, 0x73, 0x73, 0x73, 0x61, 0x6c, 0x74 } // 'passsalt'

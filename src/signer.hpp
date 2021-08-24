@@ -28,6 +28,8 @@ namespace sdk {
     //
     class signer final {
     public:
+        static const std::array<uint32_t, 0> EMPTY_PATH;
+        static const std::array<uint32_t, 1> REGISTER_PATH;
         static const std::array<uint32_t, 1> LOGIN_PATH;
         static const std::array<uint32_t, 1> CLIENT_SECRET_PATH;
         static const std::array<unsigned char, 8> PASSWORD_SALT;

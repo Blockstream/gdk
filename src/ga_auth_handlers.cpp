@@ -37,15 +37,6 @@ namespace sdk {
             addr["is_blinded"] = true;
         }
 
-        static auto get_paths_json(bool include_root = true)
-        {
-            std::vector<nlohmann::json> paths;
-            if (include_root) {
-                paths.emplace_back(std::vector<uint32_t>());
-            }
-            return paths;
-        }
-
         static const auto& get_sized_array(const nlohmann::json& json, const char* key, size_t size)
         {
             const auto& value = json.at(key);
@@ -77,12 +68,11 @@ namespace sdk {
         }
 
         static void encache_blinding_nonces(
-            session_impl& session, nlohmann::json& twofactor_data, const std::string& code)
+            session_impl& session, nlohmann::json& twofactor_data, const nlohmann::json& hw_reply)
         {
-            const nlohmann::json args = nlohmann::json::parse(code);
             const auto& scripts = twofactor_data.at("scripts");
             const auto& public_keys = twofactor_data.at("public_keys");
-            const auto& nonces = args.at("nonces");
+            const auto& nonces = hw_reply.at("nonces");
 
             // Encache the blinding nonces we got back
             bool updated = false;
@@ -136,8 +126,9 @@ namespace sdk {
             // To register, we need the master xpub to identify the wallet,
             // and the registration xpub to compute the gait_path.
             signal_hw_request(hw_request::get_xpubs);
-            m_twofactor_data["paths"] = get_paths_json();
-            m_twofactor_data["paths"].emplace_back(std::vector<uint32_t>{ harden(0x4741) });
+            auto& paths = m_twofactor_data["paths"];
+            paths.emplace_back(signer::EMPTY_PATH);
+            paths.emplace_back(signer::REGISTER_PATH);
         }
     }
 
@@ -149,8 +140,7 @@ namespace sdk {
             return m_state;
         }
 
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-        const std::vector<std::string> xpubs = args.at("xpubs");
+        const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
         const auto master_xpub = make_xpub(xpubs.at(0));
 
         const auto master_chain_code_hex = b2h(master_xpub.first);
@@ -225,8 +215,9 @@ namespace sdk {
         } else {
             // We first need the challenge, so ask the caller for the master pubkey.
             signal_hw_request(hw_request::get_xpubs);
-            m_twofactor_data["paths"] = get_paths_json();
-            m_twofactor_data["paths"].emplace_back(signer::CLIENT_SECRET_PATH);
+            auto& paths = m_twofactor_data["paths"];
+            paths.emplace_back(signer::EMPTY_PATH);
+            paths.emplace_back(signer::CLIENT_SECRET_PATH);
         }
     }
 
@@ -241,7 +232,7 @@ namespace sdk {
         if (m_hw_request == hw_request::get_xpubs && m_challenge.empty()) {
             // We have a result from our first get_xpubs request for the challenge.
             // Compute the challenge with the master pubkey
-            const std::vector<std::string> xpubs = nlohmann::json::parse(m_code).at("xpubs");
+            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
 
             m_master_xpub_bip32 = xpubs.at(0);
             const auto public_key = make_xpub(m_master_xpub_bip32).second;
@@ -258,15 +249,15 @@ namespace sdk {
             return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
-            const nlohmann::json args = nlohmann::json::parse(m_code);
+            const nlohmann::json hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 // Anti-Exfil protocol: verify the signature
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
-                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+                    m_twofactor_data["ae_host_entropy"], hw_reply.at("signer_commitment"), hw_reply.at("signature"));
             }
 
             // Log in and set up the session
-            m_result = m_session->authenticate(args.at("signature"), "GA", m_master_xpub_bip32, m_signer);
+            m_result = m_session->authenticate(hw_reply.at("signature"), "GA", m_master_xpub_bip32, m_signer);
 
             // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
@@ -278,7 +269,7 @@ namespace sdk {
             return m_state;
         } else if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for each subaccount
-            m_session->register_subaccount_xpubs(nlohmann::json::parse(m_code).at("xpubs"));
+            m_session->register_subaccount_xpubs(get_hw_reply().at("xpubs"));
 
             if (m_signer->is_liquid() && m_signer->supports_host_unblinding()) {
                 // Ask the HW device to provide the master blinding key.
@@ -296,7 +287,7 @@ namespace sdk {
             // from the HWW, or the user has denied the request (if its blank).
             // Tell the session to cache the key or denial, and add it to
             // our signer if present to allow host unblinding.
-            const std::string key_hex = nlohmann::json::parse(m_code).at("master_blinding_key");
+            const std::string key_hex = get_hw_reply().at("master_blinding_key");
             m_session->set_cached_master_blinding_key(key_hex);
             //
             // Completed Login. FALL THROUGH to check for confidential address upload below
@@ -305,8 +296,7 @@ namespace sdk {
             // AMP: Caller has provided the blinding keys for confidential address uploading.
             // Blind them and upload the blinded addresses to the server
             const auto prefix = m_net_params.blinded_prefix();
-            const nlohmann::json args = nlohmann::json::parse(m_code);
-            const auto& public_keys = args.at("public_keys");
+            const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
             std::map<uint32_t, std::vector<std::string>> addresses_by_subaccount;
             size_t i = 0;
             for (const auto& it : m_addresses) {
@@ -416,8 +406,9 @@ namespace sdk {
         }
 
         signal_hw_request(hw_request::get_xpubs);
-        m_twofactor_data["paths"] = get_paths_json();
-        m_twofactor_data["paths"].emplace_back(m_session->get_subaccount_root_path(m_subaccount));
+        auto& paths = m_twofactor_data["paths"];
+        paths.emplace_back(signer::EMPTY_PATH);
+        paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
     }
 
     auth_handler::state_type create_subaccount_call::call_impl()
@@ -428,12 +419,11 @@ namespace sdk {
             return m_state;
         }
 
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-
         if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for the new subaccount
-            m_master_xpub_bip32 = args.at("xpubs").at(0);
-            m_subaccount_xpub = args.at("xpubs").at(1);
+            const nlohmann::json hw_reply = get_hw_reply();
+            m_master_xpub_bip32 = hw_reply.at("xpubs").at(0);
+            m_subaccount_xpub = hw_reply.at("xpubs").at(1);
             if (m_details.at("type") == "2of3") {
                 // Ask the caller to sign the recovery key with the login key
                 signal_hw_request(hw_request::sign_message);
@@ -445,18 +435,19 @@ namespace sdk {
             // Fall through to create the subaccount
         } else if (m_hw_request == hw_request::sign_message) {
             // 2of3 subaccount: Caller has signed the recovery key
+            const nlohmann::json hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 // Anti-Exfil protocol: verify the signature
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, signer::LOGIN_PATH,
-                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+                    m_twofactor_data["ae_host_entropy"], hw_reply.at("signer_commitment"), hw_reply.at("signature"));
             }
 
-            m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(args.at("signature")), false));
+            m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(hw_reply.at("signature")), false));
             // Fall through to create the subaccount
         } else if (m_hw_request == hw_request::get_blinding_public_keys) {
             // AMP: Caller has provided the blinding keys for confidential address uploading: blind them
             const auto prefix = m_net_params.blinded_prefix();
-            const auto& public_keys = args.at("public_keys");
+            const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
             std::vector<std::string> addresses;
             size_t i = 0;
             for (const auto& it : m_addresses) {
@@ -504,7 +495,8 @@ namespace sdk {
         // Otherwise just sign the message
         if (m_use_anti_exfil) {
             signal_hw_request(hw_request::get_xpubs);
-            m_twofactor_data["paths"] = get_paths_json();
+            auto& paths = m_twofactor_data["paths"];
+            paths.emplace_back(signer::EMPTY_PATH);
         } else {
             signal_hw_request(hw_request::sign_message);
             m_twofactor_data["message"] = m_message_info.first;
@@ -521,9 +513,8 @@ namespace sdk {
             return m_state;
         }
 
-        const nlohmann::json args = nlohmann::json::parse(m_code);
         if (m_hw_request == hw_request::get_xpubs) {
-            m_master_xpub_bip32 = args.at("xpubs").at(0);
+            m_master_xpub_bip32 = get_hw_reply().at("xpubs").at(0);
 
             signal_hw_request(hw_request::sign_message);
             m_twofactor_data["message"] = m_message_info.first;
@@ -532,11 +523,12 @@ namespace sdk {
             return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // If we are using the Anti-Exfil protocol we verify the signature
+            const nlohmann::json hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 verify_ae_signature(m_twofactor_data["message"], m_master_xpub_bip32, m_message_info.second,
-                    m_twofactor_data["ae_host_entropy"], args.at("signer_commitment"), args.at("signature"));
+                    m_twofactor_data["ae_host_entropy"], hw_reply.at("signer_commitment"), hw_reply.at("signature"));
             }
-            m_session->ack_system_message(m_message_info.first, args.at("signature"));
+            m_session->ack_system_message(m_message_info.first, hw_reply.at("signature"));
         }
         return state_type::done;
     }
@@ -614,9 +606,9 @@ namespace sdk {
             return m_state;
         }
 
-        const nlohmann::json args = nlohmann::json::parse(m_code);
+        const nlohmann::json hw_reply = get_hw_reply();
         const auto& inputs = m_twofactor_data["signing_inputs"];
-        const auto& signatures = get_sized_array(args, "signatures", inputs.size());
+        const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
         const auto& outputs = m_twofactor_data["transaction_outputs"];
         const auto& transaction_details = m_twofactor_data["transaction"];
         const bool is_liquid = m_net_params.is_liquid();
@@ -626,10 +618,10 @@ namespace sdk {
             // FIMXE: We skip re-blinding for the internal software signer here,
             // since we have already done it. It should be possible to avoid blinding
             // the tx twice in the general HWW case.
-            const auto& asset_commitments = get_sized_array(args, "asset_commitments", outputs.size());
-            const auto& value_commitments = get_sized_array(args, "value_commitments", outputs.size());
-            const auto& abfs = get_sized_array(args, "assetblinders", outputs.size());
-            const auto& vbfs = get_sized_array(args, "amountblinders", outputs.size());
+            const auto& asset_commitments = get_sized_array(hw_reply, "asset_commitments", outputs.size());
+            const auto& value_commitments = get_sized_array(hw_reply, "value_commitments", outputs.size());
+            const auto& abfs = get_sized_array(hw_reply, "assetblinders", outputs.size());
+            const auto& vbfs = get_sized_array(hw_reply, "amountblinders", outputs.size());
 
             size_t i = 0;
             for (const auto& out : outputs) {
@@ -650,7 +642,7 @@ namespace sdk {
             // in the future).
             auto& user_pubkeys = m_session->get_user_pubkeys();
             size_t i = 0;
-            const auto& signer_commitments = get_sized_array(args, "signer_commitments", inputs.size());
+            const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
             for (const auto& utxo : inputs) {
                 const auto pubkey = user_pubkeys.derive(utxo.at("subaccount"), utxo.at("pointer"));
                 verify_ae_signature(m_net_params, pubkey, tx, i, utxo, signer_commitments[i], signatures[i]);
@@ -706,8 +698,7 @@ namespace sdk {
 
         // Liquid: blind the address using the blinding key from the caller
         const auto prefix = m_net_params.blinded_prefix();
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-        blind_address(m_result, prefix, args.at("public_keys").at(0));
+        blind_address(m_result, prefix, get_hw_reply().at("public_keys").at(0));
         return state_type::done;
     }
 
@@ -759,8 +750,7 @@ namespace sdk {
 
         // Liquid: blind the addresses using the blinding key from the HW
         const auto prefix = m_net_params.blinded_prefix();
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-        const auto& public_keys = args.at("public_keys");
+        const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("list")) {
             blind_address(it, prefix, public_keys.at(i));
@@ -788,8 +778,7 @@ namespace sdk {
 
         // Otherwise, we have been called after resolving our blinding keys
         const auto prefix = m_net_params.blinded_prefix();
-        const nlohmann::json args = nlohmann::json::parse(m_code);
-        const auto& public_keys = args.at("public_keys");
+        const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
 
         // Blind any unblinded change addresseses
         size_t i = 0;
@@ -900,7 +889,7 @@ namespace sdk {
 
         if (m_fetch_nonces) {
             // Parse and cache the nonces we got back
-            encache_blinding_nonces(*m_session, m_twofactor_data, m_code);
+            encache_blinding_nonces(*m_session, m_twofactor_data, get_hw_reply());
             m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
         }
 
@@ -965,7 +954,7 @@ namespace sdk {
         }
 
         // Parse and cache the nonces we got back
-        encache_blinding_nonces(*m_session, m_twofactor_data, m_code);
+        encache_blinding_nonces(*m_session, m_twofactor_data, get_hw_reply());
 
         // Unblind the remaining blinded outputs we have nonces for
         // and encache the result
