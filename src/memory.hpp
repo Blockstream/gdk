@@ -21,6 +21,15 @@ namespace sdk {
         return ret;
     }
 
+    template <typename T, std::size_t N> inline std::vector<T> make_vector(const std::array<T, N>& src)
+    {
+        return { src.begin(), src.end() };
+    }
+    template <typename T, std::size_t N> inline std::vector<T> make_vector(const std::array<const T, N>& src)
+    {
+        return { src.begin(), src.end() };
+    }
+
     template <typename T> void swap_with_default(T& obj) { T().swap(obj); }
 
     template <typename T> void bzero_and_free(std::vector<T>& data)

@@ -35,7 +35,6 @@ namespace sdk {
         uint32_t m_subaccount;
 
         // used by 2of3 subaccounts
-        std::string m_master_xpub_bip32;
         std::string m_subaccount_xpub;
 
         // Used when a new authorized-assets-enabled subaccount is created
@@ -53,7 +52,6 @@ namespace sdk {
 
         const std::string m_msg;
         std::pair<std::string, std::vector<uint32_t>> m_message_info;
-        std::string m_master_xpub_bip32;
         bool m_initialized;
     };
 

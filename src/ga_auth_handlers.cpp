@@ -73,13 +73,16 @@ namespace sdk {
             const std::string message = twofactor_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
 
-            // TODO: signer or session should cache xpubs - or at least the root and signing xpubs
             // Note that you must pass a non-hardened path here; root_xpub_bip32 should be
             // the root or last hardened key for this public bip32 derivation to work.
             wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
-            ext_key derived = bip32_public_key_from_parent_path(*parent, path);
             pub_key_t pubkey;
-            memcpy(pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+            if (path.empty()) {
+                memcpy(pubkey.begin(), parent->pub_key, pubkey.size());
+            } else {
+                ext_key derived = bip32_public_key_from_parent_path(*parent, path);
+                memcpy(pubkey.begin(), derived.pub_key, pubkey.size());
+            }
 
             constexpr bool has_sighash = false;
             verify_ae_signature(pubkey, message_hash, twofactor_data.at("ae_host_entropy"),
@@ -271,7 +274,8 @@ namespace sdk {
             const nlohmann::json hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 // Anti-Exfil protocol: verify the signature
-                verify_ae_message(m_twofactor_data, m_master_xpub_bip32, signer::LOGIN_PATH, hw_reply);
+                const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
+                verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
             }
 
             // Log in and set up the session
@@ -425,7 +429,6 @@ namespace sdk {
 
         signal_hw_request(hw_request::get_xpubs);
         auto& paths = m_twofactor_data["paths"];
-        paths.emplace_back(signer::EMPTY_PATH);
         paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
     }
 
@@ -440,8 +443,7 @@ namespace sdk {
         if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for the new subaccount
             const nlohmann::json hw_reply = get_hw_reply();
-            m_master_xpub_bip32 = hw_reply.at("xpubs").at(0);
-            m_subaccount_xpub = hw_reply.at("xpubs").at(1);
+            m_subaccount_xpub = hw_reply.at("xpubs").at(0);
             if (m_details.at("type") == "2of3") {
                 // Ask the caller to sign the recovery key with the login key
                 signal_hw_request(hw_request::sign_message);
@@ -456,7 +458,8 @@ namespace sdk {
             const nlohmann::json hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 // Anti-Exfil protocol: verify the signature
-                verify_ae_message(m_twofactor_data, m_master_xpub_bip32, signer::LOGIN_PATH, hw_reply);
+                auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
+                verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
             }
 
             m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(hw_reply.at("signature")), false));
@@ -508,18 +511,10 @@ namespace sdk {
         m_message_info = m_session->get_system_message_info(m_msg);
         m_use_anti_exfil = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
 
-        // If using Anti-Exfil protocol we need to get the root xpub
-        // Otherwise just sign the message
-        if (m_use_anti_exfil) {
-            signal_hw_request(hw_request::get_xpubs);
-            auto& paths = m_twofactor_data["paths"];
-            paths.emplace_back(signer::EMPTY_PATH);
-        } else {
-            signal_hw_request(hw_request::sign_message);
-            m_twofactor_data["message"] = m_message_info.first;
-            m_twofactor_data["path"] = m_message_info.second;
-            add_required_ae_data(m_signer, m_twofactor_data);
-        }
+        signal_hw_request(hw_request::sign_message);
+        m_twofactor_data["message"] = m_message_info.first;
+        m_twofactor_data["path"] = m_message_info.second;
+        add_required_ae_data(m_signer, m_twofactor_data);
     }
 
     auth_handler::state_type ack_system_message_call::call_impl()
@@ -530,22 +525,12 @@ namespace sdk {
             return m_state;
         }
 
-        if (m_hw_request == hw_request::get_xpubs) {
-            m_master_xpub_bip32 = get_hw_reply().at("xpubs").at(0);
-
-            signal_hw_request(hw_request::sign_message);
-            m_twofactor_data["message"] = m_message_info.first;
-            m_twofactor_data["path"] = m_message_info.second;
-            add_required_ae_data(m_signer, m_twofactor_data);
-            return m_state;
-        } else if (m_hw_request == hw_request::sign_message) {
-            // If we are using the Anti-Exfil protocol we verify the signature
-            const nlohmann::json hw_reply = get_hw_reply();
-            if (m_use_anti_exfil) {
-                verify_ae_message(m_twofactor_data, m_master_xpub_bip32, m_message_info.second, hw_reply);
-            }
-            m_session->ack_system_message(m_message_info.first, hw_reply.at("signature"));
+        const nlohmann::json hw_reply = get_hw_reply();
+        if (m_use_anti_exfil) {
+            const auto master_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::EMPTY_PATH));
+            verify_ae_message(m_twofactor_data, master_bip32_xpub, m_message_info.second, hw_reply);
         }
+        m_session->ack_system_message(m_message_info.first, hw_reply.at("signature"));
         return state_type::done;
     }
 
