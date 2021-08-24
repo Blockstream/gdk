@@ -245,6 +245,14 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(1).or_insert(0) -= sat + test_session.get_tx_from_list(1, &txid).fee;
     *balances.entry(0).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
+    // can_rbf is true iff the subaccount can replace the transaction
+    let tx0 = test_session.get_tx_from_list(0, &txid);
+    let tx1 = test_session.get_tx_from_list(1, &txid);
+    if is_liquid {
+        assert!(!tx0.rbf_optin && !tx1.rbf_optin && !tx0.can_rbf && !tx1.can_rbf);
+    } else {
+        assert!(tx0.rbf_optin && tx1.rbf_optin && !tx0.can_rbf && tx1.can_rbf);
+    }
 
     // Send from account #0 to account #2 (p2sh-p2wpkh -> p2pkh)
     let sat = 1000;

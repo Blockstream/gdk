@@ -265,7 +265,7 @@ fn make_txlist_item(tx: &TransactionMeta) -> TxListItem {
         .iter()
         .map(|e| e.address.clone())
         .collect();
-    let can_rbf = tx.height.is_none() && tx.rbf_optin;
+    let can_rbf = tx.height.is_none() && tx.rbf_optin && type_ != "incoming";
 
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
