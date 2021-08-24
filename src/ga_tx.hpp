@@ -11,13 +11,13 @@ namespace sdk {
     class network_parameters;
     class session_impl;
 
+    std::array<unsigned char, SHA256_LEN> get_script_hash(
+        const network_parameters& net_params, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index);
+
     nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details);
 
     void add_input_signature(
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r);
-
-    void verify_ae_signature(const network_parameters& net_params, const pub_key_t& public_key, const wally_tx_ptr& tx,
-        uint32_t index, const nlohmann::json& u, const std::string& signer_commitment_hex, const std::string& der_hex);
 
     void blind_output(session_impl& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
         const nlohmann::json& output, const std::array<unsigned char, 33>& generator,

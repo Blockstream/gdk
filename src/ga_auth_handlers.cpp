@@ -645,7 +645,10 @@ namespace sdk {
             const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
             for (const auto& utxo : inputs) {
                 const auto pubkey = user_pubkeys.derive(utxo.at("subaccount"), utxo.at("pointer"));
-                verify_ae_signature(m_net_params, pubkey, tx, i, utxo, signer_commitments[i], signatures[i]);
+                const auto script_hash = get_script_hash(m_net_params, utxo, tx, i);
+                constexpr bool has_sighash = true;
+                verify_ae_signature(
+                    pubkey, script_hash, utxo.at("ae_host_entropy"), signer_commitments[i], signatures[i], has_sighash);
                 ++i;
             }
         }

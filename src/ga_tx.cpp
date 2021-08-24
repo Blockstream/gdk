@@ -93,31 +93,6 @@ namespace sdk {
             return amount(utxo.at("satoshi"));
         }
 
-        static std::array<unsigned char, SHA256_LEN> get_script_hash(
-            const bool is_liquid, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
-        {
-            const amount::value_type v = utxo.at("satoshi");
-            const auto type = script_type(utxo.at("script_type"));
-            const auto script = h2b(utxo.at("prevout_script"));
-
-            const uint32_t flags = is_segwit_script_type(type) ? WALLY_TX_FLAG_USE_WITNESS : 0;
-
-            if (!is_liquid) {
-                const amount satoshi{ v };
-                return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
-            }
-
-            // Liquid case - has a value-commitment in place of a satoshi value
-            std::vector<unsigned char> ct_value;
-            if (!utxo.value("commitment", std::string{}).empty()) {
-                ct_value = h2b(utxo.at("commitment"));
-            } else {
-                const auto value = tx_confidential_value_from_satoshi(v);
-                ct_value.assign(std::begin(value), std::end(value));
-            }
-            return tx_get_elements_signature_hash(tx, index, script, ct_value, WALLY_SIGHASH_ALL, flags);
-        }
-
         static ecdsa_sig_t ec_sig_from_witness(const wally_tx_ptr& tx, size_t input_index, size_t item_index)
         {
             constexpr bool has_sighash = true;
@@ -372,7 +347,7 @@ namespace sdk {
                 for (const auto& input : result["old_used_utxos"]) {
                     const auto sigs = get_signatures_from_input(input, tx, vin, net_params.is_liquid());
                     const auto pubkeys = session.pubkeys_from_utxo(input);
-                    const auto script_hash = get_script_hash(net_params.is_liquid(), input, tx, vin);
+                    const auto script_hash = get_script_hash(net_params, input, tx, vin);
                     GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(0), script_hash, sigs.at(0))); // ga
                     GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(1), script_hash, sigs.at(1))); // user
                     ++vin;
@@ -898,7 +873,7 @@ namespace sdk {
 
             std::array<unsigned char, SHA256_LEN> tx_hash;
             const auto& net_params = session.get_network_parameters();
-            tx_hash = get_script_hash(net_params.is_liquid(), u, tx, index);
+            tx_hash = get_script_hash(net_params, u, tx, index);
 
             if (!private_key.empty()) {
                 const auto private_key_bytes = h2b(private_key);
@@ -926,6 +901,31 @@ namespace sdk {
         }
     } // namespace
 
+    std::array<unsigned char, SHA256_LEN> get_script_hash(
+        const network_parameters& net_params, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
+    {
+        const amount::value_type v = utxo.at("satoshi");
+        const auto type = script_type(utxo.at("script_type"));
+        const auto script = h2b(utxo.at("prevout_script"));
+
+        const uint32_t flags = is_segwit_script_type(type) ? WALLY_TX_FLAG_USE_WITNESS : 0;
+
+        if (!net_params.is_liquid()) {
+            const amount satoshi{ v };
+            return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
+        }
+
+        // Liquid case - has a value-commitment in place of a satoshi value
+        std::vector<unsigned char> ct_value;
+        if (!utxo.value("commitment", std::string{}).empty()) {
+            ct_value = h2b(utxo.at("commitment"));
+        } else {
+            const auto value = tx_confidential_value_from_satoshi(v);
+            ct_value.assign(std::begin(value), std::end(value));
+        }
+        return tx_get_elements_signature_hash(tx, index, script, ct_value, WALLY_SIGHASH_ALL, flags);
+    }
+
     nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details)
     {
         // Copy all inputs into our result (they will be overridden below as needed)
@@ -940,17 +940,6 @@ namespace sdk {
             set_tx_error(result, e.what());
         }
         return result;
-    }
-
-    void verify_ae_signature(const network_parameters& net_params, const pub_key_t& public_key, const wally_tx_ptr& tx,
-        uint32_t index, const nlohmann::json& input, const std::string& signer_commitment_hex,
-        const std::string& der_hex)
-    {
-        const auto& host_entropy_hex = input.at("ae_host_entropy");
-        const auto script_hash = get_script_hash(net_params.is_liquid(), input, tx, index);
-
-        constexpr bool has_sighash = true;
-        verify_ae_signature(public_key, script_hash, host_entropy_hex, signer_commitment_hex, der_hex, has_sighash);
     }
 
     void add_input_signature(
