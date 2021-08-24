@@ -1136,7 +1136,7 @@ namespace sdk {
         }
     }
 
-    void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
+    void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
         bool watch_only, bool is_initial_login)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1200,7 +1200,7 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(make_xpub(recovery_xpub) == make_xpub(recovery_chain_code, recovery_pub_key));
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-                auto parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
+                auto parent = bip32_public_key_from_bip32_xpub(root_bip32_xpub);
                 ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
                 pub_key_t login_pubkey;
                 memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
@@ -1551,7 +1551,7 @@ namespace sdk {
     }
 
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
+        const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
 
@@ -1637,7 +1637,7 @@ namespace sdk {
         }
 
         constexpr bool watch_only = false;
-        update_login_data(locker, login_data, root_xpub_bip32, watch_only, is_initial_login);
+        update_login_data(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;

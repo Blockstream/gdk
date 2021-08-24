@@ -79,7 +79,7 @@ namespace sdk {
 
         virtual std::string get_challenge(const pub_key_t& public_key) = 0;
         virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
+            const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
             = 0;
         virtual void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs) = 0;
         virtual nlohmann::json login(std::shared_ptr<signer> signer);

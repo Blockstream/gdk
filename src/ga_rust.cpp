@@ -172,7 +172,7 @@ namespace sdk {
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_xpub_bip32, std::shared_ptr<signer> signer)
+        const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
     {
         throw std::runtime_error("not implemented");
     }

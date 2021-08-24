@@ -59,7 +59,7 @@ namespace sdk {
 
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_xpub_bip32, std::shared_ptr<signer> signer);
+            const std::string& root_bip32_xpub, std::shared_ptr<signer> signer);
 
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
 
@@ -205,7 +205,7 @@ namespace sdk {
         void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
         void set_enabled_twofactor_methods(locker_t& locker);
-        void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_xpub_bip32,
+        void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_initial_login);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);

@@ -67,15 +67,15 @@ namespace sdk {
             return using_ae_protocol;
         }
 
-        static void verify_ae_message(const nlohmann::json& twofactor_data, const std::string& root_xpub_bip32,
+        static void verify_ae_message(const nlohmann::json& twofactor_data, const std::string& root_bip32_xpub,
             uint32_span_t path, const nlohmann::json& hw_reply)
         {
             const std::string message = twofactor_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
 
-            // Note that you must pass a non-hardened path here; root_xpub_bip32 should be
+            // Note that you must pass a non-hardened path here; root_bip32_xpub should be
             // the root or last hardened key for this public bip32 derivation to work.
-            wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_xpub_bip32);
+            wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_bip32_xpub);
             pub_key_t pubkey;
             if (path.empty()) {
                 memcpy(pubkey.begin(), parent->pub_key, pubkey.size());
@@ -191,7 +191,7 @@ namespace sdk {
         const nlohmann::json m_hw_device;
         const nlohmann::json m_credential_data;
         std::string m_challenge;
-        std::string m_master_xpub_bip32;
+        std::string m_master_bip32_xpub;
 
         // Used when AMP subaccounts require new addresses
         std::vector<nlohmann::json> m_addresses;
@@ -256,8 +256,8 @@ namespace sdk {
             // Compute the challenge with the master pubkey
             const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
 
-            m_master_xpub_bip32 = xpubs.at(0);
-            const auto public_key = make_xpub(m_master_xpub_bip32).second;
+            m_master_bip32_xpub = xpubs.at(0);
+            const auto public_key = make_xpub(m_master_bip32_xpub).second;
             m_challenge = m_session->get_challenge(public_key);
 
             const auto local_xpub = make_xpub(xpubs.at(1));
@@ -279,7 +279,7 @@ namespace sdk {
             }
 
             // Log in and set up the session
-            m_result = m_session->authenticate(hw_reply.at("signature"), "GA", m_master_xpub_bip32, m_signer);
+            m_result = m_session->authenticate(hw_reply.at("signature"), "GA", m_master_bip32_xpub, m_signer);
 
             // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
