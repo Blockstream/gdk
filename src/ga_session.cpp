@@ -464,12 +464,11 @@ namespace sdk {
 
     void ga_session::unsubscribe()
     {
-        const auto subscriptions = [this] {
+        decltype(m_subscriptions) subscriptions;
+        {
             locker_t locker(m_mutex);
-            const auto subscriptions = m_subscriptions;
-            m_subscriptions.clear();
-            return subscriptions;
-        }();
+            subscriptions.swap(m_subscriptions);
+        };
 
         for (const auto& sub : subscriptions) {
             no_std_exception_escape([this, &sub] {
@@ -484,8 +483,9 @@ namespace sdk {
 
     void ga_session::set_socket_options()
     {
-        auto set_option = [this](auto option) {
-            if (m_net_params.is_tls_connection()) {
+        const bool is_tls = m_net_params.is_tls_connection();
+        auto set_option = [this, is_tls](auto option) {
+            if (is_tls) {
                 GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport_tls>(m_transport)->set_socket_option(option));
             } else {
                 GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport>(m_transport)->set_socket_option(option));
