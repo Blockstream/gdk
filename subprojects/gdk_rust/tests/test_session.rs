@@ -825,24 +825,30 @@ impl TestSession {
         let balance: Value = self.node.client.call("getbalance", &[]).unwrap();
         let unconfirmed_balance: Value =
             self.node.client.call("getunconfirmedbalance", &[]).unwrap();
-        let balance_btc = match self.network_id {
+        match self.network_id {
             NetworkId::Bitcoin(_) => {
-                balance.as_f64().unwrap() + unconfirmed_balance.as_f64().unwrap()
+                let conf_sat = Amount::from_btc(balance.as_f64().unwrap()).unwrap().as_sat();
+                let unconf_sat =
+                    Amount::from_btc(unconfirmed_balance.as_f64().unwrap()).unwrap().as_sat();
+                conf_sat + unconf_sat
             }
             NetworkId::Elements(_) => {
                 let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
-                let balance = match balance.get(&asset_or_policy) {
-                    Some(Value::Number(s)) => s.as_f64().unwrap(),
-                    _ => 0.0,
+                let conf_sat = match balance.get(&asset_or_policy) {
+                    Some(Value::Number(s)) => {
+                        Amount::from_btc(s.as_f64().unwrap()).unwrap().as_sat()
+                    }
+                    _ => 0,
                 };
-                let unconfirmed_balance = match unconfirmed_balance.get(&asset_or_policy) {
-                    Some(Value::Number(s)) => s.as_f64().unwrap(),
-                    _ => 0.0,
+                let unconf_sat = match unconfirmed_balance.get(&asset_or_policy) {
+                    Some(Value::Number(s)) => {
+                        Amount::from_btc(s.as_f64().unwrap()).unwrap().as_sat()
+                    }
+                    _ => 0,
                 };
-                balance + unconfirmed_balance
+                conf_sat + unconf_sat
             }
-        };
-        Amount::from_btc(balance_btc).unwrap().as_sat()
+        }
     }
 
     pub fn asset_id(&self) -> Option<String> {
