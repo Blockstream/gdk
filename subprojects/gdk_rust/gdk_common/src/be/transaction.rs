@@ -27,6 +27,11 @@ use std::str::FromStr;
 
 pub const DUST_VALUE: u64 = 546;
 
+// 52-bit rangeproof size
+const DEFAULT_RANGEPROOF_SIZE: usize = 4174;
+// 3-input ASP size
+const DEFAULT_SURJECTIONPROOF_SIZE: usize = 135;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Hash)]
 pub enum BETransaction {
     Bitcoin(bitcoin::Transaction),
@@ -353,18 +358,14 @@ impl BETransaction {
                     tx.output.push(new_out);
                 }
 
-                for output in tx.output.iter_mut() {
-                    output.witness = TxOutWitness {
-                        surjection_proof: Some(mock_surjectionproof(tx.input.len())),
-                        rangeproof: Some(mock_rangeproof()),
-                    };
-                }
+                let proofs_size = (DEFAULT_RANGEPROOF_SIZE + DEFAULT_SURJECTIONPROOF_SIZE)
+                    * tx.output.iter().filter(|o| o.witness.is_empty()).count();
 
                 tx.output.push(elements::TxOut::new_fee(
                     0,
                     elements::issuance::AssetId::from_slice(&[0u8; 32]).unwrap(),
                 )); // mockup for the explicit fee output
-                let vbytes = tx.get_weight() as f64 / 4.0;
+                let vbytes = (tx.get_weight() + proofs_size) as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
                 info!(
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
@@ -855,53 +856,6 @@ fn mock_value() -> elements::secp256k1_zkp::PedersenCommitment {
     let mut mock_value = [2u8; 33];
     mock_value[0] = 8;
     elements::secp256k1_zkp::PedersenCommitment::from_slice(&mock_value).unwrap()
-}
-
-fn mock_rangeproof() -> elements::secp256k1_zkp::RangeProof {
-    elements::secp256k1_zkp::RangeProof::from_slice(&[0u8; 4174]).unwrap()
-}
-
-fn random_tag() -> elements::secp256k1_zkp::Tag {
-    use rand::RngCore;
-    let mut bytes = [0u8; 32];
-    thread_rng().fill_bytes(&mut bytes);
-    elements::secp256k1_zkp::Tag::from(bytes)
-}
-
-fn random_domain() -> (
-    elements::secp256k1_zkp::Generator,
-    elements::secp256k1_zkp::Tag,
-    elements::secp256k1_zkp::Tweak,
-) {
-    let secp = secp256k1::Secp256k1::new();
-    let tag = random_tag();
-    let tweak = elements::secp256k1_zkp::Tweak::new(&mut thread_rng());
-    let gen = elements::secp256k1_zkp::Generator::new_blinded(&secp, tag, tweak);
-    (gen, tag, tweak)
-}
-
-fn mock_surjectionproof(num_inputs: usize) -> elements::secp256k1_zkp::SurjectionProof {
-    let secp = secp256k1::Secp256k1::new();
-    let mut rng = thread_rng();
-    let num_inputs = std::cmp::max(1, num_inputs);
-    let mut domain: Vec<(
-        elements::secp256k1_zkp::Generator,
-        elements::secp256k1_zkp::Tag,
-        elements::secp256k1_zkp::Tweak,
-    )> = vec![];
-    for _ in 0..num_inputs {
-        domain.push(random_domain());
-    }
-    let codomain_tag = domain[0].1;
-    let codomain_tweak = elements::secp256k1_zkp::Tweak::new(&mut rng);
-    elements::secp256k1_zkp::SurjectionProof::new(
-        &secp,
-        &mut rng,
-        codomain_tag,
-        codomain_tweak,
-        &domain,
-    )
-    .unwrap()
 }
 
 fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {
