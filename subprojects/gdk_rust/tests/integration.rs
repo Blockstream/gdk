@@ -344,22 +344,7 @@ fn subaccounts(is_liquid: bool) {
     };
 
     for subaccount in subaccounts.iter() {
-        // Wait until the subaccount has a transaction
-        let opt = GetTransactionsOpt {
-            first: 0,
-            count: 100,
-            subaccount: subaccount.account_num,
-            num_confs: None,
-        };
-        let mut i = 60;
-        loop {
-            assert!(i > 0, "timeout waiting for updates");
-            i -= 1;
-            if new_session.get_transactions(&opt).unwrap().0.len() > 0 {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_secs(1));
-        }
+        test_session::wait_account_n_txs(&new_session, subaccount.account_num, 1);
 
         let opt = GetBalanceOpt {
             subaccount: subaccount.account_num,

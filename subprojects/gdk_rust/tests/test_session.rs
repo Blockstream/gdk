@@ -1140,3 +1140,17 @@ fn to_unconfidential(elements_address: String) -> String {
     address_unconf.blinding_pubkey = None;
     address_unconf.to_string()
 }
+
+/// wait for the n txs to show up in the given account
+pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) {
+    let mut opt = GetTransactionsOpt::default();
+    opt.subaccount = subaccount;
+    opt.count = n;
+    for _ in 0..10 {
+        if session.get_transactions(&opt).unwrap().0.len() >= n {
+            return;
+        }
+        thread::sleep(Duration::from_secs(1));
+    }
+    panic!("timeout waiting for {} txs to show up in account {}", n, subaccount);
+}
