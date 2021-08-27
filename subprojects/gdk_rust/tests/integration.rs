@@ -2,7 +2,7 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetTransactionsOpt, RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
+    RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -465,16 +465,7 @@ fn rbf() {
     // The old transaction should be gone (after the next sync with the server)
     for i in 0..60 {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let list = test_session
-            .session
-            .get_transactions(&GetTransactionsOpt {
-                subaccount: 1,
-                count: 100,
-                ..Default::default()
-            })
-            .unwrap()
-            .0;
-        if list.iter().all(|e| e.txhash != txid1) {
+        if test_session.get_tx_list(1).iter().all(|e| e.txhash != txid1) {
             break;
         }
         assert!(i < 59, "timeout waiting for replaced transaction to disappear");

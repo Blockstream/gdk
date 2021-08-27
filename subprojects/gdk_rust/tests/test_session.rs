@@ -431,11 +431,15 @@ impl TestSession {
         self.list_tx_contains(&txid, &[address], true);
     }
 
-    pub fn get_tx_from_list(&self, subaccount: u32, txid: &str) -> TxListItem {
+    pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
         let mut opt = GetTransactionsOpt::default();
         opt.subaccount = subaccount;
         opt.count = 100;
-        let list = self.session.get_transactions(&opt).unwrap().0;
+        self.session.get_transactions(&opt).unwrap().0
+    }
+
+    pub fn get_tx_from_list(&self, subaccount: u32, txid: &str) -> TxListItem {
+        let list = self.get_tx_list(subaccount);
         let filtered_list: Vec<TxListItem> =
             list.iter().filter(|e| e.txhash == txid).cloned().collect();
         assert!(!filtered_list.is_empty(), "just made tx {} is not in tx list", txid);
@@ -1058,11 +1062,8 @@ impl TestSession {
 
     /// wait for the txid to show up in the given account
     pub fn wait_account_tx(&self, subaccount: u32, txid: &str) {
-        let mut opt = GetTransactionsOpt::default();
-        opt.subaccount = subaccount;
-        opt.count = 100;
         for _ in 0..60 {
-            let txs = self.session.get_transactions(&opt).unwrap().0;
+            let txs = self.get_tx_list(subaccount);
             if txs.iter().any(|tx| tx.txhash == txid) {
                 return;
             }
