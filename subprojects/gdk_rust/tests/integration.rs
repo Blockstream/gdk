@@ -360,6 +360,36 @@ fn subaccounts(is_liquid: bool) {
 }
 
 #[test]
+fn coinbase_bitcoin() {
+    coinbase(false);
+}
+
+#[test]
+fn coinbase_liquid() {
+    coinbase(true);
+}
+
+fn coinbase(is_liquid: bool) {
+    // Receive a coinbase transaction in the wallet
+    let test_session = setup_session(is_liquid, |_| ());
+
+    // Do a transaction so we have some fees to collect, note that this is necessary for Liquid
+    // since new blocks do not generate new coins.
+    test_session.node_sendtoaddress(&test_session.node_getnewaddress(None), 10000, None);
+
+    // Generate a coinbase sending an output to the wallet.
+    test_session.node_generatetoaddress(1, test_session.get_receive_address(0).address);
+    test_session.wait_blockheight(102);
+    test_session.wait_account_n_txs(0, 1);
+    assert!(test_session.balance_account(0, None, None) > 0);
+    let txlist = test_session.get_tx_list(0);
+    assert_eq!(txlist.len(), 1);
+    assert_eq!(txlist[0].fee, 0);
+
+    // This coin is immature though, coinbase outputs cannot be spent until 101 blocks.
+}
+
+#[test]
 fn labels() {
     // Create a session and two accounts
     let mut test_session = setup_session(false, |_| ());

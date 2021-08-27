@@ -110,9 +110,24 @@ impl BETransaction {
     }
 
     pub fn previous_output_txids(&self) -> Vec<BETxid> {
+        // every previous output, but skip coinbase
         match self {
-            Self::Bitcoin(tx) => tx.input.iter().map(|i| i.previous_output.txid.into()).collect(),
-            Self::Elements(tx) => tx.input.iter().map(|i| i.previous_output.txid.into()).collect(),
+            Self::Bitcoin(tx) => tx
+                .input
+                .iter()
+                .filter(|i| !i.previous_output.is_null())
+                .map(|i| i.previous_output.txid.into())
+                .collect(),
+            // FIXME: use elements::OutPoint::is_null once available upstream
+            Self::Elements(tx) => tx
+                .input
+                .iter()
+                .filter(|i| {
+                    !(i.previous_output.vout == u32::max_value()
+                        && i.previous_output.txid == Default::default())
+                })
+                .map(|i| i.previous_output.txid.into())
+                .collect(),
         }
     }
 
@@ -560,26 +575,25 @@ impl BETransaction {
         all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
         policy_asset: &Option<elements::issuance::AssetId>,
     ) -> Result<u64, Error> {
-        Ok(match self {
+        match self {
             Self::Bitcoin(tx) => {
-                let sum_inputs = sum_inputs(tx, all_txs);
-                let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
-                sum_inputs - sum_outputs
+                if tx.is_coin_base() {
+                    Ok(0)
+                } else {
+                    let sum_inputs = sum_inputs(tx, all_txs);
+                    let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
+                    sum_inputs
+                        .checked_sub(sum_outputs)
+                        .ok_or_else(|| Error::Generic("unexpected tx balance".into()))
+                }
             }
             Self::Elements(tx) => {
-                let has_fee = tx.output.iter().any(|o| o.is_fee());
-
-                if has_fee {
-                    let policy_asset = elements::confidential::Asset::Explicit(
-                        policy_asset
-                            .ok_or_else(|| Error::Generic("Missing policy asset".into()))?,
-                    );
-                    tx.output
-                        .iter()
-                        .filter(|o| o.is_fee())
-                        .filter(|o| policy_asset == o.asset)
-                        .map(|o| o.minimum_value()) // minimum_value used for extracting the explicit value (value is always explicit for fee)
-                        .sum::<u64>()
+                if tx.is_coinbase() {
+                    Ok(0)
+                } else if tx.output.iter().any(|o| o.is_fee()) {
+                    let policy_asset = policy_asset
+                        .ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
+                    Ok(tx.fee_in(policy_asset))
                 } else {
                     // while we are not filtering assets, the following holds for valid tx because
                     // sum of input assets = sum of output assets
@@ -591,10 +605,12 @@ impl BETransaction {
                         .filter_map(|o| all_txs.get_previous_output_value(&o, all_unblinded))
                         .sum();
 
-                    sum_inputs - sum_outputs
+                    sum_inputs
+                        .checked_sub(sum_outputs)
+                        .ok_or_else(|| Error::Generic("unexpected tx balance".into()))
                 }
             }
-        })
+        }
     }
 
     pub fn rbf_optin(&self) -> bool {

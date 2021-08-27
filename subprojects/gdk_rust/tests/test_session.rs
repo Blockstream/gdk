@@ -96,7 +96,7 @@ pub fn setup(
     let node = electrsd::bitcoind::BitcoinD::with_conf(&node_exec, &conf).unwrap();
     info!("node spawned");
 
-    node_generate(&node.client, 1);
+    node_generate(&node.client, 1, None);
     if is_liquid {
         // send initialfreecoins from wallet "" to the wallet created by BitcoinD::new
         let node_url = format!("http://127.0.0.1:{}/wallet/", node.params.rpc_socket.port());
@@ -126,7 +126,7 @@ pub fn setup(
     let electrs = electrsd::ElectrsD::with_conf(&electrs_exec, &node, &conf).unwrap();
     info!("Electrs spawned");
 
-    node_generate(&node.client, 100);
+    node_generate(&node.client, 100, None);
     electrs.trigger().unwrap();
 
     let mut i = 60;
@@ -821,9 +821,15 @@ impl TestSession {
         node_issueasset(&self.node.client, satoshi)
     }
     pub fn node_generate(&self, block_num: u32) {
-        node_generate(&self.node.client, block_num);
+        node_generate(&self.node.client, block_num, None);
         self.electrs.trigger().unwrap();
     }
+
+    pub fn node_generatetoaddress(&self, block_num: u32, address: String) {
+        node_generate(&self.node.client, block_num, Some(address));
+        self.electrs.trigger().unwrap();
+    }
+
     pub fn node_connect(&self, port: u16) {
         self.node.client.call::<Value>("clearbanned", &[]).unwrap();
         self.node
@@ -1072,6 +1078,11 @@ impl TestSession {
         panic!("timeout waiting for tx {} to show up in account {}", txid, subaccount);
     }
 
+    /// wait for the n txs to show up in the given account
+    pub fn wait_account_n_txs(&self, subaccount: u32, n: usize) {
+        wait_account_n_txs(&self.session, subaccount, n);
+    }
+
     pub fn wait_blockheight(&self, height: u32) {
         let mut i = 60;
         loop {
@@ -1122,8 +1133,8 @@ fn node_getnewaddress(client: &Client, kind: Option<&str>) -> String {
     addr.as_str().unwrap().to_string()
 }
 
-fn node_generate(client: &Client, block_num: u32) {
-    let address = node_getnewaddress(client, None);
+fn node_generate(client: &Client, block_num: u32, address: Option<String>) {
+    let address = address.unwrap_or(node_getnewaddress(client, None));
     let r = client.call::<Value>("generatetoaddress", &[block_num.into(), address.into()]).unwrap();
     info!("generate result {:?}", r);
 }
