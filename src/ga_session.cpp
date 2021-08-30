@@ -1918,6 +1918,9 @@ namespace sdk {
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
 
+        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
+            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
+
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
                 auto details = wamp_cast_json(event);
