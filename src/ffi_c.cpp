@@ -269,7 +269,7 @@ GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_
 
 GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, const GA_json*, hw_device, const GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(ga::sdk::get_login_call(*session, *json_cast(hw_device), *json_cast(details))); })
+    { *call = make_call(new ga::sdk::login_user_call(*session, *json_cast(hw_device), *json_cast(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_set_watch_only, struct GA_session*, session, const char*, username, const char*, password,
     { session->set_watch_only(username, password); })

@@ -79,7 +79,7 @@ int main()
     const auto mnemonic_env = std::getenv("GA_MNEMONIC");
     GDK_RUNTIME_ASSERT_MSG(mnemonic_env, "Set GA_MNEMONIC to generate assets");
     const nlohmann::json details({ { "mnemonic", mnemonic_env } });
-    sdk::auto_auth_handler login_call(sdk::get_login_call(session, nlohmann::json(), details));
+    sdk::auto_auth_handler login_call(new sdk::login_user_call(session, nlohmann::json(), details));
     process_auth(login_call);
 
     std::ostringstream os;

@@ -1934,21 +1934,34 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::login_watch_only(const std::string& username, const std::string& password)
+    nlohmann::json ga_session::login_watch_only(std::shared_ptr<signer> signer)
     {
-        const std::map<std::string, std::string> args
-            = { { "username", username }, { "password", password }, { "minimal", "true" } };
+        locker_t locker(m_mutex);
+
+        const bool is_initial_login = m_signer == nullptr;
+        if (is_initial_login) {
+            m_signer = signer;
+        } else {
+            // Re-login must use the same signer
+            GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
+        }
+
+        const auto& credentials = m_signer->get_credentials();
+        const std::map<std::string, std::string> args = { { "username", credentials.at("username") },
+            { "password", credentials.at("password") }, { "minimal", "true" } };
         const auto user_agent = get_user_agent(true, m_user_agent);
-        nlohmann::json login_data = wamp_cast_json(wamp_call("login.watch_only_v2", "custom", args, user_agent));
+        auto login_data = wamp_cast_json(wamp_call(locker, "login.watch_only_v2", "custom", args, user_agent));
 
         if (login_data.is_boolean()) {
+            locker.unlock();
             reset_all_session_data();
-            throw login_error(res::id_login_failed);
+            throw login_error(res::id_user_not_found_or_invalid);
+        } else if (!is_initial_login) {
+            // Re-login. Discard all cached data which may be out of date
+            reset_cached_session_data();
         }
-        locker_t locker(m_mutex);
-        m_signer = signer::make_watch_only_signer(m_net_params);
+
         constexpr bool watch_only = true;
-        constexpr bool is_initial_login = true; // FIXME: Re-login for watch only
         update_login_data(locker, login_data, std::string(), watch_only, is_initial_login);
 
         const std::string receiving_id = m_login_data["receiving_id"];

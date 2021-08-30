@@ -61,16 +61,14 @@ int main()
     session.connect(net_params);
 
     // Login
-    {
-        const auto mnemonic = envstr("GA_MNEMONIC", std::string());
-        if (mnemonic.empty()) {
-            std::cout << "Set GA_NETWORK/GA_MNEMONIC to run test" << std::endl;
-            return 0; // Do not fail
-        }
-        const nlohmann::json details({ { "mnemonic", mnemonic } });
-        std::unique_ptr<sdk::auth_handler> login_call{ sdk::get_login_call(session, nlohmann::json(), details) };
-        std::cout << process_auth(*login_call) << std::endl;
+    const auto mnemonic = envstr("GA_MNEMONIC", std::string());
+    if (mnemonic.empty()) {
+        std::cout << "Set GA_NETWORK/GA_MNEMONIC to run test" << std::endl;
+        return 0; // Do not fail
     }
+    const nlohmann::json details({ { "mnemonic", mnemonic } });
+    sdk::auto_auth_handler login_call(new sdk::login_user_call(session, nlohmann::json(), details));
+    std::cout << process_auth(login_call) << std::endl;
 
     // Get subaccounts/ Get subaccount
     std::vector<uint32_t> subaccounts;

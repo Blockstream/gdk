@@ -12,16 +12,26 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
-        void initialize();
 
         const nlohmann::json m_hw_device;
-        const std::string m_mnemonic;
-        bool m_initialized;
+        const nlohmann::json m_credential_data;
     };
 
-    // Return an auth handler for logging in a user (caller must delete it)
-    auth_handler* get_login_call(
-        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
+    class login_user_call : public auth_handler_impl {
+    public:
+        login_user_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_hw_device;
+        nlohmann::json m_credential_data;
+        std::string m_challenge;
+        std::string m_master_bip32_xpub;
+
+        // Used when AMP subaccounts require new addresses
+        std::vector<nlohmann::json> m_addresses;
+    };
 
     class create_subaccount_call : public auth_handler_impl {
     public:

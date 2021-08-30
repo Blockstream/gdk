@@ -107,22 +107,6 @@ namespace sdk {
                 session.save_cache();
             }
         }
-
-        // Make a temporary signer for login and register calls
-        static std::shared_ptr<signer> make_login_signer(
-            const network_parameters& net_params, const nlohmann::json& hw_device, const std::string& mnemonic)
-        {
-            std::shared_ptr<signer> ret;
-            if (hw_device.empty() || hw_device.value("device", nlohmann::json::object()).empty()) {
-                ret = signer::make_software_signer(net_params, mnemonic);
-            } else {
-                ret = signer::make_hardware_signer(net_params, hw_device.at("device"));
-            }
-            if (net_params.is_liquid() && ret->get_liquid_support() == liquid_support_level::none) {
-                throw user_error(res::id_the_hardware_wallet_you_are);
-            }
-            return ret;
-        }
     } // namespace
 
     //
@@ -131,37 +115,30 @@ namespace sdk {
     register_call::register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic)
         : auth_handler_impl(session, "register_user", std::shared_ptr<signer>())
         , m_hw_device(hw_device)
-        , m_mnemonic(mnemonic)
-        , m_initialized(false)
-    {
-    }
-
-    void register_call::initialize()
+        , m_credential_data(mnemonic.empty() ? nlohmann::json() : nlohmann::json({ { "mnemonic", mnemonic } }))
     {
         if (m_net_params.is_electrum()) {
             // Register is a no-op for electrum sessions
             m_state = state_type::done;
-        } else {
-            // Create our signer to handle xpub deriving
-            m_signer = make_login_signer(m_net_params, m_hw_device, m_mnemonic);
-
-            // To register, we need the master xpub to identify the wallet,
-            // and the registration xpub to compute the gait_path.
-            signal_hw_request(hw_request::get_xpubs);
-            auto& paths = m_twofactor_data["paths"];
-            paths.emplace_back(signer::EMPTY_PATH);
-            paths.emplace_back(signer::REGISTER_PATH);
         }
     }
 
     auth_handler::state_type register_call::call_impl()
     {
-        if (!m_initialized) {
-            initialize();
-            m_initialized = true;
+        if (!m_signer) {
+            // Create our signer
+            m_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
+
+            // We need the master xpub to identify the wallet,
+            // and the registration xpub to compute the gait_path.
+            signal_hw_request(hw_request::get_xpubs);
+            auto& paths = m_twofactor_data["paths"];
+            paths.emplace_back(signer::EMPTY_PATH);
+            paths.emplace_back(signer::REGISTER_PATH);
             return m_state;
         }
 
+        // We have received our xpubs reply
         const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
         const auto master_xpub = make_xpub(xpubs.at(0));
 
@@ -178,76 +155,55 @@ namespace sdk {
     }
 
     //
-    // Login
+    // Login User
     //
-    class login_call : public auth_handler_impl {
-    public:
-        login_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
-
-    private:
-        state_type call_impl() override;
-        void initialize();
-
-        const nlohmann::json m_hw_device;
-        const nlohmann::json m_credential_data;
-        std::string m_challenge;
-        std::string m_master_bip32_xpub;
-
-        // Used when AMP subaccounts require new addresses
-        std::vector<nlohmann::json> m_addresses;
-        bool m_initialized;
-    };
-
-    login_call::login_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& m_credential_data)
+    login_user_call::login_user_call(
+        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
         : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
         , m_hw_device(hw_device)
-        , m_credential_data(m_credential_data)
-        , m_initialized(false)
+        , m_credential_data(credential_data)
     {
     }
 
-    void login_call::initialize()
+    auth_handler::state_type login_user_call::call_impl()
     {
-        std::string mnemonic;
-        std::string password;
+        if (!m_signer) {
+            if (m_credential_data.contains("pin")) {
+                // Login with PIN. Fetch the mnemonic from the pin and pin data
+                m_credential_data = { { "mnemonic", m_session->mnemonic_from_pin_data(m_credential_data) } };
+            }
 
-        if (!m_hw_device.empty() || m_credential_data.contains("mnemonic")) {
-            mnemonic = json_get_value(m_credential_data, "mnemonic");
-            password = json_get_value(m_credential_data, "password");
-            // FIXME: Allow a "bip39_passphrase" element to enable bip39 logins
-        } else if (m_credential_data.contains("pin")) {
-            mnemonic = m_session->mnemonic_from_pin_data(m_credential_data);
-        } else {
-            GDK_RUNTIME_ASSERT_MSG(false, "Invalid credentials");
-        }
-        auto signer = make_login_signer(m_net_params, m_hw_device, decrypt_mnemonic(mnemonic, password));
-        if (m_session->get_signer() != nullptr) {
-            // Re-login: ensure we are doing so with the same login details and HW/SW device
-            auto session_signer = m_session->get_signer();
-            GDK_RUNTIME_ASSERT(signer->get_mnemonic(std::string()) == session_signer->get_mnemonic(std::string()));
-            GDK_RUNTIME_ASSERT(signer->get_device() == session_signer->get_device());
-            signer = session_signer; // Use the existing session signer
-        }
-        m_signer = signer;
+            // Create our signer
+            auto new_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
 
-        if (m_net_params.is_electrum()) {
-            // FIXME: Implement rust login via authenticate()
-            m_result = m_session->login(m_signer);
-            m_state = state_type::done;
-        } else {
-            // We first need the challenge, so ask the caller for the master pubkey.
+            if (m_session->get_signer() != nullptr) {
+                // Re-login: ensure we are doing so with the same login details and HW/SW device
+                auto session_signer = m_session->get_signer();
+                GDK_RUNTIME_ASSERT(
+                    new_signer->get_mnemonic(std::string()) == session_signer->get_mnemonic(std::string()));
+                GDK_RUNTIME_ASSERT(new_signer->get_device() == session_signer->get_device());
+                new_signer = session_signer; // Use the existing session signer
+            }
+
+            if (new_signer->is_watch_only()) {
+                m_result = m_session->login_watch_only(new_signer);
+                m_signer = new_signer;
+                return state_type::done;
+            }
+
+            if (m_net_params.is_electrum()) {
+                // FIXME: Implement rust login via authenticate()
+                m_result = m_session->login(new_signer);
+                m_signer = new_signer;
+                return state_type::done;
+            }
+
+            // We need master pubkey for the challenge, client secret pubkey for login
             signal_hw_request(hw_request::get_xpubs);
             auto& paths = m_twofactor_data["paths"];
             paths.emplace_back(signer::EMPTY_PATH);
             paths.emplace_back(signer::CLIENT_SECRET_PATH);
-        }
-    }
-
-    auth_handler::state_type login_call::call_impl()
-    {
-        if (!m_initialized) {
-            initialize();
-            m_initialized = true;
+            m_signer = new_signer;
             return m_state;
         }
 
@@ -354,48 +310,6 @@ namespace sdk {
     }
 
     //
-    // Watch-only login
-    //
-    class watch_only_login_call : public auth_handler_impl {
-    public:
-        watch_only_login_call(session& session, const nlohmann::json& credential_data)
-            : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
-            , m_credential_data(credential_data)
-        {
-        }
-
-    private:
-        state_type call_impl() override
-        {
-            try {
-                const auto username = m_credential_data.at("username");
-                const auto password = m_credential_data.at("password");
-                m_result = m_session->login_watch_only(username, password);
-            } catch (const std::exception&) {
-                set_error(res::id_username);
-                return state_type::error;
-            }
-            return state_type::done;
-        }
-
-        nlohmann::json m_credential_data;
-    };
-
-    //
-    // Return a suitable auth handler for all supported login types
-    //
-    auth_handler* get_login_call(
-        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
-    {
-        if (!hw_device.empty() || credential_data.contains("mnemonic") || credential_data.contains("pin")) {
-            return new login_call(session, hw_device, credential_data);
-        } else {
-            // Assume watch-only
-            return new watch_only_login_call(session, credential_data);
-        }
-    }
-
-    //
     // Create subaccount
     //
     create_subaccount_call::create_subaccount_call(session& session, const nlohmann::json& details)
@@ -420,9 +334,9 @@ namespace sdk {
             }
 
             if (recovery_xpub.empty()) {
-                auto subsigner = signer::make_software_signer(m_net_params, recovery_mnemonic);
                 const std::vector<uint32_t> mnemonic_path{ harden(3), harden(m_subaccount) };
-                m_details["recovery_xpub"] = subsigner->get_bip32_xpub(mnemonic_path);
+                const nlohmann::json credentials = { { "mnemonic", recovery_mnemonic } };
+                m_details["recovery_xpub"] = signer{ m_net_params, {}, credentials }.get_bip32_xpub(mnemonic_path);
                 m_details.erase("recovery_mnemonic");
             }
         }

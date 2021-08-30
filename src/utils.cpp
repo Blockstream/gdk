@@ -229,6 +229,9 @@ namespace sdk {
 
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password)
     {
+        if (password.empty()) {
+            return plaintext_mnemonic;
+        }
         const auto plaintext = bip39_mnemonic_to_bytes(plaintext_mnemonic);
         const auto sha_buffer = sha256d(plaintext);
         const auto salt = gsl::make_span(sha_buffer).first(4);

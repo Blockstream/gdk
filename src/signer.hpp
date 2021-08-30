@@ -37,19 +37,8 @@ namespace sdk {
 
         using cache_t = std::map<std::vector<uint32_t>, std::string>;
 
-        // A software watch-only signer for watch-only sessions
-        static std::shared_ptr<signer> make_watch_only_signer(const network_parameters& net_params);
-
-        // A proxy for a hardware signer controlled by the caller
-        static std::shared_ptr<signer> make_hardware_signer(
-            const network_parameters& net_params, const nlohmann::json& hw_device);
-
-        // A software signer that signs using a private key held in memory
-        static std::shared_ptr<signer> make_software_signer(
-            const network_parameters& net_params, const std::string& mnemonic_or_xpub);
-
-        signer(const network_parameters& net_params, const nlohmann::json& hw_device);
-        signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub);
+        signer(
+            const network_parameters& net_params, const nlohmann::json& hw_device, const nlohmann::json& credentials);
 
         signer(const signer&) = delete;
         signer& operator=(const signer&) = delete;
@@ -86,6 +75,9 @@ namespace sdk {
         // Get the device description for this signer
         const nlohmann::json& get_device() const;
 
+        // Get the login credentials for this signer (empty for Hhardware signers)
+        const nlohmann::json& get_credentials() const;
+
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to
         // hardware. Use xpub_hdkeys_base to quickly derive from the resulting key.
@@ -116,8 +108,8 @@ namespace sdk {
         const bool m_is_main_net;
         const bool m_is_liquid;
         const unsigned char m_btc_version;
+        const nlohmann::json m_credentials;
         const nlohmann::json m_device;
-        std::string m_mnemonic;
         wally_ext_key_ptr m_master_key;
         // Mutable post construction
         mutable std::mutex m_mutex;

@@ -196,7 +196,7 @@ namespace sdk {
     {
         return call_session("mnemonic_from_pin_data", pin_data);
     }
-    nlohmann::json ga_rust::login_watch_only(const std::string& username, const std::string& password)
+    nlohmann::json ga_rust::login_watch_only(std::shared_ptr<signer> signer)
     {
         throw std::runtime_error("login_watch_only not implemented");
         __builtin_unreachable();

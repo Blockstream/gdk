@@ -1,5 +1,6 @@
 #include "signer.hpp"
 #include "exception.hpp"
+#include "ga_strings.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
@@ -21,22 +22,39 @@ namespace sdk {
             return base58check_from_bytes(bip32_key_serialize(*login_hdkey, BIP32_FLAG_KEY_PUBLIC));
         }
 
-        static nlohmann::json get_device_json(const nlohmann::json& hw_device)
+        static nlohmann::json get_credentials_json(const nlohmann::json& credentials)
         {
-            GDK_RUNTIME_ASSERT(!hw_device.empty());
-
-            nlohmann::json ret = hw_device;
-            const bool overwrite_null = true;
-            json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
-            json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
-            json_add_if_missing(ret, "supports_host_unblinding", false, overwrite_null);
-            json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
-            json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
-            json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
-            if (ret.at("device_type") == "hardware" && ret.value("name", std::string()).empty()) {
-                throw user_error("Hardware device JSON requires a non-empty 'name' element");
+            if (credentials.empty()) {
+                // Hardware wallet
+                return {};
             }
-            return ret;
+
+            const auto username_p = credentials.find("username");
+            if (username_p != credentials.end()) {
+                // Watch-only login
+                return { { "username", *username_p }, { "password", credentials.at("password") } };
+            }
+
+            const auto mnemonic_p = credentials.find("mnemonic");
+            if (mnemonic_p != credentials.end()) {
+                // Mnemonic, or a hex seed
+                std::string mnemonic = *mnemonic_p;
+                if (mnemonic.find(' ') != std::string::npos) {
+                    // Mnemonic, possibly encrypted
+                    const auto password_p = credentials.find("password");
+                    if (password_p != credentials.end()) {
+                        // Encrypted; decrypt it
+                        mnemonic = decrypt_mnemonic(mnemonic, *password_p);
+                    }
+                    return { { "mnemonic", mnemonic }, { "seed", b2h(bip39_mnemonic_to_seed(mnemonic)) } };
+                }
+                if (mnemonic.size() == 129u && mnemonic.back() == 'X') {
+                    // Hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
+                    mnemonic.pop_back();
+                    return { { "seed", mnemonic } };
+                }
+            }
+            throw user_error("Invalid credentials");
         }
 
         static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "device_type", "watch-only" }, { "supports_low_r", true },
@@ -48,6 +66,39 @@ namespace sdk {
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
             { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
+
+        static nlohmann::json get_device_json(const nlohmann::json& hw_device, const nlohmann::json& credentials)
+        {
+            nlohmann::json ret;
+            auto device
+                = hw_device.empty() ? nlohmann::json::object() : hw_device.value("device", nlohmann::json::object());
+            if (!device.empty()) {
+                ret.swap(device);
+                if (!credentials.empty()) {
+                    throw user_error("Hardware device and login credentials cannot be used together");
+                }
+            } else if (credentials.contains("username")) {
+                ret = WATCH_ONLY_DEVICE_JSON;
+            } else if (credentials.contains("seed")) {
+                ret = SOFTWARE_DEVICE_JSON;
+            } else {
+                throw user_error("Hardware device or credentials required");
+            }
+
+            const bool overwrite_null = true;
+            json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
+            json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
+            json_add_if_missing(ret, "supports_host_unblinding", false, overwrite_null);
+            json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
+            json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
+            json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
+            if (ret.at("device_type") == "hardware") {
+                if (ret.value("name", std::string()).empty()) {
+                    throw user_error("Hardware device JSON requires a non-empty 'name' element");
+                }
+            }
+            return ret;
+        }
     } // namespace
 
     const std::array<uint32_t, 0> signer::EMPTY_PATH{};
@@ -61,64 +112,29 @@ namespace sdk {
         { 0x62, 0x6c, 0x6f, 0x62, 0x73, 0x61, 0x6c, 0x74 } // 'blobsalt'
     };
 
-    signer::signer(const network_parameters& net_params, const nlohmann::json& hw_device)
+    signer::signer(
+        const network_parameters& net_params, const nlohmann::json& hw_device, const nlohmann::json& credentials)
         : m_is_main_net(net_params.is_main_net())
         , m_is_liquid(net_params.is_liquid())
         , m_btc_version(net_params.btc_version())
-        , m_device(get_device_json(hw_device))
+        , m_credentials(get_credentials_json(credentials))
+        , m_device(get_device_json(hw_device, m_credentials))
     {
-    }
-
-    signer::signer(const network_parameters& net_params, const std::string& mnemonic_or_xpub)
-        : signer(net_params, SOFTWARE_DEVICE_JSON)
-    {
-        std::vector<unsigned char> seed;
-
-        if (mnemonic_or_xpub.find(' ') != std::string::npos) {
-            // mnemonic
-            m_mnemonic = mnemonic_or_xpub; // FIXME: secure_array
-            seed = bip39_mnemonic_to_seed(mnemonic_or_xpub);
-        } else if (mnemonic_or_xpub.size() == 129 && mnemonic_or_xpub[128] == 'X') {
-            // hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
-            // FIXME: Some previously supported HWs do not have bip39 support.
-            // Entering the hex seed in the recover phase should provide access
-            // to the wallet. A better approach could be to separate the bip32
-            // seed derivation from 'mnemonic to seed' derivation, which should
-            // facilitate non-bip39 mnemonic future integration. For these
-            // reasons this is a temporary solution.
-            m_mnemonic = mnemonic_or_xpub; // FIXME: secure_array
-            seed = h2b(mnemonic_or_xpub.substr(0, 128));
-        } else {
-            // xpub
-            m_master_key = bip32_public_key_from_bip32_xpub(mnemonic_or_xpub);
+        if (m_is_liquid && get_liquid_support() == liquid_support_level::none) {
+            throw user_error(res::id_the_hardware_wallet_you_are);
         }
 
-        if (!seed.empty()) {
-            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
+        auto seed_p = m_credentials.find("seed");
+        if (seed_p != m_credentials.end()) {
             // FIXME: Allocate m_master_key in mlocked memory
+            std::vector<unsigned char> seed = h2b(*seed_p);
+            const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
                 m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
             bzero_and_free(seed);
         }
-    }
-
-    std::shared_ptr<signer> signer::make_watch_only_signer(const network_parameters& net_params)
-    {
-        return std::make_shared<signer>(net_params, WATCH_ONLY_DEVICE_JSON);
-    }
-
-    std::shared_ptr<signer> signer::make_hardware_signer(
-        const network_parameters& net_params, const nlohmann::json& hw_device)
-    {
-        return std::make_shared<signer>(net_params, hw_device);
-    }
-
-    std::shared_ptr<signer> signer::make_software_signer(
-        const network_parameters& net_params, const std::string& mnemonic_or_xpub)
-    {
-        return std::make_shared<signer>(net_params, mnemonic_or_xpub);
     }
 
     signer::~signer()
@@ -130,7 +146,14 @@ namespace sdk {
 
     std::string signer::get_mnemonic(const std::string& password)
     {
-        return m_mnemonic.empty() || password.empty() ? m_mnemonic : encrypt_mnemonic(m_mnemonic, password);
+        if (is_hardware() || is_watch_only()) {
+            return std::string();
+        }
+        const auto mnemonic_p = m_credentials.find("mnemonic");
+        if (mnemonic_p != m_credentials.end()) {
+            return encrypt_mnemonic(*mnemonic_p, password); // Mnemonic
+        }
+        return m_credentials.at("seed").get<std::string>() + "X"; // Hex seed
     }
 
     bool signer::supports_low_r() const
@@ -156,6 +179,8 @@ namespace sdk {
     bool signer::is_hardware() const { return m_device["device_type"] == "hardware"; }
 
     const nlohmann::json& signer::get_device() const { return m_device; }
+
+    const nlohmann::json& signer::get_credentials() const { return m_credentials; }
 
     std::string signer::get_bip32_xpub(const std::vector<uint32_t>& path)
     {

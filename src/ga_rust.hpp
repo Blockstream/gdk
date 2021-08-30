@@ -35,7 +35,7 @@ namespace sdk {
         void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs);
         nlohmann::json login(std::shared_ptr<signer> signer);
         std::string mnemonic_from_pin_data(const nlohmann::json& pin_data);
-        nlohmann::json login_watch_only(const std::string& username, const std::string& password);
+        nlohmann::json login_watch_only(std::shared_ptr<signer> signer);
         bool set_watch_only(const std::string& username, const std::string& password);
         std::string get_watch_only_username();
         bool remove_account(const nlohmann::json& twofactor_data);
