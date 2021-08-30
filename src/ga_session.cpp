@@ -1927,6 +1927,13 @@ namespace sdk {
                 }
             }));
 
+        if (m_login_data.contains("prev_block_hash")) {
+            // Servers that supply prev_block_hash also support ticker subscriptions
+            // TODO: Remove this check when all servers are updated.
+            subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
+                [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
+        }
+
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
 
         // Notify the caller of their current block
