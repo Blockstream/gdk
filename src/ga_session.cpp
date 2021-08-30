@@ -1637,6 +1637,7 @@ namespace sdk {
         subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
             [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
 
+        std::string prev_block_hash;
         if (!m_login_data.contains("prev_block_hash")) {
             // Server is not yet updated to support fee fetching, so subscribe to get fee updates
             // TODO: Remove this when all servers are updated.
@@ -1649,6 +1650,7 @@ namespace sdk {
             // Servers that supply prev_block_hash also support ticker subscriptions
             subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
                 [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
+            prev_block_hash = m_login_data.at("prev_block_hash");
         }
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
@@ -1665,8 +1667,12 @@ namespace sdk {
         const uint32_t block_height = m_block_height;
         const auto block_hash = m_login_data["block_hash"];
         locker.unlock();
-        on_new_block(nlohmann::json(
-            { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } }));
+        nlohmann::json block_json
+            = { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } };
+        if (!prev_block_hash.empty()) {
+            block_json.emplace("previous_hash", prev_block_hash);
+        }
+        on_new_block(block_json);
         return get_post_login_data();
     }
 
@@ -1930,11 +1936,13 @@ namespace sdk {
                 }
             }));
 
+        std::string prev_block_hash;
         if (m_login_data.contains("prev_block_hash")) {
             // Servers that supply prev_block_hash also support ticker subscriptions
             // TODO: Remove this check when all servers are updated.
             subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
                 [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
+            prev_block_hash = m_login_data.at("prev_block_hash");
         }
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
@@ -1943,8 +1951,12 @@ namespace sdk {
         const uint32_t block_height = m_block_height;
         const auto block_hash = m_login_data["block_hash"];
         locker.unlock();
-        on_new_block(nlohmann::json(
-            { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } }));
+        nlohmann::json block_json
+            = { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } };
+        if (!prev_block_hash.empty()) {
+            block_json.emplace("previous_hash", prev_block_hash);
+        }
+        on_new_block(block_json);
 
         return get_post_login_data();
     }
