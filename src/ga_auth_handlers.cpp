@@ -174,15 +174,25 @@ namespace sdk {
             }
 
             // Create our signer
-            auto new_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
+            auto session_signer = m_session->get_signer();
+            decltype(m_signer) new_signer;
+            if (m_hw_device.empty() && m_credential_data.empty()) {
+                // Request to re-log in with existing credentials
+                new_signer = session_signer;
+            } else {
+                // Initial login, or re-login with credentials given
+                new_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
+            }
 
-            if (m_session->get_signer() != nullptr) {
+            if (session_signer && session_signer.get() != new_signer.get()) {
                 // Re-login: ensure we are doing so with the same login details and HW/SW device
-                auto session_signer = m_session->get_signer();
-                GDK_RUNTIME_ASSERT(
-                    new_signer->get_mnemonic(std::string()) == session_signer->get_mnemonic(std::string()));
-                GDK_RUNTIME_ASSERT(new_signer->get_device() == session_signer->get_device());
-                new_signer = session_signer; // Use the existing session signer
+                if (!session_signer->is_compatible_with(new_signer)) {
+                    throw user_error("Cannot re-login with different hardware or credentials");
+                }
+                new_signer = session_signer; // Use the existing, compatible session signer
+            } else if (!new_signer) {
+                // Re-login: Attempting to re-use credentials without a previous login
+                throw user_error("Cannot re-use credentials without a previous login");
             }
 
             if (new_signer->is_watch_only()) {

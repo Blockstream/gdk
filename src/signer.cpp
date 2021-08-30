@@ -144,6 +144,11 @@ namespace sdk {
         }
     }
 
+    bool signer::is_compatible_with(std::shared_ptr<signer> other) const
+    {
+        return get_credentials() == other->get_credentials() && get_device() == other->get_device();
+    }
+
     std::string signer::get_mnemonic(const std::string& password)
     {
         if (is_hardware() || is_watch_only()) {

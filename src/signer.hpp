@@ -46,6 +46,9 @@ namespace sdk {
         signer& operator=(signer&&) = delete;
         virtual ~signer();
 
+        // Returns true if if this signers credentials and HW device match 'other'
+        bool is_compatible_with(std::shared_ptr<signer> other) const;
+
         // Return the mnemonic associated with this signer (empty if none available)
         std::string get_mnemonic(const std::string& password);
 
