@@ -2,7 +2,8 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
+    GetUnspentOutputs, RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
+    UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -32,12 +33,19 @@ fn roundtrip_bitcoin() {
     let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
     test_session.fund(100_000_000, None);
     test_session.get_subaccount();
-    let txid =
-        test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None, None); // p2shwpkh
+    let txid = test_session.send_tx(
+        &node_address,
+        10_000,
+        None,
+        Some(MEMO1.to_string()),
+        None,
+        None,
+        None,
+    ); // p2shwpkh
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
-    test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None); // p2wpkh
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None); // p2pkh
+    test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None, None); // p2wpkh
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None, None); // p2pkh
     test_session.send_all(&node_legacy_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
@@ -55,7 +63,7 @@ fn roundtrip_bitcoin() {
     test_session.check_decryption(103, &[&txid]);
 
     utxos.0.get_mut("btc").unwrap().retain(|e| e.satoshi == 149739); // we want to use the smallest utxo
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None);
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None, None);
     test_session.utxo("btc", vec![139569, 96697483]); // the smallest utxo has been spent
                                                       // TODO add a test with external UTXO
 
@@ -73,15 +81,22 @@ fn roundtrip_liquid() {
     let assets = test_session.fund(100_000_000, Some(1));
     test_session.receive_unconfidential();
     test_session.get_subaccount();
-    let txid =
-        test_session.send_tx(&node_address, 10_000, None, Some(MEMO1.to_string()), None, None);
+    let txid = test_session.send_tx(
+        &node_address,
+        10_000,
+        None,
+        Some(MEMO1.to_string()),
+        None,
+        None,
+        None,
+    );
     test_session.check_decryption(101, &[&txid]);
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
-    test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None);
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None);
-    test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None, None);
-    test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None, None, None); // asset should send below dust limit
+    test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None, None);
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None, None);
+    test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None, None, None);
+    test_session.send_tx(&node_address, 100, Some(assets[0].clone()), None, None, None, None); // asset should send below dust limit
     test_session.send_all(&node_address, Some(assets[0].to_string()));
     test_session.send_all(&node_address, test_session.asset_id());
     test_session.mine_block();
@@ -107,7 +122,7 @@ fn roundtrip_liquid() {
         .get_mut("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
         .unwrap()
         .retain(|e| e.satoshi == 1_000_000); // we want to use the smallest utxo
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None);
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None, None);
     test_session.utxo(
         "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
         vec![989744, 99652062],
@@ -301,7 +316,15 @@ fn coin_selection(is_liquid: bool) {
     let utxos = test_session.utxo(&btc_key, vec![sat1, sat2]);
     let sat3 = 1_000;
     let node_address = test_session.node_getnewaddress(None);
-    let txid3 = test_session.send_tx(&node_address, sat3, None, None, Some(utxos), None);
+    let txid3 = test_session.send_tx(
+        &node_address,
+        sat3,
+        None,
+        None,
+        Some(utxos),
+        None,
+        Some(UtxoStrategy::Default),
+    );
     let sat4 = sat2 - sat3 - test_session.get_tx_from_list(0, &txid3).fee;
     let mut utxos = test_session.utxo(&btc_key, vec![sat1, sat4]);
 
@@ -309,8 +332,154 @@ fn coin_selection(is_liquid: bool) {
     utxos.0.get_mut(&btc_key).unwrap().retain(|e| e.satoshi == sat4);
     let node_address = test_session.node_getnewaddress(None);
     assert_eq!(utxos.0.get(&btc_key).unwrap().len(), 1);
-    test_session.send_all_from_account(0, &node_address, None, Some(utxos));
+    test_session.send_all_from_account(
+        0,
+        &node_address,
+        None,
+        Some(utxos),
+        Some(UtxoStrategy::Default),
+    );
     test_session.utxo(&btc_key, vec![sat1]);
+
+    // Receive another coin
+    let sat5 = 30_000;
+    let addr = test_session.get_receive_address(0).address;
+    let txid = test_session.node_sendtoaddress(&addr, sat5, None);
+    test_session.wait_account_tx(0, &txid);
+    test_session.mine_block();
+
+    // Pass 2 utxos and send both with "manual"
+    let utxos = test_session.utxo(&btc_key, vec![sat1, sat5]);
+    let sat6 = 1_000;
+    let node_address = test_session.node_getnewaddress(None);
+    let txid = test_session.send_tx(
+        &node_address,
+        sat6,
+        None,
+        None,
+        Some(utxos.clone()),
+        None,
+        Some(UtxoStrategy::Manual),
+    );
+    let fee = test_session.get_tx_from_list(0, &txid).fee;
+    // every output could have covered the amount to send plus fee, but we used both of them
+    assert!(utxos.0.get(&btc_key).unwrap().iter().all(|u| sat6 + fee < u.satoshi));
+    let sat7 = sat1 + sat5 - sat6 - fee;
+    test_session.utxo(&btc_key, vec![sat7]);
+
+    // If "manual", passing 0 utxos will cause an insufficient funds error
+    let mut create_opt = CreateTransaction::default();
+    let sat8 = 1_000;
+    assert!(sat8 < sat7);
+    create_opt.addressees.push(AddressAmount {
+        address: node_address.to_string(),
+        satoshi: sat8,
+        asset_id: test_session.asset_id(),
+    });
+    create_opt.utxos = Some(GetUnspentOutputs::default());
+    create_opt.utxo_strategy = UtxoStrategy::Manual;
+    assert!(matches!(
+        test_session.session.create_transaction(&mut create_opt),
+        Err(Error::InsufficientFunds)
+    ));
+
+    if is_liquid {
+        // Receive asset
+        let sat1_a = 10_000;
+        let addr = test_session.get_receive_address(0).address;
+        let (asset_a, txid) = test_session.fund_asset(sat1_a, &addr);
+        test_session.wait_account_tx(0, &txid);
+        let mut utxos = test_session.utxo(&asset_a, vec![sat1_a]);
+
+        // If passing utxos explicitly, send with asset requires some l-btc asset to be passed as
+        // well
+        let mut create_opt = CreateTransaction::default();
+        let sat2_a = 1_000;
+        assert!(sat2_a < sat1_a);
+        create_opt.addressees.push(AddressAmount {
+            address: node_address.to_string(),
+            satoshi: sat2_a,
+            asset_id: Some(asset_a.clone()),
+        });
+        utxos.0.remove_entry(&btc_key);
+        create_opt.utxos = Some(utxos.clone());
+        create_opt.utxo_strategy = UtxoStrategy::Manual;
+        assert!(matches!(
+            test_session.session.create_transaction(&mut create_opt),
+            Err(Error::InsufficientFunds)
+        ));
+
+        // send_all with asset does not send all l-btc
+        let utxos = test_session.utxo(&asset_a, vec![sat1_a]);
+        let node_address = test_session.node_getnewaddress(None);
+        let txid = test_session.send_all_from_account(
+            0,
+            &node_address,
+            Some(asset_a.clone()),
+            Some(utxos),
+            Some(UtxoStrategy::Default),
+        );
+        let fee = test_session.get_tx_from_list(0, &txid).fee;
+        let sat9 = sat7 - fee;
+        test_session.utxo(&btc_key, vec![sat9]);
+        test_session.utxo(&asset_a, vec![]);
+
+        // Fund the wallet so that it has 3 assets (including l-btc) and 2 coins per asset.
+        test_session.mine_block();
+
+        let sat2_a = 2;
+        let sat3_a = 3;
+        let addr = test_session.get_receive_address(0).address;
+        let txid = test_session.node_sendtoaddress(&addr, sat2_a, Some(asset_a.clone()));
+        test_session.wait_account_tx(0, &txid);
+        let addr = test_session.get_receive_address(0).address;
+        let txid = test_session.node_sendtoaddress(&addr, sat3_a, Some(asset_a.clone()));
+        test_session.wait_account_tx(0, &txid);
+
+        let sat1_b = 10;
+        let asset_b = test_session.node_issueasset(sat1_b);
+        let sat2_b = 2;
+        let sat3_b = 3;
+        let addr = test_session.get_receive_address(0).address;
+        let txid = test_session.node_sendtoaddress(&addr, sat2_b, Some(asset_b.clone()));
+        test_session.wait_account_tx(0, &txid);
+        let addr = test_session.get_receive_address(0).address;
+        let txid = test_session.node_sendtoaddress(&addr, sat3_b, Some(asset_b.clone()));
+        test_session.wait_account_tx(0, &txid);
+
+        let sat10 = 20_000;
+        let addr = test_session.get_receive_address(0).address;
+        let txid = test_session.node_sendtoaddress(&addr, sat10, None);
+        test_session.wait_account_tx(0, &txid);
+
+        test_session.utxo(&asset_a, vec![sat2_a, sat3_a]);
+        test_session.utxo(&asset_b, vec![sat2_b, sat3_b]);
+        let utxos = test_session.utxo(&btc_key, vec![sat9, sat10]);
+
+        test_session.mine_block();
+
+        // "manual" uses all utxos, for every asset even if they are not among the addressees, de
+        // facto consolidating them.
+        let sat4_a = 1;
+        assert!(utxos.0.get(&asset_a).unwrap().iter().all(|u| sat4_a < u.satoshi));
+        let node_address = test_session.node_getnewaddress(None);
+        let txid = test_session.send_tx(
+            &node_address,
+            sat4_a,
+            Some(asset_a.clone()),
+            None,
+            Some(utxos.clone()),
+            None,
+            Some(UtxoStrategy::Manual),
+        );
+        let fee = test_session.get_tx_from_list(0, &txid).fee;
+        let sat11 = sat9 + sat10 - fee;
+        let sat5_a = sat2_a + sat3_a - sat4_a;
+        let sat4_b = sat2_b + sat3_b;
+        test_session.utxo(&btc_key, vec![sat11]);
+        test_session.utxo(&asset_a, vec![sat5_a]);
+        test_session.utxo(&asset_b, vec![sat4_b]);
+    }
 }
 
 #[test]
@@ -416,6 +585,7 @@ fn subaccounts(is_liquid: bool) {
     let txid = test_session.send_all_from_account(
         2,
         &test_session.get_receive_address(1).address,
+        None,
         None,
         None,
     );

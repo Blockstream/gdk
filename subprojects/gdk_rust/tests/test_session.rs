@@ -242,6 +242,13 @@ impl TestSession {
         assert_eq!(settings, new_settings);
     }
 
+    pub fn fund_asset(&mut self, satoshi: u64, address: &str) -> (String, String) {
+        let asset = self.node_issueasset(satoshi);
+        let txid = self.node_sendtoaddress(address, satoshi, Some(asset.clone()));
+        // TODO: use AssetId and Txid
+        (asset, txid)
+    }
+
     /// fund the gdk session (account #0) with satoshis from the node, if on liquid issue `assets_to_issue` assets
     pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) -> Vec<String> {
         let initial_satoshis = self.balance_gdk(None);
@@ -281,7 +288,7 @@ impl TestSession {
 
     /// send all of the balance of the  tx from the gdk session to the specified address
     pub fn send_all(&mut self, address: &str, asset_id: Option<String>) {
-        self.send_all_from_account(0, address, asset_id, None);
+        self.send_all_from_account(0, address, asset_id, None, None);
     }
     pub fn send_all_from_account(
         &mut self,
@@ -289,11 +296,15 @@ impl TestSession {
         address: &str,
         asset_id: Option<String>,
         unspent_outputs: Option<GetUnspentOutputs>,
+        utxo_strategy: Option<UtxoStrategy>,
     ) -> String {
         let init_sat = self.balance_account(subaccount, asset_id.clone(), None);
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
         create_opt.utxos = unspent_outputs;
+        if let Some(strategy) = utxo_strategy {
+            create_opt.utxo_strategy = strategy;
+        }
         let fee_rate = if asset_id.is_none() {
             1000
         } else {
@@ -336,6 +347,7 @@ impl TestSession {
         memo: Option<String>,
         unspent_outputs: Option<GetUnspentOutputs>,
         confidential_utxos_only: Option<bool>,
+        utxo_strategy: Option<UtxoStrategy>,
     ) -> String {
         let init_sat = self.balance_gdk(asset.clone());
         let init_node_balance = self.balance_node(asset.clone());
@@ -353,6 +365,9 @@ impl TestSession {
         create_opt.memo = memo;
         create_opt.utxos = unspent_outputs;
         create_opt.confidential_utxos_only = confidential_utxos_only.unwrap_or(false);
+        if let Some(strategy) = utxo_strategy {
+            create_opt.utxo_strategy = strategy;
+        }
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         assert!(!tx.user_signed, "tx is marked as user_signed");
         match self.network.id() {
@@ -443,7 +458,7 @@ impl TestSession {
         self.session.disconnect().unwrap();
         self.session.connect(&Value::Null).unwrap();
         let address = self.node_getnewaddress(None);
-        let txid = self.send_tx(&address, 1000, None, None, None, None);
+        let txid = self.send_tx(&address, 1000, None, None, None, None, None);
         self.list_tx_contains(&txid, &[address], true);
     }
 
@@ -610,7 +625,7 @@ impl TestSession {
 
         let balance_node_before = self.balance_node(None);
         let sat = 1_000;
-        let txid = self.send_tx(&node_address, sat, None, None, None, Some(true));
+        let txid = self.send_tx(&node_address, sat, None, None, None, Some(true), None);
         self.list_tx_contains(&txid, &[node_address], true);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
 
@@ -626,7 +641,7 @@ impl TestSession {
         utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
         assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);
         let sat = unconf_sat / 2;
-        let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None);
+        let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
         self.list_tx_contains(&txid, &[node_address], true);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
     }
@@ -771,7 +786,7 @@ impl TestSession {
     pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<String>) -> String {
         node_sendtoaddress(&self.node.client, address, satoshi, asset)
     }
-    fn node_issueasset(&self, satoshi: u64) -> String {
+    pub fn node_issueasset(&self, satoshi: u64) -> String {
         node_issueasset(&self.node.client, satoshi)
     }
     pub fn node_generate(&self, block_num: u32) {
@@ -968,11 +983,16 @@ impl TestSession {
         };
         let outputs = self.session.get_unspent_outputs(&utxo_opt).unwrap();
         dbg!(&outputs);
-        let option = outputs.0.get(asset);
-        assert!(option.is_some());
-        expected_amounts.sort();
-        let mut amounts: Vec<u64> = option.unwrap().iter().map(|e| e.satoshi).collect();
-        amounts.sort();
+        let amounts = if expected_amounts.len() == 0 {
+            vec![]
+        } else {
+            let option = outputs.0.get(asset);
+            assert!(option.is_some());
+            expected_amounts.sort();
+            let mut amounts: Vec<u64> = option.unwrap().iter().map(|e| e.satoshi).collect();
+            amounts.sort();
+            amounts
+        };
         assert_eq!(expected_amounts, amounts, "amounts in utxo doesn't match in number or amounts");
 
         outputs

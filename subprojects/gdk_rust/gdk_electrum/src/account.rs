@@ -23,7 +23,7 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
-    SPVVerifyResult, TransactionMeta, UpdateAccountOpt,
+    SPVVerifyResult, TransactionMeta, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::wally::{
@@ -1017,51 +1017,71 @@ pub fn create_tx(
     // STEP 2) add utxos until tx outputs are covered (including fees) or fail
     let store_read = account.store.read()?;
     let acc_store = store_read.account_cache(account.num())?;
-    let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
-    loop {
-        let mut needs = tx.needs(
-            fee_rate,
-            send_all,
-            network.policy_asset_id().ok(),
-            &acc_store.all_txs,
-            &acc_store.unblinded,
-            account.script_type,
-        ); // Vec<(asset_id, satoshi) "policy asset" is last, in bitcoin max 1 element
-        info!("needs: {:?}", needs);
-        if needs.is_empty() {
-            // SUCCESS tx doesn't need other inputs
-            break;
-        }
-        let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
+    match request.utxo_strategy {
+        UtxoStrategy::Default => {
+            let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
+            loop {
+                let mut needs = tx.needs(
+                    fee_rate,
+                    send_all,
+                    network.policy_asset_id().ok(),
+                    &acc_store.all_txs,
+                    &acc_store.unblinded,
+                    account.script_type,
+                ); // "policy asset" is last, in bitcoin max 1 element
+                info!("needs: {:?}", needs);
+                if needs.is_empty() {
+                    // SUCCESS tx doesn't need other inputs
+                    break;
+                }
+                let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
 
-        // taking only utxos of current asset considered, filters also utxos used in this loop
-        let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
-            .iter()
-            .filter(|(o, i)| i.asset_id() == current_need.asset && !used_utxo.contains(o))
-            .collect();
+                // taking only utxos of current asset considered, filters also utxos used in this loop
+                let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
+                    .iter()
+                    .filter(|(o, i)| i.asset_id() == current_need.asset && !used_utxo.contains(o))
+                    .collect();
 
-        // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
-        asset_utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
-        let utxo = asset_utxos.pop().ok_or(Error::InsufficientFunds)?;
+                // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
+                asset_utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
+                let utxo = asset_utxos.pop().ok_or(Error::InsufficientFunds)?;
 
-        match network.id() {
-            NetworkId::Bitcoin(_) => {
-                // UTXO with same script must be spent together
-                for other_utxo in utxos.iter() {
-                    if (other_utxo.1).script == (utxo.1).script {
-                        used_utxo.insert(other_utxo.0.clone());
-                        tx.add_input(other_utxo.0.clone());
+                match network.id() {
+                    NetworkId::Bitcoin(_) => {
+                        // UTXO with same script must be spent together
+                        for other_utxo in utxos.iter() {
+                            if (other_utxo.1).script == (utxo.1).script {
+                                used_utxo.insert(other_utxo.0.clone());
+                                tx.add_input(other_utxo.0.clone());
+                            }
+                        }
+                    }
+                    NetworkId::Elements(_) => {
+                        // Don't spend same script together in liquid. This would allow an attacker
+                        // to cheaply send assets without value to the target, which will have to
+                        // waste fees for the extra tx inputs and (eventually) outputs.
+                        // While blinded address are required and not public knowledge,
+                        // they are still available to whom transacted with us in the past
+                        used_utxo.insert(utxo.0.clone());
+                        tx.add_input(utxo.0.clone());
                     }
                 }
             }
-            NetworkId::Elements(_) => {
-                // Don't spend same script together in liquid. This would allow an attacker
-                // to cheaply send assets without value to the target, which will have to
-                // waste fees for the extra tx inputs and (eventually) outputs.
-                // While blinded address are required and not public knowledge,
-                // they are still available to whom transacted with us in the past
-                used_utxo.insert(utxo.0.clone());
+        }
+        UtxoStrategy::Manual => {
+            for utxo in utxos.iter() {
                 tx.add_input(utxo.0.clone());
+            }
+            let needs = tx.needs(
+                fee_rate,
+                send_all,
+                network.policy_asset_id().ok(),
+                &acc_store.all_txs,
+                &acc_store.unblinded,
+                account.script_type,
+            );
+            if !needs.is_empty() {
+                return Err(Error::InsufficientFunds);
             }
         }
     }
