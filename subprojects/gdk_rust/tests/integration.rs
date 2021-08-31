@@ -272,6 +272,48 @@ fn create_tx_err(is_liquid: bool) {
 }
 
 #[test]
+fn coin_selection_bitcoin() {
+    coin_selection(false);
+}
+
+#[test]
+fn coin_selection_liquid() {
+    coin_selection(true);
+}
+
+fn coin_selection(is_liquid: bool) {
+    let mut test_session = setup_session(is_liquid, |_| ());
+
+    // Fund the wallet with 2 coins
+    let sat1 = 10_000;
+    let addr1 = test_session.get_receive_address(0).address;
+    let txid1 = test_session.node_sendtoaddress(&addr1, sat1, None);
+    test_session.wait_account_tx(0, &txid1);
+    test_session.mine_block();
+    let sat2 = 20_000;
+    let addr2 = test_session.get_receive_address(0).address;
+    let txid2 = test_session.node_sendtoaddress(&addr2, sat2, None);
+    test_session.wait_account_tx(0, &txid2);
+    test_session.mine_block();
+
+    // Pass 2 utxos, but use one
+    let btc_key = test_session.btc_key();
+    let utxos = test_session.utxo(&btc_key, vec![sat1, sat2]);
+    let sat3 = 1_000;
+    let node_address = test_session.node_getnewaddress(None);
+    let txid3 = test_session.send_tx(&node_address, sat3, None, None, Some(utxos), None);
+    let sat4 = sat2 - sat3 - test_session.get_tx_from_list(0, &txid3).fee;
+    let mut utxos = test_session.utxo(&btc_key, vec![sat1, sat4]);
+
+    // send_all passing one utxo
+    utxos.0.get_mut(&btc_key).unwrap().retain(|e| e.satoshi == sat4);
+    let node_address = test_session.node_getnewaddress(None);
+    assert_eq!(utxos.0.get(&btc_key).unwrap().len(), 1);
+    test_session.send_all_from_account(0, &node_address, None, Some(utxos));
+    test_session.utxo(&btc_key, vec![sat1]);
+}
+
+#[test]
 fn subaccounts_bitcoin() {
     subaccounts(false);
 }
@@ -371,8 +413,12 @@ fn subaccounts(is_liquid: bool) {
     check_account_balances(&test_session, &balances);
 
     // Send all from account #2 to account #1 (p2pkh -> p2wpkh)
-    let txid =
-        test_session.send_all_from_account(2, &test_session.get_receive_address(1).address, None);
+    let txid = test_session.send_all_from_account(
+        2,
+        &test_session.get_receive_address(1).address,
+        None,
+        None,
+    );
     test_session.wait_account_tx(1, &txid);
     *balances.entry(1).or_insert(0) += sat - test_session.get_tx_from_list(1, &txid).fee;
     *balances.entry(2).or_insert(0) = 0;
@@ -477,11 +523,7 @@ fn subaccounts(is_liquid: bool) {
         std::thread::sleep(std::time::Duration::from_secs(1));
     };
 
-    let btc_key = if is_liquid {
-        new_session.network.policy_asset.clone().unwrap()
-    } else {
-        "btc".to_string()
-    };
+    let btc_key = test_session.btc_key();
 
     for subaccount in subaccounts.iter() {
         test_session::wait_account_n_txs(&new_session, subaccount.account_num, 1);

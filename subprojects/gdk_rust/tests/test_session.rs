@@ -270,20 +270,30 @@ impl TestSession {
         assets_issued
     }
 
+    pub fn btc_key(&self) -> String {
+        match self.network.id() {
+            NetworkId::Elements(_) => {
+                "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".to_string()
+            }
+            NetworkId::Bitcoin(_) => "btc".to_string(),
+        }
+    }
+
     /// send all of the balance of the  tx from the gdk session to the specified address
     pub fn send_all(&mut self, address: &str, asset_id: Option<String>) {
-        self.send_all_from_account(0, address, asset_id);
+        self.send_all_from_account(0, address, asset_id, None);
     }
     pub fn send_all_from_account(
         &mut self,
         subaccount: u32,
         address: &str,
         asset_id: Option<String>,
+        unspent_outputs: Option<GetUnspentOutputs>,
     ) -> String {
-        //let init_sat = self.balance_gdk();
-        //let init_sat_addr = self.balance_addr(address);
+        let init_sat = self.balance_account(subaccount, asset_id.clone(), None);
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
+        create_opt.utxos = unspent_outputs;
         let fee_rate = if asset_id.is_none() {
             1000
         } else {
@@ -302,9 +312,15 @@ impl TestSession {
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_account_tx(subaccount, &txid);
-        //let end_sat_addr = self.balance_addr(address);
-        //assert_eq!(init_sat_addr + init_sat - tx.fee, end_sat_addr);
-        assert_eq!(self.balance_account(subaccount, asset_id, None), 0);
+
+        let end_sat = if let Some(utxos) = create_opt.utxos {
+            let key = asset_id.clone().unwrap_or(self.btc_key());
+            let sent_sat: u64 = utxos.0.get(&key).unwrap().iter().map(|u| u.satoshi).sum();
+            init_sat - sent_sat
+        } else {
+            0
+        };
+        assert_eq!(self.balance_account(subaccount, asset_id, None), end_sat);
 
         assert!(tx.create_transaction.unwrap().send_all);
         assert!(signed_tx.create_transaction.unwrap().send_all);
