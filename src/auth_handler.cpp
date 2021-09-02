@@ -150,6 +150,7 @@ namespace sdk {
     void auth_handler_impl::resolve_code(const std::string& code)
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::resolve_code);
+        GDK_RUNTIME_ASSERT(!code.empty());
         m_code = code;
         m_state = state_type::make_call;
     }
