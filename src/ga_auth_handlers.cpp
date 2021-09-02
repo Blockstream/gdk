@@ -786,39 +786,27 @@ namespace sdk {
     get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_transactions")
         , m_details(details)
-        , m_fetch_nonces(false)
-        , m_initialized(false)
     {
-    }
-
-    void get_transactions_call::initialize()
-    {
-        // FIXME: We should not need to fetch all txs before every call
-        // TODO: Electrum is skipped here as it does its own unblinding
-        if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
-            nlohmann::json twofactor_data;
-            if (m_session->get_uncached_blinding_nonces(m_details, twofactor_data)) {
-                // We have missing nonces we need to fetch, request them
-                m_fetch_nonces = true;
-                signal_hw_request(hw_request::get_blinding_nonces);
-                m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
-                m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
-            }
-        }
     }
 
     auth_handler::state_type get_transactions_call::call_impl()
     {
-        if (!m_initialized) {
-            initialize();
-            m_initialized = true;
-            return m_state;
+        if (m_hw_request == hw_request::none && m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+            // FIXME: We should not need to fetch all txs before every call
+            // TODO: Electrum is skipped here as it does its own unblinding
+            nlohmann::json twofactor_data;
+            if (m_session->get_uncached_blinding_nonces(m_details, twofactor_data)) {
+                // We have missing nonces we need to fetch, request them
+                signal_hw_request(hw_request::get_blinding_nonces);
+                m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
+                m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
+                return m_state;
+            }
         }
 
-        if (m_fetch_nonces) {
+        if (m_hw_request == hw_request::get_blinding_nonces) {
             // Parse and cache the nonces we got back
             encache_blinding_nonces(*m_session, m_twofactor_data, get_hw_reply());
-            m_fetch_nonces = false; // Don't re-fetch nonces if we call() more than once
         }
 
         m_result = { { "transactions", m_session->get_transactions(m_details) } };

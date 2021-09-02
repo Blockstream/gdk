@@ -135,11 +135,8 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
-        void initialize();
 
         const nlohmann::json m_details;
-        bool m_fetch_nonces;
-        bool m_initialized;
     };
 
     class get_unspent_outputs_call : public auth_handler_impl {
