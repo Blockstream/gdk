@@ -237,7 +237,7 @@ namespace sdk {
             return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
-            const nlohmann::json hw_reply = get_hw_reply();
+            const auto& hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 // Anti-Exfil protocol: verify the signature
                 const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
@@ -366,7 +366,7 @@ namespace sdk {
 
         if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for the new subaccount
-            const nlohmann::json hw_reply = get_hw_reply();
+            const auto& hw_reply = get_hw_reply();
             m_subaccount_xpub = hw_reply.at("xpubs").at(0);
             if (m_details.at("type") == "2of3") {
                 // Ask the caller to sign the recovery key with the login key
@@ -379,7 +379,7 @@ namespace sdk {
             // Fall through to create the subaccount
         } else if (m_hw_request == hw_request::sign_message) {
             // 2of3 subaccount: Caller has signed the recovery key
-            const nlohmann::json hw_reply = get_hw_reply();
+            const auto& hw_reply = get_hw_reply();
             if (m_use_anti_exfil) {
                 // Anti-Exfil protocol: verify the signature
                 auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
@@ -449,7 +449,7 @@ namespace sdk {
             return m_state;
         }
 
-        const nlohmann::json hw_reply = get_hw_reply();
+        const auto& hw_reply = get_hw_reply();
         if (m_use_anti_exfil) {
             const auto master_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::EMPTY_PATH));
             verify_ae_message(m_twofactor_data, master_bip32_xpub, m_message_info.second, hw_reply);
@@ -531,7 +531,7 @@ namespace sdk {
             return m_state;
         }
 
-        const nlohmann::json hw_reply = get_hw_reply();
+        const auto& hw_reply = get_hw_reply();
         const auto& inputs = m_twofactor_data["signing_inputs"];
         const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
         const auto& outputs = m_twofactor_data["transaction_outputs"];

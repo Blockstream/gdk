@@ -29,15 +29,6 @@ namespace sdk {
 
     void auth_handler::signal_hw_request(hw_request /*request*/) { GDK_RUNTIME_ASSERT(false); }
 
-    nlohmann::json auth_handler::get_hw_reply() const
-    {
-        try {
-            return nlohmann::json::parse(get_code());
-        } catch (const std::exception&) {
-            throw user_error("Invalid hardware reply");
-        }
-    }
-
     auth_handler_impl::auth_handler_impl(session& session, const std::string& name, std::shared_ptr<signer> signer)
         : m_session_parent(session)
         , m_session(session.get_nonnull_impl())
@@ -151,7 +142,17 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::resolve_code);
         GDK_RUNTIME_ASSERT(!code.empty());
-        m_code = code;
+        if (m_hw_request == hw_request::none) {
+            // Caller is resolving a 2FA code
+            m_code = code;
+        } else {
+            // Caller is resolving a HWW action
+            try {
+                m_hw_reply = nlohmann::json::parse(code);
+            } catch (const std::exception&) {
+                throw user_error("Invalid hardware reply");
+            }
+        }
         m_state = state_type::make_call;
     }
 
@@ -216,6 +217,7 @@ namespace sdk {
     auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
     const nlohmann::json& auth_handler_impl::get_twofactor_data() const { return m_twofactor_data; }
     const std::string& auth_handler_impl::get_code() const { return m_code; };
+    const nlohmann::json& auth_handler_impl::get_hw_reply() const { return m_hw_reply; }
 
     session_impl& auth_handler_impl::get_session() const { return *m_session; }
 
@@ -312,6 +314,7 @@ namespace sdk {
     const nlohmann::json& auto_auth_handler::get_twofactor_data() const { return m_handler->get_twofactor_data(); }
 
     const std::string& auto_auth_handler::get_code() const { return m_handler->get_code(); };
+    const nlohmann::json& auto_auth_handler::get_hw_reply() const { return m_handler->get_hw_reply(); }
 
     session_impl& auto_auth_handler::get_session() const { return m_handler->get_session(); }
 
@@ -341,7 +344,7 @@ namespace sdk {
             if (is_hardware && request == hw_request::get_xpubs) {
                 // Caller has resolved a get_xpubs request, cache the results
                 const auto& paths = get_twofactor_data().at("paths");
-                const auto reply = get_hw_reply();
+                const auto& reply = get_hw_reply();
                 const auto& xpubs = reply.at("xpubs");
                 bool updated = false;
                 size_t i = 0;

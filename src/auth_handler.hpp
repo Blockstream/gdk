@@ -51,7 +51,7 @@ namespace sdk {
         virtual hw_request get_hw_request() const = 0;
         virtual const nlohmann::json& get_twofactor_data() const = 0;
         virtual const std::string& get_code() const = 0;
-        nlohmann::json get_hw_reply() const;
+        virtual const nlohmann::json& get_hw_reply() const = 0;
 
         virtual void operator()() = 0;
         virtual session_impl& get_session() const = 0;
@@ -79,6 +79,7 @@ namespace sdk {
         hw_request get_hw_request() const final;
         const nlohmann::json& get_twofactor_data() const final;
         const std::string& get_code() const final;
+        const nlohmann::json& get_hw_reply() const final;
 
         void operator()() final;
         session_impl& get_session() const final;
@@ -103,6 +104,7 @@ namespace sdk {
         std::string m_method; // Selected 2fa method
         std::string m_action; // Selected 2fa action name (send_raw_tx, set_csvtime etc)
         std::string m_code; // The 2fa code - from the user
+        nlohmann::json m_hw_reply; // The HWW reply - from the callers
         std::string m_error; // Error details if any
         nlohmann::json m_result; // Result of any successful action
         nlohmann::json m_twofactor_data; // Actual data to send along with any call
@@ -128,6 +130,7 @@ namespace sdk {
         hw_request get_hw_request() const final;
         const nlohmann::json& get_twofactor_data() const final;
         const std::string& get_code() const final;
+        const nlohmann::json& get_hw_reply() const final;
 
         void operator()() final;
         virtual session_impl& get_session() const final;
