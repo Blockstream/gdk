@@ -378,7 +378,7 @@ namespace sdk {
             if (!blinding_key.empty() || denied) {
                 // We have a cached blinding key or the user has denied access
                 result.emplace("master_blinding_key", blinding_key); // Blank if denied
-                resolve_code(result.dump());
+                m_handler->resolve_code(result.dump());
                 return true;
             }
         } else if (have_master_blinding_key && request == hw_request::get_blinding_public_keys) {
@@ -387,7 +387,7 @@ namespace sdk {
             for (const auto& script : required_data.at("scripts")) {
                 public_keys.push_back(b2h(signer->get_blinding_pubkey_from_script(h2b(script))));
             }
-            resolve_code(result.dump());
+            m_handler->resolve_code(result.dump());
             return true;
         } else if (have_master_blinding_key && request == hw_request::get_blinding_nonces) {
             // Host unblinding: generate nonces
@@ -398,7 +398,7 @@ namespace sdk {
                 const auto blinding_key = signer->get_blinding_key_from_script(h2b(scripts.at(i)));
                 nonces.push_back(b2h(sha256(ecdh(h2b(public_keys.at(i)), blinding_key))));
             }
-            resolve_code(result.dump());
+            m_handler->resolve_code(result.dump());
             return true;
         } else if (request == hw_request::get_xpubs) {
             const auto& paths = required_data.at("paths");
@@ -406,7 +406,7 @@ namespace sdk {
                 // A HWW request to compute xpubs which we have cached, or
                 // A SWW request to compute xpubs which we can compute if not cached
                 result.emplace("xpubs", get_xpubs(signer, paths));
-                resolve_code(result.dump());
+                m_handler->resolve_code(result.dump());
                 return true;
             }
         }
@@ -432,7 +432,7 @@ namespace sdk {
             GDK_LOG_SEV(log_level::warning) << "Unknown hardware request " << status.dump();
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");
         }
-        resolve_code(result.dump());
+        m_handler->resolve_code(result.dump());
         return true;
     } // namespace sdk
 
