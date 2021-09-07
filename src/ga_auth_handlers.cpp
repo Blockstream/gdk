@@ -209,11 +209,16 @@ namespace sdk {
             }
 
             // We need master pubkey for the challenge, client secret pubkey for login
-            signal_hw_request(hw_request::get_xpubs);
-            auto& paths = m_twofactor_data["paths"];
-            paths.emplace_back(signer::EMPTY_PATH);
-            paths.emplace_back(signer::CLIENT_SECRET_PATH);
-            m_signer = new_signer;
+            try {
+                m_signer = new_signer;
+                signal_hw_request(hw_request::get_xpubs);
+                auto& paths = m_twofactor_data["paths"];
+                paths.emplace_back(signer::EMPTY_PATH);
+                paths.emplace_back(signer::CLIENT_SECRET_PATH);
+            } catch (const std::exception&) {
+                m_signer.reset(); // Allow this code path to re-run if the above throws
+                throw;
+            }
             return m_state;
         }
 
