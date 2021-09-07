@@ -122,7 +122,7 @@ namespace sdk {
         // Mutable post construction
         mutable std::mutex m_mutex;
         boost::optional<blinding_key_t> m_master_blinding_key;
-        cache_t m_cached_pubkeys;
+        cache_t m_cached_bip32_xpubs;
     };
 
 } // namespace sdk

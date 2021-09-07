@@ -161,8 +161,8 @@ namespace sdk {
     {
         {
             std::unique_lock<std::mutex> locker{ m_mutex };
-            auto cached = m_cached_pubkeys.find(path);
-            if (cached != m_cached_pubkeys.end()) {
+            auto cached = m_cached_bip32_xpubs.find(path);
+            if (cached != m_cached_bip32_xpubs.end()) {
                 return cached->second;
             }
         }
@@ -181,9 +181,9 @@ namespace sdk {
         }
         auto ret = base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
         std::unique_lock<std::mutex> locker{ m_mutex };
-        m_cached_pubkeys.emplace(path, ret);
+        m_cached_bip32_xpubs.emplace(path, ret);
         if (!login_bip32_xpub.empty()) {
-            m_cached_pubkeys.emplace(make_vector(LOGIN_PATH), login_bip32_xpub);
+            m_cached_bip32_xpubs.emplace(make_vector(LOGIN_PATH), login_bip32_xpub);
         }
         return ret;
     }
@@ -191,13 +191,13 @@ namespace sdk {
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
-        return m_cached_pubkeys.find(path) != m_cached_pubkeys.end();
+        return m_cached_bip32_xpubs.find(path) != m_cached_bip32_xpubs.end();
     }
 
     bool signer::cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub)
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
-        auto ret = m_cached_pubkeys.emplace(path, bip32_xpub);
+        auto ret = m_cached_bip32_xpubs.emplace(path, bip32_xpub);
         if (!ret.second) {
             // Already present, verify that the value matches
             GDK_RUNTIME_ASSERT(ret.first->second == bip32_xpub);
@@ -206,7 +206,7 @@ namespace sdk {
         if (path.empty()) {
             // Encaching master pubkey, encache the login pubkey as above
             auto master_pubkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
-            m_cached_pubkeys.emplace(make_vector(LOGIN_PATH), derive_login_bip32_xpub(master_pubkey));
+            m_cached_bip32_xpubs.emplace(make_vector(LOGIN_PATH), derive_login_bip32_xpub(master_pubkey));
         }
         return true; // Updated
     }
@@ -214,7 +214,7 @@ namespace sdk {
     signer::cache_t signer::get_cached_bip32_xpubs()
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
-        return m_cached_pubkeys;
+        return m_cached_bip32_xpubs;
     }
 
     ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
