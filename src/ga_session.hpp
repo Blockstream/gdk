@@ -253,7 +253,6 @@ namespace sdk {
         void make_client();
         void make_transport();
 
-        void disconnect_transport() const;
         bool ping() const;
 
         void set_socket_options();

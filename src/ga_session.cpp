@@ -576,19 +576,6 @@ namespace sdk {
         m_transport->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
     }
 
-    void ga_session::disconnect_transport() const
-    {
-        if (m_transport) {
-            no_std_exception_escape([&] {
-                const auto status = m_transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
-                if (status != boost::future_status::ready) {
-                    GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
-                }
-            });
-            no_std_exception_escape([&] { m_transport->detach(); });
-        }
-    }
-
     bool ga_session::ping() const
     {
         bool expect_pong = false;
@@ -837,7 +824,16 @@ namespace sdk {
                 }
             });
         }
-        disconnect_transport();
+
+        if (m_transport) {
+            no_std_exception_escape([&] {
+                const auto status = m_transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                if (status != boost::future_status::ready) {
+                    GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
+                }
+            });
+            no_std_exception_escape([&] { m_transport->detach(); });
+        }
     }
 
     nlohmann::json ga_session::http_request(nlohmann::json params)
