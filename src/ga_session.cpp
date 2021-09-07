@@ -672,7 +672,12 @@ namespace sdk {
                 break;
             }
         }
-        return fn.get();
+        try {
+            return fn.get();
+        } catch (const boost::future_error& ex) {
+            GDK_LOG_SEV(log_level::warning) << "wamp_process_call exception: " << ex.what();
+            throw reconnect_error{};
+        }
     }
 
     void ga_session::ping_timer_handler(const boost::system::error_code& ec)
