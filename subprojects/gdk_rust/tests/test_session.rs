@@ -564,14 +564,8 @@ impl TestSession {
         let policy_asset = &self.network.policy_asset.clone().unwrap();
         let init_sat = self.balance_gdk(None);
         let mut utxos_opt = GetUnspentOpt::default();
-        let init_num_utxos = self
-            .session
-            .get_unspent_outputs(&utxos_opt)
-            .unwrap()
-            .0
-            .get(policy_asset)
-            .unwrap()
-            .len();
+        let utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
+        let init_num_utxos = utxos.0.get(policy_asset).unwrap().len();
         let ap = self.get_receive_address(0);
         let unconf_address = to_unconfidential(&ap.address);
         let unconf_sat = 10_000;
@@ -580,29 +574,16 @@ impl TestSession {
         // confidential balance
         assert_eq!(init_sat, self.balance_account(0, None, Some(true)));
         utxos_opt.confidential_utxos_only = Some(true);
-        assert_eq!(
-            init_num_utxos,
-            self.session
-                .get_unspent_outputs(&utxos_opt)
-                .unwrap()
-                .0
-                .get(policy_asset)
-                .unwrap()
-                .len()
-        );
+        let utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
+        assert_eq!(init_num_utxos, utxos.0.get(policy_asset).unwrap().len());
+        assert!(utxos.0.get(policy_asset).unwrap().iter().all(|u| u.confidential));
         // confidential and unconfidential balance (default)
         assert_eq!(init_sat + unconf_sat, self.balance_account(0, None, Some(false)));
         utxos_opt.confidential_utxos_only = Some(false);
-        assert_eq!(
-            init_num_utxos + 1,
-            self.session
-                .get_unspent_outputs(&utxos_opt)
-                .unwrap()
-                .0
-                .get(policy_asset)
-                .unwrap()
-                .len()
-        );
+        let utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
+        assert_eq!(init_num_utxos + 1, utxos.0.get(policy_asset).unwrap().len());
+        assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| u.confidential));
+        assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| !u.confidential));
 
         // Spend only confidential utxos
         let node_address = self.node_getnewaddress(None);
@@ -640,6 +621,7 @@ impl TestSession {
         let mut utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
         assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);
+        assert!(utxos.0.get(policy_asset).unwrap().iter().all(|u| !u.confidential));
         let sat = unconf_sat / 2;
         let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
         self.list_tx_contains(&txid, &[node_address], true);

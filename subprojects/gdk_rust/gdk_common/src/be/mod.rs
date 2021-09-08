@@ -29,6 +29,7 @@ pub struct UTXOInfo {
     pub script: BEScript,
     pub height: Option<u32>,
     pub path: DerivationPath,
+    pub confidential: bool,
 }
 
 impl UTXOInfo {
@@ -44,6 +45,7 @@ impl UTXOInfo {
             script,
             height,
             path,
+            confidential: false,
         }
     }
 
@@ -53,6 +55,7 @@ impl UTXOInfo {
         script: BEScript,
         height: Option<u32>,
         path: DerivationPath,
+        confidential: bool,
     ) -> Self {
         UTXOInfo {
             asset: asset.to_hex(),
@@ -60,6 +63,7 @@ impl UTXOInfo {
             script,
             height,
             path,
+            confidential,
         }
     }
 
