@@ -348,6 +348,7 @@ impl Account {
                                             output.script_pubkey.into(),
                                             height.clone(),
                                             path.clone(),
+                                            unblinded.confidential(),
                                         ),
                                     ));
                                 }
