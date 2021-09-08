@@ -956,10 +956,10 @@ pub fn create_tx(
         }
     }
 
-    let utxos = match &request.utxos {
-        None => account.utxos(request.num_confs, request.confidential_utxos_only)?,
-        Some(utxos) => utxos.try_into()?,
-    };
+    let mut utxos: Utxos = (&request.utxos).try_into()?;
+    if request.confidential_utxos_only {
+        utxos.retain(|(_, i)| i.confidential);
+    }
     info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
 
     if send_all {
