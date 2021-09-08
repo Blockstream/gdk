@@ -301,7 +301,7 @@ impl TestSession {
         let init_sat = self.balance_account(subaccount, asset_id.clone(), None);
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
-        create_opt.utxos = unspent_outputs;
+        create_opt.utxos = unspent_outputs.unwrap_or(self.utxos(create_opt.subaccount));
         if let Some(strategy) = utxo_strategy {
             create_opt.utxo_strategy = strategy;
         }
@@ -324,13 +324,9 @@ impl TestSession {
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_account_tx(subaccount, &txid);
 
-        let end_sat = if let Some(utxos) = create_opt.utxos {
-            let key = asset_id.clone().unwrap_or(self.btc_key());
-            let sent_sat: u64 = utxos.0.get(&key).unwrap().iter().map(|u| u.satoshi).sum();
-            init_sat - sent_sat
-        } else {
-            0
-        };
+        let key = asset_id.clone().unwrap_or(self.btc_key());
+        let sent_sat: u64 = create_opt.utxos.0.get(&key).unwrap().iter().map(|u| u.satoshi).sum();
+        let end_sat = init_sat - sent_sat;
         assert_eq!(self.balance_account(subaccount, asset_id, None), end_sat);
 
         assert!(tx.create_transaction.unwrap().send_all);
@@ -363,7 +359,7 @@ impl TestSession {
             asset_id: asset.clone().or(self.asset_id()),
         });
         create_opt.memo = memo;
-        create_opt.utxos = unspent_outputs;
+        create_opt.utxos = unspent_outputs.unwrap_or_else(|| self.utxos(0));
         create_opt.confidential_utxos_only = confidential_utxos_only.unwrap_or(false);
         if let Some(strategy) = utxo_strategy {
             create_opt.utxo_strategy = strategy;
@@ -435,6 +431,7 @@ impl TestSession {
             satoshi,
             asset_id: asset.clone().or(self.asset_id()),
         });
+        create_opt.utxos = self.utxos(create_opt.subaccount);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
@@ -537,6 +534,7 @@ impl TestSession {
             });
             addressees.push(address);
         }
+        create_opt.utxos = self.utxos(create_opt.subaccount);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
@@ -598,6 +596,7 @@ impl TestSession {
             satoshi: init_sat, // not enough to pay the fee with confidential utxos only
             asset_id: self.asset_id(),
         });
+        create_opt.utxos = self.utxos(create_opt.subaccount);
         create_opt.confidential_utxos_only = true;
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
@@ -651,6 +650,7 @@ impl TestSession {
             satoshi,
             asset_id: self.asset_id(),
         });
+        create_opt.utxos = self.utxos(create_opt.subaccount);
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
@@ -669,10 +669,12 @@ impl TestSession {
         asset_id: Option<String>,
         fee_rate: Option<u64>,
         subaccount: u32,
+        utxos: GetUnspentOutputs,
     ) -> CreateTransaction {
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
         create_opt.fee_rate = fee_rate;
+        create_opt.utxos = utxos;
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: satoshi,
@@ -955,15 +957,19 @@ impl TestSession {
         }
     }
 
-    /// check `get_unspent_outputs` contains the `expected_amounts` for the given `asset`
-    pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) -> GetUnspentOutputs {
+    pub fn utxos(&self, subaccount: u32) -> GetUnspentOutputs {
         let utxo_opt = GetUnspentOpt {
-            subaccount: 0,
+            subaccount: subaccount,
             num_confs: None,
             confidential_utxos_only: None,
             all_coins: None,
         };
-        let outputs = self.session.get_unspent_outputs(&utxo_opt).unwrap();
+        self.session.get_unspent_outputs(&utxo_opt).unwrap()
+    }
+
+    /// check `get_unspent_outputs` contains the `expected_amounts` for the given `asset`
+    pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) -> GetUnspentOutputs {
+        let outputs = self.utxos(0);
         dbg!(&outputs);
         let amounts = if expected_amounts.len() == 0 {
             vec![]

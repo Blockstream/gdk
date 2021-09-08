@@ -122,8 +122,8 @@ pub struct CreateTransaction {
     pub previous_transaction: Option<TxListItem>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub utxos: Option<GetUnspentOutputs>,
+    #[serde(default)]
+    pub utxos: GetUnspentOutputs,
     /// Minimum number of confirmations for coin selection
     #[serde(default)]
     pub num_confs: u32,
