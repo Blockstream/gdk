@@ -1667,22 +1667,8 @@ namespace sdk {
         subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
             [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
 
-        std::string prev_block_hash;
-        if (!m_login_data.contains("prev_block_hash")) {
-            // Server is not yet updated to support fee fetching, so subscribe to get fee updates
-            // TODO: Remove this when all servers are updated.
-            subscriptions.emplace_back(
-                subscribe(locker, "com.greenaddress.fee_estimates", [this](const autobahn::wamp_event& event) {
-                    locker_t notify_locker(m_mutex);
-                    set_fee_estimates(notify_locker, wamp_cast_json(event));
-                }));
-        } else {
-            // Servers that supply prev_block_hash also support ticker subscriptions
-            subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
-                [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
-            prev_block_hash = m_login_data.at("prev_block_hash");
-        }
-
+        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
+            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
 
         //#if 0 // Just for testing pre-segwit txs
@@ -1694,14 +1680,10 @@ namespace sdk {
         //#endif
 
         // Notify the caller of their current block
-        const uint32_t block_height = m_block_height;
-        const auto block_hash = m_login_data["block_hash"];
-        locker.unlock();
         nlohmann::json block_json
-            = { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } };
-        if (!prev_block_hash.empty()) {
-            block_json.emplace("previous_hash", prev_block_hash);
-        }
+            = { { "block_height", m_block_height }, { "block_hash", m_login_data.at("block_hash") },
+                  { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
+        locker.unlock();
         on_new_block(block_json);
         return get_post_login_data();
     }
@@ -1980,28 +1962,17 @@ namespace sdk {
                 }
             }));
 
-        std::string prev_block_hash;
-        if (m_login_data.contains("prev_block_hash")) {
-            // Servers that supply prev_block_hash also support ticker subscriptions
-            // TODO: Remove this check when all servers are updated.
-            subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
-                [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
-            prev_block_hash = m_login_data.at("prev_block_hash");
-        }
+        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
+            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
 
         m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
 
         // Notify the caller of their current block
-        const uint32_t block_height = m_block_height;
-        const auto block_hash = m_login_data["block_hash"];
-        locker.unlock();
         nlohmann::json block_json
-            = { { "block_height", block_height }, { "block_hash", block_hash }, { "diverged_count", 0 } };
-        if (!prev_block_hash.empty()) {
-            block_json.emplace("previous_hash", prev_block_hash);
-        }
+            = { { "block_height", m_block_height }, { "block_hash", m_login_data.at("block_hash") },
+                  { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
+        locker.unlock();
         on_new_block(block_json);
-
         return get_post_login_data();
     }
 
@@ -2032,17 +2003,14 @@ namespace sdk {
 
     nlohmann::json ga_session::get_fee_estimates()
     {
+        const auto now = std::chrono::system_clock::now();
+
         locker_t locker(m_mutex);
 
-        if (m_login_data.contains("prev_block_hash")) {
-            // Server supports fee requests, so check if we need to update
-            // TODO: Remove this check when all servers are updated
-            const auto now = std::chrono::system_clock::now();
-            if (now < m_fee_estimates_ts || now - m_fee_estimates_ts > 120s) {
-                // Time adjusted or more than 2 minutes old: Update
-                auto fee_estimates = wamp_call(locker, "login.get_fee_estimates");
-                set_fee_estimates(locker, wamp_cast_json(fee_estimates));
-            }
+        if (now < m_fee_estimates_ts || now - m_fee_estimates_ts > 120s) {
+            // Time adjusted or more than 2 minutes old: Update
+            auto fee_estimates = wamp_call(locker, "login.get_fee_estimates");
+            set_fee_estimates(locker, wamp_cast_json(fee_estimates));
         }
 
         // TODO: augment with last_updated, user preference for display?
