@@ -1,7 +1,7 @@
 use crate::error::*;
 use crate::headers::compute_merkle_root;
 use crate::spv::calc_difficulty_retarget;
-use bitcoin::blockdata::constants::{genesis_block, DIFFCHANGE_INTERVAL};
+use bitcoin::blockdata::constants::{genesis_block, DIFFCHANGE_INTERVAL, TARGET_BLOCK_SPACING};
 use bitcoin::consensus::{deserialize, serialize};
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::{BlockHash, Txid};
@@ -19,6 +19,7 @@ pub struct HeadersChain {
     height: u32,
     last: BlockHeader,
     checkpoints: HashMap<u32, BlockHash>,
+    network: Network,
 }
 
 impl HeadersChain {
@@ -38,6 +39,7 @@ impl HeadersChain {
                 height,
                 last,
                 checkpoints,
+                network,
             })
         } else {
             info!("{:?} chain file exists, reading", path);
@@ -55,12 +57,44 @@ impl HeadersChain {
                 height,
                 last,
                 checkpoints,
+                network,
             })
         }
     }
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    fn pow_allow_min_difficulty_blocks(&self) -> bool {
+        // Special difficulty rule for testnet and regtest:
+        // If the next block's timestamp is more than 2* 10 minutes
+        // then allow mining a min-difficulty block.
+        // Source: https://github.com/bitcoin/bitcoin/blob/master/src/pow.cpp
+        match self.network {
+            Network::Testnet | Network::Regtest => true,
+            _ => false,
+        }
+    }
+
+    fn curr_bits(&self) -> Result<u32, Error> {
+        if self.pow_allow_min_difficulty_blocks() {
+            let mut height = self.height();
+            // loop at most DIFFCHANGE_INTERVAL times
+            let bits = loop {
+                let header = self.get(height)?;
+                if height == 0
+                    || height % DIFFCHANGE_INTERVAL == 0
+                    || header.difficulty(self.network) != 1
+                {
+                    break header.bits;
+                }
+                height -= 1;
+            };
+            Ok(bits)
+        } else {
+            Ok(self.tip().bits)
+        }
     }
 
     pub fn get(&self, height: u32) -> Result<BlockHeader, Error> {
@@ -90,7 +124,7 @@ impl HeadersChain {
 
     /// write new headers to the file if checks are passed
     pub fn push(&mut self, new_headers: Vec<BlockHeader>) -> Result<(), Error> {
-        let mut curr_bits = self.tip().bits;
+        let mut curr_bits = self.curr_bits()?;
         let mut serialized = vec![];
         for new_header in new_headers {
             let new_height = self.height + 1;
@@ -111,7 +145,13 @@ impl HeadersChain {
                 curr_bits = new_header.bits;
             } else {
                 if new_header.bits != curr_bits {
-                    return Err(Error::InvalidHeaders);
+                    if !self.pow_allow_min_difficulty_blocks()
+                        || new_header.difficulty(self.network) != 1
+                        || new_header.time.checked_sub(self.last.time).unwrap_or(0)
+                            <= 2 * TARGET_BLOCK_SPACING
+                    {
+                        return Err(Error::InvalidHeaders);
+                    }
                 }
             }
             if let Some(hash) = self.checkpoints.get(&new_height) {
