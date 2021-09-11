@@ -295,7 +295,6 @@ namespace sdk {
         heartbeat_t m_heartbeat_handler;
         ping_fail_t m_ping_fail_handler;
 
-        std::unique_ptr<event_loop_controller> m_controller;
         boost::asio::deadline_timer m_ping_timer;
 
         std::unique_ptr<network_control_context> m_network_control;
@@ -350,6 +349,7 @@ namespace sdk {
 
         autobahn::wamp_call_options m_wamp_call_options;
         const std::string m_wamp_call_prefix;
+        std::unique_ptr<event_loop_controller> m_controller;
     };
 
 } // namespace sdk

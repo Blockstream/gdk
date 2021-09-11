@@ -406,7 +406,6 @@ namespace sdk {
         , m_proxy(socksify(net_params.value("proxy", std::string{})))
         , m_has_network_proxy(!m_proxy.empty())
         , m_io()
-        , m_controller(new event_loop_controller(m_io))
         , m_ping_timer(m_io)
         , m_network_control(new network_control_context())
         , m_pool(DEFAULT_THREADPOOL_SIZE)
@@ -428,6 +427,7 @@ namespace sdk {
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
         , m_wamp_call_options()
         , m_wamp_call_prefix("com.greenaddress.")
+        , m_controller(new event_loop_controller(m_io))
     {
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
