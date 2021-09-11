@@ -230,6 +230,13 @@ namespace sdk {
                 sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) == SQLITE_OK);
         }
 
+        static void bind_int(cache::sqlite3_stmt_ptr& stmt, int column, uint64_t value)
+        {
+            const int64_t bind_value = static_cast<int64_t>(value);
+            GDK_RUNTIME_ASSERT(bind_value >= 0);
+            GDK_RUNTIME_ASSERT(sqlite3_bind_int64(stmt.get(), column, bind_value) == SQLITE_OK);
+        }
+
         static void bind_liquid_blinding(cache::sqlite3_stmt_ptr& stmt, byte_span_t pubkey, byte_span_t script)
         {
             bind_blob(stmt, 1, pubkey);
@@ -398,7 +405,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_stmt_liquid_output_search.get());
         const auto _{ stmt_clean(m_stmt_liquid_output_search) };
         bind_blob(m_stmt_liquid_output_search, 1, txhash);
-        GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquid_output_search.get(), 2, vout) == SQLITE_OK);
+        bind_int(m_stmt_liquid_output_search, 2, vout);
         const int rc = sqlite3_step(m_stmt_liquid_output_search.get());
         if (rc == SQLITE_DONE) {
             return utxo;
@@ -453,12 +460,11 @@ namespace sdk {
         // cache values are stored in byte order not display order (reversed)
         bind_blob(m_stmt_liquid_output_insert, 1, txhash);
 
-        GDK_RUNTIME_ASSERT(sqlite3_bind_int(m_stmt_liquid_output_insert.get(), 2, vout) == SQLITE_OK);
+        bind_int(m_stmt_liquid_output_insert, 2, vout);
         const auto assetid = h2b_rev(utxo["asset_id"]);
         bind_blob(m_stmt_liquid_output_insert, 3, assetid);
 
-        const auto satoshi = utxo.at("satoshi");
-        GDK_RUNTIME_ASSERT(sqlite3_bind_int64(m_stmt_liquid_output_insert.get(), 4, satoshi) == SQLITE_OK);
+        bind_int(m_stmt_liquid_output_insert, 4, utxo.at("satoshi"));
 
         const auto abf = h2b_rev(utxo["assetblinder"]);
         bind_blob(m_stmt_liquid_output_insert, 5, abf);
