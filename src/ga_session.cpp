@@ -1300,6 +1300,11 @@ namespace sdk {
     void ga_session::update_fiat_rate(session_impl::locker_t& locker, const std::string& rate_str)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        // TODO: Remove None check when backends are fixed
+        if (rate_str.empty() || rate_str == "None") {
+            m_fiat_rate.clear(); // No rate available
+            return;
+        }
         try {
             m_fiat_rate = amount::format_amount(rate_str, 8);
         } catch (const std::exception& e) {
@@ -1525,9 +1530,7 @@ namespace sdk {
                         fiat_source = m_fiat_source;
                         fiat_currency = m_fiat_currency;
                         fiat_rate = *rate_p;
-                        if (!fiat_rate.empty()) {
-                            update_fiat_rate(locker, fiat_rate);
-                        }
+                        update_fiat_rate(locker, fiat_rate);
                     }
                 }
             });
