@@ -1581,7 +1581,7 @@ namespace sdk {
             throw login_error(res::id_login_failed);
         } else if (!is_initial_login) {
             // Re-login. Discard all cached data which may be out of date
-            reset_cached_session_data();
+            reset_cached_session_data(locker);
         }
 
         const bool is_wallet_locked = json_get_value(login_data, "reset_2fa_active", false);
@@ -1780,8 +1780,9 @@ namespace sdk {
         m_cache.save_db(); // No-op if unchanged
     }
 
-    void ga_session::reset_cached_session_data()
+    void ga_session::reset_cached_session_data(session_impl::locker_t& locker)
     {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
         // FIXME: Reduce the amount of cached data we discard here.
         // For example, if we haven't missed any blocks since we were
         // last logged in, then we only need to clear mempool data
@@ -1944,7 +1945,7 @@ namespace sdk {
             throw login_error(res::id_user_not_found_or_invalid);
         } else if (!is_initial_login) {
             // Re-login. Discard all cached data which may be out of date
-            reset_cached_session_data();
+            reset_cached_session_data(locker);
         }
 
         constexpr bool watch_only = true;

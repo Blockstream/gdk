@@ -183,7 +183,7 @@ namespace sdk {
         void encache_signer_xpubs(std::shared_ptr<signer> signer);
 
     private:
-        void reset_cached_session_data();
+        void reset_cached_session_data(locker_t& locker);
         void reset_all_session_data();
 
         bool is_connected() const;
