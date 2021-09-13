@@ -54,31 +54,40 @@ namespace sdk {
             return db;
         }
 
+        static const char* db_log_error(sqlite3* db) noexcept
+        {
+            try {
+                auto err_msg = sqlite3_errmsg(db);
+                GDK_LOG_SEV(log_level::error) << "DB error: " << err_msg;
+                return err_msg;
+            } catch (const std::exception&) {
+            }
+            return "Unknown DB error";
+        }
+
+        static inline const char* db_log_error(cache::sqlite3_stmt_ptr& stmt) noexcept
+        {
+            return db_log_error(sqlite3_db_handle(stmt.get()));
+        }
+
         static cache::sqlite3_stmt_ptr get_stmt(bool enable, cache::sqlite3_ptr& db, const char* statement)
         {
             sqlite3_stmt* stmt = nullptr;
             if (enable) {
-                int rc = sqlite3_prepare_v3(db.get(), statement, -1, SQLITE_PREPARE_PERSISTENT, &stmt, NULL);
-                GDK_RUNTIME_ASSERT_MSG(rc == SQLITE_OK, sqlite3_errmsg(db.get()));
+                if (sqlite3_prepare_v3(db.get(), statement, -1, SQLITE_PREPARE_PERSISTENT, &stmt, NULL) != SQLITE_OK) {
+                    GDK_RUNTIME_ASSERT_MSG(false, db_log_error(db.get()));
+                }
             }
             return cache::sqlite3_stmt_ptr{ stmt, [](sqlite3_stmt* p) { sqlite3_finalize(p); } };
-        }
-
-        static void db_log_error(sqlite3* db) noexcept
-        {
-            try {
-                GDK_LOG_SEV(log_level::error) << "DB error: " << sqlite3_errmsg(db);
-            } catch (const std::exception&) {
-            }
         }
 
         static void stmt_check_clean(cache::sqlite3_stmt_ptr& stmt) noexcept
         {
             if (sqlite3_clear_bindings(stmt.get()) != SQLITE_OK) {
-                db_log_error(sqlite3_db_handle(stmt.get()));
+                db_log_error(stmt);
             }
             if (sqlite3_reset(stmt.get()) != SQLITE_OK) {
-                db_log_error(sqlite3_db_handle(stmt.get()));
+                db_log_error(stmt);
             }
         }
 
@@ -226,15 +235,18 @@ namespace sdk {
 
         static void bind_blob(cache::sqlite3_stmt_ptr& stmt, int column, byte_span_t blob)
         {
-            GDK_RUNTIME_ASSERT(
-                sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) == SQLITE_OK);
+            if (sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) != SQLITE_OK) {
+                GDK_RUNTIME_ASSERT_MSG(false, db_log_error(stmt));
+            }
         }
 
         static void bind_int(cache::sqlite3_stmt_ptr& stmt, int column, uint64_t value)
         {
             const int64_t bind_value = static_cast<int64_t>(value);
             GDK_RUNTIME_ASSERT(bind_value >= 0);
-            GDK_RUNTIME_ASSERT(sqlite3_bind_int64(stmt.get(), column, bind_value) == SQLITE_OK);
+            if (sqlite3_bind_int64(stmt.get(), column, bind_value) != SQLITE_OK) {
+                GDK_RUNTIME_ASSERT_MSG(false, db_log_error(stmt));
+            }
         }
 
         static void bind_liquid_blinding(cache::sqlite3_stmt_ptr& stmt, byte_span_t pubkey, byte_span_t script)
