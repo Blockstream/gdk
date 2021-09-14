@@ -1252,11 +1252,10 @@ namespace sdk {
         const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(m_login_data["public_key"]) };
         const xpub_hdkey main_hdkey(m_net_params.is_main_net(), std::make_pair(main_chaincode, main_pubkey));
         const auto wallet_hash_id = main_hdkey.to_hashed_identifier(m_net_params.network());
-        if (is_initial_login) {
-            m_login_data["wallet_hash_id"] = wallet_hash_id;
-        } else {
-            GDK_RUNTIME_ASSERT(login_data["wallet_hash_id"] == wallet_hash_id);
+        if (!is_initial_login) {
+            GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
         }
+        m_login_data["wallet_hash_id"] = wallet_hash_id;
 
         // Check that csv blocks used are recoverable and provided by the server
         const auto net_csv_buckets = m_net_params.csv_buckets();
