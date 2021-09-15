@@ -829,17 +829,17 @@ pub fn create_tx(
                         || (address.network == bitcoin::Network::Testnet
                             && network == bitcoin::Network::Regtest)
                     {
-                        continue;
-                    }
-                    if let Payload::WitnessProgram {
-                        version: v,
-                        program: _p,
-                    } = &address.payload
-                    {
-                        // Do not support segwit greater than v0
-                        if v.to_u8() > 0 {
-                            return Err(Error::InvalidAddress);
+                        if let Payload::WitnessProgram {
+                            version: v,
+                            program: _p,
+                        } = &address.payload
+                        {
+                            // Do not support segwit greater than v0
+                            if v.to_u8() > 0 {
+                                return Err(Error::InvalidAddress);
+                            }
                         }
+                        continue;
                     }
                 }
                 return Err(Error::InvalidAddress);

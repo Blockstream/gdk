@@ -217,7 +217,6 @@ fn create_tx_err(is_liquid: bool) {
     ));
 
     // Segwitv1 and b(l)ech32
-    // FIXME: restore test once regression is fixed
     let segwitv1_addr = if is_liquid {
         "el1pq0umk3pez693jrrlxz9ndlkuwne93gdu9g83mhhzuyf46e3mdzfpva0w48gqgzgrklncnm0k5zeyw8my2ypfsxguu9nrdg2pc"
     } else {
@@ -229,7 +228,6 @@ fn create_tx_err(is_liquid: bool) {
         test_session.session.create_transaction(&mut create_opt),
         Err(Error::InvalidAddress)
     ));
-     * */
 
     // Segwitv1 and b(l)ech32m
     let segwitv1_addr = if is_liquid {
