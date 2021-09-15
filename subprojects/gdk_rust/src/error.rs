@@ -26,6 +26,9 @@ impl Error {
             Error::Electrum(electrum::error::Error::InvalidAddress) => {
                 "id_invalid_address".to_string()
             }
+            Error::Electrum(electrum::error::Error::NonConfidentialAddress) => {
+                "id_nonconfidential_addresses_not".to_string()
+            }
             Error::Electrum(electrum::error::Error::InvalidAmount) => {
                 "id_invalid_amount".to_string()
             }

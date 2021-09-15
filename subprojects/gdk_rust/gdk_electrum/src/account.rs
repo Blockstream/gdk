@@ -846,6 +846,9 @@ pub fn create_tx(
             }
             NetworkId::Elements(network) => {
                 if let Ok(address) = elements::Address::from_str(address) {
+                    if !address.is_blinded() {
+                        return Err(Error::NonConfidentialAddress);
+                    }
                     info!(
                         "address.params:{:?} address_params(network):{:?}",
                         address.params,

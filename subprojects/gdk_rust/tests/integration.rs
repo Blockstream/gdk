@@ -247,10 +247,9 @@ fn create_tx_err(is_liquid: bool) {
         let unconf_addr = test_session::to_unconfidential(&addr);
         let mut create_opt =
             test_session.create_opt(&unconf_addr, sat, asset_id.clone(), fee_rate, subaccount);
-        // TODO: should throw a different error to match the ga_session implementation
         assert!(matches!(
             test_session.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAddress)
+            Err(Error::NonConfidentialAddress)
         ));
     }
 
