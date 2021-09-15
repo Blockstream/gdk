@@ -542,7 +542,7 @@ impl TestSession {
             .unwrap()
             .len();
         let ap = self.get_receive_address(0);
-        let unconf_address = to_unconfidential(ap.address);
+        let unconf_address = to_unconfidential(&ap.address);
         let unconf_sat = 10_000;
         let unconf_txid = self.node_sendtoaddress(&unconf_address, unconf_sat, None);
         self.wait_account_tx(0, &unconf_txid);
@@ -649,85 +649,23 @@ impl TestSession {
         assert_eq!(2, transaction.input_len());
     }
 
-    /// check send failure reasons
-    pub fn send_fails(&mut self) {
-        let init_sat = self.balance_gdk(None);
+    pub fn create_opt(
+        &self,
+        address: &str,
+        satoshi: u64,
+        asset_id: Option<String>,
+        fee_rate: Option<u64>,
+        subaccount: u32,
+    ) -> CreateTransaction {
         let mut create_opt = CreateTransaction::default();
-        let fee_rate = 1000;
-        let address = self.node_getnewaddress(None);
-        create_opt.fee_rate = Some(fee_rate);
+        create_opt.subaccount = subaccount;
+        create_opt.fee_rate = fee_rate;
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
-            satoshi: 0,
-            asset_id: self.asset_id(),
+            satoshi: satoshi,
+            asset_id: asset_id,
         });
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAmount)
-        ));
-
-        create_opt.addressees[0].satoshi = 200; // below dust limit
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAmount)
-        ));
-
-        create_opt.addressees[0].satoshi = init_sat; // not enough to pay the fee
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InsufficientFunds)
-        ));
-
-        create_opt.subaccount = 99;
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidSubaccount(99))
-        ));
-        create_opt.subaccount = 0;
-
-        create_opt.addressees[0].address = "x".to_string();
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAddress)
-        ));
-
-        create_opt.addressees[0].address = "38CMdevthTKYAtxaSkYYtcv5QgkHXdKKk5".to_string();
-        assert!(
-            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
-            "address with different network should fail"
-        );
-
-        create_opt.addressees[0].address =
-            "VJLCbLBTCdxhWyjVLdjcSmGAksVMtabYg15maSi93zknQD2ihC38R7CUd8KbDFnV8A4hiykxnRB3Uv6d"
-                .to_string();
-        assert!(
-            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
-            "address with different network should fail"
-        );
-
-        create_opt.addressees[0].address =
-            "bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k7grplx"
-                .to_string(); // from bip173 test vectors
-        assert!(
-            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
-            "segwit v1 should fail"
-        );
-
-        let addr =
-            "Azpt6vXqrbPuUtsumAioGjKnvukPApDssC1HwoFdSWZaBYJrUVSe5K8x9nk2HVYiYANy9mVQbW3iQ6xU";
-        let mut addr = elements::Address::from_str(addr).unwrap();
-        addr.blinding_pubkey = None;
-        create_opt.addressees[0].address = addr.to_string();
-        assert!(
-            matches!(self.session.create_transaction(&mut create_opt), Err(Error::InvalidAddress)),
-            "unblinded address should fail"
-        );
-
-        create_opt.addressees.clear();
-        assert!(matches!(
-            self.session.create_transaction(&mut create_opt),
-            Err(Error::EmptyAddressees)
-        ));
+        create_opt
     }
 
     /// performs checks on transactions, like checking for address reuse in outputs and on liquid confidential commitments inequality
@@ -1147,8 +1085,8 @@ fn node_issueasset(client: &Client, satoshi: u64) -> String {
     r.get("asset").unwrap().as_str().unwrap().to_string()
 }
 
-fn to_unconfidential(elements_address: String) -> String {
-    let mut address_unconf = elements::Address::from_str(&elements_address).unwrap();
+pub fn to_unconfidential(elements_address: &str) -> String {
+    let mut address_unconf = elements::Address::from_str(elements_address).unwrap();
     address_unconf.blinding_pubkey = None;
     address_unconf.to_string()
 }
