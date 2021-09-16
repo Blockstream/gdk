@@ -500,7 +500,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "bech32_prefix", "ert" },
-            { "bip21_prefix", "liquidregtestnetwork" },
+            { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
             { "csv_buckets", std::vector<uint32_t>() },
