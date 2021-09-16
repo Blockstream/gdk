@@ -41,7 +41,8 @@ namespace sdk {
         static const auto& get_sized_array(const nlohmann::json& json, const char* key, size_t size)
         {
             const auto& value = json.at(key);
-            GDK_RUNTIME_ASSERT(value.is_array() && value.size() == size);
+            GDK_RUNTIME_ASSERT_MSG(value.is_array() && value.size() == size,
+                std::string(key) + " must be an array of length " + std::to_string(size));
             return value;
         }
 
@@ -90,12 +91,23 @@ namespace sdk {
                 hw_reply.at("signer_commitment"), hw_reply.at("signature"), has_sighash);
         }
 
+        static void set_blinding_nonce_request_data(
+            const unique_pubkeys_and_scripts_t& missing, nlohmann::json& twofactor_data)
+        {
+            auto& scripts = twofactor_data["scripts"];
+            auto& public_keys = twofactor_data["public_keys"];
+            for (const auto& m : missing) {
+                public_keys.emplace_back(b2h(m.first));
+                scripts.emplace_back(b2h(m.second));
+            }
+        }
+
         static void encache_blinding_nonces(
             session_impl& session, nlohmann::json& twofactor_data, const nlohmann::json& hw_reply)
         {
             const auto& scripts = twofactor_data.at("scripts");
             const auto& public_keys = twofactor_data.at("public_keys");
-            const auto& nonces = hw_reply.at("nonces");
+            const auto& nonces = get_sized_array(hw_reply, "nonces", scripts.size());
 
             // Encache the blinding nonces we got back
             bool updated = false;
@@ -863,12 +875,7 @@ namespace sdk {
         // Some utxos need unblinding; ask the caller to resolve them
         m_result.swap(utxos);
         signal_hw_request(hw_request::get_blinding_nonces);
-        auto& scripts = m_twofactor_data["scripts"];
-        auto& public_keys = m_twofactor_data["public_keys"];
-        for (const auto& m : missing) {
-            public_keys.emplace_back(b2h(m.first));
-            scripts.emplace_back(b2h(m.second));
-        }
+        set_blinding_nonce_request_data(missing, m_twofactor_data);
     }
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
