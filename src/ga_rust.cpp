@@ -518,12 +518,11 @@ namespace sdk {
     nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
     {
         auto currency = amount_json.value("fiat_currency", "USD");
-        auto rate = amount_json.value("fiat_rate", "");
-        if (rate.empty()) {
-            auto currency_query = nlohmann::json({ { "currencies", currency } });
-            auto xrates = call_session("exchange_rates", currency_query)["currencies"];
-            rate = xrates.value(currency, "");
-        }
+        auto fallback_rate = amount_json.value("fiat_rate", "");
+        auto currency_query = nlohmann::json({ { "currencies", currency } });
+        auto xrates = call_session("exchange_rates", currency_query)["currencies"];
+        auto fetched_rate = xrates.value(currency, "");
+        auto rate = fetched_rate.empty() ? fallback_rate : fetched_rate;
         return amount::convert(amount_json, currency, rate);
     }
 
