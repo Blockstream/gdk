@@ -2177,16 +2177,13 @@ namespace sdk {
     nlohmann::json ga_session::get_subaccounts()
     {
         locker_t locker(m_mutex);
-        std::vector<nlohmann::json> details;
+        nlohmann::json::array_t details;
         details.reserve(m_subaccounts.size());
 
         for (const auto& sa : m_subaccounts) {
-            const auto p = m_subaccounts.find(sa.first);
-            GDK_RUNTIME_ASSERT(p != m_subaccounts.end());
-            details.emplace_back(p->second);
+            details.emplace_back(sa.second);
         }
-
-        return details;
+        return nlohmann::json(std::move(details));
     }
 
     nlohmann::json ga_session::get_subaccount(uint32_t subaccount)
