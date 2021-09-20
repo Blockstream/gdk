@@ -73,8 +73,6 @@ namespace sdk {
         void change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data);
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
-        nlohmann::json get_transactions(const nlohmann::json& details);
-
         nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
@@ -120,14 +118,12 @@ namespace sdk {
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
         void disable_all_pin_logins();
 
-        bool get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data);
         nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing);
         void process_unspent_outputs(nlohmann::json& utxos);
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transaction_details(const std::string& txhash) const;
-        tx_list_cache::container_type get_raw_transactions(uint32_t subaccount, uint32_t first, uint32_t count);
 
         nlohmann::json create_transaction(const nlohmann::json& details);
         nlohmann::json sign_transaction(const nlohmann::json& details);
@@ -181,6 +177,11 @@ namespace sdk {
 
         void encache_signer_xpubs(std::shared_ptr<signer> signer);
 
+        nlohmann::json sync_transactions(uint32_t subaccount, unique_pubkeys_and_scripts_t& missing);
+        void store_transactions(uint32_t subaccount, nlohmann::json& txs);
+        void postprocess_transactions(nlohmann::json& tx_list);
+        nlohmann::json get_transactions(const nlohmann::json& details);
+
     private:
         void reset_cached_session_data(locker_t& locker);
         void reset_all_session_data();
@@ -212,10 +213,10 @@ namespace sdk {
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker);
-        bool unblind_utxo(nlohmann::json& utxo, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing);
-        bool cleanup_utxos(nlohmann::json& utxos, const std::string& for_txhash, unique_pubkeys_and_scripts_t& missing);
-        tx_list_cache::container_type get_tx_list(session_impl::locker_t& locker, uint32_t subaccount, uint32_t page_id,
-            const std::string& start_date, const std::string& end_date);
+        bool unblind_utxo(locker_t& locker, nlohmann::json& utxo, const std::string& for_txhash,
+            unique_pubkeys_and_scripts_t& missing);
+        bool cleanup_utxos(session_impl::locker_t& locker, nlohmann::json& utxos, const std::string& for_txhash,
+            unique_pubkeys_and_scripts_t& missing);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
@@ -241,7 +242,7 @@ namespace sdk {
         nlohmann::json refresh_http_data(const std::string& page, const std::string& key, bool refresh);
 
         void update_address_info(nlohmann::json& address, bool is_historic);
-        std::shared_ptr<nlocktime_t> update_nlocktime_info();
+        std::shared_ptr<nlocktime_t> update_nlocktime_info(session_impl::locker_t& locker);
 
         void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
         void save_cache();

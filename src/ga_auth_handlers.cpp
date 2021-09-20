@@ -811,31 +811,55 @@ namespace sdk {
     get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_transactions")
         , m_details(details)
+        , m_subaccount(json_get_value(details, "subaccount", 0))
     {
     }
 
     auth_handler::state_type get_transactions_call::call_impl()
     {
-        if (m_hw_request == hw_request::none && m_net_params.is_liquid() && !m_net_params.is_electrum()) {
-            // FIXME: We should not need to fetch all txs before every call
-            // TODO: Electrum is skipped here as it does its own unblinding
-            nlohmann::json twofactor_data;
-            if (m_session->get_uncached_blinding_nonces(m_details, twofactor_data)) {
-                // We have missing nonces we need to fetch, request them
-                signal_hw_request(hw_request::get_blinding_nonces);
-                m_twofactor_data["scripts"].swap(twofactor_data["scripts"]);
-                m_twofactor_data["public_keys"].swap(twofactor_data["public_keys"]);
-                return m_state;
-            }
+        if (m_net_params.is_electrum()) {
+            // FIXME: Move rust to ga_session interface
+            m_result = { { "transactions", m_session->get_transactions(m_details) } };
+            return state_type::done;
         }
 
         if (m_hw_request == hw_request::get_blinding_nonces) {
             // Parse and cache the nonces we got back
             encache_blinding_nonces(*m_session, m_twofactor_data, get_hw_reply());
+            // Unblind, cleanup and store the fetched txs
+            m_session->store_transactions(m_subaccount, m_result);
+            // Make sure we don't re-encache the same nonces again next time through
+            m_hw_request = hw_request::none;
+            m_result.clear();
+            // Continue on to check for the next page to sync
         }
 
-        m_result = { { "transactions", m_session->get_transactions(m_details) } };
-        return state_type::done;
+        if (!m_result.empty() && !m_result.value("more", false)) {
+            // We have finished iterating and caching the server results,
+            // return the txs the user asked for
+            m_details["sync_ts"] = m_result["sync_ts"];
+            auto txs = m_session->get_transactions(m_details);
+            if (!txs.is_boolean()) {
+                m_session->postprocess_transactions(txs);
+                m_result = { { "transactions", std::move(txs) } };
+                return state_type::done;
+            }
+            // Otherwise the cache was invalidated, continue on to resync
+        }
+
+        // Sync a page of txs from the server
+        unique_pubkeys_and_scripts_t missing;
+        m_result = m_session->sync_transactions(m_subaccount, missing);
+        if (!missing.empty()) {
+            // We have missing nonces we need to fetch, request them
+            signal_hw_request(hw_request::get_blinding_nonces);
+            set_blinding_nonce_request_data(missing, m_twofactor_data);
+            return m_state;
+        }
+        // No missing nonces, cleanup and store the fetched txs directly
+        m_session->store_transactions(m_subaccount, m_result);
+        // Call again to either continue fetching, or return the result
+        return state_type::make_call;
     }
 
     //

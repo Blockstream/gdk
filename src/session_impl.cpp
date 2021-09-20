@@ -88,13 +88,6 @@ namespace sdk {
         return false; // No nonce caching by default, so return 'not updated'
     }
 
-    bool session_impl::get_uncached_blinding_nonces(
-        const nlohmann::json& /*details*/, nlohmann::json& /*twofactor_data*/)
-    {
-        // Implementation detail of ga_session
-        return false;
-    }
-
     void session_impl::save_cache()
     {
         // Refers to the ga_session cache at the moment, so a no-op for rust sessions
@@ -177,6 +170,22 @@ namespace sdk {
     }
 
     void session_impl::set_cached_master_blinding_key(const std::string& /*master_blinding_key_hex*/)
+    {
+        // Overriden for multisig
+    }
+
+    nlohmann::json session_impl::sync_transactions(uint32_t /*subaccount*/, unique_pubkeys_and_scripts_t& /*missing*/)
+    {
+        // Overriden for multisig
+        return nlohmann::json();
+    }
+
+    void session_impl::store_transactions(uint32_t /*subaccount*/, nlohmann::json& /*txs*/)
+    {
+        // Overriden for multisig
+    }
+
+    void session_impl::postprocess_transactions(nlohmann::json& /*tx_list*/)
     {
         // Overriden for multisig
     }

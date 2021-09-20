@@ -98,6 +98,9 @@ namespace sdk {
         virtual void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)
             = 0;
         virtual nlohmann::json get_transactions(const nlohmann::json& details) = 0;
+        virtual nlohmann::json sync_transactions(uint32_t subaccount, unique_pubkeys_and_scripts_t& missing);
+        virtual void store_transactions(uint32_t subaccount, nlohmann::json& txs);
+        virtual void postprocess_transactions(nlohmann::json& tx_list);
 
         virtual void set_notification_handler(GA_notification_handler handler, void* context);
 
@@ -153,7 +156,6 @@ namespace sdk {
 
         virtual bool set_blinding_nonce(
             const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex);
-        virtual bool get_uncached_blinding_nonces(const nlohmann::json& details, nlohmann::json& twofactor_data);
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;

@@ -240,7 +240,6 @@ Transaction list JSON
         "created_at": "2019-02-27 15:12:04",
         "fee": 206,
         "fee_rate": 1004,
-        "has_payment_request": false,
         "inputs": [
           {
             "address": "",
@@ -257,7 +256,6 @@ Transaction list JSON
             "subtype": 0
           }
         ],
-        "instant": false,
         "memo": "",
         "outputs": [
           {
