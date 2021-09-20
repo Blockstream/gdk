@@ -33,6 +33,23 @@ namespace sdk {
         void upsert_key_value(const std::string& key, byte_span_t value);
         void clear_key_value(const std::string& key);
 
+        void set_latest_block(uint32_t block);
+        uint32_t get_latest_block();
+
+        typedef std::function<void(uint64_t ts, const std::string& txhash, uint32_t block, nlohmann::json& tx_json)>
+            get_transactions_fn;
+        void get_transactions(
+            uint32_t subaccount, uint64_t start_ts, size_t count, const get_transactions_fn& callback);
+        void get_transaction(
+            uint32_t subaccount, const std::string& txhash_hex, const cache::get_transactions_fn& callback);
+        uint64_t get_latest_transaction_timestamp(uint32_t subaccount);
+        void insert_transaction(
+            uint32_t subaccount, uint64_t timestamp, const std::string& txhash_hex, const nlohmann::json& tx_json);
+        void delete_transactions(uint32_t subaccount, uint64_t start_ts = 0);
+        void delete_mempool_txs(uint32_t subaccount);
+        void delete_block_txs(uint32_t subaccount, uint32_t start_block);
+        void on_new_transaction(uint32_t subaccount, const std::string& txhash_hex);
+
         void save_db();
         void load_db(byte_span_t encryption_key, const uint32_t type);
 
@@ -53,6 +70,13 @@ namespace sdk {
         sqlite3_stmt_ptr m_stmt_key_value_upsert;
         sqlite3_stmt_ptr m_stmt_key_value_search;
         sqlite3_stmt_ptr m_stmt_key_value_delete;
+        sqlite3_stmt_ptr m_stmt_tx_search;
+        sqlite3_stmt_ptr m_stmt_txid_search;
+        sqlite3_stmt_ptr m_stmt_tx_latest_search;
+        sqlite3_stmt_ptr m_stmt_tx_mempool_search;
+        sqlite3_stmt_ptr m_stmt_tx_block_search;
+        sqlite3_stmt_ptr m_stmt_tx_upsert;
+        sqlite3_stmt_ptr m_stmt_tx_delete_all;
     };
 
 } // namespace sdk

@@ -20,6 +20,17 @@ namespace sdk {
 
         constexpr int VERSION = 1;
         constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
+        constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, data FROM Tx "
+                                          "WHERE subaccount = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3;";
+        constexpr const char* TXID_SELECT = "SELECT timestamp, txid, block, data FROM Tx "
+                                            "WHERE subaccount = ?1 AND txid = ?2;";
+        constexpr const char* TX_LATEST = "SELECT MAX(timestamp) FROM Tx WHERE subaccount = ?1;";
+        constexpr const char* TX_MEMPOOL = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block = 0;";
+        constexpr const char* TX_BLOCK = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block >= ?2;";
+        constexpr const char* TX_UPSERT = "INSERT INTO Tx(subaccount, timestamp, txid, block, data) "
+                                          "VALUES (?1, ?2, ?3, ?4, ?5) "
+                                          "ON CONFLICT(subaccount, timestamp) DO UPDATE SET data = ?4;";
+        constexpr const char* TX_DELETE_ALL = "DELETE FROM Tx WHERE subaccount = ?1 AND timestamp >= ?2;";
 
         static cache::sqlite3_ptr get_new_memory_db()
         {
@@ -51,6 +62,8 @@ namespace sdk {
             exec_check("CREATE TABLE LiquidBlindingNonce(pubkey BLOB NOT NULL, script BLOB NOT NULL, nonce BLOB NOT "
                        "NULL, PRIMARY KEY(pubkey, script));");
 
+            exec_check("CREATE TABLE Tx(subaccount INTEGER NOT NULL, timestamp INTEGER NOT NULL, txid BLOB "
+                       "NOT NULL, block INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
             return db;
         }
 
@@ -233,6 +246,55 @@ namespace sdk {
             step_final(stmt);
         }
 
+        static bool get_tx(cache::sqlite3_stmt_ptr& stmt, const cache::get_transactions_fn& callback)
+        {
+            const int rc = sqlite3_step(stmt.get());
+            if (rc == SQLITE_DONE) {
+                return false;
+            }
+            GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
+            const auto db_timestamp = sqlite3_column_int64(stmt.get(), 0);
+            GDK_RUNTIME_ASSERT(db_timestamp > 0);
+            const uint64_t timestamp = static_cast<uint64_t>(db_timestamp);
+
+            const auto txid = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 1));
+            const auto txid_len = sqlite3_column_bytes(stmt.get(), 1);
+            GDK_RUNTIME_ASSERT(txid_len == WALLY_TXHASH_LEN);
+
+            const auto db_block = sqlite3_column_int64(stmt.get(), 2);
+            GDK_RUNTIME_ASSERT(db_block >= 0 && db_block < 0xffffffff);
+            const uint32_t block = static_cast<uint32_t>(db_block);
+
+            const auto data = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 3));
+            const auto len = sqlite3_column_bytes(stmt.get(), 3);
+            try {
+                const auto txhash_hex = b2h_rev(gsl::make_span(txid, txid_len));
+                const auto span = gsl::make_span(data, len);
+                auto tx_json = nlohmann::json::from_msgpack(span.begin(), span.end());
+                callback(timestamp, txhash_hex, block, tx_json);
+            } catch (const std::exception& ex) {
+                GDK_LOG_SEV(log_level::error) << "Tx callback exception: " << ex.what();
+                return false; // Stop iterating on any exception
+            }
+            return true;
+        }
+
+        static boost::optional<uint64_t> get_tx_timestamp(cache::sqlite3_stmt_ptr& stmt)
+        {
+            const int rc = sqlite3_step(stmt.get());
+            if (rc == SQLITE_DONE) {
+                return boost::optional<uint64_t>(); // No tx found
+            }
+            GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
+            if (sqlite3_column_type(stmt.get(), 0) == SQLITE_NULL) {
+                return boost::optional<uint64_t>(); // No tx found (from e.g. MIN())
+            }
+            auto db_timestamp = sqlite3_column_int64(stmt.get(), 0);
+            GDK_RUNTIME_ASSERT(db_timestamp > 0);
+            step_final(stmt);
+            return static_cast<uint64_t>(db_timestamp);
+        }
+
         static void bind_blob(cache::sqlite3_stmt_ptr& stmt, int column, byte_span_t blob)
         {
             if (sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) != SQLITE_OK) {
@@ -278,6 +340,13 @@ namespace sdk {
               true, m_db, "INSERT INTO KeyValue(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value=?2;"))
         , m_stmt_key_value_search(get_stmt(true, m_db, KV_SELECT))
         , m_stmt_key_value_delete(get_stmt(true, m_db, "DELETE FROM KeyValue WHERE key = ?1;"))
+        , m_stmt_tx_search(get_stmt(true, m_db, TX_SELECT))
+        , m_stmt_txid_search(get_stmt(true, m_db, TXID_SELECT))
+        , m_stmt_tx_latest_search(get_stmt(true, m_db, TX_LATEST))
+        , m_stmt_tx_mempool_search(get_stmt(true, m_db, TX_MEMPOOL))
+        , m_stmt_tx_block_search(get_stmt(true, m_db, TX_BLOCK))
+        , m_stmt_tx_upsert(get_stmt(true, m_db, TX_UPSERT))
+        , m_stmt_tx_delete_all(get_stmt(true, m_db, TX_DELETE_ALL))
     {
     }
 
@@ -398,6 +467,135 @@ namespace sdk {
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_search, 1, key_span);
         get_blob(m_stmt_key_value_search, 0, callback);
+    }
+
+    void cache::get_transactions(
+        uint32_t subaccount, uint64_t start, size_t count, const cache::get_transactions_fn& callback)
+    {
+        const auto _{ stmt_clean(m_stmt_tx_search) };
+        bind_int(m_stmt_tx_search, 1, subaccount);
+        bind_int(m_stmt_tx_search, 2, count);
+        bind_int(m_stmt_tx_search, 3, start);
+        while (get_tx(m_stmt_tx_search, callback)) {
+            // No-op
+        }
+    }
+
+    void cache::get_transaction(
+        uint32_t subaccount, const std::string& txhash_hex, const cache::get_transactions_fn& callback)
+    {
+        const auto txid = h2b_rev(txhash_hex);
+        const auto _{ stmt_clean(m_stmt_txid_search) };
+        bind_int(m_stmt_txid_search, 1, subaccount);
+        bind_blob(m_stmt_txid_search, 2, txid);
+        if (get_tx(m_stmt_txid_search, callback)) {
+            // At most one txid should be available
+            auto&& dummy_cb = [](uint64_t, const std::string&, uint32_t, uint32_t, uint32_t, nlohmann::json&) {};
+            GDK_RUNTIME_ASSERT(!get_tx(m_stmt_txid_search, dummy_cb));
+        }
+    }
+
+    uint64_t cache::get_latest_transaction_timestamp(uint32_t subaccount)
+    {
+        const auto _{ stmt_clean(m_stmt_tx_latest_search) };
+        bind_int(m_stmt_tx_latest_search, 1, subaccount);
+        return get_tx_timestamp(m_stmt_tx_latest_search).get_value_or(0);
+    }
+
+    void cache::set_latest_block(uint32_t block)
+    {
+        const auto block_str = std::to_string(block);
+        upsert_key_value("last_seen_block", ustring_span(block_str));
+    }
+
+    uint32_t cache::get_latest_block()
+    {
+        uint32_t db_block = 0;
+        get_key_value("last_seen_block", { [&db_block](const auto& db_blob) {
+            if (db_blob != boost::none) {
+                const std::string block_str(db_blob->begin(), db_blob->end());
+                db_block = std::strtoul(block_str.c_str(), nullptr, 10);
+            }
+        } });
+        return db_block;
+    }
+
+    void cache::insert_transaction(
+        uint32_t subaccount, uint64_t timestamp, const std::string& txhash_hex, const nlohmann::json& tx_json)
+    {
+        const auto txid = h2b_rev(txhash_hex);
+        const auto tx_data = nlohmann::json::to_msgpack(tx_json);
+        const auto _{ stmt_clean(m_stmt_tx_upsert) };
+        bind_int(m_stmt_tx_upsert, 1, subaccount);
+        bind_int(m_stmt_tx_upsert, 2, timestamp);
+        bind_blob(m_stmt_tx_upsert, 3, txid);
+        bind_int(m_stmt_tx_upsert, 4, tx_json.at("block_height"));
+        bind_blob(m_stmt_tx_upsert, 5, tx_data);
+        step_final(m_stmt_tx_upsert);
+        m_require_write = true;
+    }
+
+    void cache::delete_transactions(uint32_t subaccount, uint64_t start_ts)
+    {
+        const auto _{ stmt_clean(m_stmt_tx_delete_all) };
+        bind_int(m_stmt_tx_delete_all, 1, subaccount);
+        bind_int(m_stmt_tx_delete_all, 2, start_ts);
+        step_final(m_stmt_tx_delete_all);
+        m_require_write = true;
+    }
+
+    void cache::delete_mempool_txs(uint32_t subaccount)
+    {
+        // Delete all transactions from the earliest mempool tx onwards
+        boost::optional<uint64_t> db_timestamp;
+        {
+            const auto _{ stmt_clean(m_stmt_tx_mempool_search) };
+            bind_int(m_stmt_tx_mempool_search, 1, subaccount);
+            db_timestamp = get_tx_timestamp(m_stmt_tx_mempool_search);
+        }
+        if (db_timestamp != boost::none) {
+            delete_transactions(subaccount, db_timestamp.get());
+        }
+    }
+
+    void cache::delete_block_txs(uint32_t subaccount, uint32_t start_block)
+    {
+        // Delete all transactions in the start block or later
+        boost::optional<uint64_t> db_timestamp;
+        {
+            const auto _{ stmt_clean(m_stmt_tx_block_search) };
+            bind_int(m_stmt_tx_block_search, 1, subaccount);
+            bind_int(m_stmt_tx_block_search, 2, start_block);
+            db_timestamp = get_tx_timestamp(m_stmt_tx_block_search);
+        }
+        if (db_timestamp != boost::none) {
+            delete_transactions(subaccount, db_timestamp.get());
+        }
+    }
+
+    void cache::on_new_transaction(uint32_t subaccount, const std::string& txhash_hex)
+    {
+        nlohmann::json existing_tx;
+        uint32_t existing_tx_block = 0;
+
+        get_transaction(subaccount, txhash_hex,
+            { [&existing_tx, &existing_tx_block](
+                  uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t block, nlohmann::json& tx_json) {
+                existing_tx = std::move(tx_json);
+                existing_tx_block = block;
+            } });
+
+        if (!existing_tx.empty() && existing_tx_block != 0) {
+            // We have been notified of a confirmed tx we already had cached as confirmed.
+            // Either the tx was reorged or the server is re-processing txs; either way
+            // remove all cached txs from the block the tx was originally in onwards, along
+            // with any mempool txs.
+            delete_block_txs(subaccount, existing_tx_block);
+            // Fall through to delete mempool txs
+        }
+        // Otherwise, we havent seen this tx yet, or we've been re-notified of a mempool tx.
+        // Remove any mempool txs this tx could be double spending/replacing
+        delete_mempool_txs(subaccount);
     }
 
     std::vector<unsigned char> cache::get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script)
