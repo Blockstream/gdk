@@ -1563,13 +1563,28 @@ namespace sdk {
 
         no_std_exception_escape([&]() {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
+            const uint32_t diverged = details.value("diverged_count", 0);
+            const uint32_t reorg_blocks = diverged ? m_net_params.get_max_reorg_blocks() : 0;
+            const uint32_t reorg_block = m_block_height < reorg_blocks ? 0 : m_block_height - reorg_blocks;
             json_rename_key(details, "count", "block_height");
             details["initial_timestamp"] = m_earliest_block_time;
 
-            // Update the tx list cache before we update our own block height,
-            // in case this is a reorg (in which case 'diverged_count' refers
-            // to blocks diverged from the current GA tip)
-            m_tx_list_caches.on_new_block(m_block_height, details);
+            // Update the tx cache.
+            for (const auto& sa : m_subaccounts) {
+                if (diverged /* FIXME: or missed a block notification */) {
+                    GDK_LOG_SEV(log_level::warning)
+                        << "Tx sync(" << sa.first << "): new diverged block " << reorg_block;
+                    m_cache.delete_block_txs(sa.first, reorg_block);
+                    // We can have a mempool tx older than the max re-org height.
+                    // Fall through to delete forward from any mempool txs remaining
+                }
+                // The backend does not notify us when an existing mempool tx
+                // becomes confirmed. Therefore delete from the oldest mempool
+                // tx forward in case one of them confirmed in this block.
+                GDK_LOG_SEV(log_level::warning) << "Tx sync(" << sa.first << "): new block, deleting mempool";
+                m_cache.delete_mempool_txs(sa.first);
+            }
+            m_cache.save_db(); // No-op if unchanged
 
             const uint32_t block_height = details["block_height"];
             if (block_height > m_block_height) {
@@ -1577,7 +1592,7 @@ namespace sdk {
             }
 
             unique_unlock unlocker(locker);
-            if (details.value("diverged_count", 0)) {
+            if (diverged) {
                 // In the event of a re-org, nuke the entire UTXO cache
                 remove_cached_utxos(std::vector<uint32_t>());
             }
