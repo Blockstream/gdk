@@ -169,6 +169,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:19002" },
             { "liquid", false },
             { "mainnet", false },
+            { "max_reorg_blocks", 7 * 144u },
             { "name", "Localtest" },
             { "network", "localtest" },
             { "p2pkh_version", 111u },
@@ -203,6 +204,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:995" },
             { "liquid", true },
             { "mainnet", true },
+            { "max_reorg_blocks", 2 },
             { "name", "Liquid" },
             { "network", "liquid" },
             { "p2pkh_version", 57u },
@@ -238,6 +240,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:50001" },
             { "liquid", true },
             { "mainnet", false },
+            { "max_reorg_blocks", 2 },
             { "name", "Localtest Liquid" },
             { "network", "localtest-liquid" },
             { "p2pkh_version", 235u },
@@ -273,6 +276,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:465" },
             { "liquid", true },
             { "mainnet", false },
+            { "max_reorg_blocks", 2 },
             { "name", "Testnet Liquid" },
             { "network", "testnet-liquid" },
             { "p2pkh_version", 36u },
@@ -302,6 +306,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:700" },
             { "liquid", false },
             { "mainnet", true },
+            { "max_reorg_blocks", 144u },
             { "name", "Bitcoin" },
             { "network", "mainnet" },
             { "p2pkh_version", 0u },
@@ -330,6 +335,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:993" },
             { "liquid", false },
             { "mainnet", false },
+            { "max_reorg_blocks", 7 * 144u },
             { "name", "Testnet" },
             { "network", "testnet" },
             { "p2pkh_version", 111u },
@@ -365,6 +371,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:995" },
             { "liquid", true },
             { "mainnet", true },
+            { "max_reorg_blocks", 2 },
             { "name", "Liquid (Electrum)" },
             { "network", "electrum-liquid" },
             { "p2pkh_version", 57u },
@@ -400,6 +407,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:50001" },
             { "liquid", true },
             { "mainnet", false },
+            { "max_reorg_blocks", 2 },
             { "name", "Localtest Liquid (Electrum)" },
             { "network", "electrum-localtest-liquid" },
             { "p2pkh_version", 235u },
@@ -429,6 +437,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:700" },
             { "liquid", false },
             { "mainnet", true },
+            { "max_reorg_blocks", 144u },
             { "name", "Bitcoin (Electrum)" },
             { "network", "electrum-mainnet" },
             { "p2pkh_version", 0u },
@@ -457,6 +466,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:993" },
             { "liquid", false },
             { "mainnet", false },
+            { "max_reorg_blocks", 7 * 144u },
             { "name", "Testnet (Electrum)" },
             { "network", "electrum-testnet" },
             { "p2pkh_version", 111u },
@@ -485,6 +495,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "localhost:50001" },
             { "liquid", false },
             { "mainnet", false },
+            { "max_reorg_blocks", 7 * 144u },
             { "name", "Localtest (Electrum)" },
             { "network", "electrum-localtest" },
             { "p2pkh_version", 111u },
@@ -519,6 +530,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_url", "blockstream.info:465" },
             { "liquid", true },
             { "mainnet", false },
+            { "max_reorg_blocks", 2 },
             { "name", "Testnet Liquid (Electrum)" },
             { "network", "electrum-testnet-liquid" },
             { "p2pkh_version", 36u },
@@ -677,5 +689,15 @@ namespace sdk {
     }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
     uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }
+    // max_reorg_blocks indicates the maximum number of blocks that gdk will expect to re-org on-chain.
+    // In the event that a re-org is larger than this value, AND the user has a tx re-orged in a block
+    // older than the current tip minus max_reorg_blocks, cached data may become out of date and will
+    // need to be removed. The values chosen are designed to make this scenario extremely unlikely:
+    // Liquid does not have re-orgs beyond possibly the tip so is set to 2 blocks.
+    // BTC mainnet is set to one day (144 blocks), more than 2x the largest ever (53 block) re-org seen.
+    // BTC testnet/regtest are set to one week (7 * 144 blocks), this allows regtest test runs under
+    // a weeks worth of blocks without cache deletion, and for testnet still allows cache finalization
+    // testing while being unnaffected by normal chain operation.
+    uint32_t network_parameters::get_max_reorg_blocks() const { return m_details.at("max_reorg_blocks"); }
 } // namespace sdk
 } // namespace ga

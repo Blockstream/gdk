@@ -69,6 +69,7 @@ namespace sdk {
         bool is_tls_connection() const;
         std::vector<uint32_t> csv_buckets() const;
         uint32_t cert_expiry_threshold() const;
+        uint32_t get_max_reorg_blocks() const;
 
     private:
         nlohmann::json m_details;
