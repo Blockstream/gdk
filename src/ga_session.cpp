@@ -1520,13 +1520,15 @@ namespace sdk {
                 m_tx_notifications.erase(m_tx_notifications.begin()); // pop the oldest
             }
 
+            const std::string txhash_hex = details.at("txhash");
             for (auto subaccount : subaccounts) {
                 const auto p = m_subaccounts.find(subaccount);
                 // TODO: Handle other logged in sessions creating subaccounts
                 GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
 
                 // Update affected subaccounts as required
-                m_tx_list_caches.on_new_transaction(subaccount, details);
+                GDK_LOG_SEV(log_level::warning) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
+                m_cache.on_new_transaction(subaccount, txhash_hex);
             }
             m_nlocktimes.reset();
 
@@ -3640,9 +3642,7 @@ namespace sdk {
             update_spending_limits(locker, tx_details["limits"]);
         }
 
-        // Notify the tx cache that a new tx is expected
-        m_tx_list_caches.on_new_transaction(subaccounts[0], { { "txhash", txhash_hex } });
-
+        // FIXME: Mark affected subaccounts dirty // Notify the tx cache that a new tx is expected
         return result;
     }
 
