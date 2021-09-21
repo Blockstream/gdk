@@ -182,6 +182,14 @@ fn create_tx_err(is_liquid: bool) {
         Err(Error::InvalidSubaccount(_))
     ));
 
+    // Fee rate below minimum
+    let mut create_opt =
+        test_session.create_opt(&addr, sat, asset_id.clone(), Some(99), subaccount);
+    assert!(matches!(
+        test_session.session.create_transaction(&mut create_opt),
+        Err(Error::FeeRateBelowMinimum)
+    ));
+
     // Not an address
     let mut create_opt = test_session.create_opt(&"x", sat, asset_id.clone(), fee_rate, subaccount);
     assert!(matches!(

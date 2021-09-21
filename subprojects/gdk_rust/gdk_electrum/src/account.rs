@@ -809,10 +809,14 @@ pub fn create_tx(
 
     let network = &account.network;
 
-    let fee_rate_sat_kb = request.fee_rate.get_or_insert_with(|| match network.id() {
+    let default_min_fee_rate = match network.id() {
         NetworkId::Bitcoin(_) => 1000,
         NetworkId::Elements(_) => 100,
-    });
+    };
+    let fee_rate_sat_kb = request.fee_rate.get_or_insert(default_min_fee_rate);
+    if *fee_rate_sat_kb < default_min_fee_rate {
+        return Err(Error::FeeRateBelowMinimum);
+    }
 
     // convert from satoshi/kbyte to satoshi/byte
     let fee_rate = (*fee_rate_sat_kb as f64) / 1000.0;

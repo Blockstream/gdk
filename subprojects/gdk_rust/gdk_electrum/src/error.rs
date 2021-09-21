@@ -15,6 +15,7 @@ pub enum Error {
     NonConfidentialAddress,
     InvalidAmount,
     EmptyAddressees,
+    FeeRateBelowMinimum,
     AssetEmpty,
     InvalidHeaders,
     InvalidSubaccount(u32),
@@ -57,6 +58,7 @@ impl Display for Error {
             Error::InvalidAmount => write!(f, "invalid amount"),
             Error::InvalidHeaders => write!(f, "invalid headers"),
             Error::EmptyAddressees => write!(f, "addressees cannot be empty"),
+            Error::FeeRateBelowMinimum => write!(f, "fee rate below minimum"),
             Error::AssetEmpty => write!(f, "asset_id cannot be empty in liquid"),
             Error::InvalidSubaccount(sub) => write!(f, "invalid subaccount {}", sub),
             Error::AccountGapsDisallowed => {

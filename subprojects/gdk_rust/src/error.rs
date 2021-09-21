@@ -15,7 +15,6 @@ impl Error {
     pub fn to_gdk_code(&self) -> String {
         // Unhandles error codes:
         // id_no_amount_specified
-        // id_fee_rate_is_below_minimum
         // id_invalid_replacement_fee_rate
         // id_send_all_requires_a_single_output
 
@@ -31,6 +30,9 @@ impl Error {
             }
             Error::Electrum(electrum::error::Error::InvalidAmount) => {
                 "id_invalid_amount".to_string()
+            }
+            Error::Electrum(electrum::error::Error::FeeRateBelowMinimum) => {
+                "id_fee_rate_is_below_minimum".to_string()
             }
             Error::Electrum(electrum::error::Error::PinError) => "id_connection_failed".to_string(),
             Error::Electrum(electrum::error::Error::InvalidPin) => "id_invalid_pin".to_string(),
