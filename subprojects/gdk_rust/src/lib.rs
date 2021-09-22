@@ -158,17 +158,17 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         debug!("hit exchange rate cache");
     } else {
         info!("missed exchange rate cache");
-        let (agent, is_development) = match sess.backend {
-            GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.development),
+        let (agent, is_mainnet) = match sess.backend {
+            GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.mainnet),
         };
         if let Ok(agent) = agent {
-            let rates = if is_development {
+            let rates = if is_mainnet {
+                fetch_exchange_rates(agent)
+            } else {
                 vec![Ticker {
                     pair: Pair::new(Currency::BTC, Currency::USD),
                     rate: 1.1,
                 }]
-            } else {
-                fetch_exchange_rates(agent)
             };
             // still record time even if we get no results
             sess.last_xr_fetch = SystemTime::now();
