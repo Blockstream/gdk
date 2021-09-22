@@ -452,11 +452,12 @@ namespace sdk {
 
     nlohmann::json auto_auth_handler::get_xpubs(std::shared_ptr<signer> signer, const nlohmann::json& paths) const
     {
-        nlohmann::json xpubs = nlohmann::json::array();
+        nlohmann::json::array_t xpubs;
+        xpubs.reserve(paths.size());
         for (const auto& p : paths) {
             xpubs.emplace_back(signer->get_bip32_xpub(p.get<std::vector<uint32_t>>()));
         }
-        return xpubs;
+        return nlohmann::json(std::move(xpubs));
     }
 
 } // namespace sdk

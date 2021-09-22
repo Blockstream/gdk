@@ -322,9 +322,10 @@ namespace sdk {
 
         // We are logged in,
         // Check whether we need to upload confidential addresses.
-        auto scripts = nlohmann::json::array();
+        nlohmann::json::array_t scripts;
         for (const auto& sa : m_session->get_subaccounts()) {
             const uint32_t required_ca = sa.value("required_ca", 0);
+            scripts.reserve(scripts.size() + required_ca);
             for (size_t i = 0; i < required_ca; ++i) {
                 m_addresses.push_back(m_session->get_receive_address({ { "subaccount", sa["pointer"] } }));
                 scripts.push_back(m_addresses.back().at("blinding_script"));
@@ -433,7 +434,8 @@ namespace sdk {
         if (m_details.at("type") == "2of2_no_recovery") {
             // AMP: We need to upload confidential addresses, get the keys for blinding
             // TODO: Server support for returning multiple addresses for AMP subaccounts
-            auto scripts = nlohmann::json::array();
+            nlohmann::json::array_t scripts;
+            scripts.reserve(INITIAL_UPLOAD_CA);
             for (size_t i = 0; i < INITIAL_UPLOAD_CA; ++i) {
                 m_addresses.push_back(m_session->get_receive_address({ { "subaccount", m_subaccount } }));
                 scripts.push_back(m_addresses.back().at("blinding_script"));
@@ -510,7 +512,6 @@ namespace sdk {
             // We need the inputs, augmented with types, scripts and paths
             auto signing_inputs = get_ga_signing_inputs(m_tx_details);
             std::set<std::string> addr_types;
-            nlohmann::json prev_txs;
             for (auto& input : signing_inputs) {
                 const auto& addr_type = input.at("address_type");
                 GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
@@ -526,20 +527,21 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(false);
             }
 
+            nlohmann::json prev_txs;
             if (!m_net_params.is_liquid()) {
                 // BTC: Provide the previous txs data for validation, even
                 // for segwit, in order to mitigate the segwit fee attack.
                 // (Liquid txs are segwit+explicit fee and so not affected)
                 for (const auto& input : signing_inputs) {
                     const std::string txhash = input.at("txhash");
-                    if (prev_txs.find(txhash) == prev_txs.end()) {
+                    if (!prev_txs.contains(txhash)) {
                         prev_txs.emplace(txhash, m_session->get_transaction_details(txhash).at("transaction"));
                     }
                 }
             }
             m_twofactor_data["signing_address_types"] = std::vector<std::string>(addr_types.begin(), addr_types.end());
             m_twofactor_data["signing_inputs"] = signing_inputs;
-            m_twofactor_data["signing_transactions"] = prev_txs;
+            m_twofactor_data["signing_transactions"] = std::move(prev_txs);
             // FIXME: Do not duplicate the transaction_outputs in required_data
             m_twofactor_data["transaction_outputs"] = m_tx_details["transaction_outputs"];
         }
@@ -749,12 +751,13 @@ namespace sdk {
 
     auth_handler::state_type create_transaction_call::check_change_outputs()
     {
-        auto scripts = nlohmann::json::array();
+        nlohmann::json::array_t scripts;
 
         if (m_net_params.is_liquid()) {
             // Check whether we have any unblinded change outputs
             const auto change_addresses_p = m_result.find("change_address");
             if (change_addresses_p != m_result.end()) {
+                scripts.reserve(change_addresses_p->size());
                 for (auto& it : change_addresses_p->items()) {
                     if (!it.value().value("is_blinded", false)) {
                         scripts.push_back(it.value().at("blinding_script"));
