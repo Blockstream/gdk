@@ -244,7 +244,6 @@ namespace sdk {
         void update_address_info(nlohmann::json& address, bool is_historic);
         std::shared_ptr<nlocktime_t> update_nlocktime_info(session_impl::locker_t& locker);
 
-        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
         void save_cache();
 
         context_ptr tls_init_handler_impl(

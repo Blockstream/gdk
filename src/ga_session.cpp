@@ -1833,12 +1833,6 @@ namespace sdk {
         m_cache->save_db();
     }
 
-    void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
-    {
-        locker_t locker(m_mutex);
-        set_local_encryption_keys(locker, public_key, signer);
-    }
-
     template <typename T> static bool set_optional_member(boost::optional<T>& member, T&& new_value)
     {
         // Allow changing the value only if it is not already set
@@ -1850,10 +1844,10 @@ namespace sdk {
         return false;
     }
 
-    void ga_session::set_local_encryption_keys(
-        session_impl::locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer)
+    void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        locker_t locker(m_mutex);
+
         if (!set_optional_member(m_local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT))) {
             // Already set, we are re-logging in with the same credentials
             return;
