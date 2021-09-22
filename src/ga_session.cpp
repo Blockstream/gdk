@@ -33,6 +33,8 @@
 #include "version.h"
 #include "xpub_hdkey.hpp"
 
+#define TX_CACHE_LEVEL log_level::debug
+
 namespace asio = boost::asio;
 
 namespace ga {
@@ -1527,7 +1529,7 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
 
                 // Update affected subaccounts as required
-                GDK_LOG_SEV(log_level::warning) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
                 m_cache->on_new_transaction(subaccount, txhash_hex);
             }
             m_nlocktimes.reset();
@@ -1574,8 +1576,7 @@ namespace sdk {
             // Update the tx cache.
             for (const auto& sa : m_subaccounts) {
                 if (diverged /* FIXME: or missed a block notification */) {
-                    GDK_LOG_SEV(log_level::warning)
-                        << "Tx sync(" << sa.first << "): new diverged block " << reorg_block;
+                    GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new diverged block " << reorg_block;
                     m_cache->delete_block_txs(sa.first, reorg_block);
                     // We can have a mempool tx older than the max re-org height.
                     // Fall through to delete forward from any mempool txs remaining
@@ -1583,7 +1584,7 @@ namespace sdk {
                 // The backend does not notify us when an existing mempool tx
                 // becomes confirmed. Therefore delete from the oldest mempool
                 // tx forward in case one of them confirmed in this block.
-                GDK_LOG_SEV(log_level::warning) << "Tx sync(" << sa.first << "): new block, deleting mempool";
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new block, deleting mempool";
                 m_cache->delete_mempool_txs(sa.first);
             }
             m_cache->save_db(); // No-op if unchanged
@@ -1880,7 +1881,7 @@ namespace sdk {
         const uint32_t reorg_block = m_block_height < reorg_blocks ? 0 : m_block_height - reorg_blocks;
         for (const auto& sa : m_subaccounts) {
             // Remove txs up to the max re-org depth from our last known block height
-            GDK_LOG_SEV(log_level::warning) << "Tx sync(" << sa.first << "): reset cached " << reorg_block;
+            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): reset cached " << reorg_block;
             m_cache->delete_block_txs(sa.first, reorg_block);
             m_cache->delete_mempool_txs(sa.first);
         }
@@ -2614,11 +2615,11 @@ namespace sdk {
 
         // Get a page of txs from the server if any are newer than our last cached one
         const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
-        GDK_LOG_SEV(log_level::warning) << "Tx sync(" << subaccount << "): latest timestamp = " << timestamp;
+        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): latest timestamp = " << timestamp;
         auto result = wamp_call(locker, "txs.get_list_v3", subaccount, timestamp);
         nlohmann::json txs = wamp_cast_json(result);
-        GDK_LOG_SEV(log_level::warning) << "Tx sync(" << subaccount << "): server returned " << txs["list"].size()
-                                        << " txs, more = " << txs["more"];
+        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): server returned " << txs["list"].size()
+                                    << " txs, more = " << txs["more"];
 
         for (auto& tx : txs["list"]) {
             // Compute the tx weight and fee rate
@@ -2657,8 +2658,8 @@ namespace sdk {
         if (sync_disrupted) {
             // Cached tx data was changed while syncing, e.g. a block or tx arrived.
             // Only cache any blinding data/liquid outputs, not the returned txs.
-            GDK_LOG_SEV(log_level::warning)
-                << "Tx sync(" << subaccount << ") disrupted: " << txs["sync_ts"] << " != " << timestamp;
+            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << ") disrupted: " << txs["sync_ts"]
+                                        << " != " << timestamp;
             txs["more"] = true; // Ensure the caller iterates to re-sync
             if (!is_liquid) {
                 // Non-liquid sessions have no blinding data to cache.
@@ -2805,7 +2806,7 @@ namespace sdk {
             if (!sync_disrupted) {
                 // Insert the tx into the DB cache now that it is cleaned up/unblinded
                 const auto tx_timestamp = tx_details.at("created_at_ts");
-                GDK_LOG_SEV(log_level::warning)
+                GDK_LOG_SEV(TX_CACHE_LEVEL)
                     << "Tx sync(" << subaccount << ") inserting " << txhash << ":" << tx_timestamp;
                 m_cache->insert_transaction(subaccount, tx_timestamp, txhash, tx_details);
                 txs["sync_ts"] = tx_timestamp;
@@ -2876,9 +2877,8 @@ namespace sdk {
         const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
         const bool sync_disrupted = details["sync_ts"] != timestamp;
         if (sync_disrupted) {
-            GDK_LOG_SEV(log_level::warning)
-                << "Tx sync(" << subaccount << ") disrupted before fetch: " << details["sync_ts"]
-                << " != " << timestamp;
+            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount
+                                        << ") disrupted before fetch: " << details["sync_ts"] << " != " << timestamp;
             return nlohmann::json(false);
         }
 
