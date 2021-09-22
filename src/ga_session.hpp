@@ -13,7 +13,6 @@
 #include "ga_wally.hpp"
 #include "session_impl.hpp"
 #include "threading.hpp"
-#include "tx_list_cache.hpp"
 
 using namespace std::literals;
 
@@ -338,7 +337,6 @@ namespace sdk {
         std::chrono::system_clock::time_point m_tx_last_notification;
 
         uint32_t m_multi_call_category;
-        tx_list_caches m_tx_list_caches;
         std::shared_ptr<nlocktime_t> m_nlocktimes;
 
         std::shared_ptr<tor_controller> m_tor_ctrl;

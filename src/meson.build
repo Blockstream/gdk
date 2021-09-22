@@ -26,7 +26,6 @@ cpp_headers = [
            'sqlite3/sqlite3.h',
            'threading.hpp',
            'transaction_utils.hpp',
-           'tx_list_cache.hpp',
            'utils.hpp',
            'xpub_hdkey.hpp']
 
@@ -54,7 +53,6 @@ cpp_sources = [
            'socks_client.cpp',
            'sqlite3/sqlite3.c',
            'transaction_utils.cpp',
-           'tx_list_cache.cpp',
            'utils.cpp',
            'xpub_hdkey.cpp']
 

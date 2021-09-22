@@ -29,7 +29,6 @@
 #include "memory.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
-#include "tx_list_cache.hpp"
 #include "utils.hpp"
 #include "version.h"
 #include "xpub_hdkey.hpp"
