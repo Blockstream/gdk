@@ -21,6 +21,8 @@ namespace sdk {
         cache(const network_parameters& net_params, const std::string& network_name);
         ~cache();
 
+        const std::string& get_network_name() const;
+
         nlohmann::json get_liquid_output(byte_span_t txhash, const uint32_t vout);
         void insert_liquid_output(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
 

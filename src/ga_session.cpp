@@ -18,6 +18,7 @@
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
+#include "ga_cache.hpp"
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
@@ -515,7 +516,7 @@ namespace sdk {
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_multi_call_category(0)
-        , m_cache(m_net_params, m_net_params.network())
+        , m_cache(std::make_shared<cache>(m_net_params, m_net_params.network()))
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
         , m_wamp_call_options()
         , m_wamp_call_prefix("com.greenaddress.")
@@ -534,7 +535,7 @@ namespace sdk {
             stop_reconnect();
             m_pool.join();
             unsubscribe();
-            reset_all_session_data();
+            reset_all_session_data(true);
             disconnect();
             m_controller->reset();
         });
@@ -977,7 +978,7 @@ namespace sdk {
         nlohmann::json cached = nlohmann::json::object();
         {
             locker_t locker(m_mutex);
-            m_cache.get_key_value(cache_key, { [&cached, &key](const auto& db_blob) {
+            m_cache->get_key_value(cache_key, { [&cached, &key](const auto& db_blob) {
                 if (db_blob) {
                     try {
                         auto uncompressed = decompress(db_blob.get());
@@ -1023,7 +1024,7 @@ namespace sdk {
                 // Encache the update
                 auto compressed = compress(byte_span_t(), nlohmann::json::to_msgpack(cached));
                 locker_t locker(m_mutex);
-                m_cache.upsert_key_value(cache_key, compressed);
+                m_cache->upsert_key_value(cache_key, compressed);
             }
         }
 
@@ -1064,7 +1065,7 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT_MSG(found_key, "Either assets or icons must be requested");
         locker_t locker(m_mutex);
-        m_cache.save_db(); // Save any updated cached data
+        m_cache->save_db(); // Save any updated cached data
         return result;
     }
 
@@ -1528,7 +1529,7 @@ namespace sdk {
 
                 // Update affected subaccounts as required
                 GDK_LOG_SEV(log_level::warning) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
-                m_cache.on_new_transaction(subaccount, txhash_hex);
+                m_cache->on_new_transaction(subaccount, txhash_hex);
             }
             m_nlocktimes.reset();
 
@@ -1576,7 +1577,7 @@ namespace sdk {
                 if (diverged /* FIXME: or missed a block notification */) {
                     GDK_LOG_SEV(log_level::warning)
                         << "Tx sync(" << sa.first << "): new diverged block " << reorg_block;
-                    m_cache.delete_block_txs(sa.first, reorg_block);
+                    m_cache->delete_block_txs(sa.first, reorg_block);
                     // We can have a mempool tx older than the max re-org height.
                     // Fall through to delete forward from any mempool txs remaining
                 }
@@ -1584,9 +1585,9 @@ namespace sdk {
                 // becomes confirmed. Therefore delete from the oldest mempool
                 // tx forward in case one of them confirmed in this block.
                 GDK_LOG_SEV(log_level::warning) << "Tx sync(" << sa.first << "): new block, deleting mempool";
-                m_cache.delete_mempool_txs(sa.first);
+                m_cache->delete_mempool_txs(sa.first);
             }
-            m_cache.save_db(); // No-op if unchanged
+            m_cache->save_db(); // No-op if unchanged
 
             const uint32_t block_height = details["block_height"];
             if (block_height > m_block_height) {
@@ -1664,7 +1665,7 @@ namespace sdk {
         if (login_data.is_boolean()) {
             // Login failed
             locker.unlock();
-            reset_all_session_data();
+            reset_all_session_data(false);
             throw login_error(res::id_login_failed);
         } else if (!is_initial_login) {
             // Re-login. Discard all cached data which may be out of date
@@ -1699,14 +1700,14 @@ namespace sdk {
 
             // Delete all cached txs since they may have memos embedded
             for (const auto& sa : login_data["subaccounts"]) {
-                m_cache.delete_transactions(sa["pointer"]);
+                m_cache->delete_transactions(sa["pointer"]);
             }
-            m_cache.save_db();
+            m_cache->save_db();
         }
 
         if (m_blob_hmac.empty()) {
             // Load our client blob from from the cache if we have one
-            m_cache.get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) {
+            m_cache->get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) {
                 if (db_blob) {
                     const std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
                     if (db_hmac == server_hmac) {
@@ -1828,8 +1829,8 @@ namespace sdk {
     void ga_session::encache_client_blob(session_impl::locker_t& locker, const std::vector<unsigned char>& data)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        m_cache.upsert_key_value("client_blob", data);
-        m_cache.save_db();
+        m_cache->upsert_key_value("client_blob", data);
+        m_cache->save_db();
     }
 
     void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
@@ -1861,16 +1862,16 @@ namespace sdk {
         const auto tmp_span = gsl::make_span(tmp_key);
         set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
         set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
-        m_cache.load_db(m_local_encryption_key.get(), signer->is_hardware() ? 1 : 0);
+        m_cache->load_db(m_local_encryption_key.get(), signer->is_hardware() ? 1 : 0);
         // Save the cache in case we carried forward data from a previous version
-        m_cache.save_db(); // No-op if unchanged
+        m_cache->save_db(); // No-op if unchanged
         load_signer_xpubs(locker, signer);
     }
 
     void ga_session::save_cache()
     {
         locker_t locker(m_mutex);
-        m_cache.save_db(); // No-op if unchanged
+        m_cache->save_db(); // No-op if unchanged
     }
 
     void ga_session::reset_cached_session_data(session_impl::locker_t& locker)
@@ -1887,13 +1888,13 @@ namespace sdk {
         for (const auto& sa : m_subaccounts) {
             // Remove txs up to the max re-org depth from our last known block height
             GDK_LOG_SEV(log_level::warning) << "Tx sync(" << sa.first << "): reset cached " << reorg_block;
-            m_cache.delete_block_txs(sa.first, reorg_block);
-            m_cache.delete_mempool_txs(sa.first);
+            m_cache->delete_block_txs(sa.first, reorg_block);
+            m_cache->delete_mempool_txs(sa.first);
         }
         m_nlocktimes.reset();
     }
 
-    void ga_session::reset_all_session_data()
+    void ga_session::reset_all_session_data(bool in_dtor)
     {
         try {
             locker_t locker(m_mutex);
@@ -1917,8 +1918,10 @@ namespace sdk {
             m_fee_estimates_ts = now;
             swap_with_default(m_tx_notifications);
             m_tx_last_notification = now;
-            m_tx_list_caches.purge_all();
             m_nlocktimes.reset();
+            if (!in_dtor) {
+                m_cache = std::make_shared<cache>(m_net_params, m_cache->get_network_name());
+            }
         } catch (const std::exception& ex) {
         }
     }
@@ -2016,7 +2019,7 @@ namespace sdk {
             return decrypted.at("mnemonic");
         } catch (const autobahn::call_error& e) {
             GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
-            reset_all_session_data();
+            reset_all_session_data(false);
             throw login_error(res::id_invalid_pin);
         }
     }
@@ -2041,7 +2044,7 @@ namespace sdk {
 
         if (login_data.is_boolean()) {
             locker.unlock();
-            reset_all_session_data();
+            reset_all_session_data(false);
             throw login_error(res::id_user_not_found_or_invalid);
         } else if (!is_initial_login) {
             // Re-login. Discard all cached data which may be out of date
@@ -2395,15 +2398,15 @@ namespace sdk {
             // Note that we cache the values inverted as the master key is empty
             cached_xpubs.emplace(item.second, item.first);
         }
-        m_cache.upsert_key_value("xpubs", nlohmann::json::to_msgpack(cached_xpubs));
-        m_cache.save_db();
+        m_cache->upsert_key_value("xpubs", nlohmann::json::to_msgpack(cached_xpubs));
+        m_cache->save_db();
     }
 
     void ga_session::load_signer_xpubs(session_impl::locker_t& locker, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(signer.get());
-        m_cache.get_key_value("xpubs", { [&signer](const auto& db_blob) {
+        m_cache->get_key_value("xpubs", { [&signer](const auto& db_blob) {
             if (db_blob) {
                 try {
                     auto cached = nlohmann::json::from_msgpack(db_blob.get().begin(), db_blob.get().end());
@@ -2488,7 +2491,7 @@ namespace sdk {
         }
 
         if (!txhash.empty()) {
-            const auto cached = m_cache.get_liquid_output(h2b(txhash), pt_idx);
+            const auto cached = m_cache->get_liquid_output(h2b(txhash), pt_idx);
             if (!cached.empty()) {
                 utxo.update(cached.begin(), cached.end());
                 utxo["confidential"] = true;
@@ -2505,7 +2508,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
         try {
-            std::vector<unsigned char> nonce = m_cache.get_liquid_blinding_nonce(nonce_commitment, script);
+            std::vector<unsigned char> nonce = m_cache->get_liquid_blinding_nonce(nonce_commitment, script);
             if (nonce.empty()) {
                 utxo["error"] = "missing blinding nonce";
                 missing.emplace(std::make_pair(nonce_commitment, script));
@@ -2521,7 +2524,7 @@ namespace sdk {
             utxo["confidential"] = true;
             utxo.erase("error");
             if (!txhash.empty()) {
-                m_cache.insert_liquid_output(h2b(txhash), pt_idx, utxo);
+                m_cache->insert_liquid_output(h2b(txhash), pt_idx, utxo);
                 return true; // Cache was updated
             }
         } catch (const std::exception& ex) {
@@ -2617,7 +2620,7 @@ namespace sdk {
         const auto cleanup = gsl::finally([this]() { m_multi_call_category &= ~MC_TX_CACHE; });
 
         // Get a page of txs from the server if any are newer than our last cached one
-        const auto timestamp = m_cache.get_latest_transaction_timestamp(subaccount);
+        const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
         GDK_LOG_SEV(log_level::warning) << "Tx sync(" << subaccount << "): latest timestamp = " << timestamp;
         auto result = wamp_call(locker, "txs.get_list_v3", subaccount, timestamp);
         nlohmann::json txs = wamp_cast_json(result);
@@ -2656,7 +2659,7 @@ namespace sdk {
         m_multi_call_category |= MC_TX_CACHE;
         const auto cleanup = gsl::finally([this]() { m_multi_call_category &= ~MC_TX_CACHE; });
 
-        const auto timestamp = m_cache.get_latest_transaction_timestamp(subaccount);
+        const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
         const bool sync_disrupted = txs["sync_ts"] != timestamp;
         if (sync_disrupted) {
             // Cached tx data was changed while syncing, e.g. a block or tx arrived.
@@ -2811,12 +2814,12 @@ namespace sdk {
                 const auto tx_timestamp = tx_details.at("created_at_ts");
                 GDK_LOG_SEV(log_level::warning)
                     << "Tx sync(" << subaccount << ") inserting " << txhash << ":" << tx_timestamp;
-                m_cache.insert_transaction(subaccount, tx_timestamp, txhash, tx_details);
+                m_cache->insert_transaction(subaccount, tx_timestamp, txhash, tx_details);
                 txs["sync_ts"] = tx_timestamp;
             }
         }
         // Save the cache to store any updated cached data
-        m_cache.save_db(); // No-op if unchanged
+        m_cache->save_db(); // No-op if unchanged
     }
 
     void ga_session::postprocess_transactions(nlohmann::json& tx_list)
@@ -2877,7 +2880,7 @@ namespace sdk {
         nlohmann::json::array_t result;
         result.reserve(std::min(count, 1000u)); // Prevent reallocs for reasonable fetches
         locker_t locker(m_mutex);
-        const auto timestamp = m_cache.get_latest_transaction_timestamp(subaccount);
+        const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
         const bool sync_disrupted = details["sync_ts"] != timestamp;
         if (sync_disrupted) {
             GDK_LOG_SEV(log_level::warning)
@@ -2886,7 +2889,7 @@ namespace sdk {
             return nlohmann::json(false);
         }
 
-        m_cache.get_transactions(subaccount, first, count,
+        m_cache->get_transactions(subaccount, first, count,
             { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, nlohmann::json& tx_json) {
                 result.emplace_back(std::move(tx_json));
             } });
@@ -2917,10 +2920,10 @@ namespace sdk {
         locker_t locker(m_mutex);
         const auto pubkey = h2b(pubkey_hex);
         const auto script = h2b(script_hex);
-        if (!m_cache.get_liquid_blinding_nonce(pubkey, script).empty()) {
+        if (!m_cache->get_liquid_blinding_nonce(pubkey, script).empty()) {
             return false; // Not updated, already present
         }
-        m_cache.insert_liquid_blinding_nonce(pubkey, script, h2b(nonce_hex));
+        m_cache->insert_liquid_blinding_nonce(pubkey, script, h2b(nonce_hex));
         return true; // Updated
     }
 
@@ -2933,7 +2936,7 @@ namespace sdk {
         auto utxos = wamp_cast_json(wamp_call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
         locker_t locker(m_mutex);
         if (cleanup_utxos(locker, utxos, std::string(), missing)) {
-            m_cache.save_db(); // Cache was updated; save it
+            m_cache->save_db(); // Cache was updated; save it
         }
 
         // Compute the locktime of our UTXOs locally where we can
@@ -2977,7 +2980,7 @@ namespace sdk {
             unique_pubkeys_and_scripts_t missing;
             locker_t locker(m_mutex);
             if (cleanup_utxos(locker, utxos, std::string(), missing)) {
-                m_cache.save_db(); // Cache was updated; save it
+                m_cache->save_db(); // Cache was updated; save it
             }
         }
 

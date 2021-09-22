@@ -352,6 +352,8 @@ namespace sdk {
 
     cache::~cache() {}
 
+    const std::string& cache::get_network_name() const { return m_network_name; }
+
     void cache::save_db()
     {
         if (m_db_name.empty() || !m_require_write) {
