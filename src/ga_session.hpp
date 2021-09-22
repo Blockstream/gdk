@@ -183,6 +183,7 @@ namespace sdk {
 
     private:
         void reset_cached_session_data(locker_t& locker);
+        void delete_reorg_block_txs(locker_t& locker, bool from_latest_cached);
         void reset_all_session_data(bool in_dtor);
 
         bool is_connected() const;

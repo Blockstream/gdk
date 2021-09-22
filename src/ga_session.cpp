@@ -1256,6 +1256,7 @@ namespace sdk {
 
         const uint32_t block_height = m_login_data["block_height"];
         m_block_height = block_height;
+        m_cache->set_latest_block(block_height);
 
         m_subaccounts.clear();
         m_next_subaccount = 0;
@@ -1587,12 +1588,13 @@ namespace sdk {
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new block, deleting mempool";
                 m_cache->delete_mempool_txs(sa.first);
             }
-            m_cache->save_db(); // No-op if unchanged
 
             const uint32_t block_height = details["block_height"];
             if (block_height > m_block_height) {
                 m_block_height = block_height;
+                m_cache->set_latest_block(block_height);
             }
+            m_cache->save_db();
 
             unique_unlock unlocker(locker);
             if (diverged) {
@@ -1736,6 +1738,10 @@ namespace sdk {
 
         constexpr bool watch_only = false;
         update_login_data(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
+        if (is_initial_login) {
+            constexpr bool from_latest_cached = true; // Delete from last cached block
+            delete_reorg_block_txs(locker, from_latest_cached);
+        }
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
@@ -1877,15 +1883,24 @@ namespace sdk {
         // (as we may have missed a mempool tx notification)
         remove_cached_utxos(std::vector<uint32_t>());
         swap_with_default(m_tx_notifications);
+        constexpr bool from_latest_cached = false; // Delete from last seen block
+        delete_reorg_block_txs(locker, from_latest_cached);
+        m_nlocktimes.reset();
+    }
+
+    void ga_session::delete_reorg_block_txs(session_impl::locker_t& locker, bool from_latest_cached)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        const uint32_t start_block = from_latest_cached ? m_cache->get_latest_block() : m_block_height;
         const uint32_t reorg_blocks = m_net_params.get_max_reorg_blocks();
-        const uint32_t reorg_block = m_block_height < reorg_blocks ? 0 : m_block_height - reorg_blocks;
+        const uint32_t reorg_block = start_block < reorg_blocks ? 0 : start_block - reorg_blocks;
+        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: delete from " << (from_latest_cached ? "cached" : "current") << "@"
+                                    << start_block << " deleting from " << reorg_block;
         for (const auto& sa : m_subaccounts) {
             // Remove txs up to the max re-org depth from our last known block height
-            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): reset cached " << reorg_block;
             m_cache->delete_block_txs(sa.first, reorg_block);
             m_cache->delete_mempool_txs(sa.first);
         }
-        m_nlocktimes.reset();
     }
 
     void ga_session::reset_all_session_data(bool in_dtor)
