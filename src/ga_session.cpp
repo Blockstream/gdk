@@ -1532,6 +1532,7 @@ namespace sdk {
                 // Update affected subaccounts as required
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
                 m_cache->on_new_transaction(subaccount, txhash_hex);
+                m_synced_subaccounts.erase(subaccount);
             }
             m_nlocktimes.reset();
 
@@ -1587,6 +1588,8 @@ namespace sdk {
                 // tx forward in case one of them confirmed in this block.
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new block, deleting mempool";
                 m_cache->delete_mempool_txs(sa.first);
+                // FIXME: Only mark unsynced if the subaccount changed
+                m_synced_subaccounts.erase(sa.first);
             }
 
             const uint32_t block_height = details["block_height"];
@@ -1900,6 +1903,9 @@ namespace sdk {
             // Remove txs up to the max re-org depth from our last known block height
             m_cache->delete_block_txs(sa.first, reorg_block);
             m_cache->delete_mempool_txs(sa.first);
+            // FIXME: Only mark unsynced if !from_latest_cached or the subaccount changed
+            // (i.e. this is a re-login, or initial login that removed txs)
+            m_synced_subaccounts.erase(sa.first);
         }
     }
 
@@ -1930,6 +1936,7 @@ namespace sdk {
             m_nlocktimes.reset();
             if (!in_dtor) {
                 m_cache = std::make_shared<cache>(m_net_params, m_cache->get_network_name());
+                m_synced_subaccounts.clear();
             }
         } catch (const std::exception& ex) {
         }
@@ -2628,9 +2635,16 @@ namespace sdk {
         m_multi_call_category |= MC_TX_CACHE;
         const auto cleanup = gsl::finally([this]() { m_multi_call_category &= ~MC_TX_CACHE; });
 
-        // Get a page of txs from the server if any are newer than our last cached one
         const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
         GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): latest timestamp = " << timestamp;
+
+        if (m_synced_subaccounts.count(subaccount)) {
+            // We know our cache is up to date, avoid going to the server
+            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): already synced";
+            return { { "list", nlohmann::json::array() }, { "more", false }, { "sync_ts", timestamp } };
+        }
+
+        // Get a page of txs from the server if any are newer than our last cached one
         auto result = wamp_call(locker, "txs.get_list_v3", subaccount, timestamp);
         nlohmann::json txs = wamp_cast_json(result);
         GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): server returned " << txs["list"].size()
@@ -2676,6 +2690,9 @@ namespace sdk {
             GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << ") disrupted: " << txs["sync_ts"]
                                         << " != " << timestamp;
             txs["more"] = true; // Ensure the caller iterates to re-sync
+            // Mark the subaccount as not yet up to date
+            m_synced_subaccounts.erase(subaccount);
+
             if (!is_liquid) {
                 // Non-liquid sessions have no blinding data to cache.
                 // Exit early to allow the caller to continue syncing.
@@ -2827,6 +2844,10 @@ namespace sdk {
                 txs["sync_ts"] = tx_timestamp;
             }
         }
+        if (!sync_disrupted && !txs["more"]) {
+            // We have synced all available transactions, mark the subaccount up to date
+            m_synced_subaccounts.insert(subaccount);
+        }
         // Save the cache to store any updated cached data
         m_cache->save_db(); // No-op if unchanged
     }
@@ -2894,6 +2915,8 @@ namespace sdk {
         if (sync_disrupted) {
             GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount
                                         << ") disrupted before fetch: " << details["sync_ts"] << " != " << timestamp;
+            // Note we don't need to update m_synced_subaccounts here as
+            // the caller will re-iterate to sync
             return nlohmann::json(false);
         }
 

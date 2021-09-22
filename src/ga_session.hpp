@@ -343,6 +343,7 @@ namespace sdk {
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
         std::shared_ptr<cache> m_cache;
+        std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
 
         autobahn::wamp_call_options m_wamp_call_options;
