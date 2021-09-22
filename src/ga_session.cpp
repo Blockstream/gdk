@@ -1882,7 +1882,14 @@ namespace sdk {
         // (as we may have missed a mempool tx notification)
         remove_cached_utxos(std::vector<uint32_t>());
         swap_with_default(m_tx_notifications);
-        m_tx_list_caches.purge_all();
+        const uint32_t reorg_blocks = m_net_params.get_max_reorg_blocks();
+        const uint32_t reorg_block = m_block_height < reorg_blocks ? 0 : m_block_height - reorg_blocks;
+        for (const auto& sa : m_subaccounts) {
+            // Remove txs up to the max re-org depth from our last known block height
+            GDK_LOG_SEV(log_level::warning) << "Tx sync(" << sa.first << "): reset cached " << reorg_block;
+            m_cache.delete_block_txs(sa.first, reorg_block);
+            m_cache.delete_mempool_txs(sa.first);
+        }
         m_nlocktimes.reset();
     }
 
