@@ -29,7 +29,7 @@ use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
-use gdk_common::{ElementsNetwork, Network, NetworkId};
+use gdk_common::{ElementsNetwork, Network, NetworkId, LIQUID_TESTNET};
 
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
@@ -678,6 +678,7 @@ fn get_coin_type(network_id: NetworkId) -> u32 {
         },
         NetworkId::Elements(elements_network) => match elements_network {
             ElementsNetwork::Liquid => 1776,
+            ElementsNetwork::LiquidTestnet => 1,
             ElementsNetwork::ElementsRegtest => 1,
         },
     }
@@ -742,6 +743,7 @@ fn elements_address(
 fn elements_address_params(net: ElementsNetwork) -> &'static elements::AddressParams {
     match net {
         ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
+        ElementsNetwork::LiquidTestnet => &LIQUID_TESTNET,
         ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
     }
 }

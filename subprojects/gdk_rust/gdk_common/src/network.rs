@@ -37,6 +37,7 @@ pub struct Network {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ElementsNetwork {
     Liquid,
+    LiquidTestnet,
     ElementsRegtest,
 }
 
@@ -61,11 +62,19 @@ impl NetworkId {
     }
 }
 
+pub const LIQUID_TESTNET: elements::AddressParams = elements::AddressParams {
+    p2pkh_prefix: 36,
+    p2sh_prefix: 19,
+    blinded_prefix: 23,
+    bech_hrp: "tex",
+    blech_hrp: "tlq",
+};
+
 impl Network {
     pub fn id(&self) -> NetworkId {
         match (self.liquid, self.mainnet, self.development) {
             (true, true, false) => NetworkId::Elements(ElementsNetwork::Liquid),
-            (true, false, false) => NetworkId::Elements(ElementsNetwork::ElementsRegtest),
+            (true, false, false) => NetworkId::Elements(ElementsNetwork::LiquidTestnet),
             (true, false, true) => NetworkId::Elements(ElementsNetwork::ElementsRegtest),
             (false, true, false) => NetworkId::Bitcoin(bitcoin::Network::Bitcoin),
             (false, false, false) => NetworkId::Bitcoin(bitcoin::Network::Testnet),

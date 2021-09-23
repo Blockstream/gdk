@@ -4,7 +4,7 @@ use crate::model::Balances;
 use crate::scripts::{p2pkh_script, ScriptType};
 use crate::wally::asset_surjectionproof_size;
 use crate::{bail, ensure};
-use crate::{ElementsNetwork, NetworkId};
+use crate::{ElementsNetwork, NetworkId, LIQUID_TESTNET};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
@@ -182,6 +182,7 @@ impl BETransaction {
                 let script = &tx.output[vout as usize].script_pubkey;
                 let params = match net {
                     ElementsNetwork::Liquid => &AddressParams::LIQUID,
+                    ElementsNetwork::LiquidTestnet => &LIQUID_TESTNET,
                     ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
                 };
                 elements::Address::from_script(script, None, params).map(|a| a.to_string())
