@@ -546,7 +546,7 @@ namespace sdk {
         m_require_write = true;
     }
 
-    void cache::delete_mempool_txs(uint32_t subaccount)
+    bool cache::delete_mempool_txs(uint32_t subaccount)
     {
         // Delete all transactions from the earliest mempool tx onwards
         boost::optional<uint64_t> db_timestamp;
@@ -555,12 +555,14 @@ namespace sdk {
             bind_int(m_stmt_tx_mempool_search, 1, subaccount);
             db_timestamp = get_tx_timestamp(m_stmt_tx_mempool_search);
         }
-        if (db_timestamp != boost::none) {
-            delete_transactions(subaccount, db_timestamp.get());
+        if (db_timestamp == boost::none) {
+            return false; // Cache not updated
         }
+        delete_transactions(subaccount, db_timestamp.get());
+        return true; // Cache updated
     }
 
-    void cache::delete_block_txs(uint32_t subaccount, uint32_t start_block)
+    bool cache::delete_block_txs(uint32_t subaccount, uint32_t start_block)
     {
         // Delete all transactions in the start block or later
         boost::optional<uint64_t> db_timestamp;
@@ -570,9 +572,11 @@ namespace sdk {
             bind_int(m_stmt_tx_block_search, 2, start_block);
             db_timestamp = get_tx_timestamp(m_stmt_tx_block_search);
         }
-        if (db_timestamp != boost::none) {
-            delete_transactions(subaccount, db_timestamp.get());
+        if (db_timestamp == boost::none) {
+            return false; // Cache not updated
         }
+        delete_transactions(subaccount, db_timestamp.get());
+        return true; // Cache updated
     }
 
     void cache::on_new_transaction(uint32_t subaccount, const std::string& txhash_hex)

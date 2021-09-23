@@ -1577,9 +1577,12 @@ namespace sdk {
 
             // Update the tx cache.
             for (const auto& sa : m_subaccounts) {
+                bool removed_txs = false;
                 if (diverged /* FIXME: or missed a block notification */) {
+                    // FIXME: If we missed a block notification, set removed_txs=true
+                    // as we may have missed a new mempool tx.
                     GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new diverged block " << reorg_block;
-                    m_cache->delete_block_txs(sa.first, reorg_block);
+                    removed_txs |= m_cache->delete_block_txs(sa.first, reorg_block);
                     // We can have a mempool tx older than the max re-org height.
                     // Fall through to delete forward from any mempool txs remaining
                 }
@@ -1587,9 +1590,10 @@ namespace sdk {
                 // becomes confirmed. Therefore delete from the oldest mempool
                 // tx forward in case one of them confirmed in this block.
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new block, deleting mempool";
-                m_cache->delete_mempool_txs(sa.first);
-                // FIXME: Only mark unsynced if the subaccount changed
-                m_synced_subaccounts.erase(sa.first);
+                removed_txs |= m_cache->delete_mempool_txs(sa.first);
+                if (removed_txs) {
+                    m_synced_subaccounts.erase(sa.first);
+                }
             }
 
             const uint32_t block_height = details["block_height"];
@@ -1901,11 +1905,14 @@ namespace sdk {
                                     << start_block << " deleting from " << reorg_block;
         for (const auto& sa : m_subaccounts) {
             // Remove txs up to the max re-org depth from our last known block height
-            m_cache->delete_block_txs(sa.first, reorg_block);
-            m_cache->delete_mempool_txs(sa.first);
-            // FIXME: Only mark unsynced if !from_latest_cached or the subaccount changed
-            // (i.e. this is a re-login, or initial login that removed txs)
-            m_synced_subaccounts.erase(sa.first);
+            bool removed_txs = m_cache->delete_block_txs(sa.first, reorg_block);
+            removed_txs |= m_cache->delete_mempool_txs(sa.first);
+            if (!from_latest_cached || removed_txs) {
+                // This is either (a) a re-login which may have missed a mempool tx, or
+                // (b) an initial login that removed txs because they were within the
+                // reorg window. Mark the subaccount as unsynced.
+                m_synced_subaccounts.erase(sa.first);
+            }
         }
     }
 

@@ -48,8 +48,8 @@ namespace sdk {
         void insert_transaction(
             uint32_t subaccount, uint64_t timestamp, const std::string& txhash_hex, const nlohmann::json& tx_json);
         void delete_transactions(uint32_t subaccount, uint64_t start_ts = 0);
-        void delete_mempool_txs(uint32_t subaccount);
-        void delete_block_txs(uint32_t subaccount, uint32_t start_block);
+        bool delete_mempool_txs(uint32_t subaccount);
+        bool delete_block_txs(uint32_t subaccount, uint32_t start_block);
         void on_new_transaction(uint32_t subaccount, const std::string& txhash_hex);
 
         void save_db();
