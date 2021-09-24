@@ -224,13 +224,14 @@ impl Account {
             // TODO how do we label issuance tx?
             let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
             let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
-            let (type_, user_signed) = match (
-                positives > negatives,
-                tx.is_redeposit(&acc_store.paths, &acc_store.all_txs),
-            ) {
-                (_, true) => ("redeposit", true),
-                (true, false) => ("incoming", false),
-                (false, false) => ("outgoing", true),
+            let (type_, user_signed) = if satoshi.is_empty() && self.network.liquid {
+                ("unblindable", false)
+            } else if tx.is_redeposit(&acc_store.paths, &acc_store.all_txs) {
+                ("redeposit", true)
+            } else if positives > negatives {
+                ("incoming", false)
+            } else {
+                ("outgoing", true)
             };
 
             let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
