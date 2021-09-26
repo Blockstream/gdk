@@ -510,12 +510,12 @@ namespace sdk {
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
         , m_fee_estimates_ts(std::chrono::system_clock::now())
-        , m_block_height(0)
         , m_system_message_id(0)
         , m_system_message_ack_id(0)
         , m_watch_only(true)
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
+        , m_last_block_notification()
         , m_multi_call_category(0)
         , m_cache(std::make_shared<cache>(m_net_params, m_net_params.network()))
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
@@ -1254,10 +1254,6 @@ namespace sdk {
         m_fiat_currency = m_login_data["fiat_currency"];
         update_fiat_rate(locker, json_get_value(m_login_data, "fiat_exchange"));
 
-        const uint32_t block_height = m_login_data["block_height"];
-        m_block_height = block_height;
-        m_cache->set_latest_block(block_height);
-
         m_subaccounts.clear();
         m_next_subaccount = 0;
         for (const auto& sa : m_login_data["subaccounts"]) {
@@ -1414,7 +1410,7 @@ namespace sdk {
     uint32_t ga_session::get_block_height() const
     {
         locker_t locker(m_mutex);
-        return m_block_height;
+        return m_last_block_notification["block_height"];
     }
 
     nlohmann::json ga_session::get_spending_limits() const
@@ -1556,59 +1552,97 @@ namespace sdk {
         });
     }
 
-    void ga_session::on_new_block(nlohmann::json details)
+    void ga_session::on_new_block(nlohmann::json details, bool is_relogin)
     {
         auto locker_p{ get_multi_call_locker(MC_TX_CACHE, false) };
         auto& locker = *locker_p;
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            asio::post(m_pool, [this, details] { on_new_block(details); });
+            asio::post(m_pool, [this, details, is_relogin] { on_new_block(details, is_relogin); });
             return;
         }
 
         no_std_exception_escape([&]() {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
-            const uint32_t diverged = details.value("diverged_count", 0);
-            const uint32_t reorg_blocks = diverged ? m_net_params.get_max_reorg_blocks() : 0;
-            const uint32_t reorg_block = m_block_height < reorg_blocks ? 0 : m_block_height - reorg_blocks;
-            json_rename_key(details, "count", "block_height");
+
             details["initial_timestamp"] = m_earliest_block_time;
+            json_rename_key(details, "count", "block_height");
+            details.erase("diverged_count");
+
+            auto& last = m_last_block_notification;
+            bool treat_as_reorg = false;
+            bool may_have_missed_tx = false;
+
+            if (last.empty()) {
+                // First login for this session
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: first login";
+                treat_as_reorg = true;
+            } else if (is_relogin && last != details) {
+                // Re-login and we have missed a block or a reorg while logged out
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: re-login, reorg or missed block";
+                treat_as_reorg = true;
+                may_have_missed_tx = true;
+            } else if (details["previous_hash"] != last["block_hash"]) {
+                // Missed a block or encountered a reorg while logged in
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: reorg or missed block";
+                treat_as_reorg = true;
+                may_have_missed_tx = true;
+            } else {
+                // Received the next sequential block while logged in
+                // (happy path, continue below to delete mempool txs only)
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: new n+1 block";
+            }
+
+            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: on new block" << (treat_as_reorg ? " (treat_as_reorg)" : "")
+                                        << (may_have_missed_tx ? " (may_have_missed_tx)" : "");
+
+            std::vector<uint32_t> modified_subaccounts;
+            uint32_t reorg_block = 0;
+            if (treat_as_reorg) {
+                // Calculate the block to reorg from
+                const uint32_t last_seen_block_height = m_cache->get_latest_block();
+                const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), last_seen_block_height);
+                reorg_block = last_seen_block_height - num_reorg_blocks;
+                GDK_LOG_SEV(TX_CACHE_LEVEL)
+                    << "Tx sync: removing " << num_reorg_blocks << " blocks from cache tip " << last_seen_block_height;
+            }
 
             // Update the tx cache.
             for (const auto& sa : m_subaccounts) {
                 bool removed_txs = false;
-                if (diverged /* FIXME: or missed a block notification */) {
-                    // FIXME: If we missed a block notification, set removed_txs=true
-                    // as we may have missed a new mempool tx.
-                    GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new diverged block " << reorg_block;
+                if (treat_as_reorg) {
+                    // Delete all txs newer than the block we may have reorged from
                     removed_txs |= m_cache->delete_block_txs(sa.first, reorg_block);
-                    // We can have a mempool tx older than the max re-org height.
-                    // Fall through to delete forward from any mempool txs remaining
+                    // Remove mempool txs in case any are older than the potential reorg
+                    removed_txs |= m_cache->delete_mempool_txs(sa.first);
+                } else {
+                    // The backend does not notify us when an existing mempool tx
+                    // becomes confirmed. Therefore delete from the oldest mempool
+                    // tx forward in case one of them confirmed in this block.
+                    removed_txs |= m_cache->delete_mempool_txs(sa.first);
                 }
-                // The backend does not notify us when an existing mempool tx
-                // becomes confirmed. Therefore delete from the oldest mempool
-                // tx forward in case one of them confirmed in this block.
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): new block, deleting mempool";
-                removed_txs |= m_cache->delete_mempool_txs(sa.first);
-                if (removed_txs) {
+                if (removed_txs || may_have_missed_tx) {
+                    // If we were synced, we are no longer synced if we removed
+                    // any txs or may have missed a new mempool tx
+                    GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): marking unsynced";
                     m_synced_subaccounts.erase(sa.first);
+                    modified_subaccounts.push_back(sa.first);
                 }
             }
 
-            const uint32_t block_height = details["block_height"];
-            if (block_height > m_block_height) {
-                m_block_height = block_height;
-                m_cache->set_latest_block(block_height);
-            }
+            last = details;
+            m_cache->set_latest_block(last["block_height"]);
             m_cache->save_db();
 
             unique_unlock unlocker(locker);
-            if (diverged) {
+            if (treat_as_reorg) {
                 // In the event of a re-org, nuke the entire UTXO cache
                 remove_cached_utxos(std::vector<uint32_t>());
+            } else if (!modified_subaccounts.empty()) {
+                // Otherwise just nuke the subaccounts that may have changed
+                remove_cached_utxos(modified_subaccounts);
             }
-            details.erase("diverged_count");
             emit_notification({ { "event", "block" }, { "block", std::move(details) } }, false);
         });
     }
@@ -1745,10 +1779,6 @@ namespace sdk {
 
         constexpr bool watch_only = false;
         update_login_data(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
-        if (is_initial_login) {
-            constexpr bool from_latest_cached = true; // Delete from last cached block
-            delete_reorg_block_txs(locker, from_latest_cached);
-        }
 
         const std::string receiving_id = m_login_data["receiving_id"];
         std::vector<autobahn::wamp_subscription> subscriptions;
@@ -1775,7 +1805,7 @@ namespace sdk {
             }));
 
         subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
-            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
+            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event), false); }));
 
         subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
             [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
@@ -1791,10 +1821,11 @@ namespace sdk {
 
         // Notify the caller of their current block
         nlohmann::json block_json
-            = { { "block_height", m_block_height }, { "block_hash", m_login_data.at("block_hash") },
+            = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
                   { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
+
         locker.unlock();
-        on_new_block(block_json);
+        on_new_block(block_json, !is_initial_login);
         return get_post_login_data();
     }
 
@@ -1884,36 +1915,8 @@ namespace sdk {
     void ga_session::reset_cached_session_data(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        // FIXME: Reduce the amount of cached data we discard here.
-        // For example, if we haven't missed any blocks since we were
-        // last logged in, then we only need to clear mempool data
-        // (as we may have missed a mempool tx notification)
-        remove_cached_utxos(std::vector<uint32_t>());
         swap_with_default(m_tx_notifications);
-        constexpr bool from_latest_cached = false; // Delete from last seen block
-        delete_reorg_block_txs(locker, from_latest_cached);
         m_nlocktimes.reset();
-    }
-
-    void ga_session::delete_reorg_block_txs(session_impl::locker_t& locker, bool from_latest_cached)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const uint32_t start_block = from_latest_cached ? m_cache->get_latest_block() : m_block_height;
-        const uint32_t reorg_blocks = m_net_params.get_max_reorg_blocks();
-        const uint32_t reorg_block = start_block < reorg_blocks ? 0 : start_block - reorg_blocks;
-        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: delete from " << (from_latest_cached ? "cached" : "current") << "@"
-                                    << start_block << " deleting from " << reorg_block;
-        for (const auto& sa : m_subaccounts) {
-            // Remove txs up to the max re-org depth from our last known block height
-            bool removed_txs = m_cache->delete_block_txs(sa.first, reorg_block);
-            removed_txs |= m_cache->delete_mempool_txs(sa.first);
-            if (!from_latest_cached || removed_txs) {
-                // This is either (a) a re-login which may have missed a mempool tx, or
-                // (b) an initial login that removed txs because they were within the
-                // reorg window. Mark the subaccount as unsynced.
-                m_synced_subaccounts.erase(sa.first);
-            }
-        }
     }
 
     void ga_session::reset_all_session_data(bool in_dtor)
@@ -2081,7 +2084,7 @@ namespace sdk {
         std::vector<autobahn::wamp_subscription> subscriptions;
 
         subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
-            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event)); }));
+            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event), false); }));
 
         subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
@@ -2099,10 +2102,11 @@ namespace sdk {
 
         // Notify the caller of their current block
         nlohmann::json block_json
-            = { { "block_height", m_block_height }, { "block_hash", m_login_data.at("block_hash") },
+            = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
                   { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
+
         locker.unlock();
-        on_new_block(block_json);
+        on_new_block(block_json, !is_initial_login);
         return get_post_login_data();
     }
 

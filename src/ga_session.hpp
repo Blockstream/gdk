@@ -223,7 +223,7 @@ namespace sdk {
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
-        void on_new_block(nlohmann::json details);
+        void on_new_block(nlohmann::json details, bool is_relogin);
         void on_new_tickers(nlohmann::json details);
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
@@ -327,7 +327,6 @@ namespace sdk {
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
         std::chrono::system_clock::time_point m_fee_estimates_ts;
-        uint32_t m_block_height;
 
         uint32_t m_system_message_id; // Next system message
         uint32_t m_system_message_ack_id; // Currently returned message id to ack
@@ -336,6 +335,7 @@ namespace sdk {
         bool m_is_locked;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
+        nlohmann::json m_last_block_notification;
 
         uint32_t m_multi_call_category;
         std::shared_ptr<nlocktime_t> m_nlocktimes;
