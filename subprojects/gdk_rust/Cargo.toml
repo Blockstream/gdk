@@ -27,7 +27,7 @@ ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 
 [dev-dependencies]
 tempdir = "0.3.7"
-electrum-client = "0.7.0"
+electrum-client = { version = "0.7.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
 elements = { version = "0.16", features = ["serde-feature"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
