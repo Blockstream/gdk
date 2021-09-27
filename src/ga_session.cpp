@@ -3706,6 +3706,12 @@ namespace sdk {
         remove_cached_utxos(subaccounts);
 
         locker_t locker(m_mutex);
+        for (auto subaccount : subaccounts) {
+            m_synced_subaccounts.erase(subaccount);
+        }
+        // Cache the raw tx data
+        m_cache->insert_transaction_data(txhash_hex, tx_to_bytes(tx));
+
         if (!memo.empty()) {
             update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
         }
@@ -3713,7 +3719,7 @@ namespace sdk {
             update_spending_limits(locker, tx_details["limits"]);
         }
 
-        // FIXME: Mark affected subaccounts dirty // Notify the tx cache that a new tx is expected
+        m_cache->save_db();
         return result;
     }
 
