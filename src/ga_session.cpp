@@ -3110,9 +3110,27 @@ namespace sdk {
     wally_tx_ptr ga_session::get_raw_transaction_details(const std::string& txhash_hex) const
     {
         try {
-            const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash_hex));
-            return tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
-        } catch (const std::exception&) {
+            wally_tx_ptr tx;
+            const auto flags = tx_flags(m_net_params.is_liquid());
+            locker_t locker(m_mutex);
+            // First, try the local cache
+            m_cache->get_transaction_data(txhash_hex, { [&tx, flags](const auto& db_blob) {
+                if (db_blob) {
+                    tx = tx_from_bin(db_blob.get(), flags);
+                }
+            } });
+            if (tx) {
+                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx cache using cached " << txhash_hex;
+            } else {
+                // If not found, ask the server
+                const std::string tx_data = wamp_cast(wamp_call(locker, "txs.get_raw_output", txhash_hex));
+                tx = tx_from_hex(tx_data, flags);
+                // Cache the result
+                m_cache->insert_transaction_data(txhash_hex, h2b(tx_data));
+            }
+            return tx;
+        } catch (const std::exception& e) {
+            GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
         }
     }

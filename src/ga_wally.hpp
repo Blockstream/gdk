@@ -333,6 +333,7 @@ namespace sdk {
     wally_tx_ptr tx_init(uint32_t locktime, size_t inputs_allocation_len, size_t outputs_allocation_len = 2,
         uint32_t version = WALLY_TX_VERSION_2);
 
+    wally_tx_ptr tx_from_bin(byte_span_t tx_bin, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
     wally_tx_ptr tx_from_hex(const std::string& tx_hex, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
     void tx_add_raw_input(const wally_tx_ptr& tx, byte_span_t txhash, uint32_t index, uint32_t sequence,

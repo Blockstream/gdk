@@ -851,6 +851,13 @@ namespace sdk {
         return wally_tx_ptr(p);
     }
 
+    wally_tx_ptr tx_from_bin(byte_span_t tx_bin, uint32_t flags)
+    {
+        struct wally_tx* p;
+        GDK_VERIFY(wally_tx_from_bytes(tx_bin.data(), tx_bin.size(), flags, &p));
+        return wally_tx_ptr(p);
+    }
+
     wally_tx_ptr tx_from_hex(const std::string& tx_hex, uint32_t flags)
     {
         struct wally_tx* p;
