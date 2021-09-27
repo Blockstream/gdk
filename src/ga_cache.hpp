@@ -51,6 +51,8 @@ namespace sdk {
         bool delete_mempool_txs(uint32_t subaccount);
         bool delete_block_txs(uint32_t subaccount, uint32_t start_block);
         void on_new_transaction(uint32_t subaccount, const std::string& txhash_hex);
+        void get_transaction_data(const std::string& txhash_hex, const get_key_value_fn& callback);
+        void insert_transaction_data(const std::string& txhash_hex, byte_span_t value);
 
         void save_db();
         void load_db(byte_span_t encryption_key, const uint32_t type);
@@ -79,6 +81,8 @@ namespace sdk {
         sqlite3_stmt_ptr m_stmt_tx_block_search;
         sqlite3_stmt_ptr m_stmt_tx_upsert;
         sqlite3_stmt_ptr m_stmt_tx_delete_all;
+        sqlite3_stmt_ptr m_stmt_txdata_insert;
+        sqlite3_stmt_ptr m_stmt_txdata_search;
     };
 
 } // namespace sdk

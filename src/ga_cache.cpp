@@ -31,6 +31,9 @@ namespace sdk {
                                           "VALUES (?1, ?2, ?3, ?4, ?5) "
                                           "ON CONFLICT(subaccount, timestamp) DO UPDATE SET data = ?4;";
         constexpr const char* TX_DELETE_ALL = "DELETE FROM Tx WHERE subaccount = ?1 AND timestamp >= ?2;";
+        constexpr const char* TXDATA_INSERT = "INSERT INTO TxData(txid, data) VALUES (?1, ?2) "
+                                              "ON CONFLICT(txid) DO NOTHING;";
+        constexpr const char* TXDATA_SELECT = "SELECT data FROM TxData WHERE txid = ?1;";
 
         static cache::sqlite3_ptr get_new_memory_db()
         {
@@ -64,6 +67,8 @@ namespace sdk {
 
             exec_check("CREATE TABLE Tx(subaccount INTEGER NOT NULL, timestamp INTEGER NOT NULL, txid BLOB "
                        "NOT NULL, block INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
+
+            exec_check("CREATE TABLE TxData(txid BLOB NOT NULL, data BLOB NOT NULL, PRIMARY KEY(txid));");
             return db;
         }
 
@@ -347,6 +352,8 @@ namespace sdk {
         , m_stmt_tx_block_search(get_stmt(true, m_db, TX_BLOCK))
         , m_stmt_tx_upsert(get_stmt(true, m_db, TX_UPSERT))
         , m_stmt_tx_delete_all(get_stmt(true, m_db, TX_DELETE_ALL))
+        , m_stmt_txdata_insert(get_stmt(true, m_db, TXDATA_INSERT))
+        , m_stmt_txdata_search(get_stmt(true, m_db, TXDATA_SELECT))
     {
     }
 
@@ -495,6 +502,25 @@ namespace sdk {
             auto&& dummy_cb = [](uint64_t, const std::string&, uint32_t, uint32_t, uint32_t, nlohmann::json&) {};
             GDK_RUNTIME_ASSERT(!get_tx(m_stmt_txid_search, dummy_cb));
         }
+    }
+
+    void cache::get_transaction_data(const std::string& txhash_hex, const cache::get_key_value_fn& callback)
+    {
+        const auto txid = h2b_rev(txhash_hex);
+        const auto _{ stmt_clean(m_stmt_txdata_search) };
+        bind_blob(m_stmt_txdata_search, 1, txid);
+        get_blob(m_stmt_txdata_search, 0, callback);
+    }
+
+    void cache::insert_transaction_data(const std::string& txhash_hex, byte_span_t value)
+    {
+        GDK_RUNTIME_ASSERT(!txhash_hex.empty() && !value.empty());
+        const auto txid = h2b_rev(txhash_hex);
+        const auto _{ stmt_clean(m_stmt_txdata_insert) };
+        bind_blob(m_stmt_txdata_insert, 1, txid);
+        bind_blob(m_stmt_txdata_insert, 2, value);
+        step_final(m_stmt_txdata_insert);
+        m_require_write = true;
     }
 
     uint64_t cache::get_latest_transaction_timestamp(uint32_t subaccount)
