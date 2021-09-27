@@ -1562,7 +1562,11 @@ namespace sdk {
             asio::post(m_pool, [this, details, is_relogin] { on_new_block(details, is_relogin); });
             return;
         }
+        on_new_block(locker, details, is_relogin);
+    }
 
+    void ga_session::on_new_block(locker_t& locker, nlohmann::json details, bool is_relogin)
+    {
         no_std_exception_escape([&]() {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1635,7 +1639,7 @@ namespace sdk {
             m_cache->set_latest_block(last["block_height"]);
             m_cache->save_db();
 
-            unique_unlock unlocker(locker);
+            locker.unlock();
             if (treat_as_reorg) {
                 // In the event of a re-org, nuke the entire UTXO cache
                 remove_cached_utxos(std::vector<uint32_t>());
@@ -1824,9 +1828,9 @@ namespace sdk {
             = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
                   { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
 
-        locker.unlock();
-        on_new_block(block_json, !is_initial_login);
-        return get_post_login_data();
+        auto post_login_data = get_post_login_data();
+        on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
+        return post_login_data;
     }
 
     void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)
@@ -2105,9 +2109,9 @@ namespace sdk {
             = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
                   { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
 
-        locker.unlock();
-        on_new_block(block_json, !is_initial_login);
-        return get_post_login_data();
+        auto post_login_data = get_post_login_data();
+        on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
+        return post_login_data;
     }
 
     void ga_session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
