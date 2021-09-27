@@ -773,8 +773,8 @@ impl Session<Error> for ElectrumSession {
         Ok(TxsResult(txs))
     }
 
-    fn get_transaction_details(&self, _txid: &str) -> Result<Value, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_transaction_details".into()))
+    fn get_raw_transaction_details(&self, _txid: &str) -> Result<Value, Error> {
+        Err(Error::Generic("implementme: ElectrumSession get_raw_transaction_details".into()))
     }
 
     fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {

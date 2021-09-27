@@ -3107,14 +3107,11 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::get_transaction_details(const std::string& txhash) const
+    wally_tx_ptr ga_session::get_raw_transaction_details(const std::string& txhash_hex) const
     {
         try {
-            const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash));
-            const auto tx = tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
-            nlohmann::json ret = { { "txhash", txhash } };
-            update_tx_size_info(m_net_params, tx, ret);
-            return ret;
+            const std::string tx_data = wamp_cast(wamp_call("txs.get_raw_output", txhash_hex));
+            return tx_from_hex(tx_data, tx_flags(m_net_params.is_liquid()));
         } catch (const std::exception&) {
             throw user_error("Transaction not found");
         }

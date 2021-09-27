@@ -54,7 +54,7 @@ where
     session.get_subaccount(index as u32).map(|v| json!(v)).map_err(Into::into)
 }
 
-pub fn get_transaction_details<S, E>(session: &S, input: &Value) -> Result<Value, Error>
+pub fn get_raw_transaction_details<S, E>(session: &S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,
@@ -62,9 +62,9 @@ where
     // TODO: parse txid?
     let txid = input
         .as_str()
-        .ok_or_else(|| Error::Other("get_transaction_details: input is not a string".into()))?;
+        .ok_or_else(|| Error::Other("get_raw_transaction_details: input is not a string".into()))?;
 
-    session.get_transaction_details(txid).map_err(Into::into)
+    session.get_raw_transaction_details(txid).map_err(Into::into)
 }
 
 pub fn create_transaction<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>

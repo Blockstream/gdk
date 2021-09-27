@@ -423,10 +423,10 @@ namespace sdk {
         throw std::runtime_error("set_unspent_outputs_status not implemented");
     }
 
-    nlohmann::json ga_rust::get_transaction_details(const std::string& txhash_hex) const
+    wally_tx_ptr ga_rust::get_raw_transaction_details(const std::string& txhash_hex) const
     {
-        auto details = nlohmann::json(txhash_hex);
-        return call_session("get_transaction_details", details);
+        const auto tx_hex = call_session("get_raw_transaction_details", nlohmann::json(txhash_hex));
+        return tx_from_hex(tx_hex, tx_flags(m_net_params.is_liquid()));
     }
 
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
