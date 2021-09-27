@@ -535,7 +535,8 @@ namespace sdk {
                 for (const auto& input : signing_inputs) {
                     const std::string txhash = input.at("txhash");
                     if (!prev_txs.contains(txhash)) {
-                        prev_txs.emplace(txhash, m_session->get_transaction_details(txhash).at("transaction"));
+                        auto prev_tx = m_session->get_raw_transaction_details(txhash);
+                        prev_txs.emplace(txhash, b2h(tx_to_bytes(prev_tx)));
                     }
                 }
             }

@@ -212,7 +212,7 @@ namespace sdk {
             }
             GDK_RUNTIME_ASSERT(subaccount_ok);
 
-            const auto tx = tx_from_hex(prev_tx.at("transaction"));
+            const auto tx = session.get_raw_transaction_details(prev_tx.at("txhash"));
             const auto min_fee_rate = session.get_min_fee_rate();
 
             // Store the old fee and fee rate to check if replacement
