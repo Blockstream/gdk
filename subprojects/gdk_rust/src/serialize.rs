@@ -99,11 +99,11 @@ where
     // TODO: parse txid?.
     let txid = input["txid"]
         .as_str()
-        .ok_or_else(|| Error::Other("get_transaction_details: missing txid".into()))?;
+        .ok_or_else(|| Error::Other("set_transaction_memo: missing txid".into()))?;
 
     let memo = input["memo"]
         .as_str()
-        .ok_or_else(|| Error::Other("get_transaction_details: missing memo".into()))?;
+        .ok_or_else(|| Error::Other("set_transaction_memo: missing memo".into()))?;
 
     session.set_transaction_memo(txid, memo).map(|v| json!(v)).map_err(Into::into)
 }
