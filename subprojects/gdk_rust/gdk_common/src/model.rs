@@ -462,10 +462,21 @@ pub struct SetAccountHiddenOpt {
 
 /// {"icons":true,"assets":false,"refresh":false}
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(default)]
 pub struct RefreshAssets {
     pub icons: bool,
     pub assets: bool,
     pub refresh: bool,
+}
+
+impl Default for RefreshAssets {
+    fn default() -> Self {
+        Self {
+            icons: false,
+            assets: false,
+            refresh: true,
+        }
+    }
 }
 
 impl RefreshAssets {
