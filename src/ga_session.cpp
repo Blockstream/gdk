@@ -148,6 +148,7 @@ namespace sdk {
         static const std::array<const char*, 6> SPV_STATUS_NAMES
             = { "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed" };
         static const int SPV_STATUS_IN_PROGRESS = 0;
+        static const int SPV_STATUS_VERIFIED = 1;
         static const int SPV_STATUS_DISABLED = 3;
         static const std::string ZEROS(64, '0');
 
@@ -2883,7 +2884,12 @@ namespace sdk {
         }
 
         // Update SPV status
-        // FIXME: Don't re-verify irreversably confirmed txs
+        const uint32_t current_block = m_last_block_notification["block_height"];
+        const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), current_block);
+        const uint32_t reorg_block = current_block - num_reorg_blocks;
+
+        const auto& verified_status_str = SPV_STATUS_NAMES.at(SPV_STATUS_VERIFIED);
+
         const auto datadir = gdk_config().value("datadir", std::string{});
         const auto path = datadir + "/state";
         const auto spv_enabled = m_net_params.spv_enabled() && !datadir.empty();
@@ -2892,12 +2898,20 @@ namespace sdk {
         auto sync_in_progress = false;
 
         for (auto& tx_details : tx_list) {
+            const auto tx_block_height = tx_details["block_height"];
+            auto& spv_verified = tx_details["spv_verified"];
+
+            if (tx_block_height < reorg_block && spv_verified == verified_status_str) {
+                continue; // Verified and committed beyond our reorg depth
+            }
+
             int spv_status = SPV_STATUS_DISABLED;
+
             if (spv_enabled) {
                 spv_status = SPV_STATUS_IN_PROGRESS;
                 if (!sync_in_progress) {
                     spv_params["txid"] = tx_details["txhash"];
-                    spv_params["height"] = tx_details["block_height"];
+                    spv_params["height"] = tx_block_height;
 
                     spv_status = spv_verify_tx(spv_params);
                     GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << tx_details["txhash"] << "=" << spv_status;
@@ -2910,11 +2924,15 @@ namespace sdk {
                             while (!spv_verify_tx(spv_params)) {
                             }
                         });
+                    } else if (spv_status == SPV_STATUS_VERIFIED && tx_block_height < reorg_block) {
+                        // Verified and committed beyond our reorg depth, update the cache
+                        m_cache->set_transaction_spv_verified(tx_details["txhash"]);
                     }
                 }
             }
-            tx_details["spv_verified"] = SPV_STATUS_NAMES.at(spv_status);
+            spv_verified = SPV_STATUS_NAMES.at(spv_status);
         }
+        m_cache->save_db(); // No-op if unchanged
     }
 
     nlohmann::json ga_session::get_transactions(const nlohmann::json& details)
@@ -2936,7 +2954,9 @@ namespace sdk {
         }
 
         m_cache->get_transactions(subaccount, first, count,
-            { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, nlohmann::json& tx_json) {
+            { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, uint32_t /*spent*/,
+                  uint32_t spv_status, nlohmann::json& tx_json) {
+                tx_json["spv_verified"] = SPV_STATUS_NAMES.at(spv_status);
                 result.emplace_back(std::move(tx_json));
             } });
 

@@ -38,7 +38,8 @@ namespace sdk {
         void set_latest_block(uint32_t block);
         uint32_t get_latest_block();
 
-        typedef std::function<void(uint64_t ts, const std::string& txhash, uint32_t block, nlohmann::json& tx_json)>
+        typedef std::function<void(uint64_t ts, const std::string& txhash, uint32_t block, uint32_t spent,
+            uint32_t spv_status, nlohmann::json& tx_json)>
             get_transactions_fn;
         void get_transactions(
             uint32_t subaccount, uint64_t start_ts, size_t count, const get_transactions_fn& callback);
@@ -47,6 +48,7 @@ namespace sdk {
         uint64_t get_latest_transaction_timestamp(uint32_t subaccount);
         void insert_transaction(
             uint32_t subaccount, uint64_t timestamp, const std::string& txhash_hex, const nlohmann::json& tx_json);
+        void set_transaction_spv_verified(const std::string& txhash_hex);
         void delete_transactions(uint32_t subaccount, uint64_t start_ts = 0);
         bool delete_mempool_txs(uint32_t subaccount);
         bool delete_block_txs(uint32_t subaccount, uint32_t start_block);
@@ -80,6 +82,7 @@ namespace sdk {
         sqlite3_stmt_ptr m_stmt_tx_mempool_search;
         sqlite3_stmt_ptr m_stmt_tx_block_search;
         sqlite3_stmt_ptr m_stmt_tx_upsert;
+        sqlite3_stmt_ptr m_stmt_tx_spv_update;
         sqlite3_stmt_ptr m_stmt_tx_delete_all;
         sqlite3_stmt_ptr m_stmt_txdata_insert;
         sqlite3_stmt_ptr m_stmt_txdata_search;

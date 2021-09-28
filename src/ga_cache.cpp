@@ -20,16 +20,17 @@ namespace sdk {
 
         constexpr int VERSION = 1;
         constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
-        constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, data FROM Tx "
+        constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
                                           "WHERE subaccount = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3;";
-        constexpr const char* TXID_SELECT = "SELECT timestamp, txid, block, data FROM Tx "
+        constexpr const char* TXID_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
                                             "WHERE subaccount = ?1 AND txid = ?2;";
         constexpr const char* TX_LATEST = "SELECT MAX(timestamp) FROM Tx WHERE subaccount = ?1;";
         constexpr const char* TX_MEMPOOL = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block = 0;";
         constexpr const char* TX_BLOCK = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block >= ?2;";
-        constexpr const char* TX_UPSERT = "INSERT INTO Tx(subaccount, timestamp, txid, block, data) "
-                                          "VALUES (?1, ?2, ?3, ?4, ?5) "
+        constexpr const char* TX_UPSERT = "INSERT INTO Tx(subaccount, timestamp, txid, block, spent, spv_status, data) "
+                                          "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) "
                                           "ON CONFLICT(subaccount, timestamp) DO UPDATE SET data = ?4;";
+        constexpr const char* TX_SPV_UPDATE = "UPDATE Tx SET spv_status = ?1 WHERE txid = ?2;";
         constexpr const char* TX_DELETE_ALL = "DELETE FROM Tx WHERE subaccount = ?1 AND timestamp >= ?2;";
         constexpr const char* TXDATA_INSERT = "INSERT INTO TxData(txid, data) VALUES (?1, ?2) "
                                               "ON CONFLICT(txid) DO NOTHING;";
@@ -66,7 +67,8 @@ namespace sdk {
                        "NULL, PRIMARY KEY(pubkey, script));");
 
             exec_check("CREATE TABLE Tx(subaccount INTEGER NOT NULL, timestamp INTEGER NOT NULL, txid BLOB "
-                       "NOT NULL, block INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
+                       "NOT NULL, block INTEGER NOT NULL, spent INTEGER NOT NULL, spv_status INTEGER NOT NULL, "
+                       "data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
 
             exec_check("CREATE TABLE TxData(txid BLOB NOT NULL, data BLOB NOT NULL, PRIMARY KEY(txid));");
             return db;
@@ -217,6 +219,13 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(sqlite3_step(stmt.get()) == SQLITE_DONE);
         }
 
+        static uint32_t get_uint32(cache::sqlite3_stmt_ptr& stmt, int column)
+        {
+            const auto val = sqlite3_column_int64(stmt.get(), column);
+            GDK_RUNTIME_ASSERT(val >= 0 && val < 0xffffffff);
+            return static_cast<uint32_t>(val);
+        }
+
         static std::vector<unsigned char> get_blob(cache::sqlite3_stmt_ptr& stmt, int column)
         {
             const int rc = sqlite3_step(stmt.get());
@@ -266,17 +275,17 @@ namespace sdk {
             const auto txid_len = sqlite3_column_bytes(stmt.get(), 1);
             GDK_RUNTIME_ASSERT(txid_len == WALLY_TXHASH_LEN);
 
-            const auto db_block = sqlite3_column_int64(stmt.get(), 2);
-            GDK_RUNTIME_ASSERT(db_block >= 0 && db_block < 0xffffffff);
-            const uint32_t block = static_cast<uint32_t>(db_block);
+            const uint32_t block = get_uint32(stmt, 2);
+            const uint32_t spent = get_uint32(stmt, 3);
+            const uint32_t spv_status = get_uint32(stmt, 4);
 
-            const auto data = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 3));
-            const auto len = sqlite3_column_bytes(stmt.get(), 3);
+            const auto data = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 5));
+            const auto len = sqlite3_column_bytes(stmt.get(), 5);
             try {
                 const auto txhash_hex = b2h_rev(gsl::make_span(txid, txid_len));
                 const auto span = gsl::make_span(data, len);
                 auto tx_json = nlohmann::json::from_msgpack(span.begin(), span.end());
-                callback(timestamp, txhash_hex, block, tx_json);
+                callback(timestamp, txhash_hex, block, spent, spv_status, tx_json);
             } catch (const std::exception& ex) {
                 GDK_LOG_SEV(log_level::error) << "Tx callback exception: " << ex.what();
                 return false; // Stop iterating on any exception
@@ -351,6 +360,7 @@ namespace sdk {
         , m_stmt_tx_mempool_search(get_stmt(true, m_db, TX_MEMPOOL))
         , m_stmt_tx_block_search(get_stmt(true, m_db, TX_BLOCK))
         , m_stmt_tx_upsert(get_stmt(true, m_db, TX_UPSERT))
+        , m_stmt_tx_spv_update(get_stmt(true, m_db, TX_SPV_UPDATE))
         , m_stmt_tx_delete_all(get_stmt(true, m_db, TX_DELETE_ALL))
         , m_stmt_txdata_insert(get_stmt(true, m_db, TXDATA_INSERT))
         , m_stmt_txdata_search(get_stmt(true, m_db, TXDATA_SELECT))
@@ -558,8 +568,20 @@ namespace sdk {
         bind_int(m_stmt_tx_upsert, 2, timestamp);
         bind_blob(m_stmt_tx_upsert, 3, txid);
         bind_int(m_stmt_tx_upsert, 4, tx_json.at("block_height"));
-        bind_blob(m_stmt_tx_upsert, 5, tx_data);
+        bind_int(m_stmt_tx_upsert, 5, 0); // 0 = Unknown spent status
+        bind_int(m_stmt_tx_upsert, 6, 3); // SPV_STATUS_DISABLED
+        bind_blob(m_stmt_tx_upsert, 7, tx_data);
         step_final(m_stmt_tx_upsert);
+        m_require_write = true;
+    }
+
+    void cache::set_transaction_spv_verified(const std::string& txhash_hex)
+    {
+        const auto txid = h2b_rev(txhash_hex);
+        const auto _{ stmt_clean(m_stmt_tx_spv_update) };
+        bind_int(m_stmt_tx_spv_update, 1, 1); // SPV_STATUS_VERIFIED
+        bind_blob(m_stmt_tx_spv_update, 2, txid);
+        step_final(m_stmt_tx_spv_update);
         m_require_write = true;
     }
 
@@ -611,8 +633,8 @@ namespace sdk {
         uint32_t existing_tx_block = 0;
 
         get_transaction(subaccount, txhash_hex,
-            { [&existing_tx, &existing_tx_block](
-                  uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t block, nlohmann::json& tx_json) {
+            { [&existing_tx, &existing_tx_block](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t block,
+                  uint32_t /*spent*/, uint32_t /*spv_status*/, nlohmann::json& tx_json) {
                 existing_tx = std::move(tx_json);
                 existing_tx_block = block;
             } });
