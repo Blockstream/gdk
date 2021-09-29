@@ -2603,7 +2603,6 @@ namespace sdk {
             updated_blinding_cache |= cleanup_utxos(tx_details["eps"], txhash, missing);
 
             for (auto& ep : tx_details["eps"]) {
-                ep.erase("id");
                 json_add_if_missing(ep, "subaccount", 0, true);
                 json_rename_key(ep, "pubkey_pointer", "pointer");
                 json_rename_key(ep, "ad", "address");
