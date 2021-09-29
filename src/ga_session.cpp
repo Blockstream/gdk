@@ -867,6 +867,7 @@ namespace sdk {
     bool ga_session::reconnect()
     {
         try {
+            unsubscribe();
             disconnect();
             connect();
 
@@ -1213,8 +1214,8 @@ namespace sdk {
         }
     }
 
-    void ga_session::update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
-        bool watch_only, bool is_initial_login)
+    nlohmann::json ga_session::on_post_login(locker_t& locker, nlohmann::json& login_data,
+        const std::string& root_bip32_xpub, bool watch_only, bool is_initial_login)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
@@ -1365,6 +1366,17 @@ namespace sdk {
                     { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
             }
         }
+
+        subscribe_all(locker);
+
+        // Notify the caller of their current block
+        nlohmann::json block_json
+            = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
+                  { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
+
+        auto post_login_data = get_post_login_data();
+        on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
+        return post_login_data;
     }
 
     void ga_session::update_fiat_rate(session_impl::locker_t& locker, const std::string& rate_str)
@@ -1783,12 +1795,35 @@ namespace sdk {
         }
 
         constexpr bool watch_only = false;
-        update_login_data(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
+        return on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
+    }
+
+    void ga_session::subscribe_all(session_impl::locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_subscriptions.empty());
 
         const std::string receiving_id = m_login_data["receiving_id"];
-        std::vector<autobahn::wamp_subscription> subscriptions;
+        m_subscriptions.reserve(4u);
 
-        subscriptions.emplace_back(
+        m_subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
+            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
+
+        if (!m_watch_only) {
+            m_subscriptions.emplace_back(subscribe(
+                locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+                    const auto details = wamp_cast_json(event);
+                    locker_t notify_locker(m_mutex);
+                    // Check the hmac as we will be notified of our own changes
+                    // when more than one session is logged in at a time.
+                    if (m_blob_hmac != json_get_value(details, "hmac")) {
+                        // Another session has updated our client blob, mark it dirty.
+                        m_blob_outdated = true;
+                    }
+                }));
+        }
+
+        m_subscriptions.emplace_back(
             subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
                 auto details = wamp_cast_json(event);
                 if (!ignore_tx_notification(details)) {
@@ -1797,41 +1832,8 @@ namespace sdk {
                 }
             }));
 
-        subscriptions.emplace_back(
-            subscribe(locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                const auto details = wamp_cast_json(event);
-                locker_t notify_locker(m_mutex);
-                // Check the hmac as we will be notified of our own changes
-                // when more than one session is logged in at a time.
-                if (!m_watch_only && m_blob_hmac != json_get_value(details, "hmac")) {
-                    // Another session has updated our client blob, mark it dirty.
-                    m_blob_outdated = true;
-                }
-            }));
-
-        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
+        m_subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
             [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event), false); }));
-
-        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
-            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
-        m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
-
-        //#if 0 // Just for testing pre-segwit txs
-        if (!json_get_value(m_login_data["appearance"], "use_segwit", false)) {
-            // Enable segwit
-            m_login_data["appearance"]["use_segwit"] = true;
-            push_appearance_to_server(locker);
-        }
-        //#endif
-
-        // Notify the caller of their current block
-        nlohmann::json block_json
-            = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
-                  { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
-
-        auto post_login_data = get_post_login_data();
-        on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
-        return post_login_data;
     }
 
     void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)
@@ -2083,36 +2085,7 @@ namespace sdk {
         }
 
         constexpr bool watch_only = true;
-        update_login_data(locker, login_data, std::string(), watch_only, is_initial_login);
-
-        const std::string receiving_id = m_login_data["receiving_id"];
-        std::vector<autobahn::wamp_subscription> subscriptions;
-
-        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
-            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event), false); }));
-
-        subscriptions.emplace_back(
-            subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                auto details = wamp_cast_json(event);
-                if (!ignore_tx_notification(details)) {
-                    std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
-                    on_new_transaction(subaccounts, details);
-                }
-            }));
-
-        subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
-            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
-
-        m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
-
-        // Notify the caller of their current block
-        nlohmann::json block_json
-            = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
-                  { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
-
-        auto post_login_data = get_post_login_data();
-        on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
-        return post_login_data;
+        return on_post_login(locker, login_data, std::string(), watch_only, is_initial_login);
     }
 
     void ga_session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)

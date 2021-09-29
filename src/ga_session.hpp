@@ -205,7 +205,7 @@ namespace sdk {
         void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
         void set_enabled_twofactor_methods(locker_t& locker);
-        void update_login_data(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
+        nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_initial_login);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
@@ -217,9 +217,6 @@ namespace sdk {
             unique_pubkeys_and_scripts_t& missing);
         bool cleanup_utxos(session_impl::locker_t& locker, nlohmann::json& utxos, const std::string& for_txhash,
             unique_pubkeys_and_scripts_t& missing);
-
-        autobahn::wamp_subscription subscribe(
-            locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
@@ -258,6 +255,10 @@ namespace sdk {
         void set_socket_options();
         void start_ping_timer();
         void disconnect();
+
+        autobahn::wamp_subscription subscribe(
+            locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
+        void subscribe_all(locker_t& locker);
         void unsubscribe();
 
         // Make a background WAMP call and return its result to the current thread.
