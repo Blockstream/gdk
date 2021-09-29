@@ -1592,13 +1592,16 @@ namespace sdk {
             bool may_have_missed_tx = false;
 
             if (last.empty()) {
-                // First login for this session
+                // First login for this session.
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: first login";
                 treat_as_reorg = true;
             } else if (is_relogin && last != details) {
                 // Re-login and we have missed a block or a reorg while logged out
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: re-login, reorg or missed block";
-                treat_as_reorg = true;
+                // If the current block isn't the next sequentially from our last,
+                // treat this as a reorg since we can't differentiate reorgs from
+                // multiple missed blocks.
+                treat_as_reorg = details["previous_hash"] != last["block_hash"];
                 may_have_missed_tx = true;
             } else if (details["previous_hash"] != last["block_hash"]) {
                 // Missed a block or encountered a reorg while logged in
@@ -1606,7 +1609,8 @@ namespace sdk {
                 treat_as_reorg = true;
                 may_have_missed_tx = true;
             } else {
-                // Received the next sequential block while logged in
+                // Received the next sequential block while logged in,
+                // or re-login and the block hasn't changed.
                 // (happy path, continue below to delete mempool txs only)
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: new n+1 block";
             }
