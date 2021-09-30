@@ -26,6 +26,7 @@ namespace sdk {
             set_override(defaults, "spv_enabled", user_params, false);
             set_override(defaults, "use_tor", user_params, false);
             set_override(defaults, "user_agent", user_params, std::string());
+            set_override(defaults, "cert_expiry_threshold", user_params, 1);
             return network_parameters{ defaults };
         }
 

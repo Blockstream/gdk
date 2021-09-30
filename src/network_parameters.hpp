@@ -65,6 +65,7 @@ namespace sdk {
         std::string get_registry_connection_string() const;
         bool is_tls_connection() const;
         std::vector<uint32_t> csv_buckets() const;
+        uint32_t cert_expiry_threshold() const;
 
     private:
         nlohmann::json m_details;

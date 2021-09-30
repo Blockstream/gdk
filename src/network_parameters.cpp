@@ -645,6 +645,7 @@ namespace sdk {
         return boost::algorithm::starts_with(get_connection_string(), "wss://");
     }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
+    uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }
 
 } // namespace sdk
 } // namespace ga

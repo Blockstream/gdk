@@ -373,6 +373,95 @@ namespace sdk {
         {
             GDK_RUNTIME_ASSERT_MSG(memo.size() <= 1024, "Transaction memo too long");
         }
+
+        static X509* cert_from_pem(const std::string& pem)
+        {
+            using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+            BIO_ptr input(BIO_new(BIO_s_mem()), BIO_free);
+            BIO_write(input.get(), pem.c_str(), pem.size());
+            return PEM_read_bio_X509_AUX(input.get(), NULL, NULL, NULL);
+        }
+
+        static bool is_cert_in_date_range(const X509* cert, uint32_t cert_expiry_threshold)
+        {
+            // Use adjusted times 24 hours in each direction to avoid timezone issues
+            // and races, hence certs will be ignored until 24 hours after they are
+            // actually valid and 24 hours before they strictly expire
+            // Also allow a custom expiry threshold to reject certificates expiring at some
+            // point in the future for testing/resilience
+            const auto now = std::chrono::system_clock::now();
+            auto start_before = std::chrono::system_clock::to_time_t(now - 24h);
+            auto expire_after = std::chrono::system_clock::to_time_t(now + (24h * cert_expiry_threshold));
+
+            const int before = X509_cmp_time(X509_get0_notBefore(cert), &start_before);
+            if (before == 0) {
+                GDK_LOG_SEV(log_level::error) << "Error checking certificate not before time" << std::endl;
+                return false;
+            }
+            // -1: start time is earlier than or equal to yesterday - ok
+            // +1: start time is later than yesterday - fail
+            if (before == 1) {
+                GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (not yet valid)" << std::endl;
+                return false;
+            }
+
+            const int after = X509_cmp_time(X509_get0_notAfter(cert), &expire_after);
+            if (after == 0) {
+                GDK_LOG_SEV(log_level::error) << "Error checking certificate not after time" << std::endl;
+                return false;
+            }
+            // -1: expiry time is earlier than or equal to expire_after - fail
+            // +1: expiry time is later than expire_after - ok
+            if (after == -1) {
+                // The not after (expiry) time is earlier than expire_after
+                GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (expired)" << std::endl;
+                return false;
+            }
+
+            return true;
+        }
+
+        static bool check_cert_pins(
+            const std::vector<std::string>& pins, boost::asio::ssl::verify_context& ctx, uint32_t cert_expiry_threshold)
+        {
+            const int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
+            const bool is_leaf_cert = depth == 0;
+            if (!is_leaf_cert) {
+                // Checking for pinned intermediate certs is deferred until checking
+                // the leaf node, at which point the entire chain can be walked
+                return true;
+            }
+
+            typedef std::unique_ptr<STACK_OF(X509), void (*)(STACK_OF(X509)*)> X509_stack_ptr;
+            auto free_x509_stack = [](STACK_OF(X509) * chain) { sk_X509_pop_free(chain, X509_free); };
+            X509_stack_ptr chain(X509_STORE_CTX_get1_chain(ctx.native_handle()), free_x509_stack);
+
+            std::array<unsigned char, SHA256_LEN> sha256_digest_buf;
+            unsigned int written = 0;
+            const int chain_length = sk_X509_num(chain.get());
+
+            // Walk the certificate chain looking for a pinned certificate in `pins`
+            GDK_LOG_SEV(log_level::debug) << "Checking for pinned certificate" << std::endl;
+            for (int idx = 0; idx < chain_length; ++idx) {
+                const X509* cert = sk_X509_value(chain.get(), idx);
+                if (X509_digest(cert, EVP_sha256(), sha256_digest_buf.data(), &written) == 0
+                    || written != sha256_digest_buf.size()) {
+                    GDK_LOG_SEV(log_level::error) << "X509_digest failed certificate idx " << idx;
+                    return false;
+                }
+                const auto hex_digest = b2h(sha256_digest_buf);
+                if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
+                    GDK_LOG_SEV(log_level::debug) << "Found pinned certificate " << hex_digest << std::endl;
+                    if (is_cert_in_date_range(cert, cert_expiry_threshold)) {
+                        return true;
+                    }
+                    GDK_LOG_SEV(log_level::warning) << "Ignoring pinned cert due to expiry date" << std::endl;
+                }
+            }
+
+            return false;
+        }
+
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -607,53 +696,39 @@ namespace sdk {
                 // TODO: at the moment looks like the roots/pins are empty strings when absent
                 break;
             }
+
+            using X509_ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+            X509_ptr cert(cert_from_pem(root), X509_free);
+            if (!is_cert_in_date_range(cert.get(), m_net_params.cert_expiry_threshold())) {
+                // Avoid adding expired certificates as they can cause validation failures
+                // even if there are other non-expired roots available.
+                continue;
+            }
+
             // add network provided root
             const boost::asio::const_buffer root_const_buff(root.c_str(), root.size());
             ctx->add_certificate_authority(root_const_buff);
         }
-        if (pins.empty() || pins[0].empty()) {
-            // no pins for this network, just do rfc2818 validation
-            ctx->set_verify_callback(asio::ssl::rfc2818_verification{ host_name });
-            return ctx;
-        }
 
-        ctx->set_verify_callback([pins, host_name](bool preverified, boost::asio::ssl::verify_context& ctx) {
+        ctx->set_verify_callback([this, pins, host_name](bool preverified, boost::asio::ssl::verify_context& ctx) {
+            // Pre-verification includes checking for things like expired certificates
             if (!preverified) {
+                const int err = X509_STORE_CTX_get_error(ctx.native_handle());
+                GDK_LOG_SEV(log_level::error)
+                    << "x509 certificate error: " << X509_verify_cert_error_string(err) << std::endl;
                 return false;
             }
 
-            // on top of rfc2818, enforce pin if this is the last cert in the chain
-            const int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
-            const bool is_leaf_cert = depth == 0;
-            if (is_leaf_cert) {
-                typedef std::unique_ptr<STACK_OF(X509), void (*)(STACK_OF(X509)*)> X509_stack_ptr;
-                auto free_x509_stack = [](STACK_OF(X509) * chain) { sk_X509_pop_free(chain, X509_free); };
-                X509_stack_ptr chain(X509_STORE_CTX_get1_chain(ctx.native_handle()), free_x509_stack);
-
-                std::array<unsigned char, SHA256_LEN> sha256_digest_buf;
-                unsigned int written = 0;
-                const int chain_length = sk_X509_num(chain.get());
-                bool found_pin = false;
-                for (int idx = 0; idx < chain_length; ++idx) {
-                    const auto cert = sk_X509_value(chain.get(), idx);
-                    if (X509_digest(cert, EVP_sha256(), sha256_digest_buf.data(), &written) == 0
-                        || written != sha256_digest_buf.size()) {
-                        GDK_LOG_SEV(log_level::error) << "X509_digest failed certificate idx " << idx;
-                        return false;
-                    }
-                    const auto hex_digest = b2h(sha256_digest_buf);
-                    if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
-                        found_pin = true;
-                        break;
-                    }
-                }
-
-                if (!found_pin) {
-                    GDK_LOG_SEV(log_level::error) << "No pinned certificate found, failing ssl verification";
-                    return false;
-                }
+            // If pins are defined check that at least one of the pins is in the
+            // certificate chain
+            // If no pins are specified skip the check altogether
+            const bool have_pins = !pins.empty() && !pins[0].empty();
+            if (have_pins && !check_cert_pins(pins, ctx, m_net_params.cert_expiry_threshold())) {
+                GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check" << std::endl;
+                return false;
             }
 
+            // Check the host name matches the target
             return asio::ssl::rfc2818_verification{ host_name }(true, ctx);
         });
 

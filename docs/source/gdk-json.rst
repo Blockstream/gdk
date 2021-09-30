@@ -34,7 +34,12 @@ Connection parameters JSON
       "use_tor": true,
       "user_agent": "green_android v2.33",
       "spv_enabled": false,
+      "cert_expiry_threshold": 1,
    }
+
+:cert_expiry_threshold: Reject/ignore certificates expiring within this many days
+                        from today. This is useful for pre-empting problems with
+                        expiring embedded certificates.
 
 .. _login-credentials:
 
