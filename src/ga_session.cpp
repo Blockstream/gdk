@@ -2639,11 +2639,16 @@ namespace sdk {
 
         // Get a page of txs from the server if any are newer than our last cached one
         auto result = wamp_call(locker, "txs.get_list_v3", subaccount, timestamp);
-        nlohmann::json txs = wamp_cast_json(result);
-        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): server returned " << txs["list"].size()
-                                    << " txs, more = " << txs["more"];
+        nlohmann::json ret = wamp_cast_json(result);
+        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): server returned " << ret["list"].size()
+                                    << " txs, more = " << ret["more"];
 
-        for (auto& tx : txs["list"]) {
+        auto& txs = ret["list"];
+        // TODO: Return rejected txs to the caller
+        auto&& filter = [](const auto& tx) -> bool { return tx.contains("rejected") || tx.contains("replaced"); };
+        txs.erase(std::remove_if(txs.begin(), txs.end(), filter), txs.end());
+
+        for (auto& tx : txs) {
             // Compute the tx weight and fee rate
             const uint32_t tx_vsize = tx.at("transaction_vsize");
             tx["transaction_weight"] = tx_vsize * 4;
@@ -2659,8 +2664,8 @@ namespace sdk {
 
         // Store the timestamp that we started fetching from in order to detect
         // whether the cache was invalidated when we save it.
-        txs["sync_ts"] = timestamp;
-        return txs;
+        ret["sync_ts"] = timestamp;
+        return ret;
     }
 
     void ga_session::store_transactions(uint32_t subaccount, nlohmann::json& txs)
