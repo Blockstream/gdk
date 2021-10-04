@@ -208,7 +208,7 @@ if swig.found()
         # FIXME: When making a python module we must avoid linking libpython
         # and allow the interpreter to provide the symbols for manylinux
         # compatibility.
-        if python_installation.language_version().version_compare('<3.8')
+        if python_installation.language_version().version_compare('<=3.9')
             # Note: Use embed:true to force linking libpython, since we don't
             # allow missing symbols in our final .so file.
             python_dep = python_installation.dependency(embed:true)
