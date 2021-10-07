@@ -36,7 +36,7 @@ namespace sdk {
                                               "ON CONFLICT(txid) DO NOTHING;";
         constexpr const char* TXDATA_SELECT = "SELECT data FROM TxData WHERE txid = ?1;";
 
-        static cache::sqlite3_ptr get_new_memory_db()
+        static auto get_new_memory_db()
         {
             sqlite3* tmpdb = nullptr;
             const int rc = sqlite3_open(":memory:", &tmpdb);
@@ -44,12 +44,8 @@ namespace sdk {
             return cache::sqlite3_ptr{ tmpdb, [](sqlite3* p) { sqlite3_close(p); } };
         }
 
-        static auto get_db()
+        static auto create_db_schema(cache::sqlite3_ptr db)
         {
-            // Verify thread safety in the event that sqlite has been upgraded
-            GDK_RUNTIME_ASSERT(sqlite3_threadsafe());
-
-            auto db = get_new_memory_db();
             const auto exec_check = [&db](const char* sql) {
                 char* err_msg = nullptr;
                 const int rc = sqlite3_exec(db.get(), sql, 0, 0, &err_msg);
@@ -58,20 +54,31 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(false);
                 }
             };
-            exec_check("CREATE TABLE LiquidOutput(txid BLOB NOT NULL, vout INTEGER NOT NULL, assetid BLOB NOT NULL, "
+            exec_check("CREATE TABLE IF NOT EXISTS LiquidOutput(txid BLOB NOT NULL, vout INTEGER NOT NULL, assetid "
+                       "BLOB NOT NULL, "
                        "satoshi INTEGER NOT NULL, abf BLOB NOT NULL, vbf BLOB NOT NULL, PRIMARY KEY (txid, vout));");
 
-            exec_check("CREATE TABLE KeyValue(key BLOB NOT NULL, value BLOB NOT NULL, PRIMARY KEY(key));");
+            exec_check(
+                "CREATE TABLE IF NOT EXISTS KeyValue(key BLOB NOT NULL, value BLOB NOT NULL, PRIMARY KEY(key));");
 
-            exec_check("CREATE TABLE LiquidBlindingNonce(pubkey BLOB NOT NULL, script BLOB NOT NULL, nonce BLOB NOT "
+            exec_check("CREATE TABLE IF NOT EXISTS LiquidBlindingNonce(pubkey BLOB NOT NULL, script BLOB NOT NULL, "
+                       "nonce BLOB NOT "
                        "NULL, PRIMARY KEY(pubkey, script));");
 
-            exec_check("CREATE TABLE Tx(subaccount INTEGER NOT NULL, timestamp INTEGER NOT NULL, txid BLOB "
-                       "NOT NULL, block INTEGER NOT NULL, spent INTEGER NOT NULL, spv_status INTEGER NOT NULL, "
-                       "data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
+            exec_check(
+                "CREATE TABLE IF NOT EXISTS Tx(subaccount INTEGER NOT NULL, timestamp INTEGER NOT NULL, txid BLOB "
+                "NOT NULL, block INTEGER NOT NULL, spent INTEGER NOT NULL, spv_status INTEGER NOT NULL, "
+                "data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
 
-            exec_check("CREATE TABLE TxData(txid BLOB NOT NULL, data BLOB NOT NULL, PRIMARY KEY(txid));");
+            exec_check("CREATE TABLE IF NOT EXISTS TxData(txid BLOB NOT NULL, data BLOB NOT NULL, PRIMARY KEY(txid));");
             return db;
+        }
+
+        static auto get_db()
+        {
+            // Verify thread safety in the event that sqlite has been upgraded
+            GDK_RUNTIME_ASSERT(sqlite3_threadsafe());
+            return create_db_schema(get_new_memory_db());
         }
 
         static const char* db_log_error(sqlite3* db) noexcept
@@ -210,6 +217,8 @@ namespace sdk {
                 db_log_error(db.get());
                 return false;
             }
+            GDK_LOG_SEV(log_level::debug) << path << " updating schema";
+            create_db_schema(db);
             GDK_LOG_SEV(log_level::info) << path << " loaded correctly";
             return true;
         }
