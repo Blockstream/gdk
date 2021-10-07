@@ -58,13 +58,10 @@ namespace sdk {
         }
     } // namespace
 
-    ga_rust::ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults)
-        : session_impl(net_params, defaults)
+    ga_rust::ga_rust(network_parameters&& net_params)
+        : session_impl(std::move(net_params))
     {
-        nlohmann::json network(m_net_params.get_json());
-        network["proxy"] = net_params.value("proxy", std::string{});
-        network["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
-        const auto res = GDKRUST_create_session(&m_session, network.dump().c_str());
+        const auto res = GDKRUST_create_session(&m_session, m_net_params.get_json().dump().c_str());
         GDK_RUNTIME_ASSERT(res == GA_OK);
     }
 

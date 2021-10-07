@@ -19,7 +19,10 @@ namespace sdk {
         static nlohmann::json get_all();
         static nlohmann::json get(const std::string& name);
 
+        // Construct from raw network json
         explicit network_parameters(const nlohmann::json& details);
+        // Construct from a user's overrides and raw network json
+        network_parameters(const nlohmann::json& user_overrides, nlohmann::json& defaults);
 
         ~network_parameters();
 

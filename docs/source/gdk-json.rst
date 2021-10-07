@@ -130,6 +130,25 @@ allow a PIN login.
    }
 
 
+.. _wallet-id-request:
+
+Wallet identifier request JSON
+------------------------------
+
+Describes the wallet to compute an identifier for using `GA_get_wallet_identifier`.
+You may pass :ref:`login-credentials` to compute an identifier from a mnemonic
+and optional password, note that PIN or watch-only credentials cannot be used.
+otherwise, pass the wallets master xpub as follows:
+
+.. code-block:: json
+
+   {
+      "master_xpub": "tpubD8G8MPH9RK9uk4EV97RxhzaY8SJPUWXnViHUwji92i8B7vYdht797PPDrJveeathnKxonJe8SbaScAC1YJ8xAzZbH9UvywrzpQTQh5pekkk",
+   }
+
+:master_xpub: The base58-encoded BIP32 extended master public key of the wallet.
+
+
 .. _subaccount-detail:
 
 Subaccount JSON

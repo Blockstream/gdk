@@ -27,6 +27,7 @@
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
+#include "xpub_hdkey.hpp"
 #include <openssl/evp.h>
 #include <zlib/zlib.h>
 
@@ -539,6 +540,44 @@ namespace sdk {
         return n + n_final;
     }
 
+    std::string get_wallet_hash_id(
+        const network_parameters& net_params, const std::string& chain_code_hex, const std::string& public_key_hex)
+    {
+        const chain_code_t main_chaincode{ h2b_array<32>(chain_code_hex) };
+        const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(public_key_hex) };
+        const xpub_hdkey main_hdkey(net_params.is_main_net(), std::make_pair(main_chaincode, main_pubkey));
+        return main_hdkey.to_hashed_identifier(net_params.network());
+    }
+
+    nlohmann::json get_wallet_hash_id(const nlohmann::json& net_params, const nlohmann::json& params)
+    {
+        auto defaults = network_parameters::get(net_params.value("name", std::string()));
+        const network_parameters np{ net_params, defaults };
+        std::string chain_code_hex, public_key_hex;
+
+        try {
+            std::string bip32_xpub;
+            if (params.contains("mnemonic")) {
+                // Create a software signer to derive the master xpub
+                signer tmp_signer{ np, nlohmann::json(), params };
+                GDK_RUNTIME_ASSERT(!tmp_signer.is_watch_only());
+                bip32_xpub = tmp_signer.get_bip32_xpub(std::vector<uint32_t>());
+            } else {
+                bip32_xpub = params.value("master_xpub", std::string());
+            }
+            if (!bip32_xpub.empty()) {
+                const auto master_xpub = make_xpub(bip32_xpub);
+                chain_code_hex = b2h(master_xpub.first);
+                public_key_hex = b2h(master_xpub.second);
+            }
+        } catch (const std::exception&) {
+            // Fall through...
+        }
+        if (chain_code_hex.empty() || public_key_hex.empty()) {
+            throw user_error("Invalid credentials");
+        }
+        return { { "wallet_hash_id", get_wallet_hash_id(np, chain_code_hex, public_key_hex) } };
+    }
 } // namespace sdk
 } // namespace ga
 

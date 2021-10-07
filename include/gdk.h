@@ -120,6 +120,21 @@ GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 GDK_API int GA_get_tor_socks5(struct GA_session* session, char** socks5);
 
 /**
+ * Compute a hashed wallet identifier from a BIP32 xpub or mnemonic.
+ *
+ * The identifier returned is computed from the network combined with the
+ * master chain code and public key of the xpub/mnemonic. It can be used
+ * as a unique wallet identifier to mitigate privacy risks associated with
+ * storing the wallet's xpub.
+ *
+ * :param net_params: The :ref:`net-params` of the network to compute an identifier for.
+ * :param params: The :ref:`wallet-id-request` to compute an identifier for.
+ * :param output: Destination for the output JSON.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ */
+GDK_API int GA_get_wallet_identifier(const GA_json* net_params, const GA_json* params, GA_json** output);
+
+/**
  * Make a request to an http server.
  *
  * :param session: The session to use.

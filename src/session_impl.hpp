@@ -23,7 +23,7 @@ namespace sdk {
     public:
         using locker_t = std::unique_lock<std::mutex>;
 
-        explicit session_impl(const nlohmann::json& net_params, nlohmann::json& defaults);
+        explicit session_impl(network_parameters&& net_params);
         session_impl(const session_impl& other) = delete;
         session_impl(session_impl&& other) noexcept = delete;
         session_impl& operator=(const session_impl& other) = delete;
@@ -54,8 +54,8 @@ namespace sdk {
             const nlohmann::json& details, const nlohmann::json& twofactor_data)
             = 0;
 
-        virtual void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-            const std::string& gait_path_hex, bool supports_csv);
+        virtual nlohmann::json register_user(const std::string& master_pub_key_hex,
+            const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
 
         virtual bool is_connected() const = 0;
         virtual void set_ping_fail_handler(ping_fail_t handler) = 0;

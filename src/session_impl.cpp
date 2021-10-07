@@ -3,33 +3,12 @@
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
+#include "utils.hpp"
 
 namespace ga {
 namespace sdk {
 
     namespace {
-        template <typename T>
-        static void set_override(nlohmann::json& ret, const std::string& key, const nlohmann::json& src, T default_)
-        {
-            // Use the users provided value, else the registered value, else `default_`
-            ret[key] = src.value(key, ret.value(key, default_));
-        }
-
-        static network_parameters get_network_overrides(const nlohmann::json& user_params, nlohmann::json& defaults)
-        {
-            // Set override-able settings from the users parameters
-            set_override(defaults, "electrum_tls", user_params, false);
-            set_override(defaults, "electrum_url", user_params, std::string());
-            set_override(defaults, "log_level", user_params, "none");
-            set_override(defaults, "spv_multi", user_params, false);
-            set_override(defaults, "spv_servers", user_params, nlohmann::json::array());
-            set_override(defaults, "spv_enabled", user_params, false);
-            set_override(defaults, "use_tor", user_params, false);
-            set_override(defaults, "user_agent", user_params, std::string());
-            set_override(defaults, "cert_expiry_threshold", user_params, 1);
-            return network_parameters{ defaults };
-        }
-
         static void configure_logging(const network_parameters& net_params)
         {
             const auto level = net_params.log_level();
@@ -51,21 +30,18 @@ namespace sdk {
     boost::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
     {
         auto defaults = network_parameters::get(net_params.value("name", std::string()));
-        const auto type = net_params.value("server_type", defaults.value("server_type", std::string()));
+        network_parameters np{ net_params, defaults };
 
-        if (type == "green") {
-            return boost::make_shared<ga_session>(net_params, defaults);
-        }
 #ifdef BUILD_GDK_RUST
-        if (type == "electrum") {
-            return boost::make_shared<ga_rust>(net_params, defaults);
+        if (np.is_electrum()) {
+            return boost::make_shared<ga_rust>(std::move(np));
         }
 #endif
-        throw user_error("Unknown server_type");
+        return boost::make_shared<ga_session>(std::move(np));
     }
 
-    session_impl::session_impl(const nlohmann::json& net_params, nlohmann::json& defaults)
-        : m_net_params(get_network_overrides(net_params, defaults))
+    session_impl::session_impl(network_parameters&& net_params)
+        : m_net_params(net_params)
         , m_debug_logging(m_net_params.log_level() == "debug")
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
@@ -91,10 +67,11 @@ namespace sdk {
         }
     }
 
-    void session_impl::register_user(const std::string& /*master_pub_key_hex*/,
-        const std::string& /*master_chain_code_hex*/, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
+    nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
+        const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {
-        // Default impl is a no-op; registration is only meaningful in multisig
+        // Default impl just returns the wallet hash; registration is only meaningful in multisig
+        return { { "wallet_hash_id", get_wallet_hash_id(m_net_params, master_chain_code_hex, master_pub_key_hex) } };
     }
 
     nlohmann::json session_impl::login(std::shared_ptr<signer> /*signer*/)

@@ -117,10 +117,6 @@ namespace sdk {
         , m_hw_device(hw_device)
         , m_credential_data(mnemonic.empty() ? nlohmann::json() : nlohmann::json({ { "mnemonic", mnemonic } }))
     {
-        if (m_net_params.is_electrum()) {
-            // Register is a no-op for electrum sessions
-            m_state = state_type::done;
-        }
     }
 
     auth_handler::state_type register_call::call_impl()
@@ -129,28 +125,36 @@ namespace sdk {
             // Create our signer
             m_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
 
-            // We need the master xpub to identify the wallet,
-            // and the registration xpub to compute the gait_path.
             signal_hw_request(hw_request::get_xpubs);
             auto& paths = m_twofactor_data["paths"];
+            // We need the master xpub to identify the wallet
             paths.emplace_back(signer::EMPTY_PATH);
-            paths.emplace_back(signer::REGISTER_PATH);
+            if (!m_net_params.is_electrum()) {
+                // For multisig, we need the registration xpub to compute our gait path
+                paths.emplace_back(signer::REGISTER_PATH);
+            }
             return m_state;
         }
 
         // We have received our xpubs reply
         const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
-        const auto master_xpub = make_xpub(xpubs.at(0));
 
+        // Get the master chain code and pubkey
+        const auto master_xpub = make_xpub(xpubs.at(0));
         const auto master_chain_code_hex = b2h(master_xpub.first);
         const auto master_pub_key_hex = b2h(master_xpub.second);
 
-        // Get our gait path xpub and compute gait_path from it
-        const auto gait_xpub = make_xpub(xpubs.at(1));
-        const auto gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
+        std::string gait_path_hex;
+        if (!m_net_params.is_electrum()) {
+            // Get our gait path xpub and compute gait_path from it
+            const auto gait_xpub = make_xpub(xpubs.at(1));
+            gait_path_hex = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
+        }
 
         const bool supports_csv = m_signer->supports_arbitrary_scripts();
-        m_session->register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
+        // register_user is actually a no-op for rust sessions, but we call
+        // it anyway, to return the wallet_hash_id
+        m_result = m_session->register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
         return state_type::done;
     }
 

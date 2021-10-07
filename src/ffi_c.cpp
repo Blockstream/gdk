@@ -254,14 +254,20 @@ GDK_DEFINE_C_FUNCTION_2(GA_reconnect_hint, struct GA_session*, session, const GA
 GDK_DEFINE_C_FUNCTION_2(GA_get_tor_socks5, struct GA_session*, session, char**, socks5,
     { *socks5 = to_c_string(session->get_tor_socks5()); })
 
+GDK_DEFINE_C_FUNCTION_3(
+    GA_get_wallet_identifier, const GA_json*, net_params, const GA_json*, params, GA_json**, output, {
+        *json_cast(output)
+            = new nlohmann::json(ga::sdk::get_wallet_hash_id(*json_cast(net_params), *json_cast(params)));
+    });
+
 GDK_DEFINE_C_FUNCTION_3(GA_http_request, struct GA_session*, session, const GA_json*, params, GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->http_request(*json_cast((params)))); });
+    { *json_cast(output) = new nlohmann::json(session->http_request(*json_cast(params))); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_refresh_assets, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->refresh_assets(*json_cast(params))); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_validate_asset_domain_name, struct GA_session*, session, const GA_json*, params, GA_json**,
-    output, { *json_cast(output) = new nlohmann::json(session->validate_asset_domain_name(*json_cast((params)))); });
+    output, { *json_cast(output) = new nlohmann::json(session->validate_asset_domain_name(*json_cast(params))); });
 
 GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_json*, hw_device, const char*, mnemonic,
     struct GA_auth_handler**, call,

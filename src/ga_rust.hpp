@@ -8,7 +8,7 @@ namespace sdk {
 
     class ga_rust final : public session_impl {
     public:
-        ga_rust(const nlohmann::json& net_params, nlohmann::json& defaults);
+        explicit ga_rust(network_parameters&& net_params);
         ~ga_rust();
 
         bool is_connected() const;

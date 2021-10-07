@@ -490,9 +490,9 @@ namespace sdk {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
     };
 
-    ga_session::ga_session(const nlohmann::json& net_params, nlohmann::json& defaults)
-        : session_impl(net_params, defaults)
-        , m_proxy(socksify(net_params.value("proxy", std::string{})))
+    ga_session::ga_session(network_parameters&& net_params)
+        : session_impl(std::move(net_params))
+        , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
         , m_has_network_proxy(!m_proxy.empty())
         , m_io()
         , m_ping_timer(m_io)
@@ -512,7 +512,7 @@ namespace sdk {
         , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_multi_call_category(0)
-        , m_cache(m_net_params, net_params.at("name"))
+        , m_cache(m_net_params, m_net_params.network())
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
         , m_wamp_call_options()
         , m_wamp_call_prefix("com.greenaddress.")
@@ -1181,12 +1181,13 @@ namespace sdk {
         m_fee_estimates_ts = std::chrono::system_clock::now();
     }
 
-    void ga_session::register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-        const std::string& gait_path_hex, bool supports_csv)
+    nlohmann::json ga_session::register_user(const std::string& master_pub_key_hex,
+        const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv)
     {
         const auto user_agent = get_user_agent(supports_csv, m_user_agent);
         auto result = wamp_call("login.register", master_pub_key_hex, master_chain_code_hex, user_agent, gait_path_hex);
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
+        return session_impl::register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
     }
 
     std::string ga_session::get_challenge(const pub_key_t& public_key)
@@ -1323,10 +1324,8 @@ namespace sdk {
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
         // Compute wallet identifier for callers to use if they wish.
-        const chain_code_t main_chaincode{ h2b_array<32>(m_login_data["chain_code"]) };
-        const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(m_login_data["public_key"]) };
-        const xpub_hdkey main_hdkey(m_net_params.is_main_net(), std::make_pair(main_chaincode, main_pubkey));
-        const auto wallet_hash_id = main_hdkey.to_hashed_identifier(m_net_params.network());
+        const auto wallet_hash_id
+            = get_wallet_hash_id(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
         if (!is_initial_login) {
             GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
         }

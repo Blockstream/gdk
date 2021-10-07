@@ -38,10 +38,10 @@ namespace sdk {
         using heartbeat_t = websocketpp::pong_timeout_handler;
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
-        ga_session(const nlohmann::json& net_params, nlohmann::json& defaults);
+        explicit ga_session(network_parameters&& net_params);
         ~ga_session();
 
-        void register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
+        nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
 
         void connect();

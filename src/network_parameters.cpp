@@ -5,6 +5,7 @@
 #include "containers.hpp"
 #include "exception.hpp"
 #include "network_parameters.hpp"
+#include "session.hpp" // TODO: gdk_config() doesn't belong in session
 
 // TODO: Use std::string_view when its fully supported
 
@@ -544,9 +545,39 @@ static std::mutex registered_networks_mutex;
 
 namespace ga {
 namespace sdk {
+    namespace {
+        template <typename T>
+        static void set_override(nlohmann::json& ret, const std::string& key, const nlohmann::json& src, T default_)
+        {
+            // Use the users provided value, else the registered value, else `default_`
+            ret[key] = src.value(key, ret.value(key, default_));
+        }
+
+        static auto get_network_overrides(const nlohmann::json& user_overrides, nlohmann::json& defaults)
+        {
+            // Set override-able settings from the users parameters
+            set_override(defaults, "electrum_tls", user_overrides, false);
+            set_override(defaults, "electrum_url", user_overrides, std::string());
+            set_override(defaults, "log_level", user_overrides, "none");
+            set_override(defaults, "spv_multi", user_overrides, false);
+            set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
+            set_override(defaults, "spv_enabled", user_overrides, false);
+            set_override(defaults, "use_tor", user_overrides, false);
+            set_override(defaults, "user_agent", user_overrides, std::string());
+            set_override(defaults, "cert_expiry_threshold", user_overrides, 1);
+            set_override(defaults, "proxy", user_overrides, std::string());
+            defaults["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
+            return defaults;
+        }
+    } // namespace
 
     network_parameters::network_parameters(const nlohmann::json& details)
         : m_details(details)
+    {
+    }
+
+    network_parameters::network_parameters(const nlohmann::json& user_overrides, nlohmann::json& defaults)
+        : m_details(get_network_overrides(user_overrides, defaults))
     {
     }
 
@@ -646,6 +677,5 @@ namespace sdk {
     }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
     uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }
-
 } // namespace sdk
 } // namespace ga

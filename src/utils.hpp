@@ -3,7 +3,6 @@
 #pragma once
 
 #include <cstddef>
-#include <map>
 #include <string>
 
 #include "containers.hpp"
@@ -14,6 +13,8 @@
 
 namespace ga {
 namespace sdk {
+    class network_parameters;
+
     void get_random_bytes(std::size_t num_bytes, void* output_bytes, std::size_t siz);
 
     template <std::size_t N> std::array<unsigned char, N> get_random_bytes()
@@ -103,6 +104,10 @@ namespace sdk {
     std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes);
     // Return decompressed `bytes` (prefix is assumed removed by the caller)
     std::vector<unsigned char> decompress(byte_span_t bytes);
+
+    std::string get_wallet_hash_id(
+        const network_parameters& net_params, const std::string& chain_code_hex, const std::string& public_key_hex);
+    nlohmann::json get_wallet_hash_id(const nlohmann::json& net_params, const nlohmann::json& params);
 
 } // namespace sdk
 } // namespace ga
