@@ -2,8 +2,7 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetUnspentOutputs, RefreshAssets, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
-    UtxoStrategy,
+    GetUnspentOutputs, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -129,11 +128,6 @@ fn roundtrip_liquid() {
     ); // the smallest utxo has been spent
 
     // test_session.check_decryption(103, &[&txid]); // TODO restore after sorting out https://github.com/ElementsProject/rust-elements/pull/61
-
-    test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 200
-    test_session.refresh_assets(&RefreshAssets::new(true, true, true)); // check 304
-    test_session.refresh_assets(&RefreshAssets::new(true, false, true)); // check partial request
-    test_session.refresh_assets(&RefreshAssets::new(false, true, false)); // check local read
 
     test_session.stop();
 }
@@ -823,6 +817,70 @@ fn coinbase(is_liquid: bool) {
     assert_eq!(txlist[0].fee, 0);
 
     // This coin is immature though, coinbase outputs cannot be spent until 101 blocks.
+}
+
+#[test]
+fn registry_liquid() {
+    // Get data from asset registry
+
+    let is_liquid = true;
+    let mut test_session = setup_session(is_liquid, |_| ());
+    let policy_asset = test_session.network.policy_asset.clone().unwrap();
+
+    // TODO: if refresh=false and no cache, return the sentinel (empty map), not an error
+    //       see commented lines below
+
+    // Either assets or icons must be requested
+    assert!(test_session.refresh_assets(true, false, false).is_err());
+
+    // refresh false, asset true (no cache), icons true (no cache)
+    assert!(test_session.refresh_assets(false, true, true).is_err());
+    // asset registry not available
+    // let value = test_session.refresh_assets(false, true, true).unwrap();
+    // assert!(value.get("assets").unwrap().as_object().unwrap().is_empty();
+    // assert!(value.get("icons").unwrap().as_object().unwrap().is_empty();
+
+    // refresh false, asset true (no cache), icons false (no cache)
+    assert!(test_session.refresh_assets(false, true, false).is_err());
+    // asset registry not available
+    // let value = test_session.refresh_assets(false, true, false).unwrap();
+    // assert!(value.get("assets").unwrap().as_object().unwrap().is_empty();
+    // assert!(value.get("icons").is_none());
+
+    // refresh false, asset false (no cache), icons true (no cache)
+    assert!(test_session.refresh_assets(false, false, true).is_err());
+    // icon registry not available
+    // let value = test_session.refresh_assets(false, false, true).unwrap();
+    // assert!(value.get("assets").is_none());
+    // assert!(value.get("icons").unwrap().as_object().unwrap().is_empty();
+
+    // refresh true, asset true, icons false (no cache)
+    let value = test_session.refresh_assets(true, true, false).unwrap();
+    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
+    assert!(value.get("icons").is_none());
+
+    // refresh false, asset false, icons true (no cache)
+    assert!(test_session.refresh_assets(false, false, true).is_err());
+    // icon registry not available
+    // let value = test_session.refresh_assets(false, false, true).unwrap();
+    // assert!(value.get("assets").is_none());
+    // assert!(value.get("icons").unwrap().as_object().unwrap().is_empty();
+
+    // refresh true, asset true, icons true (no cache)
+    // {"asset": data, "icons": data}
+    let value = test_session.refresh_assets(true, true, true).unwrap();
+    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
+    assert!(value.get("icons").is_some());
+
+    // check 304
+    let value = test_session.refresh_assets(true, true, true).unwrap();
+    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
+    assert!(value.get("icons").is_some());
+
+    // cache read
+    let value = test_session.refresh_assets(false, true, true).unwrap();
+    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
+    assert!(value.get("icons").is_some());
 }
 
 #[test]
