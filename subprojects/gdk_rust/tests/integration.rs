@@ -827,32 +827,25 @@ fn registry_liquid() {
     let mut test_session = setup_session(is_liquid, |_| ());
     let policy_asset = test_session.network.policy_asset.clone().unwrap();
 
-    // TODO: if refresh=false and no cache, return the sentinel (empty map), not an error
-    //       see commented lines below
-
     // Either assets or icons must be requested
     assert!(test_session.refresh_assets(true, false, false).is_err());
 
+    // if refresh=false and no cache, return the sentinel (empty map)
+
     // refresh false, asset true (no cache), icons true (no cache)
-    assert!(test_session.refresh_assets(false, true, true).is_err());
-    // asset registry not available
-    // let value = test_session.refresh_assets(false, true, true).unwrap();
-    // assert!(value.get("assets").unwrap().as_object().unwrap().is_empty();
-    // assert!(value.get("icons").unwrap().as_object().unwrap().is_empty();
+    let value = test_session.refresh_assets(false, true, true).unwrap();
+    assert!(value.get("assets").unwrap().as_object().unwrap().is_empty());
+    assert!(value.get("icons").unwrap().as_object().unwrap().is_empty());
 
     // refresh false, asset true (no cache), icons false (no cache)
-    assert!(test_session.refresh_assets(false, true, false).is_err());
-    // asset registry not available
-    // let value = test_session.refresh_assets(false, true, false).unwrap();
-    // assert!(value.get("assets").unwrap().as_object().unwrap().is_empty();
-    // assert!(value.get("icons").is_none());
+    let value = test_session.refresh_assets(false, true, false).unwrap();
+    assert!(value.get("assets").unwrap().as_object().unwrap().is_empty());
+    assert!(value.get("icons").is_none());
 
     // refresh false, asset false (no cache), icons true (no cache)
-    assert!(test_session.refresh_assets(false, false, true).is_err());
-    // icon registry not available
-    // let value = test_session.refresh_assets(false, false, true).unwrap();
-    // assert!(value.get("assets").is_none());
-    // assert!(value.get("icons").unwrap().as_object().unwrap().is_empty();
+    let value = test_session.refresh_assets(false, false, true).unwrap();
+    assert!(value.get("assets").is_none());
+    assert!(value.get("icons").unwrap().as_object().unwrap().is_empty());
 
     // refresh true, asset true, icons false (no cache)
     let value = test_session.refresh_assets(true, true, false).unwrap();
@@ -860,11 +853,9 @@ fn registry_liquid() {
     assert!(value.get("icons").is_none());
 
     // refresh false, asset false, icons true (no cache)
-    assert!(test_session.refresh_assets(false, false, true).is_err());
-    // icon registry not available
-    // let value = test_session.refresh_assets(false, false, true).unwrap();
-    // assert!(value.get("assets").is_none());
-    // assert!(value.get("icons").unwrap().as_object().unwrap().is_empty();
+    let value = test_session.refresh_assets(false, false, true).unwrap();
+    assert!(value.get("assets").is_none());
+    assert!(value.get("icons").unwrap().as_object().unwrap().is_empty());
 
     // refresh true, asset true, icons true (no cache)
     // {"asset": data, "icons": data}

@@ -874,7 +874,7 @@ impl Session<Error> for ElectrumSession {
                     .store
                     .read()?
                     .read_asset_registry()?
-                    .ok_or_else(|| Error::Generic("assets registry not available".into()))?,
+                    .unwrap_or_else(|| get_registry_sentinel()),
             };
             map.insert("assets".to_string(), assets_not_null);
         }
@@ -887,7 +887,7 @@ impl Session<Error> for ElectrumSession {
                     .store
                     .read()?
                     .read_asset_icons()?
-                    .ok_or_else(|| Error::Generic("icon registry not available".into()))?,
+                    .unwrap_or_else(|| get_registry_sentinel()),
             };
             map.insert("icons".to_string(), icons_not_null);
         }
@@ -1442,4 +1442,9 @@ fn wait_or_close(r: &Receiver<()>, interval: u32) -> bool {
         }
     }
     false
+}
+
+// Return a sentinel value that the caller should interpret as "no cached data"
+fn get_registry_sentinel() -> Value {
+    json!({})
 }
