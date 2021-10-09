@@ -83,7 +83,8 @@ if [ -n "${CARGO_FEATURES[*]}" ]; then
 fi
 
 printf "cargo args: ${CARGO_ARGS[*]}\n"
-OPENSSL_DIR=${BUILD_ROOT}/openssl/build cargo build "${CARGO_ARGS[@]}"
+OPENSSL_DIR=${BUILD_ROOT}/openssl/build OPENSSL_STATIC=1 \
+  cargo build "${CARGO_ARGS[@]}"
 
 if [ -z "$RUSTTARGET" ]; then
     cp "target/${BUILDTYPE}/${OUT_LIB_FILE}" "${BUILD_ROOT}/$OUTPUT"

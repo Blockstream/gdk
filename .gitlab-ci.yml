@@ -164,7 +164,7 @@ test_rust:
     - export WALLY_DIR=$PWD/libwally-core/build/lib/
     - curl -L https://github.com/openssl/openssl/archive/OpenSSL_1_1_1g.tar.gz | tar -xvz -C ${PWD}/subprojects
     - MESON_SOURCE_ROOT=${PWD} MESON_BUILD_ROOT=${PWD} ${PWD}/tools/buildopenssl.sh
-    - export OPENSSL_DIR=${PWD}/openssl/build
+    - export OPENSSL_DIR=${PWD}/openssl/build OPENSSL_STATIC=1
     - cd subprojects/gdk_rust/gdk_common
     - RUST_BACKTRACE=1 cargo test
     - cd ../gdk_electrum
