@@ -239,6 +239,7 @@ namespace sdk {
 
     cache::cache(const network_parameters& net_params, const std::string& network_name)
         : m_network_name(network_name)
+        , m_net_params(net_params)
         , m_is_liquid(net_params.is_liquid())
         , m_type(0)
         , m_data_dir()
@@ -334,8 +335,8 @@ namespace sdk {
                     // wallet operation, after which these two calls are no-ops.
                     clear_key_value("index");
                     clear_key_value("icons");
-                    const auto assets_modified = get_inbuilt_data_timestamp("assets");
-                    const auto icons_modified = get_inbuilt_data_timestamp("icons");
+                    const auto assets_modified = get_inbuilt_data_timestamp(m_net_params, "assets");
+                    const auto icons_modified = get_inbuilt_data_timestamp(m_net_params, "icons");
                     bool clean = false;
                     get_key_value("http_assets_modified", { [&clean, &assets_modified](const auto& db_blob) {
                         clean |= !db_blob || !std::equal(db_blob->begin(), db_blob->end(), assets_modified.begin());

@@ -4,6 +4,7 @@
 #include "assertion.hpp"
 #include "generated_assets.hpp"
 #include "memory.hpp"
+#include "network_parameters.hpp"
 #include "utils.hpp"
 #include "version.h"
 
@@ -13,7 +14,7 @@ namespace sdk {
 
     } // namespace
 
-    nlohmann::json get_inbuilt_data(const std::string& key)
+    nlohmann::json get_inbuilt_data(const network_parameters& net_params, const std::string& key)
     {
         std::vector<unsigned char> base_data;
         if (key == "assets") {
@@ -24,10 +25,18 @@ namespace sdk {
             // TODO: Add support for SPV checkpoint data
             GDK_RUNTIME_ASSERT(false);
         }
-        return nlohmann::json::from_msgpack(base_data.begin(), base_data.end());
+        auto result = nlohmann::json::from_msgpack(base_data.begin(), base_data.end());
+
+        if (key == "assets") {
+            // Add the policy asset to asset data
+            const auto policy_asset = net_params.policy_asset();
+            result[policy_asset] = { { "asset_id", policy_asset }, { "name", "btc" } };
+        }
+
+        return result;
     }
 
-    std::string get_inbuilt_data_timestamp(const std::string& key)
+    std::string get_inbuilt_data_timestamp(const network_parameters& /*net_params*/, const std::string& key)
     {
         if (key == "assets") {
             return inbuilt_assets_modified;

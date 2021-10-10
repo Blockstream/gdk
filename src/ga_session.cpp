@@ -967,7 +967,7 @@ namespace sdk {
         GDK_LOG_SEV(log_level::debug) << "Refreshing " << key;
 
         // Load our compiled-in base data
-        auto base = get_inbuilt_data(key);
+        auto base = get_inbuilt_data(m_net_params, key);
 
         // Load the cached update to the base data, if we have one
         nlohmann::json cached = nlohmann::json::object();

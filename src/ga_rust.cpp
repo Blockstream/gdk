@@ -12,6 +12,7 @@
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
+#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "utils.hpp"
@@ -163,7 +164,16 @@ namespace sdk {
 
     nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
     {
-        return call_session("refresh_assets", params);
+        auto result = call_session("refresh_assets", params);
+        const std::array<const char*, 2> keys = { "assets", "icons" };
+        for (const auto& key : keys) {
+            if (params.value(key, false) && result.at(key).empty()) {
+                // An empty result is a sentinel indicating that the initial
+                // data fetch failed. Return the compiled-in data in this case.
+                result[key] = get_inbuilt_data(m_net_params, key);
+            }
+        }
+        return result;
     }
 
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
