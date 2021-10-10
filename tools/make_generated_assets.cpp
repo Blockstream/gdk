@@ -29,7 +29,7 @@ static nlohmann::json process_auth(sdk::auth_handler& handler)
 static std::string get_code(const std::string& name, const std::vector<uint8_t>& compressed, const std::string& modified)
 {
     std::ostringstream os;
-    os << "extern const std::string inbuilt_" << name << "_modified{\""  << modified << "\"};\n\n";
+    os << "static const std::string inbuilt_" << name << "_modified{\""  << modified << "\"};\n\n";
     os << std::setfill('0');
     os << "static const uint8_t inbuilt_" << name << "[" << compressed.size() << "] = {" << std::hex;
     for (size_t i = 0; i < compressed.size(); ++i) {

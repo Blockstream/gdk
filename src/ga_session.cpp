@@ -13,7 +13,6 @@
 #include <unistd.h>
 #endif
 
-#include "boost_wrapper.hpp"
 #include "session.hpp"
 
 #include "autobahn_wrapper.hpp"
@@ -23,8 +22,8 @@
 #include "ga_strings.hpp"
 #include "ga_tor.hpp"
 #include "ga_tx.hpp"
-#include "generated_assets.hpp"
 #include "http_client.hpp"
+#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "signer.hpp"
@@ -968,16 +967,7 @@ namespace sdk {
         GDK_LOG_SEV(log_level::debug) << "Refreshing " << key;
 
         // Load our compiled-in base data
-        std::vector<unsigned char> base_data;
-        if (key == "assets") {
-            base_data = decompress({ inbuilt_assets, sizeof(inbuilt_assets) });
-        } else if (key == "icons") {
-            base_data = decompress({ inbuilt_icons, sizeof(inbuilt_icons) });
-        } else {
-            GDK_RUNTIME_ASSERT(false);
-        }
-        auto base = nlohmann::json::from_msgpack(base_data.begin(), base_data.end());
-        swap_with_default(base_data); // Free memory
+        auto base = get_inbuilt_data(key);
 
         // Load the cached update to the base data, if we have one
         nlohmann::json cached = nlohmann::json::object();

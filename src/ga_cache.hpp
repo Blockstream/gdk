@@ -13,8 +13,6 @@ struct sqlite3_stmt;
 namespace ga {
 namespace sdk {
     class network_parameters;
-    extern const std::string inbuilt_assets_modified;
-    extern const std::string inbuilt_icons_modified;
 
     struct cache final {
         using sqlite3_ptr = std::shared_ptr<struct ::sqlite3>;

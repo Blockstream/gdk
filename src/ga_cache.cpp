@@ -5,6 +5,7 @@
 
 #include "assertion.hpp"
 #include "ga_cache.hpp"
+#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
@@ -333,24 +334,24 @@ namespace sdk {
                     // wallet operation, after which these two calls are no-ops.
                     clear_key_value("index");
                     clear_key_value("icons");
+                    const auto assets_modified = get_inbuilt_data_timestamp("assets");
+                    const auto icons_modified = get_inbuilt_data_timestamp("icons");
                     bool clean = false;
-                    get_key_value("http_assets_modified", { [&clean](const auto& db_blob) {
-                        clean |= !db_blob
-                            || !std::equal(db_blob->begin(), db_blob->end(), inbuilt_assets_modified.begin());
+                    get_key_value("http_assets_modified", { [&clean, &assets_modified](const auto& db_blob) {
+                        clean |= !db_blob || !std::equal(db_blob->begin(), db_blob->end(), assets_modified.begin());
                     } });
                     if (!clean) {
-                        get_key_value("http_icons_modified", { [&clean](const auto& db_blob) {
-                            clean |= !db_blob
-                                || !std::equal(db_blob->begin(), db_blob->end(), inbuilt_icons_modified.begin());
+                        get_key_value("http_icons_modified", { [&clean, &icons_modified](const auto& db_blob) {
+                            clean |= !db_blob || !std::equal(db_blob->begin(), db_blob->end(), icons_modified.begin());
                         } });
                     }
                     if (clean) {
                         // Our compiled-in assets have changed, nuke our diff data.
                         GDK_LOG_SEV(log_level::info) << "Deleting cached http data";
                         clear_key_value("http_assets");
-                        upsert_key_value("http_assets_modified", ustring_span(inbuilt_assets_modified));
+                        upsert_key_value("http_assets_modified", ustring_span(assets_modified));
                         clear_key_value("http_icons");
-                        upsert_key_value("http_icons_modified", ustring_span(inbuilt_icons_modified));
+                        upsert_key_value("http_icons_modified", ustring_span(icons_modified));
                         // Force this change to be written, it will not be
                         // required again until the next gdk upgrade.
                         m_require_write = true;
