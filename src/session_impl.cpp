@@ -3,6 +3,7 @@
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 

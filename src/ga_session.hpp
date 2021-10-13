@@ -13,7 +13,6 @@
 #include "ga_cache.hpp"
 #include "ga_wally.hpp"
 #include "session_impl.hpp"
-#include "signer.hpp"
 #include "threading.hpp"
 #include "tx_list_cache.hpp"
 

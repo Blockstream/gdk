@@ -15,6 +15,7 @@
 #include "inbuilt.hpp"
 #include "logging.hpp"
 #include "session.hpp"
+#include "signer.hpp"
 #include "utils.hpp"
 
 namespace ga {

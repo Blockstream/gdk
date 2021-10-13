@@ -26,6 +26,7 @@
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
+#include "signer.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 #include <openssl/evp.h>

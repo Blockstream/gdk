@@ -7,6 +7,7 @@
 #include "memory.hpp"
 #include "session.hpp"
 #include "session_impl.hpp"
+#include "signer.hpp"
 
 namespace ga {
 namespace sdk {

@@ -8,11 +8,13 @@
 
 #include "session.hpp"
 
+#include "amount.hpp"
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
+#include "signer.hpp"
 #include "socks_client.hpp"
 #include "utils.hpp"
 

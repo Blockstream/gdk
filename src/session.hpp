@@ -7,7 +7,6 @@
 
 #include "include/gdk.h"
 
-#include "amount.hpp"
 #include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 
@@ -15,7 +14,6 @@ namespace ga {
 namespace sdk {
     class network_parameters;
     class session_impl;
-    class signer;
 
     int init(const nlohmann::json& config);
     const nlohmann::json& gdk_config();

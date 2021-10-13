@@ -6,8 +6,8 @@
 
 #include "amount.hpp"
 #include "autobahn_wrapper.hpp"
+#include "ga_wally.hpp"
 #include "network_parameters.hpp"
-#include "signer.hpp"
 
 namespace ga {
 namespace sdk {
@@ -18,6 +18,7 @@ namespace sdk {
     class ga_pubkeys;
     class ga_user_pubkeys;
     class user_pubkeys;
+    class signer;
 
     class session_impl {
     public:

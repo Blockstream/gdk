@@ -11,6 +11,7 @@
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
 #include "logging.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"

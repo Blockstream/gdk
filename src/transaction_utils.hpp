@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "amount.hpp"
-#include "signer.hpp"
 
 namespace ga {
 namespace sdk {

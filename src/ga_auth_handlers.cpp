@@ -10,6 +10,7 @@
 #include "logging.hpp"
 #include "session.hpp"
 #include "session_impl.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
