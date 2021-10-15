@@ -258,6 +258,7 @@ pub fn make_txlist_item(
     tx: &TransactionMeta,
     all_txs: &BETransactions,
     all_unblinded: &HashMap<elements::OutPoint, Unblinded>,
+    all_scripts: &HashMap<BEScript, DerivationPath>,
     network_id: NetworkId,
 ) -> TxListItem {
     let type_ = tx.type_.clone();
@@ -293,6 +294,13 @@ pub fn make_txlist_item(
                     .get_previous_output_amountblinder_hex(*outpoint, all_unblinded)
                     .unwrap_or_default();
             }
+            a.is_relevant = {
+                if let Some(script) = all_txs.get_previous_output_script_pubkey(i) {
+                    all_scripts.get(&script).is_some()
+                } else {
+                    false
+                }
+            };
             a
         })
         .collect();
@@ -311,6 +319,7 @@ pub fn make_txlist_item(
                 a.amountblinder =
                     transaction.output_amountblinder_hex(vout, all_unblinded).unwrap_or_default();
             }
+            a.is_relevant = all_scripts.contains_key(&transaction.output_script(vout));
             a
         })
         .collect();
@@ -752,7 +761,13 @@ impl Session<Error> for ElectrumSession {
             .list_tx(opt)?
             .iter()
             .map(|tx| {
-                make_txlist_item(tx, &acc_store.all_txs, &acc_store.unblinded, self.network.id())
+                make_txlist_item(
+                    tx,
+                    &acc_store.all_txs,
+                    &acc_store.unblinded,
+                    &acc_store.paths,
+                    self.network.id(),
+                )
             })
             .collect();
         Ok(TxsResult(txs))
