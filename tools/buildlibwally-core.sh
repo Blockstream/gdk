@@ -1,8 +1,6 @@
 #! /usr/bin/env bash
 set -e
 
-WALLYCORE_NAME="wallycore-0.8.2"
-
 have_cmd()
 {
     command -v "$1" >/dev/null 2>&1
@@ -17,19 +15,36 @@ else
     exit 1
 fi
 
-if [ ! -d "${MESON_BUILD_ROOT}/libwally-core" ]; then
-    cp -r "${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}" "${MESON_BUILD_ROOT}/libwally-core"
+WALLYCORE_NAME=$(grep ^source_url ${MESON_SOURCE_ROOT}/subprojects/libwally-core.wrap | ${SED} -e 's/^.*\///' -e 's/\.tar\.gz$//')
+WALLYCORE_SRCDIR=${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}
+WALLYCORE_BLDDIR=${MESON_BUILD_ROOT}/libwally-core
+SECP_URL=$(grep secp-url ${MESON_SOURCE_ROOT}/subprojects/libwally-core.wrap | ${SED} 's/^.*= //g')
+SECP_COMMIT=$(grep secp-commit ${MESON_SOURCE_ROOT}/subprojects/libwally-core.wrap | ${SED} 's/^.*= //g')
+
+#if [ ! -f "${WALLYCORE_SRCDIR}/.${SECP_COMMIT}" ]; then
+    cd ${WALLYCORE_SRCDIR}
+    rm -rf src/secp256k1
+    git clone ${SECP_URL} src/secp256k1
+    cd src/secp256k1
+    git checkout ${SECP_COMMIT}
+    cd ${WALLYCORE_SRCDIR}
+    touch .${SECP_COMMIT}
+    make clean -k || echo >/dev/null
+#fi
+
+if [ ! -d "${WALLYCORE_BLDDIR}" ]; then
+    cp -r ${WALLYCORE_SRCDIR} ${WALLYCORE_BLDDIR}
 fi
 
-cd "${MESON_BUILD_ROOT}/libwally-core"
+cd ${WALLYCORE_BLDDIR}
 ./tools/cleanup.sh
 ./tools/autogen.sh
 
-${SED} -i 's/\"wallycore\"/\"greenaddress\"/' ${MESON_BUILD_ROOT}/libwally-core/src/swig_java/swig.i
+${SED} -i 's/\"wallycore\"/\"greenaddress\"/' src/swig_java/swig.i
 
 CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests"
 CONFIGURE_ARGS="${CONFIGURE_ARGS} --enable-ecmult-static-precomputation"
-CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${MESON_BUILD_ROOT}/libwally-core/build"
+CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${WALLYCORE_BLDDIR}/build"
 
 if [ "${BUILDTYPE}" = "debug" ]; then
     CONFIGURE_ARGS="${CONFIGURE_ARGS} --enable-debug"
@@ -68,12 +83,14 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     ./configure --host=arm-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=${HOST_OS} \
                 --disable-swig-java --disable-swig-python ${CONFIGURE_ARGS}
 
+    make clean -k || echo >/dev/null
     make -o configure -j${NUM_JOBS}
 elif [ "$1" = "--windows" ]; then
      export CC=x86_64-w64-mingw32-gcc-posix
      export CXX=x86_64-w64-mingw32-g++-posix
 
     ./configure --disable-swig-java --disable-swig-python --host=x86_64-w64-mingw32 --build=${HOST_OS} ${CONFIGURE_ARGS}
+    make clean -k || echo >/dev/null
     make -j${NUM_JOBS}
 else
     export CFLAGS="${SDK_CFLAGS} -DPIC -fPIC ${EXTRA_FLAGS}"
@@ -85,6 +102,7 @@ else
     fi
 
     ./configure ${ENABLE_SWIG_JAVA} --host=${HOST_OS} ${CONFIGURE_ARGS}
+    make clean -k || echo >/dev/null
     make -j${NUM_JOBS}
 fi
 make -o configure install -j${NUM_JOBS}
