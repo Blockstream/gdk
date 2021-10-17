@@ -257,9 +257,9 @@ namespace sdk {
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
                     if (is_relevant) {
                         // Validate address is owned by the wallet
-                        const auto witness_script = session.output_script_from_utxo(output);
+                        const auto output_script = session.output_script_from_utxo(output);
                         const std::string address
-                            = get_address_from_script(net_params, witness_script, output.at("address_type"));
+                            = get_address_from_script(net_params, output_script, output.at("address_type"));
                         GDK_RUNTIME_ASSERT(output["address"] == address);
                     }
                     if (is_relevant && change_index == NO_CHANGE_INDEX) {
@@ -899,7 +899,8 @@ namespace sdk {
                     auto wit = tx_witness_stack_init(1);
                     tx_witness_stack_add(wit, der);
                     tx_set_input_witness(tx, index, wit);
-                    tx_set_input_script(tx, index, witness_script(script));
+                    const uint32_t witness_ver = 0;
+                    tx_set_input_script(tx, index, witness_script(script, witness_ver));
                 } else {
                     tx_set_input_script(tx, index, input_script(low_r, script, user_sig));
                 }
@@ -963,7 +964,8 @@ namespace sdk {
             auto wit = tx_witness_stack_init(1);
             tx_witness_stack_add(wit, der);
             tx_set_input_witness(tx, index, wit);
-            tx_set_input_script(tx, index, witness_script(script));
+            const uint32_t witness_ver = 0;
+            tx_set_input_script(tx, index, witness_script(script, witness_ver));
         } else {
             constexpr bool has_sighash = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash);

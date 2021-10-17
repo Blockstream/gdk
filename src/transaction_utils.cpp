@@ -132,7 +132,9 @@ namespace sdk {
 
     inline auto p2sh_p2wsh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
     {
-        return p2sh_address_from_bytes(net_params, witness_program_from_bytes(script, WALLY_SCRIPT_SHA256));
+        const uint32_t witness_ver = 0;
+        return p2sh_address_from_bytes(
+            net_params, witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256));
     }
 
     std::string get_address_from_script(
@@ -265,9 +267,9 @@ namespace sdk {
         return scriptsig_p2pkh_from_der(pub_key, ec_sig_to_der(dummy_sig, true));
     }
 
-    std::vector<unsigned char> witness_script(const std::vector<unsigned char>& script)
+    std::vector<unsigned char> witness_script(const std::vector<unsigned char>& script, uint32_t witness_ver)
     {
-        return witness_program_from_bytes(script, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
+        return witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
     }
 
     amount get_tx_fee(const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate)

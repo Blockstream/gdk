@@ -283,12 +283,13 @@ namespace sdk {
         return ret;
     }
 
-    std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t flags)
+    std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t witness_ver, uint32_t flags)
     {
+        GDK_RUNTIME_ASSERT(witness_ver == 0); // Only segwit v0 is supported
         size_t written;
         std::vector<unsigned char> ret(WALLY_WITNESSSCRIPT_MAX_LEN);
-        GDK_VERIFY(
-            wally_witness_program_from_bytes(script.data(), script.size(), flags, &ret[0], ret.size(), &written));
+        GDK_VERIFY(wally_witness_program_from_bytes_and_version(
+            script.data(), script.size(), witness_ver, flags, &ret[0], ret.size(), &written));
         GDK_RUNTIME_ASSERT(written <= ret.size());
         ret.resize(written);
         return ret;
