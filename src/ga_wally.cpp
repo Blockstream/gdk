@@ -439,6 +439,15 @@ namespace sdk {
         return ret;
     }
 
+    size_t addr_segwit_get_version(const std::string& addr, const std::string& family)
+    {
+        const uint32_t flags = 0;
+        size_t segwit_version;
+        GDK_VERIFY(wally_addr_segwit_get_version(addr.c_str(), family.c_str(), flags, &segwit_version));
+        GDK_RUNTIME_ASSERT(segwit_version <= 16);
+        return segwit_version;
+    }
+
     std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key)
     {
         std::array<unsigned char, HASH160_LEN + 1> addr;

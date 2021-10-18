@@ -247,7 +247,8 @@ namespace sdk {
                 for (const auto& output : outputs) {
                     if (!output.at("address").empty()) {
                         // Validate address matches the transaction scriptpubkey
-                        const auto spk_from_address = scriptpubkey_from_address(net_params, output["address"]);
+                        const auto spk_from_address
+                            = scriptpubkey_from_address(net_params, session.get_block_height(), output["address"]);
                         const auto& o = tx->outputs[i];
                         const auto spk_from_tx = gsl::make_span(o.script, o.script_len);
                         GDK_RUNTIME_ASSERT(static_cast<size_t>(spk_from_tx.size()) == spk_from_address.size());
@@ -610,7 +611,7 @@ namespace sdk {
                         = have_change_p != result.end() ? json_get_value(*have_change_p, policy_asset, false) : false;
                     if (have_change_output) {
                         const auto change_address = result.at("change_address").at(policy_asset).at("address");
-                        add_tx_output(net_params, result, tx, change_address);
+                        add_tx_output(net_params, session.get_block_height(), result, tx, change_address);
                         change_index = tx->num_outputs - 1;
                     }
                 }
@@ -764,7 +765,8 @@ namespace sdk {
                     // output to collect it, then loop again in case the amount
                     // this increases the fee by requires more UTXOs.
                     const auto change_address = result.at("change_address").at(asset_id).at("address");
-                    add_tx_output(net_params, result, tx, change_address, is_liquid ? 1 : 0, asset_id);
+                    add_tx_output(net_params, session.get_block_height(), result, tx, change_address, is_liquid ? 1 : 0,
+                        asset_id);
                     have_change_output = true;
                     change_index = tx->num_outputs - 1;
                     if (is_liquid && include_fee) {

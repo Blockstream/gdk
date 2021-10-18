@@ -19,8 +19,8 @@ bool isupper(const std::string& s)
 
 using namespace ga::sdk;
 
-std::vector<unsigned char> output_script_for_address(
-    const network_parameters& net_params, std::string address, std::string& error)
+static std::vector<unsigned char> output_script_for_address(
+    const network_parameters& net_params, uint32_t block_height, std::string address, std::string& error)
 {
     // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
     const bool is_bech32 = boost::starts_with(address, net_params.bech32_prefix());
@@ -42,7 +42,17 @@ std::vector<unsigned char> output_script_for_address(
     }
 
     if (is_bech32 || is_blech32) {
-        return addr_segwit_to_bytes(address, net_params.bech32_prefix());
+        std::vector<unsigned char> ret;
+        try {
+            ret = addr_segwit_to_bytes(address, net_params.bech32_prefix());
+            auto segwit_version = addr_segwit_get_version(address, net_params.bech32_prefix());
+            if (segwit_version > 0 && block_height <= net_params.get_taproot_enabled_at()) {
+                error = "Taproot has not yet activated on this network";
+            }
+        } catch (const std::exception&) {
+            error = res::id_invalid_address;
+        }
+        return ret;
     }
 
     // Base58 encoded bitcoin address
@@ -61,13 +71,13 @@ std::vector<unsigned char> output_script_for_address(
     return std::vector<unsigned char>();
 }
 
-std::vector<unsigned char> output_script_for_address(
-    const network_parameters& net_params, const std::string& address, nlohmann::json& result)
+static std::vector<unsigned char> output_script_for_address(
+    const network_parameters& net_params, uint32_t block_height, const std::string& address, nlohmann::json& result)
 {
     std::vector<unsigned char> script;
     std::string error;
     try {
-        script = output_script_for_address(net_params, address, error);
+        script = output_script_for_address(net_params, block_height, address, error);
     } catch (const std::exception& e) {
         error = res::id_invalid_address;
     }
@@ -283,10 +293,10 @@ namespace sdk {
     }
 
     std::vector<unsigned char> scriptpubkey_from_address(
-        const network_parameters& net_params, const std::string& address)
+        const network_parameters& net_params, uint32_t block_height, const std::string& address)
     {
         std::string error;
-        std::vector<unsigned char> script = output_script_for_address(net_params, address, error);
+        std::vector<unsigned char> script = output_script_for_address(net_params, block_height, address, error);
         GDK_RUNTIME_ASSERT(error.empty());
         return script;
     }
@@ -299,10 +309,10 @@ namespace sdk {
         }
     }
 
-    amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_id)
+    amount add_tx_output(const network_parameters& net_params, uint32_t block_height, nlohmann::json& result,
+        wally_tx_ptr& tx, const std::string& address, amount::value_type satoshi, const std::string& asset_id)
     {
-        std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
+        std::vector<unsigned char> script = output_script_for_address(net_params, block_height, address, result);
 
         if (net_params.is_liquid()) {
             const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
@@ -418,8 +428,8 @@ namespace sdk {
         amount::strip_non_satoshi_keys(addressee);
         addressee["satoshi"] = satoshi.value(); // Sets to 0 if not present
 
-        return add_tx_output(
-            net_params, result, tx, address, satoshi.value(), asset_id_from_json(net_params, addressee));
+        return add_tx_output(net_params, session.get_block_height(), result, tx, address, satoshi.value(),
+            asset_id_from_json(net_params, addressee));
     }
 
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
