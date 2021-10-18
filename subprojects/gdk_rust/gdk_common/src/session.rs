@@ -33,6 +33,8 @@ pub trait Session<E> {
         tx_detail_signed: &TransactionMeta,
     ) -> Result<TransactionMeta, E>;
     fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, E>;
+    fn create_pset(&mut self, details: &CreatePset) -> Result<PsetMeta, E>;
+    fn sign_pset(&mut self, details: &SignPset) -> Result<SignedPsetMeta, E>;
     fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, E>;
     fn get_mnemonic(&self) -> Result<Mnemonic, E>;
     fn get_available_currencies(&self) -> Result<Value, E>;

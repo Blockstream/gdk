@@ -91,6 +91,52 @@ where
     })
 }
 
+pub fn create_pset<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
+where
+    E: Into<Error>,
+    S: Session<E>,
+{
+    let create_pset: CreatePset = serde_json::from_value(input.clone())?;
+
+    let res = session
+        .create_pset(&create_pset)
+        .map(|v| serde_json::to_value(v).unwrap())
+        .map_err(Into::into);
+
+    Ok(match res {
+        Err(ref err) => {
+            warn!("err {:?}", err);
+            let mut input_cloned = input.clone();
+            input_cloned["error"] = err.to_gdk_code().into();
+            input_cloned
+        }
+
+        Ok(v) => v,
+    })
+}
+
+pub fn sign_pset<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
+where
+    E: Into<Error>,
+    S: Session<E>,
+{
+    let sign_pset: SignPset = serde_json::from_value(input.clone())?;
+
+    let res =
+        session.sign_pset(&sign_pset).map(|v| serde_json::to_value(v).unwrap()).map_err(Into::into);
+
+    Ok(match res {
+        Err(ref err) => {
+            warn!("err {:?}", err);
+            let mut input_cloned = input.clone();
+            input_cloned["error"] = err.to_gdk_code().into();
+            input_cloned
+        }
+
+        Ok(v) => v,
+    })
+}
+
 pub fn set_transaction_memo<S, E>(session: &S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,

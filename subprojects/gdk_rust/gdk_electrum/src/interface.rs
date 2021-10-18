@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetBalanceOpt,
-    GetTransactionsOpt, GetUnspentOpt, Settings, TransactionMeta, UpdateAccountOpt,
+    AddressPointer, Balances, CreateAccountOpt, CreatePset, CreateTransaction, GetBalanceOpt,
+    GetTransactionsOpt, GetUnspentOpt, PsetMeta, Settings, SignPset, SignedPsetMeta,
+    TransactionMeta, UpdateAccountOpt,
 };
 use gdk_common::network::Network;
 use gdk_common::scripts::ScriptType;
@@ -238,6 +239,14 @@ impl WalletCtx {
             .ok_or_else(|| Error::Generic("Cannot sign without tx data".into()))?
             .subaccount;
         self.get_account(account_num)?.sign(request)
+    }
+
+    pub fn create_pset(&self, request: &CreatePset) -> Result<PsetMeta, Error> {
+        self.get_account(request.subaccount)?.create_pset(request)
+    }
+
+    pub fn sign_pset(&self, request: &SignPset) -> Result<SignedPsetMeta, Error> {
+        self.get_account(request.subaccount)?.sign_pset(request)
     }
 
     pub fn get_next_address(&self, account_num: u32) -> Result<AddressPointer, Error> {

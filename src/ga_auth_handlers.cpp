@@ -761,6 +761,46 @@ namespace sdk {
     }
 
     //
+    // Create PSET
+    //
+    create_pset_call::create_pset_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "create_pset")
+        , m_details(details)
+    {
+    }
+
+    auth_handler::state_type create_pset_call::call_impl()
+    {
+        if (m_result.empty()) {
+            // Initial call: Create PSET from the provided details
+            m_result = m_session->create_pset(m_details);
+            m_state = state_type::done;
+        }
+
+        return m_state;
+    }
+
+    //
+    // Sign PSET
+    //
+    sign_pset_call::sign_pset_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "sign_pset")
+        , m_details(details)
+    {
+    }
+
+    auth_handler::state_type sign_pset_call::call_impl()
+    {
+        if (m_result.empty()) {
+            // Initial call: Sign the PSET from the provided details
+            m_result = m_session->sign_pset(m_details);
+            m_state = state_type::done;
+        }
+
+        return m_state;
+    }
+
+    //
     // Get subaccounts
     //
     get_subaccounts_call::get_subaccounts_call(session& session)

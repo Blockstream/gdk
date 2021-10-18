@@ -483,6 +483,16 @@ namespace sdk {
         return call_session("broadcast_transaction", nlohmann::json(tx_hex)).get<std::string>();
     }
 
+    nlohmann::json ga_rust::create_pset(const nlohmann::json& details)
+    {
+        return call_session("create_pset", details);
+    }
+
+    nlohmann::json ga_rust::sign_pset(const nlohmann::json& details)
+    {
+        return call_session("sign_pset", details);
+    }
+
     void ga_rust::send_nlocktimes() { throw std::runtime_error("send_nlocktimes not implemented"); }
 
     void ga_rust::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)

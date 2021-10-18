@@ -99,6 +99,9 @@ namespace sdk {
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
+        nlohmann::json create_pset(const nlohmann::json& details);
+        nlohmann::json sign_pset(const nlohmann::json& details);
+
         void send_nlocktimes();
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);
         void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);

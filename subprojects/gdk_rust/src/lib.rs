@@ -396,6 +396,9 @@ where
                 .map_err(Into::into)
         }
 
+        "create_pset" => serialize::create_pset(session, input),
+        "sign_pset" => serialize::sign_pset(session, input),
+
         "get_receive_address" => {
             let a = session
                 .get_receive_address(&serde_json::from_value(input.clone())?)

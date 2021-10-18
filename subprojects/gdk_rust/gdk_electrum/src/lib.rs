@@ -755,6 +755,16 @@ impl Session<Error> for ElectrumSession {
         Ok(format!("{}", txid))
     }
 
+    fn create_pset(&mut self, pset_req: &CreatePset) -> Result<PsetMeta, Error> {
+        info!("electrum create_pset {:#?}", pset_req);
+        self.get_wallet()?.create_pset(pset_req)
+    }
+
+    fn sign_pset(&mut self, pset_req: &SignPset) -> Result<SignedPsetMeta, Error> {
+        info!("electrum sign_pset {:#?}", pset_req);
+        self.get_wallet()?.sign_pset(pset_req)
+    }
+
     /// The estimates are returned as an array of 25 elements. Each element is
     /// an integer representing the fee estimate expressed as satoshi per 1000
     /// bytes. The first element is the minimum relay fee as returned by the

@@ -614,6 +614,39 @@ Send transaction JSON
 
 
 
+.. _create-pset-details:
+
+Create PSET JSON
+-----------------------
+
+.. code-block:: json
+
+ {
+   "send_asset": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
+   "send_amount": 10000,
+   "recv_asset": "ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2",
+   "recvAmount": 500000000
+ }
+
+
+
+.. _sign-pset-details:
+
+Sign PSET JSON
+---------------------
+
+.. code-block:: json
+
+ {
+   "pset": "AABBCC..",
+   "send_asset": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
+   "send_amount": 10000,
+   "recv_asset": "ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2",
+   "recvAmount": 500000000
+ }
+
+
+
 .. _estimates:
 
 Fee estimates JSON

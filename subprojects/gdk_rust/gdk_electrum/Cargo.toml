@@ -32,6 +32,9 @@ lazy_static = "1.4.0"
 # remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature
 bitcoin = { version = "0.26", features = [ "use-serde", "rand" ] }
 elements = { version = "0.16", features = ["serde-feature"] }
+# remove elements_pset when main elements dependency is updated
+elements_pset = { package = "elements", git = "https://github.com/ElementsProject/rust-elements", rev = "d920c0736d009fb3578da58f9bc3b99d90b2458a" }
+base64 = "0.13.0"
 
 # required for https://github.com/rust-bitcoin/rust-bitcoin/pull/511 (merged but unreleased)
 [patch.crates-io]

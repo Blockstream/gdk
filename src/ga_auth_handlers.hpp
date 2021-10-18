@@ -112,6 +112,26 @@ namespace sdk {
         const nlohmann::json m_details;
     };
 
+    class create_pset_call : public auth_handler_impl {
+    public:
+        create_pset_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+    };
+
+    class sign_pset_call : public auth_handler_impl {
+    public:
+        sign_pset_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+    };
+
     class get_subaccounts_call : public auth_handler_impl {
     public:
         get_subaccounts_call(session& session);

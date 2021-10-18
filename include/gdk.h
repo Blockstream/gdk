@@ -454,6 +454,28 @@ GDK_API int GA_send_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
 
 /**
+ * Create a PSETv2 filling UTXO details and receive/change outputs.
+ *
+ * :param session: The session to use.
+ * :param pset_details: PSET :ref:`create-pset-details` for constructing.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_create_pset(
+    struct GA_session* session, const GA_json* pset_details, struct GA_auth_handler** call);
+
+/**
+ * Blind PSETv2 outputs and sign the user's inputs.
+ *
+ * :param session: The session to use.
+ * :param pset_details: PSET PSET :ref:`sign-pset-details` used for constructing.
+ * :param call: Destination for the resulting GA_auth_handler to perform the blinding and signing.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_sign_pset(
+    struct GA_session* session, const GA_json* pset_details, struct GA_auth_handler** call);
+
+/**
  * Request an email containing the user's nLockTime transactions.
  *
  * :param session: The session to use.

@@ -3665,6 +3665,16 @@ namespace sdk {
         return wamp_cast(wamp_call("vault.broadcast_raw_tx", tx_hex));
     }
 
+    nlohmann::json ga_session::create_pset(const nlohmann::json& /*details*/)
+    {
+        return nlohmann::json{ "not implemented" };
+    }
+
+    nlohmann::json ga_session::sign_pset(const nlohmann::json& /*details*/)
+    {
+        return nlohmann::json{ "not implemented" };
+    }
+
     // Idempotent
     void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(wamp_call("txs.send_nlocktime"))); }
 

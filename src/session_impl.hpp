@@ -165,6 +165,9 @@ namespace sdk {
             = 0;
         virtual std::string broadcast_transaction(const std::string& tx_hex) = 0;
 
+        virtual nlohmann::json create_pset(const nlohmann::json& details) = 0;
+        virtual nlohmann::json sign_pset(const nlohmann::json& details) = 0;
+
         virtual void send_nlocktimes() = 0;
         virtual void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data) = 0;
         virtual void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data) = 0;
