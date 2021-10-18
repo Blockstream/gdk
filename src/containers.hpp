@@ -61,6 +61,26 @@ namespace sdk {
         }
         return *p;
     }
+
+    // Filter items from json based on a predicate function `filter`.
+    // Returns the keys of the items removed
+    template <typename FN> std::vector<std::string> json_filter(nlohmann::json& data, FN&& filter)
+    {
+        std::vector<std::string> to_remove;
+        for (auto& item : data.items()) {
+            if (filter(item)) {
+                to_remove.emplace_back(item.key());
+            }
+        }
+        for (const auto& key : to_remove) {
+            data.erase(key);
+        }
+        return to_remove;
+    }
+
+    // Filter items without a valid asset id key (32 byte/64 char hex string)
+    std::vector<std::string> json_filter_bad_asset_ids(nlohmann::json& data);
+
 } // namespace sdk
 } // namespace ga
 

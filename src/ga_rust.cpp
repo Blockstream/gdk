@@ -168,10 +168,16 @@ namespace sdk {
         auto result = call_session("refresh_assets", params);
         const std::array<const char*, 2> keys = { "assets", "icons" };
         for (const auto& key : keys) {
-            if (params.value(key, false) && result.at(key).empty()) {
-                // An empty result is a sentinel indicating that the initial
-                // data fetch failed. Return the compiled-in data in this case.
-                result[key] = get_inbuilt_data(m_net_params, key);
+            if (params.value(key, false)) {
+                auto& data = result.at(key);
+                if (data.empty()) {
+                    // An empty result is a sentinel indicating that the initial
+                    // data fetch failed. Return the compiled-in data in this case.
+                    result[key] = get_inbuilt_data(m_net_params, key);
+                } else {
+                    // Filter out any bad keys returned by the asset registry
+                    json_filter_bad_asset_ids(data);
+                }
             }
         }
         return result;

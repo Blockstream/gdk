@@ -1025,7 +1025,10 @@ namespace sdk {
 
         if (!cached.empty()) {
             // We have an update to the base data, return it
-            return base.at("body").patch(cached.at("body"));
+            auto result = base.at("body").patch(cached.at("body"));
+            // Filter the result in case our cached update contained a bad asset id
+            json_filter_bad_asset_ids(result);
+            return result;
         }
         // Return the unchanged base data
         auto result(std::move(base.at("body")));

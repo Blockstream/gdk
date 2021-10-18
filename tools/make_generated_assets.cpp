@@ -1,4 +1,5 @@
 // Create compressed asset data for pre-caching in gdk
+#include "src/containers.hpp"
 #include "src/ga_auth_handlers.hpp"
 #include "src/ga_session.hpp"
 #include "src/session.hpp"
@@ -48,6 +49,7 @@ static std::string generate(sdk::session& session, const std::string& page, cons
     const auto url = session.get_network_parameters().get_registry_connection_string() + "/" + page + ".json";
     auto data = session.http_request({ { "method", "GET" }, { "urls", { url } }, { "accept", "json" } });
     data.at("headers").erase("date"); // Make the generated data reproducible
+    ::ga::sdk::json_filter_bad_asset_ids(data.at("body")); // Remove any bad keys
 
 #if 0 // Enable to mutate the generated asset data so patching can be tested
     if (key == "assets") {
