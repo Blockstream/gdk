@@ -2823,11 +2823,8 @@ namespace sdk {
                 tx_details["can_cpfp"] = !is_confirmed;
             } else {
                 for (auto& ep : tx_details["outputs"]) {
-                    if (is_liquid) {
-                        const std::string script = ep["script"];
-                        if (script.empty()) {
-                            continue;
-                        }
+                    if (is_liquid && ep.at("script").empty()) {
+                        continue;
                     }
                     std::string addressee;
                     if (!json_get_value(ep, "is_relevant", false)) {
