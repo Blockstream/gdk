@@ -42,7 +42,7 @@ std::vector<unsigned char> output_script_for_address(
     }
 
     if (is_bech32 || is_blech32) {
-        return addr_segwit_v0_to_bytes(address, net_params.bech32_prefix());
+        return addr_segwit_to_bytes(address, net_params.bech32_prefix());
     }
 
     // Base58 encoded bitcoin address

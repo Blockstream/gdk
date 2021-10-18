@@ -213,7 +213,7 @@ namespace sdk {
     // Returns true if 'hex' decodes correctly to 'len' bytes
     bool validate_hex(const std::string& hex, size_t len);
 
-    std::vector<unsigned char> addr_segwit_v0_to_bytes(const std::string& addr, const std::string& family);
+    std::vector<unsigned char> addr_segwit_to_bytes(const std::string& addr, const std::string& family);
 
     std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key);
 
