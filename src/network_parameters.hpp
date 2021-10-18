@@ -70,6 +70,7 @@ namespace sdk {
         std::vector<uint32_t> csv_buckets() const;
         uint32_t cert_expiry_threshold() const;
         uint32_t get_max_reorg_blocks() const;
+        uint32_t get_taproot_enabled_at() const;
 
     private:
         nlohmann::json m_details;
