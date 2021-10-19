@@ -173,7 +173,7 @@ namespace sdk {
                 if (data.empty()) {
                     // An empty result is a sentinel indicating that the initial
                     // data fetch failed. Return the compiled-in data in this case.
-                    result[key] = get_inbuilt_data(m_net_params, key);
+                    result[key] = get_inbuilt_data(m_net_params, key).at("body");
                 } else {
                     // Filter out any bad keys returned by the asset registry
                     json_filter_bad_asset_ids(data);
