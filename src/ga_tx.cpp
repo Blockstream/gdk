@@ -794,9 +794,15 @@ namespace sdk {
                             change_output.satoshi = change_amount;
                             const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
                             // Randomize change output
-                            if (change_index != new_change_index) {
-                                std::swap(tx->outputs[new_change_index], change_output);
-                                change_index = new_change_index;
+                            // Move change output to random offset in tx outputs while
+                            // preserving the ordering of the other outputs
+                            while (change_index < new_change_index) {
+                                std::swap(tx->outputs[change_index], tx->outputs[change_index + 1]);
+                                ++change_index;
+                            }
+                            while (change_index > new_change_index) {
+                                std::swap(tx->outputs[change_index], tx->outputs[change_index - 1]);
+                                --change_index;
                             }
                         }
                     }
