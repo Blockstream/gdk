@@ -1463,9 +1463,9 @@ namespace sdk {
         if (!m_confirming) {
             // Request the reset or undo
             if (m_is_undo) {
-                m_result = m_session->request_undo_twofactor_reset(m_reset_email);
+                m_session->request_undo_twofactor_reset(m_reset_email);
             } else {
-                m_result = m_session->request_twofactor_reset(m_reset_email);
+                m_session->request_twofactor_reset(m_reset_email);
             }
             // Move on to confirming the reset or undo
             m_confirming = true;

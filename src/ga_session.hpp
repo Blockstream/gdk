@@ -204,6 +204,7 @@ namespace sdk {
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
+        nlohmann::json set_twofactor_reset_config(const autobahn::wamp_call_result& server_result);
         void set_enabled_twofactor_methods(locker_t& locker);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_initial_login);

@@ -3505,26 +3505,44 @@ namespace sdk {
         return wamp_cast_json(wamp_call("twofactor.request_undo_reset", email));
     }
 
-    // Idempotent
+    nlohmann::json ga_session::set_twofactor_reset_config(const autobahn::wamp_call_result& server_result)
+    {
+        locker_t locker(m_mutex);
+
+        // Copy the servers results into login_data
+        m_login_data.update(wamp_cast_json(server_result));
+
+        // Update any cached twofactor config and return the result
+        // FIXME: code duped in set_twofactor_config
+        m_is_locked = json_get_value(m_login_data, "reset_2fa_active", false);
+        const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
+        const auto& disputed = m_login_data["reset_2fa_disputed"];
+        nlohmann::json reset_status
+            = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+        if (!m_twofactor_config.is_null()) {
+            m_twofactor_config["twofactor_reset"] = reset_status;
+        }
+        return { { "twofactor_reset", std::move(reset_status) } };
+    }
+
     nlohmann::json ga_session::confirm_twofactor_reset(
         const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
     {
         auto result = wamp_call("twofactor.confirm_reset", email, is_dispute, mp_cast(twofactor_data).get());
-        return wamp_cast_json(result);
+        return set_twofactor_reset_config(result);
     }
 
-    // Idempotent
     nlohmann::json ga_session::confirm_undo_twofactor_reset(
         const std::string& email, const nlohmann::json& twofactor_data)
     {
         auto result = wamp_call("twofactor.confirm_undo_reset", email, mp_cast(twofactor_data).get());
-        return wamp_cast_json(result);
+        return set_twofactor_reset_config(result);
     }
 
-    // Idempotent
     nlohmann::json ga_session::cancel_twofactor_reset(const nlohmann::json& twofactor_data)
     {
-        return wamp_cast_json(wamp_call("twofactor.cancel_reset", mp_cast(twofactor_data).get()));
+        auto result = wamp_call("twofactor.cancel_reset", mp_cast(twofactor_data).get());
+        return set_twofactor_reset_config(result);
     }
 
     // Idempotent
