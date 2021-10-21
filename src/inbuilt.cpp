@@ -14,7 +14,7 @@ namespace sdk {
 
     } // namespace
 
-    nlohmann::json get_inbuilt_data(const network_parameters& net_params, const std::string& key)
+    nlohmann::json get_inbuilt_data(const network_parameters& /*net_params*/, const std::string& key)
     {
         std::vector<unsigned char> base_data;
         if (key == "assets") {
@@ -26,12 +26,6 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(false);
         }
         auto result = nlohmann::json::from_msgpack(base_data.begin(), base_data.end());
-
-        if (key == "assets") {
-            // Add the policy asset to asset data
-            const auto policy_asset = net_params.policy_asset();
-            result[policy_asset] = { { "asset_id", policy_asset }, { "name", "btc" } };
-        }
 
         return result;
     }

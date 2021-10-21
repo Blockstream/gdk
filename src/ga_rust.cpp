@@ -180,6 +180,11 @@ namespace sdk {
                 }
             }
         }
+        if (params.value("assets", false)) {
+            // Add the policy asset to asset data
+            const auto policy_asset = m_net_params.policy_asset();
+            result["assets"][policy_asset] = { { "asset_id", policy_asset }, { "name", "btc" } };
+        }
         return result;
     }
 
