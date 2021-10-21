@@ -25,16 +25,18 @@ namespace sdk {
         constexpr const char* TXID_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
                                             "WHERE subaccount = ?1 AND txid = ?2;";
         constexpr const char* TX_LATEST = "SELECT MAX(timestamp) FROM Tx WHERE subaccount = ?1;";
-        constexpr const char* TX_MEMPOOL = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block = 0;";
-        constexpr const char* TX_BLOCK = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block >= ?2;";
+        constexpr const char* TX_EARLIEST_MEMPOOL
+            = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block = 0;";
+        constexpr const char* TX_EARLIEST_BLOCK
+            = "SELECT MIN(timestamp) FROM Tx WHERE subaccount = ?1 AND block >= ?2;";
         constexpr const char* TX_UPSERT = "INSERT INTO Tx(subaccount, timestamp, txid, block, spent, spv_status, data) "
                                           "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) "
                                           "ON CONFLICT(subaccount, timestamp) DO UPDATE SET data = ?4;";
         constexpr const char* TX_SPV_UPDATE = "UPDATE Tx SET spv_status = ?1 WHERE txid = ?2;";
         constexpr const char* TX_DELETE_ALL = "DELETE FROM Tx WHERE subaccount = ?1 AND timestamp >= ?2;";
-        constexpr const char* TXDATA_INSERT = "INSERT INTO TxData(txid, data) VALUES (?1, ?2) "
+        constexpr const char* TXDATA_INSERT = "INSERT INTO TxData(txid, rawtx) VALUES (?1, ?2) "
                                               "ON CONFLICT(txid) DO NOTHING;";
-        constexpr const char* TXDATA_SELECT = "SELECT data FROM TxData WHERE txid = ?1;";
+        constexpr const char* TXDATA_SELECT = "SELECT rawtx FROM TxData WHERE txid = ?1;";
 
         static auto get_new_memory_db()
         {
@@ -70,7 +72,8 @@ namespace sdk {
                 "NOT NULL, block INTEGER NOT NULL, spent INTEGER NOT NULL, spv_status INTEGER NOT NULL, "
                 "data BLOB NOT NULL, PRIMARY KEY(subaccount, timestamp));");
 
-            exec_check("CREATE TABLE IF NOT EXISTS TxData(txid BLOB NOT NULL, data BLOB NOT NULL, PRIMARY KEY(txid));");
+            exec_check(
+                "CREATE TABLE IF NOT EXISTS TxData(txid BLOB NOT NULL, rawtx BLOB NOT NULL, PRIMARY KEY(txid));");
             return db;
         }
 
@@ -366,8 +369,8 @@ namespace sdk {
         , m_stmt_tx_search(get_stmt(true, m_db, TX_SELECT))
         , m_stmt_txid_search(get_stmt(true, m_db, TXID_SELECT))
         , m_stmt_tx_latest_search(get_stmt(true, m_db, TX_LATEST))
-        , m_stmt_tx_mempool_search(get_stmt(true, m_db, TX_MEMPOOL))
-        , m_stmt_tx_block_search(get_stmt(true, m_db, TX_BLOCK))
+        , m_stmt_tx_earliest_mempool_search(get_stmt(true, m_db, TX_EARLIEST_MEMPOOL))
+        , m_stmt_tx_earliest_block_search(get_stmt(true, m_db, TX_EARLIEST_BLOCK))
         , m_stmt_tx_upsert(get_stmt(true, m_db, TX_UPSERT))
         , m_stmt_tx_spv_update(get_stmt(true, m_db, TX_SPV_UPDATE))
         , m_stmt_tx_delete_all(get_stmt(true, m_db, TX_DELETE_ALL))
@@ -608,9 +611,9 @@ namespace sdk {
         // Delete all transactions from the earliest mempool tx onwards
         boost::optional<uint64_t> db_timestamp;
         {
-            const auto _{ stmt_clean(m_stmt_tx_mempool_search) };
-            bind_int(m_stmt_tx_mempool_search, 1, subaccount);
-            db_timestamp = get_tx_timestamp(m_stmt_tx_mempool_search);
+            const auto _{ stmt_clean(m_stmt_tx_earliest_mempool_search) };
+            bind_int(m_stmt_tx_earliest_mempool_search, 1, subaccount);
+            db_timestamp = get_tx_timestamp(m_stmt_tx_earliest_mempool_search);
         }
         if (db_timestamp == boost::none) {
             return false; // Cache not updated
@@ -624,10 +627,10 @@ namespace sdk {
         // Delete all transactions in the start block or later
         boost::optional<uint64_t> db_timestamp;
         {
-            const auto _{ stmt_clean(m_stmt_tx_block_search) };
-            bind_int(m_stmt_tx_block_search, 1, subaccount);
-            bind_int(m_stmt_tx_block_search, 2, start_block);
-            db_timestamp = get_tx_timestamp(m_stmt_tx_block_search);
+            const auto _{ stmt_clean(m_stmt_tx_earliest_block_search) };
+            bind_int(m_stmt_tx_earliest_block_search, 1, subaccount);
+            bind_int(m_stmt_tx_earliest_block_search, 2, start_block);
+            db_timestamp = get_tx_timestamp(m_stmt_tx_earliest_block_search);
         }
         if (db_timestamp == boost::none) {
             return false; // Cache not updated

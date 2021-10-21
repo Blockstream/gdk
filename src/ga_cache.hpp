@@ -79,8 +79,8 @@ namespace sdk {
         sqlite3_stmt_ptr m_stmt_tx_search;
         sqlite3_stmt_ptr m_stmt_txid_search;
         sqlite3_stmt_ptr m_stmt_tx_latest_search;
-        sqlite3_stmt_ptr m_stmt_tx_mempool_search;
-        sqlite3_stmt_ptr m_stmt_tx_block_search;
+        sqlite3_stmt_ptr m_stmt_tx_earliest_mempool_search;
+        sqlite3_stmt_ptr m_stmt_tx_earliest_block_search;
         sqlite3_stmt_ptr m_stmt_tx_upsert;
         sqlite3_stmt_ptr m_stmt_tx_spv_update;
         sqlite3_stmt_ptr m_stmt_tx_delete_all;
