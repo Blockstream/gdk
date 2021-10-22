@@ -8,7 +8,6 @@ use crate::error::Error;
 use crate::scripts::ScriptType;
 use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
-use chrono::{DateTime, NaiveDateTime, Utc};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
@@ -215,7 +214,6 @@ pub struct TransactionMeta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
     pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created or when list_tx happens
-    pub created_at: String, // yyyy-MM-dd HH:mm:ss of timestamp
     pub error: String,
     pub addressees_have_assets: bool,
     pub addressees_read_only: bool,
@@ -248,7 +246,6 @@ impl From<BETransaction> for TransactionMeta {
         TransactionMeta {
             create_transaction: None,
             height: None,
-            created_at: format(timestamp),
             timestamp,
             txid,
             hex,
@@ -294,12 +291,10 @@ impl TransactionMeta {
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
-        let created_at = format(timestamp);
 
         wgtx.create_transaction = Some(create_transaction);
         wgtx.height = height;
         wgtx.timestamp = timestamp;
-        wgtx.created_at = created_at;
         wgtx.satoshi = satoshi;
         wgtx.network = Some(network);
         wgtx.fee = fee;
@@ -544,11 +539,6 @@ fn now() -> u32 {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     since_the_epoch.as_secs() as u32
-}
-
-fn format(timestamp: u32) -> String {
-    let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(timestamp as i64, 0), Utc);
-    format!("{}", dt.format("%Y-%m-%d %H:%M:%S"))
 }
 
 impl SPVVerifyResult {
