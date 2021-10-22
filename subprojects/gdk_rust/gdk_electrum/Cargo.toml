@@ -28,6 +28,8 @@ aes = "0.7.0"
 tempdir = "0.3.7"
 secp256k1 = { version = "0.20.0", features = [ "recovery", "rand"] }
 lazy_static = "1.4.0"
+# We need to pin half (transitive dep from serde_cbor) to stay compatible with Rust 1.49.0
+half = "~1.7"
 
 # remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature
 bitcoin = { version = "0.26", features = [ "use-serde", "rand" ] }

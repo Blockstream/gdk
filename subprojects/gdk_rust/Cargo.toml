@@ -24,6 +24,9 @@ log = "0.4.8"
 android_logger = { version = "0.8.6", optional = true }
 url = "1.7.2"
 ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
+# We need to pin half (transitive dep from serde_cbor) to stay compatible with Rust 1.49.0
+half = "~1.7"
+
 
 [dev-dependencies]
 tempdir = "0.3.7"
@@ -32,6 +35,8 @@ bitcoin = { version = "0.26.0", features = [ "use-serde" ] }
 elements = { version = "0.16", features = ["serde-feature"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
 electrsd = { version = "0.7.0", features = [ "legacy", "trigger" ] }
+# We need to pin ureq (transitive dep from electrsd) to stay compatible with Rust 1.49.0
+ureq = "~2.2"
 
 [profile.release]
 lto = true
