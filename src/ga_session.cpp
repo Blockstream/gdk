@@ -285,6 +285,20 @@ namespace sdk {
             return msgpack::unpack(reinterpret_cast<const char*>(buffer.data()), buffer.size());
         }
 
+        static nlohmann::json get_twofactor_reset_status(
+            const session_impl::locker_t& locker, const nlohmann::json& server_data)
+        {
+            GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+            if (server_data.empty() || server_data.is_null()) {
+                // login_data before we login is empty, return disabled config in this case
+                return { { "is_active", false }, { "days_remaining", -1 }, { "is_disputed", false } };
+            }
+            return { { "is_active", server_data.value("reset_2fa_active", false) },
+                { "days_remaining", server_data.value("reset_2fa_days_remaining", -1) },
+                { "is_disputed", server_data.value("reset_2fa_disputed", false) } };
+        }
+
         static amount::value_type get_limit_total(const nlohmann::json& details)
         {
             const auto& total_p = details.at("total");
@@ -514,7 +528,6 @@ namespace sdk {
         , m_system_message_id(0)
         , m_system_message_ack_id(0)
         , m_watch_only(true)
-        , m_is_locked(false)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_last_block_notification()
         , m_multi_call_category(0)
@@ -1226,6 +1239,8 @@ namespace sdk {
             old_settings = get_settings(locker);
         }
 
+        const auto old_reset_status = get_twofactor_reset_status(locker, m_login_data);
+
         // Swap current login data with new; for relogin 'login_data' holds the old values
         m_login_data.swap(login_data);
 
@@ -1308,10 +1323,6 @@ namespace sdk {
         m_system_message_ack_id = 0;
         m_system_message_ack = std::string();
         m_watch_only = watch_only;
-        // TODO: Assert we aren't locked in all calls that should be disabled
-        // (the server prevents these calls but its faster to reject them locally)
-        const bool old_m_is_locked = m_is_locked;
-        m_is_locked = json_get_value(m_login_data, "reset_2fa_active", false);
 
         const auto p = m_login_data.find("limits");
         update_spending_limits(locker, p == m_login_data.end() ? nlohmann::json::object() : *p);
@@ -1349,10 +1360,8 @@ namespace sdk {
         auto settings = get_settings(locker);
         const bool must_notify_settings = old_settings != settings;
 
-        const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
-        const auto& disputed = m_login_data["reset_2fa_disputed"];
-        const bool must_notify_reset = is_initial_login || old_m_is_locked != m_is_locked
-            || days_remaining != login_data["reset_2fa_days_remaining"] || disputed != login_data["reset_2fa_disputed"];
+        auto reset_status = get_twofactor_reset_status(locker, m_login_data);
+        const bool must_notify_reset = is_initial_login || old_reset_status != reset_status;
 
         if (must_notify_settings || must_notify_reset) {
             unique_unlock unlocker(locker);
@@ -1360,8 +1369,6 @@ namespace sdk {
                 emit_notification({ { "event", "settings" }, { "settings", std::move(settings) } }, false);
             }
             if (must_notify_reset) {
-                nlohmann::json reset_status = { { "is_active", m_is_locked }, { "days_remaining", days_remaining },
-                    { "is_disputed", disputed } };
                 emit_notification(
                     { { "event", "twofactor_reset" }, { "twofactor_reset", std::move(reset_status) } }, false);
             }
@@ -1736,11 +1743,11 @@ namespace sdk {
             reset_cached_session_data(locker);
         }
 
-        const bool is_wallet_locked = json_get_value(login_data, "reset_2fa_active", false);
+        const bool reset_2fa_active = json_get_value(login_data, "reset_2fa_active", false);
         const std::string server_hmac = login_data["client_blob_hmac"];
         bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
 
-        if (!is_wallet_locked && !is_blob_on_server && m_blob_hmac.empty()) {
+        if (!reset_2fa_active && !is_blob_on_server && m_blob_hmac.empty()) {
             // No client blob: create one, save it to the server and cache it,
             // but only if the wallet isn't locked for a two factor reset.
             // Subaccount names
@@ -2243,7 +2250,7 @@ namespace sdk {
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
+        GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
@@ -2258,7 +2265,7 @@ namespace sdk {
     void ga_session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
     {
         locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
+        GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
@@ -3304,6 +3311,12 @@ namespace sdk {
         return address_type::p2sh;
     }
 
+    bool ga_session::is_twofactor_reset_active(session_impl::locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        return json_get_value(m_login_data, "reset_2fa_active", false);
+    }
+
     nlohmann::json ga_session::get_twofactor_config(bool reset_cached)
     {
         locker_t locker(m_mutex);
@@ -3350,14 +3363,9 @@ namespace sdk {
             config["gauth_url"] = MASKED_GAUTH_SEED;
         }
 
-        const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
-        const auto& disputed = m_login_data["reset_2fa_disputed"];
-        nlohmann::json reset_status
-            = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
-
         nlohmann::json twofactor_config = {
             { "all_methods", std::vector<std::string>() },
-            { "twofactor_reset", reset_status },
+            { "twofactor_reset", get_twofactor_reset_status(locker, m_login_data) },
         };
         append_2fa_config("email", "email", "email_confirmed", "email_addr", config, twofactor_config);
         append_2fa_config("sms", "sms", "sms", "sms_number", config, twofactor_config);
@@ -3509,20 +3517,20 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        // Copy the servers results into login_data
-        m_login_data.update(wamp_cast_json(server_result));
+        // Verify the server isn't providing any unexpected fields
+        const auto server_json = wamp_cast_json(server_result);
+        GDK_RUNTIME_ASSERT(server_json.size() == 3u && server_json.contains("reset_2fa_active")
+            && server_json.contains("reset_2fa_days_remaining") && server_json.contains("reset_2fa_disputed"));
 
-        // Update any cached twofactor config and return the result
-        // FIXME: code duped in set_twofactor_config
-        m_is_locked = json_get_value(m_login_data, "reset_2fa_active", false);
-        const auto& days_remaining = m_login_data["reset_2fa_days_remaining"];
-        const auto& disputed = m_login_data["reset_2fa_disputed"];
-        nlohmann::json reset_status
-            = { { "is_active", m_is_locked }, { "days_remaining", days_remaining }, { "is_disputed", disputed } };
+        // Copy the servers results into login_data
+        m_login_data.update(server_json);
+
+        const nlohmann::json reset_status = { { "twofactor_reset", get_twofactor_reset_status(locker, m_login_data) } };
         if (!m_twofactor_config.is_null()) {
-            m_twofactor_config["twofactor_reset"] = reset_status;
+            // Update cached twofactor config with our new reset status
+            m_twofactor_config.update(reset_status);
         }
-        return { { "twofactor_reset", std::move(reset_status) } };
+        return reset_status;
     }
 
     nlohmann::json ga_session::confirm_twofactor_reset(
@@ -3779,7 +3787,7 @@ namespace sdk {
     {
         check_tx_memo(memo);
         locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT_MSG(!m_is_locked, "Wallet is locked");
+        GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
         update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
     }
 

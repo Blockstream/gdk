@@ -204,6 +204,7 @@ namespace sdk {
         const std::string& get_default_address_type(uint32_t) const;
         void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
+        bool is_twofactor_reset_active(session_impl::locker_t& locker);
         nlohmann::json set_twofactor_reset_config(const autobahn::wamp_call_result& server_result);
         void set_enabled_twofactor_methods(locker_t& locker);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
@@ -335,7 +336,6 @@ namespace sdk {
         uint32_t m_system_message_ack_id; // Currently returned message id to ack
         std::string m_system_message_ack; // Currently returned message to ack
         bool m_watch_only;
-        bool m_is_locked;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
         nlohmann::json m_last_block_notification;
