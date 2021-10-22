@@ -356,6 +356,7 @@ impl Default for AddressIO {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TxListItem {
     pub block_height: u32,
+    pub created_at_ts: u64, // in microseconds
     pub created_at: String,
     #[serde(rename = "type")]
     pub type_: String,

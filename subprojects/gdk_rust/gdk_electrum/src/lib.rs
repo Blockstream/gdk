@@ -332,6 +332,7 @@ pub fn make_txlist_item(
 
     TxListItem {
         block_height: tx.height.unwrap_or_default(),
+        created_at_ts: tx.timestamp as u64,
         created_at: tx.created_at.clone(),
         type_,
         memo: tx.create_transaction.as_ref().and_then(|c| c.memo.clone()).unwrap_or("".to_string()),
