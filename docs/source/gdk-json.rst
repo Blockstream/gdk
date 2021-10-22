@@ -237,6 +237,7 @@ Transaction list JSON
         "calculated_fee_rate": 1004,
         "can_cpfp": true,
         "can_rbf": false,
+        "created_at_ts": 1551280324000000,
         "created_at": "2019-02-27 15:12:04",
         "fee": 206,
         "fee_rate": 1004,
