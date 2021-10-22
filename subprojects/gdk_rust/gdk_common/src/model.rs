@@ -357,7 +357,6 @@ impl Default for AddressIO {
 pub struct TxListItem {
     pub block_height: u32,
     pub created_at_ts: u64, // in microseconds
-    pub created_at: String,
     #[serde(rename = "type")]
     pub type_: String,
     pub memo: String,
