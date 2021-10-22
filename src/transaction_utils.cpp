@@ -344,10 +344,6 @@ namespace sdk {
     std::string validate_tx_addressee(
         const network_parameters& net_params, nlohmann::json& result, nlohmann::json& addressee)
     {
-        // FIXME: Remove this renaming when the wallets have upgraded to use
-        // asset_id in their addressees.
-        json_rename_key(addressee, "asset_tag", "asset_id");
-
         std::string address = addressee.at("address"); // Assume its a standard address
 
         const auto uri = parse_bitcoin_uri(address, net_params.bip21_prefix());
