@@ -357,7 +357,6 @@ pub struct TxListItem {
     pub type_: String,
     pub memo: String,
     pub txhash: String,
-    pub transaction: String,
     #[serde(serialize_with = "serialize_tx_balances")]
     pub satoshi: Balances,
     pub rbf_optin: bool,

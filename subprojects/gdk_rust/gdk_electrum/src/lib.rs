@@ -346,7 +346,6 @@ pub fn make_txlist_item(
         type_,
         memo: tx.create_transaction.as_ref().and_then(|c| c.memo.clone()).unwrap_or("".to_string()),
         txhash: tx.txid.clone(),
-        transaction: tx.hex.clone(), // FIXME
         satoshi: tx.satoshi.clone(),
         rbf_optin: tx.rbf_optin, // TODO: TransactionMeta -> TxListItem rbf_optin
         can_cpfp: false,         // TODO: TransactionMeta -> TxListItem can_cpfp

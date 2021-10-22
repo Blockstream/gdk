@@ -894,10 +894,15 @@ pub fn create_tx(
             return Err(Error::InvalidReplacementRequest);
         }
 
-        let prev_tx = BETransaction::from_hex(&prev_txitem.transaction, network.id())?;
-
         let store_read = account.store.read()?;
         let acc_store = store_read.account_cache(account.num())?;
+
+        let txid = BETxid::from_hex(&prev_txitem.txhash, network.id())?;
+        let prev_tx = &acc_store
+            .all_txs
+            .get(&txid)
+            .ok_or_else(|| Error::Generic("Transaction not found".into()))?
+            .tx;
 
         // Strip the mining fee change output from the transaction, keeping the change address for reuse
         template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
