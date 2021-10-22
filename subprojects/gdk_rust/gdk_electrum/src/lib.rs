@@ -788,8 +788,16 @@ impl Session<Error> for ElectrumSession {
         Ok(TxsResult(txs))
     }
 
-    fn get_transaction_hex(&self, _txid: &str) -> Result<String, Error> {
-        Err(Error::Generic("implementme: ElectrumSession get_transaction_hex".into()))
+    fn get_transaction_hex(&self, txid: &str) -> Result<String, Error> {
+        let txid = BETxid::from_hex(txid, self.network.id())?;
+        let wallet = self.get_wallet()?;
+        let store = wallet.store.read()?;
+        for acc_store in store.cache.accounts.values() {
+            if let Some(tx_entry) = acc_store.all_txs.get(&txid) {
+                return Ok(tx_entry.tx.serialize().to_hex());
+            }
+        }
+        Err(Error::Generic("Transaction not found".into()))
     }
 
     fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {

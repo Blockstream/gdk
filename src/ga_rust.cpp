@@ -443,8 +443,13 @@ namespace sdk {
 
     wally_tx_ptr ga_rust::get_raw_transaction_details(const std::string& txhash_hex) const
     {
-        const auto tx_hex = call_session("get_transaction_hex", nlohmann::json(txhash_hex));
-        return tx_from_hex(tx_hex, tx_flags(m_net_params.is_liquid()));
+        try {
+            const auto tx_hex = call_session("get_transaction_hex", nlohmann::json(txhash_hex));
+            return tx_from_hex(tx_hex, tx_flags(m_net_params.is_liquid()));
+        } catch (const std::exception& e) {
+            GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
+            throw user_error("Transaction not found");
+        }
     }
 
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
