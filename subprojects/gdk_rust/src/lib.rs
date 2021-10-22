@@ -369,7 +369,9 @@ where
             session.get_transactions(&opt).map(|x| txs_result_value(&x)).map_err(Into::into)
         }
 
-        "get_raw_transaction_details" => get_raw_transaction_details(session, input),
+        "get_transaction_hex" => {
+            get_transaction_hex(session, input).map(|v| json!(v)).map_err(Into::into)
+        }
         "get_balance" => session
             .get_balance(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
