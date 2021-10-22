@@ -620,10 +620,12 @@ Fee estimates JSON
 
   {"fees":[1000,10070,10070,10070,3014,3014,3014,2543,2543,2543,2543,2543,2543,1499,1499,1499,1499,1499,1499,1499,1499,1499,1499,1499,1499]}
 
-.. _configuration:
+.. _twofactor_configuration:
 
 Two-Factor config JSON
 ----------------------
+
+Describes the wallets enabled two factor methods, current spending limits, and two factor reset status.
 
 .. code-block:: json
 
@@ -677,6 +679,10 @@ Two-Factor config JSON
   }
  }
 
+:twofactor_reset/days_remaining: The number of days remaining before the wallets two factor
+                                 authentication is reset, or -1 if no reset procedure is underway.
+:twofactor_reset/is_active: Whether or not the wallet is currently undergoing the two factor reset procedure.
+:twofactor_reset/is_disputed: Whether or not the wallet two factor reset procedure is disputed.
 
 
 .. _settings:
