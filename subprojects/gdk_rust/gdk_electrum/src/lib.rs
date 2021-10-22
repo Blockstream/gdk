@@ -281,6 +281,8 @@ pub fn make_txlist_item(
         .enumerate()
         .map(|(vin, i)| {
             let mut a = AddressIO::default();
+            a.is_output = false;
+            a.is_spent = true;
             a.pt_idx = vin as u32;
             a.satoshi = all_txs.get_previous_output_value(i, all_unblinded).unwrap_or_default();
             if let BEOutPoint::Elements(outpoint) = i {
@@ -308,6 +310,10 @@ pub fn make_txlist_item(
     let outputs = (0..transaction.output_len() as u32)
         .map(|vout| {
             let mut a = AddressIO::default();
+            a.is_output = true;
+            // FIXME: this can be wrong, however setting this value correctly might be quite
+            // expensive: involing db hits and potentially network calls; postponing it for now.
+            a.is_spent = false;
             a.pt_idx = vout;
             a.satoshi = transaction.output_value(vout, all_unblinded).unwrap_or_default();
             if let BETransaction::Elements(_) = transaction {
