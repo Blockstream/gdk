@@ -2656,6 +2656,8 @@ namespace sdk {
         txs.erase(std::remove_if(txs.begin(), txs.end(), filter), txs.end());
 
         for (auto& tx : txs) {
+            tx.erase("created_at"); // TODO: Remove once the server stops returning this
+
             // Compute the tx weight and fee rate
             const uint32_t tx_vsize = tx.at("transaction_vsize");
             tx["transaction_weight"] = tx_vsize * 4;
