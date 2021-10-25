@@ -404,6 +404,19 @@ namespace sdk {
             return PEM_read_bio_X509_AUX(input.get(), NULL, NULL, NULL);
         }
 
+        static std::string cert_to_pretty_string(const X509* cert)
+        {
+            using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+            BIO_ptr output(BIO_new(BIO_s_mem()), BIO_free);
+            if (!X509_print(output.get(), const_cast<X509*>(cert))) {
+                return std::string("X509_print error");
+            }
+
+            char *str = nullptr;
+            const auto size = BIO_get_mem_data(output.get(), &str);
+            return std::string(str, size);
+        }
+
         static bool is_cert_in_date_range(const X509* cert, uint32_t cert_expiry_threshold)
         {
             // Use adjusted times 24 hours in each direction to avoid timezone issues
@@ -477,7 +490,8 @@ namespace sdk {
                     if (is_cert_in_date_range(cert, cert_expiry_threshold)) {
                         return true;
                     }
-                    GDK_LOG_SEV(log_level::warning) << "Ignoring pinned cert due to expiry date" << std::endl;
+                    GDK_LOG_SEV(log_level::warning) << "Ignoring expiring pinned certificate:\n"
+                                                    << cert_to_pretty_string(cert);
                 }
             }
 
@@ -721,6 +735,8 @@ namespace sdk {
             if (!is_cert_in_date_range(cert.get(), m_net_params.cert_expiry_threshold())) {
                 // Avoid adding expired certificates as they can cause validation failures
                 // even if there are other non-expired roots available.
+                GDK_LOG_SEV(log_level::warning) << "Ignoring expiring root certificate:\n"
+                                                << cert_to_pretty_string(cert.get());
                 continue;
             }
 
