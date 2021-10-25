@@ -31,7 +31,8 @@ half = "~1.7"
 tempdir = "0.3.7"
 electrum-client = { version = "0.8.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 bitcoin = { version = "0.27.0", features = [ "use-serde" ] }
-elements = { version = "0.18", features = ["serde-feature"] }
+#elements = { version = "0.18", features = ["serde-feature"] }
+elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "53d5729f8cdc3623f9f110edba86aeaa9059af5b", features = ["serde-feature"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
 electrsd = { version = "0.10.0", features = [ "legacy", "trigger" ] }
 # We need to pin ureq (transitive dep from electrsd) to stay compatible with Rust 1.49.0
