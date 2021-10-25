@@ -251,7 +251,7 @@ impl Account {
             let tx_meta = TransactionMeta::new(
                 txe.clone(),
                 **height,
-                header.map(|h| h.time()),
+                header.map(|h| 1_000_000u64.saturating_mul(h.time() as u64)), // in microseconds
                 satoshi,
                 fee,
                 self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),

@@ -213,7 +213,7 @@ pub struct TransactionMeta {
     pub txid: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
-    pub timestamp: u32, // for confirmed tx is block time for unconfirmed is when created or when list_tx happens
+    pub timestamp: u64, // in microseconds, for confirmed tx is block time for unconfirmed is when created or when list_tx happens
     pub error: String,
     pub addressees_have_assets: bool,
     pub addressees_read_only: bool,
@@ -280,7 +280,7 @@ impl TransactionMeta {
     pub fn new(
         transaction: impl Into<TransactionMeta>,
         height: Option<u32>,
-        timestamp: Option<u32>,
+        timestamp: Option<u64>,
         satoshi: Balances,
         fee: u64,
         network: Network,
@@ -535,10 +535,11 @@ impl Default for Settings {
     }
 }
 
-fn now() -> u32 {
+fn now() -> u64 {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    since_the_epoch.as_secs() as u32
+    // Realistic timestamps can be converted to u64
+    u64::try_from(since_the_epoch.as_micros()).unwrap_or(u64::MAX)
 }
 
 impl SPVVerifyResult {
