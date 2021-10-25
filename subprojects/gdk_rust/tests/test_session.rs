@@ -1,5 +1,4 @@
 use bitcoin::{self, Amount};
-use chrono::Utc;
 use electrsd::bitcoind::bitcoincore_rpc::{Auth, Client, RpcApi};
 use electrum_client::ElectrumApi;
 use elements;
@@ -19,7 +18,7 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 use std::sync::Once;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempdir::TempDir;
 
 static LOGGER: SimpleLogger = SimpleLogger;
@@ -48,7 +47,14 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            println!("{} {} - {}", Utc::now().format("%S%.3f"), record.level(), record.args());
+            let ts = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+            println!(
+                "{:02}.{:03} {} - {}",
+                ts.as_secs() % 60,
+                ts.subsec_millis(),
+                record.level(),
+                record.args()
+            );
         }
     }
 

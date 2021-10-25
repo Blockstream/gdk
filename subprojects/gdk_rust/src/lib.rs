@@ -19,7 +19,7 @@ use std::ffi::CString;
 use std::fmt;
 use std::os::raw::c_char;
 use std::sync::Once;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{
     CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, RenameAccountOpt, SPVVerifyTx,
@@ -28,7 +28,6 @@ use gdk_common::model::{
 use gdk_common::session::Session;
 
 use crate::error::Error;
-use chrono::Utc;
 use gdk_electrum::{ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
 use std::str::FromStr;
@@ -496,7 +495,14 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            println!("{} {} - {}", Utc::now().format("%S%.3f"), record.level(), record.args());
+            let ts = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+            println!(
+                "{:02}.{:03} {} - {}",
+                ts.as_secs() % 60,
+                ts.subsec_millis(),
+                record.level(),
+                record.args()
+            );
         }
     }
 
