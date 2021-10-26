@@ -2844,7 +2844,7 @@ namespace sdk {
 
             if (!sync_disrupted) {
                 // Insert the tx into the DB cache now that it is cleaned up/unblinded
-                const auto tx_timestamp = tx_details.at("created_at_ts");
+                const uint64_t tx_timestamp = tx_details.at("created_at_ts");
                 GDK_LOG_SEV(TX_CACHE_LEVEL)
                     << "Tx sync(" << subaccount << ") inserting " << txhash << ":" << tx_timestamp;
                 m_cache->insert_transaction(subaccount, tx_timestamp, txhash, tx_details);
