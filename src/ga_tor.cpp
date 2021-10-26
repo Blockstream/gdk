@@ -800,7 +800,7 @@ namespace sdk {
 
         std::lock_guard<std::mutex> _(m_ctrl_mutex);
 
-        return !static_cast<bool>(m_ctrl) ? std::string{} : m_ctrl->wait_for_socks5(timeout, phase_cb);
+        return m_ctrl.get() ? m_ctrl->wait_for_socks5(timeout, phase_cb) : std::string();
     }
 
 } // namespace sdk

@@ -61,6 +61,7 @@ namespace sdk {
         struct transport_config : public websocketpp::config::asio_client::transport_config {
             using alog_type = websocket_boost_logger;
             using elog_type = websocket_boost_logger;
+            static const long timeout_proxy = 1200000; // in ms
         };
         using transport_type = websocketpp::transport::asio::endpoint<websocketpp_gdk_config::transport_config>;
     };
@@ -82,6 +83,7 @@ namespace sdk {
         struct transport_config : public websocketpp::config::asio_tls_client::transport_config {
             using alog_type = websocket_boost_logger;
             using elog_type = websocket_boost_logger;
+            static const long timeout_proxy = 1200000; // in ms
         };
         using transport_type = websocketpp::transport::asio::endpoint<websocketpp_gdk_tls_config::transport_config>;
     };
