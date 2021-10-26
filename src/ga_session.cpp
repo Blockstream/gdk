@@ -428,26 +428,26 @@ namespace sdk {
 
             const int before = X509_cmp_time(X509_get0_notBefore(cert), &start_before);
             if (before == 0) {
-                GDK_LOG_SEV(log_level::error) << "Error checking certificate not before time" << std::endl;
+                GDK_LOG_SEV(log_level::error) << "Error checking certificate not before time";
                 return false;
             }
             // -1: start time is earlier than or equal to yesterday - ok
             // +1: start time is later than yesterday - fail
             if (before == 1) {
-                GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (not yet valid)" << std::endl;
+                GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (not yet valid)";
                 return false;
             }
 
             const int after = X509_cmp_time(X509_get0_notAfter(cert), &expire_after);
             if (after == 0) {
-                GDK_LOG_SEV(log_level::error) << "Error checking certificate not after time" << std::endl;
+                GDK_LOG_SEV(log_level::error) << "Error checking certificate not after time";
                 return false;
             }
             // -1: expiry time is earlier than or equal to expire_after - fail
             // +1: expiry time is later than expire_after - ok
             if (after == -1) {
                 // The not after (expiry) time is earlier than expire_after
-                GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (expired)" << std::endl;
+                GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (expired)";
                 return false;
             }
 
@@ -474,7 +474,7 @@ namespace sdk {
             const int chain_length = sk_X509_num(chain.get());
 
             // Walk the certificate chain looking for a pinned certificate in `pins`
-            GDK_LOG_SEV(log_level::debug) << "Checking for pinned certificate" << std::endl;
+            GDK_LOG_SEV(log_level::debug) << "Checking for pinned certificate";
             for (int idx = 0; idx < chain_length; ++idx) {
                 const X509* cert = sk_X509_value(chain.get(), idx);
                 if (X509_digest(cert, EVP_sha256(), sha256_digest_buf.data(), &written) == 0
@@ -484,7 +484,7 @@ namespace sdk {
                 }
                 const auto hex_digest = b2h(sha256_digest_buf);
                 if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
-                    GDK_LOG_SEV(log_level::debug) << "Found pinned certificate " << hex_digest << std::endl;
+                    GDK_LOG_SEV(log_level::debug) << "Found pinned certificate " << hex_digest;
                     if (is_cert_in_date_range(cert, cert_expiry_threshold)) {
                         return true;
                     }
@@ -750,7 +750,7 @@ namespace sdk {
             if (!preverified) {
                 const int err = X509_STORE_CTX_get_error(ctx.native_handle());
                 GDK_LOG_SEV(log_level::error)
-                    << "x509 certificate error: " << X509_verify_cert_error_string(err) << std::endl;
+                    << "x509 certificate error: " << X509_verify_cert_error_string(err);
                 return false;
             }
 
@@ -759,7 +759,7 @@ namespace sdk {
             // If no pins are specified skip the check altogether
             const bool have_pins = !pins.empty() && !pins[0].empty();
             if (have_pins && !check_cert_pins(pins, ctx, m_net_params.cert_expiry_threshold())) {
-                GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check" << std::endl;
+                GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check";
                 return false;
             }
 
