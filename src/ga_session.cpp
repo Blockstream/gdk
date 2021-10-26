@@ -635,14 +635,12 @@ namespace sdk {
     {
         if (m_net_params.use_tor() && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
+            m_tor_ctrl->tor_sleep_hint("wakeup");
             m_proxy = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
                 nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
                 emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
             });
-            if (m_proxy.empty()) {
-                m_tor_ctrl->tor_sleep_hint("wakeup");
-            }
-            GDK_RUNTIME_ASSERT(!m_proxy.empty());
+            GDK_RUNTIME_ASSERT_MSG(!m_proxy.empty(), "Timeout initiating tor connection");
             GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_proxy;
         }
 
