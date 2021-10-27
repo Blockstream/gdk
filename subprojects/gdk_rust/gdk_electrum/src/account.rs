@@ -835,13 +835,14 @@ pub fn create_tx(
                         || (address.network == bitcoin::Network::Testnet
                             && network == bitcoin::Network::Regtest)
                     {
+                        // FIXME: use address.is_standard() once rust-bitcoin has P2tr variant
                         if let Payload::WitnessProgram {
                             version: v,
-                            program: _p,
+                            program: p,
                         } = &address.payload
                         {
-                            // Do not support segwit greater than v0
-                            if v.to_u8() > 0 {
+                            // Do not support segwit greater than v1 and non-P2TR v1
+                            if v.to_u8() > 1 || (v.to_u8() == 1 && p.len() != 32) {
                                 return Err(Error::InvalidAddress);
                             }
                         }

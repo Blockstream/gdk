@@ -326,6 +326,52 @@ fn create_tx_err(is_liquid: bool) {
         subaccount,
         test_session.utxos(0),
     );
+
+    // FIXME: add liquid taproot support
+    if is_liquid {
+        assert!(matches!(
+            test_session.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAddress)
+        ));
+    } else {
+        test_session.session.create_transaction(&mut create_opt).unwrap();
+    }
+
+    // Segwitv1 and b(l)ech32m, but len != 32
+    let segwitv1_addr = if is_liquid {
+        "el1pq0umk3pez693jrrlxz9ndlkuwne93gdu9g83mhhzuyf46e3mdzfpvqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq87gd2ckgcugl"
+    } else {
+        "bcrt1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k0ylj56"
+    };
+    let mut create_opt = test_session.create_opt(
+        &segwitv1_addr,
+        sat,
+        asset_id.clone(),
+        fee_rate,
+        subaccount,
+        test_session.utxos(0),
+    );
+
+    assert!(matches!(
+        test_session.session.create_transaction(&mut create_opt),
+        Err(Error::InvalidAddress)
+    ));
+
+    // Segwitv2 and b(l)ech32m
+    let segwitv1_addr = if is_liquid {
+        "el1zq0umk3pez693jrrlxz9ndlkuwne93gdu9g83mhhzuyf46e3mdzfpvqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg3sqzyqnv9cq"
+    } else {
+        "bcrt1zw508d6qejxtdg4y5r3zarvaryv2wuatf"
+    };
+    let mut create_opt = test_session.create_opt(
+        &segwitv1_addr,
+        sat,
+        asset_id.clone(),
+        fee_rate,
+        subaccount,
+        test_session.utxos(0),
+    );
+
     assert!(matches!(
         test_session.session.create_transaction(&mut create_opt),
         Err(Error::InvalidAddress)
