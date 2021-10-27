@@ -824,6 +824,15 @@ pub fn create_tx(
     let fee_rate = (*fee_rate_sat_kb as f64) / 1000.0;
     info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
+    let taproot_enabled_at = network.taproot_enabled_at.unwrap_or(u32::MAX);
+    let mut tip_height: Option<u32> = if taproot_enabled_at == 0 {
+        // no need to get tip
+        Some(0)
+    } else {
+        // will get tip_height if needed
+        None
+    };
+
     // TODO put checks into CreateTransaction::validate, add check asset_id are valid asset hex
     // eagerly check for address validity
     for address in request.addressees.iter().map(|a| &a.address) {
@@ -844,6 +853,21 @@ pub fn create_tx(
                             // Do not support segwit greater than v1 and non-P2TR v1
                             if v.to_u8() > 1 || (v.to_u8() == 1 && p.len() != 32) {
                                 return Err(Error::InvalidAddress);
+                            }
+                            if v.to_u8() == 1 {
+                                let tip = match tip_height {
+                                    Some(h) => h,
+                                    None => {
+                                        let tip = account.store.read()?.cache.tip.0;
+                                        tip_height = Some(tip);
+                                        tip
+                                    }
+                                };
+                                if tip < taproot_enabled_at {
+                                    return Err(Error::Generic(
+                                        "Taproot has not yet activated on this network".into(),
+                                    ));
+                                }
                             }
                         }
                         continue;

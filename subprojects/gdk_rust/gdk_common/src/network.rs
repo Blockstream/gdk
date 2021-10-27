@@ -32,6 +32,7 @@ pub struct Network {
     // to retain backwards compatibility.
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
+    pub taproot_enabled_at: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
