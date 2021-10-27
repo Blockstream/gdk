@@ -412,7 +412,7 @@ namespace sdk {
                 return std::string("X509_print error");
             }
 
-            char *str = nullptr;
+            char* str = nullptr;
             const auto size = BIO_get_mem_data(output.get(), &str);
             return std::string(str, size);
         }
@@ -749,8 +749,7 @@ namespace sdk {
             // Pre-verification includes checking for things like expired certificates
             if (!preverified) {
                 const int err = X509_STORE_CTX_get_error(ctx.native_handle());
-                GDK_LOG_SEV(log_level::error)
-                    << "x509 certificate error: " << X509_verify_cert_error_string(err);
+                GDK_LOG_SEV(log_level::error) << "x509 certificate error: " << X509_verify_cert_error_string(err);
                 return false;
             }
 
