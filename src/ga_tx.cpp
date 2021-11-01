@@ -716,11 +716,7 @@ namespace sdk {
                             // so compute what we can send (everything minus the
                             // fee) and exit the loop
                             required_total = available_total - fee;
-                            if (is_liquid) {
-                                set_tx_output_commitment(tx, 0, asset_id, required_total.value());
-                            } else {
-                                tx->outputs[0].satoshi = required_total.value();
-                            }
+                            set_tx_output_value(net_params, tx, 0, asset_id, required_total.value());
                             if (num_addressees == 1u) {
                                 addressees_p->at(0)["satoshi"] = required_total.value();
                             }
