@@ -2,8 +2,8 @@ use crate::be::*;
 use crate::error::Error;
 use crate::model::Balances;
 use crate::scripts::{p2pkh_script, ScriptType};
+use crate::NetworkId;
 use crate::{bail, ensure};
-use crate::{ElementsNetwork, NetworkId, LIQUID_TESTNET};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
@@ -12,10 +12,10 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
 use bitcoin::{PublicKey, SigHashType};
+use elements::confidential;
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
-use elements::{confidential, AddressParams};
 use elements::{TxInWitness, TxOutWitness};
 use log::{info, trace};
 use rand::seq::SliceRandom;
@@ -184,11 +184,7 @@ impl BETransaction {
             (BETransaction::Elements(tx), NetworkId::Elements(net)) => {
                 // Note we are returning the unconfidential address, because recipient blinding pub key is not in the transaction
                 let script = &tx.output[vout as usize].script_pubkey;
-                let params = match net {
-                    ElementsNetwork::Liquid => &AddressParams::LIQUID,
-                    ElementsNetwork::LiquidTestnet => &LIQUID_TESTNET,
-                    ElementsNetwork::ElementsRegtest => &AddressParams::ELEMENTS,
-                };
+                let params = net.address_params();
                 elements::Address::from_script(script, None, params).map(|a| a.to_string())
             }
             _ => panic!("Invalid BETransaction and NetworkId combination"),

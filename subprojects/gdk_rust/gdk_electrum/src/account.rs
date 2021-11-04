@@ -28,7 +28,7 @@ use gdk_common::util::is_confidential_txoutsecrets;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
-use gdk_common::{ElementsNetwork, Network, NetworkId, LIQUID_TESTNET};
+use gdk_common::{ElementsNetwork, Network, NetworkId};
 
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
@@ -732,7 +732,7 @@ fn elements_address(
     script_type: ScriptType,
     net: ElementsNetwork,
 ) -> elements::Address {
-    let addr_params = elements_address_params(net);
+    let addr_params = net.address_params();
     let address = match script_type {
         ScriptType::P2pkh => elements::Address::p2pkh(public_key, None, addr_params),
         ScriptType::P2shP2wpkh => elements::Address::p2shwpkh(public_key, None, addr_params),
@@ -742,14 +742,6 @@ fn elements_address(
     let blinding_prv = asset_blinding_key_to_ec_private_key(master_blinding_key, &script_pubkey);
     let blinding_pub = ec_public_key_from_private_key(blinding_prv);
     address.to_confidential(blinding_pub)
-}
-
-fn elements_address_params(net: ElementsNetwork) -> &'static elements::AddressParams {
-    match net {
-        ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
-        ElementsNetwork::LiquidTestnet => &LIQUID_TESTNET,
-        ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
-    }
 }
 
 // Discover all the available accounts as per BIP 44:
@@ -883,9 +875,9 @@ pub fn create_tx(
                     info!(
                         "address.params:{:?} address_params(network):{:?}",
                         address.params,
-                        elements_address_params(network)
+                        network.address_params()
                     );
-                    if address.params == elements_address_params(network) {
+                    if address.params == network.address_params() {
                         continue;
                     }
                 }

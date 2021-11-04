@@ -71,6 +71,16 @@ pub const LIQUID_TESTNET: elements::AddressParams = elements::AddressParams {
     blech_hrp: "tlq",
 };
 
+impl ElementsNetwork {
+    pub fn address_params(self: ElementsNetwork) -> &'static elements::AddressParams {
+        match self {
+            ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
+            ElementsNetwork::LiquidTestnet => &LIQUID_TESTNET,
+            ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
+        }
+    }
+}
+
 impl Network {
     pub fn id(&self) -> NetworkId {
         match (self.liquid, self.mainnet, self.development) {
