@@ -262,9 +262,10 @@ impl BETransaction {
         address: &str,
         value: u64,
         asset: Option<elements::issuance::AssetId>,
+        id: NetworkId,
     ) -> Result<(), Error> {
-        match self {
-            BETransaction::Bitcoin(tx) => {
+        match (self, id) {
+            (BETransaction::Bitcoin(tx), NetworkId::Bitcoin(_)) => {
                 let script_pubkey = bitcoin::Address::from_str(&address)?.script_pubkey();
                 let new_out = bitcoin::TxOut {
                     script_pubkey,
@@ -272,9 +273,9 @@ impl BETransaction {
                 };
                 tx.output.push(new_out);
             }
-            BETransaction::Elements(tx) => {
-                let address =
-                    elements::Address::from_str(&address).map_err(|_| Error::InvalidAddress)?;
+            (BETransaction::Elements(tx), NetworkId::Elements(net)) => {
+                let address = elements::Address::parse_with_params(&address, net.address_params())
+                    .map_err(|_| Error::InvalidAddress)?;
                 let blinding_pubkey = address.blinding_pubkey.ok_or(Error::InvalidAddress)?;
                 let asset_id =
                     asset.expect("add_output must be called with a non empty asset in liquid");
@@ -287,6 +288,7 @@ impl BETransaction {
                 };
                 tx.output.push(new_out);
             }
+            _ => panic!("Invalid BETransaction and NetworkId combination"),
         }
         Ok(())
     }

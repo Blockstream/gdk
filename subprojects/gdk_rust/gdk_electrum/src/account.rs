@@ -868,20 +868,15 @@ pub fn create_tx(
                 return Err(Error::InvalidAddress);
             }
             NetworkId::Elements(network) => {
-                if let Ok(address) = elements::Address::from_str(address) {
+                if let Ok(address) =
+                    elements::Address::parse_with_params(address, network.address_params())
+                {
                     if !address.is_blinded() {
                         return Err(Error::NonConfidentialAddress);
                     }
-                    info!(
-                        "address.params:{:?} address_params(network):{:?}",
-                        address.params,
-                        network.address_params()
-                    );
-                    if address.params == network.address_params() {
-                        continue;
-                    }
+                } else {
+                    return Err(Error::InvalidAddress);
                 }
-                return Err(Error::InvalidAddress);
             }
         }
     }
@@ -997,7 +992,7 @@ pub fn create_tx(
             }
             let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
             dummy_tx
-                .add_output(&out.address, out.satoshi, out.asset_id())
+                .add_output(&out.address, out.satoshi, out.asset_id(), network.id())
                 .map_err(|_| Error::InvalidAddress)?;
             // estimating 2 satoshi more as estimating less would later result in InsufficientFunds
             let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 2;
@@ -1023,7 +1018,7 @@ pub fn create_tx(
             let mut new_tx = BETransaction::new(network.id());
             for out in request.addressees.iter() {
                 new_tx
-                    .add_output(&out.address, out.satoshi, out.asset_id())
+                    .add_output(&out.address, out.satoshi, out.asset_id(), network.id())
                     .map_err(|_| Error::InvalidAddress)?;
             }
             Ok(new_tx)
@@ -1127,7 +1122,7 @@ pub fn create_tx(
             "adding change to {} of {} asset {:?}",
             &change_address, change.satoshi, change.asset
         );
-        tx.add_output(&change_address, change.satoshi, change.asset)?;
+        tx.add_output(&change_address, change.satoshi, change.asset, network.id())?;
     }
 
     // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
