@@ -19,7 +19,9 @@ cp -r ${MESON_BUILD_ROOT}/src/swig_python/greenaddress .
 
 cp ${MESON_SOURCE_ROOT}/src/swig_python/setup.py .
 
-pip install wheel
+# TODO: remove setuptools pinning once the following bug is fixed
+# https://github.com/pypa/setuptools/issues/2849
+pip install -U pip 'setuptools==58.4.0' wheel
 
 pip wheel --wheel-dir=$PYTHON_DESTDIR .
 virtualenv --clear -p ${PYTHON_EXE} ${MESON_BUILD_ROOT}/smoketestvenv
