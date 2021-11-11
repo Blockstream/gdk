@@ -289,7 +289,7 @@ apidocs:
   script:
     - virtualenv -p python3 .venv
     - source .venv/bin/activate
-    - pip3 install sphinx sphinx_rtd_theme
+    - pip3 install -r docs/requirements.txt
     - sphinx-build -b html -a -c docs/source docs/source docs/build/html
     - cd docs/build && tar czf ../../apidocs.tar.gz html/ && cd ../..
     - deactivate
