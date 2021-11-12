@@ -237,12 +237,12 @@ namespace sdk {
             // Input asset_ids must only be valid hex asset ids
             std::string asset_id_hex = json_get_value(json, "asset_id");
             if (!validate_hex(asset_id_hex, ASSET_TAG_LEN)) {
-                throw user_error("Invalid AssetID"); // FIXME: res::
+                throw user_error(res::id_invalid_asset_id);
             }
             return asset_id_hex;
         } else {
             if (json.contains("asset_id")) {
-                throw user_error("Assets cannot be used on Bitcoin"); // FIXME: res::
+                throw user_error(res::id_assets_cannot_be_used_on_bitcoin);
             }
             return "btc";
         }

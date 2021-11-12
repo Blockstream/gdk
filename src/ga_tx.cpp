@@ -529,7 +529,7 @@ namespace sdk {
                 have_assets = true;
             } else {
                 if (have_assets) {
-                    set_tx_error(result, "Assets cannot be used on Bitcoin"); // FIXME: res::
+                    set_tx_error(result, res::id_assets_cannot_be_used_on_bitcoin);
                 }
             }
             result["addressees_have_assets"] = have_assets;
