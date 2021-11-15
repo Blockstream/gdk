@@ -421,6 +421,7 @@ namespace sdk {
             for (const auto& it : m_addresses) {
                 auto address = get_confidential_address(it.at("address"), prefix, public_keys.at(i));
                 addresses.emplace_back(std::move(address));
+                ++i;
             }
             // Upload the blinded addresses to the server
             m_session->upload_confidential_addresses(m_subaccount, addresses);
