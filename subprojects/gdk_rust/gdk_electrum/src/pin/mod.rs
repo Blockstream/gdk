@@ -229,7 +229,7 @@ impl Display for PinOp {
 #[cfg(test)]
 mod test {
     use crate::pin::{Handshake, PinManager, ResponseData};
-    use bitcoin::hashes::hex::FromHex;
+    use bitcoin::hashes::hex::{FromHex, ToHex};
     use bitcoin::hashes::Hmac;
     use bitcoin::secp256k1::SecretKey;
 
@@ -267,6 +267,6 @@ mod test {
 
         let result = data.verify_and_decrypt(&hmac_key, &decr_key).unwrap();
         let expected = "b5035db9ffeb913bbe8090abe800e1d5a93e653328b4a628f8f511e82d554704";
-        assert_eq!(expected, &hex::encode(&result));
+        assert_eq!(expected, result.to_hex());
     }
 }

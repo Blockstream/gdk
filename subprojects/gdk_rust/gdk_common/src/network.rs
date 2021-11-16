@@ -199,6 +199,7 @@ pub fn aqua_unique_id_and_xpub(
 #[cfg(test)]
 mod tests {
     use crate::network::{aqua_unique_id_and_xpub, ElementsNetwork, NetworkId};
+    use bitcoin::hashes::hex::ToHex;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::Network;
     use std::str::FromStr;
@@ -216,15 +217,15 @@ mod tests {
         let (wallet_id_liquid, xpub_liquid) =
             aqua_unique_id_and_xpub(&seed, NetworkId::Elements(ElementsNetwork::Liquid)).unwrap();
         assert_eq!(
-            hex::encode(wallet_id_testnet),
+            wallet_id_testnet.to_hex(),
             "588079b940d8d1fd18d0fc26c3ed1af358c603b4572adea13482fc85ff100bb2"
         );
         assert_eq!(
-            hex::encode(wallet_id_bitcoin),
+            wallet_id_bitcoin.to_hex(),
             "9abca26e46f9caffbf676e40e96a4a9e3318fad85e720ae4c49ed2d629c26ff8"
         );
         assert_eq!(
-            hex::encode(wallet_id_liquid),
+            wallet_id_liquid.to_hex(),
             "0f703b3ea6a782d45d7d2b109db94f79d812bd4459faa481c7c7e437818a1835"
         );
         assert_eq!(

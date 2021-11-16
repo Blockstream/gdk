@@ -147,8 +147,8 @@ pub fn read_str(s: *const c_char) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin::hashes::hex::{FromHex, ToHex};
     use elements::Script;
-    use hex;
     use std::str::FromStr;
 
     #[test]
@@ -159,7 +159,7 @@ mod tests {
         let v_passphrase = "TREZOR";
 
         let seed = bip39_mnemonic_to_seed(&v_mnem, &v_passphrase).unwrap();
-        assert_eq!(v_seed, &hex::encode(&seed[..]));
+        assert_eq!(v_seed, seed.to_hex());
     }
 
     #[test]
@@ -171,16 +171,16 @@ mod tests {
         assert!(seed.is_some());
         let seed = seed.unwrap();
         assert_eq!(seed.len(), 64);
-        assert_eq!(hex::encode(&seed[..]), "c76c4ac4f4e4a00d6b274d5c39c700bb4a7ddc04fbc6f78e85ca75007b5b495f74a9043eeb77bdd53aa6fc3a0e31462270316fa04b8c19114c8798706cd02ac8");
+        assert_eq!(seed.to_hex(), "c76c4ac4f4e4a00d6b274d5c39c700bb4a7ddc04fbc6f78e85ca75007b5b495f74a9043eeb77bdd53aa6fc3a0e31462270316fa04b8c19114c8798706cd02ac8");
         let master_blinding_key = asset_blinding_key_from_seed(&seed);
         assert_eq!(
-            hex::encode(&master_blinding_key.0[32..]),
+            master_blinding_key.0[32..].to_hex(),
             "6c2de18eabeff3f7822bc724ad482bef0557f3e1c1e1c75b7a393a5ced4de616"
         );
 
         let unconfidential_addr = "2dpWh6jbhAowNsQ5agtFzi7j6nKscj6UnEr";
         let script: Script =
-            hex::decode("76a914a579388225827d9f2fe9014add644487808c695d88ac").unwrap().into();
+            Script::from_hex("76a914a579388225827d9f2fe9014add644487808c695d88ac").unwrap();
         let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
         let public_key = ec_public_key_from_private_key(blinding_key);
         let unconfidential_addr = elements::Address::from_str(&unconfidential_addr).unwrap();
@@ -204,7 +204,7 @@ mod tests {
         let cost = 2048;
         let bytes = pbkdf2_hmac_sha512_256(password, salt, cost);
         assert_eq!(
-            hex::encode(bytes),
+            bytes.to_hex(),
             "657a9de33d1f7753edbb86c90b0ba064bd1b986570f1a5019ed80459877b013b"
         );
     }

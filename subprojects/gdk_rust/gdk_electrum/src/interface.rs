@@ -255,6 +255,7 @@ impl WalletCtx {
 #[cfg(test)]
 mod test {
     use bitcoin::consensus::deserialize;
+    use bitcoin::hashes::hex::{FromHex, ToHex};
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
     use bitcoin::util::bip143::SigHashCache;
@@ -267,7 +268,7 @@ mod test {
     use std::str::FromStr;
 
     fn p2pkh_hex(pk: &str) -> (PublicKey, Script) {
-        let pk = hex::decode(pk).unwrap();
+        let pk = Vec::<u8>::from_hex(pk).unwrap();
         let pk = PublicKey::from_slice(pk.as_slice()).unwrap();
         let witness_script = Address::p2pkh(&pk, Network::Bitcoin).script_pubkey();
         (pk, witness_script)
@@ -278,11 +279,11 @@ mod test {
         let secp: Secp256k1<All> = Secp256k1::gen_new();
 
         // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#p2sh-p2wpkh
-        let tx_bytes = hex::decode("0100000001db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a54770100000000feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac92040000").unwrap();
+        let tx_bytes = Vec::<u8>::from_hex("0100000001db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a54770100000000feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac92040000").unwrap();
         let tx: Transaction = deserialize(&tx_bytes).unwrap();
 
         let private_key_bytes =
-            hex::decode("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")
+            Vec::<u8>::from_hex("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")
                 .unwrap();
 
         let key = SecretKey::from_slice(&private_key_bytes).unwrap();
@@ -295,7 +296,7 @@ mod test {
         let (public_key, witness_script) =
             p2pkh_hex("03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873");
         assert_eq!(
-            hex::encode(witness_script.to_bytes()),
+            witness_script.to_bytes().to_hex(),
             "76a91479091972186c449eb1ded22b78e40d009bdf008988ac"
         );
         let value = 1_000_000_000;
@@ -303,9 +304,8 @@ mod test {
             SigHashCache::new(&tx).signature_hash(0, &witness_script, value, SigHashType::All);
 
         assert_eq!(
-            &hash.into_inner()[..],
-            &hex::decode("64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6")
-                .unwrap()[..],
+            &hash.into_inner().to_hex(),
+            "64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6"
         );
 
         let signature = secp.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
@@ -317,7 +317,7 @@ mod test {
         let script_sig = p2shwpkh_script_sig(&public_key);
 
         assert_eq!(
-            format!("{}", hex::encode(script_sig.as_bytes())),
+            script_sig.as_bytes().to_hex(),
             "16001479091972186c449eb1ded22b78e40d009bdf0089"
         );
     }
@@ -330,7 +330,7 @@ mod test {
         let private_key = xprv.private_key;
         let public_key = xpub.public_key;
         let public_key_bytes = public_key.to_bytes();
-        let public_key_str = format!("{}", hex::encode(&public_key_bytes));
+        let public_key_str = public_key_bytes.to_hex();
 
         let address = Address::p2shwpkh(&public_key, Network::Testnet).unwrap();
         assert_eq!(format!("{}", address), "2NCEMwNagVAbbQWNfu7M7DNGxkknVTzhooC");
@@ -341,12 +341,12 @@ mod test {
         );
         let tx_hex = "020000000001010e73b361dd0f0320a33fd4c820b0c7ac0cae3b593f9da0f0509cc35de62932eb01000000171600141790ee5e7710a06ce4a9250c8677c1ec2843844f0000000002881300000000000017a914cc07bc6d554c684ea2b4af200d6d988cefed316e87a61300000000000017a914fda7018c5ee5148b71a767524a22ae5d1afad9a9870247304402206675ed5fb86d7665eb1f7950e69828d0aa9b41d866541cedcedf8348563ba69f022077aeabac4bd059148ff41a36d5740d83163f908eb629784841e52e9c79a3dbdb01210386fe0922d694cef4fa197f9040da7e264b0a0ff38aa2e647545e5a6d6eab5bfc00000000";
 
-        let tx_bytes = hex::decode(tx_hex).unwrap();
+        let tx_bytes = Vec::<u8>::from_hex(tx_hex).unwrap();
         let tx: Transaction = deserialize(&tx_bytes).unwrap();
 
         let (_, witness_script) = p2pkh_hex(&public_key_str);
         assert_eq!(
-            hex::encode(witness_script.to_bytes()),
+            witness_script.to_bytes().to_hex(),
             "76a9141790ee5e7710a06ce4a9250c8677c1ec2843844f88ac"
         );
         let value = 10_202;
@@ -354,16 +354,15 @@ mod test {
             SigHashCache::new(&tx).signature_hash(0, &witness_script, value, SigHashType::All);
 
         assert_eq!(
-            &hash.into_inner()[..],
-            &hex::decode("58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995")
-                .unwrap()[..],
+            hash.into_inner().to_hex(),
+            "58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995",
         );
 
         let signature = secp.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
-        let signature = hex::decode(&signature_hex).unwrap();
+        let signature = Vec::<u8>::from_hex(&signature_hex).unwrap();
 
         assert_eq!(signature_hex, "304402206675ed5fb86d7665eb1f7950e69828d0aa9b41d866541cedcedf8348563ba69f022077aeabac4bd059148ff41a36d5740d83163f908eb629784841e52e9c79a3dbdb01");
         assert_eq!(tx.input[0].witness[0], signature);

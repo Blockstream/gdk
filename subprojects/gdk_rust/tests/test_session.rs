@@ -1,3 +1,4 @@
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::{self, Amount};
 use electrsd::bitcoind::bitcoincore_rpc::{Auth, Client, RpcApi};
 use electrum_client::ElectrumApi;
@@ -695,7 +696,7 @@ impl TestSession {
         match self.network_id {
             NetworkId::Elements(_) => {
                 let tx: elements::Transaction =
-                    elements::encode::deserialize(&hex::decode(hex).unwrap()).unwrap();
+                    elements::encode::deserialize(&Vec::<u8>::from_hex(hex).unwrap()).unwrap();
                 let output_nofee: Vec<&elements::TxOut> =
                     tx.output.iter().filter(|o| !o.is_fee()).collect();
                 for current in output_nofee.iter() {
@@ -727,7 +728,8 @@ impl TestSession {
             }
             NetworkId::Bitcoin(_) => {
                 let tx: bitcoin::Transaction =
-                    bitcoin::consensus::encode::deserialize(&hex::decode(hex).unwrap()).unwrap();
+                    bitcoin::consensus::encode::deserialize(&Vec::<u8>::from_hex(hex).unwrap())
+                        .unwrap();
                 for current in tx.output.iter() {
                     assert_eq!(
                         1,
