@@ -24,12 +24,10 @@ ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 block-modes = "0.8.0"
 aes = "0.7.0"
 tempdir = "0.3.7"
-secp256k1 = { version = "0.20.0", features = [ "recovery", "rand"] }
 lazy_static = "1.4.0"
 # We need to pin half (transitive dep from serde_cbor) to stay compatible with Rust 1.49.0
 half = "~1.7"
 
-# remember to update secp256k1 deps if increasing this one, unfortunately we can't use the rexported one from bitcoin because we need recovery feature
 bitcoin = { version = "0.27", features = [ "use-serde", "rand" ] }
 #elements = { version = "0.18", features = ["serde-feature"] }
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "53d5729f8cdc3623f9f110edba86aeaa9059af5b", features = ["serde-feature"] }

@@ -24,7 +24,7 @@ use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
 use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::secp256k1::{Secp256k1, SecretKey};
+use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
 use electrum_client::GetHistoryRes;
