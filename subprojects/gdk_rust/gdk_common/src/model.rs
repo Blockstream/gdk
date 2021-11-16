@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use std::convert::TryFrom;
@@ -238,7 +239,7 @@ pub struct TransactionMeta {
 impl From<BETransaction> for TransactionMeta {
     fn from(transaction: BETransaction) -> Self {
         let txid = transaction.txid().to_string();
-        let hex = hex::encode(&transaction.serialize());
+        let hex = transaction.serialize().to_hex();
         let timestamp = now();
         let rbf_optin = transaction.rbf_optin();
         let weight = transaction.get_weight();

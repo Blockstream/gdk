@@ -1,4 +1,5 @@
 use crate::error::Error;
+use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
@@ -116,7 +117,7 @@ impl Network {
         let password = master_xpub.encode().to_vec();
         let salt = self.network.as_bytes().to_vec();
         let cost = 2048;
-        hex::encode(crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost))
+        crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
     pub fn bip32_network(&self) -> bitcoin::network::constants::Network {

@@ -45,7 +45,6 @@ impl_error!(bitcoin::util::bip32::Error);
 impl_error!(std::array::TryFromSliceError);
 impl_error!(elements::encode::Error);
 impl_error!(elements::address::AddressError);
-impl_error!(hex::FromHexError);
 impl_error!(bitcoin::util::address::Error);
 impl_error!(bitcoin::secp256k1::Error);
 

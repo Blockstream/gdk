@@ -7,6 +7,7 @@ use std::ptr;
 use bitcoin::secp256k1;
 use std::fmt;
 
+use bitcoin::hashes::hex::ToHex;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -19,7 +20,7 @@ pub struct MasterBlindingKey(pub [u8; 64]);
 // need to manually implement Debug cause it's not supported for array>32
 impl fmt::Debug for MasterBlindingKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MasterBlindingKey ({})", hex::encode(&self.0[..]))
+        write!(f, "MasterBlindingKey ({})", self.0.to_hex())
     }
 }
 

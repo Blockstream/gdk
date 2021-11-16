@@ -7,7 +7,7 @@ use crate::{bail, ensure};
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
@@ -57,7 +57,7 @@ impl BETransaction {
     }
 
     pub fn from_hex(hex: &str, id: NetworkId) -> Result<Self, crate::error::Error> {
-        Self::deserialize(&hex::decode(hex)?, id)
+        Self::deserialize(&Vec::<u8>::from_hex(hex)?, id)
     }
 
     pub fn serialize(&self) -> Vec<u8> {
