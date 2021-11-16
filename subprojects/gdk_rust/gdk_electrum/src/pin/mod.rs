@@ -1,6 +1,6 @@
 use crate::Error;
 use aes::Aes256;
-use bitcoin::hashes::hex::FromHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::secp256k1::{self, ecdh, All, Message, Secp256k1, SecretKey, Signature};
 use bitcoin::PublicKey;
@@ -161,10 +161,10 @@ impl PinManager {
         let hmac = Hmac::from_engine(hmac_engine);
 
         let req = RequestData {
-            ske: hex::encode(&serialized_ske),
-            cke: hex::encode(&serialized_cke),
-            encrypted_data: hex::encode(&iv_encrypted),
-            hmac_encrypted_data: hex::encode(&hmac[..]),
+            ske: serialized_ske.to_hex(),
+            cke: serialized_cke.to_hex(),
+            encrypted_data: iv_encrypted.to_hex(),
+            hmac_encrypted_data: hmac.to_hex(),
         };
 
         let response = self
@@ -185,16 +185,16 @@ impl PinManager {
 impl ResponseData {
     fn verify_and_decrypt(&self, hmac_key: &ShaHmac, enc_key: &ShaHmac) -> Result<Vec<u8>, Error> {
         let mut hmac_engine: HmacEngine<sha256::Hash> = HmacEngine::new(&hmac_key[..]);
-        hmac_engine.input(&hex::decode(&self.encrypted_key)?);
+        hmac_engine.input(&Vec::<u8>::from_hex(&self.encrypted_key)?);
         let hmac = Hmac::from_engine(hmac_engine);
 
         if hmac != Hmac::from_hex(&self.hmac)? {
             return Err(Error::PinError);
         }
 
-        let iv = hex::decode(&self.encrypted_key[..32])?;
+        let iv = Vec::<u8>::from_hex(&self.encrypted_key[..32])?;
         let decipher = Aes256Cbc::new_from_slices(&enc_key[..], &iv).unwrap();
-        let decrypted = decipher.decrypt_vec(&hex::decode(&self.encrypted_key[32..])?)?;
+        let decrypted = decipher.decrypt_vec(&Vec::<u8>::from_hex(&self.encrypted_key[32..])?)?;
 
         Ok(decrypted)
     }
@@ -203,13 +203,13 @@ impl ResponseData {
 impl Handshake {
     /// returns the parsed signature of the payload
     fn sig(&self) -> Result<Signature, Error> {
-        let sig_bytes = hex::decode(&self.sig)?;
+        let sig_bytes = Vec::<u8>::from_hex(&self.sig)?;
         Ok(Signature::from_compact(&sig_bytes)?)
     }
 
     /// returns the ske Public key and its sha256 hash as a `Message`
     fn ske(&self) -> Result<(secp256k1::PublicKey, Message), Error> {
-        let ske_bytes = hex::decode(&self.ske)?;
+        let ske_bytes = Vec::<u8>::from_hex(&self.ske)?;
         let ske = PublicKey::from_slice(&ske_bytes)?.key;
         let hash = sha256::Hash::hash(&ske_bytes);
         let msg = Message::from_slice(&hash.into_inner())?;

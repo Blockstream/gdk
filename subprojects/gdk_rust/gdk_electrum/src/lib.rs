@@ -23,7 +23,7 @@ use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::secp256k1::{Secp256k1, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
@@ -403,14 +403,14 @@ impl Session<Error> for ElectrumSession {
     ) -> Result<String, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(agent)?;
-        let client_key = SecretKey::from_slice(&hex::decode(&details.pin_identifier)?)?;
+        let client_key = SecretKey::from_slice(&Vec::<u8>::from_hex(&details.pin_identifier)?)?;
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
-        let iv = hex::decode(&details.salt)?;
+        let iv = Vec::<u8>::from_hex(&details.salt)?;
         let decipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         // If the pin is wrong, pinserver returns a random key and decryption fails, return a
         // specific error to signal the caller to update its pin counter.
         let mnemonic = decipher
-            .decrypt_vec(&hex::decode(&details.encrypted_data)?)
+            .decrypt_vec(&Vec::<u8>::from_hex(&details.encrypted_data)?)
             .map_err(|_| Error::InvalidPin)?;
         let mnemonic = std::str::from_utf8(&mnemonic).unwrap().to_string();
         Ok(mnemonic)
@@ -462,7 +462,7 @@ impl Session<Error> for ElectrumSession {
             std::fs::create_dir_all(&path)?;
         } else {
             if let Some(id) = aqua_wallet_id {
-                fpath.push(hex::encode(id));
+                fpath.push(id.to_hex());
                 info!("Fallback store root path: {:?}", fpath);
                 fallback_path = Some(fpath.as_path());
             }
@@ -715,9 +715,9 @@ impl Session<Error> for ElectrumSession {
         let encrypted = cipher.encrypt_vec(details.mnemonic.as_bytes());
 
         let result = PinGetDetails {
-            salt: hex::encode(&iv),
-            encrypted_data: hex::encode(&encrypted),
-            pin_identifier: hex::encode(&client_key[..]),
+            salt: iv.to_hex(),
+            encrypted_data: encrypted.to_hex(),
+            pin_identifier: client_key.to_hex(),
         };
         Ok(result)
     }
@@ -818,7 +818,7 @@ impl Session<Error> for ElectrumSession {
     fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum send_transaction {:#?}", tx);
         let client = self.url.build_client(self.proxy.as_deref())?;
-        let tx_bytes = hex::decode(&tx.hex)?;
+        let tx_bytes = Vec::<u8>::from_hex(&tx.hex)?;
         let txid = client.transaction_broadcast_raw(&tx_bytes)?;
         if let Some(memo) = tx.create_transaction.as_ref().and_then(|o| o.memo.as_ref()) {
             self.get_wallet()?.store.write()?.insert_memo(txid.into(), memo)?;
@@ -831,7 +831,7 @@ impl Session<Error> for ElectrumSession {
 
         info!("broadcast_transaction {:#?}", transaction.txid());
         let client = self.url.build_client(self.proxy.as_deref())?;
-        let hex = hex::decode(tx_hex)?;
+        let hex = Vec::<u8>::from_hex(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
         Ok(format!("{}", txid))
     }

@@ -40,7 +40,7 @@ impl Verifier {
         };
         Verifier {
             secp: Secp256k1::verification_only(),
-            challenge: Script::from(hex::decode(CHALLENGE).unwrap()),
+            challenge: Script::from(Vec::<u8>::from_hex(CHALLENGE).unwrap()),
             genesis: BlockHash::from_hex(genesis_hash).unwrap(),
             is_regtest,
         }

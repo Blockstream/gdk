@@ -2,6 +2,7 @@ use crate::determine_electrum_url_from_net;
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
+use ::bitcoin::hashes::hex::ToHex;
 use ::bitcoin::hashes::{sha256, sha256d, Hash};
 use aes_gcm_siv::aead::{Aead, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
@@ -146,7 +147,7 @@ impl VerifiedCache {
     fn new(path: &str, network: NetworkId, key: &str) -> Result<Self, Error> {
         let mut filepath: PathBuf = path.into();
         let filename_preimage = format!("{:?}{}", network, key);
-        let filename = hex::encode(sha256::Hash::hash(filename_preimage.as_bytes()));
+        let filename = sha256::Hash::hash(filename_preimage.as_bytes()).to_hex();
         let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
         filepath.push(format!("verified_cache_{}", filename));
         let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes));

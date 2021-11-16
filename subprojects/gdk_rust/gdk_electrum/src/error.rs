@@ -35,7 +35,6 @@ pub enum Error {
     BitcoinConsensus(bitcoin::consensus::encode::Error),
     JSON(serde_json::error::Error),
     StdIOError(std::io::Error),
-    Hex(hex::FromHexError),
     ClientError(electrum_client::Error),
     SliceConversionError(std::array::TryFromSliceError),
     ElementsEncode(elements::encode::Error),
@@ -76,7 +75,6 @@ impl Display for Error {
             Error::BitcoinConsensus(ref consensus_err) => write!(f, "consensus: {}", consensus_err),
             Error::JSON(ref json_err) => write!(f, "json: {}", json_err),
             Error::StdIOError(ref io_err) => write!(f, "io: {}", io_err),
-            Error::Hex(ref hex_err) => write!(f, "hex: {}", hex_err),
             Error::ClientError(ref client_err) => write!(f, "client: {:?}", client_err),
             Error::SliceConversionError(ref slice_err) => write!(f, "slice: {}", slice_err),
             Error::ElementsEncode(ref el_err) => write!(f, "el_err: {}", el_err),
@@ -147,12 +145,6 @@ impl From<std::io::Error> for Error {
 impl From<bitcoin::consensus::encode::Error> for Error {
     fn from(err: bitcoin::consensus::encode::Error) -> Self {
         Error::BitcoinConsensus(err)
-    }
-}
-
-impl From<hex::FromHexError> for Error {
-    fn from(err: hex::FromHexError) -> Self {
-        Error::Hex(err)
     }
 }
 

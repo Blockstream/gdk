@@ -6,6 +6,7 @@ use std::str::FromStr;
 use log::{debug, info, trace, warn};
 
 use bitcoin::blockdata::script;
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -422,7 +423,9 @@ impl Account {
     //pub fn sign(&self, psbt: PartiallySignedTransaction) -> Result<PartiallySignedTransaction, Error> { Err(Error::Generic("NotImplemented".to_string())) }
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("sign");
-        let be_tx = BETransaction::deserialize(&hex::decode(&request.hex)?, self.network.id())?;
+
+        let be_tx =
+            BETransaction::deserialize(&Vec::<u8>::from_hex(&request.hex)?, self.network.id())?;
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
 
