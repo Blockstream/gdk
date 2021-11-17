@@ -523,7 +523,7 @@ namespace sdk {
             }
 
             if (is_liquid) {
-                if (asset_ids.size() > 1 && net_params.is_main_net()) {
+                if (asset_ids.size() > 1) {
                     set_tx_error(result, "Multi-asset send not supported");
                 }
                 have_assets = true;
