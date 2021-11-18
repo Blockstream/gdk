@@ -1788,7 +1788,6 @@ namespace sdk {
             for (const auto& sa : login_data["subaccounts"]) {
                 m_cache->delete_transactions(sa["pointer"]);
             }
-            m_cache->save_db();
         }
 
         if (m_blob_hmac.empty()) {
@@ -1819,6 +1818,27 @@ namespace sdk {
             }
             GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
         }
+
+        if (is_initial_login) {
+            uint32_t tx_cache_version = 0;
+            m_cache->get_key_value("tx_cache_version", { [&tx_cache_version](const auto& db_blob) {
+                if (db_blob) {
+                    tx_cache_version = (db_blob->at(0) << 8) | db_blob->at(1);
+                }
+            } });
+            if (tx_cache_version < 1) {
+                // Delete cache items that will then re-populate as version 1
+                GDK_LOG_SEV(log_level::info) << "Updating tx cache version " << tx_cache_version << " to v1";
+                for (const auto& sa : login_data["subaccounts"]) {
+                    if (sa["type"] == "2of2_no_recovery") {
+                        m_cache->delete_transactions(sa["pointer"]);
+                    }
+                }
+                const std::array<unsigned char, 2> v1 = { 0x00, 0x01 };
+                m_cache->upsert_key_value("tx_cache_version", v1); // Mark as v1 compat
+            }
+        }
+        m_cache->save_db();
 
         constexpr bool watch_only = false;
         return on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
