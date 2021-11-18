@@ -2538,30 +2538,67 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
+        auto nonce = m_cache->get_liquid_blinding_nonce(nonce_commitment, script);
+        if (nonce.empty()) {
+            utxo["error"] = "missing blinding nonce";
+            missing.emplace(std::make_pair(nonce_commitment, script));
+            return false; // Cache not updated
+        }
+
+        unblind_t unblinded;
         try {
-            std::vector<unsigned char> nonce = m_cache->get_liquid_blinding_nonce(nonce_commitment, script);
+            unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
+        } catch (const std::exception& ex) {
+            nonce = get_alternate_blinding_nonce(locker, utxo, nonce_commitment);
+            if (!nonce.empty()) {
+                // Try the alternate nonce
+                try {
+                    unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
+                } catch (const std::exception& ex) {
+                    nonce.clear();
+                }
+            }
             if (nonce.empty()) {
-                utxo["error"] = "missing blinding nonce";
-                missing.emplace(std::make_pair(nonce_commitment, script));
+                utxo["error"] = "failed to unblind utxo";
                 return false; // Cache not updated
             }
-            const unblind_t unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
+        }
 
-            utxo["satoshi"] = std::get<3>(unblinded);
-            // Return in display order
-            utxo["assetblinder"] = b2h_rev(std::get<2>(unblinded));
-            utxo["amountblinder"] = b2h_rev(std::get<1>(unblinded));
-            utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
-            utxo["confidential"] = true;
-            utxo.erase("error");
-            if (!txhash.empty()) {
-                m_cache->insert_liquid_output(h2b(txhash), pt_idx, utxo);
-                return true; // Cache was updated
-            }
-        } catch (const std::exception& ex) {
-            utxo["error"] = "failed to unblind utxo";
+        utxo["satoshi"] = std::get<3>(unblinded);
+        // Return in display order
+        utxo["assetblinder"] = b2h_rev(std::get<2>(unblinded));
+        utxo["amountblinder"] = b2h_rev(std::get<1>(unblinded));
+        utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
+        utxo["confidential"] = true;
+        utxo.erase("error");
+        if (!txhash.empty()) {
+            m_cache->insert_liquid_output(h2b(txhash), pt_idx, utxo);
+            return true; // Cache was updated
         }
         return false; // Cache not updated
+    }
+
+    std::vector<unsigned char> ga_session::get_alternate_blinding_nonce(
+        session_impl::locker_t& locker, nlohmann::json& utxo, const std::vector<unsigned char>& nonce_commitment)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        if (!m_signer->has_master_blinding_key()) {
+            return {}; // Only available through master blinding key
+        }
+
+        const auto p = m_subaccounts.find(utxo.at("subaccount"));
+        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        if (p->second.at("type") != "2of2_no_recovery" || p->second.at("pointer") > 20u) {
+            return {}; // Only used for first 20 2of2_no_recovery addrs
+        }
+
+        auto alt_utxo = utxo;
+        alt_utxo["pointer"] = 1u; // Alt key is derived from the initial addr
+        const auto alt_script = output_script_from_utxo(locker, alt_utxo);
+        const auto p2sh = scriptpubkey_p2sh_p2wsh_from_bytes(alt_script);
+        const auto alt_key = m_signer->get_blinding_key_from_script(p2sh);
+        return make_vector(sha256(ecdh(nonce_commitment, alt_key)));
     }
 
     bool ga_session::cleanup_utxos(session_impl::locker_t& locker, nlohmann::json& utxos, const std::string& for_txhash,
@@ -3671,6 +3708,12 @@ namespace sdk {
     std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
     {
         locker_t locker(m_mutex);
+        return output_script_from_utxo(locker, utxo);
+    }
+
+    std::vector<unsigned char> ga_session::output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
         return ::ga::sdk::output_script_from_utxo(
             m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }

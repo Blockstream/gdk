@@ -218,8 +218,11 @@ namespace sdk {
         nlohmann::json get_settings(locker_t& locker);
         bool unblind_utxo(locker_t& locker, nlohmann::json& utxo, const std::string& for_txhash,
             unique_pubkeys_and_scripts_t& missing);
+        std::vector<unsigned char> get_alternate_blinding_nonce(
+            locker_t& locker, nlohmann::json& utxo, const std::vector<unsigned char>& nonce_commitment);
         bool cleanup_utxos(session_impl::locker_t& locker, nlohmann::json& utxos, const std::string& for_txhash,
             unique_pubkeys_and_scripts_t& missing);
+        std::vector<unsigned char> output_script_from_utxo(session_impl::locker_t& locker, const nlohmann::json& utxo);
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);
