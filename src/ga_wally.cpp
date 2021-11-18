@@ -292,6 +292,13 @@ namespace sdk {
         return ret;
     }
 
+    std::vector<unsigned char> scriptpubkey_p2sh_p2wsh_from_bytes(byte_span_t script)
+    {
+        const uint32_t witness_ver = 0;
+        const auto witness_program = witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256);
+        return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
+    }
+
     std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t witness_ver, uint32_t flags)
     {
         GDK_RUNTIME_ASSERT(witness_ver == 0); // Only segwit v0 is supported

@@ -3233,10 +3233,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(addr_script_type == script_type::ga_p2sh_p2wsh_csv_fortified_out
                 || addr_script_type == script_type::ga_p2sh_p2wsh_fortified_out);
 
-            const uint32_t witness_ver = 0;
-            const auto witness_program = witness_program_from_bytes(server_script, witness_ver, WALLY_SCRIPT_SHA256);
-            const auto p2sh = scriptpubkey_p2sh_from_hash160(hash160(witness_program));
-            address["blinding_script"] = b2h(p2sh);
+            address["blinding_script"] = b2h(scriptpubkey_p2sh_p2wsh_from_bytes(server_script));
             // The blinding key will be added later once fetched from the sessions signer
         }
     }

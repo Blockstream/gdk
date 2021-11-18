@@ -146,6 +146,8 @@ namespace sdk {
 
     std::vector<unsigned char> scriptpubkey_p2sh_from_hash160(byte_span_t hash);
 
+    std::vector<unsigned char> scriptpubkey_p2sh_p2wsh_from_bytes(byte_span_t script);
+
     std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t witness_ver, uint32_t flags);
 
     std::array<unsigned char, SHA256_LEN> format_bitcoin_message_hash(byte_span_t message);
