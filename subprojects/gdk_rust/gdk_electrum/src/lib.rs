@@ -462,7 +462,7 @@ impl Session<Error> for ElectrumSession {
             std::fs::create_dir_all(&path)?;
         } else {
             if let Some(id) = aqua_wallet_id {
-                fpath.push(id.to_hex());
+                fpath.push(id.as_ref().to_hex());
                 info!("Fallback store root path: {:?}", fpath);
                 fallback_path = Some(fpath.as_path());
             }

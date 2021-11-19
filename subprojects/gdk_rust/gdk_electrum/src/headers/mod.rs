@@ -147,7 +147,7 @@ impl VerifiedCache {
     fn new(path: &str, network: NetworkId, key: &str) -> Result<Self, Error> {
         let mut filepath: PathBuf = path.into();
         let filename_preimage = format!("{:?}{}", network, key);
-        let filename = sha256::Hash::hash(filename_preimage.as_bytes()).to_hex();
+        let filename = sha256::Hash::hash(filename_preimage.as_bytes()).as_ref().to_hex();
         let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
         filepath.push(format!("verified_cache_{}", filename));
         let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes));
