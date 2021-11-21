@@ -2506,6 +2506,16 @@ namespace sdk {
         update_fiat_rate(locker, fiat_rate.get_value_or(std::string()));
     }
 
+    static void remove_utxo_proofs(nlohmann::json& utxo, bool mark_unblinded)
+    {
+        if (mark_unblinded) {
+            utxo["confidential"] = true;
+            utxo.erase("error");
+        }
+        utxo.erase("range_proof");
+        utxo.erase("surj_proof");
+    }
+
     bool ga_session::unblind_utxo(session_impl::locker_t& locker, nlohmann::json& utxo, const std::string& for_txhash,
         unique_pubkeys_and_scripts_t& missing)
     {
@@ -2545,8 +2555,8 @@ namespace sdk {
             const auto cached = m_cache->get_liquid_output(h2b(txhash), pt_idx);
             if (!cached.empty()) {
                 utxo.update(cached.begin(), cached.end());
-                utxo["confidential"] = true;
-                utxo.erase("error");
+                constexpr bool mark_unblinded = true;
+                remove_utxo_proofs(utxo, mark_unblinded);
                 return false; // Cache not updated
             }
         }
@@ -2589,8 +2599,8 @@ namespace sdk {
         utxo["assetblinder"] = b2h_rev(std::get<2>(unblinded));
         utxo["amountblinder"] = b2h_rev(std::get<1>(unblinded));
         utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
-        utxo["confidential"] = true;
-        utxo.erase("error");
+        constexpr bool mark_unblinded = true;
+        remove_utxo_proofs(utxo, mark_unblinded);
         if (!txhash.empty()) {
             m_cache->insert_liquid_output(h2b(txhash), pt_idx, utxo);
             return true; // Cache was updated
@@ -2671,6 +2681,9 @@ namespace sdk {
                     if (is_liquid) {
                         if (json_get_value(utxo, "is_relevant", true)) {
                             updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
+                        } else {
+                            constexpr bool mark_unblinded = false;
+                            remove_utxo_proofs(utxo, mark_unblinded);
                         }
                     } else {
                         amount::value_type value;
