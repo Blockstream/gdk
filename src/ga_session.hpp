@@ -148,8 +148,8 @@ namespace sdk {
 
         nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
 
-        bool set_blinding_nonce(
-            const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex);
+        bool encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,
+            const std::string& nonce_hex, const std::string& blinding_pubkey_hex);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;

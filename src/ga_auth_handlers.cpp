@@ -92,9 +92,10 @@ namespace sdk {
                 hw_reply.at("signer_commitment"), hw_reply.at("signature"), has_sighash);
         }
 
-        static void set_blinding_nonce_request_data(
+        static void set_blinding_nonce_request_data(const std::shared_ptr<signer>& signer,
             const unique_pubkeys_and_scripts_t& missing, nlohmann::json& twofactor_data)
         {
+            twofactor_data["blinding_keys_required"] = !signer->has_master_blinding_key();
             auto& scripts = twofactor_data["scripts"];
             auto& public_keys = twofactor_data["public_keys"];
             for (const auto& m : missing) {
@@ -103,18 +104,29 @@ namespace sdk {
             }
         }
 
-        static void encache_blinding_nonces(
+        static void encache_blinding_data(
             session_impl& session, nlohmann::json& twofactor_data, const nlohmann::json& hw_reply)
         {
             const auto& scripts = twofactor_data.at("scripts");
             const auto& public_keys = twofactor_data.at("public_keys");
             const auto& nonces = get_sized_array(hw_reply, "nonces", scripts.size());
+            const auto blinding_pubkeys_p = hw_reply.find("public_keys");
+            const bool have_blinding_pubkeys = blinding_pubkeys_p != hw_reply.end();
+            if (have_blinding_pubkeys) {
+                get_sized_array(hw_reply, "public_keys", scripts.size()); // Must be a sized array if given
+            }
+            std::string blinding_pubkey_hex;
 
-            // Encache the blinding nonces we got back
+            // Encache the blinding nonces and any blinding pubkeys
             bool updated = false;
             for (size_t i = 0; i < scripts.size(); ++i) {
+                const std::string script_hex = scripts.at(i);
                 if (!nonces.at(i).empty()) {
-                    updated |= session.set_blinding_nonce(public_keys.at(i), scripts.at(i), nonces.at(i));
+                    if (have_blinding_pubkeys) {
+                        blinding_pubkey_hex = blinding_pubkeys_p->at(i);
+                    }
+                    updated |= session.encache_blinding_data(
+                        public_keys.at(i), script_hex, nonces.at(i), blinding_pubkey_hex);
                 }
             }
             if (updated) {
@@ -862,7 +874,7 @@ namespace sdk {
 
         if (m_hw_request == hw_request::get_blinding_nonces) {
             // Parse and cache the nonces we got back
-            encache_blinding_nonces(*m_session, m_twofactor_data, get_hw_reply());
+            encache_blinding_data(*m_session, m_twofactor_data, get_hw_reply());
             // Unblind, cleanup and store the fetched txs
             m_session->store_transactions(m_subaccount, m_result);
             // Make sure we don't re-encache the same nonces again next time through
@@ -890,7 +902,7 @@ namespace sdk {
         if (!missing.empty()) {
             // We have missing nonces we need to fetch, request them
             signal_hw_request(hw_request::get_blinding_nonces);
-            set_blinding_nonce_request_data(missing, m_twofactor_data);
+            set_blinding_nonce_request_data(m_signer, missing, m_twofactor_data);
             return m_state;
         }
         // No missing nonces, cleanup and store the fetched txs directly
@@ -939,7 +951,7 @@ namespace sdk {
         // Some utxos need unblinding; ask the caller to resolve them
         m_result.swap(utxos);
         signal_hw_request(hw_request::get_blinding_nonces);
-        set_blinding_nonce_request_data(missing, m_twofactor_data);
+        set_blinding_nonce_request_data(m_signer, missing, m_twofactor_data);
     }
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
@@ -951,7 +963,7 @@ namespace sdk {
         }
 
         // Parse and cache the nonces we got back
-        encache_blinding_nonces(*m_session, m_twofactor_data, get_hw_reply());
+        encache_blinding_data(*m_session, m_twofactor_data, get_hw_reply());
 
         // Unblind the remaining blinded outputs we have nonces for
         // and encache the result

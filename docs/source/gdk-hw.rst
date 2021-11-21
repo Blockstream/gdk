@@ -156,17 +156,21 @@ Hardware Get Blinding Nonces Action
 -----------------------------------
 
 When ``"action"`` is ``"get_blinding_nonces"``, this describes a request to
-compute blinding nonces for the given scripts and shared public keys.
+compute blinding nonces and possibly blinding public keys for the given scripts
+and shared public keys.
 
 .. note:: This action is only returned when using the Liquid network.
 
 .. code-block:: json
 
      {
+       "blinding_keys_required": true
        "scripts": [ "a91403f650e2434916d5b7f124de8f673442b696282887" ],
-       "public_keys": [ "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27" ]
+       "public_keys": [ "035f242d49b88ca17948b156263e1f0c86d2cc9e9ff316b058dbbdb351e34bc9aa" ]
      }
 
+:blinding_keys_required: ``true`` if the blinding public keys must be returned, ``false`` otherwise.
+    Blinding public keys are not requested if the master blinding key has previously been given.
 :public_keys: An array of hex-encoded compressed shared public keys for computing the nonces.
 :scripts: An array of hex-encoded scripts for which a blinding key should be generated and then
     the nonce computed using the public key given.
@@ -176,7 +180,10 @@ compute blinding nonces for the given scripts and shared public keys.
 .. code-block:: json
 
      {
+       "public_keys": [ "02045e92b8f68bd066180c05a39969f862a67f4efc8f5d7aeca32c627a463b8f27" ]
        "nonces": [ "8d940a5ec4ad122394cd2596ecfbf933a8d8fb0196015cc0a35399e3c326758c" ]
      }
 
+:public_keys: An array of hex-encoded compressed public keys for blinding the given scripts.
+    Must be present if ``"blinding_keys_required"`` was ``true`` in the request, and absent otherwise.
 :nonces: An array of hex-encoded 256 bit blinding nonces.

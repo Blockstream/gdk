@@ -64,8 +64,7 @@ namespace sdk {
                 "CREATE TABLE IF NOT EXISTS KeyValue(key BLOB NOT NULL, value BLOB NOT NULL, PRIMARY KEY(key));");
 
             exec_check("CREATE TABLE IF NOT EXISTS LiquidBlindingNonce(pubkey BLOB NOT NULL, script BLOB NOT NULL, "
-                       "nonce BLOB NOT "
-                       "NULL, PRIMARY KEY(pubkey, script));");
+                       "nonce BLOB NOT NULL, PRIMARY KEY(pubkey, script));");
 
             exec_check(
                 "CREATE TABLE IF NOT EXISTS Tx(subaccount INTEGER NOT NULL, timestamp INTEGER NOT NULL, txid BLOB "
@@ -356,8 +355,8 @@ namespace sdk {
         , m_db(get_db())
         , m_stmt_liquid_blinding_nonce_search(
               get_stmt(m_is_liquid, m_db, "SELECT nonce FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2;"))
-        , m_stmt_liquid_blinding_nonce_insert(get_stmt(
-              m_is_liquid, m_db, "INSERT INTO LiquidBlindingNonce (pubkey, script, nonce) VALUES (?1, ?2, ?3);"))
+        , m_stmt_liquid_blinding_nonce_insert(get_stmt(m_is_liquid, m_db,
+              "INSERT OR IGNORE INTO LiquidBlindingNonce (pubkey, script, nonce) VALUES (?1, ?2, ?3);"))
         , m_stmt_liquid_output_search(get_stmt(
               m_is_liquid, m_db, "SELECT assetid, satoshi, abf, vbf FROM LiquidOutput WHERE txid = ?1 AND vout = ?2;"))
         , m_stmt_liquid_output_insert(get_stmt(m_is_liquid, m_db,
@@ -382,6 +381,13 @@ namespace sdk {
     cache::~cache() {}
 
     const std::string& cache::get_network_name() const { return m_network_name; }
+
+    bool cache::check_db_changed()
+    {
+        const bool changed = sqlite3_changes(m_db.get()) != 0;
+        m_require_write |= changed;
+        return changed;
+    }
 
     void cache::save_db()
     {
@@ -716,19 +722,17 @@ namespace sdk {
         m_require_write = true;
     }
 
-    bool cache::insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce)
+    bool cache::insert_liquid_blinding_data(
+        byte_span_t pubkey, byte_span_t script, byte_span_t nonce, byte_span_t blinding_pubkey)
     {
-        if (!get_liquid_blinding_nonce(pubkey, script).empty()) {
-            return false; // Not updated, already present
-        }
-        GDK_RUNTIME_ASSERT(!nonce.empty());
+        (void)blinding_pubkey;
+        GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty() && !nonce.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_insert.get());
         const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_insert) };
         bind_liquid_blinding(m_stmt_liquid_blinding_nonce_insert, pubkey, script);
         bind_blob(m_stmt_liquid_blinding_nonce_insert, 3, nonce);
         step_final(m_stmt_liquid_blinding_nonce_insert);
-        m_require_write = true;
-        return true; // Insert
+        return check_db_changed();
     }
 
     void cache::insert_liquid_output(byte_span_t txhash, uint32_t vout, nlohmann::json& utxo)

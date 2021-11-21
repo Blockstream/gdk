@@ -82,10 +82,10 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    bool session_impl::set_blinding_nonce(
-        const std::string& /*pubkey_hex*/, const std::string& /*script_hex*/, const std::string& /*nonce_hex*/)
+    bool session_impl::encache_blinding_data(const std::string& /*pubkey_hex*/, const std::string& /*script_hex*/,
+        const std::string& /*nonce_hex*/, const std::string& /*blinding_pubkey_hex*/)
     {
-        return false; // No nonce caching by default, so return 'not updated'
+        return false; // No caching by default, so return 'not updated'
     }
 
     void session_impl::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> /*signer*/)

@@ -387,14 +387,16 @@ namespace sdk {
             }
         } else if (have_master_blinding_key && request == hw_request::get_blinding_public_keys) {
             // Host unblinding: generate pubkeys
-            auto& public_keys = result["public_keys"];
+            auto& blinding_public_keys = result["public_keys"];
             for (const auto& script : required_data.at("scripts")) {
-                public_keys.push_back(b2h(signer->get_blinding_pubkey_from_script(h2b(script))));
+                blinding_public_keys.push_back(b2h(signer->get_blinding_pubkey_from_script(h2b(script))));
             }
             m_handler->resolve_code(result.dump());
             return true;
         } else if (have_master_blinding_key && request == hw_request::get_blinding_nonces) {
             // Host unblinding: generate nonces
+            // As we have the master blinding key, we should not be asked for blinding keys
+            GDK_RUNTIME_ASSERT(!required_data.at("blinding_keys_required"));
             const auto& public_keys = required_data.at("public_keys");
             const auto& scripts = required_data.at("scripts");
             auto& nonces = result["nonces"];

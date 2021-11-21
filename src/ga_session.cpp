@@ -3053,14 +3053,23 @@ namespace sdk {
         return amount(v);
     }
 
-    bool ga_session::set_blinding_nonce(
-        const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex)
+    bool ga_session::encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,
+        const std::string& nonce_hex, const std::string& blinding_pubkey_hex)
     {
         const auto pubkey = h2b(pubkey_hex);
         const auto script = h2b(script_hex);
         const auto nonce = h2b(nonce_hex);
+        std::vector<unsigned char> blinding_pubkey;
+
         locker_t locker(m_mutex);
-        return m_cache->insert_liquid_blinding_nonce(pubkey, script, nonce);
+        if (blinding_pubkey_hex.empty()) {
+            // No master blinding key: HWW must give us the blinding pubkeys
+            GDK_RUNTIME_ASSERT_MSG(m_signer->has_master_blinding_key(), "Invalid get_blinding_nonces reply");
+            blinding_pubkey = m_signer->get_blinding_pubkey_from_script(script);
+        } else {
+            blinding_pubkey = h2b(blinding_pubkey_hex);
+        }
+        return m_cache->insert_liquid_blinding_data(pubkey, script, nonce, blinding_pubkey);
     }
 
     nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)

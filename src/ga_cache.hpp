@@ -27,7 +27,8 @@ namespace sdk {
         void insert_liquid_output(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
 
         std::vector<unsigned char> get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
-        bool insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce);
+        bool insert_liquid_blinding_data(
+            byte_span_t pubkey, byte_span_t script, byte_span_t nonce, byte_span_t blinding_pubkey);
 
         typedef std::function<void(boost::optional<byte_span_t>)> get_key_value_fn;
         void get_key_value(const std::string& key, const get_key_value_fn& callback);
@@ -60,6 +61,8 @@ namespace sdk {
         void load_db(byte_span_t encryption_key, const uint32_t type);
 
     private:
+        bool check_db_changed();
+
         const std::string m_network_name;
         const network_parameters& m_net_params;
         const bool m_is_liquid;
