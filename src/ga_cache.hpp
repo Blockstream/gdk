@@ -27,7 +27,7 @@ namespace sdk {
         void insert_liquid_output(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
 
         std::vector<unsigned char> get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
-        void insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce);
+        bool insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce);
 
         typedef std::function<void(boost::optional<byte_span_t>)> get_key_value_fn;
         void get_key_value(const std::string& key, const get_key_value_fn& callback);

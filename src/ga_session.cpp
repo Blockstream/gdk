@@ -3056,14 +3056,11 @@ namespace sdk {
     bool ga_session::set_blinding_nonce(
         const std::string& pubkey_hex, const std::string& script_hex, const std::string& nonce_hex)
     {
-        locker_t locker(m_mutex);
         const auto pubkey = h2b(pubkey_hex);
         const auto script = h2b(script_hex);
-        if (!m_cache->get_liquid_blinding_nonce(pubkey, script).empty()) {
-            return false; // Not updated, already present
-        }
-        m_cache->insert_liquid_blinding_nonce(pubkey, script, h2b(nonce_hex));
-        return true; // Updated
+        const auto nonce = h2b(nonce_hex);
+        locker_t locker(m_mutex);
+        return m_cache->insert_liquid_blinding_nonce(pubkey, script, nonce);
     }
 
     nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)

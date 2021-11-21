@@ -716,15 +716,19 @@ namespace sdk {
         m_require_write = true;
     }
 
-    void cache::insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce)
+    bool cache::insert_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script, byte_span_t nonce)
     {
-        GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty() && !nonce.empty());
+        if (!get_liquid_blinding_nonce(pubkey, script).empty()) {
+            return false; // Not updated, already present
+        }
+        GDK_RUNTIME_ASSERT(!nonce.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_insert.get());
         const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_insert) };
         bind_liquid_blinding(m_stmt_liquid_blinding_nonce_insert, pubkey, script);
         bind_blob(m_stmt_liquid_blinding_nonce_insert, 3, nonce);
         step_final(m_stmt_liquid_blinding_nonce_insert);
         m_require_write = true;
+        return true; // Insert
     }
 
     void cache::insert_liquid_output(byte_span_t txhash, uint32_t vout, nlohmann::json& utxo)
