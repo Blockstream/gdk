@@ -24,17 +24,11 @@ namespace sdk {
         // that the code path to upload on login is always executed/doesn't bitrot.
         static const uint32_t INITIAL_UPLOAD_CA = 20;
 
-        static std::string get_confidential_address(
-            const std::string& address, uint32_t prefix, const std::string& blinding_pubkey_hex)
-        {
-            return confidential_addr_from_addr(address, prefix, h2b(blinding_pubkey_hex));
-        }
-
         static void blind_address(nlohmann::json& addr, uint32_t prefix, const std::string& blinding_pubkey_hex)
         {
             auto& address = addr.at("address");
             addr["unblinded_address"] = address;
-            address = get_confidential_address(address, prefix, blinding_pubkey_hex);
+            address = confidential_addr_from_addr(address, prefix, blinding_pubkey_hex);
             addr["blinding_key"] = blinding_pubkey_hex;
             addr["is_blinded"] = true;
         }
@@ -323,7 +317,7 @@ namespace sdk {
             std::map<uint32_t, std::vector<std::string>> addresses_by_subaccount;
             size_t i = 0;
             for (const auto& it : m_addresses) {
-                auto address = get_confidential_address(it.at("address"), prefix, public_keys.at(i));
+                auto address = confidential_addr_from_addr(it.at("address"), prefix, public_keys.at(i));
                 addresses_by_subaccount[it.at("subaccount")].emplace_back(address);
                 ++i;
             }
@@ -431,7 +425,7 @@ namespace sdk {
             std::vector<std::string> addresses;
             size_t i = 0;
             for (const auto& it : m_addresses) {
-                auto address = get_confidential_address(it.at("address"), prefix, public_keys.at(i));
+                auto address = confidential_addr_from_addr(it.at("address"), prefix, public_keys.at(i));
                 addresses.emplace_back(std::move(address));
                 ++i;
             }

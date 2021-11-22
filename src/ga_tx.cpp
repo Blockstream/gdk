@@ -645,11 +645,9 @@ namespace sdk {
                         // to have one because all our create_transaction logic relies on being able to blind
                         // the tx for a few things (fee estimation for instance).
                         const auto blinded_prefix = session.get_network_parameters().blinded_prefix();
-                        const auto public_key
-                            = h2b("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+                        const char* pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
                         const auto& unblinded_addr = change_address.at("address");
-                        change_address["address"]
-                            = confidential_addr_from_addr(unblinded_addr, blinded_prefix, public_key);
+                        change_address["address"] = confidential_addr_from_addr(unblinded_addr, blinded_prefix, pubkey);
                         change_address["is_blinded"] = false;
                     }
 

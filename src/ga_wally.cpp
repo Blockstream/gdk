@@ -785,11 +785,12 @@ namespace sdk {
         return pub_key;
     }
 
-    std::string confidential_addr_from_addr(const std::string& address, uint32_t prefix, byte_span_t public_key)
+    std::string confidential_addr_from_addr(
+        const std::string& address, uint32_t prefix, const std::string blinding_pubkey_hex)
     {
+        const auto pubkey = h2b(blinding_pubkey_hex);
         char* ret;
-        GDK_VERIFY(
-            wally_confidential_addr_from_addr(address.c_str(), prefix, public_key.data(), public_key.size(), &ret));
+        GDK_VERIFY(wally_confidential_addr_from_addr(address.c_str(), prefix, pubkey.data(), pubkey.size(), &ret));
         return make_string(ret);
     }
 

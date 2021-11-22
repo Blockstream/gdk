@@ -301,7 +301,8 @@ namespace sdk {
     pub_key_t confidential_addr_segwit_to_ec_public_key(
         const std::string& address, const std::string& confidential_prefix);
 
-    std::string confidential_addr_from_addr(const std::string& address, uint32_t prefix, byte_span_t public_key);
+    std::string confidential_addr_from_addr(
+        const std::string& address, uint32_t prefix, const std::string blinding_pubkey_hex);
 
     blinding_key_t asset_blinding_key_from_seed(byte_span_t seed);
 
