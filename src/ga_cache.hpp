@@ -27,6 +27,7 @@ namespace sdk {
         void insert_liquid_output(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
 
         std::vector<unsigned char> get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
+        std::vector<unsigned char> get_liquid_blinding_pubkey(byte_span_t script);
         bool insert_liquid_blinding_data(
             byte_span_t pubkey, byte_span_t script, byte_span_t nonce, byte_span_t blinding_pubkey);
 
@@ -72,6 +73,8 @@ namespace sdk {
         std::array<unsigned char, SHA256_LEN> m_encryption_key; // Set on first call to load_db
         bool m_require_write;
         sqlite3_ptr m_db;
+        sqlite3_stmt_ptr m_stmt_liquid_blinding_key_search;
+        sqlite3_stmt_ptr m_stmt_liquid_blinding_key_insert;
         sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_search;
         sqlite3_stmt_ptr m_stmt_liquid_blinding_nonce_insert;
         sqlite3_stmt_ptr m_stmt_liquid_output_search;

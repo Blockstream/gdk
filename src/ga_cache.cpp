@@ -63,6 +63,9 @@ namespace sdk {
             exec_check(
                 "CREATE TABLE IF NOT EXISTS KeyValue(key BLOB NOT NULL, value BLOB NOT NULL, PRIMARY KEY(key));");
 
+            exec_check("CREATE TABLE IF NOT EXISTS LiquidBlindingPubKey(script BLOB NOT NULL, "
+                       "pubkey BLOB NOT NULL, PRIMARY KEY(script));");
+
             exec_check("CREATE TABLE IF NOT EXISTS LiquidBlindingNonce(pubkey BLOB NOT NULL, script BLOB NOT NULL, "
                        "nonce BLOB NOT NULL, PRIMARY KEY(pubkey, script));");
 
@@ -336,10 +339,10 @@ namespace sdk {
             }
         }
 
-        static void bind_liquid_blinding(cache::sqlite3_stmt_ptr& stmt, byte_span_t pubkey, byte_span_t script)
+        static void bind_blobs(cache::sqlite3_stmt_ptr& stmt, byte_span_t blob1, byte_span_t blob2)
         {
-            bind_blob(stmt, 1, pubkey);
-            bind_blob(stmt, 2, script);
+            bind_blob(stmt, 1, blob1);
+            bind_blob(stmt, 2, blob2);
         }
     } // namespace
 
@@ -353,6 +356,10 @@ namespace sdk {
         , m_encryption_key()
         , m_require_write(false)
         , m_db(get_db())
+        , m_stmt_liquid_blinding_key_search(
+              get_stmt(m_is_liquid, m_db, "SELECT pubkey FROM LiquidBlindingPubKey WHERE script = ?1;"))
+        , m_stmt_liquid_blinding_key_insert(get_stmt(
+              m_is_liquid, m_db, "INSERT OR IGNORE INTO LiquidBlindingPubKey (script, pubkey) VALUES (?1, ?2);"))
         , m_stmt_liquid_blinding_nonce_search(
               get_stmt(m_is_liquid, m_db, "SELECT nonce FROM LiquidBlindingNonce WHERE pubkey = ?1 AND script = ?2;"))
         , m_stmt_liquid_blinding_nonce_insert(get_stmt(m_is_liquid, m_db,
@@ -675,8 +682,17 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty());
         GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_search.get());
         const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_search) };
-        bind_liquid_blinding(m_stmt_liquid_blinding_nonce_search, pubkey, script);
+        bind_blobs(m_stmt_liquid_blinding_nonce_search, pubkey, script);
         return get_blob(m_stmt_liquid_blinding_nonce_search, 0);
+    }
+
+    std::vector<unsigned char> cache::get_liquid_blinding_pubkey(byte_span_t script)
+    {
+        GDK_RUNTIME_ASSERT(!script.empty());
+        GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_key_search.get());
+        const auto _{ stmt_clean(m_stmt_liquid_blinding_key_search) };
+        bind_blob(m_stmt_liquid_blinding_key_search, 1, script);
+        return get_blob(m_stmt_liquid_blinding_key_search, 0);
     }
 
     nlohmann::json cache::get_liquid_output(byte_span_t txhash, const uint32_t vout)
@@ -725,14 +741,22 @@ namespace sdk {
     bool cache::insert_liquid_blinding_data(
         byte_span_t pubkey, byte_span_t script, byte_span_t nonce, byte_span_t blinding_pubkey)
     {
-        (void)blinding_pubkey;
         GDK_RUNTIME_ASSERT(!pubkey.empty() && !script.empty() && !nonce.empty());
-        GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_insert.get());
-        const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_insert) };
-        bind_liquid_blinding(m_stmt_liquid_blinding_nonce_insert, pubkey, script);
-        bind_blob(m_stmt_liquid_blinding_nonce_insert, 3, nonce);
-        step_final(m_stmt_liquid_blinding_nonce_insert);
-        return check_db_changed();
+        {
+            GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_nonce_insert.get());
+            const auto _{ stmt_clean(m_stmt_liquid_blinding_nonce_insert) };
+            bind_blobs(m_stmt_liquid_blinding_nonce_insert, pubkey, script);
+            bind_blob(m_stmt_liquid_blinding_nonce_insert, 3, nonce);
+            step_final(m_stmt_liquid_blinding_nonce_insert);
+        }
+        const bool changed = check_db_changed();
+        {
+            GDK_RUNTIME_ASSERT(m_stmt_liquid_blinding_key_insert.get());
+            const auto _{ stmt_clean(m_stmt_liquid_blinding_key_insert) };
+            bind_blobs(m_stmt_liquid_blinding_key_insert, script, blinding_pubkey);
+            step_final(m_stmt_liquid_blinding_key_insert);
+        }
+        return changed | check_db_changed();
     }
 
     void cache::insert_liquid_output(byte_span_t txhash, uint32_t vout, nlohmann::json& utxo)
