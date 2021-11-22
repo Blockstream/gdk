@@ -19,6 +19,7 @@ namespace sdk {
     namespace {
 
         constexpr int VERSION = 1;
+        constexpr int MINOR_VERSION = 0x1;
         constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
         constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
                                           "WHERE subaccount = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3;";
@@ -231,6 +232,13 @@ namespace sdk {
         static auto step_final(cache::sqlite3_stmt_ptr& stmt)
         {
             GDK_RUNTIME_ASSERT(sqlite3_step(stmt.get()) == SQLITE_DONE);
+        }
+
+        static void exec_sql(cache::sqlite3_ptr& db, const char* sql)
+        {
+            auto stmt = get_stmt(true, db, sql);
+            const auto _{ stmt_clean(stmt) };
+            step_final(stmt);
         }
 
         static uint32_t get_uint32(cache::sqlite3_stmt_ptr& stmt, int column)
@@ -491,6 +499,30 @@ namespace sdk {
                     }
                 }
             }
+        }
+    }
+
+    void cache::update_to_latest_minor_version()
+    {
+        uint32_t ver = 0;
+        get_key_value("minor_version", { [&ver](const auto& db_blob) {
+            if (db_blob) {
+                ver = (db_blob->at(0) << 8) | db_blob->at(1);
+            }
+        } });
+        if (ver < MINOR_VERSION) {
+            // Delete cache items that can be re-populated as the latest minor version
+            GDK_LOG_SEV(log_level::info) << "Updating tx cache version " << ver << " to v" << MINOR_VERSION;
+            if (m_is_liquid && ver < 1) {
+                // Delete pre-v1 tx and blinding data
+                exec_sql(m_db, "DELETE FROM LiquidOutput;");
+                exec_sql(m_db, "DELETE FROM LiquidBlindingNonce;");
+                exec_sql(m_db, "DELETE FROM Tx;");
+            }
+
+            const std::array<unsigned char, 2> new_ver = { 0x00, MINOR_VERSION };
+            upsert_key_value("minor_version", new_ver); // Mark updated to latest minor
+            m_require_write = true;
         }
     }
 

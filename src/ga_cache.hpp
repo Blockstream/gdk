@@ -61,6 +61,8 @@ namespace sdk {
         void save_db();
         void load_db(byte_span_t encryption_key, const uint32_t type);
 
+        void update_to_latest_minor_version();
+
     private:
         bool check_db_changed();
 
