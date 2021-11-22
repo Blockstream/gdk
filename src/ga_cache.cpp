@@ -494,7 +494,7 @@ namespace sdk {
         const auto key_span = ustring_span(key);
         bind_blob(m_stmt_key_value_delete, 1, key_span);
         step_final(m_stmt_key_value_delete);
-        m_require_write = true;
+        check_db_changed();
     }
 
     void cache::get_key_value(const std::string& key, const cache::get_key_value_fn& callback)
@@ -548,7 +548,7 @@ namespace sdk {
         bind_blob(m_stmt_txdata_insert, 1, txid);
         bind_blob(m_stmt_txdata_insert, 2, value);
         step_final(m_stmt_txdata_insert);
-        m_require_write = true;
+        check_db_changed();
     }
 
     uint64_t cache::get_latest_transaction_timestamp(uint32_t subaccount)
@@ -600,7 +600,7 @@ namespace sdk {
         bind_int(m_stmt_tx_spv_update, 1, 1); // SPV_STATUS_VERIFIED
         bind_blob(m_stmt_tx_spv_update, 2, txid);
         step_final(m_stmt_tx_spv_update);
-        m_require_write = true;
+        check_db_changed();
     }
 
     void cache::delete_transactions(uint32_t subaccount, uint64_t start_ts)
@@ -609,7 +609,7 @@ namespace sdk {
         bind_int(m_stmt_tx_delete_all, 1, subaccount);
         bind_int(m_stmt_tx_delete_all, 2, start_ts);
         step_final(m_stmt_tx_delete_all);
-        m_require_write = true;
+        check_db_changed();
     }
 
     bool cache::delete_mempool_txs(uint32_t subaccount)
@@ -719,7 +719,7 @@ namespace sdk {
         bind_blob(m_stmt_key_value_upsert, 1, key_span);
         bind_blob(m_stmt_key_value_upsert, 2, value);
         step_final(m_stmt_key_value_upsert);
-        m_require_write = true;
+        check_db_changed();
     }
 
     bool cache::insert_liquid_blinding_data(
