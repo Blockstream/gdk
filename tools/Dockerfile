@@ -1,5 +1,5 @@
-FROM debian:buster@sha256:125ab9ab9718f4dba6c3342407bb1923afce4f6b2a12b3a502d818274db9faf9
-COPY buster_deps.sh /deps.sh
+FROM debian:bullseye@sha256:45ee40a844048c2f6d0105899c1a17733530b56d481612608aab5e2e4048570b
+COPY bullseye_deps.sh /deps.sh
 COPY requirements.txt /requirements.txt
 RUN /deps.sh && rm /deps.sh
 ENV ANDROID_NDK=/android-ndk-r21

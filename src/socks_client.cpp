@@ -105,9 +105,9 @@ namespace sdk {
                 return set_exception("expected negotiation phase to be connect");
             }
 
-            const size_t response_siz
-                = m_response[3] == 0x1 ? 4 + sizeof(uint16_t) : m_response[3] == 0x4 ? 16 + sizeof(uint16_t) : 1;
-            m_response.resize(response_siz);
+            const bool is_single_byte = m_response[3] != 0x1 && m_response[3] != 0x4;
+            const size_t response_size = is_single_byte ? 1 : m_response[3] * 4 + sizeof(uint16_t);
+            m_response.resize(response_size);
 
             asio::async_read(m_stream, asio::buffer(m_response),
                 beast::bind_front_handler(&socks_client::on_connect_read, shared_from_this()));

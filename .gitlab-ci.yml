@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:a777c4526ae84f6f972665aa1c4e7a44c0325883965b58631811066bd8c1a7ee
+image: greenaddress/ci@sha256:5eae711c7b5173b1a9f5a338ead9fd17a3f59e9709bd84b2f05d0ca18c7e267b
 
 stages:
   - format
@@ -82,16 +82,16 @@ test_build_no_rust:
   script:
     - ./tools/build.sh --clang
 
-release_py3m_buster:
+release_py3m_bullseye:
   extends: .py_release
   script:
-    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.7 --enable-rust
+    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.9 --enable-rust
 
-release_py3m_buster_debug:
+release_py3m_bullseye_debug:
   extends: .py_release
   when: manual
   script:
-    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.7 --enable-rust
+    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9 --enable-rust
 
 release_py3m_ubuntu_18.04:
   image: greenaddress/ubuntu_ci@sha256:fa4942de35b0cc54817d1ce94e568d13e5a00777b78b94542141099817e1a81f
@@ -329,7 +329,7 @@ package_release:
   - gdk_clang_ndk_arm64-v8a
   - gdk_clang_ndk_x86
   - gdk_clang_ndk_x86_64
-  - release_py3m_buster
+  - release_py3m_bullseye
   - release_py3m_ubuntu_18.04
   - release_py3m_osx
   - release_osx_ios

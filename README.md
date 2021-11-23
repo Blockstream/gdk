@@ -13,7 +13,7 @@ Read the API documentation at https://gdk.readthedocs.io/en/latest/
 For Debian Stretch:
 
 ```
-sudo apt update && sudo apt install build-essential python3-pip ninja-build clang wget autoconf pkg-config libtool swig (optional)
+sudo apt update && sudo apt install build-essential python3-pip ninja-build clang autoconf pkg-config libtool swig (optional)
 sudo pip3 install -r tools/requirements.txt or pip3 install --user -r tools/requirements.txt
 ```
 
@@ -22,7 +22,7 @@ For Mac OSX:
 Install Xcode and brew if not installed, then
 
 ```
-brew update && brew install ninja automake autoconf libtool gnu-sed python3 wget pkg-config swig (optional) gnu-getopt gnu-tar
+brew update && brew install ninja automake autoconf libtool gnu-sed python3 pkg-config swig (optional) gnu-getopt gnu-tar
 pip3 install --user meson
 xcode-select --install
 ```
@@ -173,7 +173,7 @@ If JAVA_HOME is set while the library is built, a Java wrapper is built exposing
 
 Similarly, if `--python-version` is passed to `tools/build.sh` a Python wrapper is built, for example:
 
-`./tools/build.sh --install $PWD --gcc --python-version 3.7`
+`./tools/build.sh --install $PWD --gcc --python-version 3.9`
 
 ### Swift wrapper
 

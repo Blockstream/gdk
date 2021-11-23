@@ -13,7 +13,6 @@ addons:
       - pkg-config
       - python3
       - swig
-      - wget
 matrix:
   include:
     - os: osx
@@ -25,13 +24,13 @@ matrix:
         - source $HOME/.cargo/env && ./tools/build.sh --clang --python-version $(python3 --version | cut -d ' ' -f 2 | cut -d '.' -f1,2) --enable-rust
     - services:
         - docker
-      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:a777c4526ae84f6f972665aa1c4e7a44c0325883965b58631811066bd8c1a7ee /bin/bash -c "cd /gdk && ./tools/format.sh && git diff --exit-code && ./tools/build.sh --clang --enable-rust"
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:5eae711c7b5173b1a9f5a338ead9fd17a3f59e9709bd84b2f05d0ca18c7e267b /bin/bash -c "cd /gdk && ./tools/format.sh && git diff --exit-code && ./tools/build.sh --clang --enable-rust"
     - services:
         - docker
-      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:a777c4526ae84f6f972665aa1c4e7a44c0325883965b58631811066bd8c1a7ee /bin/bash -c "cd /gdk && ./tools/build.sh --mingw-w64 --enable-rust"
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:5eae711c7b5173b1a9f5a338ead9fd17a3f59e9709bd84b2f05d0ca18c7e267b /bin/bash -c "cd /gdk && ./tools/build.sh --mingw-w64 --enable-rust"
     - services:
         - docker
-      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:a777c4526ae84f6f972665aa1c4e7a44c0325883965b58631811066bd8c1a7ee /bin/bash -c "cd /gdk && ./tools/build.sh --gcc --enable-rust"
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:5eae711c7b5173b1a9f5a338ead9fd17a3f59e9709bd84b2f05d0ca18c7e267b /bin/bash -c "cd /gdk && ./tools/build.sh --gcc --enable-rust"
     - services:
         - docker
       script: docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:da48654c02d38c570811fd42b7e2dabc5ac2ca91854982be9544c19b659e8abb /bin/bash -c "cd /gdk && ./tools/build.sh --gcc --enable-rust"
@@ -40,4 +39,4 @@ matrix:
       script: docker run -v $PWD:/gdk greenaddress/fedora_ci@sha256:da48654c02d38c570811fd42b7e2dabc5ac2ca91854982be9544c19b659e8abb /bin/bash -c "cd /gdk && ./tools/build.sh --clang --enable-rust"
     - services:
         - docker
-      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:a777c4526ae84f6f972665aa1c4e7a44c0325883965b58631811066bd8c1a7ee /bin/bash -c "cd /gdk && ./tools/build.sh --gcc --enable-rust"
+      script: docker run -v $PWD:/gdk greenaddress/ci@sha256:5eae711c7b5173b1a9f5a338ead9fd17a3f59e9709bd84b2f05d0ca18c7e267b /bin/bash -c "cd /gdk && ./tools/build.sh --gcc --enable-rust"
