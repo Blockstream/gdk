@@ -5,6 +5,13 @@
 #include "memory.hpp"
 #include "utils.hpp"
 
+#define VERIFY_MNEMONIC(x)                                                                                             \
+    do {                                                                                                               \
+        if ((x) != WALLY_OK) {                                                                                         \
+            throw user_error(res::id_invalid_mnemonic);                                                                \
+        }                                                                                                              \
+    } while (false)
+
 namespace ga {
 namespace sdk {
 
@@ -321,7 +328,7 @@ namespace sdk {
     std::string bip39_mnemonic_from_bytes(byte_span_t data)
     {
         char* s;
-        GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, data.data(), data.size(), &s));
+        VERIFY_MNEMONIC(::bip39_mnemonic_from_bytes(nullptr, data.data(), data.size(), &s));
         if (::bip39_mnemonic_validate(nullptr, s) != GA_OK) {
             wally_free_string(s);
             // This should only be possible with bad hardware/cosmic rays
@@ -337,10 +344,10 @@ namespace sdk {
 
     std::vector<unsigned char> bip39_mnemonic_to_seed(const std::string& mnemonic, const std::string& password)
     {
-        GDK_VERIFY(::bip39_mnemonic_validate(nullptr, mnemonic.c_str()));
+        VERIFY_MNEMONIC(::bip39_mnemonic_validate(nullptr, mnemonic.c_str()));
         size_t written;
         std::vector<unsigned char> ret(BIP39_SEED_LEN_512); // FIXME: secure_array
-        GDK_VERIFY(::bip39_mnemonic_to_seed(
+        VERIFY_MNEMONIC(::bip39_mnemonic_to_seed(
             mnemonic.c_str(), password.empty() ? nullptr : password.c_str(), &ret[0], ret.size(), &written));
         return ret;
     }
@@ -349,9 +356,10 @@ namespace sdk {
     {
         size_t written;
         std::vector<unsigned char> entropy(BIP39_ENTROPY_LEN_288); // FIXME: secure_array
-        GDK_VERIFY(::bip39_mnemonic_to_bytes(nullptr, mnemonic.data(), entropy.data(), entropy.size(), &written));
-        GDK_RUNTIME_ASSERT(
-            written == BIP39_ENTROPY_LEN_128 || written == BIP39_ENTROPY_LEN_256 || written == BIP39_ENTROPY_LEN_288);
+        VERIFY_MNEMONIC(::bip39_mnemonic_to_bytes(nullptr, mnemonic.data(), entropy.data(), entropy.size(), &written));
+        if (written != BIP39_ENTROPY_LEN_128 && written != BIP39_ENTROPY_LEN_256 && written != BIP39_ENTROPY_LEN_288) {
+            throw user_error(res::id_invalid_mnemonic);
+        }
         entropy.resize(written);
         return entropy;
     }
