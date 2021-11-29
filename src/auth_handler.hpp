@@ -45,6 +45,7 @@ namespace sdk {
 
         virtual void request_code(const std::string& method) = 0;
         virtual void resolve_code(const std::string& code) = 0;
+        virtual void resolve_hw_reply(nlohmann::json&& reply) = 0;
 
         virtual nlohmann::json get_status() const = 0;
         virtual state_type get_state() const = 0;
@@ -73,6 +74,7 @@ namespace sdk {
 
         void request_code(const std::string& method) override;
         void resolve_code(const std::string& code) final;
+        void resolve_hw_reply(nlohmann::json&& reply) override;
 
         nlohmann::json get_status() const final;
         state_type get_state() const final;
@@ -124,6 +126,7 @@ namespace sdk {
 
         void request_code(const std::string& method) override;
         void resolve_code(const std::string& code) final;
+        void resolve_hw_reply(nlohmann::json&& reply) final;
 
         nlohmann::json get_status() const final;
         state_type get_state() const final;
