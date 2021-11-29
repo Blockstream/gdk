@@ -13,7 +13,7 @@ libc = "0.2"
 rand = "0.6.5"
 bitcoin = { version = "0.27", features = ["use-serde"] }
 #elements = { version = "0.18", features = ["serde-feature"] }
-elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "53d5729f8cdc3623f9f110edba86aeaa9059af5b", features = ["serde-feature"] }
+elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "5aca4996dcea36af95fe9119b960b1b95ee682b4", features = ["serde-feature"] }
 # We need to pin half (transitive dep from serde_cbor) to stay compatible with Rust 1.49.0
 half = "~1.7"
 
