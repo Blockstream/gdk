@@ -3266,7 +3266,7 @@ namespace sdk {
         }
 
         json_rename_key(address, "ad", "address"); // Returned by wamp call get_my_addresses
-        json_add_if_missing(address, "branch", 1); // FIXME: Remove when all servers updated
+        json_add_if_missing(address, "subtype", 0, true); // Convert null subtype to 0
         json_rename_key(address, "addr_type", "address_type");
 
         const std::string addr_type = address["address_type"];
