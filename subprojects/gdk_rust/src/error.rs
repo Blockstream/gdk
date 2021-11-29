@@ -8,6 +8,10 @@ pub enum Error {
     Electrum(electrum::error::Error),
     Rates(ExchangeRateError),
     Common(gdk_common::error::Error),
+    MethodNotFound {
+        method: String,
+        in_session: bool,
+    },
 }
 
 impl Error {
@@ -47,6 +51,17 @@ impl Error {
             Error::Electrum(ref electrum) => format!("{}", electrum),
             Error::Rates(ref rates_err) => format!("{:?}", rates_err),
             Error::Common(ref err) => format!("{:?}", err),
+            Error::MethodNotFound {
+                in_session,
+                method,
+            } => {
+                let s = if *in_session {
+                    "session"
+                } else {
+                    ""
+                };
+                format!("{} method not found: {:?}", s, method)
+            }
         }
     }
 }

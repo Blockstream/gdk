@@ -40,6 +40,15 @@ GDK_API int GDKRUST_call_session(GDKRUST_session session, const char *method, co
 
 GDK_API int GDKRUST_spv_verify_tx(const char *input);
 
+/**
+ * A collection of stateless functions
+ *
+ * :param method: The function name.
+ * :param input: The json input to pass to the function.
+ * :param output: The json output, should be freed using `GDKRUST_destroy_string`.
+ */
+GDK_API int GDKRUST_call(const char *method, const char *input, char** output);
+
 #ifndef SWIG
 /**
  * Set a handler to be called when notifications arrive.

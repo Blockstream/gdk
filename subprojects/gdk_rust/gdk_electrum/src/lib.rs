@@ -17,6 +17,7 @@ pub mod error;
 pub mod headers;
 pub mod interface;
 pub mod pin;
+pub mod pset;
 pub mod spv;
 
 use crate::error::Error;

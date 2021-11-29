@@ -28,8 +28,10 @@ use gdk_common::model::{
 use gdk_common::session::Session;
 
 use crate::error::Error;
+use gdk_electrum::pset::{ExtractTxParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
+use serde::Serialize;
 use std::str::FromStr;
 
 pub const GA_OK: i32 = 0;
@@ -227,7 +229,7 @@ pub extern "C" fn GDKRUST_call_session(
 
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
     let res = match sess.backend {
-        GdkBackend::Electrum(ref mut s) => handle_call(s, &method, &input),
+        GdkBackend::Electrum(ref mut s) => handle_session_call(s, &method, &input),
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
@@ -243,16 +245,12 @@ pub extern "C" fn GDKRUST_call_session(
     let (s, ret) = match res {
         Ok(ref val) => (val.to_string(), GA_OK),
         Err(ref e) => {
-            let code = e.to_gdk_code();
-            let desc = e.gdk_display();
-
             let ret_val = match e {
                 Error::Electrum(gdk_electrum::error::Error::InvalidPin) => GA_NOT_AUTHORIZED,
                 _ => GA_ERROR,
             };
-
-            info!("rust error {}: {}", code, desc);
-            (json!({ "error": code, "message": desc }).to_string(), ret_val)
+            let json_error = build_error(&method, e);
+            (json_error, ret_val)
         }
     };
     let s = make_str(s);
@@ -317,7 +315,7 @@ fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
 }
 
 // dynamic dispatch shenanigans
-fn handle_call<S, E>(session: &mut S, method: &str, input: &Value) -> Result<Value, Error>
+fn handle_session_call<S, E>(session: &mut S, method: &str, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,
@@ -429,7 +427,10 @@ where
             .map_err(Into::into),
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
-        _ => Err(Error::Other(format!("handle_call method not found: {}", method))),
+        _ => Err(Error::MethodNotFound {
+            method: method.to_string(),
+            in_session: true,
+        }),
     }
 }
 
@@ -473,6 +474,71 @@ pub extern "C" fn GDKRUST_spv_verify_tx(input: *const c_char) -> i32 {
             warn!("{:?}", e);
             -1
         }
+    }
+}
+
+#[derive(serde::Serialize)]
+struct JsonError {
+    message: String,
+    error: String,
+}
+
+fn build_error(_method: &str, error: &Error) -> String {
+    let message = format!("{}", error.gdk_display());
+    let error = error.to_gdk_code();
+    let json_error = JsonError {
+        message,
+        error,
+    };
+    to_string(&json_error)
+}
+
+fn to_string<T: Serialize>(value: &T) -> String {
+    serde_json::to_string(&value)
+        .expect("Default Serialize impl with maps containing only string keys")
+}
+
+#[no_mangle]
+pub extern "C" fn GDKRUST_call(
+    method: *const c_char,
+    input: *const c_char,
+    output: *mut *const c_char,
+) -> i32 {
+    init_logging(LevelFilter::Info);
+    let method = read_str(method);
+    let input = read_str(input);
+    debug!("GDKRUST_call {}", &method);
+
+    let (error_value, result) = match handle_call(&method, &input) {
+        Ok(value) => (GA_OK, value),
+        Err(err) => (GA_ERROR, build_error(&method, &err)),
+    };
+
+    let result = make_str(result);
+    unsafe {
+        *output = result;
+    }
+    error_value
+}
+
+fn handle_call(method: &str, input: &str) -> Result<String, Error> {
+    match method {
+        "psbt_extract_tx" => {
+            let param: ExtractTxParam = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_electrum::pset::extract_tx(&param)?))
+        }
+        "psbt_from_tx" => {
+            let param: FromTxParam = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_electrum::pset::from_tx(&param)?))
+        }
+        "psbt_merge_tx" => {
+            let param: MergeTxParam = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_electrum::pset::merge_tx(&param)?))
+        }
+        _ => Err(Error::MethodNotFound {
+            method: method.to_string(),
+            in_session: false,
+        }),
     }
 }
 
