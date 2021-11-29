@@ -24,15 +24,6 @@ namespace sdk {
         // that the code path to upload on login is always executed/doesn't bitrot.
         static const uint32_t INITIAL_UPLOAD_CA = 20;
 
-        static void blind_address(nlohmann::json& addr, uint32_t prefix, const std::string& blinding_pubkey_hex)
-        {
-            auto& address = addr.at("address");
-            addr["unblinded_address"] = address;
-            address = confidential_addr_from_addr(address, prefix, blinding_pubkey_hex);
-            addr["blinding_key"] = blinding_pubkey_hex;
-            addr["is_blinded"] = true;
-        }
-
         static const auto& get_sized_array(const nlohmann::json& json, const char* key, size_t size)
         {
             const auto& value = json.at(key);

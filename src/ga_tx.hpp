@@ -14,6 +14,8 @@ namespace sdk {
     std::array<unsigned char, SHA256_LEN> get_script_hash(
         const network_parameters& net_params, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index);
 
+    void blind_address(nlohmann::json& addr, uint32_t prefix, const std::string& blinding_pubkey_hex);
+
     nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details);
 
     void add_input_signature(

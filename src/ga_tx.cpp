@@ -934,6 +934,15 @@ namespace sdk {
         return tx_get_elements_signature_hash(tx, index, script, ct_value, WALLY_SIGHASH_ALL, flags);
     }
 
+    void blind_address(nlohmann::json& addr, uint32_t prefix, const std::string& blinding_pubkey_hex)
+    {
+        auto& address = addr.at("address");
+        addr["unblinded_address"] = address;
+        address = confidential_addr_from_addr(address, prefix, blinding_pubkey_hex);
+        addr["blinding_key"] = blinding_pubkey_hex;
+        addr["is_blinded"] = true;
+    }
+
     nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details)
     {
         // Copy all inputs into our result (they will be overridden below as needed)

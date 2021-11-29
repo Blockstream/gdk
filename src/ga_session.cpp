@@ -2535,12 +2535,22 @@ namespace sdk {
             txhash = for_txhash;
         }
 
+        const auto script = h2b(utxo.at("script"));
+        const bool has_address = !json_get_value(utxo, "address").empty();
+
         if (!txhash.empty()) {
             const auto cached = m_cache->get_liquid_output(h2b(txhash), pt_idx);
             if (!cached.empty()) {
                 utxo.update(cached.begin(), cached.end());
                 constexpr bool mark_unblinded = true;
                 remove_utxo_proofs(utxo, mark_unblinded);
+                if (has_address) {
+                    // We should now be able to blind the address
+                    const auto blinding_pubkey = m_cache->get_liquid_blinding_pubkey(script);
+                    GDK_RUNTIME_ASSERT(!blinding_pubkey.empty());
+                    blind_address(utxo, m_net_params.blinded_prefix(), b2h(blinding_pubkey));
+                }
+
                 return false; // Cache not updated
             }
         }
@@ -2548,7 +2558,6 @@ namespace sdk {
         const auto commitment = h2b(utxo.at("commitment"));
         const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
         const auto asset_tag = h2b(utxo.at("asset_tag"));
-        const auto script = h2b(utxo.at("script"));
 
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
@@ -2559,6 +2568,7 @@ namespace sdk {
             return false; // Cache not updated
         }
 
+        // Make sure we can unblind the asset/amount details
         unblind_t unblinded;
         try {
             unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
@@ -2578,6 +2588,7 @@ namespace sdk {
             }
         }
 
+        // Unblind the asset/amount details
         utxo["satoshi"] = std::get<3>(unblinded);
         // Return in display order
         utxo["assetblinder"] = b2h_rev(std::get<2>(unblinded));
@@ -2585,10 +2596,19 @@ namespace sdk {
         utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
         constexpr bool mark_unblinded = true;
         remove_utxo_proofs(utxo, mark_unblinded);
+
         if (!txhash.empty()) {
             m_cache->insert_liquid_output(h2b(txhash), pt_idx, utxo);
             return true; // Cache was updated
         }
+
+        if (has_address) {
+            // We should now be able to blind the address
+            const auto blinding_pubkey = m_cache->get_liquid_blinding_pubkey(script);
+            GDK_RUNTIME_ASSERT(!blinding_pubkey.empty());
+            blind_address(utxo, m_net_params.blinded_prefix(), b2h(blinding_pubkey));
+        }
+
         return false; // Cache not updated
     }
 
