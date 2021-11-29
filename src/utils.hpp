@@ -29,6 +29,12 @@ namespace sdk {
 
     int32_t spv_verify_tx(const nlohmann::json& details);
 
+    // Extract the transaction from a PSBT or PSET
+    std::string psbt_extract_tx(const std::string& psbt);
+
+    // Merge a transaction in a PSBT or PSET
+    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx);
+
     // STL compatible RNG returning uniform uint32_t's
     struct uniform_uint32_rng {
         uniform_uint32_rng() // NOLINT: ignored for valgrind use

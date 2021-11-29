@@ -77,6 +77,18 @@ namespace sdk {
         bool m_initialized;
     };
 
+    class psbt_sign_call : public auth_handler_impl {
+    public:
+        psbt_sign_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+        void initialize();
+
+        nlohmann::json m_details;
+        bool m_initialized;
+    };
+
     class get_receive_address_call : public auth_handler_impl {
     public:
         get_receive_address_call(session& session, const nlohmann::json& details);

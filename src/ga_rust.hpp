@@ -96,6 +96,7 @@ namespace sdk {
 
         nlohmann::json create_transaction(const nlohmann::json& details);
         nlohmann::json sign_transaction(const nlohmann::json& details);
+        nlohmann::json psbt_sign(const nlohmann::json& details);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
@@ -129,6 +130,9 @@ namespace sdk {
         void disable_all_pin_logins();
 
         static int32_t spv_verify_tx(const nlohmann::json& details);
+
+        static std::string psbt_extract_tx(const std::string& psbt_hex);
+        static std::string psbt_merge_tx(const std::string& psbt_hex, const std::string& tx_hex);
 
     private:
         nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;

@@ -1012,7 +1012,7 @@ namespace sdk {
 
         size_t i = 0;
         for (const auto& utxo : inputs) {
-            sigs.emplace_back(sign_input(session, tx, i, utxo));
+            sigs.emplace_back(utxo.empty() ? std::string() : sign_input(session, tx, i, utxo));
             ++i;
         }
         return std::make_pair(sigs, std::move(tx));

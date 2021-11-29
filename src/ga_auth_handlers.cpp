@@ -620,6 +620,40 @@ namespace sdk {
     }
 
     //
+    // Sign PSBT
+    //
+    psbt_sign_call::psbt_sign_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "psbt_sign")
+        , m_details(details)
+        , m_initialized(false)
+    {
+    }
+
+    void psbt_sign_call::initialize()
+    {
+        if (m_net_params.is_electrum() || !m_net_params.is_liquid() || !get_signer()->is_hardware()) {
+            m_result = m_session->psbt_sign(m_details);
+            m_state = state_type::done;
+        } else {
+            // TODO: hww interactions (anti exfil, set signing data, etc)
+            GDK_RUNTIME_ASSERT_MSG(false, "PSBT signing not implemented.");
+        }
+    }
+
+    auth_handler::state_type psbt_sign_call::call_impl()
+    {
+        if (!m_initialized) {
+            initialize();
+            m_initialized = true;
+            return m_state;
+        }
+
+        // TODO: hww interactions (anti exfil, set signing data, etc)
+        GDK_RUNTIME_ASSERT_MSG(false, "PSBT signing not implemented.");
+        return state_type::done;
+    }
+
+    //
     // Get receive address
     //
     get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)

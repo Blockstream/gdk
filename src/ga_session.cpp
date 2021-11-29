@@ -3702,6 +3702,72 @@ namespace sdk {
         return sign_ga_transaction(*this, details);
     }
 
+    nlohmann::json ga_session::psbt_sign(const nlohmann::json& details)
+    {
+        nlohmann::json result = details;
+        std::string tx_hex = psbt_extract_tx(details.at("psbt"));
+        const auto flags = tx_flags(m_net_params.is_liquid());
+        wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
+        const nlohmann::json tx_details = { { "transaction", std::move(tx_hex) } };
+
+        // Clear utxos and fill it with the one that will be signed
+        std::vector<nlohmann::json> inputs;
+        inputs.reserve(tx->num_inputs);
+        bool requires_signatures = false;
+        for (size_t i = 0; i < tx->num_inputs; ++i) {
+            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
+            const uint32_t vout = tx->inputs[i].index;
+            auto input_utxo = nlohmann::json::object();
+            for (auto& utxo : result.at("utxos")) {
+                if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
+                    // TODO: remove this once get_unspent_outputs populates prevout_script
+                    utxo["prevout_script"] = b2h(output_script_from_utxo(utxo));
+                    input_utxo = std::move(utxo);
+                    requires_signatures = true;
+                    break;
+                }
+            }
+            inputs.emplace_back(input_utxo);
+        }
+
+        result["utxos"].clear();
+        if (!requires_signatures) {
+            return result;
+        }
+
+        // FIXME: refactor to use HWW path
+        const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
+
+        size_t i = 0;
+        const bool is_low_r = get_signer()->supports_low_r();
+        for (const auto& utxo : inputs) {
+            if (!utxo.empty()) {
+                add_input_signature(tx, i, utxo, signatures.at(i), is_low_r);
+            }
+            ++i;
+        }
+
+        // FIXME: handle existing 2FA
+        const nlohmann::json twofactor_data = nlohmann::json::object();
+
+        nlohmann::json private_data;
+        if (result.contains("blinding_nonces")) {
+            private_data["blinding_nonces"] = std::move(result["blinding_nonces"]);
+            result.erase("blinding_nonces");
+        }
+
+        auto ret = wamp_cast_json(wamp_call("vault.sign_raw_tx", b2h(tx_to_bytes(tx, flags)),
+            mp_cast(twofactor_data).get(), mp_cast(private_data).get()));
+
+        result["psbt"] = psbt_merge_tx(details.at("psbt"), ret.at("tx"));
+        for (const auto& utxo : inputs) {
+            if (!utxo.empty()) {
+                result["utxos"].emplace_back(std::move(utxo));
+            }
+        }
+        return result;
+    }
+
     nlohmann::json ga_session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
         GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
