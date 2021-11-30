@@ -1082,6 +1082,9 @@ namespace sdk {
 
     void change_settings_call::initialize()
     {
+        if (m_net_params.is_electrum()) {
+            return; // Ignore nlocktime for singlesig
+        }
         const auto nlocktime_p = m_settings.find("nlocktime");
         if (nlocktime_p != m_settings.end()) {
             const uint64_t new_nlocktime = nlocktime_p->get<uint64_t>();
