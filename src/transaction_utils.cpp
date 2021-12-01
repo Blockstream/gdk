@@ -195,6 +195,7 @@ namespace sdk {
     {
         const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
         const uint32_t pointer = utxo.at("pointer");
+        const uint32_t version = utxo.value("version", 1u);
         script_type type;
 
         type = utxo.at("script_type");
@@ -207,7 +208,13 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(csv_bucket_p != csv_buckets.end(), "Unknown csv bucket");
         }
 
-        const auto ga_pub_key = pubkeys.derive(subaccount, pointer);
+        pub_key_t ga_pub_key;
+        if (version == 0) {
+            // Service keys for legacy version 0 addresses are not derived from the user's GA path
+            ga_pub_key = h2b<EC_PUBLIC_KEY_LEN>(net_params.pub_key());
+        } else {
+            ga_pub_key = pubkeys.derive(subaccount, pointer);
+        }
         const auto user_pub_key = usr_pubkeys.derive(subaccount, pointer);
 
         if (recovery_pubkeys.have_subaccount(subaccount)) {
