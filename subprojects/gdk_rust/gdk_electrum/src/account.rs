@@ -1273,12 +1273,6 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
         input.witness_utxo = Some(txout);
     }
     for output in pset.outputs.iter_mut() {
-        // Elements Core when adding a new confidential output puts the receiver blinding
-        // key in the nonce field, then when blinding this is replaced by the sender ephemeral
-        // public key (ecdh_pubkey). We do the same in transaction creation. However when creating
-        // the PSET from the transaction, the value stored in the nonce field is the receiver
-        // blinding key not the ecdh_pubkey, so we swap them.
-        std::mem::swap(&mut output.blinding_key, &mut output.ecdh_pubkey);
         // We are the owner of all inputs and outputs
         output.blinder_index = Some(0);
     }
