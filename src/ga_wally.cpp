@@ -825,6 +825,13 @@ namespace sdk {
         return buff;
     }
 
+    std::string tx_to_hex(const wally_tx_ptr& tx, uint32_t flags)
+    {
+        char* s;
+        GDK_VERIFY(wally_tx_to_hex(tx.get(), flags, &s));
+        return make_string(s);
+    }
+
     void tx_add_raw_output(const wally_tx_ptr& tx, uint64_t satoshi, byte_span_t script)
     {
         const uint32_t flags = 0;

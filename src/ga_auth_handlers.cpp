@@ -538,7 +538,7 @@ namespace sdk {
                     const std::string txhash = input.at("txhash");
                     if (!prev_txs.contains(txhash)) {
                         auto prev_tx = m_session->get_raw_transaction_details(txhash);
-                        prev_txs.emplace(txhash, b2h(tx_to_bytes(prev_tx)));
+                        prev_txs.emplace(txhash, tx_to_hex(prev_tx));
                     }
                 }
             }

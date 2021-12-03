@@ -435,7 +435,7 @@ namespace sdk {
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
-        result["transaction"] = valid ? b2h(tx_to_bytes(tx)) : std::string();
+        result["transaction"] = valid ? tx_to_hex(tx) : std::string();
         const auto weight = tx_get_weight(tx);
         result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
         result["transaction_weight"] = valid ? weight : 0;

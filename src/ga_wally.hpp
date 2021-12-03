@@ -315,6 +315,7 @@ namespace sdk {
     GA_USE_RESULT size_t tx_get_length(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
     std::vector<unsigned char> tx_to_bytes(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+    std::string tx_to_hex(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
 
     void tx_add_raw_output(const wally_tx_ptr& tx, uint64_t satoshi, byte_span_t script);
 
