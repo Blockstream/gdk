@@ -3710,7 +3710,7 @@ namespace sdk {
         wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
         const nlohmann::json tx_details = { { "transaction", std::move(tx_hex) } };
 
-        // Clear utxos and fill it with the one that will be signed
+        // Clear utxos and fill it with the ones that will be signed
         std::vector<nlohmann::json> inputs;
         inputs.reserve(tx->num_inputs);
         bool requires_signatures = false;
