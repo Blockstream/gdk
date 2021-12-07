@@ -4,7 +4,7 @@ use crate::error::*;
 use crate::headers::compute_merkle_root;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{Message, Secp256k1, Signature, VerifyOnly};
+use bitcoin::secp256k1::{Message, Signature};
 use bitcoin::PublicKey;
 use electrum_client::GetMerkleRes;
 use elements::opcodes::{self, Class};
@@ -17,7 +17,6 @@ use log::info;
 /// checks the challenge is exactly equal to the one present in block 1
 /// checks the solution script against the challenge, verifying signatures
 pub struct Verifier {
-    secp: Secp256k1<VerifyOnly>,
     challenge: Script,
     genesis: BlockHash,
     is_regtest: bool,
@@ -39,7 +38,6 @@ impl Verifier {
             ElementsNetwork::ElementsRegtest => (true, ELEMENTS_REGTEST_GENESIS_HASH),
         };
         Verifier {
-            secp: Secp256k1::verification_only(),
             challenge: Script::from(Vec::<u8>::from_hex(CHALLENGE).unwrap()),
             genesis: BlockHash::from_hex(genesis_hash).unwrap(),
             is_regtest,
@@ -137,7 +135,7 @@ impl Verifier {
             for signature in signatures.iter() {
                 for pubkey in pubkeys[pubkey_index..].iter() {
                     pubkey_index += 1;
-                    if self.secp.verify(&msg, signature, &pubkey.key).is_ok() {
+                    if crate::EC.verify(&msg, signature, &pubkey.key).is_ok() {
                         verified += 1;
                         break;
                     }

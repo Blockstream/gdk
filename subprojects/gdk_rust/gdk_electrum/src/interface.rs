@@ -1,4 +1,3 @@
-use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +23,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 pub struct WalletCtx {
-    pub secp: Secp256k1<All>,
     pub network: Network,
     pub mnemonic: Mnemonic,
     pub store: Store,
@@ -103,7 +101,6 @@ impl WalletCtx {
             mnemonic,
             store: store.clone(),
             network, // TODO: from db
-            secp: Secp256k1::gen_new(),
             master_xprv,
             master_xpub,
             master_blinding,
@@ -257,7 +254,7 @@ mod test {
     use bitcoin::consensus::deserialize;
     use bitcoin::hashes::hex::{FromHex, ToHex};
     use bitcoin::hashes::Hash;
-    use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
+    use bitcoin::secp256k1::{Message, SecretKey};
     use bitcoin::util::bip143::SigHashCache;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::util::key::PrivateKey;
@@ -276,8 +273,6 @@ mod test {
 
     #[test]
     fn test_bip() {
-        let secp: Secp256k1<All> = Secp256k1::gen_new();
-
         // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#p2sh-p2wpkh
         let tx_bytes = Vec::<u8>::from_hex("0100000001db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a54770100000000feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac92040000").unwrap();
         let tx: Transaction = deserialize(&tx_bytes).unwrap();
@@ -308,7 +303,7 @@ mod test {
             "64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6"
         );
 
-        let signature = secp.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
+        let signature = crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
@@ -324,9 +319,8 @@ mod test {
 
     #[test]
     fn test_my_tx() {
-        let secp: Secp256k1<All> = Secp256k1::gen_new();
         let xprv = ExtendedPrivKey::from_str("tprv8jdzkeuCYeH5hi8k2JuZXJWV8sPNK62ashYyUVD9Euv5CPVr2xUbRFEM4yJBB1yBHZuRKWLeWuzH4ptmvSgjLj81AvPc9JhV4i8wEfZYfPb").unwrap();
-        let xpub = ExtendedPubKey::from_private(&secp, &xprv);
+        let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
         let private_key = xprv.private_key;
         let public_key = xpub.public_key;
         let public_key_bytes = public_key.to_bytes();
@@ -358,7 +352,7 @@ mod test {
             "58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995",
         );
 
-        let signature = secp.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
+        let signature = crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end

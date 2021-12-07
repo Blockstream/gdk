@@ -39,10 +39,6 @@ use crate::store::{Store, BATCH_SIZE};
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
 const NUM_RESERVED_ACCOUNT_TYPES: u32 = 16;
 
-lazy_static! {
-    static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
-}
-
 pub struct Account {
     account_num: u32,
     script_type: ScriptType,
@@ -67,11 +63,11 @@ impl Account {
     ) -> Result<Self, Error> {
         let (script_type, path) = get_account_derivation(account_num, network.id())?;
 
-        let xprv = master_xprv.derive_priv(&EC, &path)?;
-        let xpub = ExtendedPubKey::from_private(&EC, &xprv);
+        let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
+        let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
 
         // cache internal/external chains
-        let chains = [xpub.ckd_pub(&EC, 0.into())?, xpub.ckd_pub(&EC, 1.into())?];
+        let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];
 
         store.write().unwrap().make_account_cache(account_num);
 
@@ -600,7 +596,7 @@ impl Account {
                     .get_previous_output_script_pubkey(outpoint)
                     .expect("prevout to be indexed");
                 let public_key = match acc_store.paths.get(&script) {
-                    Some(path) => self.xpub.derive_pub(&EC, path)?,
+                    Some(path) => self.xpub.derive_pub(&crate::EC, path)?,
                     // We only need to check wallet-owned inputs
                     None => continue,
                 }
@@ -610,7 +606,7 @@ impl Account {
                     .get_previous_output_value(&outpoint, &acc_store.unblinded)
                     .expect("own prevout to have known value");
                 if let Err(err) = tx.verify_input_sig(
-                    &EC,
+                    &crate::EC,
                     &mut hashcache,
                     vin,
                     &public_key,
@@ -698,7 +694,7 @@ fn derive_address(
     network_id: NetworkId,
     master_blinding: Option<&MasterBlindingKey>,
 ) -> Result<BEAddress, Error> {
-    let child_key = xpub.ckd_pub(&EC, index.into())?;
+    let child_key = xpub.ckd_pub(&crate::EC, index.into())?;
     match network_id {
         NetworkId::Bitcoin(network) => {
             let address = bitcoin_address(&child_key.public_key, script_type, network);
@@ -770,8 +766,8 @@ pub fn discover_accounts(
         debug!("discovering script type {:?}", script_type);
         'next_account: for account_num in (script_type.first_account_num()..).step_by(num_types) {
             let (_, path) = get_account_derivation(account_num, network_id).unwrap();
-            let recv_xprv = master_xprv.derive_priv(&EC, &path.child(0.into()))?;
-            let recv_xpub = ExtendedPubKey::from_private(&EC, &recv_xprv);
+            let recv_xprv = master_xprv.derive_priv(&crate::EC, &path.child(0.into()))?;
+            let recv_xpub = ExtendedPubKey::from_private(&crate::EC, &recv_xprv);
             for child_code in 0..gap_limit {
                 let script = derive_address(
                     &recv_xpub,
@@ -1172,9 +1168,9 @@ fn internal_sign_bitcoin(
     value: u64,
     script_type: ScriptType,
 ) -> (bitcoin::Script, Vec<Vec<u8>>) {
-    let xprv = xprv.derive_priv(&EC, &path).unwrap();
+    let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
     let private_key = &xprv.private_key;
-    let public_key = &PublicKey::from_private_key(&EC, private_key);
+    let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
     let script_code = p2pkh_script(public_key);
 
     let hash = if script_type.is_segwit() {
@@ -1184,7 +1180,7 @@ fn internal_sign_bitcoin(
     };
 
     let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
-    let signature = EC.sign(&message, &private_key.key);
+    let signature = crate::EC.sign(&message, &private_key.key);
 
     let mut signature = signature.serialize_der().to_vec();
     signature.push(SigHashType::All as u8);
@@ -1200,9 +1196,9 @@ fn internal_sign_elements(
     value: Value,
     script_type: ScriptType,
 ) -> (elements::Script, Vec<Vec<u8>>) {
-    let xprv = xprv.derive_priv(&EC, &path).unwrap();
+    let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
     let private_key = &xprv.private_key;
-    let public_key = &PublicKey::from_private_key(&EC, private_key);
+    let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
 
     let script_code = p2pkh_script(public_key).into_elements();
     let sighash = if script_type.is_segwit() {
@@ -1220,7 +1216,7 @@ fn internal_sign_elements(
         )
     };
     let message = secp256k1::Message::from_slice(&sighash[..]).unwrap();
-    let signature = EC.sign(&message, &private_key.key);
+    let signature = crate::EC.sign(&message, &private_key.key);
     let mut signature = signature.serialize_der().to_vec();
     signature.push(SigHashType::All as u8);
 
@@ -1278,7 +1274,7 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
     }
 
     let inp_txout_sec: Vec<_> = inp_txout_sec.iter().map(|e| e.as_ref()).collect();
-    pset.blind_last(&mut rand::thread_rng(), &EC, &inp_txout_sec[..])?;
+    pset.blind_last(&mut rand::thread_rng(), &crate::EC, &inp_txout_sec[..])?;
     pset.extract_tx().map_err(Into::into)
 }
 

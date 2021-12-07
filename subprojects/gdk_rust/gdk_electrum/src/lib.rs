@@ -25,7 +25,7 @@ use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
 
 use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
+use bitcoin::secp256k1::{self, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
 use electrum_client::GetHistoryRes;
@@ -438,10 +438,9 @@ impl Session<Error> for ElectrumSession {
             &password.map(|p| p.get_password_str()).unwrap_or_default(),
         )
         .ok_or(Error::InvalidMnemonic)?;
-        let secp = Secp256k1::new();
 
         let master_xprv = ExtendedPrivKey::new_master(self.network.bip32_network(), &seed)?;
-        let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
+        let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
 
         let master_blinding = if self.network.liquid {
             Some(asset_blinding_key_from_seed(&seed))

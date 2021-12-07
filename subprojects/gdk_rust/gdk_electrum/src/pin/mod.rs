@@ -2,7 +2,7 @@ use crate::Error;
 use aes::Aes256;
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
-use bitcoin::secp256k1::{self, ecdh, All, Message, Secp256k1, SecretKey, Signature};
+use bitcoin::secp256k1::{self, ecdh, Message, SecretKey, Signature};
 use bitcoin::PublicKey;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
@@ -41,7 +41,6 @@ struct ResponseData {
 }
 
 pub struct PinManager {
-    secp: Secp256k1<All>,
     ske: secp256k1::PublicKey,
     cke: secp256k1::PublicKey,
     request_encryption_key: ShaHmac,
@@ -93,16 +92,13 @@ impl PinManager {
         let sig = data.sig()?;
         let (ske, msg) = data.ske()?;
 
-        let mut secp = Secp256k1::new();
-        secp.randomize(&mut rng);
-        secp.verify(&msg, &sig, &pinserver_pubkey.key)?;
+        crate::EC.verify(&msg, &sig, &pinserver_pubkey.key)?;
 
         let secret_key = SecretKey::new(&mut rng);
         let shared_secret = secp256k1::ecdh::SharedSecret::new(&ske, &secret_key);
-        let cke = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+        let cke = secp256k1::PublicKey::from_secret_key(&crate::EC, &secret_key);
 
         Ok(PinManager {
-            secp,
             ske,
             cke,
             rng,
@@ -138,7 +134,7 @@ impl PinManager {
 
         let hash = sha256::Hash::hash(&data);
         let msg = Message::from_slice(&hash.into_inner())?;
-        let (rec_id, sig) = self.secp.sign_recoverable(&msg, &private_key).serialize_compact();
+        let (rec_id, sig) = crate::EC.sign_recoverable(&msg, &private_key).serialize_compact();
         let mut payload = vec![];
         payload.extend(&pin_secret[..]);
         payload.extend(&entropy);
