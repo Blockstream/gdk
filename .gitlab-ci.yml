@@ -177,7 +177,7 @@ test_rust:
     - RUST_BACKTRACE=1 cargo test
     - cd $CI_PROJECT_DIR
     - git clone https://github.com/Blockstream/electrs electrs-elements
-    - cd electrs-elements && git checkout 65e20f9e1196c0039d56307b34ea7bcfbe375b99
+    - cd electrs-elements && git checkout 703c6a20d52b61a234a18812503bd754d448992a
     - cargo install --debug --root /tmp/electrs_bitcoin --locked --path .
     - cargo install --debug --root /tmp/electrs_liquid --locked --path . --features liquid
     - cd ..
@@ -185,8 +185,8 @@ test_rust:
     - export ELECTRS_EXEC=/tmp/electrs_bitcoin/bin/electrs
     - curl https://bitcoincore.org/bin/bitcoin-core-0.20.1/bitcoin-0.20.1-x86_64-linux-gnu.tar.gz | tar -xvz bitcoin-0.20.1/bin/bitcoind
     - export BITCOIND_EXEC=$PWD/bitcoin-0.20.1/bin/bitcoind
-    - curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.18.1.8/elements-0.18.1.8-x86_64-linux-gnu.tar.gz | tar -xvz elements-0.18.1.8/bin/elementsd
-    - export ELEMENTSD_EXEC=$PWD/elements-0.18.1.8/bin/elementsd
+    - curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.21.0/elements-elements-0.21.0-x86_64-linux-gnu.tar.gz | tar -xvz elements-elements-0.21.0/bin/elementsd
+    - export ELEMENTSD_EXEC=$PWD/elements-elements-0.21.0/bin/elementsd
     - cd subprojects/gdk_rust
     - DEBUG=1 RUST_BACKTRACE=1 cargo test -- --nocapture
 

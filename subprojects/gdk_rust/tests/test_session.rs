@@ -105,17 +105,8 @@ pub fn setup(
 
     node_generate(&node.client, 1, None);
     if is_liquid {
-        // send initialfreecoins from wallet "" to the wallet created by BitcoinD::new
-        let node_url = format!("http://127.0.0.1:{}/wallet/", node.params.rpc_socket.port());
-        let client =
-            Client::new(&node_url, Auth::CookieFile(node.params.cookie_file.clone())).unwrap();
-        let address = node_getnewaddress(&node.client, None);
-        client
-            .call::<Value>(
-                "sendtoaddress",
-                &[address.into(), "21".into(), "".into(), "".into(), true.into()],
-            )
-            .unwrap();
+        // the rescan is needed to see the initialfreecoins
+        node.client.rescan_blockchain(None, None).unwrap();
     }
 
     let p2p_port = node.params.p2p_socket.unwrap().port();
@@ -1089,6 +1080,7 @@ fn node_sendtoaddress(
                     false.into(),
                     1.into(),
                     "UNSET".into(),
+                    false.into(),
                     asset.into(),
                 ],
             )
