@@ -461,6 +461,12 @@ public class Session {
         return String(cString: buff!)
     }
 
+    public func getWalletIdentifier(net_params: [String: Any], details: [String: Any]) throws -> [String, Any]? {
+        var result: OpaquePointer? = nil
+        try callWrapper(fun: GA_get_wallet_identifier(net_params, details, &result))
+        return try convertOpaqueJsonToDict(o: result!)
+    }
+
     public func httpRequest(params: [String: Any]) throws -> [String: Any]? {
         return try jsonFuncToJsonWrapper(input: params, fun: GA_http_request)
     }
