@@ -70,7 +70,12 @@ use std::thread::JoinHandle;
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 
 lazy_static! {
-    static ref EC: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
+    static ref EC: secp256k1::Secp256k1<secp256k1::All> = {
+        let mut ctx = secp256k1::Secp256k1::new();
+        let mut rng = rand::thread_rng();
+        ctx.randomize(&mut rng);
+        ctx
+    };
 }
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
