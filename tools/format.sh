@@ -8,6 +8,7 @@ clang-format -i $files
 if [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
     pushd subprojects/gdk_rust
-    cargo fmt --all
+    # disabled temporary until we upgrade rust toolchain to 1.56+
+    # cargo fmt --all
     popd
 fi
