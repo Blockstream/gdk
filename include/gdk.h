@@ -451,6 +451,19 @@ GDK_API int GA_sign_transaction(
 GDK_API int GA_psbt_sign(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
+ * Get wallet details of a PSBT or PSET.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`psbt-wallet-details` for getting the wallet details.
+ * :param call: Destination for the resulting GA_auth_handler to get the wallet details.
+ *|     The call handlers result is :ref:`psbt-get-details-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: EXPERIMENTAL warning: this call may be changed in future releases.
+ */
+GDK_API int GA_psbt_get_details(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Broadcast a non-Green signed transaction to the P2P network.
  *
  * :param session: The session to use.

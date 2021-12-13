@@ -160,6 +160,7 @@ namespace sdk {
             const uint32_t branch, const uint32_t pointer, const uint32_t subtype, const uint32_t script_type);
         virtual void encache_new_scriptpubkeys(const uint32_t subaccount);
         virtual nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
+        virtual nlohmann::json psbt_get_details(const nlohmann::json& details);
         virtual void upload_confidential_addresses(
             uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
             = 0;

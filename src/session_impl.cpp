@@ -106,6 +106,12 @@ namespace sdk {
         return nlohmann::json();
     }
 
+    nlohmann::json session_impl::psbt_get_details(const nlohmann::json& /*details*/)
+    {
+        // Overriden for multisig
+        return nlohmann::json();
+    }
+
     void session_impl::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> /*signer*/)
     {
         // Refers to the ga_session cache at the moment, so a no-op for rust sessions

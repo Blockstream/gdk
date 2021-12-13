@@ -648,6 +648,51 @@ Sign PSBT Result JSON
 :utxos: The UTXOs corresponding to each signed input, in the order they appear in the PSBT transaction.
 
 
+
+.. _psbt-wallet-details:
+
+PSBT Get Details JSON
+---------------------
+
+.. code-block:: json
+
+  {
+    "psbt": "...",
+    "utxos": [],
+  }
+
+:psbt: The PSBT or PSET encoded in base64 format.
+:utxos: The UTXOs owned by the wallet, in the format returned by `GA_get_unspent_outputs`.
+        UTXOs that are not inputs of the PSBT/PSET can be included.
+
+
+.. _psbt-get-details-result:
+
+PSBT Get Details Result JSON
+----------------------------
+
+.. code-block:: json
+
+  {
+    "inputs": [
+      {
+        "asset_id": "...",
+        "satoshi": 0,
+        "subaccount": 0,
+      },
+    ],
+    "outputs": [
+      {
+        "asset_id": "...",
+        "satoshi": 0,
+        "subaccount": 0,
+      },
+    ],
+  }
+
+.. note:: Inputs and outputs might have additional fields that might be removed or changed in following releases.
+
+
 .. _estimates:
 
 Fee estimates JSON

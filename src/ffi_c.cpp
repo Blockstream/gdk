@@ -310,6 +310,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const 
 GDK_DEFINE_C_FUNCTION_3(GA_psbt_sign, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
     call, { *call = make_call(new ga::sdk::psbt_sign_call(*session, *json_cast(details))); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_psbt_get_details, struct GA_session*, session, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::psbt_get_details_call(*session, *json_cast(details))); })
+
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
 GDK_DEFINE_C_FUNCTION_3(

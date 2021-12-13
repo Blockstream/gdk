@@ -3096,13 +3096,13 @@ namespace sdk {
         do {
             const nlohmann::json result = get_previous_addresses(subaccount, current_last_pointer);
             for (auto& address : result.at("list")) {
-                const std::string scriptpubkey_hex
-                    = b2h(scriptpubkey_from_address(m_net_params, block_height, address.at("address"), false));
+                const auto scriptpubkey
+                    = scriptpubkey_from_address(m_net_params, block_height, address.at("address"), false);
                 const uint32_t branch = json_get_value(address, "branch", 1);
                 const uint32_t pointer = address.at("pointer");
                 const uint32_t subtype = json_get_value(address, "subtype", 0);
                 const uint32_t script_type = address.at("script_type");
-                encache_scriptpubkey_data(scriptpubkey_hex, subaccount, branch, pointer, subtype, script_type);
+                encache_scriptpubkey_data(scriptpubkey, subaccount, branch, pointer, subtype, script_type);
             }
             current_last_pointer = result.at("last_pointer");
         } while (current_last_pointer > final_last_pointer);
@@ -3115,6 +3115,52 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
         return m_cache->get_scriptpubkey_data(scriptpubkey);
+    }
+
+    nlohmann::json ga_session::psbt_get_details(const nlohmann::json& details)
+    {
+        const bool is_liquid = m_net_params.is_liquid();
+        const std::string tx_hex = psbt_extract_tx(details.at("psbt"));
+        const auto flags = tx_flags(is_liquid);
+        wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
+
+        nlohmann::json::array_t inputs;
+        inputs.reserve(tx->num_inputs);
+        for (size_t i = 0; i < tx->num_inputs; ++i) {
+            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
+            const uint32_t vout = tx->inputs[i].index;
+            for (const auto& utxo : details.at("utxos")) {
+                if (utxo.value("txhash", std::string()) == txhash_hex && utxo.at("pt_idx") == vout) {
+                    inputs.emplace_back(std::move(utxo));
+                    break;
+                }
+            }
+        }
+
+        nlohmann::json::array_t outputs;
+        outputs.reserve(tx->num_outputs);
+        for (size_t i = 0; i < tx->num_outputs; ++i) {
+            const auto& o = tx->outputs[i];
+            if (!o.script_len) {
+                continue; // Liquid fee
+            }
+            const auto scriptpubkey = gsl::make_span(o.script, o.script_len);
+            auto output_data = get_scriptpubkey_data(scriptpubkey);
+            if (output_data.empty()) {
+                continue; // Scriptpubkey does not belong the wallet
+            }
+            if (is_liquid) {
+                const auto unblinded = unblind_output(*this, tx, i);
+                if (unblinded.contains("error")) {
+                    GDK_LOG_SEV(log_level::warning) << "output " << i << ": " << unblinded.at("error");
+                    continue; // Failed to unblind
+                }
+                output_data.update(unblinded);
+            }
+            outputs.emplace_back(output_data);
+        }
+
+        return nlohmann::json{ { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) } };
     }
 
     nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)

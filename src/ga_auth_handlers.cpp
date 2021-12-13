@@ -651,6 +651,34 @@ namespace sdk {
     }
 
     //
+    // PSBT get details
+    //
+    psbt_get_details_call::psbt_get_details_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "psbt_get_details")
+        , m_details(details)
+    {
+    }
+
+    auth_handler::state_type psbt_get_details_call::call_impl()
+    {
+        GDK_RUNTIME_ASSERT(!m_net_params.is_electrum());
+        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
+        // TODO: replace the following line with a user error once we have the string res.
+        GDK_RUNTIME_ASSERT(get_signer()->has_master_blinding_key());
+
+        // Currently updating the scriptpubkey cache is quite expensive
+        // and requires multiple network calls, so for the time being
+        // we only update it here.
+        for (const auto& sa : m_session->get_subaccounts(nlohmann::json({}))) {
+            const uint32_t subaccount = sa.at("pointer");
+            m_session->encache_new_scriptpubkeys(subaccount);
+        }
+
+        m_result = m_session->psbt_get_details(m_details);
+        return state_type::done;
+    }
+
+    //
     // Get receive address
     //
     get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
