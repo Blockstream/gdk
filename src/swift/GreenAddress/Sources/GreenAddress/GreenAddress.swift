@@ -461,9 +461,15 @@ public class Session {
         return String(cString: buff!)
     }
 
-    public func getWalletIdentifier(net_params: [String: Any], details: [String: Any]) throws -> [String, Any]? {
+    public func getWalletIdentifier(net_params: [String: Any], details: [String: Any]) throws -> [String: Any]? {
         var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_wallet_identifier(net_params, details, &result))
+        let net_params_: OpaquePointer = try convertDictToJSON(dict: net_params)
+        let details_: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_get_wallet_identifier(net_params_, details_, &result))
+        defer {
+            GA_destroy_json(net_params_)
+            GA_destroy_json(details_)
+        }
         return try convertOpaqueJsonToDict(o: result!)
     }
 
