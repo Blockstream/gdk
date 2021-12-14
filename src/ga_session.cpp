@@ -3077,6 +3077,46 @@ namespace sdk {
         return m_cache->insert_liquid_blinding_data(pubkey, script, nonce, blinding_pubkey);
     }
 
+    void ga_session::encache_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch,
+        uint32_t pointer, uint32_t subtype, uint32_t script_type)
+    {
+        locker_t locker(m_mutex);
+        m_cache->insert_scriptpubkey_data(scriptpubkey, subaccount, branch, pointer, subtype, script_type);
+    }
+
+    void ga_session::encache_new_scriptpubkeys(uint32_t subaccount)
+    {
+        uint32_t current_last_pointer = 0;
+        uint32_t final_last_pointer = 1;
+        {
+            locker_t locker(m_mutex);
+            final_last_pointer = m_cache->get_latest_scriptpubkey_pointer(subaccount);
+        }
+        const uint32_t block_height = get_block_height();
+        do {
+            const nlohmann::json result = get_previous_addresses(subaccount, current_last_pointer);
+            for (auto& address : result.at("list")) {
+                const std::string scriptpubkey_hex
+                    = b2h(scriptpubkey_from_address(m_net_params, block_height, address.at("address"), false));
+                const uint32_t branch = json_get_value(address, "branch", 1);
+                const uint32_t pointer = address.at("pointer");
+                const uint32_t subtype = json_get_value(address, "subtype", 0);
+                const uint32_t script_type = address.at("script_type");
+                encache_scriptpubkey_data(scriptpubkey_hex, subaccount, branch, pointer, subtype, script_type);
+            }
+            current_last_pointer = result.at("last_pointer");
+        } while (current_last_pointer > final_last_pointer);
+
+        locker_t locker(m_mutex);
+        m_cache->save_db();
+    }
+
+    nlohmann::json ga_session::get_scriptpubkey_data(byte_span_t scriptpubkey)
+    {
+        locker_t locker(m_mutex);
+        return m_cache->get_scriptpubkey_data(scriptpubkey);
+    }
+
     nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
     {
         const uint32_t subaccount = details.at("subaccount");
