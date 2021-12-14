@@ -77,6 +77,16 @@ namespace sdk {
 
             exec_check(
                 "CREATE TABLE IF NOT EXISTS TxData(txid BLOB NOT NULL, rawtx BLOB NOT NULL, PRIMARY KEY(txid));");
+
+            exec_check("CREATE TABLE IF NOT EXISTS ScriptPubKey("
+                       "scriptpubkey BLOB NOT NULL,"
+                       "subaccount INTEGER NOT NULL,"
+                       "branch INTEGER NOT NULL,"
+                       "pointer INTEGER NOT NULL,"
+                       "subtype INTEGER NOT NULL,"
+                       "script_type INTEGER NOT NULL,"
+                       "PRIMARY KEY(scriptpubkey),"
+                       "UNIQUE(subaccount, pointer DESC));");
             return db;
         }
 
@@ -331,6 +341,22 @@ namespace sdk {
             return static_cast<uint64_t>(db_timestamp);
         }
 
+        static uint32_t get_scriptpubkey_pointer(cache::sqlite3_stmt_ptr& stmt)
+        {
+            const int rc = sqlite3_step(stmt.get());
+            if (rc == SQLITE_DONE) {
+                return 0; // No scriptpubkey found
+            }
+            GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
+            if (sqlite3_column_type(stmt.get(), 0) == SQLITE_NULL) {
+                return 0; // No scriptpubkey found (from e.g. MAX())
+            }
+            const uint32_t db_pointer = get_uint32(stmt, 0);
+            GDK_RUNTIME_ASSERT(db_pointer > 0);
+            step_final(stmt);
+            return db_pointer;
+        }
+
         static void bind_blob(cache::sqlite3_stmt_ptr& stmt, int column, byte_span_t blob)
         {
             if (sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) != SQLITE_OK) {
@@ -390,6 +416,13 @@ namespace sdk {
         , m_stmt_tx_delete_all(get_stmt(true, m_db, TX_DELETE_ALL))
         , m_stmt_txdata_insert(get_stmt(true, m_db, TXDATA_INSERT))
         , m_stmt_txdata_search(get_stmt(true, m_db, TXDATA_SELECT))
+        , m_stmt_scriptpubkey_search(get_stmt(true, m_db,
+              "SELECT subaccount, branch, pointer, subtype, script_type FROM ScriptPubKey WHERE scriptpubkey = ?1;"))
+        , m_stmt_scriptpubkey_insert(get_stmt(true, m_db,
+              "INSERT OR IGNORE INTO ScriptPubKey (scriptpubkey, subaccount, branch, pointer, subtype, script_type) "
+              "VALUES (?1, ?2, ?3, ?4, ?5, ?6);"))
+        , m_stmt_scriptpubkey_latest_search(
+              get_stmt(true, m_db, "SELECT MAX(pointer) FROM ScriptPubKey WHERE subaccount = ?1;"))
     {
     }
 
@@ -813,6 +846,56 @@ namespace sdk {
 
         step_final(m_stmt_liquid_output_insert);
         m_require_write = true;
+    }
+
+    void cache::insert_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch,
+        uint32_t pointer, uint32_t subtype, uint32_t script_type)
+    {
+        GDK_RUNTIME_ASSERT(!scriptpubkey.empty());
+        GDK_RUNTIME_ASSERT(pointer > 0);
+        GDK_RUNTIME_ASSERT(m_stmt_scriptpubkey_insert.get());
+        const auto _{ stmt_clean(m_stmt_scriptpubkey_insert) };
+
+        bind_blob(m_stmt_scriptpubkey_insert, 1, scriptpubkey);
+
+        bind_int(m_stmt_scriptpubkey_insert, 2, subaccount);
+        bind_int(m_stmt_scriptpubkey_insert, 3, branch);
+        bind_int(m_stmt_scriptpubkey_insert, 4, pointer);
+        bind_int(m_stmt_scriptpubkey_insert, 5, subtype);
+        bind_int(m_stmt_scriptpubkey_insert, 6, script_type);
+
+        step_final(m_stmt_scriptpubkey_insert);
+        m_require_write = true;
+    }
+
+    nlohmann::json cache::get_scriptpubkey_data(byte_span_t scriptpubkey)
+    {
+        nlohmann::json utxo;
+
+        GDK_RUNTIME_ASSERT(!scriptpubkey.empty());
+        GDK_RUNTIME_ASSERT(m_stmt_scriptpubkey_search.get());
+        const auto _{ stmt_clean(m_stmt_scriptpubkey_search) };
+        bind_blob(m_stmt_scriptpubkey_search, 1, scriptpubkey);
+        const int rc = sqlite3_step(m_stmt_scriptpubkey_search.get());
+        if (rc == SQLITE_DONE) {
+            return utxo;
+        }
+        GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
+        utxo["subaccount"] = get_uint32(m_stmt_scriptpubkey_search, 0);
+        utxo["branch"] = get_uint32(m_stmt_scriptpubkey_search, 1);
+        utxo["pointer"] = get_uint32(m_stmt_scriptpubkey_search, 2);
+        utxo["subtype"] = get_uint32(m_stmt_scriptpubkey_search, 3);
+        utxo["script_type"] = get_uint32(m_stmt_scriptpubkey_search, 4);
+
+        step_final(m_stmt_scriptpubkey_search);
+        return utxo;
+    }
+
+    uint32_t cache::get_latest_scriptpubkey_pointer(uint32_t subaccount)
+    {
+        const auto _{ stmt_clean(m_stmt_scriptpubkey_latest_search) };
+        bind_int(m_stmt_scriptpubkey_latest_search, 1, subaccount);
+        return get_scriptpubkey_pointer(m_stmt_scriptpubkey_latest_search);
     }
 } // namespace sdk
 } // namespace ga

@@ -58,6 +58,11 @@ namespace sdk {
         void get_transaction_data(const std::string& txhash_hex, const get_key_value_fn& callback);
         void insert_transaction_data(const std::string& txhash_hex, byte_span_t value);
 
+        nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
+        void insert_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch, uint32_t pointer,
+            uint32_t subtype, uint32_t script_type);
+        uint32_t get_latest_scriptpubkey_pointer(uint32_t subaccount);
+
         void save_db();
         void load_db(byte_span_t encryption_key, const uint32_t type);
 
@@ -94,6 +99,9 @@ namespace sdk {
         sqlite3_stmt_ptr m_stmt_tx_delete_all;
         sqlite3_stmt_ptr m_stmt_txdata_insert;
         sqlite3_stmt_ptr m_stmt_txdata_search;
+        sqlite3_stmt_ptr m_stmt_scriptpubkey_search;
+        sqlite3_stmt_ptr m_stmt_scriptpubkey_insert;
+        sqlite3_stmt_ptr m_stmt_scriptpubkey_latest_search;
     };
 
 } // namespace sdk
