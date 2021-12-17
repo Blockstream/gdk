@@ -32,3 +32,6 @@ secp256k1-sys = "=0.4.1" # 0.4.2 has compatibility issues with secp256k1-zkp-sys
 bitcoin = { version = "0.27", features = [ "use-serde", "rand" ] }
 #elements = { version = "0.18", features = ["serde-feature"] }
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "5aca4996dcea36af95fe9119b960b1b95ee682b4", features = ["serde-feature"] }
+
+[dev-dependencies]
+env_logger = "0.9.0"

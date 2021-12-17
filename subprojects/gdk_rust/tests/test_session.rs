@@ -11,18 +11,15 @@ use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
 use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
-use log::LevelFilter;
 use log::{info, warn, Metadata, Record};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::str::FromStr;
-use std::sync::Once;
-use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{thread};
 use tempdir::TempDir;
 
-static LOGGER: SimpleLogger = SimpleLogger;
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
@@ -62,8 +59,6 @@ impl log::Log for SimpleLogger {
     fn flush(&self) {}
 }
 
-static START: Once = Once::new();
-
 pub fn setup(
     is_liquid: bool,
     is_debug: bool,
@@ -71,16 +66,7 @@ pub fn setup(
     node_exec: &str,
     network_conf: impl FnOnce(&mut Network),
 ) -> TestSession {
-    START.call_once(|| {
-        let filter = if is_debug {
-            LevelFilter::Info
-        } else {
-            LevelFilter::Off
-        };
-        log::set_logger(&LOGGER)
-            .map(|()| log::set_max_level(filter))
-            .expect("cannot initialize logging");
-    });
+    let _ = env_logger::try_init();
 
     let mut args = vec!["-fallbackfee=0.0001", "-dustrelayfee=0.00000001"];
     let network = if is_liquid {
