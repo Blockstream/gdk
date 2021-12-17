@@ -169,6 +169,7 @@ pub fn aqua_unique_id_and_xpub(
     // Fields used to compute the unique identifier. Must be kept with the exact same names,
     // data types and ordering.
     #[derive(Debug, Deserialize)]
+    #[allow(dead_code)]
     struct Network {
         name: String,
         network: String,
