@@ -42,7 +42,7 @@ where
         .map_err(Into::into)
 }
 
-pub fn get_subaccount<S, E>(session: &S, input: &Value) -> Result<Value, Error>
+pub fn get_subaccount<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
 where
     E: Into<Error>,
     S: Session<E>,

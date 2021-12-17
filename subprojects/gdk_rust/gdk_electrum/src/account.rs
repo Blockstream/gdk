@@ -50,6 +50,10 @@ pub struct Account {
     // elements only
     master_blinding: Option<MasterBlindingKey>,
 
+    /// When an account is discovered through `recover_accounts` is set to true, this is needed so
+    /// that `has_tx` in [`AccountInfo`] could be initialized correctly without needing the first sync
+    discovered: bool,
+
     _path: DerivationPath,
 }
 
@@ -60,6 +64,7 @@ impl Account {
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
         account_num: u32,
+        discovered: bool,
     ) -> Result<Self, Error> {
         let (script_type, path) = get_account_derivation(account_num, network.id())?;
 
@@ -84,6 +89,7 @@ impl Account {
             master_blinding,
             // currently unused, but seems useful to have around
             _path: path,
+            discovered,
         })
     }
 
@@ -94,12 +100,18 @@ impl Account {
     pub fn info(&self) -> Result<AccountInfo, Error> {
         let settings = self.store.read()?.get_account_settings(self.account_num).cloned();
 
+        let empty_tx = {
+            let store = self.store.read()?;
+            let account = store.cache.accounts.get(&self.account_num);
+            account.ok_or_else(|| Error::InvalidSubaccount(self.account_num))?.all_txs.is_empty()
+        };
         Ok(AccountInfo {
             account_num: self.account_num,
             script_type: self.script_type,
             settings: settings.unwrap_or_default(),
             required_ca: 0,
             receiving_id: "".to_string(),
+            has_txs: self.discovered || !empty_tx,
         })
     }
 
@@ -751,6 +763,7 @@ pub fn discover_accounts(
     electrum_url: &ElectrumUrl,
     proxy: Option<&str>,
     master_blinding: Option<&MasterBlindingKey>,
+    known_accounts: &[u32],
 ) -> Result<Vec<u32>, Error> {
     use electrum_client::ElectrumApi;
 
@@ -765,6 +778,11 @@ pub fn discover_accounts(
     for script_type in ScriptType::types() {
         debug!("discovering script type {:?}", script_type);
         'next_account: for account_num in (script_type.first_account_num()..).step_by(num_types) {
+            if known_accounts.contains(&account_num) {
+                debug!("already known account_num: {}", account_num);
+                continue;
+            }
+            debug!("account_num: {}", account_num);
             let (_, path) = get_account_derivation(account_num, network_id).unwrap();
             let recv_xprv = master_xprv.derive_priv(&crate::EC, &path.child(0.into()))?;
             let recv_xpub = ExtendedPubKey::from_private(&crate::EC, &recv_xprv);
@@ -778,6 +796,7 @@ pub fn discover_accounts(
                 )
                 .unwrap()
                 .script_pubkey();
+
                 if client.script_subscribe(&script.into_bitcoin())?.is_some() {
                     debug!("found account {:?} #{}", script_type, account_num);
                     discovered_accounts.push(account_num);
@@ -1316,4 +1335,5 @@ mod test {
         test_derivation(161, ScriptType::P2wpkh, "m/84'/1'/10'");
         test_derivation(162, ScriptType::P2pkh, "m/44'/1'/10'");
     }
+
 }

@@ -56,7 +56,7 @@ pub struct RawCache {
     pub cross_validation_result: Option<CrossValidationResult>,
 
     /// whether BIP 44 account recovery was already run for this wallet
-    pub accounts_recovered: bool,
+    pub accounts_recovered: bool,  // TODO deprecated, remove when cache breaking change should happen
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -214,8 +214,7 @@ impl StoreMeta {
     ) -> Result<StoreMeta, Error> {
         let cipher = get_cipher(&xpub);
         let fallback_cipher = &fallback_xpub.and_then(|xpub| Some(get_cipher(&xpub)));
-        let mut cache =
-            RawCache::new(path.as_ref(), &cipher, fallback_path, fallback_cipher.as_ref());
+        let mut cache = RawCache::new(path.as_ref(), &cipher, fallback_path, fallback_cipher.as_ref());
         let mut store =
             RawStore::new(path.as_ref(), &cipher, fallback_path, fallback_cipher.as_ref());
         let path = path.as_ref().to_path_buf();

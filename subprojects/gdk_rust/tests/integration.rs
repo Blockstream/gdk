@@ -1,8 +1,9 @@
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetUnspentOutputs, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt, UtxoStrategy,
+    AddressAmount, CreateAccountOpt, CreateTransaction, GetAddressOpt, GetBalanceOpt,
+    GetNextAccountOpt, GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVVerifyResult,
+    UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -14,7 +15,8 @@ use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
 use std::collections::HashMap;
-use std::{env, path};
+use std::time::Duration;
+use std::{env, path, thread};
 use tempdir::TempDir;
 
 mod test_session;
@@ -619,7 +621,12 @@ fn subaccounts_liquid() {
 fn subaccounts(is_liquid: bool) {
     let mut test_session = setup_session(is_liquid, |_| ());
 
-    assert!(test_session.session.get_subaccount(0).is_ok());
+    let account0 = test_session.session.get_subaccount(0);
+    assert!(account0.is_ok());
+    let n_txs =
+        test_session.session.get_transactions(&GetTransactionsOpt::default()).unwrap().0.len();
+    assert_eq!(n_txs, 0);
+    assert_eq!(account0.unwrap().has_txs, false);
     assert!(test_session.session.get_subaccount(1).is_err());
 
     // Create subaccounts
@@ -643,10 +650,12 @@ fn subaccounts(is_liquid: bool) {
     assert_eq!(account1.settings.name, "Account 1");
     assert_eq!(account1.script_type, ScriptType::P2wpkh);
     assert_eq!(account1.settings.hidden, false);
+    assert_eq!(account1.has_txs, false);
     assert_eq!(account2.account_num, 2);
     assert_eq!(account2.settings.name, "Account 2");
     assert_eq!(account2.script_type, ScriptType::P2pkh);
     assert_eq!(account2.settings.hidden, false);
+    assert_eq!(account2.has_txs, false);
     assert_eq!(test_session.session.get_subaccount(1).unwrap().script_type, ScriptType::P2wpkh);
     assert_eq!(test_session.session.get_subaccount(2).unwrap().settings.name, "Account 2");
 
@@ -697,6 +706,7 @@ fn subaccounts(is_liquid: bool) {
     test_session.wait_account_tx(1, &txid);
     *balances.entry(1).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
+    assert_eq!(test_session.session.get_subaccount(1).unwrap().has_txs, true);
 
     // Send some to account #2
     let sat = 67899;
@@ -704,6 +714,7 @@ fn subaccounts(is_liquid: bool) {
     test_session.wait_account_tx(2, &txid);
     *balances.entry(2).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
+    assert_eq!(test_session.session.get_subaccount(2).unwrap().has_txs, true);
 
     // Send all from account #2 to account #1 (p2pkh -> p2wpkh)
     let txid = test_session.send_all_from_account(
@@ -717,6 +728,7 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(1).or_insert(0) += sat - test_session.get_tx_from_list(1, &txid).fee;
     *balances.entry(2).or_insert(0) = 0;
     check_account_balances(&test_session, &balances);
+    assert_eq!(test_session.session.get_subaccount(1).unwrap().has_txs, true);
 
     // Send from account #1 to account #0 (p2wpkh -> p2sh-p2wpkh)
     let sat = 11555;
@@ -752,6 +764,7 @@ fn subaccounts(is_liquid: bool) {
         })
         .unwrap();
     assert_eq!(account3.script_type, ScriptType::P2pkh);
+    assert_eq!(test_session.session.get_subaccount(18).unwrap().has_txs, false);
 
     // Should fail - the second P2PKH account is still inactive
     let err = test_session
@@ -772,6 +785,7 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(0).or_insert(0) -= sat + test_session.get_tx_from_list(0, &txid).fee;
     *balances.entry(18).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
+    assert_eq!(test_session.session.get_subaccount(18).unwrap().has_txs, true);
 
     // Should now work
     let account4 = test_session
@@ -782,6 +796,11 @@ fn subaccounts(is_liquid: bool) {
         })
         .unwrap();
     assert_eq!(account4.script_type, ScriptType::P2pkh);
+    let address = test_session.get_receive_address(34);
+    let sat = 1_000;
+    let txid = test_session.send_tx_from(0, &address.address, sat, None);
+    *balances.entry(34).or_insert(0) += sat;
+    *balances.entry(0).or_insert(0) -= sat + test_session.get_tx_from_list(0, &txid).fee;
 
     // Test get_next_subaccount
     let next_p2pkh = test_session
@@ -805,17 +824,32 @@ fn subaccounts(is_liquid: bool) {
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     new_session.login(&mnemonic, None).unwrap();
 
-    // Wait until all subaccounts have been recovered
-    let mut i = 60;
-    let subaccounts = loop {
-        assert!(i > 0, "timeout waiting for updates");
-        i -= 1;
-        let subaccounts = new_session.get_subaccounts().unwrap();
-        if subaccounts.len() == balances.len() {
-            break subaccounts;
-        }
-        std::thread::sleep(std::time::Duration::from_secs(1));
+    let subaccounts = new_session.get_subaccounts(true).unwrap();
+    assert_eq!(subaccounts.len(), balances.len());
+    wait_for_txid(&mut new_session, 34, txid);
+    assert_eq!(new_session.get_subaccount(1).unwrap().has_txs, true);
+    assert_eq!(new_session.get_subaccount(2).unwrap().has_txs, true);
+    assert_eq!(new_session.get_subaccount(18).unwrap().has_txs, true);
+    assert_eq!(new_session.get_subaccount(34).unwrap().has_txs, true);
+    let account_opt = CreateAccountOpt {
+        subaccount: next_p2pkh,
+        name: "next_p2pkh".to_string(),
     };
+    new_session.create_subaccount(account_opt).unwrap();
+
+    // Check refresh option in get_subaccounts see an account created (with a tx) in another session
+    let address_opt = GetAddressOpt {
+        subaccount: next_p2pkh,
+        address_type: None,
+    };
+    let address = new_session.get_receive_address(&address_opt).unwrap();
+    let sat = 1_000;
+    let txid = test_session.send_tx_from(0, &address.address, sat, None);
+    *balances.entry(next_p2pkh).or_insert(0) += sat;
+    *balances.entry(0).or_insert(0) -= sat + test_session.get_tx_from_list(0, &txid).fee;
+    assert!(test_session.session.get_subaccount(next_p2pkh).is_err());
+    test_session.session.get_subaccounts(true).unwrap();
+    assert!(test_session.session.get_subaccount(next_p2pkh).is_ok());
 
     let btc_key = test_session.btc_key();
 
@@ -841,6 +875,20 @@ fn subaccounts(is_liquid: bool) {
 
     new_session.disconnect().unwrap();
     test_session.stop();
+}
+
+fn wait_for_txid(new_session: &mut ElectrumSession, subaccount: u32, txid: String) {
+    for _ in 0..60 {
+        let transactions_opt = GetTransactionsOpt {
+            subaccount,
+            ..Default::default()
+        };
+        let txs = new_session.get_transactions(&transactions_opt).unwrap().0;
+        if txs.iter().any(|tx| tx.txhash == txid) {
+            return;
+        }
+        thread::sleep(Duration::from_secs(1));
+    }
 }
 
 #[test]

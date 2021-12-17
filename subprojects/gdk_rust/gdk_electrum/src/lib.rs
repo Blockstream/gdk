@@ -615,12 +615,6 @@ impl Session<Error> for ElectrumSession {
             }
         };
 
-        // Recover BIP 44 accounts on the first login
-        if !store.read().unwrap().cache.accounts_recovered {
-            wallet.write().unwrap().recover_accounts(&self.url, self.proxy.as_deref())?;
-            store.write().unwrap().cache.accounts_recovered = true;
-        }
-
         let syncer = Syncer {
             wallet: wallet.clone(),
             store: store.clone(),
@@ -726,14 +720,20 @@ impl Session<Error> for ElectrumSession {
         Ok(result)
     }
 
-    fn get_subaccounts(&self) -> Result<Vec<AccountInfo>, Error> {
-        let wallet = self.get_wallet()?;
-        wallet.iter_accounts_sorted().map(|a| a.info()).collect()
+    fn get_subaccounts(&mut self, refresh: bool) -> Result<Vec<AccountInfo>, Error> {
+        if refresh {
+            let url = self.url.clone();
+            let proxy = self.proxy.clone();
+            let mut wallet = self.get_wallet_mut()?;
+
+            wallet.recover_accounts(&url, proxy.as_deref())?;
+        }
+
+        self.get_wallet()?.iter_accounts_sorted().map(|a| a.info()).collect()
     }
 
     fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
-        let wallet = self.get_wallet()?;
-        wallet.get_account(account_num)?.info()
+        self.get_wallet()?.get_account(account_num)?.info()
     }
 
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {

@@ -109,9 +109,10 @@ impl WalletCtx {
         };
         let account_nums = store.read()?.account_nums();
         for account_num in account_nums {
-            wallet._ensure_account(account_num)?;
+            wallet._ensure_account(account_num, false)?;
         }
-        wallet._ensure_account(0)?;
+        wallet._ensure_account(0, false)?;
+
         Ok(wallet)
     }
 
@@ -156,7 +157,7 @@ impl WalletCtx {
             }
         }
 
-        let account = self._ensure_account(opt.subaccount)?;
+        let account = self._ensure_account(opt.subaccount, false)?;
         account.set_name(&opt.name)?;
         Ok(account)
     }
@@ -169,21 +170,26 @@ impl WalletCtx {
         &mut self,
         electrum_url: &ElectrumUrl,
         proxy: Option<&str>,
-    ) -> Result<(), Error> {
+    ) -> Result<Vec<u32>, Error> {
         let account_nums = discover_accounts(
             &self.master_xprv,
             self.network.id(),
             electrum_url,
             proxy,
             self.master_blinding.as_ref(),
+            &self.accounts.keys().cloned().collect::<Vec<u32>>(),
         )?;
-        for account_num in account_nums {
-            self._ensure_account(account_num)?;
+        for account_num in account_nums.iter() {
+            self._ensure_account(*account_num, true)?;
         }
-        Ok(())
+        Ok(account_nums)
     }
 
-    fn _ensure_account(&mut self, account_num: u32) -> Result<&mut Account, Error> {
+    fn _ensure_account(
+        &mut self,
+        account_num: u32,
+        discovered: bool,
+    ) -> Result<&mut Account, Error> {
         Ok(match self.accounts.entry(account_num) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => entry.insert(Account::new(
@@ -192,6 +198,7 @@ impl WalletCtx {
                 self.master_blinding.clone(),
                 self.store.clone(),
                 account_num,
+                discovered,
             )?),
         })
     }
@@ -364,5 +371,11 @@ mod test {
 
         let script_sig = p2shwpkh_script_sig(&public_key);
         assert_eq!(tx.input[0].script_sig, script_sig);
+    }
+
+    #[test]
+    fn test_get_subaccounts_default() {
+        let opt: gdk_common::model::GetSubaccountsOpt = serde_json::from_str("{}").unwrap();
+        assert_eq!(opt.refresh, false);
     }
 }

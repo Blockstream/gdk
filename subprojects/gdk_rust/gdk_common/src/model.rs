@@ -171,6 +171,12 @@ pub struct CreateAccountOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetSubaccountsOpt {
+    #[serde(default)]
+    pub refresh: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetNextAccountOpt {
     #[serde(rename = "type")]
     pub script_type: ScriptType,
@@ -403,6 +409,7 @@ pub struct AccountInfo {
     pub settings: AccountSettings,
     pub required_ca: u32,     // unused, always 0
     pub receiving_id: String, // unused, always ""
+    pub has_txs: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -687,7 +694,7 @@ impl From<&BETransactionEntry> for TransactionDetails {
 
 #[cfg(test)]
 mod test {
-    use crate::model::GetUnspentOutputs;
+    use crate::model::{GetUnspentOutputs, GetSubaccountsOpt};
 
     #[test]
     fn test_unspent() {
@@ -695,4 +702,5 @@ mod test {
         let json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
         println!("{:#?}", json);
     }
+
 }
