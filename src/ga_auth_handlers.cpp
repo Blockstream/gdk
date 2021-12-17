@@ -269,7 +269,7 @@ namespace sdk {
 
             // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
-            for (const auto& sa : m_session->get_subaccounts()) {
+            for (const auto& sa : m_session->get_subaccounts(nlohmann::json({}))) {
                 paths.emplace_back(m_session->get_subaccount_root_path(sa["pointer"]));
             }
             signal_hw_request(hw_request::get_xpubs);
@@ -321,7 +321,7 @@ namespace sdk {
         // We are logged in,
         // Check whether we need to upload confidential addresses.
         nlohmann::json::array_t scripts;
-        for (const auto& sa : m_session->get_subaccounts()) {
+        for (const auto& sa : m_session->get_subaccounts(nlohmann::json({}))) {
             const uint32_t required_ca = sa.value("required_ca", 0);
             scripts.reserve(scripts.size() + required_ca);
             for (size_t i = 0; i < required_ca; ++i) {
@@ -813,14 +813,15 @@ namespace sdk {
     //
     // Get subaccounts
     //
-    get_subaccounts_call::get_subaccounts_call(session& session)
+    get_subaccounts_call::get_subaccounts_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_subaccounts")
+        , m_details(details)
     {
     }
 
     auth_handler::state_type get_subaccounts_call::call_impl()
     {
-        m_result = { { "subaccounts", m_session->get_subaccounts() } };
+        m_result = { { "subaccounts", m_session->get_subaccounts(m_details) } };
         return state_type::done;
     }
 

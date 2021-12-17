@@ -106,7 +106,7 @@ namespace sdk {
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer) = 0;
-        virtual nlohmann::json get_subaccounts() = 0;
+        virtual nlohmann::json get_subaccounts(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_subaccount(uint32_t subaccount) = 0;
         virtual void rename_subaccount(uint32_t subaccount, const std::string& new_name) = 0;
         virtual void set_subaccount_hidden(uint32_t subaccount, bool is_hidden) = 0;

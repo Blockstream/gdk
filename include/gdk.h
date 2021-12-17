@@ -238,11 +238,12 @@ GDK_API int GA_create_subaccount(struct GA_session* session, const GA_json* deta
  * Get the user's subaccount details.
  *
  * :param session: The session to use.
+ * :param details: the :ref:`get-subaccounts-params-data` controlling the request.
  * :param call: Destination for the resulting GA_auth_handler to perform the creation.
  *|     The call handlers result is :ref:`subaccount-list`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
-GDK_API int GA_get_subaccounts(struct GA_session* session, struct GA_auth_handler** call);
+GDK_API int GA_get_subaccounts(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Get subaccount details.

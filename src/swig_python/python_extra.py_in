@@ -170,8 +170,9 @@ class Session(object):
     def update_subaccount(self, details):
         return Call(update_subaccount(self.session_obj, self._to_json(details)))
 
-    def get_subaccounts(self):
-        return Call(get_subaccounts(self.session_obj))
+    def get_subaccounts(self, details=None):
+        details = details or {}
+        return Call(get_subaccounts(self.session_obj, self._to_json(details)))
 
     def get_subaccount(self, subaccount):
         return Call(get_subaccount(self.session_obj, subaccount))
@@ -179,7 +180,8 @@ class Session(object):
     def get_transactions(self, details={'subaccount': 0, 'first': 0, 'count': 30}):
         return Call(get_transactions(self.session_obj, self._to_json(details)))
 
-    def get_receive_address(self, details={}):
+    def get_receive_address(self, details=None):
+        details = details or {}
         return Call(get_receive_address(self.session_obj, self._to_json(details)))
 
     def get_previous_addresses(self, details={'subaccount': 0, 'last_pointer': 0}):

@@ -73,7 +73,7 @@ int main()
     // Get subaccounts/ Get subaccount
     std::vector<uint32_t> subaccounts;
     {
-        std::unique_ptr<sdk::auth_handler> call{ new sdk::get_subaccounts_call(session) };
+        std::unique_ptr<sdk::auth_handler> call{ new sdk::get_subaccounts_call(session, nlohmann::json()) };
         const auto result = process_auth(*call);
         std::cout << result << std::endl;
         for (const auto& sa : result["subaccounts"]) {

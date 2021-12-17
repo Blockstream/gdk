@@ -48,7 +48,7 @@ namespace sdk {
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
-        nlohmann::json get_subaccounts();
+        nlohmann::json get_subaccounts(const nlohmann::json& details);
         nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);

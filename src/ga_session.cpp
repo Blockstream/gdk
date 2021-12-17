@@ -2246,16 +2246,17 @@ namespace sdk {
         return wamp_cast<bool>(wamp_call("login.remove_account", mp_cast(twofactor_data).get()));
     }
 
-    nlohmann::json ga_session::get_subaccounts()
+    nlohmann::json ga_session::get_subaccounts(const nlohmann::json& /*details*/)
     {
+        // TODO: implement refreshing for multisig
         locker_t locker(m_mutex);
-        nlohmann::json::array_t details;
-        details.reserve(m_subaccounts.size());
+        nlohmann::json::array_t subaccounts;
+        subaccounts.reserve(m_subaccounts.size());
 
         for (const auto& sa : m_subaccounts) {
-            details.emplace_back(sa.second);
+            subaccounts.emplace_back(sa.second);
         }
-        return nlohmann::json(std::move(details));
+        return nlohmann::json(std::move(subaccounts));
     }
 
     nlohmann::json ga_session::get_subaccount(uint32_t subaccount)

@@ -126,10 +126,12 @@ namespace sdk {
 
     class get_subaccounts_call : public auth_handler_impl {
     public:
-        get_subaccounts_call(session& session);
+        get_subaccounts_call(session& session, const nlohmann::json& details);
 
     private:
         state_type call_impl() override;
+
+        nlohmann::json m_details;
     };
 
     class get_subaccount_call : public auth_handler_impl {

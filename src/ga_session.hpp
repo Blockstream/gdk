@@ -72,7 +72,7 @@ namespace sdk {
         void change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data);
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
-        nlohmann::json get_subaccounts();
+        nlohmann::json get_subaccounts(const nlohmann::json& details);
         nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);

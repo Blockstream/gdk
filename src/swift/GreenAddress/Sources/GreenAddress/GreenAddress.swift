@@ -278,10 +278,8 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_create_subaccount)
     }
 
-    public func getSubaccounts() throws -> TwoFactorCall {
-        var optr: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_subaccounts(session, &optr))
-        return TwoFactorCall(optr: optr!)
+    public func getSubaccounts(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_subaccounts)
     }
 
     public func getSubaccount(subaccount: UInt32) throws -> TwoFactorCall {

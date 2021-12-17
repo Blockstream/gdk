@@ -310,7 +310,10 @@ namespace sdk {
         throw std::runtime_error("get_previous_addresses not implemented");
     }
 
-    nlohmann::json ga_rust::get_subaccounts() { return call_session("get_subaccounts", nlohmann::json{}); }
+    nlohmann::json ga_rust::get_subaccounts(const nlohmann::json& details)
+    {
+        return call_session("get_subaccounts", details);
+    }
 
     nlohmann::json ga_rust::get_subaccount(uint32_t subaccount)
     {
