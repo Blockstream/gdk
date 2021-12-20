@@ -26,6 +26,8 @@ namespace sdk {
         const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
         const std::array<unsigned char, 32>& vbf);
 
+    nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout);
+
     std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details);
 
     std::pair<std::vector<std::string>, wally_tx_ptr> sign_ga_transaction(

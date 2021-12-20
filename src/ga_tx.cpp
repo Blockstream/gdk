@@ -25,6 +25,20 @@ namespace sdk {
         static const std::string UTXO_SEL_DEFAULT("default"); // Use the default utxo selection strategy
         static const std::string UTXO_SEL_MANUAL("manual"); // Use manual utxo selection
 
+        static const std::string ZEROS(64, '0');
+
+        static bool is_explicit(wally_tx_output output)
+        {
+            return output.asset_len == WALLY_TX_ASSET_CT_ASSET_LEN
+                && output.value_len == WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN;
+        }
+
+        static bool is_blinded(wally_tx_output output)
+        {
+            return output.asset_len == WALLY_TX_ASSET_CT_ASSET_LEN && output.value_len == WALLY_TX_ASSET_CT_VALUE_LEN
+                && output.nonce_len == WALLY_TX_ASSET_CT_NONCE_LEN && output.rangeproof_len > 0;
+        }
+
         static void add_paths(ga_session& session, nlohmann::json& utxo)
         {
             const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
@@ -1182,6 +1196,51 @@ namespace sdk {
 
         tx_elements_output_commitment_set(
             tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
+    }
+
+    nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout)
+    {
+        // FIXME: this is another place where unblinding is performed (the other is ga_session::unblind_utxo).
+        //        This is not ideal and we should aim to have a single place to perform unblinding,
+        //        but unfortunately it is quite complex so for now we have this duplication.
+        const auto& net_params = session.get_network_parameters();
+        GDK_RUNTIME_ASSERT(net_params.is_liquid());
+        GDK_RUNTIME_ASSERT(tx->num_outputs > vout);
+
+        nlohmann::json result = nlohmann::json::object();
+        const auto& o = tx->outputs[vout];
+        if (is_explicit(o)) {
+            result["satoshi"] = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
+            result["assetblinder"] = ZEROS;
+            result["amountblinder"] = ZEROS;
+            GDK_RUNTIME_ASSERT(o.asset && *o.asset == 1);
+            result["asset_id"] = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
+        } else if (is_blinded(o)) {
+            const auto scriptpubkey = gsl::make_span(o.script, o.script_len);
+            const auto blinding_private_key = session.get_nonnull_signer()->get_blinding_key_from_script(scriptpubkey);
+            const auto asset_commitment = gsl::make_span(o.asset, o.asset_len);
+            const auto value_commitment = gsl::make_span(o.value, o.value_len);
+            const auto nonce_commitment = gsl::make_span(o.nonce, o.nonce_len);
+            const auto rangeproof = gsl::make_span(o.rangeproof, o.rangeproof_len);
+
+            unblind_t unblinded;
+            try {
+                unblinded = asset_unblind(blinding_private_key, rangeproof, value_commitment, nonce_commitment,
+                    scriptpubkey, asset_commitment);
+            } catch (const std::exception&) {
+                result["error"] = "failed to unblind utxo";
+                return result;
+            }
+            result["satoshi"] = std::get<3>(unblinded);
+            result["assetblinder"] = b2h_rev(std::get<2>(unblinded));
+            result["amountblinder"] = b2h_rev(std::get<1>(unblinded));
+            result["asset_id"] = b2h_rev(std::get<0>(unblinded));
+        } else {
+            // Mixed case is not handled
+            GDK_RUNTIME_ASSERT_MSG(false, "Output is not fully blinded or not fully explicit");
+        }
+
+        return result;
     }
 
 } // namespace sdk
