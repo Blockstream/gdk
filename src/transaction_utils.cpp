@@ -300,11 +300,11 @@ namespace sdk {
     }
 
     std::vector<unsigned char> scriptpubkey_from_address(
-        const network_parameters& net_params, uint32_t block_height, const std::string& address)
+        const network_parameters& net_params, uint32_t block_height, const std::string& address, bool confidential)
     {
         std::string error;
         std::vector<unsigned char> script = output_script_for_address(net_params, block_height, address, error);
-        GDK_RUNTIME_ASSERT(error.empty());
+        GDK_RUNTIME_ASSERT(error.empty() || (!confidential && error == res::id_nonconfidential_addresses_not));
         return script;
     }
 
