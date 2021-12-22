@@ -10,11 +10,10 @@ Read the API documentation at https://gdk.readthedocs.io/en/latest/
 
 ### Build dependencies:
 
-For Debian Stretch:
+For Debian Bullseye:
 
 ```
-sudo apt update && sudo apt install build-essential python3-pip ninja-build clang autoconf pkg-config libtool swig (optional)
-sudo pip3 install -r tools/requirements.txt or pip3 install --user -r tools/requirements.txt
+sudo ./tools/bullseye_deps.sh
 ```
 
 For Mac OSX:
@@ -36,7 +35,7 @@ Install rust dependencies (Optional):
   3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios
 x86_64-apple-ios`
 
-You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.6/bin`
+You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.X/bin`
 
 If you want to target Android you will need to download the NDK and set the ANDROID_NDK env variable to the directory you uncompress it to, for example
 
@@ -44,7 +43,7 @@ If you want to target Android you will need to download the NDK and set the ANDR
 
 or you can add it to your bash profile `~/.bash_profile`
 
-JAVA bindings can be built by installing swig as explained above and setting JAVA_HOME to the location of the JDK.
+Java bindings can be built by installing swig as explained above and setting JAVA_HOME to the location of the JDK.
 
 ### To build:
 
