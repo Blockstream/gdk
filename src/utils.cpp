@@ -135,6 +135,7 @@ namespace sdk {
 
         // We only allow fetching up to 32 bytes of random data as bits beyond
         // this expose the final bytes of the sha512 we use to update curr_state.
+        GDK_RUNTIME_ASSERT(output_bytes);
         GDK_RUNTIME_ASSERT(num_bytes <= 32 && num_bytes <= siz);
 
         int64_t tsc = GetPerformanceCounter();
@@ -642,6 +643,9 @@ extern "C" int GA_generate_mnemonic_12(char** output) { return generate_mnemonic
 
 extern "C" int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
 {
+    if (!mnemonic || !valid) {
+        return GA_ERROR; /* Invalid parameters */
+    }
     *valid = GA_FALSE;
     try {
         GDK_VERIFY(bip39_mnemonic_validate(nullptr, mnemonic));
