@@ -103,18 +103,13 @@ impl Account {
     pub fn info(&self) -> Result<AccountInfo, Error> {
         let settings = self.store.read()?.get_account_settings(self.account_num).cloned();
 
-        let empty_tx = {
-            let store = self.store.read()?;
-            let account = store.cache.accounts.get(&self.account_num);
-            account.ok_or_else(|| Error::InvalidSubaccount(self.account_num))?.all_txs.is_empty()
-        };
         Ok(AccountInfo {
             account_num: self.account_num,
             script_type: self.script_type,
             settings: settings.unwrap_or_default(),
             required_ca: 0,
             receiving_id: "".to_string(),
-            has_txs: self.discovered || !empty_tx,
+            has_txs: self.has_transactions(),
         })
     }
 
