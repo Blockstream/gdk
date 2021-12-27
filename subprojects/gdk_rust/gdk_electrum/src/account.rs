@@ -51,7 +51,10 @@ pub struct Account {
     master_blinding: Option<MasterBlindingKey>,
 
     /// When an account is discovered through `recover_accounts` is set to true, this is needed so
-    /// that `has_tx` in [`AccountInfo`] could be initialized correctly without needing the first sync
+    /// that `has_txs` in [`AccountInfo`] could be initialized correctly without needing the first sync.
+    ///
+    /// Note that this is set to true when the account is discovered, but this value is not persisted,
+    /// thus at following logins it will be false.
     discovered: bool,
 
     _path: DerivationPath,
