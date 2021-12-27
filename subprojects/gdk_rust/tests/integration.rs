@@ -1,9 +1,9 @@
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, GetAddressOpt, GetBalanceOpt,
-    GetNextAccountOpt, GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVVerifyResult,
-    UpdateAccountOpt, UtxoStrategy,
+    AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
+    GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
+    UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -15,8 +15,7 @@ use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
 use std::collections::HashMap;
-use std::time::Duration;
-use std::{env, path, thread};
+use std::{env, path};
 use tempdir::TempDir;
 
 mod test_session;
@@ -824,32 +823,35 @@ fn subaccounts(is_liquid: bool) {
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     new_session.login(&mnemonic, None).unwrap();
 
+    let subaccounts = new_session.get_subaccounts(false).unwrap();
+    assert_eq!(subaccounts.len(), 1);
+    assert!(new_session.get_subaccount(0).is_ok());
+
     let subaccounts = new_session.get_subaccounts(true).unwrap();
     assert_eq!(subaccounts.len(), balances.len());
-    wait_for_txid(&mut new_session, 34, txid);
+    assert_eq!(new_session.get_subaccount(0).unwrap().has_txs, true);
     assert_eq!(new_session.get_subaccount(1).unwrap().has_txs, true);
     assert_eq!(new_session.get_subaccount(2).unwrap().has_txs, true);
     assert_eq!(new_session.get_subaccount(18).unwrap().has_txs, true);
-    assert_eq!(new_session.get_subaccount(34).unwrap().has_txs, true);
-    let account_opt = CreateAccountOpt {
-        subaccount: next_p2pkh,
-        name: "next_p2pkh".to_string(),
-    };
-    new_session.create_subaccount(account_opt).unwrap();
 
     // Check refresh option in get_subaccounts see an account created (with a tx) in another session
-    let address_opt = GetAddressOpt {
-        subaccount: next_p2pkh,
-        address_type: None,
+    // creating in test_session, verifying is discovered in new_session
+    let new_account = 17;
+    assert!(new_session.get_subaccount(new_account).is_err());
+    let account_opt = CreateAccountOpt {
+        subaccount: new_account,
+        name: "next_p2pkh".to_string(),
     };
-    let address = new_session.get_receive_address(&address_opt).unwrap();
-    let sat = 1_000;
-    let txid = test_session.send_tx_from(0, &address.address, sat, None);
-    *balances.entry(next_p2pkh).or_insert(0) += sat;
-    *balances.entry(0).or_insert(0) -= sat + test_session.get_tx_from_list(0, &txid).fee;
-    assert!(test_session.session.get_subaccount(next_p2pkh).is_err());
-    test_session.session.get_subaccounts(true).unwrap();
-    assert!(test_session.session.get_subaccount(next_p2pkh).is_ok());
+    test_session.session.create_subaccount(account_opt).unwrap();
+    let address = test_session.get_receive_address(new_account);
+    let sat = 1_040;
+    let txid = test_session.node_sendtoaddress(&address.address, sat, None);
+    test_session.wait_account_tx(new_account, &txid);
+    *balances.entry(new_account).or_insert(0) += sat;
+
+    assert!(new_session.get_subaccount(new_account).is_err());
+    new_session.get_subaccounts(true).unwrap();
+    assert!(new_session.get_subaccount(new_account).is_ok());
 
     let btc_key = test_session.btc_key();
 
@@ -862,7 +864,12 @@ fn subaccounts(is_liquid: bool) {
             confidential_utxos_only: None,
         };
         let balance = *new_session.get_balance(&opt).unwrap().get(&btc_key).unwrap_or(&0i64) as u64;
-        assert_eq!(balance, *balances.get(&subaccount.account_num).unwrap());
+        assert_eq!(
+            balance,
+            *balances.get(&subaccount.account_num).unwrap(),
+            "subaccount {} balance mismatch",
+            subaccount.account_num
+        );
     }
 
     // tx belong to the wallet
@@ -875,20 +882,6 @@ fn subaccounts(is_liquid: bool) {
 
     new_session.disconnect().unwrap();
     test_session.stop();
-}
-
-fn wait_for_txid(new_session: &mut ElectrumSession, subaccount: u32, txid: String) {
-    for _ in 0..60 {
-        let transactions_opt = GetTransactionsOpt {
-            subaccount,
-            ..Default::default()
-        };
-        let txs = new_session.get_transactions(&transactions_opt).unwrap().0;
-        if txs.iter().any(|tx| tx.txhash == txid) {
-            return;
-        }
-        thread::sleep(Duration::from_secs(1));
-    }
 }
 
 #[test]

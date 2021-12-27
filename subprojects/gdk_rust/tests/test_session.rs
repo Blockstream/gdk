@@ -16,8 +16,8 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::str::FromStr;
+use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::{thread};
 use tempdir::TempDir;
 
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
