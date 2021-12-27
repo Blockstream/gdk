@@ -418,6 +418,9 @@ impl Account {
     }
 
     pub fn has_transactions(&self) -> bool {
+        if self.discovered {
+            return true;
+        }
         let store_read = self.store.read().unwrap();
         let acc_store = store_read.account_cache(self.account_num).unwrap();
         !acc_store.heights.is_empty()
