@@ -314,12 +314,22 @@ impl StoreMeta {
             .ok_or_else(|| Error::InvalidSubaccount(account_num))
     }
 
-    pub fn make_account_cache(&mut self, account_num: u32) -> &mut RawAccountCache {
+    /// Make an account entry
+    /// Note that we need to insert an account entry both in the store and in the cache.
+    pub fn make_account(&mut self, account_num: u32) -> &mut RawAccountCache {
+        self.store
+            .accounts_settings
+            .get_or_insert_with(|| Default::default())
+            .entry(account_num)
+            .or_default();
         self.cache.accounts.entry(account_num).or_default()
     }
 
     pub fn account_nums(&self) -> HashSet<u32> {
-        self.cache.accounts.keys().copied().collect()
+        match &self.store.accounts_settings {
+            None => HashSet::new(),
+            Some(accounts) => accounts.keys().copied().collect(),
+        }
     }
 
     pub fn read_asset_icons(&self) -> Result<Option<Value>, Error> {

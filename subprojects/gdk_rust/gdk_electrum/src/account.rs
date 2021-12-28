@@ -69,7 +69,7 @@ impl Account {
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];
 
-        store.write().unwrap().make_account_cache(account_num);
+        store.write().unwrap().make_account(account_num);
 
         info!("initialized account #{} path={} type={:?}", account_num, path, script_type);
 
