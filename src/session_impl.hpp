@@ -161,7 +161,7 @@ namespace sdk {
             = 0;
 
         virtual wally_tx_ptr get_raw_transaction_details(const std::string& txhash_hex) const = 0;
-        nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
+        virtual nlohmann::json get_transaction_details(const std::string& txhash_hex) const = 0;
 
         virtual nlohmann::json create_transaction(const nlohmann::json& details) = 0;
         virtual nlohmann::json sign_transaction(const nlohmann::json& details) = 0;

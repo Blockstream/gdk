@@ -452,6 +452,16 @@ namespace sdk {
         }
     }
 
+    nlohmann::json ga_rust::get_transaction_details(const std::string& txhash_hex) const
+    {
+        try {
+            return call_session("get_transaction_details", nlohmann::json(txhash_hex));
+        } catch (const std::exception& e) {
+            GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
+            throw user_error("Transaction not found");
+        }
+    }
+
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
     {
         GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction:" << details.dump();

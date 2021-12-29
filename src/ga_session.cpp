@@ -3238,6 +3238,14 @@ namespace sdk {
         }
     }
 
+    nlohmann::json ga_session::get_transaction_details(const std::string& txhash_hex) const
+    {
+        const auto tx = get_raw_transaction_details(txhash_hex);
+        nlohmann::json ret = { { "txhash", txhash_hex } };
+        update_tx_size_info(m_net_params, tx, ret);
+        return ret;
+    }
+
     static script_type set_addr_script_type(nlohmann::json& address, const std::string& addr_type)
     {
         // Add the script type, to allow addresses to be used interchangeably with utxos
