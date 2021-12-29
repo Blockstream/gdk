@@ -833,9 +833,11 @@ fn subaccounts(is_liquid: bool) {
 
     // tx belong to the wallet
     assert!(test_session.session.get_transaction_hex(&txid).is_ok());
+    assert!(test_session.session.get_transaction_details(&txid).is_ok());
     // tx does not belong to the wallet
     let fake_txid = "0000000000000000000000000000000000000000000000000000000000000000";
     assert!(test_session.session.get_transaction_hex(&fake_txid).is_err());
+    assert!(test_session.session.get_transaction_details(&fake_txid).is_err());
 
     new_session.disconnect().unwrap();
     test_session.stop();

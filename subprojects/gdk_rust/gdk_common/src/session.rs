@@ -23,6 +23,7 @@ pub trait Session<E> {
     fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<(), E>;
     fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, E>;
     fn get_transaction_hex(&self, txid: &str) -> Result<String, E>;
+    fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, E>;
     fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, E>;
     fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), E>;
     fn create_transaction(&mut self, details: &mut CreateTransaction)

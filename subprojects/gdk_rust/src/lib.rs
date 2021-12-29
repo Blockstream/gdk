@@ -372,6 +372,12 @@ where
         "get_transaction_hex" => {
             get_transaction_hex(session, input).map(|v| json!(v)).map_err(Into::into)
         }
+        "get_transaction_details" => session
+            .get_transaction_details(input.as_str().ok_or_else(|| {
+                Error::Other("get_transaction_details: input is not a string".into())
+            })?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "get_balance" => session
             .get_balance(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))

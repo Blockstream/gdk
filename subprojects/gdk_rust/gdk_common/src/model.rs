@@ -659,6 +659,32 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
     }
 }
 
+// Output of get_transaction_details
+#[derive(Serialize, Debug, Clone)]
+pub struct TransactionDetails {
+    pub transaction: String,
+    pub txhash: String,
+    pub transaction_locktime: u32,
+    pub transaction_version: u32,
+    pub transaction_size: usize,
+    pub transaction_vsize: usize,
+    pub transaction_weight: usize,
+}
+
+impl From<&BETransactionEntry> for TransactionDetails {
+    fn from(tx_entry: &BETransactionEntry) -> Self {
+        Self {
+            transaction: tx_entry.tx.serialize().to_hex(),
+            txhash: tx_entry.tx.txid().to_string(),
+            transaction_locktime: tx_entry.tx.lock_time(),
+            transaction_version: tx_entry.tx.version(),
+            transaction_size: tx_entry.size,
+            transaction_vsize: (tx_entry.weight as f32 / 4.0) as usize,
+            transaction_weight: tx_entry.weight,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::model::GetUnspentOutputs;
