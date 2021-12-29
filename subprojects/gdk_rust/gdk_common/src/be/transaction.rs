@@ -102,6 +102,20 @@ impl BETransaction {
         }
     }
 
+    pub fn version(&self) -> u32 {
+        match self {
+            Self::Bitcoin(tx) => tx.version as u32,
+            Self::Elements(tx) => tx.version,
+        }
+    }
+
+    pub fn lock_time(&self) -> u32 {
+        match self {
+            Self::Bitcoin(tx) => tx.lock_time,
+            Self::Elements(tx) => tx.lock_time,
+        }
+    }
+
     pub fn previous_outputs(&self) -> Vec<BEOutPoint> {
         match self {
             Self::Bitcoin(tx) => {
