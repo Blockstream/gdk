@@ -28,6 +28,7 @@ pub enum Error {
     /// leave such counter unchanged.
     InvalidPin,
     PsetAndTxMismatch,
+    TxNotFound(String),
     AddrParse(String),
     InvalidElectrumUrl(String),
     Bitcoin(bitcoin::util::Error),
@@ -91,6 +92,7 @@ impl Display for Error {
             Error::InvalidPin => write!(f, "id_invalid_pin"),
             Error::InvalidElectrumUrl(url) => write!(f, "Invalid Electrum URL: {}", url),
             Error::PsetAndTxMismatch => write!(f, "PSET and Tx mismatch"),
+            Error::TxNotFound(txid) => write!(f, "Transaction not found ({})", txid),
         }
     }
 }

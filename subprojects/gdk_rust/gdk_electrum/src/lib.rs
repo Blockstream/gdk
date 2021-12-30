@@ -796,7 +796,7 @@ impl Session<Error> for ElectrumSession {
                 return Ok(tx_entry.tx.serialize().to_hex());
             }
         }
-        Err(Error::Generic("Transaction not found".into()))
+        Err(Error::TxNotFound(txid.to_string()))
     }
 
     fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
@@ -808,7 +808,7 @@ impl Session<Error> for ElectrumSession {
                 return Ok(tx_entry.into());
             }
         }
-        Err(Error::Generic("Transaction not found".into()))
+        Err(Error::TxNotFound(txid.to_string()))
     }
 
     fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
