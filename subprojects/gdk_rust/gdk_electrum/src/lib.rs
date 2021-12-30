@@ -791,24 +791,14 @@ impl Session<Error> for ElectrumSession {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let wallet = self.get_wallet()?;
         let store = wallet.store.read()?;
-        for acc_store in store.cache.accounts.values() {
-            if let Some(tx_entry) = acc_store.all_txs.get(&txid) {
-                return Ok(tx_entry.tx.serialize().to_hex());
-            }
-        }
-        Err(Error::TxNotFound(txid.to_string()))
+        store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_hex())
     }
 
     fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let wallet = self.get_wallet()?;
         let store = wallet.store.read()?;
-        for acc_store in store.cache.accounts.values() {
-            if let Some(tx_entry) = acc_store.all_txs.get(&txid) {
-                return Ok(tx_entry.into());
-            }
-        }
-        Err(Error::TxNotFound(txid.to_string()))
+        store.get_tx_entry(&txid).map(|e| e.into())
     }
 
     fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {

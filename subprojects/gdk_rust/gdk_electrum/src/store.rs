@@ -7,7 +7,9 @@ use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use bitcoin::Transaction;
 use elements::TxOutSecrets;
 use gdk_common::be::BETxidConvert;
-use gdk_common::be::{BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactions, BETxid};
+use gdk_common::be::{
+    BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
+};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyResult, Settings};
 use gdk_common::NetworkId;
 use log::{info, warn};
@@ -426,6 +428,15 @@ impl StoreMeta {
     pub fn export_cache(&self) -> Result<RawCache, Error> {
         self.flush_cache()?;
         RawCache::try_new(&self.path, &self.cipher)
+    }
+
+    pub fn get_tx_entry(&self, txid: &BETxid) -> Result<&BETransactionEntry, Error> {
+        for acc_store in self.cache.accounts.values() {
+            if let Some(tx_entry) = acc_store.all_txs.get(&txid) {
+                return Ok(tx_entry);
+            }
+        }
+        Err(Error::TxNotFound(txid.to_string()))
     }
 }
 
