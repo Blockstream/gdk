@@ -73,7 +73,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     }
 
     let url = determine_electrum_url_from_net(&input.network)?;
-    let client = url.build_client(input.tor_proxy.as_deref())?;
+    let client = url.build_client_with_proxy_and_timeout(&input.tor_proxy, input.timeout)?;
 
     match input.network.id() {
         NetworkId::Bitcoin(bitcoin_network) => {

@@ -24,7 +24,9 @@ const TIMEOUT: u8 = 3; // connect, read and write timeout
 #[derive(Debug)]
 pub struct SpvCrossValidator {
     servers: Vec<ElectrumUrl>,
+    proxy: Option<String>,
     last_result: CrossValidationResult,
+    timeout: Option<u8>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -93,7 +95,13 @@ impl SpvCrossValidator {
         // Cross-validate against the secondary servers, keeping track of the most severe
         // validation result seen so far
         for server_url in &round_servers {
-            let server_result = match spv_cross_validate(chain, &local_tip_hash, server_url) {
+            let server_result = match spv_cross_validate(
+                chain,
+                &local_tip_hash,
+                server_url,
+                self.timeout,
+                &self.proxy,
+            ) {
                 Ok(r) => r,
                 Err(e) => {
                     warn!("SPV cross validation via {:?} failed with: {:?}", server_url, e);
@@ -117,11 +125,17 @@ impl SpvCrossValidator {
         curr_result
     }
 
-    pub fn from_network(network: &Network) -> Result<Option<Self>, Error> {
+    pub fn from_network(
+        network: &Network,
+        proxy: &Option<String>,
+        timeout: Option<u8>,
+    ) -> Result<Option<Self>, Error> {
         Ok(if !network.liquid && network.spv_multi.unwrap_or(false) {
             Some(SpvCrossValidator {
                 servers: get_cross_servers(network)?,
                 last_result: CrossValidationResult::Valid,
+                proxy: proxy.clone(),
+                timeout,
             })
         } else {
             None
@@ -139,8 +153,10 @@ pub fn spv_cross_validate(
     chain: &HeadersChain,
     local_tip_hash: &BlockHash,
     server_url: &ElectrumUrl,
+    timeout: Option<u8>,
+    proxy: &Option<String>,
 ) -> Result<CrossValidationResult, CrossValidationError> {
-    let client = server_url.build_config(ConfigBuilder::new().timeout(Some(TIMEOUT))?)?;
+    let client = server_url.build_client_with_proxy_and_timeout(proxy, timeout)?;
     let remote_tip = client.block_headers_subscribe()?;
     let remote_tip_hash = remote_tip.header.block_hash();
     let remote_tip_height = remote_tip.height as u32;

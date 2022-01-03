@@ -208,6 +208,8 @@ pub struct SPVVerifyTx {
     /// Number of headers to download at every attempt, it defaults to 2016, useful to set lower
     /// for testing
     pub headers_to_download: Option<usize>,
+    /// Maximum timeout for network call in seconds
+    pub timeout: Option<u8>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

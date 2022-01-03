@@ -49,7 +49,21 @@ impl ElectrumUrl {
         self.build_config(config)
     }
 
-    pub fn build_config(&self, config: ConfigBuilder) -> Result<Client, Error> {
+    pub fn build_client_with_proxy_and_timeout(
+        &self,
+        proxy: &Option<String>,
+        timeout: Option<u8>,
+    ) -> Result<Client, Error> {
+        let mut config = ConfigBuilder::new();
+        if let Some(proxy) = proxy {
+            // TODO: add support for credentials?
+            config = config.socks5(Some(electrum_client::Socks5Config::new(proxy)))?;
+        }
+        config = config.timeout(timeout)?;
+        self.build_config(config)
+    }
+
+    fn build_config(&self, config: ConfigBuilder) -> Result<Client, Error> {
         let (url, config) = match self {
             ElectrumUrl::Tls(url, validate) => {
                 (format!("ssl://{}", url), config.validate_domain(*validate))

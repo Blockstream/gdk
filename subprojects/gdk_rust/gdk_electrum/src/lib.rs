@@ -130,6 +130,7 @@ impl Closer {
 pub struct ElectrumSession {
     pub data_root: String,
     pub proxy: Option<String>,
+    pub timeout: Option<u8>,
     pub network: Network,
     pub url: ElectrumUrl,
     pub wallet: Option<Arc<RwLock<WalletCtx>>>,
@@ -231,6 +232,7 @@ impl ElectrumSession {
                 handles: vec![],
             },
             state: State::Disconnected,
+            timeout: None,
         }
     }
 
@@ -552,7 +554,8 @@ impl Session<Error> for ElectrumSession {
                 }
             };
 
-            let cross_validator = SpvCrossValidator::from_network(&self.network)?;
+            let cross_validator =
+                SpvCrossValidator::from_network(&self.network, &self.proxy, self.timeout)?;
 
             let mut headers = Headers {
                 store: store.clone(),

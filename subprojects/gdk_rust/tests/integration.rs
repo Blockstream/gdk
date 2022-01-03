@@ -1121,6 +1121,8 @@ fn spv_cross_validate() {
             &session1_chain,
             &session1_chain.tip().block_hash(),
             &session2_electrum_url,
+            None,
+            &None,
         )
         .unwrap();
 
@@ -1149,6 +1151,8 @@ fn spv_cross_validate() {
             &session1_chain,
             &session1_chain.tip().block_hash(),
             &session2_electrum_url,
+            None,
+            &None,
         )
         .unwrap();
 
