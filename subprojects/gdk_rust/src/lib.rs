@@ -461,33 +461,6 @@ pub extern "C" fn GDKRUST_destroy_session(ptr: *mut libc::c_void) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn GDKRUST_spv_verify_tx(input: *const c_char) -> i32 {
-    init_logging(LevelFilter::Info);
-    info!("GDKRUST_spv_verify_tx");
-    let input: Value = match serde_json::from_str(&read_str(input)) {
-        Ok(x) => x,
-        Err(err) => {
-            error!("error: {:?}", err);
-            return GA_ERROR;
-        }
-    };
-    let input: SPVVerifyTx = match serde_json::from_value(input.clone()) {
-        Ok(val) => val,
-        Err(e) => {
-            warn!("{:?}", e);
-            return -1;
-        }
-    };
-    match gdk_electrum::headers::spv_verify_tx(&input) {
-        Ok(res) => res.as_i32(),
-        Err(e) => {
-            warn!("{:?}", e);
-            -1
-        }
-    }
-}
-
 #[derive(serde::Serialize)]
 struct JsonError {
     message: String,
@@ -545,6 +518,10 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
         "psbt_merge_tx" => {
             let param: MergeTxParam = serde_json::from_str(input)?;
             Ok(to_string(&gdk_electrum::pset::merge_tx(&param)?))
+        }
+        "spv_verify_tx" => {
+            let param: SPVVerifyTx = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_electrum::headers::spv_verify_tx(&param)?.as_i32()))
         }
         _ => Err(Error::MethodNotFound {
             method: method.to_string(),

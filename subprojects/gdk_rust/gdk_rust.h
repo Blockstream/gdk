@@ -38,8 +38,6 @@ GDK_API int GDKRUST_create_session(GDKRUST_session* session, const char* network
 
 GDK_API int GDKRUST_call_session(GDKRUST_session session, const char *method, const char *input, char** output);
 
-GDK_API int GDKRUST_spv_verify_tx(const char *input);
-
 /**
  * A collection of stateless functions
  *

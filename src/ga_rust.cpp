@@ -609,10 +609,7 @@ namespace sdk {
 
     void ga_rust::disable_all_pin_logins() {}
 
-    int32_t ga_rust::spv_verify_tx(const nlohmann::json& details)
-    {
-        return GDKRUST_spv_verify_tx(details.dump().c_str());
-    }
+    int32_t ga_rust::spv_verify_tx(const nlohmann::json& details) { return call("spv_verify_tx", details); }
 
     std::string ga_rust::psbt_extract_tx(const std::string& psbt_hex)
     {
