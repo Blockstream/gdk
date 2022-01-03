@@ -66,8 +66,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     info!("spv_verify_tx {:?}", input);
     let txid = BETxid::from_hex(&input.txid, input.network.id())?;
 
-    let mut cache: VerifiedCache =
-        VerifiedCache::new(&input.path, input.network.id(), &input.encryption_key)?;
+    let mut cache = VerifiedCache::new(&input.path, input.network.id(), &input.encryption_key);
     if cache.contains(&txid)? {
         info!("verified cache hit for {}", txid);
         return Ok(SPVVerifyResult::Verified);
@@ -139,27 +138,42 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
 
 struct VerifiedCache {
     set: HashSet<BETxid>,
+    store: Option<Store>,
+}
+
+struct Store {
     filepath: PathBuf,
     cipher: Aes256GcmSiv,
 }
 
 impl VerifiedCache {
-    fn new(path: &str, network: NetworkId, key: &str) -> Result<Self, Error> {
-        let mut filepath: PathBuf = path.into();
-        let filename_preimage = format!("{:?}{}", network, key);
-        let filename = sha256::Hash::hash(filename_preimage.as_bytes()).as_ref().to_hex();
-        let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
-        filepath.push(format!("verified_cache_{}", filename));
-        let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes));
-        let set = match VerifiedCache::read_and_decrypt(&mut filepath, &cipher) {
-            Ok(set) => set,
-            Err(_) => HashSet::new(),
-        };
-        Ok(VerifiedCache {
-            set,
-            filepath,
-            cipher,
-        })
+    fn new(path: &str, network: NetworkId, key: &Option<String>) -> Self {
+        match key {
+            Some(key) => {
+                let mut filepath: PathBuf = path.into();
+                let filename_preimage = format!("{:?}{}", network, key);
+                let filename = sha256::Hash::hash(filename_preimage.as_bytes()).as_ref().to_hex();
+                let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
+                filepath.push(format!("verified_cache_{}", filename));
+                let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes));
+                let set = match VerifiedCache::read_and_decrypt(&mut filepath, &cipher) {
+                    Ok(set) => set,
+                    Err(_) => HashSet::new(),
+                };
+                let store = Some(Store {
+                    filepath,
+                    cipher,
+                });
+                VerifiedCache {
+                    set,
+                    store,
+                }
+            }
+            None => VerifiedCache {
+                set: HashSet::new(),
+                store: None,
+            },
+        }
     }
 
     fn read_and_decrypt(
@@ -191,14 +205,17 @@ impl VerifiedCache {
     }
 
     fn flush(&mut self) -> Result<(), Error> {
-        let mut file = File::create(&self.filepath)?;
-        let mut nonce_bytes = [0u8; 12]; // 96 bits
-        thread_rng().fill(&mut nonce_bytes);
-        let plaintext = serde_cbor::to_vec(&self.set)?;
-        let nonce = Nonce::from_slice(&nonce_bytes);
-        let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref())?;
-        file.write(&nonce)?;
-        file.write(&ciphertext)?;
+        if let Some(store) = &self.store {
+            let mut file = File::create(&store.filepath)?;
+            let mut nonce_bytes = [0u8; 12]; // 96 bits
+            thread_rng().fill(&mut nonce_bytes);
+            let plaintext = serde_cbor::to_vec(&self.set)?;
+            let nonce = Nonce::from_slice(&nonce_bytes);
+            let ciphertext = store.cipher.encrypt(nonce, plaintext.as_ref())?;
+            file.write(&nonce)?;
+            file.write(&ciphertext)?;
+        }
+
         Ok(())
     }
 }

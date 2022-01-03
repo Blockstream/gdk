@@ -190,13 +190,24 @@ pub struct RenameAccountOpt {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVVerifyTx {
+    /// The `txid` of the transaction to verify
     pub txid: String,
+    /// The `height` of the block containing the transaction to be verified
     pub height: u32,
-    pub path: String,
+    /// In which network we are verifying the transaction
     pub network: crate::network::Network,
-    pub encryption_key: String,
+    /// Path where to store the headers chain and the cache of the already verified transactions if
+    /// `encryption_key` is provided
+    pub path: String,
+    /// If callers are not handling a cache of the already verified tx, they can set this params to
+    /// to enable the cache in the callee side
+    /// Encryption is needed to encrypt the cache content to avoid leaking the txids of the transactions
+    pub encryption_key: Option<String>,
+    /// Optional tor proxy to use for network calls
     pub tor_proxy: Option<String>,
-    pub headers_to_download: Option<usize>, // defaults to 2016, useful to set for testing
+    /// Number of headers to download at every attempt, it defaults to 2016, useful to set lower
+    /// for testing
+    pub headers_to_download: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
