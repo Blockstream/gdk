@@ -463,12 +463,12 @@ mod tests {
     use bitcoin::Network;
     use gdk_common::{be::BETxid, NetworkId};
     use std::str::FromStr;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn test_db_roundtrip() {
         let id = NetworkId::Bitcoin(Network::Testnet);
-        let mut dir = TempDir::new("unit_test").unwrap().into_path();
+        let mut dir = TempDir::new().unwrap().into_path();
         dir.push("store");
         // abandon ... M/49'/0'/0'
         let xpub = ExtendedPubKey::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
@@ -489,7 +489,7 @@ mod tests {
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
 
-        let mut dir2 = TempDir::new("unit_test_2").unwrap().into_path();
+        let mut dir2 = TempDir::new().unwrap().into_path();
         dir2.push("store");
         // abandon ... M (master_xpub)
         let xpub2 = ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();

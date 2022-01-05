@@ -23,7 +23,7 @@ electrum-client = { version = "0.8.0", default-features = false, features = [ "p
 ureq = { version = "1.5.5", features = ["json", "socks-proxy"] }
 block-modes = "0.8.0"
 aes = "0.7.0"
-tempdir = "0.3.7"
+tempfile = "3.2.0"
 lazy_static = "1.4.0"
 # We need to pin half (transitive dep from serde_cbor) to stay compatible with Rust 1.49.0
 half = "~1.7"

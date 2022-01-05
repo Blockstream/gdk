@@ -27,7 +27,7 @@ half = "~1.7"
 
 
 [dev-dependencies]
-tempdir = "0.3.7"
+tempfile = "3.2.0"
 electrum-client = { version = "0.8.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 bitcoin = { version = "0.27.0", features = [ "use-serde" ] }
 #elements = { version = "0.18", features = ["serde-feature"] }

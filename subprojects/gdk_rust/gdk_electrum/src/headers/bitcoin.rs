@@ -242,7 +242,7 @@ mod test {
     use bitcoin::{BlockHeader, Network};
     use electrum_client::GetMerkleRes;
     use std::io::Cursor;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn test_headers() {
@@ -256,7 +256,7 @@ mod test {
         }
         assert_eq!(parsed_headers.len(), 199);
 
-        let temp = TempDir::new("temp_dir").unwrap();
+        let temp = TempDir::new().unwrap();
         let mut chain = HeadersChain::new(&temp, Network::Bitcoin).unwrap();
         chain.push(parsed_headers).unwrap();
         assert_eq!(chain.height(), 199);

@@ -16,7 +16,7 @@ use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 use log::info;
 use std::collections::HashMap;
 use std::{env, path};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 mod test_session;
 use test_session::TestSession;
@@ -815,7 +815,7 @@ fn subaccounts(is_liquid: bool) {
     let mut new_session = {
         let network = test_session.network().clone();
         let url = determine_electrum_url_from_net(&network).unwrap();
-        let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
+        let db_root_dir = TempDir::new().unwrap();
         let db_root = format!("{}", db_root_dir.path().display());
         let proxy = Some("");
         ElectrumSession::create_session(network, &db_root, proxy, url)

@@ -18,7 +18,7 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
@@ -144,7 +144,7 @@ pub fn setup(
 
     network_conf(&mut network);
 
-    let db_root_dir = TempDir::new("electrum_integration_tests").unwrap();
+    let db_root_dir = TempDir::new().unwrap();
 
     let db_root = format!("{}", db_root_dir.path().display());
     let proxy = Some("");
@@ -897,7 +897,7 @@ impl TestSession {
     }
 
     pub fn spv_verify_tx(&self, txid: &str, height: u32) {
-        let temp_dir = TempDir::new("electrum_integration_tests").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_dir_str = format!("{}", &temp_dir.path().display());
 
         let common = SPVCommonParams {
