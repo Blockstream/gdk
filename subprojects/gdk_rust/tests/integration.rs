@@ -1290,9 +1290,7 @@ fn setup_session(is_liquid: bool, network_conf: impl FnOnce(&mut Network)) -> Te
 
 fn get_chain(test_session: &mut TestSession) -> HeadersChain {
     test_session.stop();
-    let mut path: path::PathBuf = test_session.session.data_root.as_str().into();
-    path.push("headers_chain_regtest");
-    HeadersChain::new(path, bitcoin::Network::Regtest).unwrap()
+    HeadersChain::new(&test_session.session.data_root, bitcoin::Network::Regtest).unwrap()
 }
 
 fn assert_unwrap_invalid(result: spv::CrossValidationResult) -> spv::CrossValidationInvalid {

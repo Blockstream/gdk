@@ -11,7 +11,7 @@ use log::info;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct HeadersChain {
@@ -23,27 +23,32 @@ pub struct HeadersChain {
 }
 
 impl HeadersChain {
-    /// create a chain of headers based on the file identified by the `path` parameter.
+    /// Create a chain of headers which is persisted inside given `path` parameter using a file name
+    /// dependent on the given `network`
+    ///
     /// if the file doesn't exist, a chain with only the genesis block (relative to `network`) is returned
-    pub fn new(path: PathBuf, network: Network) -> Result<HeadersChain, Error> {
+    pub fn new<P: AsRef<Path>>(path: P, network: Network) -> Result<HeadersChain, Error> {
+        std::fs::create_dir_all(path.as_ref())?;
+        let mut filepath: PathBuf = path.as_ref().into();
+        filepath.push(format!("headers_chain_{}", network));
         let checkpoints = get_checkpoints(network);
-        if !path.exists() {
-            info!("{:?} chain file don't exists, creating", path);
+        if !filepath.exists() {
+            info!("{:?} chain file don't exists, creating", filepath);
             let last = genesis_block(network).header;
-            let mut file = File::create(&path)?;
+            let mut file = File::create(&filepath)?;
             file.write_all(&serialize(&last))?;
             let height = 0;
 
             Ok(HeadersChain {
-                path,
+                path: filepath,
                 height,
                 last,
                 checkpoints,
                 network,
             })
         } else {
-            info!("{:?} chain file exists, reading", path);
-            let mut file = File::open(&path)?;
+            info!("{:?} chain file exists, reading", filepath);
+            let mut file = File::open(&filepath)?;
             let file_size = file.metadata()?.len();
 
             file.seek(SeekFrom::Start(file_size - 80))?;
@@ -53,7 +58,7 @@ impl HeadersChain {
             let last: BlockHeader = deserialize(&buf)?;
 
             Ok(HeadersChain {
-                path,
+                path: filepath,
                 height,
                 last,
                 checkpoints,
@@ -125,7 +130,7 @@ impl HeadersChain {
     /// write new headers to the file if checks are passed
     pub fn push(&mut self, new_headers: Vec<BlockHeader>) -> Result<(), Error> {
         let mut curr_bits = self.curr_bits()?;
-        let mut serialized = vec![];
+        let mut serialized = Vec::with_capacity(new_headers.len() * 80);
         for new_header in new_headers {
             let new_height = self.height + 1;
             if self.last.block_hash() != new_header.prev_blockhash
@@ -252,9 +257,7 @@ mod test {
         assert_eq!(parsed_headers.len(), 199);
 
         let temp = TempDir::new("temp_dir").unwrap();
-        let mut path = temp.into_path();
-        path.push("chain");
-        let mut chain = HeadersChain::new(path, Network::Bitcoin).unwrap();
+        let mut chain = HeadersChain::new(&temp, Network::Bitcoin).unwrap();
         chain.push(parsed_headers).unwrap();
         assert_eq!(chain.height(), 199);
 

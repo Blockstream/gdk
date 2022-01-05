@@ -17,7 +17,7 @@ use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 pub mod bitcoin;
@@ -73,14 +73,12 @@ impl ParamsMethods for SPVCommonParams {
         url.build_client_with_proxy_and_timeout(&self.tor_proxy, self.timeout)
     }
     fn headers_chain(&self) -> Result<HeadersChain, Error> {
-        let mut path: PathBuf = (&self.path).into();
         let network = self
             .network
             .id()
             .get_bitcoin_network()
             .expect("headers_chain available only on bitcoin");
-        path.push(format!("headers_chain_{}", network));
-        Ok(HeadersChain::new(path, network)?)
+        Ok(HeadersChain::new(&self.path, network)?)
     }
     fn verified_cache(&self) -> Result<VerifiedCache, Error> {
         Ok(VerifiedCache::new(&self.path, self.network.id(), &self.encryption_key))
@@ -98,7 +96,9 @@ pub fn download_headers(input: &SPVDownloadHeaders) -> Result<SPVDownloadHeaders
     let headers = client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
     let mut reorg_happened = false;
     if let Err(Error::InvalidHeaders) = chain.push(headers) {
-        warn!("invalid headers, possible reorg, invalidating latest headers and latest verified tx");
+        warn!(
+            "invalid headers, possible reorg, invalidating latest headers and latest verified tx"
+        );
         // handle reorgs, using 144 as a super safe bet, should be parametrized per network
         let mut cache = input.params.verified_cache()?;
         chain.remove(144)?;
@@ -191,10 +191,13 @@ struct Store {
 }
 
 impl VerifiedCache {
-    fn new(path: &str, network: NetworkId, key: &Option<String>) -> Self {
-        match key {
+    /// If an `encription_key` is provided try to load a persisted cache of verified tx inside
+    /// given `path` in a file name dependent on the given `network`
+    fn new<P: AsRef<Path>>(path: P, network: NetworkId, encription_key: &Option<String>) -> Self {
+        std::fs::create_dir_all(path.as_ref()).expect("given path should be writeable");
+        match encription_key {
             Some(key) => {
-                let mut filepath: PathBuf = path.into();
+                let mut filepath: PathBuf = path.as_ref().into();
                 let filename_preimage = format!("{:?}{}", network, key);
                 let filename = sha256::Hash::hash(filename_preimage.as_bytes()).as_ref().to_hex();
                 let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();

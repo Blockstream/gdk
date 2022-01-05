@@ -544,9 +544,7 @@ impl Session<Error> for ElectrumSession {
         if self.network.spv_enabled.unwrap_or(false) {
             let checker = match self.network.id() {
                 NetworkId::Bitcoin(network) => {
-                    let mut path: PathBuf = self.data_root.as_str().into();
-                    path.push(format!("headers_chain_{}", network));
-                    ChainOrVerifier::Chain(HeadersChain::new(path, network)?)
+                    ChainOrVerifier::Chain(HeadersChain::new(&self.data_root, network)?)
                 }
                 NetworkId::Elements(network) => {
                     let verifier = Verifier::new(network);
