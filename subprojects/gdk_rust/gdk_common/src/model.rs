@@ -189,27 +189,57 @@ pub struct RenameAccountOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVVerifyTx {
-    /// The `txid` of the transaction to verify
-    pub txid: String,
-    /// The `height` of the block containing the transaction to be verified
-    pub height: u32,
+pub struct SPVCommonParams {
     /// In which network we are verifying the transaction
     pub network: crate::network::Network,
+
     /// Path where to store the headers chain and the cache of the already verified transactions if
     /// `encryption_key` is provided
     pub path: String,
-    /// If callers are not handling a cache of the already verified tx, they can set this params to
-    /// to enable the cache in the callee side
-    /// Encryption is needed to encrypt the cache content to avoid leaking the txids of the transactions
-    pub encryption_key: Option<String>,
+
     /// Optional tor proxy to use for network calls
     pub tor_proxy: Option<String>,
+
+    /// Maximum timeout for network call in seconds
+    pub timeout: Option<u8>,
+
+    /// If callers are not handling a cache of the already verified tx, they can set this params to
+    /// to enable the cache in the callee side.
+    /// Encryption is needed to encrypt the cache content to avoid leaking the txids of the transactions
+    pub encryption_key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct SPVVerifyTx {
+    #[serde(flatten)]
+    pub params: SPVCommonParams,
+
+    /// The `txid` of the transaction to verify
+    pub txid: String,
+
+    /// The `height` of the block containing the transaction to be verified
+    pub height: u32,
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct SPVDownloadHeaders {
+    #[serde(flatten)]
+    pub params: SPVCommonParams,
+
     /// Number of headers to download at every attempt, it defaults to 2016, useful to set lower
     /// for testing
     pub headers_to_download: Option<usize>,
-    /// Maximum timeout for network call in seconds
-    pub timeout: Option<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct SPVDownloadHeadersResult {
+    /// Current height tip of the headers downloaded
+    pub height: u32,
+
+    /// A reorg happened, any proof with height higher than this struct height must be considered
+    /// invalid
+    pub reorg: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

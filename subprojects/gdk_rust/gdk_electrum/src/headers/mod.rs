@@ -6,9 +6,11 @@ use ::bitcoin::hashes::hex::ToHex;
 use ::bitcoin::hashes::{sha256, sha256d, Hash};
 use aes_gcm_siv::aead::{Aead, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
-use electrum_client::{ElectrumApi, GetMerkleRes};
+use electrum_client::{Client, ElectrumApi, GetMerkleRes};
 use gdk_common::be::{BETxid, BETxidConvert};
-use gdk_common::model::{SPVVerifyResult, SPVVerifyTx};
+use gdk_common::model::{
+    SPVCommonParams, SPVDownloadHeaders, SPVDownloadHeadersResult, SPVVerifyResult, SPVVerifyTx,
+};
 use gdk_common::NetworkId;
 use log::{info, warn};
 use rand::{thread_rng, Rng};
@@ -59,27 +61,80 @@ lazy_static! {
     static ref SPV_MUTEX: Mutex<()> = Mutex::new(());
 }
 
+trait ParamsMethods {
+    fn build_client(&self) -> Result<Client, Error>;
+    fn headers_chain(&self) -> Result<HeadersChain, Error>;
+    fn verified_cache(&self) -> Result<VerifiedCache, Error>;
+}
+
+impl ParamsMethods for SPVCommonParams {
+    fn build_client(&self) -> Result<Client, Error> {
+        let url = determine_electrum_url_from_net(&self.network)?;
+        url.build_client_with_proxy_and_timeout(&self.tor_proxy, self.timeout)
+    }
+    fn headers_chain(&self) -> Result<HeadersChain, Error> {
+        let mut path: PathBuf = (&self.path).into();
+        let network = self
+            .network
+            .id()
+            .get_bitcoin_network()
+            .expect("headers_chain available only on bitcoin");
+        path.push(format!("headers_chain_{}", network));
+        Ok(HeadersChain::new(path, network)?)
+    }
+    fn verified_cache(&self) -> Result<VerifiedCache, Error> {
+        Ok(VerifiedCache::new(&self.path, self.network.id(), &self.encryption_key))
+    }
+}
+
+/// Download headers and persist locally, needed to verify tx with `spv_verify_tx`.
+///
+/// Used to expose SPV functionality through C interface
+pub fn download_headers(input: &SPVDownloadHeaders) -> Result<SPVDownloadHeadersResult, Error> {
+    info!("download_headers {:?}", input);
+    let client = input.params.build_client()?;
+    let mut chain = input.params.headers_chain()?;
+    let headers_to_download = input.headers_to_download.unwrap_or(2016);
+    let headers = client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
+    let mut reorg_happened = false;
+    if let Err(Error::InvalidHeaders) = chain.push(headers) {
+        warn!("invalid headers, possible reorg, invalidating latest headers and latest verified tx");
+        // handle reorgs, using 144 as a super safe bet, should be parametrized per network
+        let mut cache = input.params.verified_cache()?;
+        chain.remove(144)?;
+        cache.remove(144)?;
+        reorg_happened = true;
+    }
+    Ok(SPVDownloadHeadersResult {
+        height: chain.height(),
+        reorg: reorg_happened,
+    })
+}
+
+/// Verify that the given transaction identified by `input.txid` is included in a headers chain
+/// downloaded with `download_headers`.
+///
+/// A network call to download the inclusion proof will be performed if the tx is not already present
+/// in the cache and verified previously.
+///
 /// used to expose SPV functionality through C interface
 pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
     info!("spv_verify_tx {:?}", input);
-    let txid = BETxid::from_hex(&input.txid, input.network.id())?;
+    let txid = BETxid::from_hex(&input.txid, input.params.network.id())?;
 
-    let mut cache = VerifiedCache::new(&input.path, input.network.id(), &input.encryption_key);
-    if cache.contains(&txid)? {
+    let mut cache = input.params.verified_cache()?;
+    if cache.contains(&txid, input.height)? {
         info!("verified cache hit for {}", txid);
         return Ok(SPVVerifyResult::Verified);
     }
 
-    let url = determine_electrum_url_from_net(&input.network)?;
-    let client = url.build_client_with_proxy_and_timeout(&input.tor_proxy, input.timeout)?;
+    let client = input.params.build_client()?;
 
-    match input.network.id() {
+    match input.params.network.id() {
         NetworkId::Bitcoin(bitcoin_network) => {
-            let mut path: PathBuf = (&input.path).into();
-            path.push(format!("headers_chain_{}", bitcoin_network));
-            let mut chain = HeadersChain::new(path, bitcoin_network)?;
+            let chain = input.params.headers_chain()?;
 
             if input.height <= chain.height() {
                 let btxid = txid.ref_bitcoin().unwrap();
@@ -92,25 +147,14 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                     }
                 };
                 if chain.verify_tx_proof(btxid, input.height, proof).is_ok() {
-                    cache.write(&txid)?;
+                    cache.write(&txid, input.height)?;
                     Ok(SPVVerifyResult::Verified)
                 } else {
                     Ok(SPVVerifyResult::NotVerified)
                 }
             } else {
-                info!(
-                    "chain height ({}) not enough to verify, downloading 2016 headers",
-                    chain.height()
-                );
-                let headers_to_download = input.headers_to_download.unwrap_or(2016).min(2016);
-                let headers =
-                    client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
-                if let Err(Error::InvalidHeaders) = chain.push(headers) {
-                    // handle reorgs
-                    chain.remove(144)?;
-                    cache.clear()?;
-                    // XXX clear affected blocks/txs more surgically?
-                }
+                info!("chain height ({}) not enough to verify", chain.height());
+
                 Ok(SPVVerifyResult::InProgress)
             }
         }
@@ -127,7 +171,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             let header_bytes = client.block_header_raw(input.height as usize)?;
             let header: elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
             if verifier.verify_tx_proof(txid.ref_elements().unwrap(), proof, &header).is_ok() {
-                cache.write(&txid)?;
+                cache.write(&txid, input.height)?;
                 Ok(SPVVerifyResult::Verified)
             } else {
                 Ok(SPVVerifyResult::NotVerified)
@@ -137,7 +181,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
 }
 
 struct VerifiedCache {
-    set: HashSet<BETxid>,
+    set: HashSet<(BETxid, u32)>,
     store: Option<Store>,
 }
 
@@ -179,7 +223,7 @@ impl VerifiedCache {
     fn read_and_decrypt(
         filepath: &mut PathBuf,
         cipher: &Aes256GcmSiv,
-    ) -> Result<HashSet<BETxid>, Error> {
+    ) -> Result<HashSet<(BETxid, u32)>, Error> {
         let mut file = File::open(&filepath)?;
         let mut nonce_bytes = [0u8; 12]; // 96 bits
         file.read_exact(&mut nonce_bytes)?;
@@ -190,17 +234,18 @@ impl VerifiedCache {
         Ok(serde_cbor::from_slice(&plaintext)?)
     }
 
-    fn contains(&self, txid: &BETxid) -> Result<bool, Error> {
-        Ok(self.set.contains(txid))
+    fn contains(&self, txid: &BETxid, height: u32) -> Result<bool, Error> {
+        Ok(self.set.contains(&(txid.clone(), height)))
     }
 
-    fn write(&mut self, txid: &BETxid) -> Result<(), Error> {
-        self.set.insert(txid.clone());
+    fn write(&mut self, txid: &BETxid, height: u32) -> Result<(), Error> {
+        self.set.insert((txid.clone(), height));
         self.flush()
     }
 
-    fn clear(&mut self) -> Result<(), Error> {
-        self.set.clear();
+    /// remove all verified txid with height greater than given height
+    fn remove(&mut self, height: u32) -> Result<(), Error> {
+        self.set = self.set.iter().filter(|e| e.1 < height).cloned().collect();
         self.flush()
     }
 

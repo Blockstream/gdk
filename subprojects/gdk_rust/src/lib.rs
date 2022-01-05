@@ -23,7 +23,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{
     CreateAccountOpt, GetNextAccountOpt, GetSubaccountsOpt, GetTransactionsOpt, RenameAccountOpt,
-    SPVVerifyTx, SetAccountHiddenOpt, UpdateAccountOpt,
+    SPVDownloadHeaders, SPVVerifyTx, SetAccountHiddenOpt, UpdateAccountOpt,
 };
 use gdk_common::session::Session;
 
@@ -522,6 +522,10 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
         "spv_verify_tx" => {
             let param: SPVVerifyTx = serde_json::from_str(input)?;
             Ok(to_string(&gdk_electrum::headers::spv_verify_tx(&param)?.as_i32()))
+        }
+        "spv_download_headers" => {
+            let param: SPVDownloadHeaders = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_electrum::headers::download_headers(&param)?))
         }
         _ => Err(Error::MethodNotFound {
             method: method.to_string(),

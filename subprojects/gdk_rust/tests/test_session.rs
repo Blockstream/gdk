@@ -900,19 +900,27 @@ impl TestSession {
         let temp_dir = TempDir::new("electrum_integration_tests").unwrap();
         let temp_dir_str = format!("{}", &temp_dir.path().display());
 
+        let common = SPVCommonParams {
+            network: self.network.clone(),
+            path: temp_dir_str,
+            tor_proxy: None,
+            timeout: None,
+            encryption_key: Some("testing".to_string()),
+        };
         let param = SPVVerifyTx {
             txid: txid.to_string(),
             height,
-            path: temp_dir_str,
-            network: self.network.clone(),
-            tor_proxy: None,
-            encryption_key: None,
+            params: common.clone(),
+        };
+        let param_download = SPVDownloadHeaders {
+            params: common,
             headers_to_download: Some(1), // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
-            timeout: None,
         };
         loop {
             match gdk_electrum::headers::spv_verify_tx(&param) {
-                Ok(SPVVerifyResult::InProgress) => continue,
+                Ok(SPVVerifyResult::InProgress) => {
+                    gdk_electrum::headers::download_headers(&param_download).unwrap();
+                }
                 Ok(SPVVerifyResult::Verified) => break,
                 _ => assert!(false),
             }
