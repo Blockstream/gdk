@@ -50,6 +50,9 @@ impl HeadersChain {
             info!("{:?} chain file exists, reading", filepath);
             let mut file = File::open(&filepath)?;
             let file_size = file.metadata()?.len();
+            if file_size % 80 != 0 {
+                return Err(Error::InvalidHeaders);
+            }
 
             file.seek(SeekFrom::Start(file_size - 80))?;
             let mut buf = [0u8; 80];
@@ -131,6 +134,7 @@ impl HeadersChain {
     pub fn push(&mut self, new_headers: Vec<BlockHeader>) -> Result<(), Error> {
         let mut curr_bits = self.curr_bits()?;
         let mut serialized = Vec::with_capacity(new_headers.len() * 80);
+        let mut cache = HashMap::new();
         for new_header in new_headers {
             let new_height = self.height + 1;
             if self.last.block_hash() != new_header.prev_blockhash
@@ -140,8 +144,11 @@ impl HeadersChain {
             }
 
             if new_height % DIFFCHANGE_INTERVAL == 0 {
-                self.flush(&mut serialized)?;
-                let first = self.get(new_height - DIFFCHANGE_INTERVAL)?;
+                let first_height = new_height - DIFFCHANGE_INTERVAL;
+                let first = match cache.remove(&first_height) {
+                    Some(header) => header,
+                    None => self.get(first_height)?,
+                };
                 let new_target = calc_difficulty_retarget(&first, &self.last);
 
                 if new_header.bits != BlockHeader::compact_target_from_u256(&new_target) {
@@ -165,7 +172,7 @@ impl HeadersChain {
                 }
                 info!("checkpoint {} {} is ok", new_height, hash);
             }
-
+            cache.insert(new_height, new_header.clone());
             serialized.extend(serialize(&new_header));
             self.last = new_header;
             self.height = new_height;

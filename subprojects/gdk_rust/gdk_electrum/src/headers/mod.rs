@@ -89,6 +89,8 @@ impl ParamsMethods for SPVCommonParams {
 ///
 /// Used to expose SPV functionality through C interface
 pub fn download_headers(input: &SPVDownloadHeaders) -> Result<SPVDownloadHeadersResult, Error> {
+    let _ = SPV_MUTEX.lock().unwrap();
+
     info!("download_headers {:?}", input);
     let client = input.params.build_client()?;
     let mut chain = input.params.headers_chain()?;
@@ -119,8 +121,6 @@ pub fn download_headers(input: &SPVDownloadHeaders) -> Result<SPVDownloadHeaders
 ///
 /// used to expose SPV functionality through C interface
 pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
-    let _ = SPV_MUTEX.lock().unwrap();
-
     info!("spv_verify_tx {:?}", input);
     let txid = BETxid::from_hex(&input.txid, input.params.network.id())?;
 
