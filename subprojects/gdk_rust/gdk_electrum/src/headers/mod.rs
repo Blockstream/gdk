@@ -133,8 +133,8 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
     let client = input.params.build_client()?;
 
     match input.params.network.id() {
-        NetworkId::Bitcoin(bitcoin_network) => {
-            let chain = input.params.headers_chain()?;
+        NetworkId::Bitcoin(_bitcoin_network) => {
+            let chain = input.params.headers_chain().expect("match verified we are bitcoin type");
 
             if input.height <= chain.height() {
                 let btxid = txid.ref_bitcoin().unwrap();

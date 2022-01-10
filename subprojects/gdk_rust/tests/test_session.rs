@@ -1,6 +1,6 @@
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::{self, Amount};
-use electrsd::bitcoind::bitcoincore_rpc::{Auth, Client, RpcApi};
+use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
 use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
@@ -896,7 +896,7 @@ impl TestSession {
         }
     }
 
-    pub fn spv_verify_tx(&self, txid: &str, height: u32) {
+    pub fn spv_verify_tx(&mut self, txid: &str, height: u32) {
         let temp_dir = TempDir::new().unwrap();
         let temp_dir_str = format!("{}", &temp_dir.path().display());
 
@@ -913,13 +913,22 @@ impl TestSession {
             params: common.clone(),
         };
         let param_download = SPVDownloadHeaders {
-            params: common,
+            params: common.clone(),
             headers_to_download: Some(1), // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
         };
+        let tip = self.electrs_tip() as u32;
+
+        thread::spawn(move || {
+            let mut synced = 0;
+            while synced < tip {
+                let result = gdk_electrum::headers::download_headers(&param_download).unwrap();
+                synced = result.height;
+            }
+        });
         loop {
             match gdk_electrum::headers::spv_verify_tx(&param) {
                 Ok(SPVVerifyResult::InProgress) => {
-                    gdk_electrum::headers::download_headers(&param_download).unwrap();
+                    thread::sleep(Duration::from_millis(100));
                 }
                 Ok(SPVVerifyResult::Verified) => break,
                 _ => assert!(false),

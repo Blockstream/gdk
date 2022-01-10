@@ -15,7 +15,7 @@ use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
 use std::collections::HashMap;
-use std::{env, path};
+use std::env;
 use tempfile::TempDir;
 
 mod test_session;
