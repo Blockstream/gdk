@@ -27,7 +27,7 @@ namespace sdk {
         static std::atomic_bool init_done{ false };
         static nlohmann::json global_config;
 
-        void log_exception(const char* preamble, const std::exception& e)
+        static void log_exception(const char* preamble, const std::exception& e)
         {
             try {
                 const auto what = e.what();
@@ -36,6 +36,35 @@ namespace sdk {
             }
         }
 
+        // Ensure a session pointer goes out of scope in a detached thread.
+        // Call as: session_impl_delete(std::move(p))
+        static void session_impl_delete(boost::shared_ptr<session_impl> to_delete)
+        {
+            if (!to_delete) {
+                // An empty pointer will delete nothing; avoid thread creation
+                return;
+            }
+            // Pass the pointer by value to the deleting thread
+            std::thread t([to_delete] {
+                // Then by reference to the exception handler wrapper
+                no_std_exception_escape([&to_delete]() {
+                    // Move the threads pointer copy to ensure it goes out of
+                    // scope inside this exception handler
+                    decltype(to_delete) actual(std::move(to_delete));
+                    // Yield and then sleep; during this the caller should
+                    // return from the parent function call and thereby
+                    // release their pointer.
+                    std::this_thread::yield();
+                    std::this_thread::sleep_for(100ms);
+                    // actual now drops out of scope, calling the dtor
+                    // if no other references remain.
+                });
+            });
+            // Detach the deleting thread, our pointer will go out of
+            // scope immediately after (if the compiler didn't move it
+            // into the thread's to_delete variable directly).
+            t.detach();
+        }
     } // namespace
 
     int init(const nlohmann::json& config)
@@ -137,6 +166,7 @@ namespace sdk {
                 if (auto p = weak_session.lock()) {
                     GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
                     p->try_reconnect();
+                    session_impl_delete(std::move(p));
                 } else {
                     GDK_LOG_SEV(log_level::info) << "ping failure ignored on dead session";
                 }
@@ -145,6 +175,7 @@ namespace sdk {
                 if (auto p = weak_session.lock()) {
                     GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
                     p->try_reconnect();
+                    session_impl_delete(std::move(p));
                 } else {
                     GDK_LOG_SEV(log_level::info) << "pong timeout ignored on dead session";
                 }
@@ -154,6 +185,8 @@ namespace sdk {
             boost::shared_ptr<session_impl> empty;
             GDK_RUNTIME_ASSERT_MSG(m_impl.compare_exchange_strong(empty, session_p), "unable to allocate session");
             session_p->connect();
+            // In theory this should not be needed, but we do it for consistency.
+            session_impl_delete(std::move(empty));
         } catch (const std::exception& ex) {
             log_exception("exception on connect:", ex);
             std::rethrow_exception(std::current_exception());
@@ -193,6 +226,7 @@ namespace sdk {
                 GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
                 p->disconnect();
             }
+            session_impl_delete(std::move(p));
         });
     }
 
