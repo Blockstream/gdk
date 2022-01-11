@@ -197,10 +197,15 @@ pub struct SPVCommonParams {
     /// `encryption_key` is provided
     pub path: String,
 
-    /// Optional tor proxy to use for network calls
+    /// Optional tor proxy to use for network calls.
+    ///
+    /// Cannot be specified if `timeout` is some
     pub tor_proxy: Option<String>,
 
-    /// Maximum timeout for network call in seconds
+    /// Maximum timeout for network calls,
+    /// the final timeout in seconds is roughly equivalent to 2 + `timeout` * 2
+    ///
+    /// Cannot be specified if `tor_proxy` is some.
     pub timeout: Option<u8>,
 
     /// If callers are not handling a cache of the already verified tx, they can set this params to

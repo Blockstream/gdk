@@ -2,8 +2,8 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVVerifyResult, UpdateAccountOpt,
-    UtxoStrategy,
+    GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVCommonParams, SPVDownloadHeaders,
+    SPVVerifyResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -15,7 +15,10 @@ use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
 use std::collections::HashMap;
-use std::env;
+use std::io::Read;
+use std::net::TcpListener;
+use std::time::{Duration, Instant};
+use std::{env, thread};
 use tempfile::TempDir;
 
 mod test_session;
@@ -1240,6 +1243,37 @@ fn spv_cross_validation_session() {
 
     test_session1.stop();
     test_session2.stop();
+}
+
+#[test]
+fn test_spv_timeout() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap(); // 0 means the OS choose a free port
+    let mut network = Network::default();
+    network.electrum_url = Some(format!("{}", listener.local_addr().unwrap()));
+    let (s, r) = std::sync::mpsc::channel();
+    thread::spawn(move || {
+        // emulate an electrum server socket not replying for 3 seconds
+        s.send(()).unwrap();
+        let (_, _) = listener.accept().unwrap();
+        thread::sleep(Duration::from_secs(30));
+    });
+    // ensure the above thread is started and accepting connections
+    r.recv_timeout(Duration::from_secs(1)).unwrap();
+
+    let now = Instant::now();
+    let param_download = SPVDownloadHeaders {
+        params: SPVCommonParams {
+            network,
+            path: "".to_string(),
+            tor_proxy: None,
+            timeout: Some(1),
+            encryption_key: None,
+        },
+        headers_to_download: Some(1),
+    };
+    let _ = gdk_electrum::headers::download_headers(&param_download);
+
+    assert!(now.elapsed().as_secs() <= 5, "more than timeout time passed");
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
