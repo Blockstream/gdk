@@ -169,7 +169,7 @@ as the array elements of `GA_get_subaccounts`.
     "recovery_xpub": "",
     "required_ca": 0,
     "type": "2of2"
-    "has_txs": false
+    "bip44_discovered": false
   }
 
 :hidden: Whether the subaccount is hidden.
@@ -183,7 +183,7 @@ as the array elements of `GA_get_subaccounts`.
     that the user must upload to the server before transacting.
 :type: For multisig subaccounts, one of ``"2of2"``, ``"2of3"`` or ``"2of2_no_recovery"``.
     For singlesig subaccounts, one of ``"p2pkh"``, ``"p2wpkh"`` or ``"p2sh-p2wpkh"``.
-:has_txs: Return wheter this subaccount contains at least one transaction, present only in singlesig
+:bip44_discovered: Return wheter this subaccount contains at least one transaction, present only in singlesig
 
 .. _subaccount-update:
 

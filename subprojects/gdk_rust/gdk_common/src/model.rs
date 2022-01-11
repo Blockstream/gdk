@@ -409,7 +409,7 @@ pub struct AccountInfo {
     pub settings: AccountSettings,
     pub required_ca: u32,     // unused, always 0
     pub receiving_id: String, // unused, always ""
-    pub has_txs: bool,
+    pub bip44_discovered: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

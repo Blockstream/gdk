@@ -51,7 +51,7 @@ pub struct Account {
     master_blinding: Option<MasterBlindingKey>,
 
     /// When an account is discovered through `recover_accounts` is set to true, this is needed so
-    /// that `has_txs` in [`AccountInfo`] could be initialized correctly without needing the first sync.
+    /// that `bip44_discovered` in [`AccountInfo`] could be initialized correctly without needing the first sync.
     ///
     /// Note that this is set to true when the account is discovered, but this value is not persisted,
     /// thus at following logins it will be false.
@@ -109,7 +109,7 @@ impl Account {
             settings: settings.unwrap_or_default(),
             required_ca: 0,
             receiving_id: "".to_string(),
-            has_txs: self.has_transactions(),
+            bip44_discovered: self.has_transactions(),
         })
     }
 
