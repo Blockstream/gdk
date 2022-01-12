@@ -135,5 +135,19 @@ int main()
     t.join();
 #endif
 
+    // Try continuing an auth handler following disconnect()
+    bool exception_caught = false;
+    {
+        const nlohmann::json tx_details({ { "subaccount", 0 }, { "first", 0 }, { "count", 99999 } });
+        sdk::auto_auth_handler call(new sdk::get_transactions_call(session, tx_details));
+        session.disconnect();
+        try {
+            process_auth(call);
+        } catch (const std::exception&) {
+            exception_caught = true;
+        }
+    }
+    GDK_RUNTIME_ASSERT(exception_caught);
+
     return 0;
 }
