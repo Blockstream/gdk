@@ -49,6 +49,8 @@ static nlohmann::json process_auth(sdk::auth_handler& handler)
 
 int main()
 {
+    using namespace std::chrono_literals;
+
     nlohmann::json init_config;
     init_config["datadir"] = ".";
     sdk::init(init_config);
@@ -107,6 +109,31 @@ int main()
             std::cout << process_auth(call) << std::endl;
         }
     }
+
+#if 0
+    // Test disconnecting a session while an auth handler is in progress
+    // Create a thread fetching transactions on the session in a loop
+    std::thread t([&session] {
+        const nlohmann::json tx_details({ { "subaccount", 0 }, { "first", 0 }, { "count", 99999 } });
+        for (size_t i = 0; i < 1000u; ++i) {
+            std::this_thread::yield();
+            std::this_thread::sleep_for(1ms);
+            try {
+                sdk::auto_auth_handler call(new sdk::get_transactions_call(session, tx_details));
+                process_auth(call);
+            } catch (const std::exception& ex) {
+                // std::cout << "get_transactions_call exception: " << ex.what() << std::endl;
+                break;
+            }
+        }
+    });
+
+    // Let the thread start, then disconnect the session and wait for the thread to finish
+    std::this_thread::yield();
+    std::this_thread::sleep_for(100ms);
+    session.disconnect();
+    t.join();
+#endif
 
     return 0;
 }
