@@ -224,7 +224,7 @@ namespace sdk {
             }
             if (p && p->get_network_parameters().is_electrum()) {
                 GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
-                p->disconnect();
+                p->disconnect(true);
             }
             session_impl_delete(std::move(p));
         });

@@ -23,7 +23,7 @@ namespace sdk {
         std::string get_tor_socks5();
 
         void connect();
-        void disconnect();
+        void disconnect(bool user_initiated);
 
         nlohmann::json http_request(nlohmann::json params);
         nlohmann::json refresh_assets(const nlohmann::json& params);

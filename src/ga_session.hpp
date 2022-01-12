@@ -266,7 +266,7 @@ namespace sdk {
 
         void set_socket_options();
         void start_ping_timer();
-        void disconnect();
+        void disconnect(bool user_initiated);
 
         autobahn::wamp_subscription subscribe(
             locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);

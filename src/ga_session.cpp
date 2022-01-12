@@ -567,7 +567,7 @@ namespace sdk {
             m_pool.join();
             unsubscribe();
             reset_all_session_data(true);
-            disconnect();
+            disconnect(true);
             m_controller->reset();
         });
     }
@@ -896,7 +896,7 @@ namespace sdk {
     {
         try {
             unsubscribe();
-            disconnect();
+            disconnect(false);
             connect();
 
             // FIXME: Re-work re-login
@@ -918,10 +918,14 @@ namespace sdk {
         m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, _1));
     }
 
-    void ga_session::disconnect()
+    void ga_session::disconnect(bool user_initiated)
     {
-        nlohmann::json details{ { "connected", false } };
-        emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
+        if (!user_initiated) {
+            // Note we don't emit a notification if the user explicitly
+            // disconnected or destroyed the session.
+            nlohmann::json details{ { "connected", false } };
+            emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
+        }
 
         m_ping_timer.cancel();
 
