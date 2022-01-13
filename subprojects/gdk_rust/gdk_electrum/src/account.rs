@@ -1336,5 +1336,4 @@ mod test {
         test_derivation(161, ScriptType::P2wpkh, "m/84'/1'/10'");
         test_derivation(162, ScriptType::P2pkh, "m/44'/1'/10'");
     }
-
 }

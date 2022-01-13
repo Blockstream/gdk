@@ -44,7 +44,6 @@ use elements::confidential::{self, Asset, Nonce};
 use gdk_common::NetworkId;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 use std::{iter, sync, thread};
 
@@ -64,6 +63,7 @@ use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, RwLock};
 use std::thread::JoinHandle;
 
@@ -105,19 +105,25 @@ pub struct NativeNotif(
 unsafe impl Send for NativeNotif {}
 
 pub struct Closer {
-    pub senders: Vec<Sender<()>>,
+    pub terminates: Option<Arc<AtomicBool>>,
     pub handles: Vec<JoinHandle<()>>,
 }
 
 impl Closer {
     pub fn close(&mut self) -> Result<(), Error> {
-        while let Some(sender) = self.senders.pop() {
-            sender.send(())?;
-        }
+        self.terminates()?.store(true, Ordering::Relaxed);
+
         while let Some(handle) = self.handles.pop() {
             handle.join().expect("Couldn't join on the associated thread");
         }
         Ok(())
+    }
+    pub fn terminates(&self) -> Result<Arc<AtomicBool>, Error> {
+        Ok(self
+            .terminates
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| Error::Generic("terminates not initialized".to_string()))?)
     }
 }
 
@@ -139,31 +145,34 @@ pub enum State {
     Logged,
 }
 
-fn notify(notif: NativeNotif, data: Value) {
+fn notify(notif: NativeNotif, data: Value, terminated: Arc<AtomicBool>) {
     info!("push notification: {:?}", data);
+    if terminated.load(Ordering::Relaxed) {
+        warn!("terminated signal already received, skipping notification");
+        return;
+    }
     if let Some((handler, self_context)) = notif.0 {
-        // TODO check the native pointer is still alive
         handler(self_context, make_str(data.to_string()));
     } else {
         warn!("no registered handler to receive notification");
     }
 }
 
-fn notify_block(notif: NativeNotif, height: u32) {
+fn notify_block(notif: NativeNotif, height: u32, terminated: Arc<AtomicBool>) {
     let data = json!({"block":{"block_height":height},"event":"block"});
-    notify(notif, data);
+    notify(notif, data, terminated);
 }
 
-fn notify_settings(notif: NativeNotif, settings: &Settings) {
+fn notify_settings(notif: NativeNotif, settings: &Settings, terminated: Arc<AtomicBool>) {
     let data = json!({"settings":settings,"event":"settings"});
-    notify(notif, data);
+    notify(notif, data, terminated);
 }
 
-fn notify_updated_txs(notif: NativeNotif, account_num: u32) {
+fn notify_updated_txs(notif: NativeNotif, account_num: u32, terminated: Arc<AtomicBool>) {
     // This is used as a signal to trigger syncing via get_transactions, the transaction
     // list contained here is ignored and can be just a mock.
     let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[account_num]}});
-    notify(notif, mockup_json);
+    notify(notif, mockup_json, terminated);
 }
 
 fn determine_electrum_url(
@@ -218,7 +227,7 @@ impl ElectrumSession {
             wallet: None,
             notify: NativeNotif(None),
             closer: Closer {
-                senders: vec![],
+                terminates: None,
                 handles: vec![],
             },
             state: State::Disconnected,
@@ -448,6 +457,9 @@ impl Session<Error> for ElectrumSession {
     ) -> Result<LoginData, Error> {
         info!("login {:?} {:?}", self.network, self.state);
 
+        let terminates = Arc::new(AtomicBool::new(false));
+        self.closer.terminates = Some(terminates);
+
         if self.state == State::Logged {
             return Ok(LoginData {
                 wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
@@ -505,7 +517,7 @@ impl Session<Error> for ElectrumSession {
         };
 
         let mut tip_height = store.read()?.cache.tip.0;
-        notify_block(self.notify.clone(), tip_height);
+        notify_block(self.notify.clone(), tip_height, self.closer.terminates()?);
 
         info!(
             "building client, url {}, proxy {}",
@@ -550,8 +562,7 @@ impl Session<Error> for ElectrumSession {
 
             let headers_url = self.url.clone();
             let proxy = self.proxy.clone();
-            let (close_headers, r) = channel();
-            self.closer.senders.push(close_headers);
+            let terminates = self.closer.terminates()?;
             let notify_headers = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let headers_handle = thread::spawn(move || {
@@ -559,14 +570,14 @@ impl Session<Error> for ElectrumSession {
                 let mut round = 0u8;
 
                 'outer: loop {
-                    if wait_or_close(&r, sync_interval) {
+                    if wait_or_close(&terminates, sync_interval) {
                         info!("closing headers thread");
                         break;
                     }
 
                     if let Ok(client) = headers_url.build_client(proxy.as_deref()) {
                         loop {
-                            if r.try_recv().is_ok() {
+                            if terminates.load(Ordering::Relaxed) {
                                 info!("closing headers thread");
                                 break 'outer;
                             }
@@ -608,7 +619,11 @@ impl Session<Error> for ElectrumSession {
                             let status_changed = headers.cross_validate();
                             if status_changed {
                                 // TODO account number
-                                notify_updated_txs(notify_headers.clone(), 0u32.into());
+                                notify_updated_txs(
+                                    notify_headers.clone(),
+                                    0u32.into(),
+                                    terminates.clone(),
+                                );
                             }
                         }
 
@@ -651,8 +666,7 @@ impl Session<Error> for ElectrumSession {
 
         let notify_blocks = self.notify.clone();
 
-        let (close_tipper, r) = channel();
-        self.closer.senders.push(close_tipper);
+        let terminates = self.closer.terminates()?;
         let tipper_url = self.url.clone();
         let proxy = self.proxy.clone();
         let tipper_handle = thread::spawn(move || {
@@ -664,7 +678,7 @@ impl Session<Error> for ElectrumSession {
                             if tip_height != current_tip {
                                 tip_height = current_tip;
                                 info!("tip is {:?}", tip_height);
-                                notify_block(notify_blocks.clone(), tip_height);
+                                notify_block(notify_blocks.clone(), tip_height, terminates.clone());
                             }
                         }
                         Err(e) => {
@@ -672,7 +686,7 @@ impl Session<Error> for ElectrumSession {
                         }
                     }
                 }
-                if wait_or_close(&r, sync_interval) {
+                if wait_or_close(&terminates, sync_interval) {
                     info!("closing tipper thread {:?}", tip_height);
                     break;
                 }
@@ -680,8 +694,7 @@ impl Session<Error> for ElectrumSession {
         });
         self.closer.handles.push(tipper_handle);
 
-        let (close_syncer, r) = channel();
-        self.closer.senders.push(close_syncer);
+        let terminates = self.closer.terminates()?;
         let notify_txs = self.notify.clone();
         let syncer_url = self.url.clone();
         let proxy = self.proxy.clone();
@@ -693,14 +706,18 @@ impl Session<Error> for ElectrumSession {
                         Ok(updated_accounts) => {
                             for account_num in updated_accounts {
                                 info!("there are new transactions");
-                                notify_updated_txs(notify_txs.clone(), account_num);
+                                notify_updated_txs(
+                                    notify_txs.clone(),
+                                    account_num,
+                                    terminates.clone(),
+                                );
                             }
                         }
                         Err(e) => warn!("Error during sync, {:?}", e),
                     },
                     Err(e) => warn!("Can't build client {:?}", e),
                 }
-                if wait_or_close(&r, sync_interval) {
+                if wait_or_close(&terminates, sync_interval) {
                     info!("closing syncer thread");
                     break;
                 }
@@ -708,7 +725,7 @@ impl Session<Error> for ElectrumSession {
         });
         self.closer.handles.push(syncer_handle);
 
-        notify_settings(self.notify.clone(), &self.get_settings()?);
+        notify_settings(self.notify.clone(), &self.get_settings()?, self.closer.terminates()?);
 
         self.state = State::Logged;
         Ok(LoginData {
@@ -900,7 +917,7 @@ impl Session<Error> for ElectrumSession {
         let mut settings = wallet.get_settings()?;
         settings.update(value);
         self.get_wallet()?.change_settings(&settings)?;
-        notify_settings(self.notify.clone(), &settings);
+        notify_settings(self.notify.clone(), &settings, self.closer.terminates()?);
         Ok(())
     }
 
@@ -1527,12 +1544,12 @@ impl Syncer {
     }
 }
 
-fn wait_or_close(r: &Receiver<()>, interval: u32) -> bool {
+fn wait_or_close(terminate: &Arc<AtomicBool>, interval: u32) -> bool {
     for _ in 0..(interval * 2) {
-        thread::sleep(Duration::from_millis(500));
-        if r.try_recv().is_ok() {
+        if terminate.load(Ordering::Relaxed) {
             return true;
         }
+        thread::sleep(Duration::from_millis(500));
     }
     false
 }
