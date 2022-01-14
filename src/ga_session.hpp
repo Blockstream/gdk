@@ -307,7 +307,6 @@ namespace sdk {
         boost::asio::deadline_timer m_ping_timer;
 
         std::unique_ptr<network_control_context> m_network_control;
-        boost::asio::thread_pool m_pool;
 
         nlohmann::json m_login_data;
         boost::optional<pbkdf2_hmac512_t> m_local_encryption_key;

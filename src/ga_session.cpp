@@ -145,7 +145,6 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
-        static const uint32_t DEFAULT_THREADPOOL_SIZE = 4; // Number of asio pool threads
 
         static const std::array<const char*, 6> SPV_STATUS_NAMES
             = { "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed" };
@@ -522,6 +521,8 @@ namespace sdk {
             });
         }
 
+        template <typename FN> void post(FN&& fn) { asio::post(m_work_guard.get_executor(), fn); }
+
         std::thread m_run_thread;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
     };
@@ -533,7 +534,6 @@ namespace sdk {
         , m_io()
         , m_ping_timer(m_io)
         , m_network_control(new network_control_context())
-        , m_pool(DEFAULT_THREADPOOL_SIZE)
         , m_blob()
         , m_blob_hmac()
         , m_blob_outdated(false)
@@ -564,7 +564,6 @@ namespace sdk {
     {
         no_std_exception_escape([this] {
             stop_reconnect();
-            m_pool.join();
             unsubscribe();
             reset_all_session_data(true);
             disconnect(true);
@@ -813,7 +812,7 @@ namespace sdk {
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {
         if (async) {
-            asio::post(m_pool, [this, details] { emit_notification(details, false); });
+            m_controller->post([this, details] { emit_notification(details, false); });
         } else {
             session_impl::emit_notification(details, false);
         }
@@ -844,7 +843,7 @@ namespace sdk {
         m_ping_timer.cancel();
         m_network_control->reset();
 
-        boost::asio::post(m_pool, [this] {
+        m_controller->post([this] {
             const auto thread_id = std::this_thread::get_id();
 
             GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::hex << thread_id << " started.";
@@ -1525,7 +1524,7 @@ namespace sdk {
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            asio::post(m_pool, [this, subaccounts, details] { on_new_transaction(subaccounts, details); });
+            m_controller->post([this, subaccounts, details] { on_new_transaction(subaccounts, details); });
             return;
         }
 
@@ -1599,7 +1598,7 @@ namespace sdk {
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            asio::post(m_pool, [this, details, is_relogin] { on_new_block(details, is_relogin); });
+            m_controller->post([this, details, is_relogin] { on_new_block(details, is_relogin); });
             return;
         }
         on_new_block(locker, details, is_relogin);
@@ -3003,7 +3002,7 @@ namespace sdk {
                         // FIXME: Creates a thread for every get_transactions call until synced
                         // to the txs_block height.
                         sync_in_progress = true;
-                        asio::post(m_pool, [spv_params] {
+                        m_controller->post([spv_params] {
                             while (!spv_verify_tx(spv_params)) {
                             }
                         });
