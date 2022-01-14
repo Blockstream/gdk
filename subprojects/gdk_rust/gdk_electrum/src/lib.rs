@@ -856,13 +856,13 @@ impl Session<Error> for ElectrumSession {
         &mut self,
         tx_req: &mut CreateTransaction,
     ) -> Result<TransactionMeta, Error> {
-        info!("electrum create_transaction {:#?}", tx_req);
+        info!("electrum create_transaction {:?}", tx_req);
 
         self.get_wallet()?.create_tx(tx_req)
     }
 
     fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        info!("electrum sign_transaction {:#?}", create_tx);
+        info!("electrum sign_transaction {:?}", create_tx);
         self.get_wallet()?.sign(create_tx)
     }
 
