@@ -800,9 +800,7 @@ namespace sdk {
             m_ping_fail_handler();
         }
 
-        using websocketpp::lib::placeholders::_1;
-        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
-        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, _1));
+        start_ping_timer();
     }
 
     void ga_session::set_heartbeat_timeout_handler(heartbeat_t handler) { m_heartbeat_handler = std::move(handler); }
