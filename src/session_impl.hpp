@@ -2,10 +2,12 @@
 #define GDK_SESSION_IMPL_HPP
 
 #pragma once
+#include <mutex>
+#include <set>
 #include <thread>
 
 #include "amount.hpp"
-#include "autobahn_wrapper.hpp"
+#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
 
