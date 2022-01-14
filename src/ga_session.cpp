@@ -686,16 +686,23 @@ namespace sdk {
             proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
+        using namespace std::placeholders;
         if (m_net_params.is_tls_connection()) {
             auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
-            clnt.set_pong_timeout_handler(m_heartbeat_handler);
+            clnt.set_pong_timeout_handler(std::bind(&ga_session::heartbeat_timeout_cb, this, _1, _2));
             m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, m_debug_logging);
         } else {
             auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
-            clnt.set_pong_timeout_handler(m_heartbeat_handler);
+            clnt.set_pong_timeout_handler(std::bind(&ga_session::heartbeat_timeout_cb, this, _1, _2));
             m_transport = std::make_shared<transport>(clnt, server, m_proxy, m_debug_logging);
         }
         m_transport->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
+    }
+
+    void ga_session::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
+    {
+        GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
+        try_reconnect();
     }
 
     bool ga_session::ping() const
@@ -796,16 +803,12 @@ namespace sdk {
         }
 
         if (!ping()) {
-            GDK_RUNTIME_ASSERT(m_ping_fail_handler != nullptr);
-            m_ping_fail_handler();
+            GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
+            try_reconnect();
         }
 
         start_ping_timer();
     }
-
-    void ga_session::set_heartbeat_timeout_handler(heartbeat_t handler) { m_heartbeat_handler = std::move(handler); }
-
-    void ga_session::set_ping_fail_handler(ping_fail_t handler) { m_ping_fail_handler = std::move(handler); }
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {

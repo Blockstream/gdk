@@ -12,8 +12,6 @@ namespace sdk {
         ~ga_rust();
 
         bool is_connected() const;
-        void set_ping_fail_handler(ping_fail_t handler);
-        void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler);
         bool reconnect();
         void try_reconnect();
         void reconnect_hint(bool, bool);

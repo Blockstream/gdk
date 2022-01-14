@@ -160,26 +160,6 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(!get_impl(), "session already connected");
 
             boost::shared_ptr<session_impl> session_p = session_impl::create(net_params);
-
-            boost::weak_ptr<session_impl> weak_session = session_p;
-            session_p->set_ping_fail_handler([weak_session] {
-                if (auto p = weak_session.lock()) {
-                    GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
-                    p->try_reconnect();
-                    session_impl_delete(std::move(p));
-                } else {
-                    GDK_LOG_SEV(log_level::info) << "ping failure ignored on dead session";
-                }
-            });
-            session_p->set_heartbeat_timeout_handler([weak_session](websocketpp::connection_hdl, const std::string&) {
-                if (auto p = weak_session.lock()) {
-                    GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
-                    p->try_reconnect();
-                    session_impl_delete(std::move(p));
-                } else {
-                    GDK_LOG_SEV(log_level::info) << "pong timeout ignored on dead session";
-                }
-            });
             session_p->set_notification_handler(m_notification_handler, m_notification_context);
 
             boost::shared_ptr<session_impl> empty;

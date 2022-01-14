@@ -11,7 +11,6 @@
 
 namespace ga {
 namespace sdk {
-    using ping_fail_t = std::function<void()>;
     using pubkey_and_script_t = std::pair<std::vector<unsigned char>, std::vector<unsigned char>>;
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
@@ -59,8 +58,6 @@ namespace sdk {
             const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
 
         virtual bool is_connected() const = 0;
-        virtual void set_ping_fail_handler(ping_fail_t handler) = 0;
-        virtual void set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler) = 0;
         // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
         virtual bool reconnect() = 0;

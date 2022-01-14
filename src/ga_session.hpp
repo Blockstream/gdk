@@ -33,7 +33,6 @@ namespace sdk {
     class ga_session final : public session_impl {
     public:
         using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
-        using heartbeat_t = websocketpp::pong_timeout_handler;
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(network_parameters&& net_params);
@@ -47,9 +46,7 @@ namespace sdk {
         void reconnect_hint(bool enabled, bool restarted);
         std::string get_tor_socks5();
         void tor_sleep_hint(const std::string& hint);
-
-        void set_heartbeat_timeout_handler(heartbeat_t handler);
-        void set_ping_fail_handler(ping_fail_t handler);
+        void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
 
         nlohmann::json http_request(nlohmann::json params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
@@ -305,8 +302,6 @@ namespace sdk {
         transport_t m_transport;
         wamp_session_ptr m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
-        heartbeat_t m_heartbeat_handler;
-        ping_fail_t m_ping_fail_handler;
 
         boost::asio::deadline_timer m_ping_timer;
 

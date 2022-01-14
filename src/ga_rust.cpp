@@ -88,12 +88,6 @@ namespace sdk {
 
     bool ga_rust::is_connected() const { throw std::runtime_error("is_connected not implemented"); }
 
-    void ga_rust::set_ping_fail_handler(ping_fail_t handler) {}
-    void ga_rust::set_heartbeat_timeout_handler(websocketpp::pong_timeout_handler)
-    {
-        // throw std::runtime_error("set_heartbeat_timeout_handler not implemented");
-    }
-
     bool ga_rust::reconnect()
     {
         disconnect(false);
