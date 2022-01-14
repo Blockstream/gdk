@@ -951,7 +951,6 @@ impl TestSession {
     /// check `get_unspent_outputs` contains the `expected_amounts` for the given `asset`
     pub fn utxo(&self, asset: &str, mut expected_amounts: Vec<u64>) -> GetUnspentOutputs {
         let outputs = self.utxos(0);
-        dbg!(&outputs);
         let amounts = if expected_amounts.len() == 0 {
             vec![]
         } else {
