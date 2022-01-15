@@ -707,17 +707,17 @@ namespace sdk {
 
     bool ga_session::ping() const
     {
-        bool expect_pong = false;
-        no_std_exception_escape([this, &expect_pong] {
+        bool got_pong = false;
+        no_std_exception_escape([this, &got_pong] {
             if (is_connected()) {
                 if (m_net_params.is_tls_connection()) {
-                    expect_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
+                    got_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
                 } else {
-                    expect_pong = std::static_pointer_cast<transport>(m_transport)->ping(std::string());
+                    got_pong = std::static_pointer_cast<transport>(m_transport)->ping(std::string());
                 }
             }
         });
-        return expect_pong;
+        return got_pong;
     }
 
     context_ptr ga_session::tls_init_handler_impl(
