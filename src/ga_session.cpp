@@ -509,8 +509,9 @@ namespace sdk {
     struct event_loop_controller {
         explicit event_loop_controller(asio::io_context& io)
             : m_work_guard(asio::make_work_guard(io))
+            , m_run_thread(std::thread([&] { io.run(); }))
+            , m_ping_timer(io)
         {
-            m_run_thread = std::thread([&] { io.run(); });
         }
 
         void reset()
@@ -523,8 +524,20 @@ namespace sdk {
 
         template <typename FN> void post(FN&& fn) { asio::post(m_work_guard.get_executor(), fn); }
 
-        std::thread m_run_thread;
+        template <typename FN>
+
+        void start_ping_timer(FN&& fn)
+        {
+            GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
+            m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
+            m_ping_timer.async_wait(fn);
+        }
+
+        void cancel_ping_timer() { m_ping_timer.cancel(); }
+
         asio::executor_work_guard<asio::io_context::executor_type> m_work_guard;
+        std::thread m_run_thread;
+        asio::deadline_timer m_ping_timer;
     };
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -532,7 +545,6 @@ namespace sdk {
         , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
         , m_has_network_proxy(!m_proxy.empty())
         , m_io()
-        , m_ping_timer(m_io)
         , m_network_control(new network_control_context())
         , m_blob()
         , m_blob_hmac()
@@ -644,6 +656,7 @@ namespace sdk {
         m_session->start().get();
         m_session->join("realm1").get();
         set_socket_options();
+        using std::placeholders::_1;
         start_ping_timer();
     }
 
@@ -839,7 +852,7 @@ namespace sdk {
             return;
         }
 
-        m_ping_timer.cancel();
+        m_controller->cancel_ping_timer();
         m_network_control->reset();
 
         m_controller->post([this] {
@@ -911,10 +924,8 @@ namespace sdk {
 
     void ga_session::start_ping_timer()
     {
-        GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
-        using websocketpp::lib::placeholders::_1;
-        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
-        m_ping_timer.async_wait(boost::bind(&ga_session::ping_timer_handler, this, _1));
+        using std::placeholders::_1;
+        m_controller->start_ping_timer(std::bind(&ga_session::ping_timer_handler, this, _1));
     }
 
     void ga_session::disconnect(bool user_initiated)
@@ -926,7 +937,7 @@ namespace sdk {
             emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
         }
 
-        m_ping_timer.cancel();
+        m_controller->cancel_ping_timer();
 
         if (m_session) {
             no_std_exception_escape([this] {

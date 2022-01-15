@@ -304,8 +304,6 @@ namespace sdk {
         wamp_session_ptr m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
 
-        boost::asio::deadline_timer m_ping_timer;
-
         std::unique_ptr<network_control_context> m_network_control;
 
         nlohmann::json m_login_data;
