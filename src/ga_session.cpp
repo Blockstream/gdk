@@ -575,6 +575,7 @@ namespace sdk {
     ga_session::~ga_session()
     {
         no_std_exception_escape([this] {
+            m_controller->cancel_ping_timer();
             stop_reconnect();
             unsubscribe();
             reset_all_session_data(true);
@@ -930,14 +931,14 @@ namespace sdk {
 
     void ga_session::disconnect(bool user_initiated)
     {
+        m_controller->cancel_ping_timer();
+
         if (!user_initiated) {
             // Note we don't emit a notification if the user explicitly
             // disconnected or destroyed the session.
             nlohmann::json details{ { "connected", false } };
             emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
         }
-
-        m_controller->cancel_ping_timer();
 
         if (m_session) {
             no_std_exception_escape([this] {
