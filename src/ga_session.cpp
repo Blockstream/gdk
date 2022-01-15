@@ -456,7 +456,7 @@ namespace sdk {
         }
 
         static bool check_cert_pins(
-            const std::vector<std::string>& pins, boost::asio::ssl::verify_context& ctx, uint32_t cert_expiry_threshold)
+            const std::vector<std::string>& pins, asio::ssl::verify_context& ctx, uint32_t cert_expiry_threshold)
         {
             const int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
             const bool is_leaf_cert = depth == 0;
@@ -507,8 +507,8 @@ namespace sdk {
     }
 
     struct event_loop_controller {
-        explicit event_loop_controller(boost::asio::io_context& io)
-            : m_work_guard(boost::asio::make_work_guard(io))
+        explicit event_loop_controller(asio::io_context& io)
+            : m_work_guard(asio::make_work_guard(io))
         {
             m_run_thread = std::thread([&] { io.run(); });
         }
@@ -524,7 +524,7 @@ namespace sdk {
         template <typename FN> void post(FN&& fn) { asio::post(m_work_guard.get_executor(), fn); }
 
         std::thread m_run_thread;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+        asio::executor_work_guard<asio::io_context::executor_type> m_work_guard;
     };
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -615,22 +615,22 @@ namespace sdk {
             }
         };
 
-        boost::asio::ip::tcp::no_delay no_delay(true);
+        asio::ip::tcp::no_delay no_delay(true);
         set_option(no_delay);
-        boost::asio::socket_base::keep_alive keep_alive(true);
+        asio::socket_base::keep_alive keep_alive(true);
         set_option(keep_alive);
 
 #if defined __APPLE__
-        using tcp_keep_alive = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPALIVE>;
+        using tcp_keep_alive = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPALIVE>;
         set_option(tcp_keep_alive{ DEFAULT_KEEPIDLE });
 #elif __linux__ || __ANDROID__ || __FreeBSD__
-        using keep_idle = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPIDLE>;
+        using keep_idle = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPIDLE>;
         set_option(keep_idle{ DEFAULT_KEEPIDLE });
 #endif
 #ifndef __WIN64
-        using keep_interval = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPINTVL>;
+        using keep_interval = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPINTVL>;
         set_option(keep_interval{ DEFAULT_KEEPINTERVAL });
-        using keep_count = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPCNT>;
+        using keep_count = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPCNT>;
         set_option(keep_count{ DEFAULT_KEEPCNT });
 #endif
     }
@@ -722,12 +722,11 @@ namespace sdk {
     context_ptr ga_session::tls_init_handler_impl(
         const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins)
     {
-        const context_ptr ctx = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tls);
-        ctx->set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2
-            | boost::asio::ssl::context::no_sslv3 | boost::asio::ssl::context::no_tlsv1
-            | boost::asio::ssl::context::no_tlsv1_1 | boost::asio::ssl::context::single_dh_use);
-        ctx->set_verify_mode(
-            boost::asio::ssl::context::verify_peer | boost::asio::ssl::context::verify_fail_if_no_peer_cert);
+        const context_ptr ctx = std::make_shared<asio::ssl::context>(asio::ssl::context::tls);
+        ctx->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2
+            | asio::ssl::context::no_sslv3 | asio::ssl::context::no_tlsv1 | asio::ssl::context::no_tlsv1_1
+            | asio::ssl::context::single_dh_use);
+        ctx->set_verify_mode(asio::ssl::context::verify_peer | asio::ssl::context::verify_fail_if_no_peer_cert);
         // attempt to load system roots
         ctx->set_default_verify_paths();
         for (const auto& root : roots) {
@@ -747,11 +746,11 @@ namespace sdk {
             }
 
             // add network provided root
-            const boost::asio::const_buffer root_const_buff(root.c_str(), root.size());
+            const asio::const_buffer root_const_buff(root.c_str(), root.size());
             ctx->add_certificate_authority(root_const_buff);
         }
 
-        ctx->set_verify_callback([this, pins, host_name](bool preverified, boost::asio::ssl::verify_context& ctx) {
+        ctx->set_verify_callback([this, pins, host_name](bool preverified, asio::ssl::verify_context& ctx) {
             // Pre-verification includes checking for things like expired certificates
             if (!preverified) {
                 const int err = X509_STORE_CTX_get_error(ctx.native_handle());
@@ -797,7 +796,7 @@ namespace sdk {
 
     void ga_session::ping_timer_handler(const boost::system::error_code& ec)
     {
-        if (ec == boost::asio::error::operation_aborted) {
+        if (ec == asio::error::operation_aborted) {
             return;
         }
 
