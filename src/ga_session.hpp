@@ -43,7 +43,7 @@ namespace sdk {
             const std::string& gait_path_hex, bool supports_csv);
 
         void connect();
-        void try_reconnect();
+        void reconnect();
         void reconnect_hint(bool enabled, bool restarted);
         std::string get_tor_socks5();
         void tor_sleep_hint(const std::string& hint);
@@ -192,7 +192,7 @@ namespace sdk {
         void reset_all_session_data(bool in_dtor);
 
         bool is_connected() const;
-        bool reconnect();
+        bool reconnect_impl();
         void stop_reconnect();
 
         void load_client_blob(locker_t& locker, bool encache);

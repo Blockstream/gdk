@@ -715,7 +715,7 @@ namespace sdk {
     void ga_session::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
     {
         GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
-        try_reconnect();
+        reconnect();
     }
 
     bool ga_session::ping() const
@@ -816,7 +816,7 @@ namespace sdk {
 
         if (!ping()) {
             GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
-            try_reconnect();
+            reconnect();
         }
 
         start_ping_timer();
@@ -831,9 +831,9 @@ namespace sdk {
         }
     }
 
-    void ga_session::try_reconnect()
+    void ga_session::reconnect()
     {
-        GDK_LOG_NAMED_SCOPE("try_reconnect");
+        GDK_LOG_NAMED_SCOPE("reconnect");
 
         if (!m_network_control->is_enabled()) {
             GDK_LOG_SEV(log_level::info) << "reconnect is disabled. backing off...";
@@ -875,7 +875,7 @@ namespace sdk {
                     break;
                 }
 
-                if (reconnect()) {
+                if (reconnect_impl()) {
                     GDK_LOG_SEV(log_level::info)
                         << "reconnect thread " << std::hex << thread_id << " exiting on reconnect.";
                     break;
@@ -905,7 +905,7 @@ namespace sdk {
         }
     }
 
-    bool ga_session::reconnect()
+    bool ga_session::reconnect_impl()
     {
         try {
             unsubscribe();

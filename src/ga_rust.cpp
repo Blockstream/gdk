@@ -88,18 +88,15 @@ namespace sdk {
 
     bool ga_rust::is_connected() const { throw std::runtime_error("is_connected not implemented"); }
 
-    bool ga_rust::reconnect()
+    void ga_rust::reconnect()
     {
         disconnect(false);
         if (m_reconnect_restart) {
             connect();
         }
-        return true;
     }
 
     void ga_rust::reconnect_hint(bool enable, bool restart) { m_reconnect_restart = restart; }
-
-    void ga_rust::try_reconnect() { reconnect(); }
 
     void ga_rust::tor_sleep_hint(const std::string& hint)
     {

@@ -192,7 +192,7 @@ namespace sdk {
             return;
         }
 
-        p->try_reconnect();
+        p->reconnect();
     }
 
     void session::disconnect()

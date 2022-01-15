@@ -12,8 +12,7 @@ namespace sdk {
         ~ga_rust();
 
         bool is_connected() const;
-        bool reconnect();
-        void try_reconnect();
+        void reconnect();
         void reconnect_hint(bool, bool);
 
         // TODO: remove me when tor MR extract lands
