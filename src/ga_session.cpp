@@ -120,8 +120,6 @@ namespace sdk {
         void set_enabled(bool v) { m_enabled = v; }
         bool is_enabled() const { return m_enabled; }
 
-        void reset() { reset_exit(); }
-
     private:
         flag_type m_exit_flag;
         std::atomic_bool m_reconnect_flag{ false };
@@ -854,7 +852,7 @@ namespace sdk {
         }
 
         m_controller->cancel_ping_timer();
-        m_network_control->reset();
+        m_network_control->reset_exit();
 
         m_controller->post([this] {
             const auto thread_id = std::this_thread::get_id();
