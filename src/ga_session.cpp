@@ -102,27 +102,40 @@ namespace sdk {
     };
 
     struct network_control_context {
-        bool set_reconnect(bool reconnect)
+        bool set_reconnecting(bool want_to_reconnect)
         {
-            bool r = m_reconnect_flag;
-            if (r && reconnect) {
-                return false;
+            bool currently_reconnecting = m_reconnecting;
+            if (want_to_reconnect && currently_reconnecting) {
+                return false; // Already reconnecting
             }
-            return m_reconnect_flag.compare_exchange_strong(r, reconnect);
+            bool can_reconnect = m_reconnecting.compare_exchange_strong(currently_reconnecting, want_to_reconnect);
+            if (want_to_reconnect && can_reconnect) {
+                // No one else is currently reconnecting.
+                // Reset m_exit_flag to allow later cancelling of a reconnect.
+                m_exit_flag = flag_type{};
+            }
+            return can_reconnect;
         }
 
-        bool reconnecting() const { return m_reconnect_flag; }
+        void stop_reconnecting()
+        {
+            if (m_reconnecting) {
+                // Set the future status to ready, causing is_reconnect_canceled to return true
+                m_exit_flag.set();
+            }
+        }
 
-        void reset_exit() { m_exit_flag = flag_type{}; }
-        void set_exit() { m_exit_flag.set(); }
-        bool retrying(std::chrono::seconds secs) const { return m_exit_flag.wait(secs) != std::future_status::ready; }
+        bool is_reconnect_canceled(std::chrono::seconds secs) const
+        {
+            return m_exit_flag.wait(secs) == std::future_status::ready;
+        }
 
         void set_enabled(bool v) { m_enabled = v; }
         bool is_enabled() const { return m_enabled; }
 
     private:
         flag_type m_exit_flag;
-        std::atomic_bool m_reconnect_flag{ false };
+        std::atomic_bool m_reconnecting{ false };
         std::atomic_bool m_enabled{ true };
     };
 
@@ -574,7 +587,7 @@ namespace sdk {
     {
         no_std_exception_escape([this] {
             m_controller->cancel_ping_timer();
-            stop_reconnect();
+            m_network_control->stop_reconnecting();
             unsubscribe();
             reset_all_session_data(true);
             disconnect(true);
@@ -846,15 +859,15 @@ namespace sdk {
             return;
         }
 
-        if (!m_network_control->set_reconnect(true)) {
+        if (!m_network_control->set_reconnecting(true)) {
             GDK_LOG_SEV(log_level::info) << "reconnect in progress. backing off...";
             return;
         }
 
         m_controller->cancel_ping_timer();
-        m_network_control->reset_exit();
 
-        m_controller->post([this] {
+        // FIXME: Do not detach or allow multiple reconnection threads
+        std::thread([this] {
             const auto thread_id = std::this_thread::get_id();
 
             GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::hex << thread_id << " started.";
@@ -867,7 +880,7 @@ namespace sdk {
                     { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
                 emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
-                if (!m_network_control->retrying(backoff_time)) {
+                if (m_network_control->is_reconnect_canceled(backoff_time)) {
                     GDK_LOG_SEV(log_level::info)
                         << "reconnect thread " << std::hex << thread_id << " exiting on request.";
                     break;
@@ -880,26 +893,20 @@ namespace sdk {
                 }
             }
 
-            m_network_control->set_reconnect(false);
+            m_network_control->set_reconnecting(false);
 
             if (!is_connected()) {
                 start_ping_timer();
             }
-        });
-    }
-
-    void ga_session::stop_reconnect()
-    {
-        if (m_network_control->reconnecting()) {
-            m_network_control->set_exit();
-        }
+        })
+            .detach();
     }
 
     void ga_session::reconnect_hint(bool enable, bool restart)
     {
         m_network_control->set_enabled(enable);
         if (restart) {
-            stop_reconnect();
+            m_network_control->stop_reconnecting();
         }
     }
 

@@ -193,7 +193,6 @@ namespace sdk {
 
         bool is_connected() const;
         bool reconnect_impl();
-        void stop_reconnect();
 
         void load_client_blob(locker_t& locker, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
