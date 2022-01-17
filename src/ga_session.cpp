@@ -902,10 +902,12 @@ namespace sdk {
             .detach();
     }
 
-    void ga_session::reconnect_hint(bool enable, bool restart)
+    void ga_session::reconnect_hint(bool enable)
     {
         m_network_control->set_enabled(enable);
-        if (restart) {
+        if (enable) {
+            // The session will be reconnecting manually, stop any current reconnect
+            // FIXME: Don't do this, move reconnect call here and use any existing one
             m_network_control->stop_reconnecting();
         }
     }

@@ -63,7 +63,7 @@ namespace sdk {
         // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
         virtual void reconnect() = 0;
-        virtual void reconnect_hint(bool enable, bool restart) = 0;
+        virtual void reconnect_hint(bool enable) = 0;
 
         // TODO: remove me when tor MR extract lands
         virtual void tor_sleep_hint(const std::string& hint) = 0;

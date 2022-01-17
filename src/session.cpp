@@ -224,16 +224,12 @@ namespace sdk {
                 p->tor_sleep_hint(hint["tor_sleep_hint"]);
             }
 
-            // no connection-level hint, exit here
-            if (!hint.contains("hint")) {
-                return;
+            const auto hint_p = hint.find("hint");
+            if (hint_p != hint.end()) {
+                GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
+                p->reconnect_hint(*hint_p == "now");
+                p->reconnect();
             }
-
-            const std::string option = hint["hint"];
-            GDK_RUNTIME_ASSERT(option == "now" || option == "disable" || option == "start");
-
-            p->reconnect_hint(option != "disable", option == "now");
-            reconnect();
         });
     }
 

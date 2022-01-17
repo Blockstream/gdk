@@ -1155,21 +1155,19 @@ The data returned depends on the current state of the handler, as follows:
 Reconnect hint JSON
 -------------------
 
-.. code-block:: json
-
-   { "hint" : "now" }
+Controls session and Tor reconnection behaviour.
 
 .. code-block:: json
 
-   { "hint" : "disable" }
+   {
+     "hint": "now",
+     "tor_sleep_hint": "wakeup"
+   }
 
-.. code-block:: json
-
-   { "tor_sleep_hint" : "wakeup", "hint": "start" }
-
-.. code-block:: json
-
-   { "tor_sleep_hint" : "sleep" }
+:hint: Optional. Either ``"disable"`` to stop background session reconnection,
+    or ``"now"`` to enable background reconnection and reconnect.
+:tor_sleep_hint: Optional. Either ``"sleep"`` to suspend Tor network activity,
+    or ``"wakeup"`` to start/restart Tor processing.
 
 
 

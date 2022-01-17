@@ -13,7 +13,7 @@ namespace sdk {
 
         bool is_connected() const;
         void reconnect();
-        void reconnect_hint(bool, bool);
+        void reconnect_hint(bool enable);
 
         // TODO: remove me when tor MR extract lands
         void tor_sleep_hint(const std::string& hint);

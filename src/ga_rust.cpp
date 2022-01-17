@@ -96,7 +96,7 @@ namespace sdk {
         }
     }
 
-    void ga_rust::reconnect_hint(bool enable, bool restart) { m_reconnect_restart = restart; }
+    void ga_rust::reconnect_hint(bool enable) { m_reconnect_restart = enable; }
 
     void ga_rust::tor_sleep_hint(const std::string& hint)
     {

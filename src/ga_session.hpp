@@ -44,7 +44,7 @@ namespace sdk {
 
         void connect();
         void reconnect();
-        void reconnect_hint(bool enabled, bool restarted);
+        void reconnect_hint(bool enabled);
         std::string get_tor_socks5();
         void tor_sleep_hint(const std::string& hint);
         void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
