@@ -3293,6 +3293,8 @@ namespace sdk {
         const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
         auto result = wamp_call("vault.set_utxo_status", mp_cast(details).get(), mp_cast(twofactor_data).get());
+        // Nuke cached UTXOs as their user_status may be out of date.
+        remove_cached_utxos(std::vector<uint32_t>());
         return wamp_cast_json(result);
     }
 
