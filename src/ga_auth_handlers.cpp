@@ -24,6 +24,10 @@ namespace sdk {
         // that the code path to upload on login is always executed/doesn't bitrot.
         static const uint32_t INITIAL_UPLOAD_CA = 20;
 
+        // UTXO user_status values from the Green server
+        static constexpr uint32_t USER_STATUS_DEFAULT = 0;
+        static constexpr uint32_t USER_STATUS_FROZEN = 1;
+
         static const auto& get_sized_array(const nlohmann::json& json, const char* key, size_t size)
         {
             const auto& value = json.at(key);
@@ -952,7 +956,11 @@ namespace sdk {
             return;
         }
         unique_pubkeys_and_scripts_t missing;
-        auto utxos = m_session->get_unspent_outputs(m_details, missing);
+        // Fetch all UTXOs including frozen for caching, we filter out
+        // frozen UTXOs in filter_result before returning if requested.
+        auto unfiltered_details = m_details;
+        unfiltered_details["all_coins"] = true;
+        auto utxos = m_session->get_unspent_outputs(unfiltered_details, missing);
         if (missing.empty()) {
             // All results are unblinded/Don't need unblinding.
             // Encache and return them
@@ -1008,7 +1016,6 @@ namespace sdk {
             m_result = *p;
         }
 
-        const bool is_liquid = m_net_params.is_liquid();
         auto& outputs = m_result.at("unspent_outputs");
         if (outputs.is_null() || outputs.empty()) {
             // Nothing to filter, return an empty json object
@@ -1016,9 +1023,16 @@ namespace sdk {
             return;
         }
 
+        const bool is_liquid = m_net_params.is_liquid();
         if (is_liquid && m_details.value("confidential", false)) {
             // The user wants only confidential UTXOs, filter out non-confidential
             filter_utxos(outputs, [](const auto& u) { return !u.value("confidential", false); });
+        }
+
+        if (!m_details.value("all_coins", false)) {
+            // User did not request frozen UTXOs, filter them out
+            filter_utxos(outputs,
+                [](const auto& u) { return u.value("user_status", USER_STATUS_DEFAULT) == USER_STATUS_FROZEN; });
         }
 
         if (m_details.contains("expired_at")) {
@@ -1102,9 +1116,9 @@ namespace sdk {
         for (auto& item : m_details["list"]) {
             auto& status = item["user_status"];
             if (status == "default") {
-                status = 0;
+                status = USER_STATUS_DEFAULT;
             } else if (status == "frozen") {
-                status = 1;
+                status = USER_STATUS_FROZEN;
                 seen_frozen = true;
             } else {
                 GDK_RUNTIME_ASSERT_MSG(false, "Unknown UTXO status");

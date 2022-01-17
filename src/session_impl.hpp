@@ -250,6 +250,8 @@ namespace sdk {
         // Mutable
 
         // UTXOs
+        // Cached UTXOs are unfiltered; if using the cached values you
+        // may need to filter them first (e.g. to removed expired or frozen UTXOS)
         using utxo_cache_key_t = std::pair<uint32_t, uint32_t>; // subaccount, num_confs
         using utxo_cache_t = std::map<utxo_cache_key_t, utxo_cache_value_t>;
         mutable std::mutex m_utxo_cache_mutex;
