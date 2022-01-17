@@ -192,7 +192,6 @@ namespace sdk {
         void reset_all_session_data(bool in_dtor);
 
         bool is_connected() const;
-        bool reconnect_impl();
 
         void load_client_blob(locker_t& locker, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
@@ -354,6 +353,7 @@ namespace sdk {
         autobahn::wamp_call_options m_wamp_call_options;
         const std::string m_wamp_call_prefix;
         std::unique_ptr<event_loop_controller> m_controller;
+        std::unique_ptr<std::thread> m_reconnect_thread;
     };
 
 } // namespace sdk

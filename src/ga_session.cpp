@@ -130,8 +130,8 @@ namespace sdk {
             return m_exit_flag.wait(secs) == std::future_status::ready;
         }
 
-        void set_enabled(bool v) { m_enabled = v; }
-        bool is_enabled() const { return m_enabled; }
+        void set_reconnect_enabled(bool v) { m_enabled = v; }
+        bool is_reconnect_enabled() const { return m_enabled; }
 
     private:
         flag_type m_exit_flag;
@@ -586,12 +586,10 @@ namespace sdk {
     ga_session::~ga_session()
     {
         no_std_exception_escape([this] {
-            m_controller->cancel_ping_timer();
-            m_network_control->stop_reconnecting();
-            unsubscribe();
-            reset_all_session_data(true);
+            reconnect_hint(false); // Disable reconnect, stop any further attempts
             disconnect(true);
             m_controller->reset();
+            reset_all_session_data(true);
         });
     }
 
@@ -617,15 +615,15 @@ namespace sdk {
             subscriptions.swap(m_subscriptions);
         };
 
-        for (const auto& sub : subscriptions) {
-            no_std_exception_escape([this, &sub] {
+        no_std_exception_escape([this, &subscriptions] {
+            for (const auto& sub : subscriptions) {
                 const auto status
                     = m_session->unsubscribe(sub).wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
                 if (status != boost::future_status::ready) {
                     GDK_LOG_SEV(log_level::info) << "future not ready on unsubscribe";
                 }
-            });
-        }
+            }
+        });
     }
 
     void ga_session::set_socket_options()
@@ -661,6 +659,7 @@ namespace sdk {
 
     void ga_session::connect()
     {
+        GDK_LOG_SEV(log_level::info) << "connecting";
         m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
 
         make_transport();
@@ -844,15 +843,21 @@ namespace sdk {
 
     void ga_session::reconnect()
     {
-        GDK_LOG_NAMED_SCOPE("reconnect");
+        if (!m_io.get_executor().running_in_this_thread()) {
+            GDK_LOG_SEV(log_level::info) << "reconnect: submitting to executor";
+            auto f
+                = asio::post(m_io.get_executor(), std::packaged_task<void()>(std::bind(&ga_session::reconnect, this)));
+            f.get();
+            return;
+        }
 
-        if (!m_network_control->is_enabled()) {
-            GDK_LOG_SEV(log_level::info) << "reconnect is disabled. backing off...";
+        if (!m_network_control->is_reconnect_enabled()) {
+            GDK_LOG_SEV(log_level::info) << "reconnect: disabled";
             return;
         }
 
         if (is_connected()) {
-            GDK_LOG_SEV(log_level::info) << "attempting to reconnect but transport still connected. backing off...";
+            GDK_LOG_SEV(log_level::info) << "reconnect: still connected";
             nlohmann::json net_json(
                 { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
             emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
@@ -860,17 +865,24 @@ namespace sdk {
         }
 
         if (!m_network_control->set_reconnecting(true)) {
-            GDK_LOG_SEV(log_level::info) << "reconnect in progress. backing off...";
+            GDK_LOG_SEV(log_level::info) << "reconnect: already in progress";
             return;
         }
 
         m_controller->cancel_ping_timer();
 
-        // FIXME: Do not detach or allow multiple reconnection threads
-        std::thread([this] {
-            const auto thread_id = std::this_thread::get_id();
+        if (m_reconnect_thread) {
+            GDK_LOG_SEV(log_level::info) << "reconnect: joining old reconnection thread";
+            m_reconnect_thread->join();
+            m_reconnect_thread.reset(); // In case 'new' throws below
+        }
 
-            GDK_LOG_SEV(log_level::info) << "reconnect thread " << std::hex << thread_id << " started.";
+        m_reconnect_thread.reset(new std::thread([this] {
+            std::ostringstream os;
+            os << "reconnect: (" << std::hex << std::this_thread::get_id() << ") ";
+            const auto prologue = os.str();
+
+            GDK_LOG_SEV(log_level::info) << prologue << "started";
 
             exponential_backoff bo;
             uint32_t n = 0;
@@ -880,16 +892,26 @@ namespace sdk {
                     { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
                 emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
-                if (m_network_control->is_reconnect_canceled(backoff_time)) {
-                    GDK_LOG_SEV(log_level::info)
-                        << "reconnect thread " << std::hex << thread_id << " exiting on request.";
+                if (!m_network_control->is_reconnect_enabled()
+                    || m_network_control->is_reconnect_canceled(backoff_time)) {
+                    GDK_LOG_SEV(log_level::info) << prologue << "disabled/cancelled";
                     break;
                 }
 
-                if (reconnect_impl()) {
-                    GDK_LOG_SEV(log_level::info)
-                        << "reconnect thread " << std::hex << thread_id << " exiting on reconnect.";
+                try {
+                    disconnect(false);
+                    connect();
+                    GDK_LOG_SEV(log_level::info) << prologue << "succeeded";
+
+                    // FIXME: Re-work re-login
+                    nlohmann::json net_json(
+                        { { "connected", true }, { "login_required", true }, { "heartbeat_timeout", false } });
+                    emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
+
                     break;
+                } catch (const std::exception& ex) {
+                    GDK_LOG_SEV(log_level::info) << prologue << " exception: " << ex.what();
+                    // Continue
                 }
             }
 
@@ -898,35 +920,34 @@ namespace sdk {
             if (!is_connected()) {
                 start_ping_timer();
             }
-        })
-            .detach();
+        }));
     }
 
     void ga_session::reconnect_hint(bool enable)
     {
-        m_network_control->set_enabled(enable);
-        if (enable) {
-            // The session will be reconnecting manually, stop any current reconnect
-            // FIXME: Don't do this, move reconnect call here and use any existing one
+        GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
+
+        // Enable/disable any new reconnection attempts
+        m_network_control->set_reconnect_enabled(enable);
+        if (!enable) {
+            // Prevent the ping timer from attempting to reconnect
+            m_controller->cancel_ping_timer();
+
+            // Stop any in-progress reconnection attempts
             m_network_control->stop_reconnecting();
-        }
-    }
+            decltype(m_reconnect_thread) t;
+            // Fetch the reconnect thread pointer from within the executor
+            auto f = asio::post(m_io.get_executor(), std::packaged_task<void()>([this, &t] {
+                if (m_reconnect_thread) {
+                    std::swap(t, m_reconnect_thread);
+                }
+            }));
+            f.get(); // Wait for the executor to run our pointer fetch
 
-    bool ga_session::reconnect_impl()
-    {
-        try {
-            unsubscribe();
-            disconnect(false);
-            connect();
-
-            // FIXME: Re-work re-login
-            nlohmann::json net_json(
-                { { "connected", true }, { "login_required", true }, { "heartbeat_timeout", false } });
-            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
-
-            return true;
-        } catch (const std::exception&) {
-            return false;
+            if (t) {
+                GDK_LOG_SEV(log_level::info) << "reconnect_hint: joining reconnection thread";
+                t->join();
+            }
         }
     }
 
@@ -938,6 +959,8 @@ namespace sdk {
 
     void ga_session::disconnect(bool user_initiated)
     {
+        GDK_LOG_SEV(log_level::info) << "disconnecting";
+        unsubscribe();
         m_controller->cancel_ping_timer();
 
         if (!user_initiated) {
