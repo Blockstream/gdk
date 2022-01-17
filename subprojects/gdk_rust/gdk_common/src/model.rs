@@ -596,6 +596,32 @@ pub struct UnspentOutput {
     pub scriptpubkey: BEScript,
 }
 
+/// Partially parse the derivation path and return (is_internal, address_pointer)
+pub fn parse_path(path: &DerivationPath) -> Result<(bool, u32), Error> {
+    let address_pointer;
+    let is_internal;
+    let mut iter = path.into_iter().rev();
+    if let Some(&ChildNumber::Normal {
+        index,
+    }) = iter.next()
+    {
+        // last
+        address_pointer = index;
+    } else {
+        return Err(Error::Generic("Unexpected derivation path".into()));
+    };
+    if let Some(&ChildNumber::Normal {
+        index,
+    }) = iter.next()
+    {
+        // second-to-last
+        is_internal = index == 1;
+    } else {
+        return Err(Error::Generic("Unexpected derivation path".into()));
+    };
+    Ok((is_internal, address_pointer))
+}
+
 impl UnspentOutput {
     pub fn new(outpoint: &BEOutPoint, info: &UTXOInfo) -> Self {
         let mut unspent_output = UnspentOutput::default();
@@ -606,20 +632,9 @@ impl UnspentOutput {
         unspent_output.derivation_path = info.path.clone();
         unspent_output.scriptpubkey = info.script.clone();
         unspent_output.confidential = info.confidential;
-        let mut iter = info.path.into_iter().rev();
-        if let Some(&ChildNumber::Normal {
-            index,
-        }) = iter.next()
-        {
-            // last
-            unspent_output.pointer = index;
-        };
-        if let Some(&ChildNumber::Normal {
-            index,
-        }) = iter.next()
-        {
-            // second-to-last
-            unspent_output.is_internal = index == 1;
+        if let Ok((is_internal, pointer)) = parse_path(&info.path) {
+            unspent_output.is_internal = is_internal;
+            unspent_output.pointer = pointer;
         };
         unspent_output.block_height = info.height.unwrap_or(0);
         unspent_output
@@ -694,7 +709,16 @@ impl From<&BETransactionEntry> for TransactionDetails {
 
 #[cfg(test)]
 mod test {
-    use crate::model::{GetUnspentOutputs, GetSubaccountsOpt};
+    use crate::model::{parse_path, GetUnspentOutputs};
+    use bitcoin::util::bip32::DerivationPath;
+
+    #[test]
+    fn test_path() {
+        let path_external: DerivationPath = "m/44'/1'/0'/0/0".parse().unwrap();
+        let path_internal: DerivationPath = "m/44'/1'/0'/1/0".parse().unwrap();
+        assert_eq!(parse_path(&path_external).unwrap(), (false, 0u32));
+        assert_eq!(parse_path(&path_internal).unwrap(), (true, 0u32));
+    }
 
     #[test]
     fn test_unspent() {
@@ -702,5 +726,4 @@ mod test {
         let json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
         println!("{:#?}", json);
     }
-
 }
