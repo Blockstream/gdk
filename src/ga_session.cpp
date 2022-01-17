@@ -1853,7 +1853,9 @@ namespace sdk {
     void ga_session::subscribe_all(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_subscriptions.empty());
+        if (!m_subscriptions.empty()) {
+            m_subscriptions.clear();
+        }
 
         const std::string receiving_id = m_login_data["receiving_id"];
         m_subscriptions.reserve(4u);
