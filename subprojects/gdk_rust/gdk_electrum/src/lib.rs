@@ -308,7 +308,16 @@ pub fn make_txlist_item(
             }
             a.is_relevant = {
                 if let Some(script) = all_txs.get_previous_output_script_pubkey(i) {
-                    all_scripts.get(&script).is_some()
+                    match all_scripts.get(&script) {
+                        None => false,
+                        Some(path) => {
+                            if let Ok((is_internal, pointer)) = parse_path(&path) {
+                                a.is_internal = is_internal;
+                                a.pointer = pointer;
+                            };
+                            true
+                        }
+                    }
                 } else {
                     false
                 }
@@ -335,7 +344,18 @@ pub fn make_txlist_item(
                 a.amountblinder =
                     transaction.output_amountblinder_hex(vout, all_unblinded).unwrap_or_default();
             }
-            a.is_relevant = all_scripts.contains_key(&transaction.output_script(vout));
+            a.is_relevant = {
+                match all_scripts.get(&transaction.output_script(vout)) {
+                    None => false,
+                    Some(path) => {
+                        if let Ok((is_internal, pointer)) = parse_path(&path) {
+                            a.is_internal = is_internal;
+                            a.pointer = pointer;
+                        };
+                        true
+                    }
+                }
+            };
             a
         })
         .collect();

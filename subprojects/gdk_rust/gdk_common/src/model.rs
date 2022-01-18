@@ -321,6 +321,7 @@ pub struct AddressIO {
     // True if the corresponding scriptpubkey belongs to the account (not the wallet)
     pub is_relevant: bool,
     pub is_spent: bool,
+    pub is_internal: bool,
     pub pointer: u32, // child_number in bip32 terminology
     pub pt_idx: u32,  // vout
     pub satoshi: u64,
@@ -342,6 +343,7 @@ impl Default for AddressIO {
             is_output: false,
             is_relevant: false,
             is_spent: false,
+            is_internal: false,
             pointer: 0,
             pt_idx: 0,
             satoshi: 0,
