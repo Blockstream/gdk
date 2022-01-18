@@ -218,15 +218,19 @@ namespace sdk {
     void session::disconnect()
     {
         no_std_exception_escape([this]() {
-            GDK_LOG_SEV(log_level::debug) << "session disconnect...";
             auto p = get_impl();
             while (p && !m_impl.compare_exchange_strong(p, boost::shared_ptr<session_impl>{})) {
             }
-            if (p && p->get_network_parameters().is_electrum()) {
-                GDK_LOG_SEV(log_level::debug) << "session is something and we are in electrum. Disconnect";
-                p->disconnect(true);
+            if (p) {
+                const bool is_electrum = p->get_network_parameters().is_electrum();
+                GDK_LOG_SEV(log_level::info) << "disconnecting " << (is_electrum ? "single" : "multi") << "sig session";
+                if (is_electrum) {
+                    p->disconnect(true);
+                } else {
+                    // Destroy multisig sessions in the background
+                    session_impl_delete(std::move(p));
+                }
             }
-            session_impl_delete(std::move(p));
         });
     }
 
