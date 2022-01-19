@@ -44,7 +44,6 @@ namespace sdk {
 
     session_impl::session_impl(network_parameters&& net_params)
         : m_net_params(net_params)
-        , m_debug_logging(m_net_params.log_level() == "debug")
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
     {

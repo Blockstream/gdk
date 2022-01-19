@@ -18,20 +18,14 @@
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
-#include "ga_cache.hpp"
-#include "ga_session.hpp"
-#include "ga_strings.hpp"
 #include "ga_tor.hpp"
-#include "ga_tx.hpp"
 #include "http_client.hpp"
-#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
-#include "signer.hpp"
-#include "transaction_utils.hpp"
+#include "network_parameters.hpp"
 #include "utils.hpp"
 #include "version.h"
-#include "xpub_hdkey.hpp"
+#include "wamp_transport.hpp"
 
 #define TX_CACHE_LEVEL log_level::debug
 
@@ -151,31 +145,6 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
         static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
-
-        template <typename T> static nlohmann::json wamp_cast_json(const T& result)
-        {
-            if (!result.number_of_arguments()) {
-                return nlohmann::json();
-            }
-            const auto obj = result.template argument<msgpack::object>(0);
-            msgpack::sbuffer sbuf;
-            msgpack::pack(sbuf, obj);
-            return nlohmann::json::from_msgpack(sbuf.data(), sbuf.data() + sbuf.size());
-        }
-
-        template <typename T = std::string> inline T wamp_cast(const autobahn::wamp_call_result& result)
-        {
-            return result.template argument<T>(0);
-        }
-
-        template <typename T = std::string>
-        inline boost::optional<T> wamp_cast_nil(const autobahn::wamp_call_result& result)
-        {
-            if (result.template argument<msgpack::object>(0).is_nil()) {
-                return boost::none;
-            }
-            return result.template argument<T>(0);
-        }
 
         class exponential_backoff {
         public:
@@ -316,6 +285,17 @@ namespace sdk {
             return false;
         }
 
+        template <typename T> static nlohmann::json wamp_cast_json_impl(const T& result)
+        {
+            if (!result.number_of_arguments()) {
+                return nlohmann::json();
+            }
+            const auto obj = result.template argument<msgpack::object>(0);
+            msgpack::sbuffer sbuf;
+            msgpack::pack(sbuf, obj);
+            return nlohmann::json::from_msgpack(sbuf.data(), sbuf.data() + sbuf.size());
+        }
+
     } // namespace
 
     uint32_t websocket_rng_type::operator()() const
@@ -324,6 +304,10 @@ namespace sdk {
         get_random_bytes(sizeof(b), &b, sizeof(b));
         return b;
     }
+
+    nlohmann::json wamp_cast_json(const autobahn::wamp_event& event) { return wamp_cast_json_impl(event); }
+
+    nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
     // ping message interval in seconds
     const uint32_t event_loop_controller::DEFAULT_PING = 20;
@@ -345,6 +329,33 @@ namespace sdk {
 
     void event_loop_controller::cancel_ping_timer() { m_ping_timer.cancel(); }
 
+    wamp_transport::wamp_transport(const network_parameters& net_params, wamp_transport::notify_fn_t fn)
+        : m_net_params(net_params)
+        , m_notify_fn(fn)
+        , m_debug_logging(m_net_params.log_level() == "debug")
+        , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
+        , m_has_network_proxy(!m_proxy.empty())
+        , m_io()
+        , m_network_control(new network_control_context())
+        , m_wamp_call_options()
+        , m_wamp_call_prefix("com.greenaddress.")
+        , m_controller(new event_loop_controller(m_io))
+    {
+        constexpr uint32_t wamp_timeout_secs = 10;
+        m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
+
+        make_client();
+    }
+
+    wamp_transport::~wamp_transport()
+    {
+        no_std_exception_escape([this] {
+            reconnect_hint(false); // Disable reconnect, stop any further attempts
+            disconnect(true);
+            m_controller->reset();
+        });
+    }
+
     bool wamp_transport::is_connected() const { return m_transport && m_transport->is_connected(); }
 
     std::string wamp_transport::get_tor_socks5()
@@ -363,7 +374,7 @@ namespace sdk {
     {
         decltype(m_subscriptions) subscriptions;
         {
-            locker_t locker(m_mutex);
+            // FIXME: locker_t locker(m_mutex);
             subscriptions.swap(m_subscriptions);
         };
 
@@ -442,14 +453,14 @@ namespace sdk {
             });
     }
 
-    ga_session::transport_t wamp_transport::make_transport()
+    wamp_transport::transport_t wamp_transport::make_transport()
     {
         if (m_net_params.use_tor() && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
             m_tor_ctrl->tor_sleep_hint("wakeup");
             m_proxy = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
                 nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
-                emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
+                m_notify_fn({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
             });
             GDK_RUNTIME_ASSERT_MSG(!m_proxy.empty(), "Timeout initiating tor connection");
             GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_proxy;
@@ -586,21 +597,12 @@ namespace sdk {
         start_ping_timer();
     }
 
-    void wamp_transport::emit_notification(nlohmann::json details, bool async)
-    {
-        if (async) {
-            m_controller->post([this, details] { emit_notification(details, false); });
-        } else {
-            session_impl::emit_notification(details, false);
-        }
-    }
-
     void wamp_transport::reconnect()
     {
         if (!m_io.get_executor().running_in_this_thread()) {
             GDK_LOG_SEV(log_level::info) << "reconnect: submitting to executor";
-            auto f
-                = asio::post(m_io.get_executor(), std::packaged_task<void()>(std::bind(&ga_session::reconnect, this)));
+            auto f = asio::post(
+                m_io.get_executor(), std::packaged_task<void()>(std::bind(&wamp_transport::reconnect, this)));
             f.get();
             return;
         }
@@ -614,7 +616,7 @@ namespace sdk {
             GDK_LOG_SEV(log_level::info) << "reconnect: still connected";
             nlohmann::json net_json(
                 { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
-            emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
+            m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
             return;
         }
 
@@ -644,7 +646,7 @@ namespace sdk {
                 const auto backoff_time = bo.backoff(n++);
                 nlohmann::json net_json({ { "connected", false }, { "elapsed", bo.elapsed().count() },
                     { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
-                emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
+                m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
                 if (!m_network_control->is_reconnect_enabled()
                     || m_network_control->is_reconnect_canceled(backoff_time)) {
@@ -660,7 +662,7 @@ namespace sdk {
                     // FIXME: Re-work re-login
                     nlohmann::json net_json(
                         { { "connected", true }, { "login_required", true }, { "heartbeat_timeout", false } });
-                    emit_notification({ { "event", "network" }, { "network", std::move(net_json) } }, true);
+                    m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
                     break;
                 } catch (const std::exception& ex) {
@@ -721,7 +723,7 @@ namespace sdk {
             // Note we don't emit a notification if the user explicitly
             // disconnected or destroyed the session.
             nlohmann::json details{ { "connected", false } };
-            emit_notification({ { "event", "session" }, { "session", std::move(details) } }, false);
+            m_notify_fn({ { "event", "session" }, { "session", std::move(details) } }, false);
         }
 
         if (m_session) {
@@ -797,38 +799,17 @@ namespace sdk {
     }
 
     void wamp_transport::subscribe(
-        session_impl::locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback)
+        wamp_transport::locker_t& locker, const std::string& topic, wamp_transport::subscribe_fn_t callback)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
-        auto sub = m_session->subscribe(topic, callback, autobahn::wamp_subscribe_options("exact")).get();
+        const auto options = autobahn::wamp_subscribe_options("exact");
+        auto sub = m_session
+                       ->subscribe(
+                           topic, [callback](const autobahn::wamp_event& e) { callback(wamp_cast_json(e)); }, options)
+                       .get();
         GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
         m_subscriptions.emplace_back(sub);
-    }
-
-    wamp_transport::wamp_transport(network_parameters&& net_params)
-        : session_impl(std::move(net_params))
-        , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
-        , m_has_network_proxy(!m_proxy.empty())
-        , m_io()
-        , m_network_control(new network_control_context())
-        , m_wamp_call_options()
-        , m_wamp_call_prefix("com.greenaddress.")
-        , m_controller(new event_loop_controller(m_io))
-    {
-        constexpr uint32_t wamp_timeout_secs = 10;
-        m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
-
-        make_client();
-    }
-
-    wamp_transport::~wamp_transport()
-    {
-        no_std_exception_escape([this] {
-            reconnect_hint(false); // Disable reconnect, stop any further attempts
-            disconnect(true);
-            m_controller->reset();
-        });
     }
 
     void wamp_transport::clear_subscriptions()

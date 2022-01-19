@@ -13,20 +13,32 @@
 #include "ga_wally.hpp"
 #include "session_impl.hpp"
 #include "threading.hpp"
-#include "wamp_transport.hpp"
 
 using namespace std::literals;
 
 namespace ga {
 namespace sdk {
     struct cache;
+    class wamp_transport;
 
-    class ga_session final : public wamp_transport {
+    class ga_session final : public session_impl {
     public:
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(network_parameters&& net_params);
         ~ga_session();
+
+        void connect();
+        bool is_connected() const;
+        void reconnect();
+        void reconnect_hint(bool enabled);
+        void disconnect(bool user_initiated);
+
+        void emit_notification(nlohmann::json details, bool async);
+
+        std::string get_tor_socks5();
+        void tor_sleep_hint(const std::string& hint);
+        nlohmann::json http_request(nlohmann::json params);
 
         nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
@@ -185,7 +197,7 @@ namespace sdk {
         void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
         bool is_twofactor_reset_active(session_impl::locker_t& locker);
-        nlohmann::json set_twofactor_reset_config(const autobahn::wamp_call_result& server_result);
+        nlohmann::json set_twofactor_reset_config(const nlohmann::json& config);
         void set_enabled_twofactor_methods(locker_t& locker);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_initial_login);
@@ -276,6 +288,7 @@ namespace sdk {
         std::shared_ptr<cache> m_cache;
         std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
+        std::unique_ptr<wamp_transport> m_wamp;
     };
 
 } // namespace sdk

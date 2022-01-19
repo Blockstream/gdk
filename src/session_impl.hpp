@@ -238,7 +238,6 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
-        const bool m_debug_logging;
 
         // Immutable once set by the caller (prior to connect)
         GA_notification_handler m_notification_handler;

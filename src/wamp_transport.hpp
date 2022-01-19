@@ -7,7 +7,6 @@
 
 #include "autobahn_wrapper.hpp"
 #include "logging.hpp"
-#include "session_impl.hpp"
 
 using namespace std::literals;
 
@@ -23,6 +22,22 @@ namespace sdk {
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
     using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
+
+    nlohmann::json wamp_cast_json(const autobahn::wamp_event& event);
+    nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result);
+
+    template <typename T = std::string> T wamp_cast(const autobahn::wamp_call_result& result)
+    {
+        return result.template argument<T>(0);
+    }
+
+    template <typename T = std::string> boost::optional<T> wamp_cast_nil(const autobahn::wamp_call_result& result)
+    {
+        if (result.template argument<msgpack::object>(0).is_nil()) {
+            return boost::none;
+        }
+        return result.template argument<T>(0);
+    }
 
     struct event_loop_controller {
         explicit event_loop_controller(boost::asio::io_context& io);
@@ -46,11 +61,14 @@ namespace sdk {
         boost::asio::deadline_timer m_ping_timer;
     };
 
-    class wamp_transport : public session_impl {
+    class wamp_transport {
     public:
+        using locker_t = std::unique_lock<std::mutex>;
+        using notify_fn_t = std::function<void(nlohmann::json, bool)>;
+        using subscribe_fn_t = std::function<void(nlohmann::json)>;
         using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
 
-        wamp_transport(network_parameters&& net_params);
+        wamp_transport(const network_parameters& net_params, notify_fn_t fn);
         ~wamp_transport();
 
         void make_client();
@@ -60,11 +78,9 @@ namespace sdk {
         void reconnect_hint(bool enabled);
         void disconnect(bool user_initiated);
 
-        void subscribe(locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
+        void subscribe(locker_t& locker, const std::string& topic, subscribe_fn_t callback);
         void unsubscribe();
         void clear_subscriptions();
-
-        void emit_notification(nlohmann::json details, bool async);
 
         nlohmann::json http_request(nlohmann::json params);
 
@@ -86,7 +102,7 @@ namespace sdk {
         // Make a background WAMP call and return its result to the current thread.
         // The session mutex must not be held when calling this function.
         template <typename... Args>
-        autobahn::wamp_call_result wamp_call(const std::string& method_name, Args&&... args) const
+        autobahn::wamp_call_result call(const std::string& method_name, Args&&... args) const
         {
             const std::string method{ m_wamp_call_prefix + method_name };
             auto fn = m_session->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
@@ -95,10 +111,10 @@ namespace sdk {
 
         // Make a WAMP call on a currently locked session.
         template <typename... Args>
-        autobahn::wamp_call_result wamp_call(locker_t& locker, const std::string& method_name, Args&&... args) const
+        autobahn::wamp_call_result call(locker_t& locker, const std::string& method_name, Args&&... args) const
         {
             unique_unlock unlocker(locker);
-            return wamp_call(method_name, std::forward<Args>(args)...);
+            return call(method_name, std::forward<Args>(args)...);
         }
 
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
@@ -106,6 +122,9 @@ namespace sdk {
         template <typename FN> void post(FN&& fn) { m_controller->post(fn); }
 
     private:
+        const network_parameters& m_net_params;
+        notify_fn_t m_notify_fn;
+        const bool m_debug_logging;
         std::string m_proxy;
         const bool m_has_network_proxy;
 
