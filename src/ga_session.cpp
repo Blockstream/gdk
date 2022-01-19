@@ -1863,41 +1863,36 @@ namespace sdk {
     void ga_session::subscribe_all(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (!m_subscriptions.empty()) {
-            m_subscriptions.clear();
-        }
+        clear_subscriptions();
 
         const std::string receiving_id = m_login_data["receiving_id"];
-        m_subscriptions.reserve(4u);
 
-        m_subscriptions.emplace_back(subscribe(locker, "com.greenaddress.tickers",
-            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); }));
+        subscribe(locker, "com.greenaddress.tickers",
+            [this](const autobahn::wamp_event& event) { on_new_tickers(wamp_cast_json(event)); });
 
         if (!m_watch_only) {
-            m_subscriptions.emplace_back(subscribe(
-                locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                    const auto details = wamp_cast_json(event);
-                    locker_t notify_locker(m_mutex);
-                    // Check the hmac as we will be notified of our own changes
-                    // when more than one session is logged in at a time.
-                    if (m_blob_hmac != json_get_value(details, "hmac")) {
-                        // Another session has updated our client blob, mark it dirty.
-                        m_blob_outdated = true;
-                    }
-                }));
+            subscribe(locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+                const auto details = wamp_cast_json(event);
+                locker_t notify_locker(m_mutex);
+                // Check the hmac as we will be notified of our own changes
+                // when more than one session is logged in at a time.
+                if (m_blob_hmac != json_get_value(details, "hmac")) {
+                    // Another session has updated our client blob, mark it dirty.
+                    m_blob_outdated = true;
+                }
+            });
         }
 
-        m_subscriptions.emplace_back(
-            subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
-                auto details = wamp_cast_json(event);
-                if (!ignore_tx_notification(details)) {
-                    std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
-                    on_new_transaction(subaccounts, details);
-                }
-            }));
+        subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](const autobahn::wamp_event& event) {
+            auto details = wamp_cast_json(event);
+            if (!ignore_tx_notification(details)) {
+                std::vector<uint32_t> subaccounts = cleanup_tx_notification(details);
+                on_new_transaction(subaccounts, details);
+            }
+        });
 
-        m_subscriptions.emplace_back(subscribe(locker, "com.greenaddress.blocks",
-            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event), false); }));
+        subscribe(locker, "com.greenaddress.blocks",
+            [this](const autobahn::wamp_event& event) { on_new_block(wamp_cast_json(event), false); });
     }
 
     void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)
@@ -3075,14 +3070,14 @@ namespace sdk {
         return nlohmann::json(std::move(result));
     }
 
-    autobahn::wamp_subscription ga_wamp_session::subscribe(
+    void ga_wamp_session::subscribe(
         session_impl::locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         unique_unlock unlocker(locker);
         auto sub = m_session->subscribe(topic, callback, autobahn::wamp_subscribe_options("exact")).get();
         GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
-        return sub;
+        m_subscriptions.emplace_back(sub);
     }
 
     amount ga_session::get_dust_threshold() const
@@ -4109,6 +4104,12 @@ namespace sdk {
             disconnect(true);
             m_controller->reset();
         });
+    }
+
+    void ga_wamp_session::clear_subscriptions()
+    {
+        m_subscriptions.clear();
+        m_subscriptions.reserve(4u);
     }
 
 } // namespace sdk

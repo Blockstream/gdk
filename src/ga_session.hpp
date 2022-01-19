@@ -45,9 +45,9 @@ namespace sdk {
         void reconnect_hint(bool enabled);
         void disconnect(bool user_initiated);
 
-        autobahn::wamp_subscription subscribe(
-            locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
+        void subscribe(locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback);
         void unsubscribe();
+        void clear_subscriptions();
 
         void emit_notification(nlohmann::json details, bool async);
 
@@ -88,6 +88,7 @@ namespace sdk {
 
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
 
+    private:
         std::string m_proxy;
         const bool m_has_network_proxy;
 
@@ -101,8 +102,10 @@ namespace sdk {
         std::string m_last_tor_socks5;
         autobahn::wamp_call_options m_wamp_call_options;
         const std::string m_wamp_call_prefix;
-        std::unique_ptr<event_loop_controller> m_controller;
         std::unique_ptr<std::thread> m_reconnect_thread;
+
+    protected:
+        std::unique_ptr<event_loop_controller> m_controller;
     };
 
     class ga_session final : public ga_wamp_session {
