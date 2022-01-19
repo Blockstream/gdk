@@ -12,9 +12,6 @@
 #include "client_blob.hpp"
 #include "ga_wally.hpp"
 #include "session_impl.hpp"
-#include "threading.hpp"
-
-using namespace std::literals;
 
 namespace ga {
 namespace sdk {

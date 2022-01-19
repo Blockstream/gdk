@@ -8,8 +8,6 @@
 #include "autobahn_wrapper.hpp"
 #include "logging.hpp"
 
-using namespace std::literals;
-
 namespace ga {
 namespace sdk {
     struct websocketpp_gdk_config;
@@ -20,8 +18,6 @@ namespace sdk {
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
-    using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
-    using wamp_session_ptr = std::shared_ptr<autobahn::wamp_session>;
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event);
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result);
@@ -84,9 +80,6 @@ namespace sdk {
 
         nlohmann::json http_request(nlohmann::json params);
 
-        context_ptr tls_init_handler_impl(
-            const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins);
-
         transport_t make_transport();
         bool ping() const;
 
@@ -131,7 +124,7 @@ namespace sdk {
         boost::asio::io_context m_io;
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
         transport_t m_transport;
-        wamp_session_ptr m_session;
+        std::shared_ptr<autobahn::wamp_session> m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
         std::unique_ptr<network_control_context> m_network_control;
         std::shared_ptr<tor_controller> m_tor_ctrl;

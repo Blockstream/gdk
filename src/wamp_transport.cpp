@@ -29,6 +29,7 @@
 
 #define TX_CACHE_LEVEL log_level::debug
 
+using namespace std::literals;
 namespace asio = boost::asio;
 
 namespace ga {
@@ -285,6 +286,62 @@ namespace sdk {
             return false;
         }
 
+        static auto tls_init(const std::string& host_name, const std::vector<std::string>& roots,
+            const std::vector<std::string>& pins, uint32_t cert_expiry_threshold)
+        {
+            const auto ctx = std::make_shared<asio::ssl::context>(asio::ssl::context::tls);
+            ctx->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2
+                | asio::ssl::context::no_sslv3 | asio::ssl::context::no_tlsv1 | asio::ssl::context::no_tlsv1_1
+                | asio::ssl::context::single_dh_use);
+            ctx->set_verify_mode(asio::ssl::context::verify_peer | asio::ssl::context::verify_fail_if_no_peer_cert);
+            // attempt to load system roots
+            ctx->set_default_verify_paths();
+            for (const auto& root : roots) {
+                if (root.empty()) {
+                    // TODO: at the moment looks like the roots/pins are empty strings when absent
+                    break;
+                }
+
+                using X509_ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+                X509_ptr cert(cert_from_pem(root), X509_free);
+                if (!is_cert_in_date_range(cert.get(), cert_expiry_threshold)) {
+                    // Avoid adding expired certificates as they can cause validation failures
+                    // even if there are other non-expired roots available.
+                    GDK_LOG_SEV(log_level::warning) << "Ignoring expiring root certificate:\n"
+                                                    << cert_to_pretty_string(cert.get());
+                    continue;
+                }
+
+                // add network provided root
+                const asio::const_buffer root_const_buff(root.c_str(), root.size());
+                ctx->add_certificate_authority(root_const_buff);
+            }
+
+            ctx->set_verify_callback([pins, host_name, cert_expiry_threshold](
+                                         bool preverified, asio::ssl::verify_context& ctx) {
+                // Pre-verification includes checking for things like expired certificates
+                if (!preverified) {
+                    const int err = X509_STORE_CTX_get_error(ctx.native_handle());
+                    GDK_LOG_SEV(log_level::error) << "x509 certificate error: " << X509_verify_cert_error_string(err);
+                    return false;
+                }
+
+                // If pins are defined check that at least one of the pins is in the
+                // certificate chain
+                // If no pins are specified skip the check altogether
+                const bool have_pins = !pins.empty() && !pins[0].empty();
+                if (have_pins && !check_cert_pins(pins, ctx, cert_expiry_threshold)) {
+                    GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check";
+                    return false;
+                }
+
+                // Check the host name matches the target
+                return asio::ssl::rfc2818_verification{ host_name }(true, ctx);
+            });
+
+            return ctx;
+        }
+
         template <typename T> static nlohmann::json wamp_cast_json_impl(const T& result)
         {
             if (!result.number_of_arguments()) {
@@ -448,8 +505,8 @@ namespace sdk {
 
         boost::get<std::unique_ptr<client_tls>>(m_client)->set_tls_init_handler(
             [this, host_name](const websocketpp::connection_hdl) {
-                return tls_init_handler_impl(
-                    host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins());
+                return tls_init(host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
+                    m_net_params.cert_expiry_threshold());
             });
     }
 
@@ -506,61 +563,6 @@ namespace sdk {
             }
         });
         return got_pong;
-    }
-
-    context_ptr wamp_transport::tls_init_handler_impl(
-        const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins)
-    {
-        const context_ptr ctx = std::make_shared<asio::ssl::context>(asio::ssl::context::tls);
-        ctx->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2
-            | asio::ssl::context::no_sslv3 | asio::ssl::context::no_tlsv1 | asio::ssl::context::no_tlsv1_1
-            | asio::ssl::context::single_dh_use);
-        ctx->set_verify_mode(asio::ssl::context::verify_peer | asio::ssl::context::verify_fail_if_no_peer_cert);
-        // attempt to load system roots
-        ctx->set_default_verify_paths();
-        for (const auto& root : roots) {
-            if (root.empty()) {
-                // TODO: at the moment looks like the roots/pins are empty strings when absent
-                break;
-            }
-
-            using X509_ptr = std::unique_ptr<X509, decltype(&X509_free)>;
-            X509_ptr cert(cert_from_pem(root), X509_free);
-            if (!is_cert_in_date_range(cert.get(), m_net_params.cert_expiry_threshold())) {
-                // Avoid adding expired certificates as they can cause validation failures
-                // even if there are other non-expired roots available.
-                GDK_LOG_SEV(log_level::warning) << "Ignoring expiring root certificate:\n"
-                                                << cert_to_pretty_string(cert.get());
-                continue;
-            }
-
-            // add network provided root
-            const asio::const_buffer root_const_buff(root.c_str(), root.size());
-            ctx->add_certificate_authority(root_const_buff);
-        }
-
-        ctx->set_verify_callback([this, pins, host_name](bool preverified, asio::ssl::verify_context& ctx) {
-            // Pre-verification includes checking for things like expired certificates
-            if (!preverified) {
-                const int err = X509_STORE_CTX_get_error(ctx.native_handle());
-                GDK_LOG_SEV(log_level::error) << "x509 certificate error: " << X509_verify_cert_error_string(err);
-                return false;
-            }
-
-            // If pins are defined check that at least one of the pins is in the
-            // certificate chain
-            // If no pins are specified skip the check altogether
-            const bool have_pins = !pins.empty() && !pins[0].empty();
-            if (have_pins && !check_cert_pins(pins, ctx, m_net_params.cert_expiry_threshold())) {
-                GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check";
-                return false;
-            }
-
-            // Check the host name matches the target
-            return asio::ssl::rfc2818_verification{ host_name }(true, ctx);
-        });
-
-        return ctx;
     }
 
     autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const
@@ -770,7 +772,7 @@ namespace sdk {
                     root_certificates.push_back(custom_root_certificate.get<std::string>());
                 }
             }
-            const auto ssl_ctx = tls_init_handler_impl(params["host"], root_certificates, {});
+            const auto ssl_ctx = tls_init(params["host"], root_certificates, {}, m_net_params.cert_expiry_threshold());
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {

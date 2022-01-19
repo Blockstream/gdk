@@ -6,7 +6,6 @@
 #include "memory.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
-#include "version.h"
 
 namespace ga {
 namespace sdk {

@@ -36,6 +36,7 @@
 
 #define TX_CACHE_LEVEL log_level::debug
 
+using namespace std::literals;
 namespace asio = boost::asio;
 
 namespace ga {
