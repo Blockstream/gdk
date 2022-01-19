@@ -142,6 +142,7 @@ namespace sdk {
         static const std::string USER_AGENT_CAPS_NO_CSV("[v2,sw]");
 
         // networking defaults
+        static const uint32_t DEFAULT_PING = 20; // ping message interval in seconds
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
@@ -366,26 +367,6 @@ namespace sdk {
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
-    // ping message interval in seconds
-    const uint32_t event_loop_controller::DEFAULT_PING = 20;
-
-    event_loop_controller::event_loop_controller(asio::io_context& io)
-        : m_work_guard(asio::make_work_guard(io))
-        , m_run_thread(std::thread([&] { io.run(); }))
-        , m_ping_timer(io)
-    {
-    }
-
-    void event_loop_controller::reset()
-    {
-        no_std_exception_escape([this] {
-            m_work_guard.reset();
-            m_run_thread.join();
-        });
-    }
-
-    void event_loop_controller::cancel_ping_timer() { m_ping_timer.cancel(); }
-
     wamp_transport::wamp_transport(const network_parameters& net_params, wamp_transport::notify_fn_t fn)
         : m_net_params(net_params)
         , m_notify_fn(fn)
@@ -396,12 +377,14 @@ namespace sdk {
         , m_network_control(new network_control_context())
         , m_wamp_call_options()
         , m_wamp_call_prefix("com.greenaddress.")
-        , m_controller(new event_loop_controller(m_io))
+        , m_work_guard(asio::make_work_guard(m_io))
+        , m_ping_timer(m_io)
     {
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
 
         make_client();
+        m_run_thread = std::thread([this] { m_io.run(); });
     }
 
     wamp_transport::~wamp_transport()
@@ -409,7 +392,10 @@ namespace sdk {
         no_std_exception_escape([this] {
             reconnect_hint(false); // Disable reconnect, stop any further attempts
             disconnect(true);
-            m_controller->reset();
+        });
+        no_std_exception_escape([this] {
+            m_work_guard.reset();
+            m_run_thread.join();
         });
     }
 
@@ -627,7 +613,7 @@ namespace sdk {
             return;
         }
 
-        m_controller->cancel_ping_timer();
+        m_ping_timer.cancel();
 
         if (m_reconnect_thread) {
             GDK_LOG_SEV(log_level::info) << "reconnect: joining old reconnection thread";
@@ -689,7 +675,7 @@ namespace sdk {
         m_network_control->set_reconnect_enabled(enable);
         if (!enable) {
             // Prevent the ping timer from attempting to reconnect
-            m_controller->cancel_ping_timer();
+            m_ping_timer.cancel();
 
             // Stop any in-progress reconnection attempts
             m_network_control->stop_reconnecting();
@@ -711,15 +697,17 @@ namespace sdk {
 
     void wamp_transport::start_ping_timer()
     {
+        GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
+        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
         using std::placeholders::_1;
-        m_controller->start_ping_timer(std::bind(&wamp_transport::ping_timer_handler, this, _1));
+        m_ping_timer.async_wait(std::bind(&wamp_transport::ping_timer_handler, this, _1));
     }
 
     void wamp_transport::disconnect(bool user_initiated)
     {
         GDK_LOG_SEV(log_level::info) << "disconnecting";
         unsubscribe();
-        m_controller->cancel_ping_timer();
+        m_ping_timer.cancel();
 
         if (!user_initiated) {
             // Note we don't emit a notification if the user explicitly

@@ -14,7 +14,6 @@ namespace sdk {
     struct websocketpp_gdk_tls_config;
     struct tor_controller;
     struct network_control_context;
-    struct event_loop_controller;
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
@@ -34,28 +33,6 @@ namespace sdk {
         }
         return result.template argument<T>(0);
     }
-
-    struct event_loop_controller {
-        explicit event_loop_controller(boost::asio::io_context& io);
-
-        void reset();
-
-        template <typename FN> void post(FN&& fn) { boost::asio::post(m_work_guard.get_executor(), fn); }
-
-        template <typename FN> void start_ping_timer(FN&& fn)
-        {
-            GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
-            m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
-            m_ping_timer.async_wait(fn);
-        }
-
-        void cancel_ping_timer();
-
-        static const uint32_t DEFAULT_PING;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
-        std::thread m_run_thread;
-        boost::asio::deadline_timer m_ping_timer;
-    };
 
     class wamp_transport {
     public:
@@ -110,11 +87,11 @@ namespace sdk {
             return call(method_name, std::forward<Args>(args)...);
         }
 
-        autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
-
-        template <typename FN> void post(FN&& fn) { m_controller->post(fn); }
+        template <typename FN> void post(FN&& fn) { boost::asio::post(m_work_guard.get_executor(), fn); }
 
     private:
+        autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
+
         const network_parameters& m_net_params;
         notify_fn_t m_notify_fn;
         const bool m_debug_logging;
@@ -132,7 +109,9 @@ namespace sdk {
         autobahn::wamp_call_options m_wamp_call_options;
         const std::string m_wamp_call_prefix;
         std::unique_ptr<std::thread> m_reconnect_thread;
-        std::unique_ptr<event_loop_controller> m_controller;
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+        std::thread m_run_thread;
+        boost::asio::deadline_timer m_ping_timer;
     };
 
 } // namespace sdk
