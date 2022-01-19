@@ -13,7 +13,6 @@ namespace sdk {
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
     struct tor_controller;
-    struct network_control_context;
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
@@ -92,6 +91,12 @@ namespace sdk {
     private:
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
 
+        bool set_reconnecting(bool want_to_reconnect);
+        void stop_reconnecting();
+        bool is_reconnect_canceled(std::chrono::seconds secs) const;
+        void set_reconnect_enabled(bool v);
+        bool is_reconnect_enabled() const;
+
         const network_parameters& m_net_params;
         notify_fn_t m_notify_fn;
         const bool m_debug_logging;
@@ -103,15 +108,18 @@ namespace sdk {
         transport_t m_transport;
         std::shared_ptr<autobahn::wamp_session> m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
-        std::unique_ptr<network_control_context> m_network_control;
         std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_last_tor_socks5;
         autobahn::wamp_call_options m_wamp_call_options;
         const std::string m_wamp_call_prefix;
-        std::unique_ptr<std::thread> m_reconnect_thread;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
         std::thread m_run_thread;
         boost::asio::deadline_timer m_ping_timer;
+        std::unique_ptr<std::thread> m_reconnect_thread;
+        std::promise<void> m_reconnect_promise;
+        std::future<void> m_reconnect_future;
+        std::atomic_bool m_reconnecting{ false };
+        std::atomic_bool m_enabled{ true };
     };
 
 } // namespace sdk

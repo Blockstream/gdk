@@ -86,45 +86,6 @@ namespace sdk {
     using transport = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_config>;
     using transport_tls = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_tls_config>;
 
-    struct network_control_context {
-        bool set_reconnecting(bool want_to_reconnect)
-        {
-            bool currently_reconnecting = m_reconnecting;
-            if (want_to_reconnect && currently_reconnecting) {
-                return false; // Already reconnecting
-            }
-            bool can_reconnect = m_reconnecting.compare_exchange_strong(currently_reconnecting, want_to_reconnect);
-            if (want_to_reconnect && can_reconnect) {
-                // No one else is currently reconnecting.
-                // Reset m_exit_flag to allow later cancelling of a reconnect.
-                m_exit_flag.first = decltype(m_exit_flag.first)();
-                m_exit_flag.second = m_exit_flag.first.get_future();
-            }
-            return can_reconnect;
-        }
-
-        void stop_reconnecting()
-        {
-            if (m_reconnecting) {
-                // Set the future status to ready, causing is_reconnect_canceled to return true
-                m_exit_flag.first.set_value();
-            }
-        }
-
-        bool is_reconnect_canceled(std::chrono::seconds secs) const
-        {
-            return m_exit_flag.second.wait_for(secs) == std::future_status::ready;
-        }
-
-        void set_reconnect_enabled(bool v) { m_enabled = v; }
-        bool is_reconnect_enabled() const { return m_enabled; }
-
-    private:
-        std::pair<std::promise<void>, std::future<void>> m_exit_flag;
-        std::atomic_bool m_reconnecting{ false };
-        std::atomic_bool m_enabled{ true };
-    };
-
     gdk_logger_t& websocket_boost_logger::m_log = gdk_logger::get();
 
     namespace {
@@ -365,7 +326,6 @@ namespace sdk {
         , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
         , m_has_network_proxy(!m_proxy.empty())
         , m_io()
-        , m_network_control(new network_control_context())
         , m_wamp_call_options()
         , m_wamp_call_prefix("com.greenaddress.")
         , m_work_guard(asio::make_work_guard(m_io))
@@ -391,6 +351,38 @@ namespace sdk {
     }
 
     bool wamp_transport::is_connected() const { return m_transport && m_transport->is_connected(); }
+
+    bool wamp_transport::set_reconnecting(bool want_to_reconnect)
+    {
+        bool currently_reconnecting = m_reconnecting;
+        if (want_to_reconnect && currently_reconnecting) {
+            return false; // Already reconnecting
+        }
+        bool can_reconnect = m_reconnecting.compare_exchange_strong(currently_reconnecting, want_to_reconnect);
+        if (want_to_reconnect && can_reconnect) {
+            // No one else is currently reconnecting.
+            // Reset m_exit_flag to allow later cancelling of a reconnect.
+            m_reconnect_promise = decltype(m_reconnect_promise)();
+            m_reconnect_future = m_reconnect_promise.get_future();
+        }
+        return can_reconnect;
+    }
+
+    void wamp_transport::stop_reconnecting()
+    {
+        if (m_reconnecting) {
+            // Set the future status to ready, causing is_reconnect_canceled to return true
+            m_reconnect_promise.set_value();
+        }
+    }
+
+    bool wamp_transport::is_reconnect_canceled(std::chrono::seconds secs) const
+    {
+        return m_reconnect_future.wait_for(secs) == std::future_status::ready;
+    }
+
+    void wamp_transport::set_reconnect_enabled(bool v) { m_enabled = v; }
+    bool wamp_transport::is_reconnect_enabled() const { return m_enabled; }
 
     std::string wamp_transport::get_tor_socks5()
     {
@@ -586,7 +578,7 @@ namespace sdk {
             return;
         }
 
-        if (!m_network_control->is_reconnect_enabled()) {
+        if (!is_reconnect_enabled()) {
             GDK_LOG_SEV(log_level::info) << "reconnect: disabled";
             return;
         }
@@ -599,7 +591,7 @@ namespace sdk {
             return;
         }
 
-        if (!m_network_control->set_reconnecting(true)) {
+        if (!set_reconnecting(true)) {
             GDK_LOG_SEV(log_level::info) << "reconnect: already in progress";
             return;
         }
@@ -627,8 +619,7 @@ namespace sdk {
                     { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
                 m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
 
-                if (!m_network_control->is_reconnect_enabled()
-                    || m_network_control->is_reconnect_canceled(backoff_time)) {
+                if (!is_reconnect_enabled() || is_reconnect_canceled(backoff_time)) {
                     GDK_LOG_SEV(log_level::info) << prologue << "disabled/cancelled";
                     break;
                 }
@@ -650,7 +641,7 @@ namespace sdk {
                 }
             }
 
-            m_network_control->set_reconnecting(false);
+            set_reconnecting(false);
 
             if (!is_connected()) {
                 start_ping_timer();
@@ -663,13 +654,13 @@ namespace sdk {
         GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
 
         // Enable/disable any new reconnection attempts
-        m_network_control->set_reconnect_enabled(enable);
+        set_reconnect_enabled(enable);
         if (!enable) {
             // Prevent the ping timer from attempting to reconnect
             m_ping_timer.cancel();
 
             // Stop any in-progress reconnection attempts
-            m_network_control->stop_reconnecting();
+            stop_reconnecting();
             decltype(m_reconnect_thread) t;
             // Fetch the reconnect thread pointer from within the executor
             auto f = asio::post(m_io.get_executor(), std::packaged_task<void()>([this, &t] {
