@@ -129,14 +129,15 @@ public class TwoFactorCall {
 }
 
 public typealias NotificationCompletionHandler = (_ notification: [String: Any]?) -> Void
+fileprivate var notificationContexts = [String: NotificationContext]()
+fileprivate let queue = DispatchQueue(label: "BarrierQueue", attributes: .concurrent)
 
 fileprivate class NotificationContext {
-    private var session: OpaquePointer
-
+    var uuid: String
     var notificationCompletionHandler: NotificationCompletionHandler
 
-    init(session: OpaquePointer, notificationCompletionHandler: @escaping NotificationCompletionHandler) {
-        self.session = session
+    init(uuid: String, notificationCompletionHandler: @escaping NotificationCompletionHandler) {
+        self.uuid = uuid
         self.notificationCompletionHandler = notificationCompletionHandler
     }
 }
@@ -154,27 +155,37 @@ public class Session {
 
     private let notificationHandler : NotificationHandler = { (context: UnsafeMutableRawPointer?, details: OpaquePointer?) -> Void in
         let context : NotificationContext = Unmanaged.fromOpaque(context!).takeUnretainedValue()
-        if let jsonDetails = details {
-            let dict = try! convertOpaqueJsonToDict(o: jsonDetails)
-            context.notificationCompletionHandler(dict)
+        queue.async(flags: .barrier) {
+            if let notificationContext = notificationContexts[context.uuid],
+               let jsonDetails = details,
+               let dict = try! convertOpaqueJsonToDict(o: jsonDetails) {
+                notificationContext.notificationCompletionHandler(dict)
+            }
         }
     }
 
     private var session: OpaquePointer? = nil
-    private var notificationContext: NotificationContext? = nil
+    private let uuid: String
 
-    private func setNotificationHandler(notificationCompletionHandler: @escaping NotificationCompletionHandler) throws {
-        notificationContext = NotificationContext(session: session!, notificationCompletionHandler: notificationCompletionHandler)
-        let context = UnsafeMutableRawPointer(Unmanaged.passUnretained(self.notificationContext!).toOpaque())
-        try callWrapper(fun: GA_set_notification_handler(session, notificationHandler, context))
+    func setNotificationHandler(notificationCompletionHandler: NotificationCompletionHandler?) {
+        queue.sync() {
+            guard let notificationCompletionHandler = notificationCompletionHandler else {
+                notificationContexts.removeValue(forKey: self.uuid)
+                return
+            }
+            notificationContexts[self.uuid] = NotificationContext(uuid: self.uuid, notificationCompletionHandler: notificationCompletionHandler)
+            let context = UnsafeMutableRawPointer(Unmanaged.passUnretained(notificationContexts[self.uuid]!).toOpaque())
+            try? callWrapper(fun: GA_set_notification_handler(self.session, self.notificationHandler, context))
+        }
     }
 
-    public init(notificationCompletionHandler: @escaping NotificationCompletionHandler) throws {
+    public init() throws {
+        self.uuid = UUID().uuidString
         try callWrapper(fun: GA_create_session(&session))
-        try setNotificationHandler(notificationCompletionHandler: notificationCompletionHandler)
     }
 
     deinit {
+        setNotificationHandler(notificationCompletionHandler: nil)
         GA_destroy_session(session)
     }
 
