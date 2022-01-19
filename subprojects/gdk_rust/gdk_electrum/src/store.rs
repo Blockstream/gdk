@@ -101,6 +101,7 @@ pub struct StoreMeta {
     id: NetworkId,
     path: PathBuf,
     cipher: Aes256GcmSiv,
+    last: HashMap<String, sha256::Hash>,
 }
 
 impl Drop for StoreMeta {
@@ -232,15 +233,29 @@ impl StoreMeta {
             id,
             cipher,
             path,
+            last: HashMap::new(),
         })
     }
 
-    fn flush_serializable<T: serde::Serialize>(&self, name: &str, value: &T) -> Result<(), Error> {
+    fn flush_serializable(&mut self, name: &str) -> Result<(), Error> {
         let now = Instant::now();
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let mut plaintext = serde_cbor::to_vec(value)?;
+        let mut plaintext = match name {
+            "store" => serde_cbor::to_vec(&self.store),
+            "cache" => serde_cbor::to_vec(&self.cache),
+            _ => return Err(Error::Generic("flushing unknown name".to_string())),
+        }?;
+
+        let hash = sha256::Hash::hash(&plaintext);
+        if let Some(last_hash) = self.last.get(name) {
+            if last_hash == &hash {
+                info!("latest serialization hash matches, no need to flush");
+                return Ok(())
+            }
+        }
+        self.last.insert(name.to_string(), hash);
 
         self.cipher.encrypt_in_place(nonce, b"", &mut plaintext)?;
         let ciphertext = plaintext;
@@ -261,17 +276,17 @@ impl StoreMeta {
         Ok(())
     }
 
-    fn flush_store(&self) -> Result<(), Error> {
-        self.flush_serializable("store", &self.store)?;
+    fn flush_store(&mut self) -> Result<(), Error> {
+        self.flush_serializable("store")?;
         Ok(())
     }
 
-    fn flush_cache(&self) -> Result<(), Error> {
-        self.flush_serializable("cache", &self.cache)?;
+    fn flush_cache(&mut self) -> Result<(), Error> {
+        self.flush_serializable("cache")?;
         Ok(())
     }
 
-    pub fn flush(&self) -> Result<(), Error> {
+    pub fn flush(&mut self) -> Result<(), Error> {
         self.flush_store()?;
         self.flush_cache()?;
         Ok(())
@@ -427,7 +442,7 @@ impl StoreMeta {
         }
     }
 
-    pub fn export_cache(&self) -> Result<RawCache, Error> {
+    pub fn export_cache(&mut self) -> Result<RawCache, Error> {
         self.flush_cache()?;
         RawCache::try_new(&self.path, &self.cipher)
     }

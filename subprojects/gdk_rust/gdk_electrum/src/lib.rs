@@ -1062,8 +1062,8 @@ impl Session<Error> for ElectrumSession {
 }
 
 impl ElectrumSession {
-    pub fn export_cache(&self) -> Result<RawCache, Error> {
-        self.get_wallet()?.store.read()?.export_cache()
+    pub fn export_cache(&mut self) -> Result<RawCache, Error> {
+        self.get_wallet()?.store.write()?.export_cache()
     }
 }
 
