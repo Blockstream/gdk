@@ -256,7 +256,7 @@ namespace sdk {
             const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins);
 
         void make_client();
-        void make_transport();
+        transport_t make_transport();
 
         bool ping() const;
 

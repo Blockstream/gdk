@@ -662,7 +662,7 @@ namespace sdk {
         GDK_LOG_SEV(log_level::info) << "connecting";
         m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
 
-        make_transport();
+        m_transport = make_transport();
         m_transport->connect().get();
         m_session->start().get();
         m_session->join("realm1").get();
@@ -690,7 +690,7 @@ namespace sdk {
             });
     }
 
-    void ga_session::make_transport()
+    ga_session::transport_t ga_session::make_transport()
     {
         if (m_net_params.use_tor() && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
@@ -709,17 +709,19 @@ namespace sdk {
             proxy_details = std::string(" through proxy ") + m_proxy;
         }
         GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
+        transport_t transport_p;
         using namespace std::placeholders;
         if (m_net_params.is_tls_connection()) {
             auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
             clnt.set_pong_timeout_handler(std::bind(&ga_session::heartbeat_timeout_cb, this, _1, _2));
-            m_transport = std::make_shared<transport_tls>(clnt, server, m_proxy, m_debug_logging);
+            transport_p = std::make_shared<transport_tls>(clnt, server, m_proxy, m_debug_logging);
         } else {
             auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
             clnt.set_pong_timeout_handler(std::bind(&ga_session::heartbeat_timeout_cb, this, _1, _2));
-            m_transport = std::make_shared<transport>(clnt, server, m_proxy, m_debug_logging);
+            transport_p = std::make_shared<transport>(clnt, server, m_proxy, m_debug_logging);
         }
-        m_transport->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
+        transport_p->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
+        return transport_p;
     }
 
     void ga_session::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
@@ -993,6 +995,7 @@ namespace sdk {
                 }
             });
             no_std_exception_escape([&] { m_transport->detach(); });
+            no_std_exception_escape([&] { m_transport.reset(); });
         }
     }
 
