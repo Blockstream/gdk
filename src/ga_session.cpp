@@ -552,11 +552,7 @@ namespace sdk {
     };
 
     ga_session::ga_session(network_parameters&& net_params)
-        : session_impl(std::move(net_params))
-        , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
-        , m_has_network_proxy(!m_proxy.empty())
-        , m_io()
-        , m_network_control(new network_control_context())
+        : ga_wamp_session(std::move(net_params))
         , m_blob()
         , m_blob_hmac()
         , m_blob_outdated(false)
@@ -572,42 +568,30 @@ namespace sdk {
         , m_multi_call_category(0)
         , m_cache(std::make_shared<cache>(m_net_params, m_net_params.network()))
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
-        , m_wamp_call_options()
-        , m_wamp_call_prefix("com.greenaddress.")
-        , m_controller(new event_loop_controller(m_io))
     {
-        constexpr uint32_t wamp_timeout_secs = 10;
-        m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
-
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
-        make_client();
     }
 
     ga_session::~ga_session()
     {
-        no_std_exception_escape([this] {
-            reconnect_hint(false); // Disable reconnect, stop any further attempts
-            disconnect(true);
-            m_controller->reset();
-            reset_all_session_data(true);
-        });
+        no_std_exception_escape([this] { reset_all_session_data(true); });
     }
 
-    bool ga_session::is_connected() const { return m_transport && m_transport->is_connected(); }
+    bool ga_wamp_session::is_connected() const { return m_transport && m_transport->is_connected(); }
 
-    std::string ga_session::get_tor_socks5()
+    std::string ga_wamp_session::get_tor_socks5()
     {
         return m_tor_ctrl ? m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, nullptr) : std::string{};
     }
 
-    void ga_session::tor_sleep_hint(const std::string& hint)
+    void ga_wamp_session::tor_sleep_hint(const std::string& hint)
     {
         if (m_tor_ctrl) {
             m_tor_ctrl->tor_sleep_hint(hint);
         }
     }
 
-    void ga_session::unsubscribe()
+    void ga_wamp_session::unsubscribe()
     {
         decltype(m_subscriptions) subscriptions;
         {
@@ -626,7 +610,7 @@ namespace sdk {
         });
     }
 
-    void ga_session::set_socket_options()
+    void ga_wamp_session::set_socket_options()
     {
         const bool is_tls = m_net_params.is_tls_connection();
         auto set_option = [this, is_tls](auto option) {
@@ -657,7 +641,7 @@ namespace sdk {
 #endif
     }
 
-    void ga_session::connect()
+    void ga_wamp_session::connect()
     {
         GDK_LOG_SEV(log_level::info) << "connecting";
         m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
@@ -671,7 +655,7 @@ namespace sdk {
         start_ping_timer();
     }
 
-    void ga_session::make_client()
+    void ga_wamp_session::make_client()
     {
         if (!m_net_params.is_tls_connection()) {
             m_client = std::make_unique<client>();
@@ -690,7 +674,7 @@ namespace sdk {
             });
     }
 
-    ga_session::transport_t ga_session::make_transport()
+    ga_session::transport_t ga_wamp_session::make_transport()
     {
         if (m_net_params.use_tor() && !m_has_network_proxy) {
             m_tor_ctrl = tor_controller::get_shared_ref();
@@ -713,24 +697,24 @@ namespace sdk {
         using namespace std::placeholders;
         if (m_net_params.is_tls_connection()) {
             auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
-            clnt.set_pong_timeout_handler(std::bind(&ga_session::heartbeat_timeout_cb, this, _1, _2));
+            clnt.set_pong_timeout_handler(std::bind(&ga_wamp_session::heartbeat_timeout_cb, this, _1, _2));
             transport_p = std::make_shared<transport_tls>(clnt, server, m_proxy, m_debug_logging);
         } else {
             auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
-            clnt.set_pong_timeout_handler(std::bind(&ga_session::heartbeat_timeout_cb, this, _1, _2));
+            clnt.set_pong_timeout_handler(std::bind(&ga_wamp_session::heartbeat_timeout_cb, this, _1, _2));
             transport_p = std::make_shared<transport>(clnt, server, m_proxy, m_debug_logging);
         }
         transport_p->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
         return transport_p;
     }
 
-    void ga_session::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
+    void ga_wamp_session::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
     {
         GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
         reconnect();
     }
 
-    bool ga_session::ping() const
+    bool ga_wamp_session::ping() const
     {
         bool got_pong = false;
         no_std_exception_escape([this, &got_pong] {
@@ -745,7 +729,7 @@ namespace sdk {
         return got_pong;
     }
 
-    context_ptr ga_session::tls_init_handler_impl(
+    context_ptr ga_wamp_session::tls_init_handler_impl(
         const std::string& host_name, const std::vector<std::string>& roots, const std::vector<std::string>& pins)
     {
         const context_ptr ctx = std::make_shared<asio::ssl::context>(asio::ssl::context::tls);
@@ -800,7 +784,7 @@ namespace sdk {
         return ctx;
     }
 
-    autobahn::wamp_call_result ga_session::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const
+    autobahn::wamp_call_result ga_wamp_session::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const
     {
         const auto ms = boost::chrono::milliseconds(m_wamp_call_options.timeout().count());
         for (;;) {
@@ -820,7 +804,7 @@ namespace sdk {
         }
     }
 
-    void ga_session::ping_timer_handler(const boost::system::error_code& ec)
+    void ga_wamp_session::ping_timer_handler(const boost::system::error_code& ec)
     {
         if (ec == asio::error::operation_aborted) {
             return;
@@ -834,7 +818,7 @@ namespace sdk {
         start_ping_timer();
     }
 
-    void ga_session::emit_notification(nlohmann::json details, bool async)
+    void ga_wamp_session::emit_notification(nlohmann::json details, bool async)
     {
         if (async) {
             m_controller->post([this, details] { emit_notification(details, false); });
@@ -843,7 +827,7 @@ namespace sdk {
         }
     }
 
-    void ga_session::reconnect()
+    void ga_wamp_session::reconnect()
     {
         if (!m_io.get_executor().running_in_this_thread()) {
             GDK_LOG_SEV(log_level::info) << "reconnect: submitting to executor";
@@ -925,7 +909,7 @@ namespace sdk {
         }));
     }
 
-    void ga_session::reconnect_hint(bool enable)
+    void ga_wamp_session::reconnect_hint(bool enable)
     {
         GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
 
@@ -953,13 +937,13 @@ namespace sdk {
         }
     }
 
-    void ga_session::start_ping_timer()
+    void ga_wamp_session::start_ping_timer()
     {
         using std::placeholders::_1;
-        m_controller->start_ping_timer(std::bind(&ga_session::ping_timer_handler, this, _1));
+        m_controller->start_ping_timer(std::bind(&ga_wamp_session::ping_timer_handler, this, _1));
     }
 
-    void ga_session::disconnect(bool user_initiated)
+    void ga_wamp_session::disconnect(bool user_initiated)
     {
         GDK_LOG_SEV(log_level::info) << "disconnecting";
         unsubscribe();
@@ -999,7 +983,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::http_request(nlohmann::json params)
+    nlohmann::json ga_wamp_session::http_request(nlohmann::json params)
     {
         nlohmann::json result;
         try {
@@ -3091,7 +3075,7 @@ namespace sdk {
         return nlohmann::json(std::move(result));
     }
 
-    autobahn::wamp_subscription ga_session::subscribe(
+    autobahn::wamp_subscription ga_wamp_session::subscribe(
         session_impl::locker_t& locker, const std::string& topic, const autobahn::wamp_event_handler& callback)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -4100,6 +4084,31 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
         update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+    }
+
+    ga_wamp_session::ga_wamp_session(network_parameters&& net_params)
+        : session_impl(std::move(net_params))
+        , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
+        , m_has_network_proxy(!m_proxy.empty())
+        , m_io()
+        , m_network_control(new network_control_context())
+        , m_wamp_call_options()
+        , m_wamp_call_prefix("com.greenaddress.")
+        , m_controller(new event_loop_controller(m_io))
+    {
+        constexpr uint32_t wamp_timeout_secs = 10;
+        m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
+
+        make_client();
+    }
+
+    ga_wamp_session::~ga_wamp_session()
+    {
+        no_std_exception_escape([this] {
+            reconnect_hint(false); // Disable reconnect, stop any further attempts
+            disconnect(true);
+            m_controller->reset();
+        });
     }
 
 } // namespace sdk
