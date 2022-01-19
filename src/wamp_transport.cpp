@@ -721,7 +721,9 @@ namespace sdk {
                 }
             });
             no_std_exception_escape([&] { m_transport->detach(); });
-            no_std_exception_escape([&] { m_transport.reset(); });
+            // FIXME: resetting the pointer here causes std::terminate to be called
+            // under some circumstances
+            // no_std_exception_escape([&] { m_transport.reset(); });
         }
     }
 
