@@ -86,16 +86,6 @@ namespace sdk {
     using transport = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_config>;
     using transport_tls = autobahn::wamp_websocketpp_websocket_transport<websocketpp_gdk_tls_config>;
 
-    struct flag_type {
-        flag_type() { m_flag.second = m_flag.first.get_future(); }
-
-        void set() { m_flag.first.set_value(); }
-
-        std::future_status wait(std::chrono::seconds secs = 0s) const { return m_flag.second.wait_for(secs); }
-
-        std::pair<std::promise<void>, std::future<void>> m_flag;
-    };
-
     struct network_control_context {
         bool set_reconnecting(bool want_to_reconnect)
         {
@@ -107,7 +97,8 @@ namespace sdk {
             if (want_to_reconnect && can_reconnect) {
                 // No one else is currently reconnecting.
                 // Reset m_exit_flag to allow later cancelling of a reconnect.
-                m_exit_flag = flag_type{};
+                m_exit_flag.first = decltype(m_exit_flag.first)();
+                m_exit_flag.second = m_exit_flag.first.get_future();
             }
             return can_reconnect;
         }
@@ -116,20 +107,20 @@ namespace sdk {
         {
             if (m_reconnecting) {
                 // Set the future status to ready, causing is_reconnect_canceled to return true
-                m_exit_flag.set();
+                m_exit_flag.first.set_value();
             }
         }
 
         bool is_reconnect_canceled(std::chrono::seconds secs) const
         {
-            return m_exit_flag.wait(secs) == std::future_status::ready;
+            return m_exit_flag.second.wait_for(secs) == std::future_status::ready;
         }
 
         void set_reconnect_enabled(bool v) { m_enabled = v; }
         bool is_reconnect_enabled() const { return m_enabled; }
 
     private:
-        flag_type m_exit_flag;
+        std::pair<std::promise<void>, std::future<void>> m_exit_flag;
         std::atomic_bool m_reconnecting{ false };
         std::atomic_bool m_enabled{ true };
     };
