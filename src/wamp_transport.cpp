@@ -321,15 +321,15 @@ namespace sdk {
 
     wamp_transport::wamp_transport(const network_parameters& net_params, wamp_transport::notify_fn_t fn)
         : m_net_params(net_params)
+        , m_wamp_call_prefix("com.greenaddress.")
+        , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_debug_logging(m_net_params.log_level() == "debug")
         , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
         , m_has_network_proxy(!m_proxy.empty())
         , m_io()
-        , m_wamp_call_options()
-        , m_wamp_call_prefix("com.greenaddress.")
-        , m_work_guard(asio::make_work_guard(m_io))
         , m_ping_timer(m_io)
+        , m_work_guard(asio::make_work_guard(m_io))
     {
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));

@@ -38,7 +38,6 @@ namespace sdk {
         using locker_t = std::unique_lock<std::mutex>;
         using notify_fn_t = std::function<void(nlohmann::json, bool)>;
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
-        using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
 
         wamp_transport(const network_parameters& net_params, notify_fn_t fn);
         ~wamp_transport();
@@ -54,15 +53,6 @@ namespace sdk {
         void clear_subscriptions();
 
         nlohmann::json http_request(nlohmann::json params);
-
-        transport_t make_transport();
-        bool ping() const;
-
-        void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
-        void ping_timer_handler(const boost::system::error_code& ec);
-
-        void set_socket_options();
-        void start_ping_timer();
 
         std::string get_tor_socks5();
         void tor_sleep_hint(const std::string& hint);
@@ -88,6 +78,16 @@ namespace sdk {
         template <typename FN> void post(FN&& fn) { boost::asio::post(m_work_guard.get_executor(), fn); }
 
     private:
+        using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
+        transport_t make_transport();
+        bool ping() const;
+
+        void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
+        void ping_timer_handler(const boost::system::error_code& ec);
+
+        void set_socket_options();
+        void start_ping_timer();
+
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
 
         bool set_reconnecting(bool want_to_reconnect);
@@ -97,6 +97,8 @@ namespace sdk {
         bool is_reconnect_enabled() const;
 
         const network_parameters& m_net_params;
+        const std::string m_wamp_call_prefix;
+        autobahn::wamp_call_options m_wamp_call_options;
         notify_fn_t m_notify_fn;
         const bool m_debug_logging;
         std::string m_proxy;
@@ -108,17 +110,17 @@ namespace sdk {
         std::shared_ptr<autobahn::wamp_session> m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
         std::shared_ptr<tor_controller> m_tor_ctrl;
-        std::string m_last_tor_socks5;
-        autobahn::wamp_call_options m_wamp_call_options;
-        const std::string m_wamp_call_prefix;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
-        std::thread m_run_thread;
+        // Ping timer
         boost::asio::deadline_timer m_ping_timer;
+        // Reconnection thread
         std::unique_ptr<std::thread> m_reconnect_thread;
         std::promise<void> m_reconnect_promise;
         std::future<void> m_reconnect_future;
         std::atomic_bool m_reconnecting{ false };
         std::atomic_bool m_enabled{ true };
+        // asio event loop thread
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+        std::thread m_run_thread;
     };
 
 } // namespace sdk
