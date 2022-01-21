@@ -43,7 +43,6 @@ namespace sdk {
         wamp_transport(const network_parameters& net_params, notify_fn_t fn);
         ~wamp_transport();
 
-        void make_client();
         void connect();
         bool is_connected() const;
         void reconnect();

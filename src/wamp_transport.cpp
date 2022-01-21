@@ -334,8 +334,23 @@ namespace sdk {
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
 
-        make_client();
         m_run_thread = std::thread([this] { m_io.run(); });
+
+        if (!m_net_params.is_tls_connection()) {
+            m_client = std::make_unique<client>();
+            boost::get<std::unique_ptr<client>>(m_client)->init_asio(&m_io);
+            return;
+        }
+
+        m_client = std::make_unique<client_tls>();
+        boost::get<std::unique_ptr<client_tls>>(m_client)->init_asio(&m_io);
+        const auto host_name = websocketpp::uri(m_net_params.gait_wamp_url()).get_host();
+
+        boost::get<std::unique_ptr<client_tls>>(m_client)->set_tls_init_handler(
+            [this, host_name](const websocketpp::connection_hdl) {
+                return tls_init(host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
+                    m_net_params.cert_expiry_threshold());
+            });
     }
 
     wamp_transport::~wamp_transport()
@@ -458,25 +473,6 @@ namespace sdk {
         set_socket_options();
         using std::placeholders::_1;
         start_ping_timer();
-    }
-
-    void wamp_transport::make_client()
-    {
-        if (!m_net_params.is_tls_connection()) {
-            m_client = std::make_unique<client>();
-            boost::get<std::unique_ptr<client>>(m_client)->init_asio(&m_io);
-            return;
-        }
-
-        m_client = std::make_unique<client_tls>();
-        boost::get<std::unique_ptr<client_tls>>(m_client)->init_asio(&m_io);
-        const auto host_name = websocketpp::uri(m_net_params.gait_wamp_url()).get_host();
-
-        boost::get<std::unique_ptr<client_tls>>(m_client)->set_tls_init_handler(
-            [this, host_name](const websocketpp::connection_hdl) {
-                return tls_init(host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
-                    m_net_params.cert_expiry_threshold());
-            });
     }
 
     wamp_transport::transport_t wamp_transport::make_transport()
