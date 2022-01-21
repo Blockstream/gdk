@@ -9,7 +9,8 @@ use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use electrum_client::{Client, ElectrumApi, GetMerkleRes};
 use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::model::{
-    SPVCommonParams, SPVDownloadHeadersParams, SPVDownloadHeadersResult, SPVVerifyTxResult, SPVVerifyTxParams,
+    SPVCommonParams, SPVDownloadHeadersParams, SPVDownloadHeadersResult, SPVVerifyTxParams,
+    SPVVerifyTxResult,
 };
 use gdk_common::NetworkId;
 use log::{info, warn};
@@ -88,7 +89,9 @@ impl ParamsMethods for SPVCommonParams {
 /// Download headers and persist locally, needed to verify tx with `spv_verify_tx`.
 ///
 /// Used to expose SPV functionality through C interface
-pub fn download_headers(input: &SPVDownloadHeadersParams) -> Result<SPVDownloadHeadersResult, Error> {
+pub fn download_headers(
+    input: &SPVDownloadHeadersParams,
+) -> Result<SPVDownloadHeadersResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
     info!("download_headers {:?}", input);

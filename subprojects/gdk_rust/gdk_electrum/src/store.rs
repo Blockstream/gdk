@@ -418,7 +418,9 @@ impl StoreMeta {
                     // Report an SPV validation failure if the transaction was confirmed after the forking point
                     SPVVerifyTxResult::NotLongest
                 }
-                _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyTxResult::InProgress),
+                _ => {
+                    self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyTxResult::InProgress)
+                }
             }
         } else {
             SPVVerifyTxResult::Unconfirmed
