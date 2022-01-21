@@ -215,7 +215,7 @@ pub struct SPVCommonParams {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVVerifyTx {
+pub struct SPVVerifyTxParams {
     #[serde(flatten)]
     pub params: SPVCommonParams,
 
@@ -228,7 +228,7 @@ pub struct SPVVerifyTx {
 
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVDownloadHeaders {
+pub struct SPVDownloadHeadersParams {
     #[serde(flatten)]
     pub params: SPVCommonParams,
 
@@ -249,7 +249,7 @@ pub struct SPVDownloadHeadersResult {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
-pub enum SPVVerifyResult {
+pub enum SPVVerifyTxResult {
     Unconfirmed,
     InProgress,
     Verified,
@@ -281,7 +281,7 @@ pub struct TransactionMeta {
     pub changes_used: Option<u32>,
     pub rbf_optin: bool,
     pub user_signed: bool,
-    pub spv_verified: SPVVerifyResult,
+    pub spv_verified: SPVVerifyTxResult,
     #[serde(rename = "transaction_weight")]
     pub weight: usize,
     #[serde(rename = "transaction_vsize")]
@@ -314,7 +314,7 @@ impl From<BETransaction> for TransactionMeta {
             type_: "unknown".to_string(),
             changes_used: None,
             user_signed: false,
-            spv_verified: SPVVerifyResult::InProgress,
+            spv_verified: SPVVerifyTxResult::InProgress,
             rbf_optin,
             weight,
             vsize: (weight as f32 / 4.0) as usize,
@@ -342,7 +342,7 @@ impl TransactionMeta {
         type_: String,
         create_transaction: CreateTransaction,
         user_signed: bool,
-        spv_verified: SPVVerifyResult,
+        spv_verified: SPVVerifyTxResult,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
         let timestamp = timestamp.unwrap_or_else(now);
@@ -599,28 +599,28 @@ fn now() -> u64 {
     u64::try_from(since_the_epoch.as_micros()).unwrap_or(u64::MAX)
 }
 
-impl SPVVerifyResult {
+impl SPVVerifyTxResult {
     pub fn as_i32(&self) -> i32 {
         match self {
-            SPVVerifyResult::InProgress => 0,
-            SPVVerifyResult::Verified => 1,
-            SPVVerifyResult::NotVerified => 2,
-            SPVVerifyResult::Disabled => 3,
-            SPVVerifyResult::NotLongest => 4,
-            SPVVerifyResult::Unconfirmed => 5,
+            SPVVerifyTxResult::InProgress => 0,
+            SPVVerifyTxResult::Verified => 1,
+            SPVVerifyTxResult::NotVerified => 2,
+            SPVVerifyTxResult::Disabled => 3,
+            SPVVerifyTxResult::NotLongest => 4,
+            SPVVerifyTxResult::Unconfirmed => 5,
         }
     }
 }
 
-impl Display for SPVVerifyResult {
+impl Display for SPVVerifyTxResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SPVVerifyResult::InProgress => write!(f, "in_progress"),
-            SPVVerifyResult::Verified => write!(f, "verified"),
-            SPVVerifyResult::NotVerified => write!(f, "not_verified"),
-            SPVVerifyResult::Disabled => write!(f, "disabled"),
-            SPVVerifyResult::NotLongest => write!(f, "not_longest"),
-            SPVVerifyResult::Unconfirmed => write!(f, "unconfirmed"),
+            SPVVerifyTxResult::InProgress => write!(f, "in_progress"),
+            SPVVerifyTxResult::Verified => write!(f, "verified"),
+            SPVVerifyTxResult::NotVerified => write!(f, "not_verified"),
+            SPVVerifyTxResult::Disabled => write!(f, "disabled"),
+            SPVVerifyTxResult::NotLongest => write!(f, "not_longest"),
+            SPVVerifyTxResult::Unconfirmed => write!(f, "unconfirmed"),
         }
     }
 }

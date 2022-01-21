@@ -22,7 +22,7 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
-    SPVVerifyResult, TransactionMeta, UpdateAccountOpt, UtxoStrategy,
+    SPVVerifyTxResult, TransactionMeta, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::util::is_confidential_txoutsecrets;
@@ -243,7 +243,7 @@ impl Account {
             let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
                 store.spv_verification_status(self.num(), tx_id)
             } else {
-                SPVVerifyResult::Disabled
+                SPVVerifyTxResult::Disabled
             };
 
             trace!(
@@ -1173,7 +1173,7 @@ pub fn create_tx(
         "outgoing".to_string(),
         request.clone(),
         false,
-        SPVVerifyResult::InProgress,
+        SPVVerifyTxResult::InProgress,
     );
     created_tx.changes_used = Some(changes.len() as u32);
     created_tx.addressees_read_only = request.previous_transaction.is_some();

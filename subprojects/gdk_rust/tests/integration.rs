@@ -2,8 +2,8 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVCommonParams, SPVDownloadHeaders,
-    SPVVerifyResult, UpdateAccountOpt, UtxoStrategy,
+    GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVCommonParams,
+    SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
@@ -46,7 +46,7 @@ fn roundtrip_bitcoin() {
         None,
     ); // p2shwpkh
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
-    test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
+    test_session.is_verified(&txid, SPVVerifyTxResult::Unconfirmed);
     test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None, None); // p2wpkh
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None, None); // p2pkh
     test_session.send_all(&node_legacy_address, None);
@@ -58,7 +58,7 @@ fn roundtrip_bitcoin() {
     test_session.mine_block();
     test_session.fees();
     test_session.settings();
-    test_session.is_verified(&txid, SPVVerifyResult::Verified);
+    test_session.is_verified(&txid, SPVVerifyTxResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
@@ -95,7 +95,7 @@ fn roundtrip_liquid() {
     );
     test_session.check_decryption(101, &[&txid]);
     test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
-    test_session.is_verified(&txid, SPVVerifyResult::Unconfirmed);
+    test_session.is_verified(&txid, SPVVerifyTxResult::Unconfirmed);
     test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None, None);
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None, None);
     test_session.send_tx(&node_address, 10_000, Some(assets[0].clone()), None, None, None, None);
@@ -109,7 +109,7 @@ fn roundtrip_liquid() {
     test_session.mine_block();
     test_session.fees();
     test_session.settings();
-    test_session.is_verified(&txid, SPVVerifyResult::Verified);
+    test_session.is_verified(&txid, SPVVerifyTxResult::Verified);
     test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102);
     test_session.test_set_get_memo(&txid, MEMO2, "");
@@ -1261,7 +1261,7 @@ fn test_spv_timeout() {
     r.recv_timeout(Duration::from_secs(1)).unwrap();
 
     let now = Instant::now();
-    let param_download = SPVDownloadHeaders {
+    let param_download = SPVDownloadHeadersParams {
         params: SPVCommonParams {
             network,
             path: "".to_string(),

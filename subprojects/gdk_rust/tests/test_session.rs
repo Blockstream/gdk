@@ -431,7 +431,7 @@ impl TestSession {
         assert_eq!(self.get_tx_from_list(0, txid).memo, new);
     }
 
-    pub fn is_verified(&mut self, txid: &str, verified: SPVVerifyResult) {
+    pub fn is_verified(&mut self, txid: &str, verified: SPVVerifyTxResult) {
         let tx = self.get_tx_from_list(0, txid);
         assert_eq!(tx.spv_verified, verified.to_string());
     }
@@ -907,12 +907,12 @@ impl TestSession {
             timeout: None,
             encryption_key: Some("testing".to_string()),
         };
-        let param = SPVVerifyTx {
+        let param = SPVVerifyTxParams {
             txid: txid.to_string(),
             height,
             params: common.clone(),
         };
-        let param_download = SPVDownloadHeaders {
+        let param_download = SPVDownloadHeadersParams {
             params: common.clone(),
             headers_to_download: Some(1), // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
         };
@@ -927,10 +927,10 @@ impl TestSession {
         });
         loop {
             match gdk_electrum::headers::spv_verify_tx(&param) {
-                Ok(SPVVerifyResult::InProgress) => {
+                Ok(SPVVerifyTxResult::InProgress) => {
                     thread::sleep(Duration::from_millis(100));
                 }
-                Ok(SPVVerifyResult::Verified) => break,
+                Ok(SPVVerifyTxResult::Verified) => break,
                 _ => assert!(false),
             }
         }
@@ -938,7 +938,7 @@ impl TestSession {
         // second should verify immediately, (and also hit cache)
         assert!(matches!(
             gdk_electrum::headers::spv_verify_tx(&param),
-            Ok(SPVVerifyResult::Verified)
+            Ok(SPVVerifyTxResult::Verified)
         ));
     }
 

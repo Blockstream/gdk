@@ -9,7 +9,7 @@ use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use electrum_client::{Client, ElectrumApi, GetMerkleRes};
 use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::model::{
-    SPVCommonParams, SPVDownloadHeaders, SPVDownloadHeadersResult, SPVVerifyResult, SPVVerifyTx,
+    SPVCommonParams, SPVDownloadHeadersParams, SPVDownloadHeadersResult, SPVVerifyTxResult, SPVVerifyTxParams,
 };
 use gdk_common::NetworkId;
 use log::{info, warn};
@@ -88,7 +88,7 @@ impl ParamsMethods for SPVCommonParams {
 /// Download headers and persist locally, needed to verify tx with `spv_verify_tx`.
 ///
 /// Used to expose SPV functionality through C interface
-pub fn download_headers(input: &SPVDownloadHeaders) -> Result<SPVDownloadHeadersResult, Error> {
+pub fn download_headers(input: &SPVDownloadHeadersParams) -> Result<SPVDownloadHeadersResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
     info!("download_headers {:?}", input);
@@ -120,14 +120,14 @@ pub fn download_headers(input: &SPVDownloadHeaders) -> Result<SPVDownloadHeaders
 /// in the cache and verified previously.
 ///
 /// used to expose SPV functionality through C interface
-pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
+pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Error> {
     info!("spv_verify_tx {:?}", input);
     let txid = BETxid::from_hex(&input.txid, input.params.network.id())?;
 
     let mut cache = input.params.verified_cache()?;
     if cache.contains(&txid, input.height)? {
         info!("verified cache hit for {}", txid);
-        return Ok(SPVVerifyResult::Verified);
+        return Ok(SPVVerifyTxResult::Verified);
     }
 
     let client = input.params.build_client()?;
@@ -143,19 +143,19 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                     Ok(proof) => proof,
                     Err(e) => {
                         warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
-                        return Ok(SPVVerifyResult::NotVerified);
+                        return Ok(SPVVerifyTxResult::NotVerified);
                     }
                 };
                 if chain.verify_tx_proof(btxid, input.height, proof).is_ok() {
                     cache.write(&txid, input.height)?;
-                    Ok(SPVVerifyResult::Verified)
+                    Ok(SPVVerifyTxResult::Verified)
                 } else {
-                    Ok(SPVVerifyResult::NotVerified)
+                    Ok(SPVVerifyTxResult::NotVerified)
                 }
             } else {
                 info!("chain height ({}) not enough to verify", chain.height());
 
-                Ok(SPVVerifyResult::InProgress)
+                Ok(SPVVerifyTxResult::InProgress)
             }
         }
         NetworkId::Elements(elements_network) => {
@@ -164,7 +164,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
                     Ok(proof) => proof,
                     Err(e) => {
                         warn!("failed fetching merkle inclusion proof for {}: {:?}", txid, e);
-                        return Ok(SPVVerifyResult::NotVerified);
+                        return Ok(SPVVerifyTxResult::NotVerified);
                     }
                 };
             let verifier = Verifier::new(elements_network);
@@ -172,9 +172,9 @@ pub fn spv_verify_tx(input: &SPVVerifyTx) -> Result<SPVVerifyResult, Error> {
             let header: elements::BlockHeader = elements::encode::deserialize(&header_bytes)?;
             if verifier.verify_tx_proof(txid.ref_elements().unwrap(), proof, &header).is_ok() {
                 cache.write(&txid, input.height)?;
-                Ok(SPVVerifyResult::Verified)
+                Ok(SPVVerifyTxResult::Verified)
             } else {
-                Ok(SPVVerifyResult::NotVerified)
+                Ok(SPVVerifyTxResult::NotVerified)
             }
         }
     }

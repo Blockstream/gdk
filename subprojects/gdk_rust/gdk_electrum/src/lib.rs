@@ -1199,10 +1199,10 @@ impl Headers {
 
                 if verified {
                     info!("proof for {} verified!", txid);
-                    txs_verified.insert(txid, SPVVerifyResult::Verified);
+                    txs_verified.insert(txid, SPVVerifyTxResult::Verified);
                 } else {
                     warn!("proof for {} not verified!", txid);
-                    txs_verified.insert(txid, SPVVerifyResult::NotVerified);
+                    txs_verified.insert(txid, SPVVerifyTxResult::NotVerified);
                 }
             }
             proofs_done += txs_verified.len();

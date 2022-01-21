@@ -10,7 +10,7 @@ use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
 };
-use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyResult, Settings};
+use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
 use gdk_common::NetworkId;
 use log::{info, warn};
 use rand::{thread_rng, Rng};
@@ -38,7 +38,7 @@ pub struct RawCache {
     pub headers: HashMap<u32, BEBlockHeader>,
 
     /// verification status of Txid (could be only Verified or NotVerified, absence means InProgress)
-    pub txs_verif: HashMap<BETxid, SPVVerifyResult>,
+    pub txs_verif: HashMap<BETxid, SPVVerifyTxResult>,
 
     /// cached fee_estimates
     pub fee_estimates: Vec<FeeEstimate>,
@@ -406,22 +406,22 @@ impl StoreMeta {
         self.store.accounts_settings.as_mut().unwrap().insert(account_num, settings);
     }
 
-    pub fn spv_verification_status(&self, account_num: u32, txid: &BETxid) -> SPVVerifyResult {
+    pub fn spv_verification_status(&self, account_num: u32, txid: &BETxid) -> SPVVerifyTxResult {
         let acc_store = match self.account_cache(account_num) {
             Ok(store) => store,
-            Err(_) => return SPVVerifyResult::NotVerified,
+            Err(_) => return SPVVerifyTxResult::NotVerified,
         };
 
         if let Some(height) = acc_store.heights.get(txid).unwrap_or(&None) {
             match &self.cache.cross_validation_result {
                 Some(CrossValidationResult::Invalid(inv)) if *height > inv.common_ancestor => {
                     // Report an SPV validation failure if the transaction was confirmed after the forking point
-                    SPVVerifyResult::NotLongest
+                    SPVVerifyTxResult::NotLongest
                 }
-                _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyResult::InProgress),
+                _ => self.cache.txs_verif.get(txid).cloned().unwrap_or(SPVVerifyTxResult::InProgress),
             }
         } else {
-            SPVVerifyResult::Unconfirmed
+            SPVVerifyTxResult::Unconfirmed
         }
     }
 
