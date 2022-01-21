@@ -28,13 +28,11 @@ namespace sdk {
         void connect();
         bool is_connected() const;
         void reconnect();
-        void reconnect_hint(bool enabled);
+        void reconnect_hint(const nlohmann::json& hint);
         void disconnect(bool user_initiated);
 
         void emit_notification(nlohmann::json details, bool async);
 
-        std::string get_tor_socks5();
-        void tor_sleep_hint(const std::string& hint);
         nlohmann::json http_request(nlohmann::json params);
 
         nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,

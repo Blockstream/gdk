@@ -20,6 +20,7 @@ namespace sdk {
     class ga_user_pubkeys;
     class user_pubkeys;
     class signer;
+    struct tor_controller;
 
     class session_impl {
     public:
@@ -62,12 +63,10 @@ namespace sdk {
         virtual bool is_connected() const = 0;
         // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
+        std::string connect_tor();
         virtual void reconnect() = 0;
-        virtual void reconnect_hint(bool enable) = 0;
-
-        // TODO: remove me when tor MR extract lands
-        virtual void tor_sleep_hint(const std::string& hint) = 0;
-        virtual std::string get_tor_socks5() = 0;
+        virtual void reconnect_hint(const nlohmann::json& hint);
+        std::string get_tor_socks5() const;
 
         virtual void connect() = 0;
         virtual void disconnect(bool user_initiated) = 0;
@@ -238,6 +237,7 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
+        const std::string m_user_proxy;
 
         // Immutable once set by the caller (prior to connect)
         GA_notification_handler m_notification_handler;
@@ -247,6 +247,8 @@ namespace sdk {
         std::shared_ptr<signer> m_signer;
 
         // Mutable
+        std::shared_ptr<tor_controller> m_tor_ctrl;
+        std::string m_tor_proxy;
 
         // UTXOs
         // Cached UTXOs are unfiltered; if using the cached values you

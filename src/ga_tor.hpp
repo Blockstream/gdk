@@ -9,7 +9,7 @@
 
 namespace ga {
 namespace sdk {
-    static const uint32_t DEFAULT_TOR_SOCKS_WAIT = 120; // maximum timeout for the tor socks to get ready
+    static constexpr uint32_t DEFAULT_TOR_SOCKS_WAIT = 120; // maximum timeout for the tor socks to get ready
 
     struct tor_bootstrap_phase {
         tor_bootstrap_phase();
@@ -35,10 +35,9 @@ namespace sdk {
         void wakeup();
 
         static std::shared_ptr<tor_controller> get_shared_ref();
-        void tor_sleep_hint(const std::string& hint);
 
-        std::string wait_for_socks5(
-            uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb);
+        std::string wait_for_socks5(std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb,
+            uint32_t timeout = DEFAULT_TOR_SOCKS_WAIT);
 
     private:
         static std::mutex s_inst_mutex;

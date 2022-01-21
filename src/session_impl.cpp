@@ -2,6 +2,7 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
+#include "ga_tor.hpp"
 #include "logging.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
@@ -44,10 +45,19 @@ namespace sdk {
 
     session_impl::session_impl(network_parameters&& net_params)
         : m_net_params(net_params)
+        , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
     {
         configure_logging(m_net_params);
+        if (m_net_params.use_tor()) {
+            if (m_user_proxy.empty()) {
+                m_tor_ctrl = tor_controller::get_shared_ref();
+            } else {
+                // FIXME: Should this config be a fatal error?
+                GDK_LOG_SEV(log_level::warning) << "Ignoring tor in favor of user provided proxy";
+            }
+        }
     }
 
     session_impl::~session_impl() {}
@@ -67,6 +77,42 @@ namespace sdk {
             m_notification_handler(m_notification_context, details_p);
         }
     }
+
+    std::string session_impl::connect_tor()
+    {
+        if (m_tor_ctrl) {
+            const std::string tor_proxy = m_tor_ctrl->wait_for_socks5([&](std::shared_ptr<tor_bootstrap_phase> p) {
+                nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
+                emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
+            });
+            if (tor_proxy.empty()) {
+                GDK_LOG_SEV(log_level::warning) << "Timeout initiating tor connection";
+                throw timeout_error();
+            }
+            GDK_LOG_SEV(log_level::info) << "tor socks address " << tor_proxy;
+            m_tor_proxy = tor_proxy;
+            return tor_proxy;
+        }
+        return m_user_proxy;
+    }
+
+    void session_impl::reconnect_hint(const nlohmann::json& hint)
+    {
+        if (m_tor_ctrl) {
+            const auto hint_p = hint.find("tor_sleep_hint");
+            if (hint_p != hint.end()) {
+                if (*hint_p == "sleep") {
+                    // internally checks the state, no-op if already sleeping
+                    m_tor_ctrl->sleep();
+                } else if (*hint_p == "wakeup") {
+                    // internally checks the state, no-op if already awake
+                    m_tor_ctrl->wakeup();
+                }
+            }
+        }
+    }
+
+    std::string session_impl::get_tor_socks5() const { return m_tor_proxy; }
 
     nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)

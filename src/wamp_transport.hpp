@@ -12,7 +12,6 @@ namespace ga {
 namespace sdk {
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
-    struct tor_controller;
 
     using client = websocketpp::client<websocketpp_gdk_config>;
     using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
@@ -42,10 +41,10 @@ namespace sdk {
         wamp_transport(const network_parameters& net_params, notify_fn_t fn);
         ~wamp_transport();
 
-        void connect();
+        void connect(const std::string& proxy);
         bool is_connected() const;
         void reconnect();
-        void reconnect_hint(bool enabled);
+        void reconnect_hint(const nlohmann::json& hint);
         void disconnect(bool user_initiated);
 
         void subscribe(locker_t& locker, const std::string& topic, subscribe_fn_t callback);
@@ -53,9 +52,6 @@ namespace sdk {
         void clear_subscriptions();
 
         nlohmann::json http_request(nlohmann::json params);
-
-        std::string get_tor_socks5();
-        void tor_sleep_hint(const std::string& hint);
 
         // Make a background WAMP call and return its result to the current thread.
         // The session mutex must not be held when calling this function.
@@ -78,8 +74,6 @@ namespace sdk {
         template <typename FN> void post(FN&& fn) { boost::asio::post(m_work_guard.get_executor(), fn); }
 
     private:
-        using transport_t = std::shared_ptr<autobahn::wamp_websocket_transport>;
-        transport_t make_transport();
         bool ping() const;
 
         void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
@@ -102,14 +96,12 @@ namespace sdk {
         notify_fn_t m_notify_fn;
         const bool m_debug_logging;
         std::string m_proxy;
-        const bool m_has_network_proxy;
 
         boost::asio::io_context m_io;
         boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
-        transport_t m_transport;
+        std::shared_ptr<autobahn::wamp_websocket_transport> m_transport;
         std::shared_ptr<autobahn::wamp_session> m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
-        std::shared_ptr<tor_controller> m_tor_ctrl;
         // Ping timer
         boost::asio::deadline_timer m_ping_timer;
         // Reconnection thread

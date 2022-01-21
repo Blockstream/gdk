@@ -60,7 +60,6 @@ namespace sdk {
         bool is_liquid() const;
         bool is_electrum() const;
         bool use_tor() const;
-        std::string socks5() const;
         bool spv_enabled() const;
         bool electrum_tls() const;
         std::string user_agent() const;

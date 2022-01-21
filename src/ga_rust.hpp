@@ -4,8 +4,6 @@
 
 namespace ga {
 namespace sdk {
-    struct tor_controller;
-
     class ga_rust final : public session_impl {
     public:
         explicit ga_rust(network_parameters&& net_params);
@@ -13,11 +11,7 @@ namespace sdk {
 
         bool is_connected() const;
         void reconnect();
-        void reconnect_hint(bool enable);
-
-        // TODO: remove me when tor MR extract lands
-        void tor_sleep_hint(const std::string& hint);
-        std::string get_tor_socks5();
+        void reconnect_hint(const nlohmann::json& hint);
 
         void connect();
         void disconnect(bool user_initiated);
@@ -139,9 +133,7 @@ namespace sdk {
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
 
-        std::shared_ptr<tor_controller> m_tor_ctrl;
         bool m_reconnect_restart;
-
         void* m_session;
     };
 

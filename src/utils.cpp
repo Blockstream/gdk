@@ -401,6 +401,25 @@ namespace sdk {
         }
     }
 
+    static const std::string SOCKS5("socks5://");
+    std::string socksify(const std::string& proxy)
+    {
+        std::string trimmed = boost::algorithm::trim_copy(proxy);
+        if (!trimmed.empty() && !boost::algorithm::starts_with(trimmed, SOCKS5)) {
+            return SOCKS5 + trimmed;
+        }
+        return trimmed;
+    }
+
+    std::string unsocksify(const std::string& proxy)
+    {
+        std::string trimmed = boost::algorithm::trim_copy(proxy);
+        if (boost::algorithm::starts_with(trimmed, SOCKS5)) {
+            trimmed.erase(0, SOCKS5.size());
+        }
+        return trimmed;
+    }
+
     nlohmann::json parse_url(const std::string& url)
     {
         nlohmann::json retval;

@@ -11,7 +11,6 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
-#include "ga_tor.hpp"
 #include "inbuilt.hpp"
 #include "logging.hpp"
 #include "session.hpp"
@@ -22,8 +21,6 @@ namespace ga {
 namespace sdk {
 
     namespace {
-        static const std::string TOR_SOCKS5_PREFIX("socks5://");
-
         static std::pair<std::string, std::string> get_exception_details(const nlohmann::json& details)
         {
             std::pair<std::string, std::string> ret;
@@ -96,18 +93,17 @@ namespace sdk {
         }
     }
 
-    void ga_rust::reconnect_hint(bool enable) { m_reconnect_restart = enable; }
-
-    void ga_rust::tor_sleep_hint(const std::string& hint)
+    void ga_rust::reconnect_hint(const nlohmann::json& hint)
     {
-        if (m_tor_ctrl) {
-            m_tor_ctrl->tor_sleep_hint(hint);
+        session_impl::reconnect_hint(hint);
+        bool enable = false;
+        const auto hint_p = hint.find("hint");
+        if (hint_p != hint.end()) {
+            GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
+            enable = *hint_p == "now";
         }
-    }
-
-    std::string ga_rust::get_tor_socks5()
-    {
-        return m_tor_ctrl ? m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, nullptr) : std::string{};
+        GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
+        m_reconnect_restart = enable;
     }
 
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
@@ -129,30 +125,9 @@ namespace sdk {
 
     void ga_rust::connect()
     {
+        const std::string proxy = session_impl::connect_tor();
         nlohmann::json net_params = m_net_params.get_json();
-
-        if (m_net_params.use_tor() && m_net_params.socks5().empty()) {
-            m_tor_ctrl = tor_controller::get_shared_ref();
-            std::string full_socks5
-                = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
-                      nlohmann::json tor_json(
-                          { { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
-                      constexpr bool async = false; // Note: ga_session sends this async
-                      emit_notification({ { "event", "tor" }, { "tor", tor_json } }, async);
-                  });
-
-            if (full_socks5.empty()) {
-                throw timeout_error();
-            }
-
-            GDK_RUNTIME_ASSERT(full_socks5.size() > TOR_SOCKS5_PREFIX.size());
-            full_socks5.erase(0, TOR_SOCKS5_PREFIX.size());
-
-            net_params["socks5"] = full_socks5;
-
-            GDK_LOG_SEV(log_level::info) << "tor_socks address " << full_socks5;
-        }
-
+        json_add_if_missing(net_params, "proxy", unsocksify(proxy)); // FIXME: Do unsocksify in rust
         call_session("connect", net_params);
     }
 

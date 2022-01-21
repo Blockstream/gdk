@@ -218,18 +218,8 @@ namespace sdk {
     {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();
-
-            // we have an hint for Tor
-            if (hint.contains("tor_sleep_hint")) {
-                p->tor_sleep_hint(hint["tor_sleep_hint"]);
-            }
-
-            const auto hint_p = hint.find("hint");
-            if (hint_p != hint.end()) {
-                GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
-                p->reconnect_hint(*hint_p == "now");
-                p->reconnect();
-            }
+            p->reconnect_hint(hint);
+            p->reconnect();
         });
     }
 

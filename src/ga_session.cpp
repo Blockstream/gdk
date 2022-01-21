@@ -21,7 +21,6 @@
 #include "ga_cache.hpp"
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
-#include "ga_tor.hpp"
 #include "ga_tx.hpp"
 #include "http_client.hpp"
 #include "inbuilt.hpp"
@@ -295,13 +294,19 @@ namespace sdk {
         no_std_exception_escape([this] { reset_all_session_data(true); });
     }
 
-    void ga_session::connect() { m_wamp->connect(); }
+    void ga_session::connect()
+    {
+        const auto proxy = session_impl::connect_tor();
+        m_wamp->connect(proxy);
+    }
     bool ga_session::is_connected() const { return m_wamp->is_connected(); }
     void ga_session::reconnect() { m_wamp->reconnect(); }
-    void ga_session::reconnect_hint(bool enabled) { m_wamp->reconnect_hint(enabled); }
+    void ga_session::reconnect_hint(const nlohmann::json& hint)
+    {
+        session_impl::reconnect_hint(hint);
+        m_wamp->reconnect_hint(hint);
+    }
     void ga_session::disconnect(bool user_initiated) { m_wamp->disconnect(user_initiated); }
-    std::string ga_session::get_tor_socks5() { return m_wamp->get_tor_socks5(); }
-    void ga_session::tor_sleep_hint(const std::string& hint) { m_wamp->tor_sleep_hint(hint); }
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {
@@ -312,7 +317,17 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::http_request(nlohmann::json params) { return m_wamp->http_request(params); }
+    nlohmann::json ga_session::http_request(nlohmann::json params)
+    {
+        {
+            locker_t locker(m_mutex);
+            const bool use_tor = m_net_params.use_tor();
+            params.update(select_url(params["urls"], use_tor));
+            const std::string proxy = use_tor ? m_tor_proxy : m_user_proxy;
+            json_add_if_missing(params, "proxy", socksify(proxy));
+        }
+        return m_wamp->http_request(params);
+    }
 
     nlohmann::json ga_session::refresh_http_data(const std::string& page, const std::string& key, bool refresh)
     {

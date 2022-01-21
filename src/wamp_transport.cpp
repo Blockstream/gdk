@@ -18,7 +18,6 @@
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
-#include "ga_tor.hpp"
 #include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
@@ -89,10 +88,6 @@ namespace sdk {
     gdk_logger_t& websocket_boost_logger::m_log = gdk_logger::get();
 
     namespace {
-        static const std::string SOCKS5("socks5://");
-        static const std::string USER_AGENT_CAPS("[v2,sw,csv,csv_opt]");
-        static const std::string USER_AGENT_CAPS_NO_CSV("[v2,sw]");
-
         // networking defaults
         static const uint32_t DEFAULT_PING = 20; // ping message interval in seconds
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
@@ -127,15 +122,6 @@ namespace sdk {
             std::chrono::seconds m_elapsed{ 0s };
             std::chrono::seconds m_waiting{ 0s };
         };
-
-        static std::string socksify(const std::string& proxy)
-        {
-            const std::string trimmed = boost::algorithm::trim_copy(proxy);
-            if (!proxy.empty() && !boost::algorithm::starts_with(trimmed, SOCKS5)) {
-                return SOCKS5 + trimmed;
-            }
-            return trimmed;
-        }
 
         static X509* cert_from_pem(const std::string& pem)
         {
@@ -325,8 +311,6 @@ namespace sdk {
         , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_debug_logging(m_net_params.log_level() == "debug")
-        , m_proxy(socksify(m_net_params.get_json().value("proxy", std::string{})))
-        , m_has_network_proxy(!m_proxy.empty())
         , m_io()
         , m_ping_timer(m_io)
         , m_work_guard(asio::make_work_guard(m_io))
@@ -356,7 +340,7 @@ namespace sdk {
     wamp_transport::~wamp_transport()
     {
         no_std_exception_escape([this] {
-            reconnect_hint(false); // Disable reconnect, stop any further attempts
+            reconnect_hint({ { "hint", "disable" } }); // Disable reconnect
             disconnect(true);
         });
         no_std_exception_escape([this] {
@@ -398,18 +382,6 @@ namespace sdk {
 
     void wamp_transport::set_reconnect_enabled(bool v) { m_enabled = v; }
     bool wamp_transport::is_reconnect_enabled() const { return m_enabled; }
-
-    std::string wamp_transport::get_tor_socks5()
-    {
-        return m_tor_ctrl ? m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, nullptr) : std::string{};
-    }
-
-    void wamp_transport::tor_sleep_hint(const std::string& hint)
-    {
-        if (m_tor_ctrl) {
-            m_tor_ctrl->tor_sleep_hint(hint);
-        }
-    }
 
     void wamp_transport::unsubscribe()
     {
@@ -461,52 +433,37 @@ namespace sdk {
 #endif
     }
 
-    void wamp_transport::connect()
+    void wamp_transport::connect(const std::string& proxy)
     {
+        m_proxy = proxy;
         GDK_LOG_SEV(log_level::info) << "connecting";
         m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
 
-        m_transport = make_transport();
+        const auto server = m_net_params.get_connection_string();
+        std::string proxy_details;
+        if (!proxy.empty()) {
+            proxy_details = std::string(" through proxy ") + proxy;
+        }
+        GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
+        decltype(m_transport) transport_p;
+        using namespace std::placeholders;
+        if (m_net_params.is_tls_connection()) {
+            auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
+            clnt.set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
+            transport_p = std::make_shared<transport_tls>(clnt, server, proxy, m_debug_logging);
+        } else {
+            auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
+            clnt.set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
+            transport_p = std::make_shared<transport>(clnt, server, proxy, m_debug_logging);
+        }
+        transport_p->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
+        m_transport = transport_p;
         m_transport->connect().get();
         m_session->start().get();
         m_session->join("realm1").get();
         set_socket_options();
         using std::placeholders::_1;
         start_ping_timer();
-    }
-
-    wamp_transport::transport_t wamp_transport::make_transport()
-    {
-        if (m_net_params.use_tor() && !m_has_network_proxy) {
-            m_tor_ctrl = tor_controller::get_shared_ref();
-            m_tor_ctrl->tor_sleep_hint("wakeup");
-            m_proxy = m_tor_ctrl->wait_for_socks5(DEFAULT_TOR_SOCKS_WAIT, [&](std::shared_ptr<tor_bootstrap_phase> p) {
-                nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
-                m_notify_fn({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
-            });
-            GDK_RUNTIME_ASSERT_MSG(!m_proxy.empty(), "Timeout initiating tor connection");
-            GDK_LOG_SEV(log_level::info) << "tor_socks address " << m_proxy;
-        }
-
-        const auto server = m_net_params.get_connection_string();
-        std::string proxy_details;
-        if (!m_proxy.empty()) {
-            proxy_details = std::string(" through proxy ") + m_proxy;
-        }
-        GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
-        transport_t transport_p;
-        using namespace std::placeholders;
-        if (m_net_params.is_tls_connection()) {
-            auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
-            clnt.set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
-            transport_p = std::make_shared<transport_tls>(clnt, server, m_proxy, m_debug_logging);
-        } else {
-            auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
-            clnt.set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
-            transport_p = std::make_shared<transport>(clnt, server, m_proxy, m_debug_logging);
-        }
-        transport_p->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
-        return transport_p;
     }
 
     void wamp_transport::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
@@ -622,7 +579,7 @@ namespace sdk {
 
                 try {
                     disconnect(false);
-                    connect();
+                    connect(m_proxy);
                     GDK_LOG_SEV(log_level::info) << prologue << "succeeded";
 
                     // FIXME: Re-work re-login
@@ -645,8 +602,14 @@ namespace sdk {
         }));
     }
 
-    void wamp_transport::reconnect_hint(bool enable)
+    void wamp_transport::reconnect_hint(const nlohmann::json& hint)
     {
+        bool enable = false;
+        const auto hint_p = hint.find("hint");
+        if (hint_p != hint.end()) {
+            GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
+            enable = *hint_p == "now";
+        }
         GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
 
         // Enable/disable any new reconnection attempts
@@ -727,9 +690,6 @@ namespace sdk {
     {
         nlohmann::json result;
         try {
-            params.update(select_url(params["urls"], m_net_params.use_tor()));
-            json_add_if_missing(params, "proxy", socksify(m_proxy));
-
             auto root_certificates = m_net_params.gait_wamp_cert_roots();
 
             // The caller can specify a set of custom root certiifcates to add
