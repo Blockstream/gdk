@@ -1252,7 +1252,7 @@ fn test_spv_timeout() {
     network.electrum_url = Some(format!("{}", listener.local_addr().unwrap()));
     let (s, r) = std::sync::mpsc::channel();
     thread::spawn(move || {
-        // emulate an electrum server socket not replying for 3 seconds
+        // emulate an electrum server socket not replying for 30 seconds
         s.send(()).unwrap();
         let (_, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_secs(30));

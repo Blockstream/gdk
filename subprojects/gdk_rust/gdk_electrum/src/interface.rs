@@ -54,6 +54,8 @@ impl ElectrumUrl {
         proxy: &Option<String>,
         timeout: Option<u8>,
     ) -> Result<Client, Error> {
+        //TODO: once electrum_client support both proxy and timeout, use it always this method,
+        // rename to build_client and delete the old build_client
         let mut config = ConfigBuilder::new();
         if let Some(proxy) = proxy {
             // TODO: add support for credentials?
