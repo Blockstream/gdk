@@ -79,6 +79,7 @@ namespace sdk {
 
     ga_rust::~ga_rust()
     {
+        m_notify = false;
         GDKRUST_destroy_session(m_session);
         // gdk_rust cleanup
     }

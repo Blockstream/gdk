@@ -250,7 +250,8 @@ namespace sdk {
         std::shared_ptr<signer> m_signer;
 
         // Mutable
-        std::string m_tor_proxy;
+        std::string m_tor_proxy; // Updated on connect(), protected by m_mutex
+        std::atomic_bool m_notify; // Whether to emit notifications
 
         // UTXOs
         // Cached UTXOs are unfiltered; if using the cached values you

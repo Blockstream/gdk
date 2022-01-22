@@ -291,6 +291,7 @@ namespace sdk {
 
     ga_session::~ga_session()
     {
+        m_notify = false;
         no_std_exception_escape([this] { reset_all_session_data(true); });
     }
 
@@ -299,13 +300,17 @@ namespace sdk {
         const auto proxy = session_impl::connect_tor();
         m_wamp->connect(proxy);
     }
+
     bool ga_session::is_connected() const { return m_wamp->is_connected(); }
+
     void ga_session::reconnect() { m_wamp->reconnect(); }
+
     void ga_session::reconnect_hint(const nlohmann::json& hint)
     {
         session_impl::reconnect_hint(hint);
         m_wamp->reconnect_hint(hint);
     }
+
     void ga_session::disconnect(bool user_initiated) { m_wamp->disconnect(user_initiated); }
 
     void ga_session::emit_notification(nlohmann::json details, bool async)

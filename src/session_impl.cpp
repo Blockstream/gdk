@@ -48,6 +48,7 @@ namespace sdk {
         , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string())))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
+        , m_notify(true)
     {
         configure_logging(m_net_params);
         if (m_net_params.use_tor() && m_user_proxy.empty()) {
@@ -67,7 +68,7 @@ namespace sdk {
     void session_impl::emit_notification(nlohmann::json details, bool /*async*/)
     {
         // By default, ignore the async flag
-        if (m_notification_handler) {
+        if (m_notify && m_notification_handler) {
             // We use 'new' here as it is the handlers responsibility to 'delete'
             const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
             m_notification_handler(m_notification_context, details_p);
