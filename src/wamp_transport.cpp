@@ -647,17 +647,10 @@ namespace sdk {
     void wamp_transport::disconnect(bool user_initiated)
     {
         GDK_LOG_SEV(log_level::info) << "disconnecting";
-        unsubscribe();
         m_ping_timer.cancel();
 
-        if (!user_initiated) {
-            // Note we don't emit a notification if the user explicitly
-            // disconnected or destroyed the session.
-            nlohmann::json details{ { "connected", false } };
-            m_notify_fn({ { "event", "session" }, { "session", std::move(details) } }, false);
-        }
-
         if (m_session) {
+            unsubscribe();
             no_std_exception_escape([this] {
                 const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
                 if (status != boost::future_status::ready) {
@@ -670,6 +663,7 @@ namespace sdk {
                     GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
                 }
             });
+            m_session.reset();
         }
 
         if (m_transport) {
@@ -680,9 +674,19 @@ namespace sdk {
                 }
             });
             no_std_exception_escape([&] { m_transport->detach(); });
-            // FIXME: resetting the pointer here causes std::terminate to be called
-            // under some circumstances
-            // no_std_exception_escape([&] { m_transport.reset(); });
+            // Wait for the transport to be disconnected
+            while (m_transport->is_connected()) {
+                GDK_LOG_SEV(log_level::info) << "waiting for connection to die";
+                std::this_thread::sleep_for(1ms);
+            }
+            m_transport.reset();
+        }
+
+        if (!user_initiated) {
+            // Note we don't emit a notification if the user explicitly
+            // disconnected or destroyed the session.
+            nlohmann::json details{ { "connected", false } };
+            m_notify_fn({ { "event", "session" }, { "session", std::move(details) } }, false);
         }
     }
 
@@ -732,6 +736,7 @@ namespace sdk {
         wamp_transport::locker_t& locker, const std::string& topic, wamp_transport::subscribe_fn_t callback)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_session.get());
         unique_unlock unlocker(locker);
         const auto options = autobahn::wamp_subscribe_options("exact");
         auto sub = m_session
