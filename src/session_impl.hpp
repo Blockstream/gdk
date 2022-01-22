@@ -67,6 +67,8 @@ namespace sdk {
         virtual void reconnect() = 0;
         virtual void reconnect_hint(const nlohmann::json& hint);
         std::string get_tor_socks5() const;
+        // Get the tor or user connection proxy address
+        std::string get_proxy() const;
 
         virtual void connect() = 0;
         virtual void disconnect(bool user_initiated) = 0;
@@ -238,6 +240,7 @@ namespace sdk {
         // Immutable upon construction
         const network_parameters m_net_params;
         const std::string m_user_proxy;
+        std::shared_ptr<tor_controller> m_tor_ctrl;
 
         // Immutable once set by the caller (prior to connect)
         GA_notification_handler m_notification_handler;
@@ -247,7 +250,6 @@ namespace sdk {
         std::shared_ptr<signer> m_signer;
 
         // Mutable
-        std::shared_ptr<tor_controller> m_tor_ctrl;
         std::string m_tor_proxy;
 
         // UTXOs

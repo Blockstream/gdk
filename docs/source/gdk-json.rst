@@ -37,6 +37,16 @@ Connection parameters JSON
       "cert_expiry_threshold": 1,
    }
 
+:name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
+:log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
+           ``"error"``, or ``"none"``.
+:proxy: The proxy connection to pass network traffic through, if any.
+:use_tor: ``true`` to enable tor connections, ``false`` otherwise. If enabled
+          and a proxy is not given, a tor connection will be started internally.
+          If a proxy is given and tor is enabled, the proxy must support
+          resolving ``".onion"`` domains.
+:user_agent: The user agent string to pass to the server for multisig connections.
+:spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
 :cert_expiry_threshold: Reject/ignore certificates expiring within this many days
                         from today. This is useful for pre-empting problems with
                         expiring embedded certificates.

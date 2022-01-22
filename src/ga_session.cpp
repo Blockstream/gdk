@@ -319,13 +319,9 @@ namespace sdk {
 
     nlohmann::json ga_session::http_request(nlohmann::json params)
     {
-        {
-            locker_t locker(m_mutex);
-            const bool use_tor = m_net_params.use_tor();
-            params.update(select_url(params["urls"], use_tor));
-            const std::string proxy = use_tor ? m_tor_proxy : m_user_proxy;
-            json_add_if_missing(params, "proxy", socksify(proxy));
-        }
+        GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");
+        params.update(select_url(params["urls"], m_net_params.use_tor()));
+        params["proxy"] = get_proxy();
         return m_wamp->http_request(params);
     }
 

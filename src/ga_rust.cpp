@@ -125,9 +125,9 @@ namespace sdk {
 
     void ga_rust::connect()
     {
-        const std::string proxy = session_impl::connect_tor();
+        session_impl::connect_tor();
         nlohmann::json net_params = m_net_params.get_json();
-        json_add_if_missing(net_params, "proxy", unsocksify(proxy)); // FIXME: Do unsocksify in rust
+        net_params["proxy"] = get_proxy();
         call_session("connect", net_params);
     }
 
@@ -144,7 +144,9 @@ namespace sdk {
 
     nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
     {
-        auto result = call_session("refresh_assets", params);
+        nlohmann::json net_params = m_net_params.get_json();
+        net_params["proxy"] = get_proxy();
+        auto result = call_session("refresh_assets", net_params);
         const std::array<const char*, 2> keys = { "assets", "icons" };
         for (const auto& key : keys) {
             if (params.value(key, false)) {
