@@ -47,9 +47,7 @@ Connection parameters JSON
           resolving ``".onion"`` domains.
 :user_agent: The user agent string to pass to the server for multisig connections.
 :spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
-:cert_expiry_threshold: Reject/ignore certificates expiring within this many days
-                        from today. This is useful for pre-empting problems with
-                        expiring embedded certificates.
+:cert_expiry_threshold: Ignore certificates expiring within this many days from today. Used to pre-empt problems with expiring embedded certificates.
 
 
  .. _proxy-info:
