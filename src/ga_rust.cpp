@@ -124,9 +124,8 @@ namespace sdk {
 
     void ga_rust::connect()
     {
-        session_impl::connect_tor();
         nlohmann::json net_params = m_net_params.get_json();
-        net_params["proxy"] = get_proxy();
+        net_params["proxy"] = session_impl::connect_tor();
         call_session("connect", net_params);
     }
 
@@ -143,9 +142,9 @@ namespace sdk {
 
     nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
     {
-        nlohmann::json net_params = m_net_params.get_json();
-        net_params["proxy"] = get_proxy();
-        auto result = call_session("refresh_assets", net_params);
+        nlohmann::json p = params;
+        p["proxy"] = get_proxy_settings()["proxy"];
+        auto result = call_session("refresh_assets", p);
         const std::array<const char*, 2> keys = { "assets", "icons" };
         for (const auto& key : keys) {
             if (params.value(key, false)) {

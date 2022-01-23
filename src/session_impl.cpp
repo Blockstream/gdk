@@ -109,13 +109,15 @@ namespace sdk {
         }
     }
 
-    std::string session_impl::get_tor_socks5() const
+    nlohmann::json session_impl::get_proxy_settings() const
     {
-        locker_t locker(m_mutex);
-        return m_tor_proxy;
+        std::string proxy = m_user_proxy;
+        if (m_tor_ctrl) {
+            locker_t locker(m_mutex);
+            proxy = m_tor_proxy;
+        }
+        return { { "proxy", proxy }, { "use_tor", m_net_params.use_tor() } };
     }
-
-    std::string session_impl::get_proxy() const { return m_tor_ctrl ? get_tor_socks5() : m_user_proxy; }
 
     nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)

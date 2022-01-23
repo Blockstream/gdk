@@ -253,8 +253,8 @@ GDK_DEFINE_C_FUNCTION_1(GA_disconnect, struct GA_session*, session, { session->d
 GDK_DEFINE_C_FUNCTION_2(GA_reconnect_hint, struct GA_session*, session, const GA_json*, hint,
     { session->reconnect_hint(*json_cast(hint)); });
 
-GDK_DEFINE_C_FUNCTION_2(GA_get_tor_socks5, struct GA_session*, session, char**, socks5,
-    { *socks5 = to_c_string(session->get_tor_socks5()); })
+GDK_DEFINE_C_FUNCTION_2(GA_get_proxy_settings, struct GA_session*, session, GA_json**, output,
+    { *json_cast(output) = new nlohmann::json(session->get_proxy_settings()); });
 
 GDK_DEFINE_C_FUNCTION_3(
     GA_get_wallet_identifier, const GA_json*, net_params, const GA_json*, params, GA_json**, output, {

@@ -32,7 +32,8 @@ namespace sdk {
         void connect(const nlohmann::json& net_params);
         void disconnect();
         void reconnect_hint(const nlohmann::json& hint);
-        std::string get_tor_socks5();
+
+        nlohmann::json get_proxy_settings();
 
         nlohmann::json http_request(const nlohmann::json& params);
         nlohmann::json refresh_assets(const nlohmann::json& params);

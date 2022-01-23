@@ -65,9 +65,8 @@ namespace sdk {
         std::string connect_tor();
         virtual void reconnect() = 0;
         virtual void reconnect_hint(const nlohmann::json& hint);
-        std::string get_tor_socks5() const;
         // Get the tor or user connection proxy address
-        std::string get_proxy() const;
+        nlohmann::json get_proxy_settings() const;
 
         virtual void connect() = 0;
         virtual void disconnect(bool user_initiated) = 0;

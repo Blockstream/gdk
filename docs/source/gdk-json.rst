@@ -34,7 +34,7 @@ Connection parameters JSON
       "use_tor": true,
       "user_agent": "green_android v2.33",
       "spv_enabled": false,
-      "cert_expiry_threshold": 1,
+      "cert_expiry_threshold": 1
    }
 
 :name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
@@ -51,7 +51,26 @@ Connection parameters JSON
                         from today. This is useful for pre-empting problems with
                         expiring embedded certificates.
 
-.. _login-credentials:
+
+ .. _proxy-info:
+
+Proxy Settings JSON
+-------------------
+
+Contains the proxy settings in use by a session.
+
+.. code-block:: json
+
+   {
+      "proxy": "localhost:9150",
+      "use_tor": true
+   }
+
+:proxy: The proxy connection being used to pass network traffic through, or an empty string.
+:use_tor: ``true`` if tor is enabled, ``false`` otherwise.
+
+
+ .. _login-credentials:
 
 Login credentials JSON
 ----------------------

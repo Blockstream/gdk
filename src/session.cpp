@@ -223,11 +223,11 @@ namespace sdk {
         });
     }
 
-    std::string session::get_tor_socks5()
+    nlohmann::json session::get_proxy_settings()
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_tor_socks5();
+            return p->get_proxy_settings();
         });
     }
 

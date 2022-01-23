@@ -132,8 +132,8 @@ class Session(object):
     def reconnect_hint(self, hint):
         return reconnect_hint(self.session_obj, self._to_json(hint))
 
-    def get_tor_socks5(self):
-        return get_tor_socks5(self.session_obj)
+    def get_proxy_settings(self):
+        return json.loads(get_proxy_settings(self.session_obj))
 
     @staticmethod
     def get_wallet_identifier(net_params, params):

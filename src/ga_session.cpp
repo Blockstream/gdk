@@ -323,8 +323,9 @@ namespace sdk {
     nlohmann::json ga_session::http_request(nlohmann::json params)
     {
         GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");
-        params.update(select_url(params["urls"], m_net_params.use_tor()));
-        params["proxy"] = get_proxy();
+        const auto proxy_settings = get_proxy_settings();
+        params.update(select_url(params["urls"], proxy_settings["use_tor"]));
+        params["proxy"] = proxy_settings["proxy"];
         return m_wamp->http_request(params);
     }
 

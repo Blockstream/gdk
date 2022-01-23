@@ -110,14 +110,13 @@ GDK_API int GA_disconnect(struct GA_session* session);
 GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 
 /**
- * Get the current SOCKS5 url for the embedded Tor daemon, if any.
+ * Get the current proxy settings for the given session.
  *
  * :param session: The session to use.
- * :param socks5: Destination for the SOCKS5 url (host:port). Empty string if not set.
- *|     Returned string should be freed using `GA_destroy_string`.
+ * :param output: Destination for the output :ref:`proxy-info`.
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
-
-GDK_API int GA_get_tor_socks5(struct GA_session* session, char** socks5);
+GDK_API int GA_get_proxy_settings(struct GA_session* session, GA_json** output);
 
 /**
  * Compute a hashed wallet identifier from a BIP32 xpub or mnemonic.
