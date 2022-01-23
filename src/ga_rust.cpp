@@ -84,8 +84,6 @@ namespace sdk {
         // gdk_rust cleanup
     }
 
-    bool ga_rust::is_connected() const { throw std::runtime_error("is_connected not implemented"); }
-
     void ga_rust::reconnect()
     {
         disconnect(false);

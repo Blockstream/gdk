@@ -9,7 +9,6 @@ namespace sdk {
         explicit ga_rust(network_parameters&& net_params);
         ~ga_rust();
 
-        bool is_connected() const;
         void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
 

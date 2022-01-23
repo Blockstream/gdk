@@ -60,7 +60,6 @@ namespace sdk {
         virtual nlohmann::json register_user(const std::string& master_pub_key_hex,
             const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
 
-        virtual bool is_connected() const = 0;
         // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
         std::string connect_tor();

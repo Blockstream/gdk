@@ -301,8 +301,6 @@ namespace sdk {
         m_wamp->connect(proxy);
     }
 
-    bool ga_session::is_connected() const { return m_wamp->is_connected(); }
-
     void ga_session::reconnect() { m_wamp->reconnect(); }
 
     void ga_session::reconnect_hint(const nlohmann::json& hint)

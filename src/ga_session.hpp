@@ -26,7 +26,6 @@ namespace sdk {
         ~ga_session();
 
         void connect();
-        bool is_connected() const;
         void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
         void disconnect(bool user_initiated);
