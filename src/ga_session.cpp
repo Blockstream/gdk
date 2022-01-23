@@ -863,8 +863,6 @@ namespace sdk {
         no_std_exception_escape([&]() {
             using namespace std::chrono_literals;
 
-            GDK_RUNTIME_ASSERT(locker.owns_lock());
-
             const auto now = std::chrono::system_clock::now();
             if (now < m_tx_last_notification || now - m_tx_last_notification > 60s) {
                 // Time has adjusted, or more than 60s since last notification,
