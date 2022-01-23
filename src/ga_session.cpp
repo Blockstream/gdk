@@ -313,10 +313,12 @@ namespace sdk {
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {
-        if (async) {
-            m_wamp->post([this, details] { emit_notification(details, false); });
-        } else {
-            session_impl::emit_notification(details, false);
+        if (m_notify) {
+            if (async) {
+                m_wamp->post([this, details] { emit_notification(details, false); });
+            } else {
+                session_impl::emit_notification(details, false);
+            }
         }
     }
 
