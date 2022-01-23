@@ -89,11 +89,11 @@ namespace sdk {
 
     namespace {
         // networking defaults
-        static const uint32_t DEFAULT_PING = 20; // ping message interval in seconds
+        static const auto DEFAULT_PING = boost::posix_time::seconds(20); // ping message interval
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
-        static const uint32_t DEFAULT_DISCONNECT_WAIT = 2; // maximum wait time on disconnect in seconds
+        static const auto DEFAULT_DISCONNECT_WAIT = boost::chrono::seconds(2); // maximum wait time on disconnect
 
         class exponential_backoff {
         public:
@@ -307,13 +307,15 @@ namespace sdk {
 
     wamp_transport::wamp_transport(const network_parameters& net_params, wamp_transport::notify_fn_t fn)
         : m_net_params(net_params)
+        , m_io()
+        , m_work_guard(asio::make_work_guard(m_io))
         , m_wamp_call_prefix("com.greenaddress.")
         , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_debug_logging(m_net_params.log_level() == "debug")
-        , m_io()
         , m_ping_timer(m_io)
-        , m_work_guard(asio::make_work_guard(m_io))
+        , m_reconnecting(false)
+        , m_enabled(true)
     {
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
@@ -349,8 +351,6 @@ namespace sdk {
         });
     }
 
-    bool wamp_transport::is_connected() const { return m_transport && m_transport->is_connected(); }
-
     bool wamp_transport::set_reconnecting(bool want_to_reconnect)
     {
         bool currently_reconnecting = m_reconnecting;
@@ -382,25 +382,6 @@ namespace sdk {
 
     void wamp_transport::set_reconnect_enabled(bool v) { m_enabled = v; }
     bool wamp_transport::is_reconnect_enabled() const { return m_enabled; }
-
-    void wamp_transport::unsubscribe()
-    {
-        decltype(m_subscriptions) subscriptions;
-        {
-            // FIXME: locker_t locker(m_mutex);
-            subscriptions.swap(m_subscriptions);
-        };
-
-        no_std_exception_escape([this, &subscriptions] {
-            for (const auto& sub : subscriptions) {
-                const auto status
-                    = m_session->unsubscribe(sub).wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
-                if (status != boost::future_status::ready) {
-                    GDK_LOG_SEV(log_level::info) << "future not ready on unsubscribe";
-                }
-            }
-        });
-    }
 
     void wamp_transport::set_socket_options()
     {
@@ -476,7 +457,7 @@ namespace sdk {
     {
         bool got_pong = false;
         no_std_exception_escape([this, &got_pong] {
-            if (is_connected()) {
+            if (m_transport && m_transport->is_connected()) {
                 if (m_net_params.is_tls_connection()) {
                     got_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
                 } else {
@@ -492,11 +473,11 @@ namespace sdk {
         const auto ms = boost::chrono::milliseconds(m_wamp_call_options.timeout().count());
         for (;;) {
             const auto status = fn.wait_for(ms);
-            if (status == boost::future_status::timeout && !is_connected()) {
-                throw timeout_error{};
-            }
             if (status == boost::future_status::ready) {
                 break;
+            }
+            if (status == boost::future_status::timeout && (!m_transport || !m_transport->is_connected())) {
+                throw timeout_error{};
             }
         }
         try {
@@ -536,7 +517,7 @@ namespace sdk {
             return;
         }
 
-        if (is_connected()) {
+        if (m_transport && m_transport->is_connected()) {
             GDK_LOG_SEV(log_level::info) << "reconnect: still connected";
             nlohmann::json net_json(
                 { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
@@ -596,7 +577,7 @@ namespace sdk {
 
             set_reconnecting(false);
 
-            if (!is_connected()) {
+            if (!m_transport || !m_transport->is_connected()) {
                 start_ping_timer();
             }
         }));
@@ -639,7 +620,7 @@ namespace sdk {
     void wamp_transport::start_ping_timer()
     {
         GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
-        m_ping_timer.expires_from_now(boost::posix_time::seconds(DEFAULT_PING));
+        m_ping_timer.expires_from_now(DEFAULT_PING);
         using std::placeholders::_1;
         m_ping_timer.async_wait(std::bind(&wamp_transport::ping_timer_handler, this, _1));
     }
@@ -652,13 +633,13 @@ namespace sdk {
         if (m_session) {
             unsubscribe();
             no_std_exception_escape([this] {
-                const auto status = m_session->leave().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                const auto status = m_session->leave().wait_for(DEFAULT_DISCONNECT_WAIT);
                 if (status != boost::future_status::ready) {
                     GDK_LOG_SEV(log_level::info) << "future not ready on leave session";
                 }
             });
             no_std_exception_escape([this] {
-                const auto status = m_session->stop().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                const auto status = m_session->stop().wait_for(DEFAULT_DISCONNECT_WAIT);
                 if (status != boost::future_status::ready) {
                     GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
                 }
@@ -668,7 +649,7 @@ namespace sdk {
 
         if (m_transport) {
             no_std_exception_escape([&] {
-                const auto status = m_transport->disconnect().wait_for(boost::chrono::seconds(DEFAULT_DISCONNECT_WAIT));
+                const auto status = m_transport->disconnect().wait_for(DEFAULT_DISCONNECT_WAIT);
                 if (status != boost::future_status::ready) {
                     GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
                 }
@@ -745,6 +726,24 @@ namespace sdk {
                        .get();
         GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
         m_subscriptions.emplace_back(sub);
+    }
+
+    void wamp_transport::unsubscribe()
+    {
+        decltype(m_subscriptions) subscriptions;
+        {
+            // FIXME: locker_t locker(m_mutex);
+            subscriptions.swap(m_subscriptions);
+        };
+
+        no_std_exception_escape([this, &subscriptions] {
+            for (const auto& sub : subscriptions) {
+                const auto status = m_session->unsubscribe(sub).wait_for(DEFAULT_DISCONNECT_WAIT);
+                if (status != boost::future_status::ready) {
+                    GDK_LOG_SEV(log_level::info) << "future not ready on unsubscribe";
+                }
+            }
+        });
     }
 
     void wamp_transport::clear_subscriptions()

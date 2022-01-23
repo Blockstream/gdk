@@ -89,29 +89,35 @@ namespace sdk {
         void set_reconnect_enabled(bool v);
         bool is_reconnect_enabled() const;
 
+        // Immutable post ctor
         const network_parameters& m_net_params;
+        boost::asio::io_context m_io;
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+        std::thread m_run_thread;
         const std::string m_wamp_call_prefix;
         autobahn::wamp_call_options m_wamp_call_options;
         notify_fn_t m_notify_fn;
         const bool m_debug_logging;
+        boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
+
+        // R:reconnect W:connect
         std::string m_proxy;
 
-        boost::asio::io_context m_io;
-        boost::variant<std::unique_ptr<client>, std::unique_ptr<client_tls>> m_client;
+        // R:ping,wamp_process_call,reconnect W:connect,disconnect
         std::shared_ptr<autobahn::wamp_websocket_transport> m_transport;
+        // R:subscribe,unsubscribe W:connect,disconnect
         std::shared_ptr<autobahn::wamp_session> m_session;
+        // W:subscribe,unsubscribe,clear_subscriptions
         std::vector<autobahn::wamp_subscription> m_subscriptions;
+
         // Ping timer
         boost::asio::deadline_timer m_ping_timer;
         // Reconnection thread
         std::unique_ptr<std::thread> m_reconnect_thread;
         std::promise<void> m_reconnect_promise;
         std::future<void> m_reconnect_future;
-        std::atomic_bool m_reconnecting{ false };
-        std::atomic_bool m_enabled{ true };
-        // asio event loop thread
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
-        std::thread m_run_thread;
+        std::atomic_bool m_reconnecting;
+        std::atomic_bool m_enabled;
     };
 
 } // namespace sdk
