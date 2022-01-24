@@ -13,9 +13,6 @@ namespace sdk {
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
 
-    using client = websocketpp::client<websocketpp_gdk_config>;
-    using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
-
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event);
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result);
 
@@ -34,6 +31,9 @@ namespace sdk {
 
     class wamp_transport {
     public:
+        using client = websocketpp::client<websocketpp_gdk_config>;
+        using client_tls = websocketpp::client<websocketpp_gdk_tls_config>;
+
         using locker_t = std::unique_lock<std::mutex>;
         using notify_fn_t = std::function<void(nlohmann::json, bool)>;
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
@@ -78,7 +78,6 @@ namespace sdk {
         void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
         void ping_timer_handler(const boost::system::error_code& ec);
 
-        void set_socket_options();
         void start_ping_timer();
 
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;

@@ -281,6 +281,36 @@ namespace sdk {
             return ctx;
         }
 
+        static void set_socket_options(autobahn::wamp_websocket_transport* t, bool is_tls)
+        {
+            auto set_option = [t, is_tls](auto option) {
+                if (is_tls) {
+                    GDK_RUNTIME_ASSERT((static_cast<transport_tls*>(t))->set_socket_option(option));
+                } else {
+                    GDK_RUNTIME_ASSERT((static_cast<transport*>(t))->set_socket_option(option));
+                }
+            };
+
+            asio::ip::tcp::no_delay no_delay(true);
+            set_option(no_delay);
+            asio::socket_base::keep_alive keep_alive(true);
+            set_option(keep_alive);
+
+#if defined __APPLE__
+            using tcp_keep_alive = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPALIVE>;
+            set_option(tcp_keep_alive{ DEFAULT_KEEPIDLE });
+#elif __linux__ || __ANDROID__ || __FreeBSD__
+            using keep_idle = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPIDLE>;
+            set_option(keep_idle{ DEFAULT_KEEPIDLE });
+#endif
+#ifndef __WIN64
+            using keep_interval = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPINTVL>;
+            set_option(keep_interval{ DEFAULT_KEEPINTERVAL });
+            using keep_count = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPCNT>;
+            set_option(keep_count{ DEFAULT_KEEPCNT });
+#endif
+        }
+
         template <typename T> static nlohmann::json wamp_cast_json_impl(const T& result)
         {
             if (!result.number_of_arguments()) {
@@ -383,37 +413,6 @@ namespace sdk {
     void wamp_transport::set_reconnect_enabled(bool v) { m_enabled = v; }
     bool wamp_transport::is_reconnect_enabled() const { return m_enabled; }
 
-    void wamp_transport::set_socket_options()
-    {
-        const bool is_tls = m_net_params.is_tls_connection();
-        auto set_option = [this, is_tls](auto option) {
-            if (is_tls) {
-                GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport_tls>(m_transport)->set_socket_option(option));
-            } else {
-                GDK_RUNTIME_ASSERT(std::static_pointer_cast<transport>(m_transport)->set_socket_option(option));
-            }
-        };
-
-        asio::ip::tcp::no_delay no_delay(true);
-        set_option(no_delay);
-        asio::socket_base::keep_alive keep_alive(true);
-        set_option(keep_alive);
-
-#if defined __APPLE__
-        using tcp_keep_alive = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPALIVE>;
-        set_option(tcp_keep_alive{ DEFAULT_KEEPIDLE });
-#elif __linux__ || __ANDROID__ || __FreeBSD__
-        using keep_idle = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPIDLE>;
-        set_option(keep_idle{ DEFAULT_KEEPIDLE });
-#endif
-#ifndef __WIN64
-        using keep_interval = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPINTVL>;
-        set_option(keep_interval{ DEFAULT_KEEPINTERVAL });
-        using keep_count = asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPCNT>;
-        set_option(keep_count{ DEFAULT_KEEPCNT });
-#endif
-    }
-
     void wamp_transport::connect(const std::string& proxy)
     {
         m_proxy = proxy;
@@ -442,7 +441,7 @@ namespace sdk {
         m_transport->connect().get();
         m_session->start().get();
         m_session->join("realm1").get();
-        set_socket_options();
+        set_socket_options(m_transport.get(), m_net_params.is_tls_connection());
         using std::placeholders::_1;
         start_ping_timer();
     }
