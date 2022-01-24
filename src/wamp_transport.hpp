@@ -70,7 +70,7 @@ namespace sdk {
             return call(method_name, std::forward<Args>(args)...);
         }
 
-        template <typename FN> void post(FN&& fn) { boost::asio::post(m_work_guard.get_executor(), fn); }
+        template <typename FN> void post(FN&& fn) { boost::asio::post(m_io.get_executor(), fn); }
 
     private:
         bool ping() const;
