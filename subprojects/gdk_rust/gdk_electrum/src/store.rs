@@ -17,6 +17,7 @@ use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -101,7 +102,22 @@ pub struct StoreMeta {
     id: NetworkId,
     path: PathBuf,
     cipher: Aes256GcmSiv,
-    last: HashMap<String, sha256::Hash>,
+    last: HashMap<Kind, sha256::Hash>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Kind {
+    Cache,
+    Store,
+}
+
+impl Display for Kind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Kind::Store => write!(f, "store"),
+            Kind::Cache => write!(f, "cache"),
+        }
+    }
 }
 
 impl Drop for StoreMeta {
@@ -237,31 +253,30 @@ impl StoreMeta {
         })
     }
 
-    fn flush_serializable(&mut self, name: &str) -> Result<(), Error> {
+    fn flush_serializable(&mut self, kind: Kind) -> Result<(), Error> {
         let now = Instant::now();
         let mut nonce_bytes = [0u8; 12];
         thread_rng().fill(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let mut plaintext = match name {
-            "store" => serde_cbor::to_vec(&self.store),
-            "cache" => serde_cbor::to_vec(&self.cache),
-            _ => return Err(Error::Generic("flushing unknown name".to_string())),
+        let mut plaintext = match kind {
+            Kind::Store => serde_cbor::to_vec(&self.store),
+            Kind::Cache => serde_cbor::to_vec(&self.cache),
         }?;
 
         let hash = sha256::Hash::hash(&plaintext);
-        if let Some(last_hash) = self.last.get(name) {
+        if let Some(last_hash) = self.last.get(&kind) {
             if last_hash == &hash {
                 info!("latest serialization hash matches, no need to flush");
-                return Ok(())
+                return Ok(());
             }
         }
-        self.last.insert(name.to_string(), hash);
+        self.last.insert(kind, hash);
 
         self.cipher.encrypt_in_place(nonce, b"", &mut plaintext)?;
         let ciphertext = plaintext;
 
         let mut store_path = self.path.clone();
-        store_path.push(name);
+        store_path.push(kind.to_string());
         //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
         // in the front of the file
         let mut file = File::create(&store_path)?;
@@ -277,12 +292,12 @@ impl StoreMeta {
     }
 
     fn flush_store(&mut self) -> Result<(), Error> {
-        self.flush_serializable("store")?;
+        self.flush_serializable(Kind::Store)?;
         Ok(())
     }
 
     fn flush_cache(&mut self) -> Result<(), Error> {
-        self.flush_serializable("cache")?;
+        self.flush_serializable(Kind::Cache)?;
         Ok(())
     }
 
