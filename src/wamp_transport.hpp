@@ -47,7 +47,6 @@ namespace sdk {
         void disconnect(bool user_initiated);
 
         void subscribe(locker_t& locker, const std::string& topic, subscribe_fn_t callback);
-        void unsubscribe();
         void clear_subscriptions();
 
         nlohmann::json http_request(nlohmann::json params);
@@ -74,6 +73,7 @@ namespace sdk {
 
     private:
         bool ping() const;
+        void unsubscribe();
 
         void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
         void ping_timer_handler(const boost::system::error_code& ec);
