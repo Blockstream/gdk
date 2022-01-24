@@ -76,9 +76,6 @@ namespace sdk {
         void unsubscribe();
 
         void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
-        void ping_timer_handler(const boost::system::error_code& ec);
-
-        void start_ping_timer();
 
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const;
 
@@ -109,8 +106,6 @@ namespace sdk {
         // W:subscribe,unsubscribe,clear_subscriptions
         std::vector<autobahn::wamp_subscription> m_subscriptions;
 
-        // Ping timer
-        boost::asio::deadline_timer m_ping_timer;
         // Reconnection thread
         std::unique_ptr<std::thread> m_reconnect_thread;
         std::promise<void> m_reconnect_promise;

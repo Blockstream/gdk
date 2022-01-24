@@ -343,7 +343,6 @@ namespace sdk {
         , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_debug_logging(m_net_params.log_level() == "debug")
-        , m_ping_timer(m_io)
         , m_reconnecting(false)
         , m_enabled(true)
     {
@@ -442,8 +441,6 @@ namespace sdk {
         m_session->start().get();
         m_session->join("realm1").get();
         set_socket_options(m_transport.get(), m_net_params.is_tls_connection());
-        using std::placeholders::_1;
-        start_ping_timer();
     }
 
     void wamp_transport::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
@@ -487,20 +484,6 @@ namespace sdk {
         }
     }
 
-    void wamp_transport::ping_timer_handler(const boost::system::error_code& ec)
-    {
-        if (ec == asio::error::operation_aborted) {
-            return;
-        }
-
-        if (!ping()) {
-            GDK_LOG_SEV(log_level::info) << "ping failure detected. reconnecting...";
-            reconnect();
-        }
-
-        start_ping_timer();
-    }
-
     void wamp_transport::reconnect()
     {
         if (!m_io.get_executor().running_in_this_thread()) {
@@ -528,8 +511,6 @@ namespace sdk {
             GDK_LOG_SEV(log_level::info) << "reconnect: already in progress";
             return;
         }
-
-        m_ping_timer.cancel();
 
         if (m_reconnect_thread) {
             GDK_LOG_SEV(log_level::info) << "reconnect: joining old reconnection thread";
@@ -575,10 +556,6 @@ namespace sdk {
             }
 
             set_reconnecting(false);
-
-            if (!m_transport || !m_transport->is_connected()) {
-                start_ping_timer();
-            }
         }));
     }
 
@@ -595,9 +572,6 @@ namespace sdk {
         // Enable/disable any new reconnection attempts
         set_reconnect_enabled(enable);
         if (!enable) {
-            // Prevent the ping timer from attempting to reconnect
-            m_ping_timer.cancel();
-
             // Stop any in-progress reconnection attempts
             stop_reconnecting();
             decltype(m_reconnect_thread) t;
@@ -616,18 +590,9 @@ namespace sdk {
         }
     }
 
-    void wamp_transport::start_ping_timer()
-    {
-        GDK_LOG_SEV(log_level::debug) << "starting ping timer...";
-        m_ping_timer.expires_from_now(DEFAULT_PING);
-        using std::placeholders::_1;
-        m_ping_timer.async_wait(std::bind(&wamp_transport::ping_timer_handler, this, _1));
-    }
-
     void wamp_transport::disconnect(bool user_initiated)
     {
         GDK_LOG_SEV(log_level::info) << "disconnecting";
-        m_ping_timer.cancel();
 
         if (m_session) {
             unsubscribe();
