@@ -2,9 +2,6 @@
 #include <cstdio>
 #include <fstream>
 #include <map>
-#include <string>
-#include <thread>
-#include <vector>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -26,15 +23,18 @@
 #include "version.h"
 #include "wamp_transport.hpp"
 
-#define TX_CACHE_LEVEL log_level::debug
-
 using namespace std::literals;
 namespace asio = boost::asio;
 
 namespace ga {
 namespace sdk {
     struct websocket_rng_type {
-        uint32_t operator()() const;
+        uint32_t operator()() const
+        {
+            uint32_t b;
+            get_random_bytes(sizeof(b), &b, sizeof(b));
+            return b;
+        }
     };
 
     struct websocketpp_gdk_config : public websocketpp::config::asio_client {
@@ -93,20 +93,23 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
-        static const auto DEFAULT_DISCONNECT_WAIT = boost::chrono::seconds(2); // maximum wait time on disconnect
 
         class exponential_backoff {
         public:
-            explicit exponential_backoff(std::chrono::seconds limit = 300s)
-                : m_limit(limit)
+            explicit exponential_backoff()
+                : m_limit(300s)
             {
+                reset();
             }
 
-            std::chrono::seconds backoff(uint32_t n)
+            std::chrono::seconds get_backoff()
             {
+                if (m_n == 0) {
+                    return 1s;
+                }
                 m_elapsed += m_waiting;
                 const auto v
-                    = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(n, uint32_t{ 31 }));
+                    = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(m_n, uint32_t{ 31 }));
                 std::random_device rd;
                 std::uniform_int_distribution<uint32_t> d(v / 2, v);
                 m_waiting = std::chrono::seconds(d(rd));
@@ -117,10 +120,20 @@ namespace sdk {
             std::chrono::seconds elapsed() const { return m_elapsed; }
             std::chrono::seconds waiting() const { return m_waiting; }
 
+            void increment() { ++m_n; }
+
+            void reset()
+            {
+                m_n = 0;
+                m_elapsed = 0s;
+                m_waiting = 0s;
+            }
+
         private:
             const std::chrono::seconds m_limit;
-            std::chrono::seconds m_elapsed{ 0s };
-            std::chrono::seconds m_waiting{ 0s };
+            uint32_t m_n;
+            std::chrono::seconds m_elapsed;
+            std::chrono::seconds m_waiting;
         };
 
         static X509* cert_from_pem(const std::string& pem)
@@ -311,6 +324,43 @@ namespace sdk {
 #endif
         }
 
+        static void handle_disconnect(asio::io_context::executor_type executor,
+            std::shared_ptr<autobahn::wamp_websocket_transport>& t, std::shared_ptr<autobahn::wamp_session>& s)
+        {
+            if (s) {
+                no_std_exception_escape([&executor, &s] {
+                    auto f = asio::post(
+                        executor, std::packaged_task<boost::future<std::string>()>([&s] { return s->leave(); }));
+                    f.get().get();
+                });
+                no_std_exception_escape([&executor, &s] {
+                    auto f
+                        = asio::post(executor, std::packaged_task<boost::future<void>()>([&s] { return s->stop(); }));
+                    f.get().get();
+                });
+            }
+
+            if (t) {
+                no_std_exception_escape([&executor, &t] {
+                    auto f = asio::post(
+                        executor, std::packaged_task<boost::future<void>()>([&t] { return t->disconnect(); }));
+                    f.get().get();
+                });
+
+                // Wait for the transport to be disconnected
+                bool connected = true;
+                GDK_LOG_SEV(log_level::debug) << "waiting for connection to die";
+                while (connected) {
+                    auto f = asio::post(executor, std::packaged_task<bool()>([&t] { return t->is_connected(); }));
+                    connected = f.get();
+                }
+                GDK_LOG_SEV(log_level::debug) << "connection is dead";
+
+                no_std_exception_escape(
+                    [&executor, &t] { asio::post(executor, std::packaged_task<void()>([&t] { t->detach(); })).get(); });
+            }
+        }
+
         template <typename T> static nlohmann::json wamp_cast_json_impl(const T& result)
         {
             if (!result.number_of_arguments()) {
@@ -324,14 +374,7 @@ namespace sdk {
 
     } // namespace
 
-    uint32_t websocket_rng_type::operator()() const
-    {
-        uint32_t b;
-        get_random_bytes(sizeof(b), &b, sizeof(b));
-        return b;
-    }
-
-    nlohmann::json wamp_cast_json(const autobahn::wamp_event& event) { return wamp_cast_json_impl(event); }
+    nlohmann::json wamp_cast_json(const autobahn::wamp_event& event) { return wamp_cast_json_impl(*event); }
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
@@ -339,132 +382,152 @@ namespace sdk {
         : m_net_params(net_params)
         , m_io()
         , m_work_guard(asio::make_work_guard(m_io))
+        , m_server(m_net_params.get_connection_string())
+        , m_wamp_host_name(websocketpp::uri(m_net_params.gait_wamp_url()).get_host())
         , m_wamp_call_prefix("com.greenaddress.")
         , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_debug_logging(m_net_params.log_level() == "debug")
-        , m_reconnecting(false)
-        , m_enabled(true)
+        , m_desired_state(state_t::disconnected)
+        , m_state(state_t::disconnected)
+        , m_failure_count(0)
     {
+        using namespace std::placeholders;
+        m_subscriptions.reserve(4u);
+
         constexpr uint32_t wamp_timeout_secs = 10;
         m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
 
         m_run_thread = std::thread([this] { m_io.run(); });
+        m_reconnect_thread = std::thread([this] { reconnect_handler(); });
 
         if (!m_net_params.is_tls_connection()) {
             m_client = std::make_unique<client>();
-            boost::get<std::unique_ptr<client>>(m_client)->init_asio(&m_io);
+            m_client->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
+            m_client->init_asio(&m_io);
             return;
         }
 
-        m_client = std::make_unique<client_tls>();
-        boost::get<std::unique_ptr<client_tls>>(m_client)->init_asio(&m_io);
-        const auto host_name = websocketpp::uri(m_net_params.gait_wamp_url()).get_host();
-
-        boost::get<std::unique_ptr<client_tls>>(m_client)->set_tls_init_handler(
-            [this, host_name](const websocketpp::connection_hdl) {
-                return tls_init(host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
-                    m_net_params.cert_expiry_threshold());
-            });
+        m_client_tls = std::make_unique<client_tls>();
+        m_client_tls->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
+        m_client_tls->set_tls_init_handler([this](const websocketpp::connection_hdl) {
+            return tls_init(m_wamp_host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
+                m_net_params.cert_expiry_threshold());
+        });
+        m_client_tls->init_asio(&m_io);
     }
 
     wamp_transport::~wamp_transport()
     {
-        no_std_exception_escape([this] {
-            reconnect_hint({ { "hint", "disable" } }); // Disable reconnect
-            disconnect(true);
-        });
-        no_std_exception_escape([this] {
-            m_work_guard.reset();
-            m_run_thread.join();
-        });
+        no_std_exception_escape([this] { change_state_to(state_t::exited, false); }, "wamp dtor(1)");
+        no_std_exception_escape([this] { m_reconnect_thread.join(); }, "wamp dtor(2)");
+        no_std_exception_escape([this] { m_work_guard.reset(); }, "wamp dtor(2)");
+        no_std_exception_escape([this] { m_run_thread.join(); }, "wamp dtor(3)");
     }
-
-    bool wamp_transport::set_reconnecting(bool want_to_reconnect)
-    {
-        bool currently_reconnecting = m_reconnecting;
-        if (want_to_reconnect && currently_reconnecting) {
-            return false; // Already reconnecting
-        }
-        bool can_reconnect = m_reconnecting.compare_exchange_strong(currently_reconnecting, want_to_reconnect);
-        if (want_to_reconnect && can_reconnect) {
-            // No one else is currently reconnecting.
-            // Reset m_exit_flag to allow later cancelling of a reconnect.
-            m_reconnect_promise = decltype(m_reconnect_promise)();
-            m_reconnect_future = m_reconnect_promise.get_future();
-        }
-        return can_reconnect;
-    }
-
-    void wamp_transport::stop_reconnecting()
-    {
-        if (m_reconnecting) {
-            // Set the future status to ready, causing is_reconnect_canceled to return true
-            m_reconnect_promise.set_value();
-        }
-    }
-
-    bool wamp_transport::is_reconnect_canceled(std::chrono::seconds secs) const
-    {
-        return m_reconnect_future.wait_for(secs) == std::future_status::ready;
-    }
-
-    void wamp_transport::set_reconnect_enabled(bool v) { m_enabled = v; }
-    bool wamp_transport::is_reconnect_enabled() const { return m_enabled; }
 
     void wamp_transport::connect(const std::string& proxy)
     {
-        m_proxy = proxy;
-        GDK_LOG_SEV(log_level::info) << "connecting";
-        m_session = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
-
-        const auto server = m_net_params.get_connection_string();
-        std::string proxy_details;
         if (!proxy.empty()) {
-            proxy_details = std::string(" through proxy ") + proxy;
+            locker_t locker(m_mutex);
+            m_proxy = proxy;
         }
-        GDK_LOG_SEV(log_level::info) << "Connecting using version " << GDK_COMMIT << " to " << server << proxy_details;
-        decltype(m_transport) transport_p;
-        using namespace std::placeholders;
-        if (m_net_params.is_tls_connection()) {
-            auto& clnt = *boost::get<std::unique_ptr<client_tls>>(m_client);
-            clnt.set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
-            transport_p = std::make_shared<transport_tls>(clnt, server, proxy, m_debug_logging);
-        } else {
-            auto& clnt = *boost::get<std::unique_ptr<client>>(m_client);
-            clnt.set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
-            transport_p = std::make_shared<transport>(clnt, server, proxy, m_debug_logging);
+        change_state_to(state_t::connected, true);
+    }
+
+    void wamp_transport::disconnect(bool user_initiated)
+    {
+        change_state_to(state_t::disconnected, true);
+        if (!user_initiated) {
+            // Note we don't emit a notification if the user explicitly
+            // disconnected or destroyed the session.
+            nlohmann::json details{ { "connected", false } };
+            m_notify_fn({ { "event", "session" }, { "session", std::move(details) } }, false);
         }
-        transport_p->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(m_session));
-        m_transport = transport_p;
-        m_transport->connect().get();
-        m_session->start().get();
-        m_session->join("realm1").get();
-        set_socket_options(m_transport.get(), m_net_params.is_tls_connection());
+    }
+
+    void wamp_transport::reconnect()
+    {
+        // Only called by the top level session class in response to
+        // exceptions from wamp_call. As such, just increment the
+        // failure count and let the reconnect thread reconnect us.
+        // If the failure has been detected by the connection already,
+        // this should easily occur within the disconnect/connect
+        // processing, avoiding a double disconnect/connect cycle.
+        notify_failure("session level reconnect");
+        m_condition.notify_all();
+    }
+
+    void wamp_transport::reconnect_hint(const nlohmann::json& hint)
+    {
+        auto new_state = state_t::disconnected;
+        const auto hint_p = hint.find("hint");
+        if (hint_p != hint.end()) {
+            GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
+            if (*hint_p == "now") {
+                new_state = state_t::connected;
+            }
+        }
+        GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << state_str(new_state);
+        change_state_to(new_state, true);
+    }
+
+    void wamp_transport::change_state_to(wamp_transport::state_t new_state, bool wait)
+    {
+        GDK_LOG_SEV(log_level::info) << "change_state_to: requesting state " << state_str(new_state);
+        locker_t locker(m_mutex);
+        m_desired_state = new_state;
+        locker.unlock();
+        m_condition.notify_all();
+
+        if (wait) {
+            // Busy wait for up to 30s while the reconnection thread changes state
+            for (size_t i = 0; i < 300u; ++i) {
+                std::this_thread::sleep_for(100ms);
+                locker.lock();
+                if (m_state == new_state) {
+                    locker.unlock();
+                    GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(new_state);
+                    return;
+                }
+                locker.unlock();
+            }
+            throw timeout_error();
+        }
+    }
+
+    const char* wamp_transport::state_str(state_t state) const
+    {
+        switch (state) {
+        case state_t::disconnected:
+            return "disconnected";
+        case state_t::connected:
+            return "connected";
+        case state_t::exited:
+            return "exited";
+        }
+        return "unknown";
     }
 
     void wamp_transport::heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&)
     {
-        GDK_LOG_SEV(log_level::info) << "pong timeout detected. reconnecting...";
-        reconnect();
+        notify_failure("pong timeout detected");
     }
 
-    bool wamp_transport::ping() const
+    void wamp_transport::notify_failure(const std::string& reason)
     {
-        bool got_pong = false;
-        no_std_exception_escape([this, &got_pong] {
-            if (m_transport && m_transport->is_connected()) {
-                if (m_net_params.is_tls_connection()) {
-                    got_pong = std::static_pointer_cast<transport_tls>(m_transport)->ping(std::string());
-                } else {
-                    got_pong = std::static_pointer_cast<transport>(m_transport)->ping(std::string());
-                }
-            }
-        });
-        return got_pong;
+        locker_t locker(m_mutex);
+        notify_failure(locker, reason);
     }
 
-    autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn) const
+    void wamp_transport::notify_failure(locker_t& locker, const std::string& reason)
+    {
+        ++m_failure_count;
+        locker.unlock();
+        GDK_LOG_SEV(log_level::info) << reason << ", notifying failure";
+        m_condition.notify_all();
+    }
+
+    autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn)
     {
         const auto ms = boost::chrono::milliseconds(m_wamp_call_options.timeout().count());
         for (;;) {
@@ -472,166 +535,139 @@ namespace sdk {
             if (status == boost::future_status::ready) {
                 break;
             }
-            if (status == boost::future_status::timeout && (!m_transport || !m_transport->is_connected())) {
-                throw timeout_error{};
+            if (status == boost::future_status::timeout) {
+                locker_t locker(m_mutex);
+                if (!m_transport || !m_transport->is_connected()) {
+                    notify_failure(locker, "call transport disconnected");
+                    throw timeout_error{};
+                }
             }
         }
         try {
             return fn.get();
         } catch (const boost::future_error& ex) {
-            GDK_LOG_SEV(log_level::warning) << "wamp_process_call exception: " << ex.what();
+            notify_failure(std::string("wamp call exception: ") + ex.what());
             throw reconnect_error{};
         }
     }
 
-    void wamp_transport::reconnect()
+    void wamp_transport::reconnect_handler()
     {
-        if (!m_io.get_executor().running_in_this_thread()) {
-            GDK_LOG_SEV(log_level::info) << "reconnect: submitting to executor";
-            auto f = asio::post(
-                m_io.get_executor(), std::packaged_task<void()>(std::bind(&wamp_transport::reconnect, this)));
-            f.get();
-            return;
-        }
+        const bool is_tls = m_net_params.is_tls_connection();
+        const auto& executor = m_io.get_executor();
 
-        if (!is_reconnect_enabled()) {
-            GDK_LOG_SEV(log_level::info) << "reconnect: disabled";
-            return;
-        }
+        // The last failure number that we handled
+        auto last_handled_failure_count = m_failure_count.load();
+        exponential_backoff backoff;
 
-        if (m_transport && m_transport->is_connected()) {
-            GDK_LOG_SEV(log_level::info) << "reconnect: still connected";
-            nlohmann::json net_json(
-                { { "connected", true }, { "login_required", false }, { "heartbeat_timeout", true } });
-            m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
-            return;
-        }
+        GDK_LOG_SEV(log_level::info) << "net: thread started for gdk version " << GDK_COMMIT;
 
-        if (!set_reconnecting(true)) {
-            GDK_LOG_SEV(log_level::info) << "reconnect: already in progress";
-            return;
-        }
+        for (;;) {
+            decltype(m_transport) t;
+            decltype(m_session) s;
+            decltype(m_subscriptions) subscriptions;
 
-        if (m_reconnect_thread) {
-            GDK_LOG_SEV(log_level::info) << "reconnect: joining old reconnection thread";
-            m_reconnect_thread->join();
-            m_reconnect_thread.reset(); // In case 'new' throws below
-        }
+            GDK_LOG_SEV(log_level::debug) << "net: taking mutex";
+            locker_t locker(m_mutex);
+            GDK_LOG_SEV(log_level::debug) << "net: mutex taken";
+            const auto state = m_state.load();
+            auto desired_state = m_desired_state.load();
+            const auto failure_count = m_failure_count.load();
 
-        m_reconnect_thread.reset(new std::thread([this] {
-            std::ostringstream os;
-            os << "reconnect: (" << std::hex << std::this_thread::get_id() << ") ";
-            const auto prologue = os.str();
-
-            GDK_LOG_SEV(log_level::info) << prologue << "started";
-
-            exponential_backoff bo;
-            uint32_t n = 0;
-            for (;;) {
-                const auto backoff_time = bo.backoff(n++);
-                nlohmann::json net_json({ { "connected", false }, { "elapsed", bo.elapsed().count() },
-                    { "waiting", bo.waiting().count() }, { "limit", bo.limit_reached() } });
-                m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
-
-                if (!is_reconnect_enabled() || is_reconnect_canceled(backoff_time)) {
-                    GDK_LOG_SEV(log_level::info) << prologue << "disabled/cancelled";
-                    break;
+            if (desired_state != state_t::exited && last_handled_failure_count != failure_count) {
+                GDK_LOG_SEV(log_level::info) << "net: unhandled failure detected";
+                desired_state = state_t::disconnected;
+            } else if (state == desired_state) {
+                // We are already in the desired state. Wait until something changes
+                GDK_LOG_SEV(log_level::debug) << "net: in state " << state_str(state);
+                if (m_transport && !m_transport->is_connected()) {
+                    // The transport has been closed or failed. Mark the
+                    // error and loop again to reconnect if needed.
+                    ++m_failure_count;
+                    locker.unlock();
+                    GDK_LOG_SEV(log_level::info) << "net: detected dead transport";
+                    continue;
                 }
-
-                try {
-                    disconnect(false);
-                    connect(m_proxy);
-                    GDK_LOG_SEV(log_level::info) << prologue << "succeeded";
-
-                    // FIXME: Re-work re-login
-                    nlohmann::json net_json(
-                        { { "connected", true }, { "login_required", true }, { "heartbeat_timeout", false } });
-                    m_notify_fn({ { "event", "network" }, { "network", std::move(net_json) } }, true);
-
-                    break;
-                } catch (const std::exception& ex) {
-                    GDK_LOG_SEV(log_level::info) << prologue << " exception: " << ex.what();
-                    // Continue
-                }
+                // FIXME: Only sleep until we need to check/ping
+                GDK_LOG_SEV(log_level::debug) << "net: waiting for " << backoff.get_backoff().count() << "s";
+                m_condition.wait_for(locker, backoff.get_backoff());
+                continue;
             }
 
-            set_reconnecting(false);
-        }));
-    }
+            GDK_LOG_SEV(log_level::info) << "net: desired " << state_str(desired_state) << " actual "
+                                         << state_str(state);
 
-    void wamp_transport::reconnect_hint(const nlohmann::json& hint)
-    {
-        bool enable = false;
-        const auto hint_p = hint.find("hint");
-        if (hint_p != hint.end()) {
-            GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
-            enable = *hint_p == "now";
-        }
-        GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
+            if (desired_state == state_t::exited || desired_state == state_t::disconnected) {
+                // We want the connection closed
+                if (m_session || m_transport) {
+                    m_transport.swap(t);
+                    m_session.swap(s);
+                    m_subscriptions.swap(subscriptions);
 
-        // Enable/disable any new reconnection attempts
-        set_reconnect_enabled(enable);
-        if (!enable) {
-            // Stop any in-progress reconnection attempts
-            stop_reconnecting();
-            decltype(m_reconnect_thread) t;
-            // Fetch the reconnect thread pointer from within the executor
-            auto f = asio::post(m_io.get_executor(), std::packaged_task<void()>([this, &t] {
-                if (m_reconnect_thread) {
-                    std::swap(t, m_reconnect_thread);
+                    locker.unlock();
+                    GDK_LOG_SEV(log_level::info) << "net: disconnecting";
+                    handle_disconnect(executor, t, s);
+                    // If this disconnect was due to a handler failure,
+                    // mark it handled. We will then either connect or
+                    // not according to our desired state.
+                    last_handled_failure_count = failure_count;
+                    locker.lock();
                 }
-            }));
-            f.get(); // Wait for the executor to run our pointer fetch
 
-            if (t) {
-                GDK_LOG_SEV(log_level::info) << "reconnect_hint: joining reconnection thread";
-                t->join();
+                m_state = desired_state;
+                if (desired_state == state_t::exited) {
+                    // Exit this thread so the caller can join() it
+                    return;
+                }
+                backoff.reset(); // Start our backoff sequence again when we reconnect
+                continue;
             }
-        }
-    }
+            if (desired_state == state_t::connected) {
+                // We want the connection open
+                const std::string proxy = m_proxy;
+                locker.unlock();
 
-    void wamp_transport::disconnect(bool user_initiated)
-    {
-        GDK_LOG_SEV(log_level::info) << "disconnecting";
+                GDK_LOG_SEV(log_level::info)
+                    << "net: connect to " << m_server << (proxy.empty() ? "" : std::string(" via ") + proxy);
 
-        if (m_session) {
-            unsubscribe();
-            no_std_exception_escape([this] {
-                const auto status = m_session->leave().wait_for(DEFAULT_DISCONNECT_WAIT);
-                if (status != boost::future_status::ready) {
-                    GDK_LOG_SEV(log_level::info) << "future not ready on leave session";
+                if (is_tls) {
+                    t = std::make_shared<transport_tls>(*m_client_tls, m_server, proxy, m_debug_logging);
+                } else {
+                    t = std::make_shared<transport>(*m_client, m_server, proxy, m_debug_logging);
                 }
-            });
-            no_std_exception_escape([this] {
-                const auto status = m_session->stop().wait_for(DEFAULT_DISCONNECT_WAIT);
-                if (status != boost::future_status::ready) {
-                    GDK_LOG_SEV(log_level::info) << "future not ready on stop session";
+                s = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
+                t->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(s));
+                bool failed = false;
+                if (no_std_exception_escape([&t] { t->connect().get(); }, "transport connect")) {
+                    failed = true;
+                    handle_disconnect(executor, t, s);
                 }
-            });
-            m_session.reset();
-        }
+                if (!failed && no_std_exception_escape([&s] { s->start().get(); }, "session connect")) {
+                    failed = true;
+                }
+                if (!failed && no_std_exception_escape([&s] { s->join("realm1").get(); }, "session join")) {
+                    failed = true;
+                }
+                if (!failed
+                    && no_std_exception_escape(
+                           [t, &is_tls] { set_socket_options(t.get(), is_tls); }, "set socket options")) {
+                    failed = true;
+                }
+                if (failed) {
+                    backoff.increment(); // Wait longer before trying again
+                    GDK_LOG_SEV(log_level::info) << "net: backing off for " << backoff.get_backoff().count() << "s";
+                    continue;
+                } else {
+                    backoff.reset(); // Start our backoff sequence again when we reconnect
+                }
 
-        if (m_transport) {
-            no_std_exception_escape([&] {
-                const auto status = m_transport->disconnect().wait_for(DEFAULT_DISCONNECT_WAIT);
-                if (status != boost::future_status::ready) {
-                    GDK_LOG_SEV(log_level::info) << "future not ready on disconnect";
-                }
-            });
-            no_std_exception_escape([&] { m_transport->detach(); });
-            // Wait for the transport to be disconnected
-            while (m_transport->is_connected()) {
-                GDK_LOG_SEV(log_level::info) << "waiting for connection to die";
-                std::this_thread::sleep_for(1ms);
+                GDK_LOG_SEV(log_level::info) << "net: connection successful";
+                locker.lock();
+                m_session.swap(s);
+                m_transport.swap(t);
+                m_state = state_t::connected;
+                continue;
             }
-            m_transport.reset();
-        }
-
-        if (!user_initiated) {
-            // Note we don't emit a notification if the user explicitly
-            // disconnected or destroyed the session.
-            nlohmann::json details{ { "connected", false } };
-            m_notify_fn({ { "event", "session" }, { "session", std::move(details) } }, false);
         }
     }
 
@@ -681,6 +717,7 @@ namespace sdk {
         wamp_transport::locker_t& locker, const std::string& topic, wamp_transport::subscribe_fn_t callback)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        // FIXME: lock for m_session/m_subscriptions
         GDK_RUNTIME_ASSERT(m_session.get());
         unique_unlock unlocker(locker);
         const auto options = autobahn::wamp_subscribe_options("exact");
@@ -688,30 +725,13 @@ namespace sdk {
                        ->subscribe(
                            topic, [callback](const autobahn::wamp_event& e) { callback(wamp_cast_json(e)); }, options)
                        .get();
-        GDK_LOG_SEV(log_level::debug) << "subscribed to topic:" << sub.id();
+        GDK_LOG_SEV(log_level::debug) << "subscribed to " << topic << ":" << sub.id();
         m_subscriptions.emplace_back(sub);
-    }
-
-    void wamp_transport::unsubscribe()
-    {
-        decltype(m_subscriptions) subscriptions;
-        {
-            // FIXME: locker_t locker(m_mutex);
-            subscriptions.swap(m_subscriptions);
-        };
-
-        no_std_exception_escape([this, &subscriptions] {
-            for (const auto& sub : subscriptions) {
-                const auto status = m_session->unsubscribe(sub).wait_for(DEFAULT_DISCONNECT_WAIT);
-                if (status != boost::future_status::ready) {
-                    GDK_LOG_SEV(log_level::info) << "future not ready on unsubscribe";
-                }
-            }
-        });
     }
 
     void wamp_transport::clear_subscriptions()
     {
+        // FIXME: lock for m_session/m_subscriptions
         m_subscriptions.clear();
         m_subscriptions.reserve(4u);
     }

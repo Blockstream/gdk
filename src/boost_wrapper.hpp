@@ -62,7 +62,6 @@
 #include <boost/stacktrace.hpp>
 #endif
 #include <boost/thread/tss.hpp>
-#include <boost/variant.hpp>
 
 #if __clang__
 #pragma clang diagnostic pop
