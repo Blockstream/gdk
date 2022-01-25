@@ -219,7 +219,6 @@ namespace sdk {
         exception_wrapper([&] {
             auto p = get_nonnull_impl();
             p->reconnect_hint(hint);
-            p->reconnect();
         });
     }
 

@@ -103,6 +103,7 @@ namespace sdk {
         }
         GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
         m_reconnect_restart = enable;
+        reconnect();
     }
 
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
