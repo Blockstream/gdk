@@ -6,7 +6,7 @@ import json
 # https://github.com/Blockstream/gdk/releases
 # The 'cp' number refers to the python version you have.
 # To install GDK, pip install the .whl file:
-# pip install greenaddress-0.0.36-cp37-cp37m-linux_x86_64.whl
+# pip install greenaddress-0.0.49-cp39-cp39-linux_x86_64.whl
 # GDK README and reference documentation:
 # https://github.com/Blockstream/gdk
 # https://gdk.readthedocs.io/en/latest/
@@ -35,7 +35,7 @@ def main():
     """
     # To login to an existing wallet you can either use the mnemonic or pin.
     # Later we'll see how to use a pin, for now we will use the mnemonic.
-    mnemonic = 'your twenty four word mnemonic goes here with single spaced words'
+    mnemonic = 'your twenty four of twelve word mnemonic goes here with single spaced words'
     if not gdk.validate_mnemonic(mnemonic):
         raise Exception("Invalid mnemonic.")
 
@@ -162,7 +162,8 @@ class gdk_wallet:
         self.mnemonic = mnemonic or gdk.generate_mnemonic()
         # Set the network name to 'liquid' for the live Liquid network.
         # There is currently no test Liquid network.
-        self.session = gdk.Session({'name': 'liquid'})
+        self.session = gdk.Session({'name': self.NETWORK_NAME})
+        
         self.session.register_user({}, self.mnemonic).resolve()
         credentials = {'mnemonic': self.mnemonic, 'password': ''}
         self.session.login_user({}, credentials).resolve()
@@ -176,7 +177,7 @@ class gdk_wallet:
     def login_with_mnemonic(cls, mnemonic):
         self = cls()
         self.mnemonic = mnemonic
-        self.session = gdk.Session({'name': 'liquid'})
+        self.session = gdk.Session({'name': self.NETWORK_NAME})
         credentials = {'mnemonic': self.mnemonic, 'password': ''}
         self.session.login_user({}, credentials).resolve()
         self.fetch_subaccount()
@@ -187,7 +188,7 @@ class gdk_wallet:
     def login_with_pin(cls, pin):
         self = cls()
         pin_data = open(self.PIN_DATA_FILENAME).read()
-        self.session = gdk.Session({'name': 'liquid'})
+        self.session = gdk.Session({'name': self.NETWORK_NAME})
         credentials = {'pin': str(pin), 'pin_data': json.loads(pin_data)}
         self.session.login_user({}, credentials).resolve()
         self.fetch_subaccount()
@@ -195,6 +196,8 @@ class gdk_wallet:
 
     """Do not use this to instantiate the object, use create_new_wallet or login_with_*"""
     def __init__(self):
+        self.NETWORK_NAME = 'testnet-liquid' 
+        
         # 2of2_no_recovery is the account type used by Blockstream AMP.
         # Do not change this value!
         self.AMP_ACCOUNT_TYPE = '2of2_no_recovery'
@@ -203,7 +206,7 @@ class gdk_wallet:
         # You can change this if you like, but note that account type and
         # name are used to retrieve the correct account and should be unique
         # per wallet so you can retrieve the right account when you login.
-        self.SUBACCOUNT_NAME = 'Managed Assets'
+        self.SUBACCOUNT_NAME = 'AMP Account'
 
         # If you use a pin to login, the encrypted data will be saved and read
         # from this file:
@@ -335,10 +338,20 @@ class gdk_wallet:
             index = index + 1
         return all_txs
 
+    def get_unspent_outputs(self):
+        details = {
+            'subaccount': self.subaccount_pointer,
+            'num_confs': 0,
+        }
+        
+        result = self._gdk_resolve(gdk.get_unspent_outputs(self.session.session_obj, json.dumps(details)))
+        return result["unspent_outputs"]
+
     def send_to_address(self, sat_amount, asset_id, destination_address):
         details = {
             'subaccount': self.subaccount_pointer,
-            'addressees': [{'satoshi': sat_amount, 'address': destination_address, 'asset_id': asset_id}]
+            'addressees': [{'satoshi': sat_amount, 'address': destination_address, 'asset_id': asset_id}],
+            'utxos': self.get_unspent_outputs(),
         }
 
         try:
