@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::str::FromStr;
 
-use log::{debug, info, trace, warn};
+use log::{info, trace, warn};
 
 use bitcoin::blockdata::script;
 use bitcoin::hashes::hex::FromHex;
@@ -50,7 +50,7 @@ pub struct Account {
     // elements only
     master_blinding: Option<MasterBlindingKey>,
 
-    /// When an account is discovered through `recover_accounts` is set to true, this is needed so
+    /// When an account is discovered this value must be set to true, this is needed so
     /// that `bip44_discovered` in [`AccountInfo`] could be initialized correctly without needing the first sync.
     ///
     /// Note that this is set to true when the account is discovered, but this value is not persisted,
@@ -772,16 +772,12 @@ fn elements_address(
     address.to_confidential(blinding_pub)
 }
 
-// Discover all the available accounts as per BIP 44:
-// https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Account_discovery
-pub fn discover_accounts(
-    master_xprv: &ExtendedPrivKey,
-    network_id: NetworkId,
+pub fn discover_account(
     electrum_url: &ElectrumUrl,
     proxy: Option<&str>,
-    master_blinding: Option<&MasterBlindingKey>,
-    known_accounts: &[u32],
-) -> Result<Vec<u32>, Error> {
+    account_xpub: &ExtendedPubKey,
+    script_type: ScriptType,
+) -> Result<bool, Error> {
     use electrum_client::ElectrumApi;
 
     // build our own client so that the subscriptions are dropped at the end
@@ -789,44 +785,20 @@ pub fn discover_accounts(
 
     // the batch size is the effective gap limit for our purposes. in reality it is a lower bound.
     let gap_limit = BATCH_SIZE;
-    let num_types = NUM_RESERVED_ACCOUNT_TYPES as usize;
-    let mut discovered_accounts: Vec<u32> = vec![];
 
-    for script_type in ScriptType::types() {
-        debug!("discovering script type {:?}", script_type);
-        'next_account: for account_num in (script_type.first_account_num()..).step_by(num_types) {
-            if known_accounts.contains(&account_num) {
-                debug!("already known account_num: {}", account_num);
-                continue;
-            }
-            debug!("account_num: {}", account_num);
-            let (_, path) = get_account_derivation(account_num, network_id).unwrap();
-            let recv_xprv = master_xprv.derive_priv(&crate::EC, &path.child(0.into()))?;
-            let recv_xpub = ExtendedPubKey::from_private(&crate::EC, &recv_xprv);
-            for child_code in 0..gap_limit {
-                let script = derive_address(
-                    &recv_xpub,
-                    child_code,
-                    *script_type,
-                    network_id,
-                    master_blinding,
-                )
-                .unwrap()
-                .script_pubkey();
+    let external_xpub = account_xpub.ckd_pub(&crate::EC, 0.into())?;
+    for index in 0..gap_limit {
+        let child_key = external_xpub.ckd_pub(&crate::EC, index.into())?;
+        // Every network has the same scriptpubkey
+        let script = bitcoin_address(&child_key.public_key, script_type, bitcoin::Network::Bitcoin)
+            .script_pubkey();
 
-                if client.script_subscribe(&script.into_bitcoin())?.is_some() {
-                    debug!("found account {:?} #{}", script_type, account_num);
-                    discovered_accounts.push(account_num);
-                    continue 'next_account;
-                }
-            }
-            debug!("no activity found for account {:?} #{}", script_type, account_num);
-            break;
+        if client.script_subscribe(&script)?.is_some() {
+            return Ok(true);
         }
     }
-    info!("discovered accounts: {:?}", discovered_accounts);
 
-    Ok(discovered_accounts)
+    Ok(false)
 }
 
 #[allow(clippy::cognitive_complexity)]

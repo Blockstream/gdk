@@ -40,6 +40,7 @@ namespace sdk {
         std::string get_watch_only_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
+        bool discover_subaccount(const std::string& xpub, const std::string& type);
         uint32_t get_next_subaccount(const std::string& type);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
 
@@ -48,7 +49,7 @@ namespace sdk {
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
-        nlohmann::json get_subaccounts(const nlohmann::json& details);
+        nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);

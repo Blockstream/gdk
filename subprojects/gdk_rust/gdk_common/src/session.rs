@@ -13,13 +13,14 @@ pub trait Session<E> {
     fn disconnect(&mut self) -> Result<(), E>;
     fn login(&mut self, mnemonic: &Mnemonic, password: Option<Password>) -> Result<LoginData, E>;
     fn mnemonic_from_pin_data(&mut self, pin: String, details: PinGetDetails) -> Result<String, E>;
-    fn get_subaccounts(&mut self, refresh: bool) -> Result<Vec<AccountInfo>, E>;
+    fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, E>;
     fn get_subaccount(&self, index: u32) -> Result<AccountInfo, E>;
     fn get_subaccount_root_path(
         &mut self,
         opt: GetAccountPathOpt,
     ) -> Result<GetAccountPathResult, E>;
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, E>;
+    fn discover_subaccount(&self, opt: DiscoverAccountOpt) -> Result<bool, E>;
     fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, E>;
     /// Deprecated in favor of update_subaccount
     fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), E>;

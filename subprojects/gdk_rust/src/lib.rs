@@ -22,7 +22,7 @@ use std::sync::Once;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{
-    CreateAccountOpt, GetNextAccountOpt, GetSubaccountsOpt, GetTransactionsOpt, RenameAccountOpt,
+    CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, RenameAccountOpt,
     SPVDownloadHeadersParams, SPVVerifyTxParams, SetAccountHiddenOpt, UpdateAccountOpt,
 };
 use gdk_common::session::Session;
@@ -336,13 +336,14 @@ where
             .map(|v| json!(v))
             .map_err(Into::into),
 
-        "get_subaccounts" => {
-            let opt: GetSubaccountsOpt = serde_json::from_value(input.clone())?;
-            session.get_subaccounts(opt.refresh).map(|v| json!(v)).map_err(Into::into)
-        }
+        "get_subaccounts" => session.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
 
         "get_subaccount" => get_subaccount(session, input),
 
+        "discover_subaccount" => session
+            .discover_subaccount(serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "get_subaccount_root_path" => session
             .get_subaccount_root_path(serde_json::from_value(input.clone())?)
             .map(|v| json!(v))

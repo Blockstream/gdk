@@ -82,6 +82,12 @@ namespace sdk {
         return nlohmann::json();
     }
 
+    bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
+    {
+        // Overriden for ga_rust
+        return false;
+    }
+
     bool session_impl::encache_blinding_data(const std::string& /*pubkey_hex*/, const std::string& /*script_hex*/,
         const std::string& /*nonce_hex*/, const std::string& /*blinding_pubkey_hex*/)
     {

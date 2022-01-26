@@ -141,6 +141,8 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
+        std::string m_subaccount_type;
+        uint32_t m_subaccount;
         nlohmann::json m_details;
     };
 

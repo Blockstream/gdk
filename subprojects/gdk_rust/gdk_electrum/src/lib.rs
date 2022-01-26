@@ -20,7 +20,7 @@ pub mod pin;
 pub mod pset;
 pub mod spv;
 
-use crate::account::get_account_derivation;
+use crate::account::{discover_account, get_account_derivation};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
@@ -759,15 +759,7 @@ impl Session<Error> for ElectrumSession {
         Ok(result)
     }
 
-    fn get_subaccounts(&mut self, refresh: bool) -> Result<Vec<AccountInfo>, Error> {
-        if refresh {
-            let url = self.url.clone();
-            let proxy = self.proxy.clone();
-            let mut wallet = self.get_wallet_mut()?;
-
-            wallet.recover_accounts(&url, proxy.as_deref())?;
-        }
-
+    fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
         self.get_wallet()?.iter_accounts_sorted().map(|a| a.info()).collect()
     }
 
@@ -789,6 +781,10 @@ impl Session<Error> for ElectrumSession {
         let mut wallet = self.get_wallet_mut()?;
         let account = wallet.create_account(opt)?;
         account.info()
+    }
+
+    fn discover_subaccount(&self, opt: DiscoverAccountOpt) -> Result<bool, Error> {
+        discover_account(&self.url, self.proxy.as_deref(), &opt.xpub, opt.script_type)
     }
 
     fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {

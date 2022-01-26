@@ -1,4 +1,6 @@
 use bitcoin::hashes::hex::FromHex;
+use bitcoin::network::constants::Network as Bip32Network;
+use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{self, Amount};
 use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
 use electrum_client::ElectrumApi;
@@ -6,6 +8,7 @@ use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
+use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
@@ -1132,4 +1135,66 @@ pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) 
         thread::sleep(Duration::from_secs(1));
     }
     panic!("timeout waiting for {} txs to show up in account {}", n, subaccount);
+}
+
+// Perform BIP44 account discovery as it is performed in the resolver
+pub fn discover_subaccounts(session: &mut ElectrumSession) {
+    let mnemonic = session.get_mnemonic().unwrap().get_mnemonic_str();
+    let signer = TestSigner::new(&mnemonic, session.network.bip32_network());
+
+    for script_type in ScriptType::types() {
+        loop {
+            let opt = GetNextAccountOpt {
+                script_type: *script_type,
+            };
+            let account_num = session.get_next_subaccount(opt).unwrap();
+            let opt = GetAccountPathOpt {
+                subaccount: account_num,
+            };
+            let path = session.get_subaccount_root_path(opt).unwrap().path;
+            let xpub = signer.account_xpub(&path.into());
+            let opt = DiscoverAccountOpt {
+                script_type: *script_type,
+                xpub,
+            };
+            if session.discover_subaccount(opt).unwrap() {
+                let opt = CreateAccountOpt {
+                    subaccount: account_num,
+                    xpub: Some(xpub),
+                    discovered: true,
+                    ..Default::default()
+                };
+                session.create_subaccount(opt).unwrap();
+            } else {
+                // Empty subaccount
+                break;
+            }
+        }
+    }
+}
+
+/// Struct that holds the secret, so that we can replicate the resolver behavior
+struct TestSigner {
+    pub mnemonic: String,
+    pub network: Bip32Network,
+}
+
+impl TestSigner {
+    pub fn new(mnemonic: &str, network: Bip32Network) -> Self {
+        TestSigner {
+            mnemonic: mnemonic.into(),
+            network: network,
+        }
+    }
+
+    fn master_xprv(&self) -> ExtendedPrivKey {
+        let seed = gdk_common::wally::bip39_mnemonic_to_seed(&self.mnemonic, "").unwrap();
+        ExtendedPrivKey::new_master(self.network, &seed).unwrap()
+    }
+
+    pub fn account_xpub(&self, path: &DerivationPath) -> ExtendedPubKey {
+        let ctx = bitcoin::secp256k1::Secp256k1::new();
+        let xprv = self.master_xprv().derive_priv(&ctx, path).unwrap();
+        ExtendedPubKey::from_private(&ctx, &xprv)
+    }
 }

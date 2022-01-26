@@ -273,7 +273,7 @@ namespace sdk {
 
             // Ask the caller for the xpubs for each subaccount
             std::vector<nlohmann::json> paths;
-            for (const auto& sa : m_session->get_subaccounts(nlohmann::json({}))) {
+            for (const auto& sa : m_session->get_subaccounts()) {
                 paths.emplace_back(m_session->get_subaccount_root_path(sa["pointer"]));
             }
             signal_hw_request(hw_request::get_xpubs);
@@ -325,7 +325,7 @@ namespace sdk {
         // We are logged in,
         // Check whether we need to upload confidential addresses.
         nlohmann::json::array_t scripts;
-        for (const auto& sa : m_session->get_subaccounts(nlohmann::json({}))) {
+        for (const auto& sa : m_session->get_subaccounts()) {
             const uint32_t required_ca = sa.value("required_ca", 0);
             scripts.reserve(scripts.size() + required_ca);
             for (size_t i = 0; i < required_ca; ++i) {
@@ -673,7 +673,7 @@ namespace sdk {
         // Currently updating the scriptpubkey cache is quite expensive
         // and requires multiple network calls, so for the time being
         // we only update it here.
-        for (const auto& sa : m_session->get_subaccounts(nlohmann::json({}))) {
+        for (const auto& sa : m_session->get_subaccounts()) {
             const uint32_t subaccount = sa.at("pointer");
             m_session->encache_new_scriptpubkeys(subaccount);
         }
@@ -847,14 +847,52 @@ namespace sdk {
     //
     get_subaccounts_call::get_subaccounts_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_subaccounts")
+        , m_subaccount_type("p2sh-p2wpkh")
+        , m_subaccount(0)
         , m_details(details)
     {
     }
 
     auth_handler::state_type get_subaccounts_call::call_impl()
     {
-        m_result = { { "subaccounts", m_session->get_subaccounts(m_details) } };
-        return state_type::done;
+        if (!m_net_params.is_electrum() || !m_details.value("refresh", false) || m_subaccount_type.empty()) {
+            m_result = { { "subaccounts", m_session->get_subaccounts() } };
+            return state_type::done;
+        }
+
+        // TODO: consider batching requests for xpubs.
+        // The current implementation asks for one xpub at the time.
+        // Depending on network connection speed and hardware signer response time,
+        // this might affect performance negatively.
+
+        // BIP44 account discovery
+        // Performed only for Electrum sessions and if the client requests it.
+        if (m_hw_request == hw_request::get_xpubs) {
+            // Caller has provided the xpub for the subaccount
+            const std::string xpub = get_hw_reply().at("xpubs").at(0);
+            if (m_session->discover_subaccount(xpub, m_subaccount_type)) {
+                m_session->create_subaccount({ { "name", std::string() }, { "discovered", true } }, m_subaccount, xpub);
+            } else {
+                // Found an empty subaccount for the current subaccount type,
+                // step to the next subaccount type.
+                if (m_subaccount_type == "p2sh-p2wpkh") {
+                    m_subaccount_type = "p2wpkh";
+                } else if (m_subaccount_type == "p2wpkh") {
+                    m_subaccount_type = "p2pkh";
+                } else if (m_subaccount_type == "p2pkh") {
+                    m_subaccount_type.clear();
+                    // No more subaccount types, ready to return
+                    return m_state;
+                }
+            }
+        }
+
+        // Ask for the xpub for the next subaccount of the current type
+        m_subaccount = m_session->get_next_subaccount(m_subaccount_type);
+        signal_hw_request(hw_request::get_xpubs);
+        auto& paths = m_twofactor_data["paths"];
+        paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
+        return m_state;
     }
 
     //

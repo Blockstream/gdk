@@ -21,7 +21,7 @@ use std::{env, thread};
 use tempfile::TempDir;
 
 mod test_session;
-use test_session::TestSession;
+use test_session::{discover_subaccounts, TestSession};
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
@@ -828,11 +828,12 @@ fn subaccounts(is_liquid: bool) {
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     new_session.login(&mnemonic, None).unwrap();
 
-    let subaccounts = new_session.get_subaccounts(false).unwrap();
+    let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), 1);
     assert!(new_session.get_subaccount(0).is_ok());
 
-    let subaccounts = new_session.get_subaccounts(true).unwrap();
+    discover_subaccounts(&mut new_session);
+    let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), balances.len());
     assert_eq!(new_session.get_subaccount(0).unwrap().bip44_discovered, true);
     assert_eq!(new_session.get_subaccount(1).unwrap().bip44_discovered, true);
@@ -856,7 +857,8 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(new_account).or_insert(0) += sat;
 
     assert!(new_session.get_subaccount(new_account).is_err());
-    new_session.get_subaccounts(true).unwrap();
+    discover_subaccounts(&mut new_session);
+    new_session.get_subaccounts().unwrap();
     assert!(new_session.get_subaccount(new_account).is_ok());
 
     let btc_key = test_session.btc_key();

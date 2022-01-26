@@ -10,9 +10,7 @@ use gdk_common::network::Network;
 use gdk_common::scripts::ScriptType;
 use gdk_common::wally::*;
 
-use crate::account::{
-    discover_accounts, get_account_script_purpose, get_last_next_account_nums, Account,
-};
+use crate::account::{get_account_script_purpose, get_last_next_account_nums, Account};
 use crate::error::*;
 use crate::store::*;
 
@@ -173,32 +171,13 @@ impl WalletCtx {
             }
         }
 
-        let account = self._ensure_account(opt.subaccount, false, opt.xpub)?;
+        let account = self._ensure_account(opt.subaccount, opt.discovered, opt.xpub)?;
         account.set_name(&opt.name)?;
         Ok(account)
     }
 
     pub fn update_account(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
         self.get_account(opt.subaccount)?.set_settings(opt)
-    }
-
-    pub fn recover_accounts(
-        &mut self,
-        electrum_url: &ElectrumUrl,
-        proxy: Option<&str>,
-    ) -> Result<Vec<u32>, Error> {
-        let account_nums = discover_accounts(
-            &self.master_xprv,
-            self.network.id(),
-            electrum_url,
-            proxy,
-            self.master_blinding.as_ref(),
-            &self.accounts.keys().cloned().collect::<Vec<u32>>(),
-        )?;
-        for account_num in account_nums.iter() {
-            self._ensure_account(*account_num, true, None)?;
-        }
-        Ok(account_nums)
     }
 
     fn _ensure_account(
@@ -389,11 +368,5 @@ mod test {
 
         let script_sig = p2shwpkh_script_sig(&public_key);
         assert_eq!(tx.input[0].script_sig, script_sig);
-    }
-
-    #[test]
-    fn test_get_subaccounts_default() {
-        let opt: gdk_common::model::GetSubaccountsOpt = serde_json::from_str("{}").unwrap();
-        assert_eq!(opt.refresh, false);
     }
 }

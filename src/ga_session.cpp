@@ -2248,7 +2248,7 @@ namespace sdk {
         return wamp_cast<bool>(wamp_call("login.remove_account", mp_cast(twofactor_data).get()));
     }
 
-    nlohmann::json ga_session::get_subaccounts(const nlohmann::json& /*details*/)
+    nlohmann::json ga_session::get_subaccounts()
     {
         // TODO: implement refreshing for multisig
         locker_t locker(m_mutex);

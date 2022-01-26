@@ -90,6 +90,8 @@ namespace sdk {
         virtual std::string get_watch_only_username() = 0;
         virtual bool remove_account(const nlohmann::json& twofactor_data) = 0;
 
+        // Returns true if the subaccount was discovered
+        virtual bool discover_subaccount(const std::string& xpub, const std::string& type);
         virtual uint32_t get_next_subaccount(const std::string& type) = 0;
         virtual nlohmann::json create_subaccount(
             const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
@@ -106,7 +108,7 @@ namespace sdk {
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer) = 0;
-        virtual nlohmann::json get_subaccounts(const nlohmann::json& details) = 0;
+        virtual nlohmann::json get_subaccounts() = 0;
         virtual nlohmann::json get_subaccount(uint32_t subaccount) = 0;
         virtual void rename_subaccount(uint32_t subaccount, const std::string& new_name) = 0;
         virtual void set_subaccount_hidden(uint32_t subaccount, bool is_hidden) = 0;

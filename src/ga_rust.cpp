@@ -248,6 +248,12 @@ namespace sdk {
         throw std::runtime_error("remove_account not implemented");
     }
 
+    bool ga_rust::discover_subaccount(const std::string& xpub, const std::string& type)
+    {
+        const auto details = nlohmann::json({ { "type", type }, { "xpub", xpub } });
+        return call_session("discover_subaccount", details);
+    }
+
     uint32_t ga_rust::get_next_subaccount(const std::string& type)
     {
         return call_session("get_next_subaccount", nlohmann::json({ { "type", type } }));
@@ -256,11 +262,9 @@ namespace sdk {
     nlohmann::json ga_rust::create_subaccount(
         const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {
-        auto details_c = nlohmann::json({
-            { "subaccount", subaccount },
-            { "name", details.at("name") },
-            { "xpub", xpub }
-        });
+        auto details_c = details;
+        details_c["subaccount"] = subaccount;
+        details_c["xpub"] = xpub;
         return call_session("create_subaccount", details_c);
     }
 
@@ -311,10 +315,7 @@ namespace sdk {
         throw std::runtime_error("get_previous_addresses not implemented");
     }
 
-    nlohmann::json ga_rust::get_subaccounts(const nlohmann::json& details)
-    {
-        return call_session("get_subaccounts", details);
-    }
+    nlohmann::json ga_rust::get_subaccounts() { return call_session("get_subaccounts", {}); }
 
     nlohmann::json ga_rust::get_subaccount(uint32_t subaccount)
     {

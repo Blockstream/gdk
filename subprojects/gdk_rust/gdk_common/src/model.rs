@@ -170,12 +170,15 @@ pub struct CreateAccountOpt {
     pub name: String,
     // The account xpub if passed by the caller
     pub xpub: Option<ExtendedPubKey>,
+    #[serde(default)]
+    pub discovered: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GetSubaccountsOpt {
-    #[serde(default)]
-    pub refresh: bool,
+pub struct DiscoverAccountOpt {
+    #[serde(rename = "type")]
+    pub script_type: ScriptType,
+    pub xpub: ExtendedPubKey,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
