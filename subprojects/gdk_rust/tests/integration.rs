@@ -15,7 +15,6 @@ use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
 use std::collections::HashMap;
-use std::io::Read;
 use std::net::TcpListener;
 use std::time::{Duration, Instant};
 use std::{env, thread};
@@ -637,7 +636,7 @@ fn subaccounts(is_liquid: bool) {
         .create_subaccount(CreateAccountOpt {
             subaccount: 1,
             name: "Account 1".into(),
-            // p2wpkh
+            ..Default::default() // p2wpkh
         })
         .unwrap();
     let account2 = test_session
@@ -645,7 +644,7 @@ fn subaccounts(is_liquid: bool) {
         .create_subaccount(CreateAccountOpt {
             subaccount: 2,
             name: "Account 2".into(),
-            // p2pkh
+            ..Default::default() // p2pkh
         })
         .unwrap();
     assert_eq!(account1.account_num, 1);
@@ -763,6 +762,7 @@ fn subaccounts(is_liquid: bool) {
         .create_subaccount(CreateAccountOpt {
             subaccount: 18,
             name: "Second PKPH".into(),
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(account3.script_type, ScriptType::P2pkh);
@@ -774,6 +774,7 @@ fn subaccounts(is_liquid: bool) {
         .create_subaccount(CreateAccountOpt {
             subaccount: 34,
             name: "Won't work".into(),
+            ..Default::default()
         })
         .unwrap_err();
     assert!(matches!(err, Error::AccountGapsDisallowed));
@@ -795,6 +796,7 @@ fn subaccounts(is_liquid: bool) {
         .create_subaccount(CreateAccountOpt {
             subaccount: 34,
             name: "Third PKPH".into(),
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(account4.script_type, ScriptType::P2pkh);
@@ -844,6 +846,7 @@ fn subaccounts(is_liquid: bool) {
     let account_opt = CreateAccountOpt {
         subaccount: new_account,
         name: "next_p2pkh".to_string(),
+        ..Default::default()
     };
     test_session.session.create_subaccount(account_opt).unwrap();
     let address = test_session.get_receive_address(new_account);
@@ -981,7 +984,7 @@ fn labels() {
         .create_subaccount(CreateAccountOpt {
             name: "Account 1".into(),
             subaccount: 1,
-            // p2wpkh
+            ..Default::default() // p2wpkh
         })
         .unwrap();
     let account2 = test_session
@@ -989,7 +992,7 @@ fn labels() {
         .create_subaccount(CreateAccountOpt {
             name: "Account 2".into(),
             subaccount: 2,
-            // p2pkh
+            ..Default::default() // p2pkh
         })
         .unwrap();
 
@@ -1034,6 +1037,7 @@ fn rbf() {
         .create_subaccount(CreateAccountOpt {
             name: "Account 1".into(),
             subaccount: 1,
+            ..Default::default()
         })
         .unwrap();
     let txid = test_session.node_sendtoaddress(

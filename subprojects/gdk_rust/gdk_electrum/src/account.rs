@@ -60,10 +60,20 @@ pub struct Account {
     _path: DerivationPath,
 }
 
+/// Compare xpub ignoring the fingerprint (which computation might be skipped).
+fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> bool {
+    xpub1.network == xpub2.network
+        && xpub1.depth == xpub2.depth
+        && xpub1.child_number == xpub2.child_number
+        && xpub1.public_key == xpub2.public_key
+        && xpub1.chain_code == xpub2.chain_code
+}
+
 impl Account {
     pub fn new(
         network: Network,
         master_xprv: &ExtendedPrivKey,
+        account_xpub: &Option<ExtendedPubKey>,
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
         account_num: u32,
@@ -73,6 +83,12 @@ impl Account {
 
         let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
         let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+
+        if let Some(account_xpub) = account_xpub {
+            if !xpubs_equivalent(&xpub, account_xpub) {
+                return Err(Error::Generic("Mismatching xpub".to_string()));
+            }
+        }
 
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];

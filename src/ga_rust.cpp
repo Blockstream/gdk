@@ -259,6 +259,7 @@ namespace sdk {
         auto details_c = nlohmann::json({
             { "subaccount", subaccount },
             { "name", details.at("name") },
+            { "xpub", xpub }
         });
         return call_session("create_subaccount", details_c);
     }

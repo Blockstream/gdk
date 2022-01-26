@@ -125,9 +125,9 @@ impl WalletCtx {
         };
         let account_nums = store.read()?.account_nums();
         for account_num in account_nums {
-            wallet._ensure_account(account_num, false)?;
+            wallet._ensure_account(account_num, false, None)?;
         }
-        wallet._ensure_account(0, false)?;
+        wallet._ensure_account(0, false, None)?;
 
         Ok(wallet)
     }
@@ -173,7 +173,7 @@ impl WalletCtx {
             }
         }
 
-        let account = self._ensure_account(opt.subaccount, false)?;
+        let account = self._ensure_account(opt.subaccount, false, opt.xpub)?;
         account.set_name(&opt.name)?;
         Ok(account)
     }
@@ -196,7 +196,7 @@ impl WalletCtx {
             &self.accounts.keys().cloned().collect::<Vec<u32>>(),
         )?;
         for account_num in account_nums.iter() {
-            self._ensure_account(*account_num, true)?;
+            self._ensure_account(*account_num, true, None)?;
         }
         Ok(account_nums)
     }
@@ -205,12 +205,14 @@ impl WalletCtx {
         &mut self,
         account_num: u32,
         discovered: bool,
+        account_xpub: Option<ExtendedPubKey>,
     ) -> Result<&mut Account, Error> {
         Ok(match self.accounts.entry(account_num) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => entry.insert(Account::new(
                 self.network.clone(),
                 &self.master_xprv,
+                &account_xpub,
                 self.master_blinding.clone(),
                 self.store.clone(),
                 account_num,

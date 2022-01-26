@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::scripts::ScriptType;
 use bitcoin::hashes::hex::ToHex;
 use bitcoin::util::address::AddressType;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath};
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
@@ -164,10 +164,12 @@ pub struct GetAddressOpt {
     pub address_type: Option<String>, // unused
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct CreateAccountOpt {
     pub subaccount: u32,
     pub name: String,
+    // The account xpub if passed by the caller
+    pub xpub: Option<ExtendedPubKey>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -225,7 +227,6 @@ pub struct SPVVerifyTxParams {
     /// The `height` of the block containing the transaction to be verified
     pub height: u32,
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVDownloadHeadersParams {
