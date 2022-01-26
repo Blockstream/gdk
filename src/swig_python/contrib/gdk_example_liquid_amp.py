@@ -12,11 +12,15 @@ import json
 # https://gdk.readthedocs.io/en/latest/
 
 
+# The example uses the Testnet Liquid network. To test it on mainnet, change the following to 'liquid'.
+NETWORK = 'testnet-liquid'       
+# NETWORK = 'liquid'
+
 def main():
 
     # Our calls to GDK are wrapped in the gdk_wallet class, which should only be
     # created using either create_new_wallet, login_with_mnemonic or
-    # login_with_pin methods. The example uses the live Liquid network.
+    # login_with_pin methods. 
 
     # Initialize GDK.
     gdk.init({})
@@ -35,7 +39,7 @@ def main():
     """
     # To login to an existing wallet you can either use the mnemonic or pin.
     # Later we'll see how to use a pin, for now we will use the mnemonic.
-    mnemonic = 'your twenty four of twelve word mnemonic goes here with single spaced words'
+    mnemonic = 'Your twelve or twenty four word mnemonic goes here with single spaced words'
     if not gdk.validate_mnemonic(mnemonic):
         raise Exception("Invalid mnemonic.")
 
@@ -196,7 +200,7 @@ class gdk_wallet:
 
     """Do not use this to instantiate the object, use create_new_wallet or login_with_*"""
     def __init__(self):
-        self.NETWORK_NAME = 'testnet-liquid' 
+        self.NETWORK_NAME = NETWORK
         
         # 2of2_no_recovery is the account type used by Blockstream AMP.
         # Do not change this value!
@@ -206,7 +210,7 @@ class gdk_wallet:
         # You can change this if you like, but note that account type and
         # name are used to retrieve the correct account and should be unique
         # per wallet so you can retrieve the right account when you login.
-        self.SUBACCOUNT_NAME = 'AMP Account'
+        self.SUBACCOUNT_NAME = 'Managed Assets'
 
         # If you use a pin to login, the encrypted data will be saved and read
         # from this file:
