@@ -20,6 +20,7 @@ pub mod pin;
 pub mod pset;
 pub mod spv;
 
+use crate::account::get_account_derivation;
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
 use crate::store::*;
@@ -772,6 +773,16 @@ impl Session<Error> for ElectrumSession {
 
     fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
         self.get_wallet()?.get_account(account_num)?.info()
+    }
+
+    fn get_subaccount_root_path(
+        &mut self,
+        opt: GetAccountPathOpt,
+    ) -> Result<GetAccountPathResult, Error> {
+        let (_, path) = get_account_derivation(opt.subaccount, self.network.id())?;
+        Ok(GetAccountPathResult {
+            path: path.into(),
+        })
     }
 
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {

@@ -15,6 +15,10 @@ pub trait Session<E> {
     fn mnemonic_from_pin_data(&mut self, pin: String, details: PinGetDetails) -> Result<String, E>;
     fn get_subaccounts(&mut self, refresh: bool) -> Result<Vec<AccountInfo>, E>;
     fn get_subaccount(&self, index: u32) -> Result<AccountInfo, E>;
+    fn get_subaccount_root_path(
+        &mut self,
+        opt: GetAccountPathOpt,
+    ) -> Result<GetAccountPathResult, E>;
     fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, E>;
     fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, E>;
     /// Deprecated in favor of update_subaccount

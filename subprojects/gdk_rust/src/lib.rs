@@ -343,6 +343,10 @@ where
 
         "get_subaccount" => get_subaccount(session, input),
 
+        "get_subaccount_root_path" => session
+            .get_subaccount_root_path(serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "create_subaccount" => {
             let opt: CreateAccountOpt = serde_json::from_value(input.clone())?;
             session.create_subaccount(opt).map(|v| json!(v)).map_err(Into::into)

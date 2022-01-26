@@ -681,7 +681,7 @@ pub fn get_account_script_purpose(account_num: u32) -> Result<(ScriptType, u32),
     })
 }
 
-fn get_account_derivation(
+pub fn get_account_derivation(
     account_num: u32,
     network_id: NetworkId,
 ) -> Result<(ScriptType, DerivationPath), Error> {

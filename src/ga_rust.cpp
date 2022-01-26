@@ -341,7 +341,7 @@ namespace sdk {
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
     {
-        // FIXME: Use rust mapping/map in user pubkeys
+#if 0
         const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
         const bool main_net = m_net_params.is_main_net();
         const bool liquid = m_net_params.is_liquid();
@@ -349,7 +349,9 @@ namespace sdk {
         const uint32_t purpose = purpose_lookup.at(subaccount % 16);
         const uint32_t coin_type = main_net ? (liquid ? 1776 : 0) : 1;
         const uint32_t account = subaccount / 16;
-        return std::vector<uint32_t>{ harden(purpose), harden(coin_type), account };
+        return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
+#endif
+        return call_session("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } })).at("path");
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
