@@ -46,8 +46,9 @@ namespace sdk {
         void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
 
-        void subscribe(locker_t& locker, const std::string& topic, subscribe_fn_t callback);
-        void clear_subscriptions();
+        // Subscribe to a topic. Use is_initial=true for the first
+        // subscription after reconnecting
+        void subscribe(const std::string& topic, subscribe_fn_t fn, bool is_initial = false);
 
         nlohmann::json http_request(nlohmann::json params);
 

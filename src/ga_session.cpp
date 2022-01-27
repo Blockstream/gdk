@@ -1165,14 +1165,15 @@ namespace sdk {
     void ga_session::subscribe_all(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        m_wamp->clear_subscriptions();
-
         const std::string receiving_id = m_login_data["receiving_id"];
 
-        m_wamp->subscribe(locker, "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); });
+        unique_unlock unlocker(locker);
+        const bool is_initial = true;
+        m_wamp->subscribe(
+            "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
 
         if (!m_watch_only) {
-            m_wamp->subscribe(locker, "com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
+            m_wamp->subscribe("com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
                 locker_t notify_locker(m_mutex);
                 // Check the hmac as we will be notified of our own changes
                 // when more than one session is logged in at a time.
@@ -1183,15 +1184,14 @@ namespace sdk {
             });
         }
 
-        m_wamp->subscribe(locker, "com.greenaddress.txs.wallet_" + receiving_id, [this](nlohmann::json event) {
+        m_wamp->subscribe("com.greenaddress.txs.wallet_" + receiving_id, [this](nlohmann::json event) {
             if (!ignore_tx_notification(event)) {
                 std::vector<uint32_t> subaccounts = cleanup_tx_notification(event);
                 on_new_transaction(subaccounts, event);
             }
         });
 
-        m_wamp->subscribe(
-            locker, "com.greenaddress.blocks", [this](nlohmann::json event) { on_new_block(event, false); });
+        m_wamp->subscribe("com.greenaddress.blocks", [this](nlohmann::json event) { on_new_block(event, false); });
     }
 
     void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)

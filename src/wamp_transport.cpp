@@ -713,27 +713,25 @@ namespace sdk {
         return result;
     }
 
-    void wamp_transport::subscribe(
-        wamp_transport::locker_t& locker, const std::string& topic, wamp_transport::subscribe_fn_t callback)
+    void wamp_transport::subscribe(const std::string& topic, wamp_transport::subscribe_fn_t fn, bool is_initial)
     {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        // FIXME: lock for m_session/m_subscriptions
-        GDK_RUNTIME_ASSERT(m_session.get());
-        unique_unlock unlocker(locker);
-        const auto options = autobahn::wamp_subscribe_options("exact");
-        auto sub = m_session
-                       ->subscribe(
-                           topic, [callback](const autobahn::wamp_event& e) { callback(wamp_cast_json(e)); }, options)
-                       .get();
+        decltype(m_subscriptions) subscriptions;
+
+        locker_t locker(m_mutex);
+        if (is_initial) {
+            m_subscriptions.swap(subscriptions);
+            m_subscriptions.reserve(4u);
+        }
+        decltype(m_session) s{ m_session };
+        GDK_RUNTIME_ASSERT(s.get());
+        autobahn::wamp_subscription sub;
+        {
+            unique_unlock unlocker(locker);
+            const auto options = autobahn::wamp_subscribe_options("exact");
+            sub = s->subscribe(topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options).get();
+        }
         GDK_LOG_SEV(log_level::debug) << "subscribed to " << topic << ":" << sub.id();
         m_subscriptions.emplace_back(sub);
-    }
-
-    void wamp_transport::clear_subscriptions()
-    {
-        // FIXME: lock for m_session/m_subscriptions
-        m_subscriptions.clear();
-        m_subscriptions.reserve(4u);
     }
 
 } // namespace sdk
