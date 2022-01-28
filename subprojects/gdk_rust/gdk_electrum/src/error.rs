@@ -28,6 +28,7 @@ pub enum Error {
     /// leave such counter unchanged.
     InvalidPin,
     PsetAndTxMismatch,
+    StoreNotLoaded,
     TxNotFound(String),
     AddrParse(String),
     InvalidElectrumUrl(String),
@@ -71,6 +72,9 @@ impl Display for Error {
             }
             Error::InvalidReplacementRequest => write!(f, "invalid replacement request fields"),
             Error::UnknownCall => write!(f, "unknown call"),
+            Error::StoreNotLoaded => {
+                write!(f, "attempt to access the store without calling load_store first")
+            }
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
             Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),
             Error::BitcoinBIP32Error(ref bip32err) => write!(f, "bip32: {}", bip32err),

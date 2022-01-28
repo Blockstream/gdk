@@ -135,10 +135,7 @@ pub struct Indexes {
 impl RawCache {
     /// create a new RawCache, try to load data from a file or a fallback file
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
-    fn new<P: AsRef<Path>>(
-        path: P,
-        cipher: &Aes256GcmSiv,
-    ) -> Self {
+    fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
             warn!("Initialize cache as default {:?}", e);
             Default::default()
@@ -155,10 +152,7 @@ impl RawCache {
 impl RawStore {
     /// create a new RawStore, try to load data from a file or a fallback file
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
-    fn new<P: AsRef<Path>>(
-        path: P,
-        cipher: &Aes256GcmSiv,
-    ) -> Self {
+    fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
             warn!("Initialize store as default {:?}", e);
             Default::default()
@@ -210,18 +204,15 @@ fn get_cipher(xpub: &ExtendedPubKey) -> Aes256GcmSiv {
 impl StoreMeta {
     pub fn new<P: AsRef<Path>>(
         path: P,
-        xpub: ExtendedPubKey,
+        xpub: &ExtendedPubKey,
         id: NetworkId,
     ) -> Result<StoreMeta, Error> {
-        let cipher = get_cipher(&xpub);
-        let mut cache =
-            RawCache::new(path.as_ref(), &cipher);
-        let mut store =
-            RawStore::new(path.as_ref(), &cipher);
+        let cipher = get_cipher(xpub);
+        let mut cache = RawCache::new(path.as_ref(), &cipher);
+        let mut store = RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
-        if !path.exists() {
-            std::fs::create_dir_all(&path)?;
-        }
+
+        std::fs::create_dir_all(&path)?; // does nothing if path exists
 
         cache.accounts.entry(0).or_default();
         store.accounts_settings.get_or_insert_with(|| Default::default());

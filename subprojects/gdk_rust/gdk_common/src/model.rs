@@ -158,6 +158,11 @@ pub struct GetUnspentOpt {
     pub all_coins: Option<bool>, // unused
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LoadStoreOpt {
+    pub master_xpub: ExtendedPubKey,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetAddressOpt {
     pub subaccount: u32,

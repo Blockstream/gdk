@@ -137,6 +137,7 @@ pub struct ElectrumSession {
     pub notify: NativeNotif,
     pub closer: Closer,
     pub state: State,
+    pub store: Option<Store>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -369,6 +370,7 @@ impl ElectrumSession {
             },
             state: State::Disconnected,
             timeout: None,
+            store: None,
         }
     }
 
@@ -448,6 +450,25 @@ impl ElectrumSession {
         Ok(mnemonic)
     }
 
+    pub fn load_store(&mut self, opt: &LoadStoreOpt) -> Result<(), Error> {
+        if self.store.is_none() {
+            let wallet_hash_id = self.network.wallet_hash_id(&opt.master_xpub);
+            let mut path: PathBuf = self.data_root.as_str().into();
+            std::fs::create_dir_all(&path)?; // does nothing if path exists
+            path.push(wallet_hash_id);
+
+            info!("Store root path: {:?}", path);
+            let store =
+                Arc::new(RwLock::new(StoreMeta::new(&path, &opt.master_xpub, self.network.id())?));
+            self.store = Some(store)
+        }
+        Ok(())
+    }
+
+    pub fn store(&self) -> Result<Store, Error> {
+        Ok(self.store.as_ref().ok_or_else(|| Error::StoreNotLoaded)?.clone())
+    }
+
     pub fn login(
         &mut self,
         mnemonic: &Mnemonic,
@@ -482,22 +503,11 @@ impl ElectrumSession {
             None
         };
 
-        let wallet_hash_id = self.network.wallet_hash_id(&master_xpub);
-        let mut path: PathBuf = self.data_root.as_str().into();
-        std::fs::create_dir_all(&path)?;  // does nothing if path exists
-        path.push(wallet_hash_id);
+        self.load_store(&LoadStoreOpt {
+            master_xpub,
+        })?;
 
-        info!("Store root path: {:?}", path);
-        let store = match self.get_wallet() {
-            Ok(wallet) => wallet.store.clone(),
-            Err(_) => Arc::new(RwLock::new(StoreMeta::new(
-                &path,
-                master_xpub,
-                self.network.id(),
-            )?)),
-        };
-
-        let mut tip_height = store.read()?.cache.tip.0;
+        let mut tip_height = self.store()?.read()?.cache.tip.0;
         notify_block(self.notify.clone(), tip_height, self.closer.terminates()?);
 
         info!(
@@ -507,7 +517,7 @@ impl ElectrumSession {
         );
         if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref()) {
             info!("building built end");
-            let fee_store = store.clone();
+            let fee_store = self.store()?;
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client) {
                     Ok(fee_estimates) => {
@@ -535,7 +545,7 @@ impl ElectrumSession {
                 SpvCrossValidator::from_network(&self.network, &self.proxy, self.timeout)?;
 
             let mut headers = Headers {
-                store: store.clone(),
+                store: self.store()?,
                 checker,
                 cross_validator,
             };
@@ -618,7 +628,7 @@ impl ElectrumSession {
             Some(wallet) => wallet.clone(),
             None => {
                 let wallet = Arc::new(RwLock::new(WalletCtx::new(
-                    store.clone(),
+                    self.store()?,
                     mnemonic.clone(),
                     self.network.clone(),
                     master_xprv,
@@ -632,13 +642,13 @@ impl ElectrumSession {
 
         let syncer = Syncer {
             wallet: wallet.clone(),
-            store: store.clone(),
+            store: self.store()?,
             master_blinding,
             network: self.network.clone(),
         };
 
         let tipper = Tipper {
-            store: store.clone(),
+            store: self.store()?,
             network: self.network.clone(),
         };
 
