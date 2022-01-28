@@ -48,7 +48,7 @@ incremental = false
 
 # FIXME: LTO is required to fix building on iphone
 [profile.dev]
-lto = true
+# lto = true FIXME: at the moment is  broken even if lto is true, commenting so that testing in rust is faster
 debug = true
 debug-assertions = true
 panic = 'abort'
