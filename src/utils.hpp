@@ -62,24 +62,26 @@ namespace sdk {
         }
     }
 
+    bool nsee_log_info(std::string message, const char* context);
+
     template <typename F> bool no_std_exception_escape(F&& fn, const char* context = "") noexcept
     {
+        std::string message;
         try {
             fn();
             return false;
         } catch (const boost::exception& e) {
             try {
-                GDK_LOG_SEV(log_level::info) << context << "ignoring exception:" << diagnostic_information(e);
+                message = diagnostic_information(e);
             } catch (const std::exception&) {
             }
         } catch (const std::exception& e) {
             try {
-                const auto what = e.what();
-                GDK_LOG_SEV(log_level::info) << context << "ignoring exception:" << what;
+                message = e.what();
             } catch (const std::exception&) {
             }
         }
-        return true;
+        return nsee_log_info(message, context);
     }
 
     nlohmann::json parse_bitcoin_uri(const std::string& uri, const std::string& expected_scheme);

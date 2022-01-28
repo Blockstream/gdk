@@ -622,6 +622,23 @@ namespace sdk {
         }
         return { { "wallet_hash_id", get_wallet_hash_id(np, chain_code_hex, public_key_hex) } };
     }
+
+    bool nsee_log_info(std::string message, const char* context)
+    {
+        try {
+            // Remove any useless boost prefix and trailing newline
+            if (boost::algorithm::starts_with(message, "Throw location unknown")) {
+                message.erase(0, 62);
+            }
+            if (!message.empty() && message.back() == '\n') {
+                message.pop_back();
+            }
+        } catch (const std::exception&) {
+        }
+        GDK_LOG_SEV(log_level::info) << context << (*context ? " " : "") << "ignoring exception:" << message;
+        return true;
+    }
+
 } // namespace sdk
 } // namespace ga
 
