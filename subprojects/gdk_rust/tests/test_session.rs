@@ -9,7 +9,6 @@ use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::scripts::ScriptType;
-use gdk_common::session::Session;
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;

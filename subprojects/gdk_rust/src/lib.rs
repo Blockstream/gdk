@@ -25,7 +25,6 @@ use gdk_common::model::{
     CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, RenameAccountOpt,
     SPVDownloadHeadersParams, SPVVerifyTxParams, SetAccountHiddenOpt, UpdateAccountOpt,
 };
-use gdk_common::session::Session;
 
 use crate::error::Error;
 use gdk_electrum::pset::{ExtractTxParam, FromTxParam, MergeTxParam};
@@ -315,11 +314,11 @@ fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
 }
 
 // dynamic dispatch shenanigans
-fn handle_session_call<S, E>(session: &mut S, method: &str, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+fn handle_session_call(
+    session: &mut ElectrumSession,
+    method: &str,
+    input: &Value,
+) -> Result<Value, Error> {
     match method {
         "poll_session" => session.poll_session().map(|v| json!(v)).map_err(Into::into),
 

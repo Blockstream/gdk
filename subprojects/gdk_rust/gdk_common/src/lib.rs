@@ -5,7 +5,6 @@ pub mod model;
 pub mod network;
 pub mod password;
 pub mod scripts;
-pub mod session;
 pub mod util;
 pub mod wally;
 

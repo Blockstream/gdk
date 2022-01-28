@@ -6,7 +6,6 @@ use gdk_common::model::{
     SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
-use gdk_common::session::Session;
 use gdk_common::Network;
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;

@@ -35,7 +35,6 @@ use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::network::{aqua_unique_id_and_xpub, Network};
 use gdk_common::password::Password;
-use gdk_common::session::Session;
 use gdk_common::wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, make_str,
     MasterBlindingKey,
@@ -398,14 +397,14 @@ pub fn make_txlist_item(
     }
 }
 
-impl Session<Error> for ElectrumSession {
+impl ElectrumSession {
     // type Value = ElectrumSession;
 
-    fn poll_session(&self) -> Result<(), Error> {
+    pub fn poll_session(&self) -> Result<(), Error> {
         Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
     }
 
-    fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
+    pub fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
         info!("connect network:{:?} state:{:?}", self.network, self.state);
 
         if self.state == State::Disconnected {
@@ -421,7 +420,7 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
-    fn disconnect(&mut self) -> Result<(), Error> {
+    pub fn disconnect(&mut self) -> Result<(), Error> {
         info!("disconnect state:{:?}", self.state);
         if self.state == State::Logged {
             info!("disconnect STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
@@ -433,7 +432,7 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
-    fn mnemonic_from_pin_data(
+    pub fn mnemonic_from_pin_data(
         &mut self,
         pin: String,
         details: PinGetDetails,
@@ -453,7 +452,7 @@ impl Session<Error> for ElectrumSession {
         Ok(mnemonic)
     }
 
-    fn login(
+    pub fn login(
         &mut self,
         mnemonic: &Mnemonic,
         password: Option<Password>,
@@ -735,14 +734,14 @@ impl Session<Error> for ElectrumSession {
         })
     }
 
-    fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
+    pub fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
         debug!("get_receive_address {:?}", opt);
         let address = self.get_wallet()?.get_next_address(opt.subaccount)?;
         debug!("get_address {:?}", address);
         Ok(address)
     }
 
-    fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
+    pub fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(agent)?;
         let client_key = SecretKey::new(&mut thread_rng());
@@ -759,15 +758,15 @@ impl Session<Error> for ElectrumSession {
         Ok(result)
     }
 
-    fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
+    pub fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
         self.get_wallet()?.iter_accounts_sorted().map(|a| a.info()).collect()
     }
 
-    fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
+    pub fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
         self.get_wallet()?.get_account(account_num)?.info()
     }
 
-    fn get_subaccount_root_path(
+    pub fn get_subaccount_root_path(
         &mut self,
         opt: GetAccountPathOpt,
     ) -> Result<GetAccountPathResult, Error> {
@@ -777,21 +776,21 @@ impl Session<Error> for ElectrumSession {
         })
     }
 
-    fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
+    pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let mut wallet = self.get_wallet_mut()?;
         let account = wallet.create_account(opt)?;
         account.info()
     }
 
-    fn discover_subaccount(&self, opt: DiscoverAccountOpt) -> Result<bool, Error> {
+    pub fn discover_subaccount(&self, opt: DiscoverAccountOpt) -> Result<bool, Error> {
         discover_account(&self.url, self.proxy.as_deref(), &opt.xpub, opt.script_type)
     }
 
-    fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {
+    pub fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {
         Ok(self.get_wallet()?.get_next_subaccount(opt.script_type))
     }
 
-    fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), Error> {
+    pub fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), Error> {
         self.get_wallet_mut()?.update_account(UpdateAccountOpt {
             subaccount: opt.subaccount,
             name: Some(opt.new_name),
@@ -799,7 +798,7 @@ impl Session<Error> for ElectrumSession {
         })
     }
 
-    fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<(), Error> {
+    pub fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<(), Error> {
         self.get_wallet_mut()?.update_account(UpdateAccountOpt {
             subaccount: opt.subaccount,
             hidden: Some(opt.hidden),
@@ -807,11 +806,11 @@ impl Session<Error> for ElectrumSession {
         })
     }
 
-    fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
+    pub fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
         self.get_wallet_mut()?.update_account(opt)
     }
 
-    fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
+    pub fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
         let wallet = self.get_wallet()?;
         let store = wallet.store.read()?;
         let acc_store = store.account_cache(opt.subaccount)?;
@@ -832,25 +831,25 @@ impl Session<Error> for ElectrumSession {
         Ok(TxsResult(txs))
     }
 
-    fn get_transaction_hex(&self, txid: &str) -> Result<String, Error> {
+    pub fn get_transaction_hex(&self, txid: &str) -> Result<String, Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let wallet = self.get_wallet()?;
         let store = wallet.store.read()?;
         store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_hex())
     }
 
-    fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
+    pub fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let wallet = self.get_wallet()?;
         let store = wallet.store.read()?;
         store.get_tx_entry(&txid).map(|e| e.into())
     }
 
-    fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
+    pub fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
         self.get_wallet()?.balance(opt)
     }
 
-    fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
+    pub fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
@@ -860,7 +859,7 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
-    fn create_transaction(
+    pub fn create_transaction(
         &mut self,
         tx_req: &mut CreateTransaction,
     ) -> Result<TransactionMeta, Error> {
@@ -869,12 +868,12 @@ impl Session<Error> for ElectrumSession {
         self.get_wallet()?.create_tx(tx_req)
     }
 
-    fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
+    pub fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum sign_transaction {:?}", create_tx);
         self.get_wallet()?.sign(create_tx)
     }
 
-    fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
+    pub fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum send_transaction {:#?}", tx);
         let client = self.url.build_client(self.proxy.as_deref())?;
         let tx_bytes = Vec::<u8>::from_hex(&tx.hex)?;
@@ -885,7 +884,7 @@ impl Session<Error> for ElectrumSession {
         Ok(tx.clone())
     }
 
-    fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
+    pub fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
         let transaction = BETransaction::from_hex(&tx_hex, self.network.id())?;
 
         info!("broadcast_transaction {:#?}", transaction.txid());
@@ -900,7 +899,7 @@ impl Session<Error> for ElectrumSession {
     /// bytes. The first element is the minimum relay fee as returned by the
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
-    fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
+    pub fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
         let min_fee = match self.network.id() {
             NetworkId::Bitcoin(_) => 1000,
             NetworkId::Elements(_) => 100,
@@ -912,15 +911,15 @@ impl Session<Error> for ElectrumSession {
         //TODO better implement default
     }
 
-    fn get_mnemonic(&self) -> Result<Mnemonic, Error> {
+    pub fn get_mnemonic(&self) -> Result<Mnemonic, Error> {
         self.get_wallet().map(|wallet| wallet.get_mnemonic().clone())
     }
 
-    fn get_settings(&self) -> Result<Settings, Error> {
+    pub fn get_settings(&self) -> Result<Settings, Error> {
         Ok(self.get_wallet()?.get_settings()?)
     }
 
-    fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
+    pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
         let wallet = self.get_wallet()?;
         let mut settings = wallet.get_settings()?;
         settings.update(value);
@@ -929,12 +928,12 @@ impl Session<Error> for ElectrumSession {
         Ok(())
     }
 
-    fn get_available_currencies(&self) -> Result<Value, Error> {
+    pub fn get_available_currencies(&self) -> Result<Value, Error> {
         Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITFINEX": [ "USD" ] } }))
         // TODO implement
     }
 
-    fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, Error> {
+    pub fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, Error> {
         info!("refresh_assets {:?}", details);
 
         if !(details.icons || details.assets) {
@@ -1035,13 +1034,24 @@ impl Session<Error> for ElectrumSession {
         Ok(Value::Object(map))
     }
 
-    fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
+
+    pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
+        let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
+        for (outpoint, info) in self.get_wallet()?.utxos(opt)?.iter() {
+            let cur = UnspentOutput::new(outpoint, info);
+            (*unspent_outputs.entry(info.asset.clone()).or_insert(vec![])).push(cur);
+        }
+
+        Ok(GetUnspentOutputs(unspent_outputs))
+    }
+
+    pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
         let tip = self.get_wallet()?.get_tip()?;
         info!("tip={:?}", tip);
         Ok(tip)
     }
 
-    fn tx_status(&self) -> Result<u64, Error> {
+    pub fn tx_status(&self) -> Result<u64, Error> {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let mut hasher = DefaultHasher::new();
@@ -1055,16 +1065,6 @@ impl Session<Error> for ElectrumSession {
         let status = hasher.finish();
         info!("txs status={}", status);
         Ok(status)
-    }
-
-    fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
-        let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
-        for (outpoint, info) in self.get_wallet()?.utxos(opt)?.iter() {
-            let cur = UnspentOutput::new(outpoint, info);
-            (*unspent_outputs.entry(info.asset.clone()).or_insert(vec![])).push(cur);
-        }
-
-        Ok(GetUnspentOutputs(unspent_outputs))
     }
 }
 

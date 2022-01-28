@@ -48,7 +48,6 @@ rust_sources = [
   'gdk_common/src/model.rs',
   'gdk_common/src/network.rs',
   'gdk_common/src/password.rs',
-  'gdk_common/src/session.rs',
   'gdk_common/src/scripts.rs',
 
   'gdk_electrum/Cargo.toml',

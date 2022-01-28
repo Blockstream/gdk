@@ -1,18 +1,14 @@
 use crate::error::Error;
 
 use gdk_common::model::*;
-use gdk_common::session::Session;
+use gdk_electrum::ElectrumSession;
 use serde_json::Value;
 
 pub fn txs_result_value(txs: &TxsResult) -> Value {
     json!(txs.0.clone())
 }
 
-pub fn login<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+pub fn login(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
     let mnemonic_str = input["mnemonic"]
         .as_str()
         .map(|s| s.to_string())
@@ -26,11 +22,10 @@ where
         .map_err(Into::into)
 }
 
-pub fn mnemonic_from_pin_data<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+pub fn mnemonic_from_pin_data(
+    session: &mut ElectrumSession,
+    input: &Value,
+) -> Result<Value, Error> {
     let pin = input["pin"]
         .as_str()
         .map(|s| s.to_string())
@@ -42,11 +37,7 @@ where
         .map_err(Into::into)
 }
 
-pub fn get_subaccount<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
     let index = input["subaccount"]
         .as_u64()
         .ok_or_else(|| Error::Other("get_subaccount: index argument not found".into()))?;
@@ -54,11 +45,7 @@ where
     session.get_subaccount(index as u32).map(|v| json!(v)).map_err(Into::into)
 }
 
-pub fn get_transaction_hex<S, E>(session: &S, input: &Value) -> Result<String, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+pub fn get_transaction_hex(session: &ElectrumSession, input: &Value) -> Result<String, Error> {
     // TODO: parse txid?
     let txid = input
         .as_str()
@@ -67,17 +54,13 @@ where
     session.get_transaction_hex(txid).map_err(Into::into)
 }
 
-pub fn create_transaction<S, E>(session: &mut S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+pub fn create_transaction(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
     let mut create_tx: CreateTransaction = serde_json::from_value(input.clone())?;
 
     let res = session
         .create_transaction(&mut create_tx)
         .map(|v| serde_json::to_value(v).unwrap())
-        .map_err(Into::into);
+        .map_err(crate::error::Error::Electrum);
 
     Ok(match res {
         Err(ref err) => {
@@ -91,11 +74,7 @@ where
     })
 }
 
-pub fn set_transaction_memo<S, E>(session: &S, input: &Value) -> Result<Value, Error>
-where
-    E: Into<Error>,
-    S: Session<E>,
-{
+pub fn set_transaction_memo(session: &ElectrumSession, input: &Value) -> Result<Value, Error> {
     // TODO: parse txid?.
     let txid = input["txid"]
         .as_str()
