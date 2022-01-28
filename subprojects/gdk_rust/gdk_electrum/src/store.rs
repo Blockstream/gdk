@@ -143,7 +143,7 @@ impl RawCache {
     }
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
-        let decrypted = load_decrypt("cache", path, cipher)?;
+        let decrypted = load_decrypt(Kind::Cache, path, cipher)?;
         let store = serde_cbor::from_slice(&decrypted)?;
         Ok(store)
     }
@@ -160,20 +160,20 @@ impl RawStore {
     }
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
-        let decrypted = load_decrypt("store", path, cipher)?;
+        let decrypted = load_decrypt(Kind::Store, path, cipher)?;
         let store = serde_cbor::from_slice(&decrypted)?;
         Ok(store)
     }
 }
 
 fn load_decrypt<P: AsRef<Path>>(
-    name: &str,
+    kind: Kind,
     path: P,
     cipher: &Aes256GcmSiv,
 ) -> Result<Vec<u8>, Error> {
     let now = Instant::now();
     let mut store_path = PathBuf::from(path.as_ref());
-    store_path.push(name);
+    store_path.push(kind.to_string());
     if !store_path.exists() {
         return Err(Error::Generic(format!("{:?} do not exist", store_path)));
     }
@@ -475,7 +475,7 @@ mod tests {
     fn test_db_roundtrip() {
         let id = NetworkId::Bitcoin(Network::Testnet);
         let mut dir = TempDir::new().unwrap().into_path();
-        dir.push("store");
+        dir.push(Kind::Store.to_string());
         // abandon ... M/49'/0'/0'
         let xpub = ExtendedPubKey::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
         let txid = BETxid::from_hex(
