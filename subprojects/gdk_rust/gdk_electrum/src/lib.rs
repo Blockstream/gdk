@@ -33,7 +33,7 @@ use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
-use gdk_common::network::{aqua_unique_id_and_xpub, Network};
+use gdk_common::network::Network;
 use gdk_common::password::Password;
 use gdk_common::wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, make_str,
@@ -483,33 +483,16 @@ impl ElectrumSession {
         };
 
         let wallet_hash_id = self.network.wallet_hash_id(&master_xpub);
-        let (aqua_wallet_id, fallback_xpub) =
-            match aqua_unique_id_and_xpub(&seed, self.network.id()) {
-                Ok((id, xpub)) => (Some(id), Some(xpub)),
-                Err(_) => (None, None),
-            };
-
         let mut path: PathBuf = self.data_root.as_str().into();
-        let mut fpath = path.clone();
-        let mut fallback_path = None;
-        if !path.exists() {
-            std::fs::create_dir_all(&path)?;
-        } else {
-            if let Some(id) = aqua_wallet_id {
-                fpath.push(id.as_ref().to_hex());
-                info!("Fallback store root path: {:?}", fpath);
-                fallback_path = Some(fpath.as_path());
-            }
-        }
+        std::fs::create_dir_all(&path)?;  // does nothing if path exists
         path.push(wallet_hash_id);
+
         info!("Store root path: {:?}", path);
         let store = match self.get_wallet() {
             Ok(wallet) => wallet.store.clone(),
             Err(_) => Arc::new(RwLock::new(StoreMeta::new(
                 &path,
                 master_xpub,
-                fallback_path,
-                fallback_xpub,
                 self.network.id(),
             )?)),
         };

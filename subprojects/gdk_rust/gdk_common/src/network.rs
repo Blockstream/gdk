@@ -1,8 +1,6 @@
 use crate::error::Error;
 use bitcoin::hashes::hex::ToHex;
-use bitcoin::hashes::{sha256, Hash};
-use bitcoin::secp256k1::Secp256k1;
-use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
+use bitcoin::util::bip32::ExtendedPubKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -129,119 +127,9 @@ impl Network {
     }
 }
 
-// Unique wallet id (to derive db dir) and xpub (to derive the decryption key) used by Aqua wallet for backward compatibility
-pub fn aqua_unique_id_and_xpub(
-    seed: &[u8],
-    id: NetworkId,
-) -> Result<(sha256::Hash, ExtendedPubKey), Error> {
-    // master xprv must use network testnet to maintain backward compatibility
-    let master_xprv =
-        bitcoin::util::bip32::ExtendedPrivKey::new_master(bitcoin::Network::Testnet, seed)?;
-    // Values obtained from src/network_parameters.cpp from version 0.0.37, the one used by Aqua
-    // "name" field is overwritten as Aqua did.
-    let s = match id {
-        NetworkId::Bitcoin(bitcoin::Network::Bitcoin) => {
-            r#"{"address_explorer_url": "https://blockstream.info/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:700", "liquid": false, "mainnet": true, "name": "electrum-mainnet", "network": "electrum-mainnet", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/tx/"}"#
-        }
-        NetworkId::Bitcoin(bitcoin::Network::Testnet) => {
-            r#"{"address_explorer_url": "https://blockstream.info/testnet/address/", "bip21_prefix": "bitcoin", "development": false, "electrum_url": "blockstream.info:993", "liquid": false, "mainnet": false, "name": "electrum-testnet", "network": "electrum-testnet", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/testnet/tx/"}"#
-        }
-        NetworkId::Elements(ElementsNetwork::Liquid) => {
-            r#"{"address_explorer_url": "https://blockstream.info/liquid/address/", "asset_registry_onion_url": "http://vi5flmr4z3h3luup.onion", "asset_registry_url": "https://assets.blockstream.info", "bip21_prefix": "liquidnetwork", "ct_bits": 52, "ct_exponent": 0, "development": false, "electrum_url": "blockstream.info:995", "liquid": true, "mainnet": true, "name": "liquid-electrum-mainnet", "network": "liquid-electrum-mainnet", "policy_asset": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d", "server_type": "electrum", "spv_enabled": false, "tls": true, "tx_explorer_url": "https://blockstream.info/liquid/tx/"}"#
-        }
-        _ => return Err("network was not supported".into()),
-    };
-
-    let secp = Secp256k1::new();
-    let purpose = 49;
-    let coin_type = match id {
-        NetworkId::Bitcoin(bitcoin::Network::Bitcoin) => 0,
-        NetworkId::Bitcoin(bitcoin::Network::Testnet) => 1,
-        NetworkId::Elements(ElementsNetwork::Liquid) => 1776,
-        _ => return Err("network was not supported".into()),
-    };
-    let bip32_account_num = 0;
-    let path: DerivationPath =
-        format!("m/{}'/{}'/{}'", purpose, coin_type, bip32_account_num).parse().unwrap();
-    let xprv = master_xprv.derive_priv(&secp, &path).unwrap();
-    let xpub = ExtendedPubKey::from_private(&secp, &xprv);
-
-    // Fields used to compute the unique identifier. Must be kept with the exact same names,
-    // data types and ordering.
-    #[derive(Debug, Deserialize)]
-    #[allow(dead_code)]
-    struct Network {
-        name: String,
-        network: String,
-        development: bool,
-        liquid: bool,
-        mainnet: bool,
-        tx_explorer_url: String,
-        address_explorer_url: String,
-        tls: Option<bool>,
-        electrum_url: Option<String>,
-        validate_domain: Option<bool>,
-        policy_asset: Option<String>,
-        sync_interval: Option<u32>,
-        ct_bits: Option<i32>,
-        ct_exponent: Option<i32>,
-        ct_min_value: Option<u64>,
-        spv_enabled: Option<bool>,
-        asset_registry_url: Option<String>,
-        asset_registry_onion_url: Option<String>,
-    }
-
-    let net_unique: Network = serde_json::from_value(serde_json::from_str(s).unwrap()).unwrap();
-
-    let wallet_desc = format!("{}{:?}", xpub, net_unique);
-    Ok((sha256::Hash::hash(wallet_desc.as_bytes()), xpub))
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::network::{aqua_unique_id_and_xpub, ElementsNetwork, NetworkId};
-    use bitcoin::hashes::hex::ToHex;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
-    use bitcoin::Network;
-    use std::str::FromStr;
-
-    #[test]
-    fn test_aqua() {
-        let seed = crate::wally::bip39_mnemonic_to_seed(
-            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-            "",
-        ).unwrap();
-        let (wallet_id_testnet, xpub_testnet) =
-            aqua_unique_id_and_xpub(&seed, NetworkId::Bitcoin(Network::Testnet)).unwrap();
-        let (wallet_id_bitcoin, xpub_bitcoin) =
-            aqua_unique_id_and_xpub(&seed, NetworkId::Bitcoin(Network::Bitcoin)).unwrap();
-        let (wallet_id_liquid, xpub_liquid) =
-            aqua_unique_id_and_xpub(&seed, NetworkId::Elements(ElementsNetwork::Liquid)).unwrap();
-        assert_eq!(
-            wallet_id_testnet.to_hex(),
-            "588079b940d8d1fd18d0fc26c3ed1af358c603b4572adea13482fc85ff100bb2"
-        );
-        assert_eq!(
-            wallet_id_bitcoin.to_hex(),
-            "9abca26e46f9caffbf676e40e96a4a9e3318fad85e720ae4c49ed2d629c26ff8"
-        );
-        assert_eq!(
-            wallet_id_liquid.to_hex(),
-            "0f703b3ea6a782d45d7d2b109db94f79d812bd4459faa481c7c7e437818a1835"
-        );
-        assert_eq!(
-            xpub_testnet,
-            ExtendedPubKey::from_str("tpubDD7tXK8KeQ3YY83yWq755fHY2JW8Ha8Q765tknUM5rSvjPcGWfUppDFMpQ1ScziKfW3ZNtZvAD7M3u7bSs7HofjTD3KP3YxPK7X6hwV8Rk2").unwrap()
-        );
-        assert_eq!(
-            xpub_bitcoin,
-            ExtendedPubKey::from_str("tpubDCUQwB7GDsQKGfGk1CpCxzkWwWQodwKRttFB55vhCbMu8RGdQZ1k2ayVXmdJrER313963TTB4dRdx12JLjjBNpcs3v6shG93ci6A2XiGuJN").unwrap()
-        );
-        assert_eq!(
-            xpub_liquid,
-            ExtendedPubKey::from_str("tpubDCj7tPbTBu12vKY9UjbQSsBMVm9c1ktgp6cEHsPiv4WEB8vngnMpyY8tsmUDgEs3fg6SEvhmv7YF9fLYMiLsHt7B5oABqGTQuiShhp6DuVU").unwrap()
-        );
-    }
 
     #[test]
     fn test_wallet_hash_id() {

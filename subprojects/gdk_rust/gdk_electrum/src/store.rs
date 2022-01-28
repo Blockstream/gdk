@@ -138,15 +138,8 @@ impl RawCache {
     fn new<P: AsRef<Path>>(
         path: P,
         cipher: &Aes256GcmSiv,
-        fallback_path: Option<&Path>,
-        fallback_cipher: Option<&Aes256GcmSiv>,
     ) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
-            if let (Some(fpath), Some(fcipher)) = (fallback_path, fallback_cipher) {
-                if let Ok(store) = Self::try_new(fpath, &fcipher) {
-                    return store;
-                };
-            };
             warn!("Initialize cache as default {:?}", e);
             Default::default()
         })
@@ -165,15 +158,8 @@ impl RawStore {
     fn new<P: AsRef<Path>>(
         path: P,
         cipher: &Aes256GcmSiv,
-        fallback_path: Option<&Path>,
-        fallback_cipher: Option<&Aes256GcmSiv>,
     ) -> Self {
         Self::try_new(path, cipher).unwrap_or_else(|e| {
-            if let (Some(fpath), Some(fcipher)) = (fallback_path, fallback_cipher) {
-                if let Ok(store) = Self::try_new(fpath, &fcipher) {
-                    return store;
-                };
-            };
             warn!("Initialize store as default {:?}", e);
             Default::default()
         })
@@ -225,16 +211,13 @@ impl StoreMeta {
     pub fn new<P: AsRef<Path>>(
         path: P,
         xpub: ExtendedPubKey,
-        fallback_path: Option<&Path>,
-        fallback_xpub: Option<ExtendedPubKey>,
         id: NetworkId,
     ) -> Result<StoreMeta, Error> {
         let cipher = get_cipher(&xpub);
-        let fallback_cipher = &fallback_xpub.and_then(|xpub| Some(get_cipher(&xpub)));
         let mut cache =
-            RawCache::new(path.as_ref(), &cipher, fallback_path, fallback_cipher.as_ref());
+            RawCache::new(path.as_ref(), &cipher);
         let mut store =
-            RawStore::new(path.as_ref(), &cipher, fallback_path, fallback_cipher.as_ref());
+            RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
@@ -512,29 +495,12 @@ mod tests {
         let txid_btc = txid.ref_bitcoin().unwrap();
 
         {
-            let mut store = StoreMeta::new(&dir, xpub, None, None, id).unwrap();
+            let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
 
-        let store = StoreMeta::new(&dir, xpub, None, None, id).unwrap();
-        assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
-        assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
-
-        let mut dir2 = TempDir::new().unwrap().into_path();
-        dir2.push("store");
-        // abandon ... M (master_xpub)
-        let xpub2 = ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
-
-        // Before creating a new empty store, attempt recovery from fallback path
-        {
-            let mut store = StoreMeta::new(&dir2, xpub2, Some(&dir), Some(xpub), id).unwrap();
-            assert_eq!(store.account_cache_mut(0).unwrap().heights.get(&txid), Some(&Some(1)));
-            assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
-            // Persist data in new path
-        }
-
-        let store = StoreMeta::new(&dir2, xpub2, None, None, id).unwrap();
+        let store = StoreMeta::new(&dir, &xpub, id).unwrap();
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
     }
