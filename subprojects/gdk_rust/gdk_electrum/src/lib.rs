@@ -213,54 +213,6 @@ fn socksify(proxy: Option<&str>) -> Option<String> {
     }
 }
 
-impl ElectrumSession {
-    pub fn create_session(
-        network: Network,
-        db_root: &str,
-        proxy: Option<&str>,
-        url: ElectrumUrl,
-    ) -> Self {
-        Self {
-            data_root: db_root.to_string(),
-            proxy: socksify(proxy),
-            network,
-            url,
-            wallet: None,
-            notify: NativeNotif(None),
-            closer: Closer {
-                terminates: None,
-                handles: vec![],
-            },
-            state: State::Disconnected,
-            timeout: None,
-        }
-    }
-
-    pub fn get_wallet(&self) -> Result<sync::RwLockReadGuard<WalletCtx>, Error> {
-        let wallet =
-            self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
-        Ok(wallet.read().unwrap())
-    }
-
-    pub fn get_wallet_mut(&mut self) -> Result<sync::RwLockWriteGuard<WalletCtx>, Error> {
-        let wallet =
-            self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
-        Ok(wallet.write().unwrap())
-    }
-
-    pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
-        match &self.proxy {
-            Some(proxy) => {
-                let proxy = ureq::Proxy::new(&proxy)?;
-                let mut agent = ureq::agent();
-                agent.set_proxy(proxy);
-                Ok(agent)
-            }
-            None => Ok(ureq::agent()),
-        }
-    }
-}
-
 fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
     let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
     let blocks: Vec<usize> = (1..25).collect();
@@ -398,7 +350,51 @@ pub fn make_txlist_item(
 }
 
 impl ElectrumSession {
-    // type Value = ElectrumSession;
+    pub fn create_session(
+        network: Network,
+        db_root: &str,
+        proxy: Option<&str>,
+        url: ElectrumUrl,
+    ) -> Self {
+        Self {
+            data_root: db_root.to_string(),
+            proxy: socksify(proxy),
+            network,
+            url,
+            wallet: None,
+            notify: NativeNotif(None),
+            closer: Closer {
+                terminates: None,
+                handles: vec![],
+            },
+            state: State::Disconnected,
+            timeout: None,
+        }
+    }
+
+    pub fn get_wallet(&self) -> Result<sync::RwLockReadGuard<WalletCtx>, Error> {
+        let wallet =
+            self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
+        Ok(wallet.read().unwrap())
+    }
+
+    pub fn get_wallet_mut(&mut self) -> Result<sync::RwLockWriteGuard<WalletCtx>, Error> {
+        let wallet =
+            self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
+        Ok(wallet.write().unwrap())
+    }
+
+    pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
+        match &self.proxy {
+            Some(proxy) => {
+                let proxy = ureq::Proxy::new(&proxy)?;
+                let mut agent = ureq::agent();
+                agent.set_proxy(proxy);
+                Ok(agent)
+            }
+            None => Ok(ureq::agent()),
+        }
+    }
 
     pub fn poll_session(&self) -> Result<(), Error> {
         Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
@@ -1034,7 +1030,6 @@ impl ElectrumSession {
         Ok(Value::Object(map))
     }
 
-
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
         for (outpoint, info) in self.get_wallet()?.utxos(opt)?.iter() {
@@ -1043,6 +1038,10 @@ impl ElectrumSession {
         }
 
         Ok(GetUnspentOutputs(unspent_outputs))
+    }
+
+    pub fn export_cache(&mut self) -> Result<RawCache, Error> {
+        self.get_wallet()?.store.write()?.export_cache()
     }
 
     pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
@@ -1065,12 +1064,6 @@ impl ElectrumSession {
         let status = hasher.finish();
         info!("txs status={}", status);
         Ok(status)
-    }
-}
-
-impl ElectrumSession {
-    pub fn export_cache(&mut self) -> Result<RawCache, Error> {
-        self.get_wallet()?.store.write()?.export_cache()
     }
 }
 
