@@ -58,12 +58,12 @@ namespace sdk {
         template <typename... Args> autobahn::wamp_call_result call(const std::string& method_name, Args&&... args)
         {
             const std::string method{ m_wamp_call_prefix + method_name };
-            auto s = get_session();
-            if (!s) {
+            auto st = get_session_and_transport();
+            if (!st.first || !st.second) {
                 throw reconnect_error{};
             }
-            auto fn = s->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
-            return wamp_process_call(fn);
+            auto fn = st.first->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
+            return wamp_process_call(st.second, fn);
         }
 
         // Make a WAMP call on a currently locked session.
@@ -78,6 +78,8 @@ namespace sdk {
         template <typename FN> void post(FN&& fn) { boost::asio::post(m_io.get_executor(), fn); }
 
     private:
+        using session_ptr = std::shared_ptr<autobahn::wamp_session>;
+
         // Current and desired states
         enum class state_t : uint32_t {
             disconnected = 0, // Disconnected
@@ -98,8 +100,9 @@ namespace sdk {
         // NOTE: this overload unlocks the passed in locker.
         void notify_failure(locker_t& locker, const std::string& reason, bool notify_condition = true);
 
-        std::shared_ptr<autobahn::wamp_session> get_session();
-        autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn);
+        std::pair<session_ptr, autobahn::wamp_websocket_transport*> get_session_and_transport();
+        autobahn::wamp_call_result wamp_process_call(
+            autobahn::wamp_websocket_transport* t, boost::future<autobahn::wamp_call_result>& fn);
 
         // These members are immutable after construction
         const network_parameters& m_net_params;
@@ -131,7 +134,7 @@ namespace sdk {
         std::chrono::time_point<std::chrono::system_clock> m_last_ping_ts;
         // The transport, session and any subscriptions
         std::shared_ptr<autobahn::wamp_websocket_transport> m_transport;
-        std::shared_ptr<autobahn::wamp_session> m_session;
+        session_ptr m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
     };
 

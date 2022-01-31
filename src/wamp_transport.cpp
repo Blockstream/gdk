@@ -556,13 +556,15 @@ namespace sdk {
         }
     }
 
-    std::shared_ptr<autobahn::wamp_session> wamp_transport::get_session()
+    std::pair<wamp_transport::session_ptr, autobahn::wamp_websocket_transport*>
+    wamp_transport::get_session_and_transport()
     {
         locker_t locker(m_mutex);
-        return m_session;
+        return std::make_pair(m_session, m_transport.get());
     }
 
-    autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn)
+    autobahn::wamp_call_result wamp_transport::wamp_process_call(
+        autobahn::wamp_websocket_transport* t, boost::future<autobahn::wamp_call_result>& fn)
     {
         for (;;) {
             const auto status = fn.wait_for(boost::chrono::seconds(1));
@@ -571,8 +573,8 @@ namespace sdk {
             }
             if (status == boost::future_status::timeout) {
                 locker_t locker(m_mutex);
-                if (!m_transport || !m_transport->is_connected()) {
-                    notify_failure(locker, "call transport disconnected");
+                if (m_transport.get() != t || !m_transport->is_connected()) {
+                    notify_failure(locker, "call transport disconnected/changed");
                     throw timeout_error{};
                 }
             }
