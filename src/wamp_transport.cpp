@@ -282,27 +282,38 @@ namespace sdk {
 #endif
         }
 
+        template <typename FN> static void future_limited_wait(FN& f, const char* context)
+        {
+            const auto status = f.wait_for(boost::chrono::milliseconds(1000));
+            if (status == boost::future_status::ready) {
+                f.get();
+            }
+            GDK_LOG_SEV(log_level::info) << "future not ready on " << context;
+        }
+
         static void handle_disconnect(asio::io_context::executor_type executor,
             std::shared_ptr<autobahn::wamp_websocket_transport>& t, std::shared_ptr<autobahn::wamp_session>& s)
         {
             if (s) {
                 no_std_exception_escape([&executor, &s] {
                     auto f = asio::post(
-                        executor, std::packaged_task<boost::future<std::string>()>([&s] { return s->leave(); }));
-                    f.get().get();
+                        executor, std::packaged_task<boost::future<std::string>()>([&s] { return s->leave(); }))
+                                 .get();
+                    future_limited_wait(f, "session leave");
                 });
                 no_std_exception_escape([&executor, &s] {
-                    auto f
-                        = asio::post(executor, std::packaged_task<boost::future<void>()>([&s] { return s->stop(); }));
-                    f.get().get();
+                    auto f = asio::post(executor, std::packaged_task<boost::future<void>()>([&s] { return s->stop(); }))
+                                 .get();
+                    future_limited_wait(f, "session stop");
                 });
             }
 
             if (t) {
                 no_std_exception_escape([&executor, &t] {
                     auto f = asio::post(
-                        executor, std::packaged_task<boost::future<void>()>([&t] { return t->disconnect(); }));
-                    f.get().get();
+                        executor, std::packaged_task<boost::future<void>()>([&t] { return t->disconnect(); }))
+                                 .get();
+                    future_limited_wait(f, "session disconnect");
                 });
 
                 // Wait for the transport to be disconnected
