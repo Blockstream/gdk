@@ -309,7 +309,7 @@ namespace sdk {
         m_wamp->reconnect_hint(hint);
     }
 
-    void ga_session::disconnect(bool user_initiated) { m_wamp->disconnect(user_initiated); }
+    void ga_session::disconnect() { m_wamp->disconnect(); }
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {

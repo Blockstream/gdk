@@ -618,8 +618,9 @@ GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
  * that shared data is correctly locked within the handler.
  * The GA_json object passed to the caller must be destroyed by the caller
  * using `GA_destroy_json`. Failing to do so will result in memory leaks.
- * When the session is disconnected/destroyed, a final call will be made to
- * the handler with a :ref:`session-event` notification.
+ *
+ * The caller should not call session functions from within the callback
+ * handler as this may block the application.
  *
  */
 GDK_API int GA_set_notification_handler(struct GA_session* session, GA_notification_handler handler, void* context);

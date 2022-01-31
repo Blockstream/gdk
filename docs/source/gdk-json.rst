@@ -1273,20 +1273,6 @@ Available currencies JSON
 
 
 
-.. _session-event:
-
-Session event notification JSON
--------------------------------
-
-.. code-block:: json
-
-   {
-      "event": "session"
-      "session": {"connected": false}
-   }
-
-
-
 .. _http-params:
 
 HTTP parameters JSON

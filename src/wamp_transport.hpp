@@ -43,7 +43,7 @@ namespace sdk {
         ~wamp_transport();
 
         void connect(const std::string& proxy);
-        void disconnect(bool user_initiated);
+        void disconnect();
         void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
 

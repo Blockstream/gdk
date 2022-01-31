@@ -28,7 +28,7 @@ namespace sdk {
         void connect();
         void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
-        void disconnect(bool user_initiated);
+        void disconnect();
 
         void emit_notification(nlohmann::json details, bool async);
 

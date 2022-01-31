@@ -462,16 +462,7 @@ namespace sdk {
         change_state_to(state_t::connected, true);
     }
 
-    void wamp_transport::disconnect(bool user_initiated)
-    {
-        change_state_to(state_t::disconnected, true);
-        if (!user_initiated) {
-            // Note we don't emit a notification if the user explicitly
-            // disconnected or destroyed the session.
-            nlohmann::json details{ { "connected", false } };
-            m_notify_fn({ { "event", "session" }, { "session", std::move(details) } }, false);
-        }
-    }
+    void wamp_transport::disconnect() { change_state_to(state_t::disconnected, true); }
 
     void wamp_transport::reconnect()
     {

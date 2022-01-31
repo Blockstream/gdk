@@ -69,7 +69,7 @@ namespace sdk {
         nlohmann::json get_proxy_settings() const;
 
         virtual void connect() = 0;
-        virtual void disconnect(bool user_initiated) = 0;
+        virtual void disconnect() = 0;
 
         virtual nlohmann::json http_request(nlohmann::json params) = 0;
         virtual nlohmann::json refresh_assets(const nlohmann::json& params) = 0;

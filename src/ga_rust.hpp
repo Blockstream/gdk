@@ -13,7 +13,7 @@ namespace sdk {
         void reconnect_hint(const nlohmann::json& hint);
 
         void connect();
-        void disconnect(bool user_initiated);
+        void disconnect();
 
         nlohmann::json http_request(nlohmann::json params);
         nlohmann::json refresh_assets(const nlohmann::json& params);

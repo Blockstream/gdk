@@ -86,7 +86,7 @@ namespace sdk {
 
     void ga_rust::reconnect()
     {
-        disconnect(false);
+        disconnect();
         if (m_reconnect_restart) {
             connect();
         }
@@ -130,7 +130,7 @@ namespace sdk {
         call_session("connect", net_params);
     }
 
-    void ga_rust::disconnect(bool /*user_initiated*/)
+    void ga_rust::disconnect()
     {
         GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
         call_session("disconnect", {});
