@@ -478,14 +478,15 @@ impl ElectrumSession {
     ) -> Result<LoginData, Error> {
         info!("login {:?} {:?}", self.network, self.state);
 
-        let terminates = Arc::new(AtomicBool::new(false));
-        self.closer.terminates = Some(terminates);
-
+        // This check must be done before everything else to allow re-login
         if self.state == State::Logged {
             return Ok(LoginData {
                 wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
             });
         }
+
+        let terminates = Arc::new(AtomicBool::new(false));
+        self.closer.terminates = Some(terminates);
 
         // TODO: passphrase?
 
