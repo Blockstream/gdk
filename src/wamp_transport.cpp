@@ -298,23 +298,24 @@ namespace sdk {
         {
             if (s) {
                 no_std_exception_escape([&executor, &s] {
-                    auto f = asio::post(
-                        executor, std::packaged_task<boost::future<std::string>()>([&s] { return s->leave(); }))
-                                 .get();
+                    auto f = asio::post(executor, std::packaged_task<boost::future<std::string>()>([&s] {
+                        return s->leave();
+                    })).get();
                     future_wait(f, "session leave");
                 });
                 no_std_exception_escape([&executor, &s] {
-                    auto f = asio::post(executor, std::packaged_task<boost::future<void>()>([&s] { return s->stop(); }))
-                                 .get();
+                    auto f = asio::post(executor, std::packaged_task<boost::future<void>()>([&s] {
+                        return s->stop();
+                    })).get();
                     future_wait(f, "session stop");
                 });
             }
 
             if (t) {
                 no_std_exception_escape([&executor, &t] {
-                    auto f = asio::post(
-                        executor, std::packaged_task<boost::future<void>()>([&t] { return t->disconnect(); }))
-                                 .get();
+                    auto f = asio::post(executor, std::packaged_task<boost::future<void>()>([&t] {
+                        return t->disconnect();
+                    })).get();
                     future_wait(f, "session disconnect");
                 });
 
@@ -692,17 +693,17 @@ namespace sdk {
                 }
                 if (!failed
                     && no_std_exception_escape(
-                           [&s] { future_wait(s->start(), "session connect"); }, "session connect")) {
+                        [&s] { future_wait(s->start(), "session connect"); }, "session connect")) {
                     failed = true;
                 }
                 if (!failed
                     && no_std_exception_escape(
-                           [&s] { future_wait(s->join("realm1"), "session join"); }, "session join")) {
+                        [&s] { future_wait(s->join("realm1"), "session join"); }, "session join")) {
                     failed = true;
                 }
                 if (!failed
                     && no_std_exception_escape(
-                           [t, &is_tls] { set_socket_options(t.get(), is_tls); }, "set socket options")) {
+                        [t, &is_tls] { set_socket_options(t.get(), is_tls); }, "set socket options")) {
                     failed = true;
                 }
                 if (failed) {
@@ -800,7 +801,9 @@ namespace sdk {
             // TODO: Set m_last_ping_ts whenever we receive a subscription
             unique_unlock unlocker(locker);
             const auto options = autobahn::wamp_subscribe_options("exact");
-            sub = s->subscribe(topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options).get();
+            sub = s->subscribe(
+                       topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options)
+                      .get();
         }
         GDK_LOG_SEV(log_level::debug) << "subscribed to " << topic << ":" << sub.id();
         m_subscriptions.emplace_back(sub);
