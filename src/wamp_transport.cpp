@@ -523,6 +523,15 @@ namespace sdk {
         }
     }
 
+    void wamp_transport::emit_state(
+        wamp_transport::state_t current, wamp_transport::state_t desired, uint64_t backoff_ms)
+    {
+        constexpr bool async = true;
+        nlohmann::json state({ { "current_state", state_str(current) }, { "next_state", state_str(desired) },
+            { "backoff_ms", backoff_ms } });
+        m_notify_fn({ { "event", "network" }, { "network", std::move(state) } }, async);
+    }
+
     const char* wamp_transport::state_str(state_t state) const
     {
         switch (state) {
@@ -663,6 +672,9 @@ namespace sdk {
                 }
 
                 m_state = desired_state;
+                desired_state = m_desired_state.load();
+                locker.unlock();
+                emit_state(m_state, desired_state, 0);
                 if (desired_state == state_t::exited) {
                     // Exit this thread so the caller can join() it
                     return;
@@ -718,6 +730,8 @@ namespace sdk {
                 m_transport.swap(t);
                 m_state = state_t::connected;
                 m_last_ping_ts = std::chrono::system_clock::now();
+                locker.unlock();
+                emit_state(state_t::connected, state_t::connected, 0);
                 continue;
             }
         }
@@ -738,6 +752,7 @@ namespace sdk {
             }
             return false;
         };
+        emit_state(state_t::disconnected, state_t::connected, backoff_time.count() * 1000);
         // Wait for the backoff time, ignoring spurious wakeups
         locker.lock();
         m_condition.wait_for(locker, backoff_time, elapsed_fn);

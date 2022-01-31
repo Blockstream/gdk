@@ -89,6 +89,7 @@ namespace sdk {
         const char* state_str(state_t state) const;
 
         void change_state_to(state_t new_state, bool wait);
+        void emit_state(state_t current, state_t desired, uint64_t backoff_ms);
 
         void reconnect_handler();
         void backoff_handler(locker_t& locker, exponential_backoff& backoff);
