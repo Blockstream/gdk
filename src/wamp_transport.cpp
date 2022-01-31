@@ -89,6 +89,7 @@ namespace sdk {
 
     namespace {
         // networking defaults
+        static const uint32_t WAMP_CALL_TIMEOUT_SECS = 10;
         static const auto DEFAULT_PING = boost::posix_time::seconds(20); // ping message interval
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
@@ -422,8 +423,7 @@ namespace sdk {
         using namespace std::placeholders;
         m_subscriptions.reserve(4u);
 
-        constexpr uint32_t wamp_timeout_secs = 10;
-        m_wamp_call_options.set_timeout(std::chrono::seconds(wamp_timeout_secs));
+        m_wamp_call_options.set_timeout(std::chrono::seconds(WAMP_CALL_TIMEOUT_SECS));
 
         m_run_thread = std::thread([this] { m_io.run(); });
         m_reconnect_thread = std::thread([this] { reconnect_handler(); });
@@ -564,9 +564,8 @@ namespace sdk {
 
     autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn)
     {
-        const auto ms = boost::chrono::milliseconds(m_wamp_call_options.timeout().count());
         for (;;) {
-            const auto status = fn.wait_for(ms);
+            const auto status = fn.wait_for(boost::chrono::seconds(1));
             if (status == boost::future_status::ready) {
                 break;
             }
