@@ -330,6 +330,15 @@ namespace sdk {
             }
         }
 
+        static bool connection_ping_ok(std::shared_ptr<autobahn::wamp_websocket_transport>& t, bool is_tls)
+        {
+            GDK_LOG_SEV(log_level::info) << "net: pinging";
+            if (is_tls) {
+                return std::static_pointer_cast<transport_tls>(t)->ping(std::string());
+            }
+            return std::static_pointer_cast<transport>(t)->ping(std::string());
+        }
+
         template <typename T> static nlohmann::json wamp_cast_json_impl(const T& result)
         {
             if (!result.number_of_arguments()) {
@@ -341,6 +350,12 @@ namespace sdk {
             return nlohmann::json::from_msgpack(sbuf.data(), sbuf.data() + sbuf.size());
         }
 
+        template <typename T>
+        static bool is_elapsed(std::chrono::time_point<std::chrono::system_clock> from, T duration)
+        {
+            const auto t = std::chrono::system_clock::now();
+            return t < from || t - from > duration;
+        }
     } // namespace
 
     class exponential_backoff {
@@ -564,6 +579,8 @@ namespace sdk {
 
     void wamp_transport::reconnect_handler()
     {
+        bool need_to_ping = true; // FIXME: only if proxy
+        auto last_ping_ts = std::chrono::system_clock::now();
         const bool is_tls = m_net_params.is_tls_connection();
         const auto& executor = m_io.get_executor();
 
@@ -591,17 +608,27 @@ namespace sdk {
             } else if (state == desired_state) {
                 // We are already in the desired state. Wait until something changes
                 GDK_LOG_SEV(log_level::debug) << "net: in state " << state_str(state);
-                if (m_transport && !m_transport->is_connected()) {
-                    // The transport has been closed or failed. Mark the
-                    // error and loop again to reconnect if needed.
-                    ++m_failure_count;
-                    locker.unlock();
-                    GDK_LOG_SEV(log_level::info) << "net: detected dead transport";
-                    continue;
+                if (m_transport) {
+                    if (!m_transport->is_connected()) {
+                        // The transport has been closed or failed. Mark the
+                        // error and loop again to reconnect if needed.
+                        ++m_failure_count;
+                        locker.unlock();
+                        GDK_LOG_SEV(log_level::info) << "net: detected dead transport";
+                        continue;
+                    } else if (need_to_ping && is_elapsed(last_ping_ts, 20s)) {
+                        if (!connection_ping_ok(m_transport, is_tls)) {
+                            ++m_failure_count;
+                            locker.unlock();
+                            GDK_LOG_SEV(log_level::info) << "net: ping failed";
+                            continue;
+                        }
+                        last_ping_ts = std::chrono::system_clock::now();
+                    }
                 }
-                // FIXME: Only sleep until we need to check/ping
-                GDK_LOG_SEV(log_level::debug) << "net: waiting for " << backoff.get_backoff().count() << "s";
-                m_condition.wait_for(locker, backoff.get_backoff());
+                // Wait without conditions. In the event of a spurious wakeup
+                // or nofify by another thread, we will loop to re-check.
+                m_condition.wait_for(locker, 1s);
                 continue;
             }
 
@@ -684,11 +711,10 @@ namespace sdk {
     {
         backoff.increment();
         const auto backoff_time = backoff.get_backoff();
-        GDK_LOG_SEV(log_level::debug) << "net: backing off for " << backoff_time.count() << "s";
+        GDK_LOG_SEV(log_level::info) << "net: backing off for " << backoff_time.count() << "s";
         const auto start = std::chrono::system_clock::now();
         auto&& elapsed_fn = [this, start, backoff_time] {
-            const auto t = std::chrono::system_clock::now();
-            if (t < start || t - start > backoff_time) {
+            if (is_elapsed(start, backoff_time)) {
                 return true; // Backoff time expired
             }
             if (m_desired_state.load() != state_t::connected) {
