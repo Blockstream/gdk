@@ -10,6 +10,7 @@
 
 namespace ga {
 namespace sdk {
+    class exponential_backoff;
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
 
@@ -84,6 +85,7 @@ namespace sdk {
         void change_state_to(state_t new_state, bool wait);
 
         void reconnect_handler();
+        void backoff_handler(locker_t& locker, exponential_backoff& backoff);
 
         void heartbeat_timeout_cb(websocketpp::connection_hdl, const std::string&);
 

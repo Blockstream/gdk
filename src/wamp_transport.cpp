@@ -94,48 +94,6 @@ namespace sdk {
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
 
-        class exponential_backoff {
-        public:
-            explicit exponential_backoff()
-                : m_limit(300s)
-            {
-                reset();
-            }
-
-            std::chrono::seconds get_backoff()
-            {
-                if (m_n == 0) {
-                    return 1s;
-                }
-                m_elapsed += m_waiting;
-                const auto v
-                    = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(m_n, uint32_t{ 31 }));
-                std::random_device rd;
-                std::uniform_int_distribution<uint32_t> d(v / 2, v);
-                m_waiting = std::chrono::seconds(d(rd));
-                return m_waiting;
-            }
-
-            bool limit_reached() const { return m_elapsed >= m_limit; }
-            std::chrono::seconds elapsed() const { return m_elapsed; }
-            std::chrono::seconds waiting() const { return m_waiting; }
-
-            void increment() { ++m_n; }
-
-            void reset()
-            {
-                m_n = 0;
-                m_elapsed = 0s;
-                m_waiting = 0s;
-            }
-
-        private:
-            const std::chrono::seconds m_limit;
-            uint32_t m_n;
-            std::chrono::seconds m_elapsed;
-            std::chrono::seconds m_waiting;
-        };
-
         static X509* cert_from_pem(const std::string& pem)
         {
             using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
@@ -373,6 +331,48 @@ namespace sdk {
         }
 
     } // namespace
+
+    class exponential_backoff {
+    public:
+        explicit exponential_backoff()
+            : m_limit(300s)
+        {
+            reset();
+        }
+
+        std::chrono::seconds get_backoff()
+        {
+            if (m_n == 0) {
+                return 1s;
+            }
+            m_elapsed += m_waiting;
+            const auto v
+                = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(m_n, uint32_t{ 31 }));
+            std::random_device rd;
+            std::uniform_int_distribution<uint32_t> d(v / 2, v);
+            m_waiting = std::chrono::seconds(d(rd));
+            return m_waiting;
+        }
+
+        bool limit_reached() const { return m_elapsed >= m_limit; }
+        std::chrono::seconds elapsed() const { return m_elapsed; }
+        std::chrono::seconds waiting() const { return m_waiting; }
+
+        void increment() { ++m_n; }
+
+        void reset()
+        {
+            m_n = 0;
+            m_elapsed = 0s;
+            m_waiting = 0s;
+        }
+
+    private:
+        const std::chrono::seconds m_limit;
+        uint32_t m_n;
+        std::chrono::seconds m_elapsed;
+        std::chrono::seconds m_waiting;
+    };
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event) { return wamp_cast_json_impl(*event); }
 
@@ -654,14 +654,12 @@ namespace sdk {
                     failed = true;
                 }
                 if (failed) {
-                    backoff.increment(); // Wait longer before trying again
-                    GDK_LOG_SEV(log_level::info) << "net: backing off for " << backoff.get_backoff().count() << "s";
+                    backoff_handler(locker, backoff); // Wait longer before trying again
                     continue;
-                } else {
-                    backoff.reset(); // Start our backoff sequence again when we reconnect
                 }
 
                 GDK_LOG_SEV(log_level::info) << "net: connection successful";
+                backoff.reset(); // Start our backoff sequence again when we reconnect
                 locker.lock();
                 m_session.swap(s);
                 m_transport.swap(t);
@@ -669,6 +667,27 @@ namespace sdk {
                 continue;
             }
         }
+    }
+
+    void wamp_transport::backoff_handler(locker_t& locker, exponential_backoff& backoff)
+    {
+        backoff.increment();
+        const auto backoff_time = backoff.get_backoff();
+        GDK_LOG_SEV(log_level::debug) << "net: backing off for " << backoff_time.count() << "s";
+        const auto start = std::chrono::system_clock::now();
+        auto&& elapsed_fn = [this, start, backoff_time] {
+            const auto t = std::chrono::system_clock::now();
+            if (t < start || t - start > backoff_time) {
+                return true; // Backoff time expired
+            }
+            if (m_desired_state.load() != state_t::connected) {
+                return true; // Another thread asked to disconnect or exit
+            }
+            return false;
+        };
+        // Wait for the backoff time, ignoring spurious wakeups
+        locker.lock();
+        m_condition.wait_for(locker, backoff_time, elapsed_fn);
     }
 
     nlohmann::json wamp_transport::http_request(nlohmann::json params)
