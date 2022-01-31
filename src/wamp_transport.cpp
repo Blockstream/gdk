@@ -556,6 +556,12 @@ namespace sdk {
         }
     }
 
+    std::shared_ptr<autobahn::wamp_session> wamp_transport::get_session()
+    {
+        locker_t locker(m_mutex);
+        return m_session;
+    }
+
     autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn)
     {
         const auto ms = boost::chrono::milliseconds(m_wamp_call_options.timeout().count());

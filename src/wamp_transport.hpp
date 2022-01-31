@@ -58,7 +58,11 @@ namespace sdk {
         template <typename... Args> autobahn::wamp_call_result call(const std::string& method_name, Args&&... args)
         {
             const std::string method{ m_wamp_call_prefix + method_name };
-            auto fn = m_session->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
+            auto s = get_session();
+            if (!s) {
+                throw reconnect_error{};
+            }
+            auto fn = s->call(method, std::make_tuple(std::forward<Args>(args)...), m_wamp_call_options);
             return wamp_process_call(fn);
         }
 
@@ -94,6 +98,7 @@ namespace sdk {
         // NOTE: this overload unlocks the passed in locker.
         void notify_failure(locker_t& locker, const std::string& reason, bool notify_condition = true);
 
+        std::shared_ptr<autobahn::wamp_session> get_session();
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn);
 
         // These members are immutable after construction
