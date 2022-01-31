@@ -90,7 +90,7 @@ namespace sdk {
     namespace {
         // networking defaults
         static const uint32_t WAMP_CALL_TIMEOUT_SECS = 10;
-        static const auto DEFAULT_PING = boost::posix_time::seconds(20); // ping message interval
+        static const auto DEFAULT_PING = 60s; // ping message interval
         static const uint32_t DEFAULT_KEEPIDLE = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPINTERVAL = 1; // tcp heartbeat frequency in seconds
         static const uint32_t DEFAULT_KEEPCNT = 2; // tcp unanswered heartbeats
@@ -628,7 +628,7 @@ namespace sdk {
                         // error and loop again to reconnect if needed.
                         notify_failure(locker, "net: detected dead transport", false);
                         continue;
-                    } else if (need_to_ping && is_elapsed(m_last_ping_ts, 20s)) {
+                    } else if (need_to_ping && is_elapsed(m_last_ping_ts, DEFAULT_PING)) {
                         if (!connection_ping_ok(m_transport, is_tls)) {
                             notify_failure(locker, "net: sending ping failed", false);
                             continue;
