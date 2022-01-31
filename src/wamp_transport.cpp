@@ -545,12 +545,14 @@ namespace sdk {
         notify_failure(locker, reason);
     }
 
-    void wamp_transport::notify_failure(locker_t& locker, const std::string& reason)
+    void wamp_transport::notify_failure(locker_t& locker, const std::string& reason, bool notify_condition)
     {
         ++m_failure_count;
         locker.unlock();
         GDK_LOG_SEV(log_level::info) << reason << ", notifying failure";
-        m_condition.notify_all();
+        if (notify_condition) {
+            m_condition.notify_all();
+        }
     }
 
     autobahn::wamp_call_result wamp_transport::wamp_process_call(boost::future<autobahn::wamp_call_result>& fn)
@@ -570,7 +572,11 @@ namespace sdk {
             }
         }
         try {
-            return fn.get();
+            auto ret = fn.get();
+            locker_t locker(m_mutex);
+            m_last_ping_ts = std::chrono::system_clock::now();
+            locker.unlock();
+            return ret;
         } catch (const boost::future_error& ex) {
             notify_failure(std::string("wamp call exception: ") + ex.what());
             throw reconnect_error{};
@@ -579,8 +585,6 @@ namespace sdk {
 
     void wamp_transport::reconnect_handler()
     {
-        bool need_to_ping = true; // FIXME: only if proxy
-        auto last_ping_ts = std::chrono::system_clock::now();
         const bool is_tls = m_net_params.is_tls_connection();
         const auto& executor = m_io.get_executor();
 
@@ -601,6 +605,7 @@ namespace sdk {
             const auto state = m_state.load();
             auto desired_state = m_desired_state.load();
             const auto failure_count = m_failure_count.load();
+            const bool need_to_ping = !m_proxy.empty();
 
             if (desired_state != state_t::exited && last_handled_failure_count != failure_count) {
                 GDK_LOG_SEV(log_level::info) << "net: unhandled failure detected";
@@ -612,18 +617,14 @@ namespace sdk {
                     if (!m_transport->is_connected()) {
                         // The transport has been closed or failed. Mark the
                         // error and loop again to reconnect if needed.
-                        ++m_failure_count;
-                        locker.unlock();
-                        GDK_LOG_SEV(log_level::info) << "net: detected dead transport";
+                        notify_failure(locker, "net: detected dead transport", false);
                         continue;
-                    } else if (need_to_ping && is_elapsed(last_ping_ts, 20s)) {
+                    } else if (need_to_ping && is_elapsed(m_last_ping_ts, 20s)) {
                         if (!connection_ping_ok(m_transport, is_tls)) {
-                            ++m_failure_count;
-                            locker.unlock();
-                            GDK_LOG_SEV(log_level::info) << "net: ping failed";
+                            notify_failure(locker, "net: sending ping failed", false);
                             continue;
                         }
-                        last_ping_ts = std::chrono::system_clock::now();
+                        m_last_ping_ts = std::chrono::system_clock::now();
                     }
                 }
                 // Wait without conditions. In the event of a spurious wakeup
@@ -702,6 +703,7 @@ namespace sdk {
                 m_session.swap(s);
                 m_transport.swap(t);
                 m_state = state_t::connected;
+                m_last_ping_ts = std::chrono::system_clock::now();
                 continue;
             }
         }
@@ -782,6 +784,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(s.get());
         autobahn::wamp_subscription sub;
         {
+            // TODO: Set m_last_ping_ts whenever we receive a subscription
             unique_unlock unlocker(locker);
             const auto options = autobahn::wamp_subscribe_options("exact");
             sub = s->subscribe(topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options).get();

@@ -92,7 +92,7 @@ namespace sdk {
         // Notify failures to prompt a reconnect.
         void notify_failure(const std::string& reason);
         // NOTE: this overload unlocks the passed in locker.
-        void notify_failure(locker_t& locker, const std::string& reason);
+        void notify_failure(locker_t& locker, const std::string& reason, bool notify_condition = true);
 
         autobahn::wamp_call_result wamp_process_call(boost::future<autobahn::wamp_call_result>& fn);
 
@@ -122,7 +122,9 @@ namespace sdk {
         std::string m_proxy;
         // The count of failures detected, incremented to cause a reconnect
         std::atomic<uint32_t> m_failure_count;
-        // The transport, session and any subscription
+        // The time of the last ping we sent
+        std::chrono::time_point<std::chrono::system_clock> m_last_ping_ts;
+        // The transport, session and any subscriptions
         std::shared_ptr<autobahn::wamp_websocket_transport> m_transport;
         std::shared_ptr<autobahn::wamp_session> m_session;
         std::vector<autobahn::wamp_subscription> m_subscriptions;
