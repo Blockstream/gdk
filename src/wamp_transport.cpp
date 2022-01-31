@@ -282,13 +282,14 @@ namespace sdk {
 #endif
         }
 
-        template <typename FN> static void future_limited_wait(FN& f, const char* context)
+        template <typename FN> static void future_wait(FN&& f, const char* context)
         {
-            const auto status = f.wait_for(boost::chrono::milliseconds(1000));
+            const auto status = f.wait_for(boost::chrono::seconds(30));
             if (status == boost::future_status::ready) {
                 f.get();
+            } else {
+                GDK_LOG_SEV(log_level::info) << "future not ready on " << context;
             }
-            GDK_LOG_SEV(log_level::info) << "future not ready on " << context;
         }
 
         static void handle_disconnect(asio::io_context::executor_type executor,
@@ -299,12 +300,12 @@ namespace sdk {
                     auto f = asio::post(
                         executor, std::packaged_task<boost::future<std::string>()>([&s] { return s->leave(); }))
                                  .get();
-                    future_limited_wait(f, "session leave");
+                    future_wait(f, "session leave");
                 });
                 no_std_exception_escape([&executor, &s] {
                     auto f = asio::post(executor, std::packaged_task<boost::future<void>()>([&s] { return s->stop(); }))
                                  .get();
-                    future_limited_wait(f, "session stop");
+                    future_wait(f, "session stop");
                 });
             }
 
@@ -313,7 +314,7 @@ namespace sdk {
                     auto f = asio::post(
                         executor, std::packaged_task<boost::future<void>()>([&t] { return t->disconnect(); }))
                                  .get();
-                    future_limited_wait(f, "session disconnect");
+                    future_wait(f, "session disconnect");
                 });
 
                 // Wait for the transport to be disconnected
@@ -677,14 +678,19 @@ namespace sdk {
                 s = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
                 t->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(s));
                 bool failed = false;
-                if (no_std_exception_escape([&t] { t->connect().get(); }, "transport connect")) {
+                if (no_std_exception_escape(
+                        [&t] { future_wait(t->connect(), "transport connect"); }, "transport connect")) {
                     failed = true;
                     handle_disconnect(executor, t, s);
                 }
-                if (!failed && no_std_exception_escape([&s] { s->start().get(); }, "session connect")) {
+                if (!failed
+                    && no_std_exception_escape(
+                           [&s] { future_wait(s->start(), "session connect"); }, "session connect")) {
                     failed = true;
                 }
-                if (!failed && no_std_exception_escape([&s] { s->join("realm1").get(); }, "session join")) {
+                if (!failed
+                    && no_std_exception_escape(
+                           [&s] { future_wait(s->join("realm1"), "session join"); }, "session join")) {
                     failed = true;
                 }
                 if (!failed
