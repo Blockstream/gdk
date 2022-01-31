@@ -52,10 +52,9 @@ struct GA_auth_handler;
 typedef void (*GA_notification_handler)(void* context, GA_json* details);
 
 /**
- * Set the global configuration and run one-time initialization code. This function must
- * be called once and only once before calling any other functions. When used in a
- * multi-threaded context this function should be called before starting any other
- * threads that call other gdk functions.
+ * Perform one-time initialization of the library. This call must be made once
+ * only before calling any other GDK functions, including any functions called
+ * from other threads.
  *
  * :param config: The :ref:`init-config-arg`.
  */
@@ -63,7 +62,7 @@ GDK_API int GA_init(const GA_json* config);
 
 #ifndef SWIG
 /**
- * Get the error details associated with the last error on the current thread, if any.
+ * Get any error details associated with the last error on the current thread.
  *
  * :param output: Destination for the output :ref:`error-details` JSON.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
@@ -75,37 +74,79 @@ GDK_API int GA_get_thread_error_details(GA_json** output);
  * Create a new session.
  *
  * :param session: Destination for the resulting session.
- *|     Returned session should be freed using `GA_destroy_session`.
+ *|     The returned session should be freed using `GA_destroy_session`.
+ *
+ * Once created, the caller should set a handler for notifications using
+ * `GA_set_notification_handler`, before calling `GA_connect` to connect the
+ * session to the network for use.
  */
 GDK_API int GA_create_session(struct GA_session** session);
+
+#ifndef SWIG
+/**
+ * Set a handler to be called when notifications arrive for a session.
+ *
+ * :param session: The session to receive notifications for.
+ * :param handler: The handler to receive notifications.
+ * :param context: A context pointer to be passed to the handler.
+ *
+ * This call must be made on a session before `GA_connect`.
+ * Notifications may arrive on different threads so the caller must ensure
+ * that shared data is correctly locked within the handler.
+ * The GA_json object passed to the caller must be destroyed by the caller
+ * using `GA_destroy_json`. Failing to do so will result in memory leaks.
+ *
+ * The caller should not call session functions from within the callback
+ * handler as this may block the application.
+ */
+GDK_API int GA_set_notification_handler(struct GA_session* session, GA_notification_handler handler, void* context);
+#endif
 
 /**
  * Free a session allocated by `GA_create_session`.
  *
- * :param session: Session to free.
+ * :param session: The session to free.
+ *
+ * If the session was connected using `GA_connect` then this call will disconnect
+ * it as through `GA_disconnect` was called.
  */
 GDK_API int GA_destroy_session(struct GA_session* session);
 
 /**
- * Connect to a remote server using the specified network.
+ * Connect the session to the specified network.
  *
- * :param session: The session to use.
+ * :param session: The session to connect.
  * :param net_params: The :ref:`net-params` of the network to connect to.
+ *
+ * This call connects to the remote network services that the session
+ * requires, for example the Green servers or Electrum servers.
+ * `GA_connect` and `GA_disconnect` should be called only once per session
+ * lifetime, after `GA_create_session` and before `GA_destroy_session`
+ * respectively. Once connected, the underlying network connection of the
+ * session can be controlled using `GA_reconnect_hint`.
+ *
+ * Once the session is connected, use `GA_register_user` to create a new
+ * wallet for the session, or `GA_login_user` to open an existing wallet.
  */
 GDK_API int GA_connect(struct GA_session* session, const GA_json* net_params);
 
 /**
  * Disconnect from a connected remote server.
  *
- * :param session: The session to use.
+ * :param session: The session to disconnect.
+ *
+ * This call destroys any in-memory state associated with the session
+ * and so should only be used just before session destruction.
+ * Use `GA_reconnect_hint` to handle the sessions underlying network
+ * connection.
  */
 GDK_API int GA_disconnect(struct GA_session* session);
 
 /**
- * Configure networking behaviour when reconnecting.
+ * Connect or disconnect a sessions underlying network connection.
  *
  * :param session: The session to use.
- * :param hint: the :ref:`hint` to configure.
+ * :param hint: the :ref:`hint` describing the desired reconnection behaviour.
  */
 GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 
@@ -145,12 +186,17 @@ GDK_API int GA_http_request(struct GA_session* session, const GA_json* params, G
 
 /**
  *
- * Refresh the internal cache asset information.
+ * Refresh the sessions internal cache of Liquid asset information.
  *
  * :param session: The session to use.
  * :param params: the :ref:`assets-params-data` of the server to connect to.
  * :param output: Destination for the assets JSON.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
+ *
+ * Each release of GDK comes with a list of the latest registered Liquid
+ * assets built-in. This call is used to return this data and/or to update
+ * it to include any new assets that have been registered since installation
+ * or the last update.
  */
 GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params, GA_json** output);
 
@@ -162,7 +208,7 @@ GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params,
 GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
- * Create a new user account using a hardware wallet/HSM/TPM.
+ * Create a new user wallet.
  *
  * :param session: The session to use.
  * :param hw_device: :ref:`hw-device` or empty JSON for software wallet registration.
@@ -174,7 +220,7 @@ GDK_API int GA_register_user(
     struct GA_session* session, const GA_json* hw_device, const char* mnemonic, struct GA_auth_handler** call);
 
 /**
- * Authenticate a user.
+ * Authenticate to a user's wallet.
  *
  * :param session: The session to use.
  * :param hw_device: :ref:`hw-device` or empty JSON for software wallet login.
@@ -186,7 +232,7 @@ GDK_API int GA_login_user(
     struct GA_session* session, const GA_json* hw_device, const GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Set a watch-only login for the wallet.
+ * Set a watch-only login for a logged-in user wallet.
  *
  * :param session: The session to use.
  * :param username: The username.
@@ -195,7 +241,7 @@ GDK_API int GA_login_user(
 GDK_API int GA_set_watch_only(struct GA_session* session, const char* username, const char* password);
 
 /**
- * Get the current watch-only login for the wallet, if any.
+ * Get the current watch-only login for a logged-in user wallet, if any.
  *
  * :param session: The session to use.
  * :param username: Destination for the watch-only username. Empty string if not set.
@@ -204,11 +250,18 @@ GDK_API int GA_set_watch_only(struct GA_session* session, const char* username, 
 GDK_API int GA_get_watch_only_username(struct GA_session* session, char** username);
 
 /**
- * Remove an account.
+ * Remove and delete the server history of a wallet.
  *
  * :param session: The session to use.
  * :param call: Destination for the resulting GA_auth_handler to perform the removal.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * For multisig Green sessions, removing a wallet removes all history and
+ * data associated with the wallet on the server. This operation cannot be
+ * undone, and re-registering the wallet will not bring back the wallet's
+ * history. For this reason, only empty wallets can be deleted.
+ *
+ * For singlesig wallets this call currently has no effect.
  */
 GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler** call);
 
@@ -502,7 +555,7 @@ GDK_API int GA_set_csvtime(struct GA_session* session, const GA_json* locktime_d
 
 /**
  * Set the number of blocks after which nLockTime transactions become
- *|    spendable without two factor authentication. When this function
+ *|    spendable without two factor authentication. When this call
  *|    succeeds, if the user has an email address associated with the
  *|    wallet, an updated nlocktimes.zip file will be sent via email.
  *
@@ -606,25 +659,6 @@ GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settin
 GDK_API int GA_get_settings(struct GA_session* session, GA_json** settings);
 
 #ifndef SWIG
-/**
- * Set a handler to be called when notifications arrive.
- *
- * :param session: The server session to receive notifications for.
- * :param handler: The handler to receive notifications.
- * :param context: A context pointer to be passed to the handler.
- *
- * This function must be called before `GA_connect`.
- * Notifications may arrive on different threads so the caller must ensure
- * that shared data is correctly locked within the handler.
- * The GA_json object passed to the caller must be destroyed by the caller
- * using `GA_destroy_json`. Failing to do so will result in memory leaks.
- *
- * The caller should not call session functions from within the callback
- * handler as this may block the application.
- *
- */
-GDK_API int GA_set_notification_handler(struct GA_session* session, GA_notification_handler handler, void* context);
-
 GDK_API int GA_convert_json_to_string(const GA_json* json, char** output);
 
 GDK_API int GA_convert_string_to_json(const char* input, GA_json** output);
