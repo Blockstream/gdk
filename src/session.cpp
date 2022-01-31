@@ -204,9 +204,8 @@ namespace sdk {
             if (p) {
                 const bool is_electrum = p->get_network_parameters().is_electrum();
                 GDK_LOG_SEV(log_level::info) << "disconnecting " << (is_electrum ? "single" : "multi") << "sig session";
-                if (is_electrum) {
-                    p->disconnect(true);
-                } else {
+                p->disconnect(true);
+                if (!is_electrum) {
                     // Destroy multisig sessions in the background
                     session_impl_delete(std::move(p));
                 }
