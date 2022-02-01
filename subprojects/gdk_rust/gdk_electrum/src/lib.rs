@@ -512,6 +512,21 @@ impl ElectrumSession {
         self.load_store(&LoadStoreOpt {
             master_xpub,
         })?;
+        if let Err(Error::InvalidSubaccount(_)) = self.get_subaccount(0) {
+            // for compatibility reason, account 0 must always be present
+            let path = self.get_subaccount_root_path(GetAccountPathOpt {
+                subaccount: 0,
+            })?;
+            let xprv = master_xprv.derive_priv(&crate::EC, &path.path).unwrap();
+            let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+
+            self.create_subaccount(CreateAccountOpt {
+                subaccount: 0,
+                name: "".to_string(),
+                xpub: Some(xpub),
+                discovered: false,
+            })?;
+        }
         if self.network.liquid && !self.has_master_blinding_key()? {
             let master_blinding = asset_blinding_key_from_seed(&seed);
             self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
