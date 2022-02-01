@@ -206,13 +206,9 @@ impl StoreMeta {
         path: P,
         xpub: &ExtendedPubKey,
         id: NetworkId,
-    ) -> Result<(bool, StoreMeta), Error> {
+    ) -> Result<StoreMeta, Error> {
         let cipher = get_cipher(xpub);
         let mut cache = RawCache::new(path.as_ref(), &cipher);
-
-        // account 0 is created by default to match multisig few line after this,
-        // thus not founding it means the cache has just been created
-        let just_created = cache.accounts.get(&0).is_none();
 
         let mut store = RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
@@ -230,7 +226,7 @@ impl StoreMeta {
             path,
             last: HashMap::new(),
         };
-        Ok((just_created, store))
+        Ok(store)
     }
 
     fn flush_serializable(&mut self, kind: Kind) -> Result<(), Error> {
@@ -504,14 +500,12 @@ mod tests {
         let txid_btc = txid.ref_bitcoin().unwrap();
 
         {
-            let (b, mut store) = StoreMeta::new(&dir, &xpub, id).unwrap();
-            assert!(b, "store should be just created");
+            let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
 
-        let (b, store) = StoreMeta::new(&dir, &xpub, id).unwrap();
-        assert!(!b, "store shouldn't be just created");
+        let store = StoreMeta::new(&dir, &xpub, id).unwrap();
 
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));

@@ -450,8 +450,8 @@ impl ElectrumSession {
         Ok(mnemonic)
     }
 
-    pub fn load_store(&mut self, opt: &LoadStoreOpt) -> Result<bool, Error> {
-        let mut just_created = false;
+    /// Load store and cache from disk.
+    pub fn load_store(&mut self, opt: &LoadStoreOpt) -> Result<(), Error> {
         if self.store.is_none() {
             let wallet_hash_id = self.network.wallet_hash_id(&opt.master_xpub);
             let mut path: PathBuf = self.data_root.as_str().into();
@@ -459,12 +459,11 @@ impl ElectrumSession {
             path.push(wallet_hash_id);
 
             info!("Store root path: {:?}", path);
-            let (b, store) = StoreMeta::new(&path, &opt.master_xpub, self.network.id())?;
-            just_created = b;
+            let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id())?;
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store)
         }
-        Ok(just_created)
+        Ok(())
     }
 
     pub fn store(&self) -> Result<Store, Error> {
