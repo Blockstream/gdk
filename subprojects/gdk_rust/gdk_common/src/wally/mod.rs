@@ -14,8 +14,34 @@ use std::os::raw::c_char;
 
 pub mod ffi;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct MasterBlindingKey(pub [u8; 64]);
+
+impl serde::Serialize for MasterBlindingKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serde::Serialize::serialize(&self.0.to_hex(), serializer)
+    }
+}
+impl<'de> serde::Deserialize<'de> for MasterBlindingKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use bitcoin::hashes::hex::FromHex;
+        use std::convert::TryInto;
+        let hex: String = serde::Deserialize::deserialize(deserializer)?;
+        let v = Vec::<u8>::from_hex(&hex).map_err(|e| {
+            serde::de::Error::custom(format!("Master blinding key must be valid hex ({:?})", e))
+        })?;
+        Ok(MasterBlindingKey(
+            v.try_into()
+                .map_err(|_| serde::de::Error::custom("Master blinding key must be 64 bytes"))?,
+        ))
+    }
+}
 
 // need to manually implement Debug cause it's not supported for array>32
 impl fmt::Debug for MasterBlindingKey {
@@ -146,6 +172,7 @@ pub fn read_str(s: *const c_char) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
     use super::*;
     use bitcoin::hashes::hex::{FromHex, ToHex};
     use elements::Script;
@@ -207,5 +234,14 @@ mod tests {
             bytes.to_hex(),
             "657a9de33d1f7753edbb86c90b0ba064bd1b986570f1a5019ed80459877b013b"
         );
+    }
+
+    #[test]
+    fn test_master_blinding_key_serde() {
+        let m = MasterBlindingKey((0..64).collect::<Vec<_>>().try_into().unwrap());
+        let s = serde_json::to_string(&m).unwrap();
+        assert_eq!(&s, "\"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f\"");
+        let m2: MasterBlindingKey = serde_json::from_str(&s).unwrap();
+        assert_eq!(m, m2);
     }
 }
