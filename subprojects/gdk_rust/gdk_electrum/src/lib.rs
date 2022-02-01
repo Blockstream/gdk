@@ -466,6 +466,17 @@ impl ElectrumSession {
         Ok(())
     }
 
+    /// Set the master key in the internal store, it needs to be called after `load_store`
+    pub fn set_master_blinding_key(&mut self, opt: &SetMasterBlindingKeyOpt) -> Result<(), Error> {
+        self.store()?.write()?.cache.master_blinding = Some(opt.master_blinding.clone());
+        Ok(())
+    }
+
+    /// Return true if the cache contains the master blinding key, it needs to be called after `load_store`
+    pub fn has_master_blinding_key(&mut self) -> Result<bool, Error> {
+        Ok(self.store()?.read()?.cache.master_blinding.is_some())
+    }
+
     pub fn store(&self) -> Result<Store, Error> {
         Ok(self.store.as_ref().ok_or_else(|| Error::StoreNotLoaded)?.clone())
     }
@@ -488,7 +499,6 @@ impl ElectrumSession {
         self.closer.terminates = Some(terminates);
 
         // TODO: passphrase?
-
         let mnem_str = mnemonic.clone().get_mnemonic_str();
         let seed = wally::bip39_mnemonic_to_seed(
             &mnem_str,
@@ -499,15 +509,16 @@ impl ElectrumSession {
         let master_xprv = ExtendedPrivKey::new_master(self.network.bip32_network(), &seed)?;
         let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
 
-        let master_blinding = if self.network.liquid {
-            Some(asset_blinding_key_from_seed(&seed))
-        } else {
-            None
-        };
-
         self.load_store(&LoadStoreOpt {
             master_xpub,
         })?;
+        if self.network.liquid && !self.has_master_blinding_key()? {
+            let master_blinding = asset_blinding_key_from_seed(&seed);
+            self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
+                master_blinding,
+            })?;
+        }
+        let master_blinding = self.store()?.read()?.cache.master_blinding.clone();
 
         let mut tip_height = self.store()?.read()?.cache.tip.0;
         notify_block(self.notify.clone(), tip_height, self.closer.terminates()?);
@@ -645,7 +656,7 @@ impl ElectrumSession {
         let syncer = Syncer {
             wallet: wallet.clone(),
             store: self.store()?,
-            master_blinding,
+            master_blinding: master_blinding.clone(),
             network: self.network.clone(),
         };
 

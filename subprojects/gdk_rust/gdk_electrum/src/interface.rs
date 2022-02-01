@@ -8,7 +8,7 @@ use gdk_common::model::{
 };
 use gdk_common::network::Network;
 use gdk_common::scripts::ScriptType;
-use gdk_common::wally::*;
+use gdk_common::wally::MasterBlindingKey;
 
 use crate::account::{get_account_script_purpose, get_last_next_account_nums, Account};
 use crate::error::*;

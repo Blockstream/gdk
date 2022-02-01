@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
+use crate::wally::MasterBlindingKey;
 use bitcoin::hashes::hex::ToHex;
 use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
@@ -161,6 +162,12 @@ pub struct GetUnspentOpt {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadStoreOpt {
     pub master_xpub: ExtendedPubKey,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetMasterBlindingKeyOpt {
+    /// Master blinding key, when encoded in json is an hex of 128 chars
+    pub master_blinding: MasterBlindingKey,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

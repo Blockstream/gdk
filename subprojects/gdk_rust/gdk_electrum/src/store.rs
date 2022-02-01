@@ -11,6 +11,7 @@ use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
 };
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
+use gdk_common::wally::MasterBlindingKey;
 use gdk_common::NetworkId;
 use log::{info, warn};
 use rand::{thread_rng, Rng};
@@ -58,6 +59,9 @@ pub struct RawCache {
 
     /// whether BIP 44 account recovery was already run for this wallet
     pub accounts_recovered: bool, // TODO deprecated, remove when cache breaking change should happen
+
+    /// The master blinding key, available only in liquid
+    pub master_blinding: Option<MasterBlindingKey>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -91,7 +95,7 @@ pub struct RawStore {
     /// transaction memos (account_num -> txid -> memo)
     memos: HashMap<bitcoin::Txid, String>,
 
-    // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility.
+    // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility
     /// account settings
     accounts_settings: Option<HashMap<u32, AccountSettings>>,
 }

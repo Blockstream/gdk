@@ -29,6 +29,7 @@ pub enum Error {
     InvalidPin,
     PsetAndTxMismatch,
     StoreNotLoaded,
+    MissingMasterBlindingKey,
     TxNotFound(String),
     AddrParse(String),
     InvalidElectrumUrl(String),
@@ -74,6 +75,9 @@ impl Display for Error {
             Error::UnknownCall => write!(f, "unknown call"),
             Error::StoreNotLoaded => {
                 write!(f, "attempt to access the store without calling load_store first")
+            }
+            Error::MissingMasterBlindingKey => {
+                write!(f, "Master blinding key is missing but we need it")
             }
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
             Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),
