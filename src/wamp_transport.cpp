@@ -497,12 +497,12 @@ namespace sdk {
             for (size_t i = 0; i < 300u; ++i) {
                 std::this_thread::sleep_for(100ms);
                 locker.lock();
-                if (m_state == new_state) {
-                    locker.unlock();
-                    GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(new_state);
+                const auto current_state = m_state.load();
+                locker.unlock();
+                if (current_state == new_state || current_state == state_t::exited) {
+                    GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(current_state);
                     return;
                 }
-                locker.unlock();
             }
             throw timeout_error();
         }
