@@ -95,15 +95,11 @@ namespace sdk {
     void ga_rust::reconnect_hint(const nlohmann::json& hint)
     {
         session_impl::reconnect_hint(hint);
-        bool enable = false;
         const auto hint_p = hint.find("hint");
         if (hint_p != hint.end()) {
-            GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
-            enable = *hint_p == "now";
+            m_reconnect_restart = *hint_p == "connect";
+            reconnect();
         }
-        GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << (enable ? "enable" : "disable");
-        m_reconnect_restart = enable;
-        reconnect();
     }
 
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const

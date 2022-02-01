@@ -478,16 +478,10 @@ namespace sdk {
 
     void wamp_transport::reconnect_hint(const nlohmann::json& hint)
     {
-        auto new_state = state_t::disconnected;
         const auto hint_p = hint.find("hint");
         if (hint_p != hint.end()) {
-            GDK_RUNTIME_ASSERT(*hint_p == "now" || *hint_p == "disable");
-            if (*hint_p == "now") {
-                new_state = state_t::connected;
-            }
+            change_state_to(*hint_p == "connect" ? state_t::connected : state_t::disconnected, true);
         }
-        GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << state_str(new_state);
-        change_state_to(new_state, true);
     }
 
     void wamp_transport::change_state_to(wamp_transport::state_t new_state, bool wait)

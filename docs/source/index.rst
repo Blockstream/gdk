@@ -7,6 +7,7 @@ GDK documentation
 
    gdk
    gdk-json
+   gdk-ntf
    gdk-hw
 
 Indices and tables

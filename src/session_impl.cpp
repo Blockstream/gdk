@@ -28,6 +28,15 @@ namespace sdk {
             }
             boost::log::core::get()->set_filter(log_level::severity >= severity);
         }
+
+        static void check_hint(const std::string& hint, const char* hint_type)
+        {
+            if (hint != "connect" && hint != "disconnect") {
+                GDK_RUNTIME_ASSERT_MSG(false, std::string(hint_type) + " must be either 'connect' or 'disconnect'");
+            }
+            GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << hint_type << ":" << hint;
+        }
+
     } // namespace
 
     boost::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
@@ -97,14 +106,17 @@ namespace sdk {
 
     void session_impl::reconnect_hint(const nlohmann::json& hint)
     {
-        if (m_tor_ctrl) {
-            const auto hint_p = hint.find("tor_sleep_hint");
-            if (hint_p != hint.end()) {
-                if (*hint_p == "sleep") {
-                    m_tor_ctrl->sleep(); // no-op if already sleeping
-                } else if (*hint_p == "wakeup") {
-                    m_tor_ctrl->wakeup(); // no-op if already awake
-                }
+        auto hint_p = hint.find("hint");
+        if (hint_p != hint.end()) {
+            check_hint(*hint_p, "hint"); // Validate hint for derived sessions
+        }
+
+        if (m_tor_ctrl && (hint_p = hint.find("tor_hint")) != hint.end()) {
+            check_hint(*hint_p, "tor_hint");
+            if (*hint_p == "connect") {
+                m_tor_ctrl->wakeup(); // no-op if already awake
+            } else {
+                m_tor_ctrl->sleep(); // no-op if already sleeping
             }
         }
     }

@@ -91,10 +91,11 @@ GDK_API int GA_create_session(struct GA_session** session);
  * :param context: A context pointer to be passed to the handler.
  *
  * This call must be made on a session before `GA_connect`.
- * Notifications may arrive on different threads so the caller must ensure
- * that shared data is correctly locked within the handler.
- * The GA_json object passed to the caller must be destroyed by the caller
- * using `GA_destroy_json`. Failing to do so will result in memory leaks.
+ * :ref:`ntf-notifications` may arrive on different threads, so the caller
+ * must ensure that shared data is correctly locked within the handler.
+ * The ``GA_json`` object passed to the caller must be destroyed by the
+ * caller using `GA_destroy_json`. Failing to do so will result in
+ * memory leaks.
  *
  * The caller should not call session functions from within the callback
  * handler as this may block the application.
@@ -146,7 +147,7 @@ GDK_API int GA_disconnect(struct GA_session* session);
  * Connect or disconnect a sessions underlying network connection.
  *
  * :param session: The session to use.
- * :param hint: the :ref:`hint` describing the desired reconnection behaviour.
+ * :param hint: the :ref:`reconnect` describing the desired reconnection behaviour.
  */
 GDK_API int GA_reconnect_hint(struct GA_session* session, const GA_json* hint);
 
@@ -227,6 +228,11 @@ GDK_API int GA_register_user(
  * :param details: The :ref:`login-credentials` for authenticating the user.
  * :param call: Destination for the resulting GA_auth_handler to perform the login.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * If a sessions underlying network connection has disconnected and
+ * reconnected, the user will need to login again using this function. In
+ * this case, the caller can pass empty JSON for both ``hw_device`` and
+ * ``details`` to login using the previously passed credentials and device.
  */
 GDK_API int GA_login_user(
     struct GA_session* session, const GA_json* hw_device, const GA_json* details, struct GA_auth_handler** call);

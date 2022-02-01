@@ -41,9 +41,9 @@ Connection parameters JSON
 :log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
            ``"error"``, or ``"none"``.
 :proxy: The proxy connection to pass network traffic through, if any.
-:use_tor: ``true`` to enable tor connections, ``false`` otherwise. If enabled
-          and a proxy is not given, a tor connection will be started internally.
-          If a proxy is given and tor is enabled, the proxy must support
+:use_tor: ``true`` to enable Tor connections, ``false`` otherwise. If enabled
+          and a proxy is not given, a Tor connection will be started internally.
+          If a proxy is given and Tor is enabled, the proxy must support
           resolving ``".onion"`` domains.
 :user_agent: The user agent string to pass to the server for multisig connections.
 :spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
@@ -65,7 +65,7 @@ Contains the proxy settings in use by a session.
    }
 
 :proxy: The proxy connection being used to pass network traffic through, or an empty string.
-:use_tor: ``true`` if tor is enabled, ``false`` otherwise.
+:use_tor: ``true`` if Tor is enabled, ``false`` otherwise.
 
 
  .. _login-credentials:
@@ -1177,26 +1177,39 @@ The data returned depends on the current state of the handler, as follows:
 :required_data: Contains the data the HWW must provide, see :ref:`hw-resolve-overview`.
 
 
-.. _hint:
+.. _reconnect:
 
-Reconnect hint JSON
--------------------
+Reconnect JSON
+--------------
 
-Controls session and Tor reconnection behaviour.
+Controls session and internal Tor instance reconnection behaviour.
 
 .. code-block:: json
 
    {
-     "hint": "now",
-     "tor_sleep_hint": "wakeup"
+     "hint": "connect",
+     "tor_hint": "connect"
    }
 
-:hint: Optional. Either ``"disable"`` to stop background session reconnection,
-    or ``"now"`` to enable background reconnection and reconnect.
-:tor_sleep_hint: Optional. Either ``"sleep"`` to suspend Tor network activity,
-    or ``"wakeup"`` to start/restart Tor processing.
+:hint: Optional, must be either ``"connect"`` or ``"disconnect"`` if given.
+:tor_hint: Optional, must be either ``"connect"`` or ``"disconnect"`` if given.
 
+For both hint types, ``"disconnect"`` will disconnect the underlying network
+connection used by the session, while ``"connect"`` will reconnect it. if
+a hint is not given, no action will be taken for that connection type.
 
+Each session will automatically attempt to reconnect in the background when
+they detect a disconnection, unless ``"disconnect"`` is passed to close the
+connection first. The session will be notified using a :ref:`ntf-network` when
+the underlying network connection changes state.
+
+For environments such as mobile devices where networking may become
+unavailable to the callers application, the network must be disconnected
+and reconnected using `GA_reconnect_hint` in order for connectivity to
+be resumed successfully. In particular, when using the built-in Tor
+implementation to connect, failure to do so may result in Tor failing
+to connect for the remaining lifetime of the application (this is a
+Tor limitation).
 
 .. _convert-amount:
 
