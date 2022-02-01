@@ -338,10 +338,22 @@ impl StoreMeta {
     }
 
     pub fn account_nums(&self) -> HashSet<u32> {
-        match &self.store.accounts_settings {
+        // Read the account nums from both the cache and store for backward compatibility.
+        // Between version 0.0.48 and 0.0.49 some changes were done to split account
+        // discovery from login, which is a necessary step for adding HWW support.
+        // Among these changes we changed the way to get the accounts created, instead of
+        // reading from the cache we read from the store.
+        // However when upgrading from e.g. 0.0.48 to 0.0.49 the accounts in the store might
+        // not have been populated, so we have to look at the cache as well.
+        // It's worth noting that if a GDK upgrade also requires a cache reconstruction,
+        // then it will miss the accounts from the cache.
+        let store_account_nums = match &self.store.accounts_settings {
             None => HashSet::new(),
             Some(accounts) => accounts.keys().copied().collect(),
-        }
+        };
+        let cache_account_nums = self.cache.accounts.keys().copied().collect();
+
+        store_account_nums.union(&cache_account_nums).copied().collect()
     }
 
     pub fn read_asset_icons(&self) -> Result<Option<Value>, Error> {
