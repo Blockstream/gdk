@@ -20,6 +20,7 @@ use std::{env, thread};
 use tempfile::TempDir;
 
 mod test_session;
+use crate::test_session::auth_handler_login;
 use test_session::{discover_subaccounts, TestSession};
 
 static MEMO1: &str = "hello memo";
@@ -824,8 +825,9 @@ fn subaccounts(is_liquid: bool) {
         let proxy = Some("");
         ElectrumSession::create_session(network, &db_root, proxy, url)
     };
+
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
-    new_session.login(&mnemonic, None).unwrap();
+    auth_handler_login(&mut new_session, mnemonic);
 
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), 1);

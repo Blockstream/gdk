@@ -1,5 +1,6 @@
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::network::constants::Network as Bip32Network;
+use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{self, Amount};
 use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
@@ -9,6 +10,7 @@ use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::scripts::ScriptType;
+use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
@@ -1172,28 +1174,81 @@ pub fn discover_subaccounts(session: &mut ElectrumSession) {
     }
 }
 
+// Simulate login through the auth handler
+pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
+    session.set_mnemonic_and_password(mnemonic.clone(), None); // FIXME: remove
+
+    let signer = TestSigner::new(&mnemonic.get_mnemonic_str(), session.network.bip32_network());
+
+    session
+        .load_store(&LoadStoreOpt {
+            master_xpub: signer.master_xpub(),
+        })
+        .unwrap();
+
+    if let Err(Error::InvalidSubaccount(_)) = session.get_subaccount(0) {
+        // for compatibility reason, account 0 must always be present
+        let path = session
+            .get_subaccount_root_path(GetAccountPathOpt {
+                subaccount: 0,
+            })
+            .unwrap();
+        let xpub = signer.account_xpub(&path.path.into());
+
+        session
+            .create_subaccount(CreateAccountOpt {
+                subaccount: 0,
+                name: "".to_string(),
+                xpub: Some(xpub),
+                discovered: false,
+            })
+            .unwrap();
+    }
+    if session.network.liquid {
+        if let Err(Error::MissingMasterBlindingKey) = session.get_master_blinding_key() {
+            session
+                .set_master_blinding_key(&SetMasterBlindingKeyOpt {
+                    master_blinding: signer.master_blinding(),
+                })
+                .unwrap();
+        }
+    }
+    session.start_threads().unwrap();
+}
+
 /// Struct that holds the secret, so that we can replicate the resolver behavior
 struct TestSigner {
     pub mnemonic: String,
     pub network: Bip32Network,
+    secp: Secp256k1<All>,
 }
 
 impl TestSigner {
     pub fn new(mnemonic: &str, network: Bip32Network) -> Self {
         TestSigner {
             mnemonic: mnemonic.into(),
-            network: network,
+            network,
+            secp: bitcoin::secp256k1::Secp256k1::new(),
         }
+    }
+    fn seed(&self) -> [u8; 64] {
+        gdk_common::wally::bip39_mnemonic_to_seed(&self.mnemonic, "").unwrap()
     }
 
     fn master_xprv(&self) -> ExtendedPrivKey {
-        let seed = gdk_common::wally::bip39_mnemonic_to_seed(&self.mnemonic, "").unwrap();
-        ExtendedPrivKey::new_master(self.network, &seed).unwrap()
+        ExtendedPrivKey::new_master(self.network, &self.seed()).unwrap()
+    }
+
+    fn master_xpub(&self) -> ExtendedPubKey {
+        ExtendedPubKey::from_private(&self.secp, &self.master_xprv())
+    }
+
+    fn master_blinding(&self) -> MasterBlindingKey {
+        asset_blinding_key_from_seed(&self.seed())
     }
 
     pub fn account_xpub(&self, path: &DerivationPath) -> ExtendedPubKey {
-        let ctx = bitcoin::secp256k1::Secp256k1::new();
-        let xprv = self.master_xprv().derive_priv(&ctx, path).unwrap();
-        ExtendedPubKey::from_private(&ctx, &xprv)
+        let xprv = self.master_xprv().derive_priv(&self.secp, path).unwrap();
+        ExtendedPubKey::from_private(&self.secp, &xprv)
     }
 }
