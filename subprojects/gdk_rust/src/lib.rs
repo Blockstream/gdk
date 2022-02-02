@@ -417,9 +417,10 @@ fn handle_session_call(
             a
         }
 
-        "get_mnemonic" => {
-            session.get_mnemonic().map(|m| Value::String(m.get_mnemonic_str())).map_err(Into::into)
-        }
+        "get_mnemonic" => session
+            .get_mnemonic()
+            .map(|m| Value::String(m.clone().get_mnemonic_str()))
+            .ok_or_else(|| Error::Other("Missing mnemonic".to_string())),
 
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))

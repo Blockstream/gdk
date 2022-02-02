@@ -1138,7 +1138,7 @@ pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) 
 
 // Perform BIP44 account discovery as it is performed in the resolver
 pub fn discover_subaccounts(session: &mut ElectrumSession) {
-    let mnemonic = session.get_mnemonic().unwrap().get_mnemonic_str();
+    let mnemonic = session.get_mnemonic().cloned().unwrap().get_mnemonic_str();
     let signer = TestSigner::new(&mnemonic, session.network.bip32_network());
 
     for script_type in ScriptType::types() {

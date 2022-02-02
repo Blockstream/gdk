@@ -1,7 +1,6 @@
 use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
 use serde::{Deserialize, Serialize};
 
-use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
     AddressPointer, Balances, CreateAccountOpt, CreateTransaction, GetBalanceOpt,
     GetTransactionsOpt, GetUnspentOpt, Settings, TransactionMeta, UpdateAccountOpt,
@@ -22,7 +21,6 @@ use std::str::FromStr;
 
 pub struct WalletCtx {
     pub network: Network,
-    pub mnemonic: Mnemonic,
     pub store: Store,
     pub master_xprv: ExtendedPrivKey,
     pub master_xpub: ExtendedPubKey,
@@ -105,14 +103,12 @@ impl FromStr for ElectrumUrl {
 impl WalletCtx {
     pub fn new(
         store: Store,
-        mnemonic: Mnemonic,
         network: Network,
         master_xprv: ExtendedPrivKey,
         master_xpub: ExtendedPubKey,
         master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         let mut wallet = WalletCtx {
-            mnemonic,
             store: store.clone(),
             network, // TODO: from db
             master_xprv,
@@ -128,10 +124,6 @@ impl WalletCtx {
         wallet._ensure_account(0, false, None)?;
 
         Ok(wallet)
-    }
-
-    pub fn get_mnemonic(&self) -> &Mnemonic {
-        &self.mnemonic
     }
 
     pub fn get_account(&self, account_num: u32) -> Result<&Account, Error> {

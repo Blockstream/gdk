@@ -172,10 +172,10 @@ pub fn read_str(s: *const c_char) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryInto;
     use super::*;
     use bitcoin::hashes::hex::{FromHex, ToHex};
     use elements::Script;
+    use std::convert::TryInto;
     use std::str::FromStr;
 
     #[test]
