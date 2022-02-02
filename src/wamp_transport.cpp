@@ -489,13 +489,14 @@ namespace sdk {
         GDK_LOG_SEV(log_level::info) << "change_state_to: requesting state " << state_str(new_state);
         locker_t locker(m_mutex);
         m_desired_state = new_state;
+        const bool is_noop = new_state == m_state.load();
         locker.unlock();
         m_condition.notify_all();
 
-        if (wait) {
+        if (!is_noop && wait) {
             // Busy wait for up to 30s while the reconnection thread changes state
-            for (size_t i = 0; i < 300u; ++i) {
-                std::this_thread::sleep_for(100ms);
+            for (size_t i = 0; i < 600u; ++i) {
+                std::this_thread::sleep_for(50ms);
                 locker.lock();
                 const auto current_state = m_state.load();
                 locker.unlock();
