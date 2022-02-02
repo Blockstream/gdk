@@ -650,11 +650,11 @@ namespace sdk {
                     locker.unlock();
                     GDK_LOG_SEV(log_level::info) << "net: disconnecting";
                     handle_disconnect(executor, t, s);
-                    // If this disconnect was due to a handler failure,
-                    // mark it handled. We will then either connect or
-                    // not according to our desired state.
-                    last_handled_failure_count = failure_count;
+                    // Mark all currently notified failures as handled. We
+                    // will then loop to either connect or not according
+                    // to our desired state.
                     locker.lock();
+                    last_handled_failure_count = m_failure_count.load();
                 }
 
                 m_state = desired_state;
@@ -716,6 +716,8 @@ namespace sdk {
                 m_transport.swap(t);
                 m_state = state_t::connected;
                 m_last_ping_ts = std::chrono::system_clock::now();
+                // Mark all currently notified failures as handled
+                last_handled_failure_count = m_failure_count.load();
                 locker.unlock();
                 emit_state(state_t::connected, state_t::connected, 0);
                 continue;
