@@ -488,8 +488,10 @@ namespace sdk {
     {
         GDK_LOG_SEV(log_level::info) << "change_state_to: requesting state " << state_str(new_state);
         locker_t locker(m_mutex);
+        const auto current_state = m_state.load();
+        GDK_RUNTIME_ASSERT(current_state != state_t::exited);
         m_desired_state = new_state;
-        const bool is_noop = new_state == m_state.load();
+        const bool is_noop = new_state == current_state;
         locker.unlock();
         m_condition.notify_all();
 
