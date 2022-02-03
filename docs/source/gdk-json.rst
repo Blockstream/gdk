@@ -13,12 +13,18 @@ Passed to `GA_init` when initializing the library.
 .. code-block:: json
 
     {
-        "datadir": "/path/to/datadir"
+        "datadir": "/path/to/store/data"
+        "tordir": "/path/to/store/tor/data"
     }
 
-:datadir: An optional directory which the gdk will use to store encrypted data
+:datadir: An optional directory which gdk will use to store encrypted data
          relating to sessions. If omitted no local storage will be used, note
-         that this may significantly decrease the performance of some calls.
+         that this will significantly decrease the performance of some calls
+         and make login in particular much slower.
+:tordir: An optional directory for tor state data, used when the internal tor
+         implementation is enabled in :ref:`net-params`. Note that each process
+         using the library at the same time requires its own distinct directory.
+         If not given, a subdirectory ``"tor"`` inside ``"datadir"`` is used.
 
 .. _net-params:
 

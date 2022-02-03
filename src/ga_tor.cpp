@@ -220,7 +220,7 @@ namespace sdk {
     };
 
     struct tor_controller_impl {
-        tor_controller_impl(const std::string& socks5_port);
+        tor_controller_impl(const std::string& socks5_port, const std::string& tor_datadir);
         ~tor_controller_impl();
 
         std::string wait_for_socks5(
@@ -456,7 +456,7 @@ namespace sdk {
             }
         } while (tor_control_port.empty());
 
-        GDK_LOG_SEV(log_level::info) << "tor_control port " << tor_control_port;
+        GDK_LOG_SEV(log_level::info) << "tor: control port " << tor_control_port;
         GDK_RUNTIME_ASSERT(tor_control_port.size() > TOR_CONTROL_PORT_TAG.size());
         tor_control_port.erase(0, TOR_CONTROL_PORT_TAG.size());
         return tor_control_port;
@@ -465,16 +465,13 @@ namespace sdk {
     static std::string get_tor_control_file(const std::string& tor_datadir)
     {
         std::string tor_control_file = tor_datadir + "/.torcontrol";
-
-        GDK_LOG_SEV(log_level::info) << "Using '" << tor_datadir << "' as Tor datadir";
-
         clear_file(tor_control_file);
         return tor_control_file;
     }
 
-    tor_controller_impl::tor_controller_impl(const std::string& socks5_port)
+    tor_controller_impl::tor_controller_impl(const std::string& socks5_port, const std::string& tor_datadir)
         : m_base(init_eb())
-        , m_tor_datadir(std::string(gdk_config().at("datadir")) + "/tor")
+        , m_tor_datadir(tor_datadir)
         , m_tor_control_file(get_tor_control_file(m_tor_datadir))
         , m_stopping(false)
     {
@@ -737,8 +734,18 @@ namespace sdk {
         return m_socks5;
     }
 
+    static std::unique_ptr<tor_controller_impl> make_controller(const std::string& socks5_port)
+    {
+        // Use "tordir" if given, otherwise "datadir" + "/tor" for persistent data.
+        const std::string datadir = gdk_config().value("datadir", std::string{});
+        const std::string tordir = gdk_config().value("tordir", std::string{});
+        const std::string tor_datadir = tordir.empty() ? datadir + "/tor" : tordir;
+        GDK_LOG_SEV(log_level::info) << "tor: using '" << tor_datadir << "' as tor datadir";
+        return std::make_unique<tor_controller_impl>(socks5_port, tor_datadir);
+    }
+
     tor_controller::tor_controller()
-        : m_ctrl(new tor_controller_impl(""))
+        : m_ctrl(make_controller(std::string()))
     {
     }
 
@@ -762,11 +769,9 @@ namespace sdk {
     {
         std::lock_guard<std::mutex> _(m_ctrl_mutex);
 
-        if (m_ctrl) {
-            return;
+        if (!m_ctrl) {
+            m_ctrl = make_controller(m_socks5_port);
         }
-
-        m_ctrl = std::make_unique<tor_controller_impl>(m_socks5_port);
     }
 
     std::shared_ptr<tor_controller> tor_controller::get_shared_ref()
