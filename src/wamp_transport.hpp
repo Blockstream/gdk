@@ -30,6 +30,8 @@ namespace sdk {
         return result.template argument<T>(0);
     }
 
+    // Represents a WAMP server connection.
+    // All public methods are called from outside this class only.
     class wamp_transport {
     public:
         using client = websocketpp::client<websocketpp_gdk_config>;
@@ -42,15 +44,28 @@ namespace sdk {
         wamp_transport(const network_parameters& net_params, notify_fn_t fn);
         ~wamp_transport();
 
-        void connect(const std::string& proxy);
-        void disconnect();
-        void reconnect();
-        void reconnect_hint(const nlohmann::json& hint);
+        // Connect the transport. The proxy to use is passed to us as it can
+        // be dynamic in some cases (e.g. using built-in tor). Choosing the
+        // proxy to use is handled for all session types by the base class
+        // session_impl.
+        void connect(const std::string& proxy); // Currently synchronous
+
+        // Disconnect the transport.
+        void disconnect(); // Currently synchronous
+
+        // Reconnect the transport in response to an error detected by a caller
+        // outside this class. This is a no-op if the transport has already
+        // detected the same error and has reconnected/is reconnecting.
+        void reconnect(); // Async, returns without waiting
+
+        // Change the state of the transport to connected or disconnected.
+        void reconnect_hint(const nlohmann::json& hint); // Currently synchronous
 
         // Subscribe to a topic. Use is_initial=true for the first
         // subscription after reconnecting
         void subscribe(const std::string& topic, subscribe_fn_t fn, bool is_initial = false);
 
+        // Make an http request to an arbitrary host governed by 'params'.
         nlohmann::json http_request(nlohmann::json params);
 
         // Make a background WAMP call and return its result to the current thread.
