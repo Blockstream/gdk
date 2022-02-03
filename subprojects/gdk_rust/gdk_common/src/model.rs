@@ -167,7 +167,7 @@ pub struct LoadStoreOpt {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SetMasterBlindingKeyOpt {
     /// Master blinding key, when encoded in json is an hex of 128 chars
-    pub master_blinding: MasterBlindingKey,
+    pub master_blinding_key: MasterBlindingKey,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

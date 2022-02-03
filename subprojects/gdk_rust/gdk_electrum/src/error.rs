@@ -29,6 +29,7 @@ pub enum Error {
     InvalidPin,
     PsetAndTxMismatch,
     StoreNotLoaded,
+    WalletNotInitialized,
     MissingMasterBlindingKey,
     TxNotFound(String),
     AddrParse(String),
@@ -78,6 +79,9 @@ impl Display for Error {
             }
             Error::MissingMasterBlindingKey => {
                 write!(f, "Master blinding key is missing but we need it")
+            }
+            Error::WalletNotInitialized => {
+                write!(f, "Wallet is not initialized")
             }
             Error::Bitcoin(ref btcerr) => write!(f, "bitcoin: {}", btcerr),
             Error::BitcoinHashes(ref btcerr) => write!(f, "bitcoin_hashes: {}", btcerr),

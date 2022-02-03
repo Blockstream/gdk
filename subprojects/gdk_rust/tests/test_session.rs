@@ -14,7 +14,7 @@ use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
-use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
+use gdk_electrum::{determine_electrum_url_from_net, keys_from_mnemonic, spv, ElectrumSession};
 use log::{info, warn, Metadata, Record};
 use serde_json::Value;
 use std::collections::HashSet;
@@ -156,7 +156,7 @@ pub fn setup(
 
     info!("creating gdk session");
     let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
-
+    session.connect(&serde_json::to_value(network.clone()).unwrap()).unwrap();
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
     let login_data = session.login(&mnemonic, None).unwrap();
@@ -1140,7 +1140,7 @@ pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) 
 
 // Perform BIP44 account discovery as it is performed in the resolver
 pub fn discover_subaccounts(session: &mut ElectrumSession) {
-    let mnemonic = session.get_mnemonic().cloned().unwrap().get_mnemonic_str();
+    let mnemonic = session.get_mnemonic().unwrap().get_mnemonic_str();
     let signer = TestSigner::new(&mnemonic, session.network.bip32_network());
 
     for script_type in ScriptType::types() {
@@ -1176,9 +1176,8 @@ pub fn discover_subaccounts(session: &mut ElectrumSession) {
 
 // Simulate login through the auth handler
 pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
-    session.set_mnemonic_and_password(mnemonic.clone(), None); // FIXME: remove
-
-    let signer = TestSigner::new(&mnemonic.get_mnemonic_str(), session.network.bip32_network());
+    let signer =
+        TestSigner::new(&mnemonic.clone().get_mnemonic_str(), session.network.bip32_network());
 
     session
         .load_store(&LoadStoreOpt {
@@ -1186,7 +1185,18 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
         })
         .unwrap();
 
-    if let Err(Error::InvalidSubaccount(_)) = session.get_subaccount(0) {
+    if session.network.liquid {
+        session
+            .set_master_blinding_key(&SetMasterBlindingKeyOpt {
+                master_blinding_key: signer.master_blinding(),
+            })
+            .unwrap();
+    }
+    let (master_xprv, master_xpub, _) =
+        keys_from_mnemonic(&mnemonic, None, session.network.bip32_network()).unwrap();
+    session.init_wallet(mnemonic, master_xprv, master_xpub).unwrap();
+
+    if session.get_subaccounts().unwrap().iter().find(|a| a.account_num == 0).is_none() {
         // for compatibility reason, account 0 must always be present
         let path = session
             .get_subaccount_root_path(GetAccountPathOpt {
@@ -1204,15 +1214,7 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
             })
             .unwrap();
     }
-    if session.network.liquid {
-        if let Err(Error::MissingMasterBlindingKey) = session.get_master_blinding_key() {
-            session
-                .set_master_blinding_key(&SetMasterBlindingKeyOpt {
-                    master_blinding: signer.master_blinding(),
-                })
-                .unwrap();
-        }
-    }
+
     session.start_threads().unwrap();
 }
 

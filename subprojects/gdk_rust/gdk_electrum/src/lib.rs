@@ -138,14 +138,11 @@ pub struct ElectrumSession {
     pub closer: Closer,
     pub state: State,
     pub store: Option<Store>,
-
-    // TODO: this is here during transition to HWW support, it must be removed when support is completed
-    pub mnemonic: Option<Mnemonic>,
-    pub password: Option<Password>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum State {
+    Uninitialized,
     Disconnected,
     Connected,
     Logged,
@@ -372,23 +369,19 @@ impl ElectrumSession {
                 terminates: None,
                 handles: vec![],
             },
-            state: State::Disconnected,
+            state: State::Uninitialized,
             timeout: None,
             store: None,
-            mnemonic: None,
-            password: None,
         }
     }
 
     pub fn get_wallet(&self) -> Result<sync::RwLockReadGuard<WalletCtx>, Error> {
-        let wallet =
-            self.wallet.as_ref().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
+        let wallet = self.wallet.as_ref().ok_or_else(|| Error::WalletNotInitialized)?;
         Ok(wallet.read().unwrap())
     }
 
     pub fn get_wallet_mut(&mut self) -> Result<sync::RwLockWriteGuard<WalletCtx>, Error> {
-        let wallet =
-            self.wallet.as_mut().ok_or_else(|| Error::Generic("wallet not initialized".into()))?;
+        let wallet = self.wallet.as_mut().ok_or_else(|| Error::WalletNotInitialized)?;
         Ok(wallet.write().unwrap())
     }
 
@@ -467,7 +460,10 @@ impl ElectrumSession {
 
     /// Set the master key in the internal store, it needs to be called after `load_store`
     pub fn set_master_blinding_key(&mut self, opt: &SetMasterBlindingKeyOpt) -> Result<(), Error> {
-        self.store()?.write()?.cache.master_blinding = Some(opt.master_blinding.clone());
+        if let Some(master_blinding) = self.store()?.read()?.cache.master_blinding.as_ref() {
+            assert_eq!(master_blinding, &opt.master_blinding_key);
+        }
+        self.store()?.write()?.cache.master_blinding = Some(opt.master_blinding_key.clone());
         Ok(())
     }
 
@@ -501,17 +497,18 @@ impl ElectrumSession {
             });
         }
 
-        self.set_mnemonic_and_password(mnemonic.clone(), password);
+        let (master_xprv, master_xpub, master_blinding_key) =
+            keys_from_mnemonic(mnemonic, password, self.network.bip32_network())?;
 
         self.load_store(&LoadStoreOpt {
-            master_xpub: self.master_xpub()?,
+            master_xpub: master_xpub.clone(),
         })?;
         if let Err(Error::InvalidSubaccount(_)) = self.get_subaccount(0) {
             // for compatibility reason, account 0 must always be present
             let path = self.get_subaccount_root_path(GetAccountPathOpt {
                 subaccount: 0,
             })?;
-            let xprv = self.master_xprv()?.derive_priv(&crate::EC, &path.path).unwrap();
+            let xprv = master_xprv.derive_priv(&crate::EC, &path.path).unwrap();
             let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
 
             self.create_subaccount(CreateAccountOpt {
@@ -523,18 +520,17 @@ impl ElectrumSession {
         }
         if self.network.liquid {
             if let Err(Error::MissingMasterBlindingKey) = self.get_master_blinding_key() {
-                let master_blinding = asset_blinding_key_from_seed(&self.seed()?);
                 self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
-                    master_blinding,
+                    master_blinding_key,
                 })?;
             }
         }
 
+        self.init_wallet(mnemonic.clone(), master_xprv, master_xpub)?;
         self.start_threads()?;
 
-        self.state = State::Logged;
         Ok(LoginData {
-            wallet_hash_id: self.network.wallet_hash_id(&self.master_xpub()?),
+            wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
         })
     }
 
@@ -665,23 +661,8 @@ impl ElectrumSession {
             self.closer.handles.push(headers_handle);
         }
 
-        let wallet = match &self.wallet {
-            Some(wallet) => wallet.clone(),
-            None => {
-                let wallet = Arc::new(RwLock::new(WalletCtx::new(
-                    self.store()?,
-                    self.network.clone(),
-                    self.master_xprv()?.clone(),
-                    self.master_xpub()?,
-                    master_blinding.clone(),
-                )?));
-                self.wallet = Some(wallet.clone());
-                wallet
-            }
-        };
-
         let syncer = Syncer {
-            wallet: wallet.clone(),
+            wallet: self.wallet.as_ref().ok_or_else(|| Error::WalletNotInitialized)?.clone(),
             store: self.store()?,
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
@@ -755,7 +736,10 @@ impl ElectrumSession {
         });
         self.closer.handles.push(syncer_handle);
 
-        notify_settings(self.notify.clone(), &self.get_settings()?, self.closer.terminates()?);
+        if self.state == State::Uninitialized {
+            notify_settings(self.notify.clone(), &self.get_settings()?, self.closer.terminates()?);
+        }
+        self.state = State::Logged;
 
         Ok(())
     }
@@ -937,8 +921,8 @@ impl ElectrumSession {
         //TODO better implement default
     }
 
-    pub fn get_mnemonic(&self) -> Option<&Mnemonic> {
-        self.mnemonic.as_ref()
+    pub fn get_mnemonic(&self) -> Result<Mnemonic, Error> {
+        Ok(self.get_wallet()?.mnemonic.clone())
     }
 
     pub fn get_settings(&self) -> Result<Settings, Error> {
@@ -1097,32 +1081,41 @@ impl ElectrumSession {
     }
 }
 
-// TODO to be removed when HWW support is completed
+pub fn keys_from_mnemonic(
+    mnemonic: &Mnemonic,
+    password: Option<Password>,
+    network: bitcoin::Network,
+) -> Result<(ExtendedPrivKey, ExtendedPubKey, MasterBlindingKey), Error> {
+    let mnem_str = mnemonic.clone().get_mnemonic_str();
+    let password = password.as_ref().map(|p| p.clone().get_password_str()).unwrap_or_default();
+    let seed = wally::bip39_mnemonic_to_seed(&mnem_str, &password).ok_or(Error::InvalidMnemonic)?;
+    let master_xprv = ExtendedPrivKey::new_master(network, &seed)?;
+    let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
+    let master_blinding = asset_blinding_key_from_seed(&seed);
+    Ok((master_xprv, master_xpub, master_blinding))
+}
+
 impl ElectrumSession {
-    pub fn set_mnemonic_and_password(&mut self, mnemonic: Mnemonic, password: Option<Password>) {
-        self.mnemonic = Some(mnemonic);
-        self.password = password;
-    }
-    fn seed(&self) -> Result<[u8; 64], Error> {
-        match self.get_mnemonic() {
-            Some(m) => {
-                let mnem_str = m.clone().get_mnemonic_str();
-                let password = self
-                    .password
-                    .as_ref()
-                    .map(|p| p.clone().get_password_str())
-                    .unwrap_or_default();
-                Ok(wally::bip39_mnemonic_to_seed(&mnem_str, &password)
-                    .ok_or(Error::InvalidMnemonic)?)
-            }
-            None => Err(Error::InvalidMnemonic),
+    pub fn init_wallet(
+        &mut self,
+        mnemonic: Mnemonic,
+        master_xprv: ExtendedPrivKey,
+        master_xpub: ExtendedPubKey,
+    ) -> Result<(), Error> {
+        if self.network.liquid {
+            assert!(self.get_master_blinding_key().is_ok());
         }
-    }
-    fn master_xprv(&self) -> Result<ExtendedPrivKey, Error> {
-        Ok(ExtendedPrivKey::new_master(self.network.bip32_network(), &self.seed()?)?)
-    }
-    fn master_xpub(&self) -> Result<ExtendedPubKey, Error> {
-        Ok(ExtendedPubKey::from_private(&EC, &self.master_xprv()?))
+
+        let wallet = Arc::new(RwLock::new(WalletCtx::new(
+            self.store()?,
+            self.network.clone(),
+            mnemonic,
+            master_xprv,
+            master_xpub,
+            self.get_master_blinding_key().ok(),
+        )?));
+        self.wallet = Some(wallet.clone());
+        Ok(())
     }
 }
 

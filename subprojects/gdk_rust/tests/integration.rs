@@ -20,8 +20,7 @@ use std::{env, thread};
 use tempfile::TempDir;
 
 mod test_session;
-use crate::test_session::auth_handler_login;
-use test_session::{discover_subaccounts, TestSession};
+use test_session::{auth_handler_login, discover_subaccounts, TestSession};
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
