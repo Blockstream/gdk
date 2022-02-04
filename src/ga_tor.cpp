@@ -482,9 +482,13 @@ namespace sdk {
         m_tor_run_thread = std::thread([&] {
             tor_main_configuration_t* tor_conf = tor_main_configuration_new();
             GDK_RUNTIME_ASSERT(tor_conf);
+            const bool quiet = gdk_config()["log_level"] == "none";
             std::vector<const char*> argv_conf;
             argv_conf.reserve(17);
             argv_conf.push_back("tor");
+            if (quiet) {
+                argv_conf.push_back("--quiet"); // Silence all log output
+            }
             argv_conf.push_back("__DisableSignalHandlers");
             argv_conf.push_back("1");
             argv_conf.push_back("SafeSocks");
@@ -502,8 +506,10 @@ namespace sdk {
             argv_conf.push_back("DataDirectory");
             argv_conf.push_back(m_tor_datadir.c_str());
 #if not defined(NDEBUG)
-            argv_conf.push_back("Log");
-            argv_conf.push_back("notice"); // debug prints out way too much stuff and we don't really need them
+            if (!quiet) {
+                argv_conf.push_back("Log");
+                argv_conf.push_back("notice"); // debug prints out way too much stuff and we don't really need them
+            }
 #endif
             int conf_res
                 = tor_main_configuration_set_command_line(tor_conf, argv_conf.size(), (char**)argv_conf.data());
