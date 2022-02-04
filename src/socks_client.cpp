@@ -43,7 +43,7 @@ namespace sdk {
 
     void socks_client::shutdown()
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:run");
+        GDK_LOG_NAMED_SCOPE("socks_client:shutdown");
 
         beast::error_code ec;
         m_stream.socket().shutdown(asio::ip::tcp::socket::shutdown_both, ec);
@@ -97,8 +97,16 @@ namespace sdk {
         if (m_negotiation_phase == negotiation_phase::method_selection) {
             m_negotiation_phase = negotiation_phase::connect;
 
-            asio::async_write(m_stream, connect_request(m_endpoint),
-                beast::bind_front_handler(&socks_client::on_write, shared_from_this()));
+            asio::const_buffer request;
+            try {
+                request = connect_request(m_endpoint);
+            } catch (const std::exception& ex) {
+                GDK_LOG_SEV(log_level::warning)
+                    << "exception creating request for endpoint '" << m_endpoint << "':" << ex.what();
+                return set_exception(ex.what());
+            }
+            asio::async_write(
+                m_stream, request, beast::bind_front_handler(&socks_client::on_write, shared_from_this()));
         } else {
 
             if (m_negotiation_phase != negotiation_phase::connect) {
