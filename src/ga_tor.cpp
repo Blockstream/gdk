@@ -232,7 +232,7 @@ namespace sdk {
         std::condition_variable m_init_cv;
         std::mutex m_init_mutex;
         struct event_base* m_base;
-        std::string m_tor_datadir;
+        const std::string m_tor_datadir;
         const std::string m_tor_control_file;
         std::string m_tor_control_port;
         std::unique_ptr<tor_control_connection> m_conn;
@@ -736,10 +736,7 @@ namespace sdk {
 
     static std::unique_ptr<tor_controller_impl> make_controller(const std::string& socks5_port)
     {
-        // Use "tordir" if given, otherwise "datadir" + "/tor" for persistent data.
-        const std::string datadir = gdk_config().value("datadir", std::string{});
-        const std::string tordir = gdk_config().value("tordir", std::string{});
-        const std::string tor_datadir = tordir.empty() ? datadir + "/tor" : tordir;
+        const std::string tor_datadir = gdk_config()["tordir"];
         GDK_LOG_SEV(log_level::info) << "tor: using '" << tor_datadir << "' as tor datadir";
         return std::make_unique<tor_controller_impl>(socks5_port, tor_datadir);
     }
@@ -780,7 +777,7 @@ namespace sdk {
         std::shared_ptr<tor_controller> shared = s_inst.lock();
 
         if (!shared) {
-            GDK_RUNTIME_ASSERT(!gdk_config().at("datadir").empty());
+            GDK_RUNTIME_ASSERT(!gdk_config()["tordir"].empty());
             s_inst = shared = std::make_shared<tor_controller>();
         }
 

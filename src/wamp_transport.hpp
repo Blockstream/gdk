@@ -131,7 +131,6 @@ namespace sdk {
         const std::string m_wamp_call_prefix;
         autobahn::wamp_call_options m_wamp_call_options;
         notify_fn_t m_notify_fn;
-        const bool m_debug_logging;
         std::unique_ptr<client> m_client;
         std::unique_ptr<client_tls> m_client_tls;
 

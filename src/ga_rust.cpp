@@ -73,7 +73,9 @@ namespace sdk {
     ga_rust::ga_rust(network_parameters&& net_params)
         : session_impl(std::move(net_params))
     {
-        const auto res = GDKRUST_create_session(&m_session, m_net_params.get_json().dump().c_str());
+        auto np = m_net_params.get_json();
+        np["log_level"] = gdk_config()["log_level"]; // FIXME: rust should get this from gdk_config
+        const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
         GDK_RUNTIME_ASSERT(res == GA_OK);
     }
 

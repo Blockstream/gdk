@@ -416,7 +416,6 @@ namespace sdk {
         , m_wamp_call_prefix("com.greenaddress.")
         , m_wamp_call_options()
         , m_notify_fn(fn)
-        , m_debug_logging(m_net_params.log_level() == "debug")
         , m_desired_state(state_t::disconnected)
         , m_state(state_t::disconnected)
         , m_failure_count(0)
@@ -592,6 +591,7 @@ namespace sdk {
     void wamp_transport::reconnect_handler()
     {
         const bool is_tls = m_net_params.is_tls_connection();
+        const bool is_debug = gdk_config()["log_level"] == "debug";
         const auto& executor = m_io.get_executor();
 
         // The last failure number that we handled
@@ -679,11 +679,11 @@ namespace sdk {
                     << "net: connect to " << m_server << (proxy.empty() ? "" : std::string(" via ") + proxy);
 
                 if (is_tls) {
-                    t = std::make_shared<transport_tls>(*m_client_tls, m_server, proxy, m_debug_logging);
+                    t = std::make_shared<transport_tls>(*m_client_tls, m_server, proxy, is_debug);
                 } else {
-                    t = std::make_shared<transport>(*m_client, m_server, proxy, m_debug_logging);
+                    t = std::make_shared<transport>(*m_client, m_server, proxy, is_debug);
                 }
-                s = std::make_shared<autobahn::wamp_session>(m_io, m_debug_logging);
+                s = std::make_shared<autobahn::wamp_session>(m_io, is_debug);
                 t->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(s));
                 bool failed = false;
                 if (no_std_exception_escape(

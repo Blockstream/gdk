@@ -50,7 +50,6 @@ namespace sdk {
         std::string bip21_prefix() const;
         std::string bech32_prefix() const;
         std::string blech32_prefix() const;
-        std::string log_level() const;
         unsigned char btc_version() const;
         unsigned char btc_p2sh_version() const;
         uint32_t blinded_prefix() const;

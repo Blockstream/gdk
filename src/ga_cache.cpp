@@ -458,7 +458,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(!encryption_key.empty());
 
-        m_data_dir = gdk_config().value("datadir", std::string{});
+        m_data_dir = gdk_config()["datadir"];
         if (m_data_dir.empty()) {
             GDK_LOG_SEV(log_level::info) << "datadir not set - thus no get_persistent_storage_file available";
             return;

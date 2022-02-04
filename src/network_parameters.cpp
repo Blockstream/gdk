@@ -582,7 +582,6 @@ namespace sdk {
             // Set override-able settings from the users parameters
             set_override(defaults, "electrum_tls", user_overrides, false);
             set_override(defaults, "electrum_url", user_overrides, std::string());
-            set_override(defaults, "log_level", user_overrides, "none");
             set_override(defaults, "spv_multi", user_overrides, false);
             set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
             set_override(defaults, "spv_enabled", user_overrides, false);
@@ -590,7 +589,7 @@ namespace sdk {
             set_override(defaults, "user_agent", user_overrides, std::string());
             set_override(defaults, "cert_expiry_threshold", user_overrides, 1);
             set_override(defaults, "proxy", user_overrides, std::string());
-            defaults["state_dir"] = gdk_config().value("datadir", std::string{}) + "/state";
+            defaults["state_dir"] = gdk_config().value("datadir", std::string()) + "/state";
             return defaults;
         }
     } // namespace
@@ -677,7 +676,6 @@ namespace sdk {
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
     std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
     std::string network_parameters::blech32_prefix() const { return m_details.at("blech32_prefix"); }
-    std::string network_parameters::log_level() const { return m_details.value("log_level", "none"); }
     unsigned char network_parameters::btc_version() const { return m_details.at("p2pkh_version"); }
     unsigned char network_parameters::btc_p2sh_version() const { return m_details.at("p2sh_version"); }
     uint32_t network_parameters::blinded_prefix() const { return m_details.at("blinded_prefix"); }

@@ -12,23 +12,6 @@ namespace ga {
 namespace sdk {
 
     namespace {
-        static void configure_logging(const network_parameters& net_params)
-        {
-            const auto level = net_params.log_level();
-            // Default to fatal logging, i.e. 'none' since we don't log any
-            auto severity = log_level::severity_level::fatal;
-            if (level == "debug") {
-                severity = log_level::severity_level::debug;
-            } else if (level == "info") {
-                severity = log_level::severity_level::info;
-            } else if (level == "warn") {
-                severity = log_level::severity_level::warning;
-            } else if (level == "error") {
-                severity = log_level::severity_level::error;
-            }
-            boost::log::core::get()->set_filter(log_level::severity >= severity);
-        }
-
         static void check_hint(const std::string& hint, const char* hint_type)
         {
             if (hint != "connect" && hint != "disconnect") {
@@ -59,7 +42,6 @@ namespace sdk {
         , m_notification_context(nullptr)
         , m_notify(true)
     {
-        configure_logging(m_net_params);
         if (m_net_params.use_tor() && m_user_proxy.empty()) {
             // Enable internal tor controller
             m_tor_ctrl = tor_controller::get_shared_ref();

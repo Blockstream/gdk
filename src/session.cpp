@@ -26,6 +26,7 @@ namespace sdk {
 
         static std::atomic_bool init_done{ false };
         static nlohmann::json global_config;
+        static auto global_log_level = log_level::severity_level::fatal;
 
         static void log_exception(const char* preamble, const std::exception& e)
         {
@@ -43,6 +44,30 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!init_done);
 
         global_config = config;
+        if (!global_config.contains("datadir")) {
+            global_config.emplace("datadir", std::string());
+        }
+        if (!global_config.contains("tordir")) {
+            const std::string datadir = global_config["datadir"];
+            global_config.emplace("tordir", datadir + "/tor");
+        }
+        if (!global_config.contains("log_level")) {
+            global_config.emplace("log_level", "none");
+        }
+
+        // Set up logging. Default to fatal logging, effectively 'none',
+        // since we don't use fatal severity for logging.
+        const std::string level = global_config["log_level"];
+        if (level == "debug") {
+            global_log_level = log_level::severity_level::debug;
+        } else if (level == "info") {
+            global_log_level = log_level::severity_level::info;
+        } else if (level == "warn") {
+            global_log_level = log_level::severity_level::warning;
+        } else if (level == "error") {
+            global_log_level = log_level::severity_level::error;
+        }
+        boost::log::core::get()->set_filter(log_level::severity >= global_log_level);
 
         GDK_VERIFY(wally_init(0));
         auto entropy = get_random_bytes<WALLY_SECP_RANDOMIZE_LEN>();
@@ -57,7 +82,11 @@ namespace sdk {
         return GA_OK;
     }
 
-    const nlohmann::json& gdk_config() { return global_config; }
+    const nlohmann::json& gdk_config()
+    {
+        GDK_RUNTIME_ASSERT(init_done);
+        return global_config;
+    }
 
     void session::exception_handler(std::exception_ptr ex_p)
     {

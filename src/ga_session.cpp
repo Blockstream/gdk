@@ -2296,7 +2296,7 @@ namespace sdk {
 
         const auto& verified_status_str = SPV_STATUS_NAMES.at(SPV_STATUS_VERIFIED);
 
-        const auto datadir = gdk_config().value("datadir", std::string{});
+        const std::string datadir = gdk_config()["datadir"];
         const auto path = datadir + "/state";
         const auto spv_enabled = m_net_params.spv_enabled() && !datadir.empty();
         nlohmann::json spv_params

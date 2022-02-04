@@ -53,10 +53,10 @@ int main()
 
     nlohmann::json init_config;
     init_config["datadir"] = ".";
+    init_config["log_level"] = "info";
     sdk::init(init_config);
 
     nlohmann::json net_params;
-    net_params["log_level"] = "info";
     net_params["name"] = envstr("GA_NETWORK", "localtest");
 
     sdk::session session;
