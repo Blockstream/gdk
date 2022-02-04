@@ -492,9 +492,7 @@ impl ElectrumSession {
 
         // This check must be done before everything else to allow re-login
         if self.state == State::Logged {
-            return Ok(LoginData {
-                wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
-            });
+            return self.get_wallet_hash_id();
         }
 
         let (master_xprv, master_xpub, master_blinding_key) =
@@ -529,9 +527,7 @@ impl ElectrumSession {
         self.init_wallet(mnemonic.clone(), master_xprv, master_xpub)?;
         self.start_threads()?;
 
-        Ok(LoginData {
-            wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
-        })
+        self.get_wallet_hash_id()
     }
 
     pub fn start_threads(&mut self) -> Result<(), Error> {
@@ -742,6 +738,12 @@ impl ElectrumSession {
         self.state = State::Logged;
 
         Ok(())
+    }
+
+    pub fn get_wallet_hash_id(&self) -> Result<LoginData, Error> {
+        Ok(LoginData {
+            wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
+        })
     }
 
     pub fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {

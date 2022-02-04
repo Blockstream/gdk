@@ -453,6 +453,7 @@ fn handle_session_call(
             .map(|v| json!(v))
             .map_err(Into::into),
         "start_threads" => session.start_threads().map_err(Into::into).map(|s| json!(s)),
+        "get_wallet_hash_id" => session.get_wallet_hash_id().map_err(Into::into).map(|s| json!(s)),
 
         // "auth_handler_get_status" => Ok(auth_handler.to_json()),
         _ => Err(Error::MethodNotFound {
