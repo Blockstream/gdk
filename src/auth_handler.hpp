@@ -53,10 +53,16 @@ namespace sdk {
         virtual const nlohmann::json& get_twofactor_data() const = 0;
         virtual const std::string& get_code() const = 0;
         virtual const nlohmann::json& get_hw_reply() const = 0;
+        virtual nlohmann::json&& move_result() = 0;
 
         virtual void operator()() = 0;
         virtual session_impl& get_session() const = 0;
         virtual std::shared_ptr<signer> get_signer() const = 0;
+
+        auth_handler* get_next_handler() const;
+        void add_next_handler(auth_handler* next);
+        std::unique_ptr<auth_handler> remove_next_handler();
+        virtual bool on_next_handler_complete(auth_handler* next_handler);
 
     protected:
         virtual void signal_hw_request(hw_request request);
@@ -65,6 +71,8 @@ namespace sdk {
 
         virtual void request_code_impl(const std::string& method);
         virtual state_type call_impl();
+
+        std::unique_ptr<auth_handler> m_next_handler;
     };
 
     struct auth_handler_impl : public auth_handler {
@@ -82,6 +90,7 @@ namespace sdk {
         const nlohmann::json& get_twofactor_data() const final;
         const std::string& get_code() const final;
         const nlohmann::json& get_hw_reply() const final;
+        nlohmann::json&& move_result() final;
 
         void operator()() final;
         session_impl& get_session() const final;
@@ -121,7 +130,7 @@ namespace sdk {
     };
 
     struct auto_auth_handler : public auth_handler {
-        auto_auth_handler(auth_handler* m_handler);
+        auto_auth_handler(auth_handler* handler);
         ~auto_auth_handler();
 
         void request_code(const std::string& method) override;
@@ -134,6 +143,7 @@ namespace sdk {
         const nlohmann::json& get_twofactor_data() const final;
         const std::string& get_code() const final;
         const nlohmann::json& get_hw_reply() const final;
+        nlohmann::json&& move_result() final;
 
         void operator()() final;
         virtual session_impl& get_session() const final;
@@ -142,6 +152,9 @@ namespace sdk {
         void advance();
 
     private:
+        auth_handler* get_current_handler() const;
+        std::unique_ptr<auth_handler> pop_handler();
+
         bool step();
         bool are_all_paths_cached(std::shared_ptr<signer> signer, const nlohmann::json& paths) const;
         nlohmann::json get_xpubs(std::shared_ptr<signer> signer, const nlohmann::json& paths) const;
