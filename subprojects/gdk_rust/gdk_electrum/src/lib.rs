@@ -24,7 +24,6 @@ pub mod spv;
 use crate::account::{discover_account, get_account_derivation};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
-use crate::notification::*;
 use crate::store::*;
 
 use bitcoin::hashes::hex::{FromHex, ToHex};
@@ -512,7 +511,7 @@ impl ElectrumSession {
         };
 
         let mut tip_height = self.store()?.read()?.cache.tip.0;
-        notify_block(self.notify.clone(), tip_height, self.closer.terminates()?);
+        self.notify.block(tip_height, self.closer.terminates()?);
 
         info!(
             "building client, url {}, proxy {}",
@@ -557,7 +556,7 @@ impl ElectrumSession {
             let headers_url = self.url.clone();
             let proxy = self.proxy.clone();
             let terminates = self.closer.terminates()?;
-            let notify_headers = self.notify.clone();
+            let notify_txs = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
@@ -613,11 +612,7 @@ impl ElectrumSession {
                             let status_changed = headers.cross_validate();
                             if status_changed {
                                 // TODO account number
-                                notify_updated_txs(
-                                    notify_headers.clone(),
-                                    0u32.into(),
-                                    terminates.clone(),
-                                );
+                                notify_txs.updated_txs(0u32.into(), terminates.clone());
                             }
                         }
 
@@ -656,7 +651,7 @@ impl ElectrumSession {
                             if tip_height != current_tip {
                                 tip_height = current_tip;
                                 info!("tip is {:?}", tip_height);
-                                notify_block(notify_blocks.clone(), tip_height, terminates.clone());
+                                notify_blocks.block(tip_height, terminates.clone());
                             }
                         }
                         Err(e) => {
@@ -684,11 +679,7 @@ impl ElectrumSession {
                         Ok(updated_accounts) => {
                             for account_num in updated_accounts {
                                 info!("there are new transactions");
-                                notify_updated_txs(
-                                    notify_txs.clone(),
-                                    account_num,
-                                    terminates.clone(),
-                                );
+                                notify_txs.updated_txs(account_num, terminates.clone());
                             }
                         }
                         Err(e) => warn!("Error during sync, {:?}", e),
@@ -704,7 +695,7 @@ impl ElectrumSession {
         self.closer.handles.push(syncer_handle);
 
         if self.state == State::Uninitialized {
-            notify_settings(self.notify.clone(), &self.get_settings()?, self.closer.terminates()?);
+            self.notify.settings(&self.get_settings()?, self.closer.terminates()?);
         }
         self.state = State::Logged;
 
@@ -907,7 +898,7 @@ impl ElectrumSession {
         let mut settings = wallet.get_settings()?;
         settings.update(value);
         self.get_wallet()?.change_settings(&settings)?;
-        notify_settings(self.notify.clone(), &settings, self.closer.terminates()?);
+        self.notify.settings(&settings, self.closer.terminates()?);
         Ok(())
     }
 
