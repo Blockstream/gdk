@@ -68,6 +68,17 @@ namespace sdk {
 
     std::string session_impl::connect_tor()
     {
+        // Our built in tor implementation creates a socks5 proxy, which we
+        // then connect through in the same way as a user-provided proxy.
+        // The address of the proxy is returned to us when we ask tor to wake
+        // up, via m_tor_ctrl->wait_for_socks5(). Since the address of the
+        // internal proxy can change, we must update it when connecting,
+        // and when reconnecting via reconnect_hint(). That is done in 2 ways:
+        // We return the proxy here when connecting for the derived session to
+        // use, and we expose get_proxy_settings() to fetch the current proxy
+        // (either for the session to use, as in http_request(), or for the
+        // caller to use if they wish to do application level networking while
+        // respecting the sessions connection preferences).
         if (m_tor_ctrl) {
             std::string tor_proxy = m_tor_ctrl->wait_for_socks5([&](std::shared_ptr<tor_bootstrap_phase> p) {
                 nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
