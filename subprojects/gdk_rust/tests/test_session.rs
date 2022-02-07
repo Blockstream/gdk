@@ -16,7 +16,7 @@ use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
 use gdk_electrum::{determine_electrum_url_from_net, keys_from_mnemonic, spv, ElectrumSession};
 use log::{info, warn, Metadata, Record};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::str::FromStr;
@@ -160,6 +160,7 @@ pub fn setup(
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
     let login_data = session.login(&mnemonic, None).unwrap();
+    assert!(session.notify.find_last_event("settings").is_some());
     assert_eq!(network.name, ""); // network name contributes to wallet hash id
     assert_eq!(
         login_data.wallet_hash_id,
@@ -179,6 +180,10 @@ pub fn setup(
         }
     };
     assert_eq!(block_status.0, 101);
+    assert_eq!(
+        session.notify.find_last_event("block"),
+        Some(json!({"block":{"block_height":101},"event":"block"}))
+    );
 
     let network_id = if is_liquid {
         NetworkId::Elements(ElementsNetwork::ElementsRegtest)

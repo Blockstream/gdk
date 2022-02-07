@@ -329,7 +329,7 @@ impl ElectrumSession {
             network,
             url,
             wallet: None,
-            notify: NativeNotif(None),
+            notify: NativeNotif::new(),
             closer: Closer {
                 terminates: None,
                 handles: vec![],
@@ -1574,4 +1574,11 @@ fn wait_or_close(terminate: &Arc<AtomicBool>, interval: u32) -> bool {
 // Return a sentinel value that the caller should interpret as "no cached data"
 fn get_registry_sentinel() -> Value {
     json!({})
+}
+
+#[cfg(feature = "testing")]
+impl ElectrumSession {
+    pub fn notifications(&self) -> Vec<Value> {
+        self.notify.notifications()
+    }
 }

@@ -6,6 +6,7 @@ edition = "2018"
 
 [features]
 android_log = ["android_logger"]
+testing = []
 
 [dependencies]
 log = "0.4.8"

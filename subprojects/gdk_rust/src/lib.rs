@@ -28,7 +28,7 @@ use gdk_common::model::{
 
 use crate::error::Error;
 use gdk_electrum::pset::{ExtractTxParam, FromTxParam, MergeTxParam};
-use gdk_electrum::{ElectrumSession, NativeNotif};
+use gdk_electrum::ElectrumSession;
 use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
 use std::str::FromStr;
@@ -272,7 +272,7 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     let backend = &mut sess.backend;
 
     match backend {
-        GdkBackend::Electrum(ref mut s) => s.notify = NativeNotif(Some((handler, self_context))),
+        GdkBackend::Electrum(ref mut s) => s.notify.set_native((handler, self_context)),
     };
 
     info!("set notification handler");
