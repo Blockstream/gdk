@@ -16,6 +16,7 @@ pub mod account;
 pub mod error;
 pub mod headers;
 pub mod interface;
+mod notification;
 pub mod pin;
 pub mod pset;
 pub mod spv;
@@ -23,6 +24,7 @@ pub mod spv;
 use crate::account::{discover_account, get_account_derivation};
 use crate::error::Error;
 use crate::interface::{ElectrumUrl, WalletCtx};
+use crate::notification::*;
 use crate::store::*;
 
 use bitcoin::hashes::hex::{FromHex, ToHex};
@@ -36,8 +38,7 @@ use gdk_common::model::*;
 use gdk_common::network::Network;
 use gdk_common::password::Password;
 use gdk_common::wally::{
-    self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, make_str,
-    MasterBlindingKey,
+    self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, MasterBlindingKey,
 };
 
 use elements::confidential::{self, Asset, Nonce};
@@ -50,6 +51,7 @@ use std::{iter, sync, thread};
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
+pub use crate::notification::NativeNotif;
 use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
 use aes::Aes256;
@@ -98,12 +100,6 @@ pub struct Headers {
     pub cross_validator: Option<SpvCrossValidator>,
 }
 
-#[derive(Clone)]
-pub struct NativeNotif(
-    pub Option<(extern "C" fn(*const libc::c_void, *const libc::c_char), *const libc::c_void)>,
-);
-unsafe impl Send for NativeNotif {}
-
 pub struct Closer {
     pub terminates: Option<Arc<AtomicBool>>,
     pub handles: Vec<JoinHandle<()>>,
@@ -146,36 +142,6 @@ pub enum State {
     Disconnected,
     Connected,
     Logged,
-}
-
-fn notify(notif: NativeNotif, data: Value, terminated: Arc<AtomicBool>) {
-    info!("push notification: {:?}", data);
-    if terminated.load(Ordering::Relaxed) {
-        warn!("terminated signal already received, skipping notification");
-        return;
-    }
-    if let Some((handler, self_context)) = notif.0 {
-        handler(self_context, make_str(data.to_string()));
-    } else {
-        warn!("no registered handler to receive notification");
-    }
-}
-
-fn notify_block(notif: NativeNotif, height: u32, terminated: Arc<AtomicBool>) {
-    let data = json!({"block":{"block_height":height},"event":"block"});
-    notify(notif, data, terminated);
-}
-
-fn notify_settings(notif: NativeNotif, settings: &Settings, terminated: Arc<AtomicBool>) {
-    let data = json!({"settings":settings,"event":"settings"});
-    notify(notif, data, terminated);
-}
-
-fn notify_updated_txs(notif: NativeNotif, account_num: u32, terminated: Arc<AtomicBool>) {
-    // This is used as a signal to trigger syncing via get_transactions, the transaction
-    // list contained here is ignored and can be just a mock.
-    let mockup_json = json!({"event":"transaction","transaction":{"subaccounts":[account_num]}});
-    notify(notif, mockup_json, terminated);
 }
 
 fn determine_electrum_url(
