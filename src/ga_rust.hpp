@@ -132,7 +132,6 @@ namespace sdk {
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
 
-        bool m_reconnect_restart;
         void* m_session;
     };
 

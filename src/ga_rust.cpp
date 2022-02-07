@@ -86,22 +86,41 @@ namespace sdk {
         // gdk_rust cleanup
     }
 
+    void ga_rust::connect()
+    {
+        nlohmann::json net_params = m_net_params.get_json();
+        net_params["proxy"] = session_impl::connect_tor();
+        call_session("connect", net_params);
+    }
+
     void ga_rust::reconnect()
     {
+        // Called by the top level session handler in reponse to
+        // reconnect and timeout errors.
         disconnect();
-        if (m_reconnect_restart) {
-            connect();
-        }
+        connect();
     }
 
     void ga_rust::reconnect_hint(const nlohmann::json& hint)
     {
+        // Called by the user to indicate they want to connect or disconnect
+        // the sessions underlying transport
         session_impl::reconnect_hint(hint);
+
         const auto hint_p = hint.find("hint");
         if (hint_p != hint.end()) {
-            m_reconnect_restart = *hint_p == "connect";
-            reconnect();
+            if (*hint_p == "connect") {
+                connect();
+            } else {
+                disconnect();
+            }
         }
+    }
+
+    void ga_rust::disconnect()
+    {
+        GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
+        call_session("disconnect", {});
     }
 
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
@@ -119,19 +138,6 @@ namespace sdk {
         GDKRUST_destroy_string(output);
         check_code(res, cppjson);
         return cppjson;
-    }
-
-    void ga_rust::connect()
-    {
-        nlohmann::json net_params = m_net_params.get_json();
-        net_params["proxy"] = session_impl::connect_tor();
-        call_session("connect", net_params);
-    }
-
-    void ga_rust::disconnect()
-    {
-        GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
-        call_session("disconnect", {});
     }
 
     nlohmann::json ga_rust::http_request(nlohmann::json params)
