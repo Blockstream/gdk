@@ -98,7 +98,7 @@ namespace sdk {
         session& m_session_parent;
 
     protected:
-        boost::shared_ptr<session_impl> m_session;
+        std::shared_ptr<session_impl> m_session;
         const network_parameters& m_net_params;
         const std::string m_name; // Name of the method being resolved
         std::shared_ptr<signer> m_signer;

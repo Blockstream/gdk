@@ -22,17 +22,17 @@ namespace sdk {
 
     } // namespace
 
-    boost::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
+    std::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
     {
         auto defaults = network_parameters::get(net_params.value("name", std::string()));
         network_parameters np{ net_params, defaults };
 
 #ifdef BUILD_GDK_RUST
         if (np.is_electrum()) {
-            return boost::make_shared<ga_rust>(std::move(np));
+            return std::make_shared<ga_rust>(std::move(np));
         }
 #endif
-        return boost::make_shared<ga_session>(std::move(np));
+        return std::make_shared<ga_session>(std::move(np));
     }
 
     session_impl::session_impl(network_parameters&& net_params)

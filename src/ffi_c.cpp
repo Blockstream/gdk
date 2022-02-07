@@ -248,7 +248,11 @@ int GA_destroy_json(GA_json* json)
 GDK_DEFINE_C_FUNCTION_2(
     GA_connect, struct GA_session*, session, const GA_json*, net_params, { session->connect(*json_cast(net_params)); });
 
-GDK_DEFINE_C_FUNCTION_1(GA_disconnect, struct GA_session*, session, { session->disconnect(); })
+// FIXME: Remove
+GDK_DEFINE_C_FUNCTION_1(GA_disconnect, struct GA_session*, session, {
+    (void)session;
+    throw std::runtime_error("Not supported");
+})
 
 GDK_DEFINE_C_FUNCTION_2(GA_reconnect_hint, struct GA_session*, session, const GA_json*, hint,
     { session->reconnect_hint(*json_cast(hint)); });

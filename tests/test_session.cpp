@@ -72,6 +72,7 @@ int main()
     sdk::auto_auth_handler login_call(new sdk::login_user_call(session, nlohmann::json(), details));
     std::cout << process_auth(login_call) << std::endl;
 
+#if 1
     // Get subaccounts/ Get subaccount
     std::vector<uint32_t> subaccounts;
     {
@@ -109,6 +110,7 @@ int main()
             std::cout << process_auth(call) << std::endl;
         }
     }
+#endif
 
 #if 0
     // Test disconnecting a session while an auth handler is in progress
@@ -131,23 +133,26 @@ int main()
     // Let the thread start, then disconnect the session and wait for the thread to finish
     std::this_thread::yield();
     std::this_thread::sleep_for(100ms);
-    session.disconnect();
+    session.reconnect_hint(nlohmann::json({{ "hint", "disconnect" }}));
     t.join();
 #endif
 
+#if 0
     // Try continuing an auth handler following disconnect()
     bool exception_caught = false;
     {
         const nlohmann::json tx_details({ { "subaccount", 0 }, { "first", 0 }, { "count", 99999 } });
-        sdk::auto_auth_handler call(new sdk::get_transactions_call(session, tx_details));
-        session.disconnect();
+        auto tx_call = new sdk::get_transactions_call(session, tx_details);
+        session.reconnect_hint(nlohmann::json({ { "hint", "disconnect" } }));
         try {
+            sdk::auto_auth_handler call(tx_call);
             process_auth(call);
         } catch (const std::exception&) {
             exception_caught = true;
         }
     }
     GDK_RUNTIME_ASSERT(exception_caught);
+#endif
 
     return 0;
 }

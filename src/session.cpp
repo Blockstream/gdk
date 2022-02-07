@@ -93,19 +93,15 @@ namespace sdk {
         try {
             std::rethrow_exception(ex_p);
         } catch (const autobahn::abort_error& e) {
-            reconnect();
-            throw reconnect_error();
+            signal_reconnect_and_throw();
         } catch (const login_error& e) {
             std::rethrow_exception(ex_p);
         } catch (const autobahn::network_error& e) {
-            reconnect();
-            throw reconnect_error();
+            signal_reconnect_and_throw();
         } catch (const autobahn::no_transport_error& e) {
-            reconnect();
-            throw reconnect_error();
+            signal_reconnect_and_throw();
         } catch (const autobahn::protocol_error& e) {
-            reconnect();
-            throw reconnect_error();
+            signal_reconnect_and_throw();
         } catch (const autobahn::call_error& e) {
             std::pair<std::string, std::string> details;
             try {
@@ -131,11 +127,9 @@ namespace sdk {
         } catch (const reconnect_error& e) {
             std::rethrow_exception(ex_p);
         } catch (const timeout_error& e) {
-            reconnect();
-            throw reconnect_error();
+            signal_reconnect_and_throw();
         } catch (const websocketpp::exception& e) {
-            reconnect();
-            throw reconnect_error();
+            signal_reconnect_and_throw();
         } catch (const std::exception& e) {
             log_exception("uncaught exception:", e);
             std::rethrow_exception(ex_p);
@@ -156,14 +150,14 @@ namespace sdk {
     {
         try {
             GDK_RUNTIME_ASSERT_MSG(init_done, "You must call GA_init first");
-            GDK_RUNTIME_ASSERT_MSG(!get_impl(), "session already connected");
 
-            boost::shared_ptr<session_impl> session_p = session_impl::create(net_params);
-            session_p->set_notification_handler(m_notification_handler, m_notification_context);
+            locker_t locker(m_mutex);
+            GDK_RUNTIME_ASSERT_MSG(!m_impl, "session already connected");
 
-            boost::shared_ptr<session_impl> empty;
-            GDK_RUNTIME_ASSERT_MSG(m_impl.compare_exchange_strong(empty, session_p), "unable to allocate session");
-            session_p->connect();
+            auto impl = session_impl::create(net_params);
+            impl->set_notification_handler(m_notification_handler, m_notification_context);
+            impl->connect();
+            m_impl = impl;
         } catch (const std::exception& ex) {
             log_exception("exception on connect:", ex);
             std::rethrow_exception(std::current_exception());
@@ -171,17 +165,24 @@ namespace sdk {
     }
 
     session::session()
+        : m_notification_handler(nullptr)
+        , m_notification_context(nullptr)
     {
-        // Expanded for debugging purposes
     }
 
     session::~session()
     {
-        // Expanded for debugging purposes
-        disconnect();
+        no_std_exception_escape([this]() {
+            auto p = get_impl();
+            if (p) {
+                const bool is_electrum = p->get_network_parameters().is_electrum();
+                GDK_LOG_SEV(log_level::info) << "disconnecting " << (is_electrum ? "single" : "multi") << "sig session";
+                p->disconnect();
+            }
+        });
     }
 
-    void session::reconnect()
+    void session::signal_reconnect_and_throw()
     {
         auto p = get_impl();
         if (!p) {
@@ -190,20 +191,7 @@ namespace sdk {
         }
 
         p->reconnect();
-    }
-
-    void session::disconnect()
-    {
-        no_std_exception_escape([this]() {
-            auto p = get_impl();
-            while (p && !m_impl.compare_exchange_strong(p, boost::shared_ptr<session_impl>{})) {
-            }
-            if (p) {
-                const bool is_electrum = p->get_network_parameters().is_electrum();
-                GDK_LOG_SEV(log_level::info) << "disconnecting " << (is_electrum ? "single" : "multi") << "sig session";
-                p->disconnect();
-            }
-        });
+        throw reconnect_error();
     }
 
     void session::reconnect_hint(const nlohmann::json& hint)
@@ -399,11 +387,17 @@ namespace sdk {
         return p->get_network_parameters(); // Note no exception_wrapper
     }
 
-    boost::shared_ptr<session_impl> session::get_nonnull_impl() const
+    session::impl_ptr session::get_nonnull_impl() const
     {
-        auto p = get_impl();
-        GDK_RUNTIME_ASSERT(p != nullptr);
-        return p;
+        auto impl = get_impl();
+        GDK_RUNTIME_ASSERT(impl != nullptr);
+        return impl;
+    }
+
+    session::impl_ptr session::get_impl() const
+    {
+        locker_t locker(m_mutex);
+        return m_impl;
     }
 
 } // namespace sdk

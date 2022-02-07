@@ -35,7 +35,7 @@ namespace sdk {
         virtual ~session_impl();
 
         // Factory method
-        static boost::shared_ptr<session_impl> create(const nlohmann::json& net_params);
+        static std::shared_ptr<session_impl> create(const nlohmann::json& net_params);
 
         // UTXOs
         using utxo_cache_value_t = std::shared_ptr<const nlohmann::json>;

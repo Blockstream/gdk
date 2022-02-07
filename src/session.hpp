@@ -20,6 +20,8 @@ namespace sdk {
 
     class session {
     public:
+        using impl_ptr = std::shared_ptr<session_impl>;
+
         session();
         ~session();
 
@@ -30,7 +32,6 @@ namespace sdk {
         session& operator=(session&&) = delete;
 
         void connect(const nlohmann::json& net_params);
-        void disconnect();
         void reconnect_hint(const nlohmann::json& hint);
 
         nlohmann::json get_proxy_settings();
@@ -74,23 +75,24 @@ namespace sdk {
 
         const network_parameters& get_network_parameters() const;
 
-        boost::shared_ptr<session_impl> get_nonnull_impl() const;
+        impl_ptr get_nonnull_impl() const;
 
         void exception_handler(std::exception_ptr ex_p);
 
     private:
+        using locker_t = std::unique_lock<std::mutex>;
+
         template <typename F, typename... Args> auto exception_wrapper(F&& f, Args&&... args);
 
-        void reconnect();
+        void signal_reconnect_and_throw();
 
-        boost::shared_ptr<session_impl> get_impl() const { return m_impl.load(); }
+        impl_ptr get_impl() const;
 
-        using session_atomic_ptr = boost::atomic_shared_ptr<session_impl>;
+        mutable std::mutex m_mutex;
+        impl_ptr m_impl;
 
-        session_atomic_ptr m_impl;
-
-        GA_notification_handler m_notification_handler{ nullptr };
-        void* m_notification_context{ nullptr };
+        GA_notification_handler m_notification_handler;
+        void* m_notification_context;
     };
 } // namespace sdk
 } // namespace ga
