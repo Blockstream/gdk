@@ -59,7 +59,7 @@ namespace sdk {
         void reconnect(); // Async, returns without waiting
 
         // Change the state of the transport to connected or disconnected.
-        void reconnect_hint(const nlohmann::json& hint); // Currently synchronous
+        void reconnect_hint(const nlohmann::json& hint, const std::string& proxy); // Currently synchronous
 
         // Subscribe to a topic. Use is_initial=true for the first
         // subscription after reconnecting
@@ -103,7 +103,7 @@ namespace sdk {
         };
         const char* state_str(state_t state) const;
 
-        void change_state_to(state_t new_state, bool wait);
+        void change_state_to(state_t new_state, const std::string& proxy, bool wait);
         void emit_state(state_t current, state_t desired, uint64_t backoff_ms);
 
         void reconnect_handler();

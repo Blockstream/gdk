@@ -446,22 +446,15 @@ namespace sdk {
 
     wamp_transport::~wamp_transport()
     {
-        no_std_exception_escape([this] { change_state_to(state_t::exited, false); }, "wamp dtor(1)");
+        no_std_exception_escape([this] { change_state_to(state_t::exited, std::string(), false); }, "wamp dtor(1)");
         no_std_exception_escape([this] { m_reconnect_thread.join(); }, "wamp dtor(2)");
         no_std_exception_escape([this] { m_work_guard.reset(); }, "wamp dtor(2)");
         no_std_exception_escape([this] { m_run_thread.join(); }, "wamp dtor(3)");
     }
 
-    void wamp_transport::connect(const std::string& proxy)
-    {
-        if (!proxy.empty()) {
-            locker_t locker(m_mutex);
-            m_proxy = proxy;
-        }
-        change_state_to(state_t::connected, true);
-    }
+    void wamp_transport::connect(const std::string& proxy) { change_state_to(state_t::connected, proxy, true); }
 
-    void wamp_transport::disconnect() { change_state_to(state_t::disconnected, true); }
+    void wamp_transport::disconnect() { change_state_to(state_t::disconnected, std::string(), true); }
 
     void wamp_transport::reconnect()
     {
@@ -475,18 +468,21 @@ namespace sdk {
         m_condition.notify_all();
     }
 
-    void wamp_transport::reconnect_hint(const nlohmann::json& hint)
+    void wamp_transport::reconnect_hint(const nlohmann::json& hint, const std::string& proxy)
     {
         const auto hint_p = hint.find("hint");
         if (hint_p != hint.end()) {
-            change_state_to(*hint_p == "connect" ? state_t::connected : state_t::disconnected, true);
+            change_state_to(*hint_p == "connect" ? state_t::connected : state_t::disconnected, proxy, true);
         }
     }
 
-    void wamp_transport::change_state_to(wamp_transport::state_t new_state, bool wait)
+    void wamp_transport::change_state_to(wamp_transport::state_t new_state, const std::string& proxy, bool wait)
     {
         GDK_LOG_SEV(log_level::info) << "change_state_to: requesting state " << state_str(new_state);
         locker_t locker(m_mutex);
+        if (!proxy.empty()) {
+            m_proxy = proxy;
+        }
         const auto current_state = m_state.load();
         GDK_RUNTIME_ASSERT(current_state != state_t::exited);
         m_desired_state = new_state;

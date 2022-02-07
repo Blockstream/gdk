@@ -306,7 +306,8 @@ namespace sdk {
     void ga_session::reconnect_hint(const nlohmann::json& hint)
     {
         session_impl::reconnect_hint(hint);
-        m_wamp->reconnect_hint(hint);
+        const auto proxy_settings = get_proxy_settings();
+        m_wamp->reconnect_hint(hint, proxy_settings["proxy"]);
     }
 
     void ga_session::disconnect() { m_wamp->disconnect(); }
