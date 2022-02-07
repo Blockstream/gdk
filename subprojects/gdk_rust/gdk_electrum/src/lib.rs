@@ -416,8 +416,7 @@ impl ElectrumSession {
             info!("disconnect STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
         }
         if self.state != State::Disconnected {
-            self.closer.close()?;
-            self.state = State::Disconnected;
+            self.stop_threads()?;
         }
         Ok(())
     }
@@ -528,6 +527,12 @@ impl ElectrumSession {
         self.start_threads()?;
 
         self.get_wallet_hash_id()
+    }
+
+    pub fn stop_threads(&mut self) -> Result<(), Error> {
+        self.closer.close()?;
+        self.state = State::Disconnected;
+        Ok(())
     }
 
     pub fn start_threads(&mut self) -> Result<(), Error> {
