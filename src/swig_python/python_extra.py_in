@@ -127,7 +127,7 @@ class Session(object):
         return connect(self.session_obj, self._to_json(net_params))
 
     def disconnect(self):
-        return disconnect(self.session_obj)
+        raise RuntimeError('use reconnect_hint() to disconnect a session')
 
     def reconnect_hint(self, hint):
         return reconnect_hint(self.session_obj, self._to_json(hint))

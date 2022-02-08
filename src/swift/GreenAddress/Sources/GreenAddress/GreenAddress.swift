@@ -223,10 +223,6 @@ public class Session {
         try callWrapper(fun: GA_connect(session, netParamsJson))
     }
 
-    public func disconnect() throws {
-        try callWrapper(fun: GA_disconnect(session))
-    }
-
     public func reconnectHint(hint: [String: Any]) throws {
         var hintJson: OpaquePointer = try convertDictToJSON(dict: hint)
         defer {

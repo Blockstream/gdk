@@ -496,7 +496,6 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_void__(GA_destroy_session)
 %returns_void__(GA_destroy_auth_handler)
 %returns_void__(GA_destroy_json)
-%returns_void__(GA_disconnect)
 %returns_void__(GA_reconnect_hint)
 %returns_struct(GA_get_proxy_settings, GA_json)
 %returns_struct(GA_get_wallet_identifier, GA_json)

@@ -108,8 +108,8 @@ GDK_API int GA_set_notification_handler(struct GA_session* session, GA_notificat
  *
  * :param session: The session to free.
  *
- * If the session was connected using `GA_connect` then this call will disconnect
- * it as through `GA_disconnect` was called.
+ * If the session was connected using `GA_connect` then this call will
+ * disconnect it it before destroying it.
  */
 GDK_API int GA_destroy_session(struct GA_session* session);
 
@@ -121,27 +121,15 @@ GDK_API int GA_destroy_session(struct GA_session* session);
  *
  * This call connects to the remote network services that the session
  * requires, for example the Green servers or Electrum servers.
- * `GA_connect` and `GA_disconnect` should be called only once per session
- * lifetime, after `GA_create_session` and before `GA_destroy_session`
- * respectively. Once connected, the underlying network connection of the
+ * `GA_connect` must be called only once per session lifetime, after
+ * `GA_create_session` and before `GA_destroy_session` * respectively.
+ * Once connected, the underlying network connection of the
  * session can be controlled using `GA_reconnect_hint`.
  *
  * Once the session is connected, use `GA_register_user` to create a new
  * wallet for the session, or `GA_login_user` to open an existing wallet.
  */
 GDK_API int GA_connect(struct GA_session* session, const GA_json* net_params);
-
-/**
- * Disconnect from a connected remote server.
- *
- * :param session: The session to disconnect.
- *
- * This call destroys any in-memory state associated with the session
- * and so should only be used just before session destruction.
- * Use `GA_reconnect_hint` to handle the sessions underlying network
- * connection.
- */
-GDK_API int GA_disconnect(struct GA_session* session);
 
 /**
  * Connect or disconnect a sessions underlying network connection.
