@@ -14,7 +14,10 @@ use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
-use gdk_electrum::{determine_electrum_url_from_net, keys_from_mnemonic, spv, ElectrumSession};
+use gdk_electrum::Notification;
+use gdk_electrum::{
+    determine_electrum_url_from_net, keys_from_mnemonic, spv, ElectrumSession, State,
+};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -157,6 +160,12 @@ pub fn setup(
     info!("creating gdk session");
     let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
     session.connect(&serde_json::to_value(network.clone()).unwrap()).unwrap();
+
+    assert_eq!(
+        session.notify.find_last_event("network"),
+        Some(Notification::new_network_value(State::Connected, State::Connected))
+    );
+
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
     let login_data = session.login(&mnemonic, None).unwrap();
@@ -447,7 +456,17 @@ impl TestSession {
 
     pub fn reconnect(&mut self) {
         self.session.disconnect().unwrap();
+
+        assert_eq!(
+            self.session.notify.find_last_event("network"),
+            Some(Notification::new_network_value(State::Disconnected, State::Disconnected))
+        );
         self.session.connect(&Value::Null).unwrap();
+
+        assert_eq!(
+            self.session.notify.find_last_event("network"),
+            Some(Notification::new_network_value(State::Connected, State::Connected))
+        );
         let address = self.node_getnewaddress(None);
         let txid = self.send_tx(&address, 1000, None, None, None, None, None);
         self.list_tx_contains(&txid, &[address], true);
