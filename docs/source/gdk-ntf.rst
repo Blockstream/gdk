@@ -23,7 +23,7 @@ connection changes.
   {
     "event": "network",
     "network": {
-      "backoff_ms": 1000,
+      "wait_ms": 1000,
       "current_state": "disconnected",
       "next_state": "connected"
     }
@@ -34,7 +34,7 @@ connection changes.
 :next_state: One of ``"connected"`` or ``"disconnected"``. The
     next state that the connection will move to. If this value is the same as
     ``"current_state"`` then no state change is currently in progress.
-:backoff_ms: The number of milliseconds before the current state will change
+:wait_ms: The number of milliseconds before the current state will change
    to the next state. ``0`` if the change will happen immediately or no change
    is due to occur.
 

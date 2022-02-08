@@ -506,12 +506,11 @@ namespace sdk {
         }
     }
 
-    void wamp_transport::emit_state(
-        wamp_transport::state_t current, wamp_transport::state_t desired, uint64_t backoff_ms)
+    void wamp_transport::emit_state(wamp_transport::state_t current, wamp_transport::state_t desired, uint64_t wait_ms)
     {
         constexpr bool async = true;
-        nlohmann::json state({ { "current_state", state_str(current) }, { "next_state", state_str(desired) },
-            { "backoff_ms", backoff_ms } });
+        nlohmann::json state(
+            { { "current_state", state_str(current) }, { "next_state", state_str(desired) }, { "wait_ms", wait_ms } });
         m_notify_fn({ { "event", "network" }, { "network", std::move(state) } }, async);
     }
 
