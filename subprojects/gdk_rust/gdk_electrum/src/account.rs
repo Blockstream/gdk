@@ -1274,7 +1274,7 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
     let mut pset = elements::pset::PartiallySignedTransaction::from_tx(tx.clone());
     let mut inp_txout_sec: Vec<Option<elements::TxOutSecrets>> = vec![];
 
-    for input in pset.inputs.iter_mut() {
+    for input in pset.inputs_mut().iter_mut() {
         let previous_output =
             elements::OutPoint::new(input.previous_txid, input.previous_output_index);
         let unblinded = acc_store
@@ -1288,7 +1288,7 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
         let txout = prev_tx.output[input.previous_output_index as usize].clone();
         input.witness_utxo = Some(txout);
     }
-    for output in pset.outputs.iter_mut() {
+    for output in pset.outputs_mut().iter_mut() {
         // We are the owner of all inputs and outputs
         output.blinder_index = Some(0);
     }

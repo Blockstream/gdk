@@ -42,7 +42,7 @@ pub fn merge_tx(param: &MergeTxParam) -> Result<MergeTxResult, Error> {
 
     compare_except_script_sig_sequence(&pset_tx, &tx)?;
 
-    for (pset_input, tx_input) in pset.inputs.iter_mut().zip(tx.input.iter()) {
+    for (pset_input, tx_input) in pset.inputs_mut().iter_mut().zip(tx.input.iter()) {
         pset_input.final_script_witness = Some(tx_input.witness.script_witness.clone());
         pset_input.final_script_sig = Some(tx_input.script_sig.clone());
     }
@@ -63,7 +63,7 @@ pub struct FromTxResult {
 pub fn from_tx(param: &FromTxParam) -> Result<FromTxResult, Error> {
     let tx = tx_from_hex(&param.transaction)?;
     let mut pset = PartiallySignedTransaction::from_tx(tx);
-    for output in pset.outputs.iter_mut() {
+    for output in pset.outputs_mut().iter_mut() {
         // Elements Core requires the blinder index to be set for each blinded output
         if output.value_rangeproof.is_some() && output.blinder_index.is_none() {
             output.blinder_index = Some(0);
@@ -86,7 +86,7 @@ fn tx_from_hex(transaction: &str) -> Result<Transaction, Error> {
 }
 
 fn extract_tx_inner(pset: &mut pset::PartiallySignedTransaction) -> Result<Transaction, Error> {
-    for input in pset.inputs.iter_mut() {
+    for input in pset.inputs_mut().iter_mut() {
         // we want the extracted tx to have the script_sig
         // this breaks p2sh pre-segwit but we don't support those
         if let Some(redeem_script) = input.redeem_script.as_ref() {
@@ -169,7 +169,7 @@ mod test {
     fn test_merge_tx() {
         let mut pset = pset_from_hex(EMPTY_PSET).unwrap();
         pset.add_input(elements::pset::Input::default());
-        assert_eq!(pset.inputs[0].final_script_witness, None);
+        assert_eq!(pset.inputs()[0].final_script_witness, None);
         let psbt_hex = serialize(&pset).to_hex();
         assert_eq!(psbt_hex, ONE_INPUT_PSET);
         let tx_hex = extract_tx(&ExtractTxParam {
@@ -190,7 +190,7 @@ mod test {
         .unwrap()
         .psbt_hex;
         let pset_merged = pset_from_hex(&pset_merged).unwrap();
-        assert_eq!(pset_merged.inputs[0].final_script_witness, Some(witness));
+        assert_eq!(pset_merged.inputs()[0].final_script_witness, Some(witness));
 
         let mut incorrect_tx = signed_tx.clone();
         incorrect_tx.input.push(elements::TxIn {
