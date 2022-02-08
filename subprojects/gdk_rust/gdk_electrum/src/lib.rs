@@ -63,6 +63,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
+use std::fmt;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, RwLock};
@@ -141,6 +142,17 @@ pub enum State {
     Disconnected,
     Connected,
     Logged,
+}
+
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            State::Uninitialized => write!(f, "uninitialized"),
+            State::Disconnected => write!(f, "connected"),
+            State::Connected => write!(f, "disconnected"),
+            State::Logged => write!(f, "logged"),
+        }
+    }
 }
 
 fn determine_electrum_url(

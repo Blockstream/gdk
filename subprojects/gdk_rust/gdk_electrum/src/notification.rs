@@ -1,3 +1,4 @@
+use crate::State;
 use gdk_common::model::Settings;
 use gdk_common::wally::make_str;
 use log::{info, warn};
@@ -56,9 +57,13 @@ impl NativeNotif {
     pub fn updated_txs(&self, account_num: u32, terminated: Arc<AtomicBool>) {
         // This is used as a signal to trigger syncing via get_transactions, the transaction
         // list contained here is ignored and can be just a mock.
-        let mockup_json =
-            json!({"event":"transaction","transaction":{"subaccounts":[account_num]}});
-        self.notify(mockup_json, terminated);
+        let data = json!({"event":"transaction","transaction":{"subaccounts":[account_num]}});
+        self.notify(data, terminated);
+    }
+
+    pub fn network(&self, current: State, next: State, terminated: Arc<AtomicBool>) {
+        let data = json!({"network":{"wait_ms": 1000, "current_state": current.to_string(), "next_state": next.to_string()},"event":"network"});
+        self.notify(data, terminated);
     }
 
     #[cfg(not(feature = "testing"))]
