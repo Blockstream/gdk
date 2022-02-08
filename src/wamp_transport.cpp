@@ -758,14 +758,19 @@ namespace sdk {
                     root_certificates.push_back(custom_root_certificate.get<std::string>());
                 }
             }
-            const auto ssl_ctx = tls_init(params["host"], root_certificates, {}, m_net_params.cert_expiry_threshold());
+
+            const bool is_secure = params["is_secure"];
+            std::shared_ptr<asio::ssl::context> ssl_ctx;
+            if (is_secure) {
+                ssl_ctx = tls_init(params["host"], root_certificates, {}, m_net_params.cert_expiry_threshold());
+            }
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
-                client = make_http_client(m_io, params["is_secure"] ? ssl_ctx.get() : nullptr);
+                client = make_http_client(m_io, ssl_ctx.get());
                 GDK_RUNTIME_ASSERT(client != nullptr);
 
-                const boost::beast::http::verb verb = boost::beast::http::string_to_verb(params["method"]);
+                const auto verb = boost::beast::http::string_to_verb(params["method"]);
                 return client->request(verb, params).get();
             };
 
