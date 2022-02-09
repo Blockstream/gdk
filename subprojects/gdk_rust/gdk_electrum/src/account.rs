@@ -832,12 +832,12 @@ pub fn create_tx(
         None
     };
 
-    // TODO put checks into CreateTransaction::validate, add check asset_id are valid asset hex
+    // TODO put checks into CreateTransaction::validate
     // eagerly check for address validity
-    for address in request.addressees.iter().map(|a| &a.address) {
+    for addressee in request.addressees.iter() {
         match network.id() {
             NetworkId::Bitcoin(network) => {
-                if let Ok(address) = bitcoin::Address::from_str(address) {
+                if let Ok(address) = bitcoin::Address::from_str(&addressee.address) {
                     info!("address.network:{} network:{}", address.network, network);
                     if address.network == network
                         || (address.network == bitcoin::Network::Testnet
@@ -875,14 +875,24 @@ pub fn create_tx(
                 return Err(Error::InvalidAddress);
             }
             NetworkId::Elements(network) => {
-                if let Ok(address) =
-                    elements::Address::parse_with_params(address, network.address_params())
-                {
+                if let Ok(address) = elements::Address::parse_with_params(
+                    &addressee.address,
+                    network.address_params(),
+                ) {
                     if !address.is_blinded() {
                         return Err(Error::NonConfidentialAddress);
                     }
                 } else {
                     return Err(Error::InvalidAddress);
+                }
+                if let Some(Ok(_)) = addressee
+                    .asset_id
+                    .as_ref()
+                    .map(|asset_id| elements::issuance::AssetId::from_str(&asset_id))
+                {
+                    // non-empty and valid asset id
+                } else {
+                    return Err(Error::InvalidAssetId);
                 }
             }
         }
