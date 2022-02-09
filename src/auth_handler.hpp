@@ -103,10 +103,8 @@ namespace sdk {
 
         void request_code_impl(const std::string& method) final;
 
-    private:
-        session& m_session_parent;
-
     protected:
+        session& m_session_parent;
         std::shared_ptr<session_impl> m_session;
         const network_parameters& m_net_params;
         const std::string m_name; // Name of the method being resolved

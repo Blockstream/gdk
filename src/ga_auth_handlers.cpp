@@ -122,6 +122,99 @@ namespace sdk {
                 session.save_cache();
             }
         }
+
+        class upload_ca_handler : public auth_handler_impl {
+        public:
+            upload_ca_handler(session& session, uint32_t subaccount, size_t num_addrs);
+            void add_request(uint32_t subaccount, size_t num_addrs);
+
+        private:
+            state_type call_impl() override;
+
+            std::vector<std::pair<uint32_t, size_t>> m_required_addrs;
+            size_t m_num_required_addrs;
+            size_t m_num_generated_addrs;
+            bool m_is_blinded;
+            std::map<uint32_t, std::vector<nlohmann::json>> m_addresses;
+        };
+
+        upload_ca_handler::upload_ca_handler(session& session, uint32_t subaccount, size_t num_addrs)
+            : auth_handler_impl(session, "upload_confidential_addrs")
+            , m_num_required_addrs(0)
+            , m_num_generated_addrs(0)
+            , m_is_blinded(false)
+        {
+            add_request(subaccount, num_addrs);
+        }
+
+        void upload_ca_handler::add_request(uint32_t subaccount, size_t num_addrs)
+        {
+            GDK_RUNTIME_ASSERT(num_addrs);
+            m_required_addrs.emplace_back(std::make_pair(subaccount, num_addrs));
+            m_num_required_addrs += num_addrs;
+        }
+
+        auth_handler::state_type upload_ca_handler::call_impl()
+        {
+            if (m_num_generated_addrs < m_num_required_addrs) {
+                // Generate addresses to blind and upload, in a restartable fashion
+                // TODO: Server support for returning multiple addresses for AMP subaccounts
+                for (const auto& req : m_required_addrs) {
+                    auto& generated = m_addresses[req.first];
+                    generated.reserve(req.second);
+                    while (generated.size() < req.second) {
+                        generated.emplace_back(m_session->get_receive_address({ { "subaccount", req.first } }));
+                        ++m_num_generated_addrs;
+                    }
+                }
+            }
+
+            if (m_hw_request == hw_request::none) {
+                // We haven't asked the signer to blind the addresses; do so now
+                nlohmann::json::array_t scripts;
+                scripts.reserve(m_num_required_addrs);
+                for (const auto& subaccount_addresses : m_addresses) {
+                    for (const auto& addr : subaccount_addresses.second) {
+                        scripts.push_back(addr.at("blinding_script"));
+                    }
+                }
+                signal_hw_request(hw_request::get_blinding_public_keys);
+                m_twofactor_data["scripts"] = std::move(scripts);
+                return m_state;
+            }
+
+            // The signer has provided the blinding keys for our address.
+            GDK_RUNTIME_ASSERT(m_hw_request == hw_request::get_blinding_public_keys);
+
+            if (!m_is_blinded) {
+                // Blind our addresses with the signer provided blinding keys
+                const auto prefix = m_net_params.blinded_prefix();
+                const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
+                GDK_RUNTIME_ASSERT(public_keys.size() == m_num_required_addrs);
+
+                size_t i = 0;
+                for (auto& subaccount_addresses : m_addresses) {
+                    for (auto& addr : subaccount_addresses.second) {
+                        blind_address(addr, prefix, public_keys.at(i));
+                        ++i;
+                    }
+                }
+                m_is_blinded = true;
+            }
+
+            while (!m_addresses.empty()) {
+                auto subaccount_addresses = m_addresses.begin();
+                std::vector<std::string> addresses;
+                addresses.reserve(subaccount_addresses->second.size());
+                for (const auto& addr : subaccount_addresses->second) {
+                    addresses.push_back(addr.at("address"));
+                }
+                const auto subaccount = subaccount_addresses->first;
+                m_session->upload_confidential_addresses(subaccount, addresses);
+                m_addresses.erase(subaccount_addresses);
+            }
+            return state_type::done;
+        }
     } // namespace
 
     //
@@ -304,44 +397,26 @@ namespace sdk {
             //
             // Completed Login. FALL THROUGH to check for confidential address upload below
             //
-        } else if (m_hw_request == hw_request::get_blinding_public_keys) {
-            // AMP: Caller has provided the blinding keys for confidential address uploading.
-            // Blind them and upload the blinded addresses to the server
-            const auto prefix = m_net_params.blinded_prefix();
-            const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
-            std::map<uint32_t, std::vector<std::string>> addresses_by_subaccount;
-            size_t i = 0;
-            for (const auto& it : m_addresses) {
-                auto address = confidential_addr_from_addr(it.at("address"), prefix, public_keys.at(i));
-                addresses_by_subaccount[it.at("subaccount")].emplace_back(address);
-                ++i;
-            }
-            for (auto& it : addresses_by_subaccount) {
-                m_session->upload_confidential_addresses(it.first, it.second);
-            }
-            return state_type::done;
         }
 
         // We are logged in,
         // Check whether we need to upload confidential addresses.
-        nlohmann::json::array_t scripts;
+        std::unique_ptr<upload_ca_handler> handler_p;
         for (const auto& sa : m_session->get_subaccounts()) {
-            const uint32_t required_ca = sa.value("required_ca", 0);
-            scripts.reserve(scripts.size() + required_ca);
-            for (size_t i = 0; i < required_ca; ++i) {
-                m_addresses.push_back(m_session->get_receive_address({ { "subaccount", sa["pointer"] } }));
-                scripts.push_back(m_addresses.back().at("blinding_script"));
+            const size_t required_ca = sa.value("required_ca", 0);
+            if (required_ca) {
+                const uint32_t subaccount = sa["pointer"];
+                if (!handler_p) {
+                    handler_p.reset(new upload_ca_handler(m_session_parent, subaccount, required_ca));
+                } else {
+                    handler_p->add_request(subaccount, required_ca);
+                }
             }
         }
-        if (scripts.empty()) {
-            // No addresses to upload, so we are done
-            return state_type::done;
+        if (handler_p) {
+            add_next_handler(handler_p.release());
         }
-
-        // Ask the caller to provide the blinding keys
-        signal_hw_request(hw_request::get_blinding_public_keys);
-        m_twofactor_data["scripts"] = std::move(scripts);
-        return m_state;
+        return state_type::done;
     }
 
     //
@@ -413,20 +488,6 @@ namespace sdk {
 
             m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(hw_reply.at("signature")), false));
             // Fall through to create the subaccount
-        } else if (m_hw_request == hw_request::get_blinding_public_keys) {
-            // AMP: Caller has provided the blinding keys for confidential address uploading: blind them
-            const auto prefix = m_net_params.blinded_prefix();
-            const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
-            std::vector<std::string> addresses;
-            size_t i = 0;
-            for (const auto& it : m_addresses) {
-                auto address = confidential_addr_from_addr(it.at("address"), prefix, public_keys.at(i));
-                addresses.emplace_back(std::move(address));
-                ++i;
-            }
-            // Upload the blinded addresses to the server
-            m_session->upload_confidential_addresses(m_subaccount, addresses);
-            return state_type::done;
         }
 
         // Create the subaccount
@@ -435,17 +496,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_subaccount == m_result.at("pointer"));
 
         if (m_details.at("type") == "2of2_no_recovery") {
-            // AMP: We need to upload confidential addresses, get the keys for blinding
-            // TODO: Server support for returning multiple addresses for AMP subaccounts
-            nlohmann::json::array_t scripts;
-            scripts.reserve(INITIAL_UPLOAD_CA);
-            for (size_t i = 0; i < INITIAL_UPLOAD_CA; ++i) {
-                m_addresses.push_back(m_session->get_receive_address({ { "subaccount", m_subaccount } }));
-                scripts.push_back(m_addresses.back().at("blinding_script"));
-            }
-            signal_hw_request(hw_request::get_blinding_public_keys);
-            m_twofactor_data["scripts"] = std::move(scripts);
-            return m_state;
+            // Push a handler to upload confidential addresses
+            add_next_handler(new upload_ca_handler(m_session_parent, m_subaccount, INITIAL_UPLOAD_CA));
         }
         return state_type::done;
     }

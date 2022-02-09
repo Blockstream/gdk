@@ -28,9 +28,6 @@ namespace sdk {
         nlohmann::json m_credential_data;
         std::string m_challenge;
         std::string m_master_bip32_xpub;
-
-        // Used when AMP subaccounts require new addresses
-        std::vector<nlohmann::json> m_addresses;
     };
 
     class create_subaccount_call : public auth_handler_impl {
