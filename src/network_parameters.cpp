@@ -377,10 +377,10 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "taproot_enabled_at", 0 }, // Enabled
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
-            { "wamp_cert_pins", wamp_cert_pins },
+            { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
-            { "wamp_onion_url", "ws://greent3qrtvm2qsqr6s6m4jy6curvmkeupn2gqai4u7x33fjfsyeysyd.onion:88/v2/ws" },
-            { "wamp_url", "wss://testwss.greenaddress.it/v2/ws" }
+            { "wamp_onion_url", "ws://greent5yfxruca52pkqjtgo2qdxijscqlastnv3jwzpmavvffdldm2yd.onion:80/v2/ws" },
+            { "wamp_url", "wss://green-bitcoin-testnet.blockstream.com/v2/ws" }
         })) },
 
 #ifdef BUILD_GDK_RUST
