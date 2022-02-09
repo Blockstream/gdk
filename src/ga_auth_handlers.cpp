@@ -514,20 +514,16 @@ namespace sdk {
 
             // We need the inputs, augmented with types, scripts and paths
             auto signing_inputs = get_ga_signing_inputs(m_tx_details);
-            std::set<std::string> addr_types;
             for (auto& input : signing_inputs) {
                 const auto& addr_type = input.at("address_type");
                 GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
-                addr_types.insert(addr_type.get<std::string>());
+                // TODO: Support mixed/batched sweep transactions with non-sweep inputs
+                GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
 
                 // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
                 if (m_use_anti_exfil) {
                     add_ae_host_data(input);
                 }
-            }
-            if (addr_types.find(address_type::p2pkh) != addr_types.end()) {
-                // TODO: Support mixed/batched sweep transactions with non-sweep inputs
-                GDK_RUNTIME_ASSERT(false);
             }
 
             nlohmann::json prev_txs;
@@ -543,7 +539,6 @@ namespace sdk {
                     }
                 }
             }
-            m_twofactor_data["signing_address_types"] = std::vector<std::string>(addr_types.begin(), addr_types.end());
             m_twofactor_data["signing_inputs"] = signing_inputs;
             m_twofactor_data["signing_transactions"] = std::move(prev_txs);
             // FIXME: Do not duplicate the transaction_outputs in required_data
