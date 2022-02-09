@@ -379,8 +379,8 @@ fn create_tx_err(is_liquid: bool) {
         Err(Error::InvalidAddress)
     ));
 
-    // Unblinded
     if is_liquid {
+        // Unblinded
         let unconf_addr = test_session::to_unconfidential(&addr);
         let mut create_opt = test_session.create_opt(
             &unconf_addr,
@@ -393,6 +393,28 @@ fn create_tx_err(is_liquid: bool) {
         assert!(matches!(
             test_session.session.create_transaction(&mut create_opt),
             Err(Error::NonConfidentialAddress)
+        ));
+
+        // Missing asset_id
+        let mut create_opt =
+            test_session.create_opt(&addr, sat, None, fee_rate, subaccount, test_session.utxos(0));
+        assert!(matches!(
+            test_session.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAssetId)
+        ));
+
+        // Invalid asset_id
+        let mut create_opt = test_session.create_opt(
+            &addr,
+            sat,
+            Some("xyz".to_string()),
+            fee_rate,
+            subaccount,
+            test_session.utxos(0),
+        );
+        assert!(matches!(
+            test_session.session.create_transaction(&mut create_opt),
+            Err(Error::InvalidAssetId)
         ));
     }
 
