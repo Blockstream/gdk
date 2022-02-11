@@ -381,6 +381,12 @@ impl TestSession {
             NetworkId::Elements(_) => assert!(!tx.rbf_optin),
             NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
         };
+        let num_utxos: usize = create_opt.utxos.0.iter().map(|(_, au)| au.len()).sum();
+        let num_used_utxos = tx.used_utxos.len();
+        match create_opt.utxo_strategy {
+            UtxoStrategy::Manual => assert_eq!(num_used_utxos, num_utxos),
+            UtxoStrategy::Default => assert!(num_used_utxos > 0 && num_used_utxos <= num_utxos),
+        }
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         assert!(signed_tx.user_signed, "tx is not marked as user_signed");
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
