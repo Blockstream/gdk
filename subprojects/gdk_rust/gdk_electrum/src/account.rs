@@ -21,8 +21,9 @@ use gdk_common::be::{
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
-    AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction, GetTransactionsOpt,
-    SPVVerifyTxResult, TransactionMeta, UpdateAccountOpt, UtxoStrategy,
+    parse_path, AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction,
+    GetTransactionsOpt, SPVVerifyTxResult, TransactionMeta, UnspentOutput, UpdateAccountOpt,
+    UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::util::is_confidential_txoutsecrets;
@@ -57,7 +58,7 @@ pub struct Account {
     /// thus at following logins it will be false.
     discovered: bool,
 
-    _path: DerivationPath,
+    path: DerivationPath,
 }
 
 /// Compare xpub ignoring the fingerprint (which computation might be skipped).
@@ -106,14 +107,23 @@ impl Account {
             chains,
             store,
             master_blinding,
-            // currently unused, but seems useful to have around
-            _path: path,
+            path,
             discovered,
         })
     }
 
     pub fn num(&self) -> u32 {
         self.account_num
+    }
+
+    /// Get the full path from the master key to address index
+    ///
+    /// //  <                        full path                       >
+    /// m / purpose' / coin_type ' / account' / change / address_index
+    /// //                                      <    account path    >
+    ///
+    fn get_full_path(&self, account_path: &DerivationPath) -> DerivationPath {
+        self.path.extend(account_path)
     }
 
     pub fn info(&self) -> Result<AccountInfo, Error> {
@@ -296,6 +306,57 @@ impl Account {
         let public_key = &xpub.public_key;
         // script code is the same for the currently supported script type
         p2pkh_script(public_key).into()
+    }
+
+    fn txo(&self, outpoint: &BEOutPoint) -> Result<UnspentOutput, Error> {
+        let vout = outpoint.vout();
+        let txid = outpoint.txid();
+
+        let store_read = self.store.read()?;
+        let acc_store = store_read.account_cache(self.account_num)?;
+
+        let txe =
+            acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid.to_string()))?;
+        let tx = &txe.tx;
+        let height = acc_store.heights.get(&txid).cloned().flatten().unwrap_or(0);
+        let script_pubkey = tx.output_script(vout);
+        let account_path: DerivationPath = acc_store
+            .paths
+            .get(&script_pubkey)
+            .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
+            .clone();
+        let (is_internal, pointer) = parse_path(&account_path)?;
+        let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
+
+        Ok(UnspentOutput {
+            address_type: self.script_type.to_string(),
+            block_height: height,
+            pointer: pointer,
+            pt_idx: vout,
+            txhash: txid.to_hex(),
+            satoshi: satoshi,
+            subaccount: self.account_num,
+            is_internal: is_internal,
+            confidential: tx.output_is_confidential(vout),
+            scriptpubkey: tx.output_script(vout),
+            sequence: None,
+            script_code: self.script_code(&account_path).to_hex(),
+            user_path: self.get_full_path(&account_path).into(),
+        })
+    }
+
+    pub fn used_utxos(&self, tx: &BETransaction) -> Result<Vec<UnspentOutput>, Error> {
+        tx.previous_sequence_and_outpoints()
+            .into_iter()
+            .map(|(sequence, outpoint)| {
+                self.txo(&outpoint)
+                    .map(|mut u| {
+                        u.sequence = Some(sequence);
+                        u
+                    })
+                    .map_err(|_| Error::Generic("missing inputs not supported yet".into()))
+            })
+            .collect()
     }
 
     pub fn utxos(&self, num_confs: u32, confidential_utxos_only: bool) -> Result<Utxos, Error> {
@@ -1181,6 +1242,7 @@ pub fn create_tx(
         *v = v.abs();
     }
 
+    let used_utxos = account.used_utxos(&tx)?;
     let mut created_tx = TransactionMeta::new(
         tx,
         None,
@@ -1193,6 +1255,7 @@ pub fn create_tx(
         false,
         SPVVerifyTxResult::InProgress,
     );
+    created_tx.used_utxos = used_utxos;
     created_tx.changes_used = Some(changes.len() as u32);
     created_tx.addressees_read_only = request.previous_transaction.is_some();
     info!("returning: {:?}", created_tx);
