@@ -391,7 +391,8 @@ impl ElectrumSession {
         Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
     }
 
-    pub fn connect(&mut self, _net_params: &Value) -> Result<(), Error> {
+    pub fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
+        self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
         if self.login_done {
             if self.closer.terminates()?.load(Ordering::Relaxed) == true {
                 self.start_threads()?;
@@ -404,7 +405,10 @@ impl ElectrumSession {
             let proxy = self.proxy.clone();
             match electrum_url.build_client(proxy.as_deref()) {
                 Ok(client) => match client.ping() {
-                    Ok(_) => self.notify.network(State::Connected, State::Connected),
+                    Ok(_) => {
+                        info!("connect succesfully ping the electrum server");
+                        self.notify.network(State::Connected, State::Connected)
+                    }
                     Err(e) => {
                         warn!("ping failed {:?}", e);
                         self.notify.network(State::Disconnected, State::Disconnected);

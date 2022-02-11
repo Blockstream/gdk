@@ -2,7 +2,7 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVCommonParams,
+    GetTransactionsOpt, GetUnspentOutputs, RefreshAssets, RenameAccountOpt, SPVCommonParams,
     SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
@@ -13,6 +13,7 @@ use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
 
 use log::info;
+use serde_json::json;
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::time::{Duration, Instant};
@@ -1302,6 +1303,45 @@ fn test_spv_timeout() {
     let _ = gdk_electrum::headers::download_headers(&param_download);
 
     assert!(now.elapsed().as_secs() <= 5, "more than timeout time passed");
+}
+
+#[test]
+#[ignore] // launch `cargo test -- test_tor --include-ignored` with a running tor session on 127.0.0.1:9050
+fn test_tor() {
+    let _ = env_logger::try_init();
+
+    let mut network = Network::default();
+
+    // blockstream mainnet server, we can't use localhost because it's not reachable via tor
+    network.electrum_url =
+        Some("explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110".to_string());
+    network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
+    network.policy_asset =
+        Some("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d".to_string());
+
+    let db_root_dir = TempDir::new().unwrap();
+    let db_root = format!("{}", db_root_dir.path().display());
+    let proxy_str = "127.0.0.1:9050";
+    let proxy = Some(proxy_str);
+    let url = determine_electrum_url_from_net(&network).unwrap();
+    info!("url: {:?}", url);
+    info!("creating gdk session");
+    let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
+    session.connect(&json!({"proxy":proxy_str.to_string()})).unwrap();
+
+    let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
+    auth_handler_login(&mut session, mnemonic);
+
+    let value = session
+        .refresh_assets(&RefreshAssets {
+            icons: false,
+            assets: true,
+            refresh: true,
+        })
+        .unwrap();
+    assert!(value.get("assets").is_some());
+
+    assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {

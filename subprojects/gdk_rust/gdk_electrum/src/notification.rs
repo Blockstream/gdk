@@ -66,7 +66,9 @@ impl NativeNotif {
         if let Some((handler, self_context)) = self.native.as_ref() {
             handler(*self_context, make_str(data.to_string()));
         } else {
-            warn!("no registered handler to receive notification");
+            if !cfg!(feature = "testing") {
+                warn!("no registered handler to receive notification");
+            }
             self.push(data);
         }
     }
