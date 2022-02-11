@@ -271,6 +271,16 @@ impl BETransaction {
         }
     }
 
+    pub fn output_is_confidential(&self, vout: u32) -> bool {
+        match self {
+            Self::Bitcoin(_) => false,
+            Self::Elements(tx) => {
+                let output = &tx.output[vout as usize];
+                output.asset.is_confidential() && output.value.is_confidential()
+            }
+        }
+    }
+
     pub fn get_weight(&self) -> usize {
         match self {
             Self::Bitcoin(tx) => tx.get_weight(),
