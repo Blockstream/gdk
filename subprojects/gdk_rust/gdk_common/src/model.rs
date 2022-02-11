@@ -314,6 +314,9 @@ pub struct TransactionMeta {
     pub vsize: usize,
     #[serde(rename = "transaction_size")]
     pub size: usize,
+    // The utxos used in the transaction
+    #[serde(default)]
+    pub used_utxos: Vec<UnspentOutput>,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -345,6 +348,7 @@ impl From<BETransaction> for TransactionMeta {
             weight,
             vsize: (weight as f32 / 4.0) as usize,
             size: transaction.get_size(),
+            used_utxos: vec![],
         }
     }
 }
