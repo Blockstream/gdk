@@ -149,6 +149,21 @@ impl BETransaction {
         }
     }
 
+    pub fn previous_sequence_and_outpoints(&self) -> Vec<(u32, BEOutPoint)> {
+        match self {
+            Self::Bitcoin(tx) => tx
+                .input
+                .iter()
+                .map(|i| (i.sequence, BEOutPoint::Bitcoin(i.previous_output)))
+                .collect(),
+            Self::Elements(tx) => tx
+                .input
+                .iter()
+                .map(|i| (i.sequence, BEOutPoint::Elements(i.previous_output)))
+                .collect(),
+        }
+    }
+
     pub fn input_len(&self) -> usize {
         match self {
             Self::Bitcoin(tx) => tx.input.len(),
