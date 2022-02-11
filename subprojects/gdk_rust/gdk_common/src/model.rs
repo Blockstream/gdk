@@ -669,6 +669,9 @@ pub struct UnspentOutput {
     pub user_path: Vec<ChildNumber>,
     #[serde(skip)]
     pub scriptpubkey: BEScript,
+    /// This can be Some only when this describes an input
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sequence: Option<u32>,
 }
 
 /// Partially parse the derivation path and return (is_internal, address_pointer)
