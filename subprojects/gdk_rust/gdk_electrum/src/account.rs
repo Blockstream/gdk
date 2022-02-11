@@ -290,6 +290,14 @@ impl Account {
         Ok(txs)
     }
 
+    pub fn script_code(&self, path: &DerivationPath) -> BEScript {
+        // FIXME: (leo) is this the correct path?
+        let xpub = self.xpub.derive_pub(&crate::EC, path).unwrap();
+        let public_key = &xpub.public_key;
+        // script code is the same for the currently supported script type
+        p2pkh_script(public_key).into()
+    }
+
     pub fn utxos(&self, num_confs: u32, confidential_utxos_only: bool) -> Result<Utxos, Error> {
         info!("start utxos");
         let store_read = self.store.read()?;
@@ -332,6 +340,7 @@ impl Account {
                                 output.script_pubkey.into(),
                                 height.clone(),
                                 path.clone(),
+                                self.script_code(&path).to_hex(),
                             ),
                         )
                     })
@@ -375,6 +384,7 @@ impl Account {
                                             path.clone(),
                                             output.asset.is_confidential()
                                                 && output.value.is_confidential(),
+                                            self.script_code(&path).to_hex(),
                                         ),
                                     ));
                                 }

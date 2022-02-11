@@ -27,6 +27,7 @@ pub struct UTXOInfo {
     pub height: Option<u32>,
     pub path: DerivationPath,
     pub confidential: bool,
+    pub script_code: String,
 }
 
 impl UTXOInfo {
@@ -35,6 +36,7 @@ impl UTXOInfo {
         script: BEScript,
         height: Option<u32>,
         path: DerivationPath,
+        script_code: String,
     ) -> Self {
         UTXOInfo {
             asset: "btc".to_string(),
@@ -43,6 +45,7 @@ impl UTXOInfo {
             height,
             path,
             confidential: false,
+            script_code,
         }
     }
 
@@ -53,6 +56,7 @@ impl UTXOInfo {
         height: Option<u32>,
         path: DerivationPath,
         confidential: bool,
+        script_code: String,
     ) -> Self {
         UTXOInfo {
             asset: asset.to_hex(),
@@ -61,6 +65,7 @@ impl UTXOInfo {
             height,
             path,
             confidential,
+            script_code,
         }
     }
 
