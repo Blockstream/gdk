@@ -5,6 +5,8 @@ use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
 use bitcoin::{Address, Network, PublicKey, Script};
 
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ScriptType {
     #[serde(rename = "p2sh-p2wpkh")]
@@ -16,6 +18,16 @@ pub enum ScriptType {
 }
 
 const TYPES: [ScriptType; 3] = [ScriptType::P2shP2wpkh, ScriptType::P2wpkh, ScriptType::P2pkh];
+
+impl fmt::Display for ScriptType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::P2shP2wpkh => write!(f, "p2sh-p2wpkh"),
+            Self::P2wpkh => write!(f, "p2wpkh"),
+            Self::P2pkh => write!(f, "p2pkh"),
+        }
+    }
+}
 
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script
