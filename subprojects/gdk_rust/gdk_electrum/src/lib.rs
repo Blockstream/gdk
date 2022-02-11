@@ -422,6 +422,12 @@ impl ElectrumSession {
     pub fn disconnect(&mut self) -> Result<(), Error> {
         if self.closer.terminates()?.load(Ordering::Relaxed) == false {
             self.stop_threads()?;
+
+            // The following flush is redundant since a flush is done when the store is dropped,
+            // however it's safer to call it also here because some garbage collected caller could
+            // postpone the object drop. Moreover, since we check the hash of what is written and
+            // avoid touching disk if equivalent to last, it isn't a big performance penalty
+            self.store()?.write()?.flush()?;
         }
         Ok(())
     }
