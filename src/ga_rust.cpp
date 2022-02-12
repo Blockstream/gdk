@@ -486,9 +486,15 @@ namespace sdk {
         return call_session("create_transaction", result);
     }
 
-    nlohmann::json ga_rust::sign_transaction(const nlohmann::json& details)
+    nlohmann::json ga_rust::user_sign_transaction(const nlohmann::json& details)
     {
         return call_session("sign_transaction", details);
+    }
+
+    nlohmann::json ga_rust::service_sign_transaction(
+        const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    {
+        throw std::runtime_error("service_sign_transaction not implemented");
     }
 
     nlohmann::json ga_rust::psbt_sign(const nlohmann::json& details)

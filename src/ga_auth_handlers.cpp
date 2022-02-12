@@ -554,7 +554,7 @@ namespace sdk {
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)
             // FIXME: Sign rust txs using the standard code path
-            m_result = m_session->sign_transaction(m_tx_details);
+            m_result = m_session->user_sign_transaction(m_tx_details);
             m_state = state_type::done;
         } else {
             // Compute the data we need for the hardware to sign the transaction

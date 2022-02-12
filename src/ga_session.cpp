@@ -3196,7 +3196,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::sign_transaction(const nlohmann::json& details)
+    nlohmann::json ga_session::user_sign_transaction(const nlohmann::json& details)
     {
         return sign_ga_transaction(*this, details);
     }
@@ -3265,6 +3265,14 @@ namespace sdk {
             }
         }
         return result;
+    }
+
+    nlohmann::json ga_session::service_sign_transaction(
+        const nlohmann::json& /*details*/, const nlohmann::json& /*twofactor_data*/)
+    {
+        // FIXME: Implement
+        GDK_RUNTIME_ASSERT(false);
+        return nlohmann::json();
     }
 
     nlohmann::json ga_session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)

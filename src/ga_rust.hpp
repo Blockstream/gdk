@@ -87,7 +87,8 @@ namespace sdk {
         nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
 
         nlohmann::json create_transaction(const nlohmann::json& details);
-        nlohmann::json sign_transaction(const nlohmann::json& details);
+        nlohmann::json user_sign_transaction(const nlohmann::json& details);
+        nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json psbt_sign(const nlohmann::json& details);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
