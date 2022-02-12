@@ -122,7 +122,7 @@ GDK_API int GA_destroy_session(struct GA_session* session);
  * This call connects to the remote network services that the session
  * requires, for example the Green servers or Electrum servers.
  * `GA_connect` must be called only once per session lifetime, after
- * `GA_create_session` and before `GA_destroy_session` * respectively.
+ * `GA_create_session` and before `GA_destroy_session` respectively.
  * Once connected, the underlying network connection of the
  * session can be controlled using `GA_reconnect_hint`.
  *
@@ -409,7 +409,7 @@ GDK_API int GA_set_unspent_outputs_status(
 GDK_API int GA_get_transaction_details(struct GA_session* session, const char* txhash_hex, GA_json** transaction);
 
 /**
- * The sum of unspent outputs destined to user's wallet.
+ * Get the sum of unspent outputs paying to a subaccount.
  *
  * :param session: The session to use.
  * :param details: :ref:`unspent-outputs-request` detailing the unspent transaction outputs to
@@ -420,7 +420,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
 GDK_API int GA_get_balance(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
- * The list of allowed currencies for all available pricing sources.
+ * Get the list of allowed currencies for all available pricing sources.
  *
  * :param session: The session to use.
  * :param currencies: The returned list of :ref:`currencies`.
@@ -510,7 +510,7 @@ GDK_API int GA_psbt_sign(struct GA_session* session, const GA_json* details, str
 GDK_API int GA_psbt_get_details(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Broadcast a non-Green signed transaction to the P2P network.
+ * Broadcast a fully signed transaction to the P2P network.
  *
  * :param session: The session to use.
  * :param transaction_hex: The signed transaction in hex to broadcast.
@@ -634,7 +634,7 @@ GDK_API int GA_ack_system_message(struct GA_session* session, const char* messag
 GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config);
 
 /**
- * Change settings
+ * Change wallet settings.
  *
  * :param session: The session to use.
  * :param settings: The new :ref:`settings` values.
@@ -644,7 +644,7 @@ GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config
 GDK_API int GA_change_settings(struct GA_session* session, const GA_json* settings, struct GA_auth_handler** call);
 
 /**
- * Get settings
+ * Get current wallet settings.
  *
  * :param session: The session to use.
  * :param settings: Destination for the current :ref:`settings`.
