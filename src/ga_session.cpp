@@ -3268,14 +3268,20 @@ namespace sdk {
     }
 
     nlohmann::json ga_session::service_sign_transaction(
-        const nlohmann::json& /*details*/, const nlohmann::json& /*twofactor_data*/)
+        const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        // FIXME: Implement
-        GDK_RUNTIME_ASSERT(false);
-        return nlohmann::json();
+        constexpr bool is_send = false;
+        return sign_or_send_tx(details, twofactor_data, is_send);
     }
 
     nlohmann::json ga_session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    {
+        constexpr bool is_send = true;
+        return sign_or_send_tx(details, twofactor_data, is_send);
+    }
+
+    nlohmann::json ga_session::sign_or_send_tx(
+        const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send)
     {
         GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
         GDK_RUNTIME_ASSERT_MSG(json_get_value(details, "user_signed", false), "Tx must be signed before sending");
@@ -3285,8 +3291,8 @@ namespace sdk {
         // We must have a tx and it must be signed by the user
         GDK_RUNTIME_ASSERT(result.find("transaction") != result.end());
         GDK_RUNTIME_ASSERT(json_get_value(result, "user_signed", false));
-        // Check memo is storable
-        const std::string memo = json_get_value(result, "memo");
+        // Check memo is storable, if we are sending and have one
+        const std::string memo = is_send ? json_get_value(result, "memo") : std::string();
         check_tx_memo(memo);
 
         // FIXME: test weight and return error in create_transaction, not here
@@ -3304,9 +3310,17 @@ namespace sdk {
             private_data["blinding_nonces"] = *blinding_nonces_p;
         }
 
-        constexpr bool return_tx = true;
-        auto tx_details = wamp_cast_json(m_wamp->call(
-            "vault.send_raw_tx", tx_hex, mp_cast(twofactor_data).get(), mp_cast(private_data).get(), return_tx));
+        const auto mp_2fa = mp_cast(twofactor_data);
+        const auto mp_pd = mp_cast(private_data);
+        nlohmann::json tx_details;
+        // TODO: Merge these calls when the servers are updated
+        if (is_send) {
+            constexpr bool return_tx = true;
+            tx_details
+                = wamp_cast_json(m_wamp->call("vault.send_raw_tx", tx_hex, mp_2fa.get(), mp_pd.get(), return_tx));
+        } else {
+            tx_details = wamp_cast_json(m_wamp->call("vault.sign_raw_tx", tx_hex, mp_2fa.get(), mp_pd.get()));
+        }
 
         const amount::value_type decrease = tx_details.at("limit_decrease");
         const auto txhash_hex = tx_details["txhash"];
@@ -3325,12 +3339,16 @@ namespace sdk {
         for (auto subaccount : subaccounts) {
             m_synced_subaccounts.erase(subaccount);
         }
-        // Cache the raw tx data
-        m_cache->insert_transaction_data(txhash_hex, tx_to_bytes(tx));
 
-        if (!memo.empty()) {
-            update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+        if (is_send) {
+            // Cache the raw tx data
+            m_cache->insert_transaction_data(txhash_hex, tx_to_bytes(tx));
+
+            if (!memo.empty()) {
+                update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+            }
         }
+
         if (decrease != 0) {
             update_spending_limits(locker, tx_details["limits"]);
         }

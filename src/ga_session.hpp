@@ -186,6 +186,8 @@ namespace sdk {
 
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
+        nlohmann::json sign_or_send_tx(
+            const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send);
         nlohmann::json get_appearance() const;
         bool subaccount_allows_csv(uint32_t subaccount) const;
         const std::string& get_default_address_type(uint32_t) const;
