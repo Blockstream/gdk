@@ -266,7 +266,7 @@ namespace sdk {
 
     class send_transaction_call final : public auth_handler_impl {
     public:
-        send_transaction_call(session& session, const nlohmann::json& tx_details);
+        send_transaction_call(session& session, const nlohmann::json& tx_details, bool sign_only = false);
 
         void request_code(const std::string& method) override;
 
@@ -279,6 +279,7 @@ namespace sdk {
         nlohmann::json m_tx_details;
         nlohmann::json m_limit_details;
         uint64_t m_bump_amount;
+        const std::string m_type; // "send", or "sign" if sign_only == true
         bool m_twofactor_required;
         bool m_under_limit;
         bool m_initialized;

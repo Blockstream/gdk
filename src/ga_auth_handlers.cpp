@@ -1495,19 +1495,22 @@ namespace sdk {
     //
     // Send transaction
     //
-    send_transaction_call::send_transaction_call(session& session, const nlohmann::json& tx_details)
-        : auth_handler_impl(session, "send_transaction")
+    send_transaction_call::send_transaction_call(session& session, const nlohmann::json& tx_details, bool sign_only)
+        : auth_handler_impl(session, sign_only ? "sign_transaction" : "send_transaction")
         , m_tx_details(tx_details)
         , m_bump_amount(0)
+        , m_type(sign_only ? "sign" : "send")
         , m_twofactor_required(false)
         , m_under_limit(false)
         , m_initialized(false)
     {
+        // sign_only is for multisig signing by the Green service only
+        GDK_RUNTIME_ASSERT(!sign_only || !m_net_params.is_electrum());
     }
 
     void send_transaction_call::initialize()
     {
-        signal_2fa_request("send_raw_tx");
+        signal_2fa_request(m_type + "_raw_tx");
         m_twofactor_required = m_state == state_type::request_code;
 
         if (!m_net_params.is_liquid() && !m_net_params.is_electrum()) {
@@ -1553,7 +1556,7 @@ namespace sdk {
         // If we are requesting a code, either:
         // 1) Caller has 2FA configured and the tx is not under limits, OR
         // 2) Tx was thought to be under limits but limits have now changed
-        // Prevent the call from trying to send using the limit next time through the state machine
+        // Prevent the call from using the limit next time through the state machine
         m_under_limit = false;
         try {
             create_twofactor_data();
@@ -1573,11 +1576,11 @@ namespace sdk {
                 m_twofactor_data[amount_key] = m_bump_amount;
             } else {
                 if (m_under_limit) {
-                    // Tx is under the limit and a send hasn't previously failed causing
-                    // the user to enter a code. Try sending without 2fa as an under limits spend
+                    // Tx is under the limit and an attempt hasn't previously failed causing
+                    // the user to enter a code. Try again without 2fa as an under limits spend
                     m_twofactor_data["try_under_limits_spend"] = m_limit_details;
                 } else {
-                    // 2FA is provided or not configured. Add the send details
+                    // 2FA is provided or not configured. Add the details
                     m_twofactor_data["amount"] = m_limit_details["amount"];
                     m_twofactor_data["fee"] = m_limit_details["fee"];
                     m_twofactor_data["change_idx"] = m_limit_details["change_idx"];
@@ -1597,15 +1600,19 @@ namespace sdk {
 
         if (!m_net_params.is_liquid()) {
             // The api requires the request and action data to differ, which is non-optimal
-            json_rename_key(m_twofactor_data, "fee", "send_raw_tx_fee");
-            json_rename_key(m_twofactor_data, "change_idx", "send_raw_tx_change_idx");
+            json_rename_key(m_twofactor_data, "fee", m_type + "_raw_tx_fee");
+            json_rename_key(m_twofactor_data, "change_idx", m_type + "_raw_tx_change_idx");
 
-            const char* amount_key = m_bump_amount != 0u ? "bump_fee_amount" : "send_raw_tx_amount";
-            json_rename_key(m_twofactor_data, "amount", amount_key);
+            std::string key = m_bump_amount ? "bump_fee_amount" : (m_type + "_raw_tx_amount");
+            json_rename_key(m_twofactor_data, "amount", key);
         }
 
         // TODO: Add the recipient to twofactor_data for more server verification
-        m_result = m_session->send_transaction(m_tx_details, m_twofactor_data);
+        if (m_type == "send") {
+            m_result = m_session->send_transaction(m_tx_details, m_twofactor_data);
+        } else {
+            m_result = m_session->service_sign_transaction(m_tx_details, m_twofactor_data);
+        }
         return state_type::done;
     }
 
