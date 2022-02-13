@@ -549,14 +549,7 @@ namespace sdk {
 
     void sign_transaction_call::initialize()
     {
-        if (json_get_value(m_tx_details, "is_sweep", false) || m_net_params.is_electrum()) {
-            // TODO: Once tx aggregation is implemented, merge the sweep logic
-            // with general tx construction to allow HW devices to sign individual
-            // inputs (currently HW expects to sign all tx inputs)
-            // FIXME: Sign rust txs using the standard code path
-            m_result = m_session->user_sign_transaction(m_tx_details);
-            m_state = state_type::done;
-        } else {
+        if (true) {
             // Compute the data we need for the hardware to sign the transaction
             // We use the Anti-Exfil protocol if the hw supports it
             m_use_anti_exfil = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
@@ -600,6 +593,16 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
+        if (json_get_value(m_tx_details, "is_sweep", false) || m_net_params.is_electrum()) {
+            // For sweep txs and electrum single sig, sign the tx in software.
+            // TODO: Once tx aggregation is implemented, merge the sweep logic
+            // with general tx construction to allow HW devices to sign individual
+            // inputs (currently HW expects to sign all tx inputs)
+            // FIXME: Sign rust txs using the standard code path
+            m_result = m_session->user_sign_transaction(m_tx_details);
+            return state_type::done;
+        }
+
         if (!m_initialized) {
             initialize();
             m_initialized = true;
