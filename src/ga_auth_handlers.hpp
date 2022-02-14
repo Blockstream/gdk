@@ -70,6 +70,7 @@ namespace sdk {
         state_type call_impl() override;
         void initialize();
         void set_signer_data(const std::shared_ptr<signer>& signer);
+        void sign_user_inputs(const std::shared_ptr<signer>& signer);
 
         nlohmann::json m_tx_details;
         bool m_initialized;

@@ -629,17 +629,26 @@ namespace sdk {
             return state_type::done;
         }
 
+        auto signer = get_signer();
+
         if (!m_initialized) {
             // Create signing/twofactor data for user signing
             initialize();
+            // Create the data needed for user signing
+            set_signer_data(signer);
             m_initialized = true;
             return m_state;
         }
 
-        auto signer = get_signer();
-        // Create the data needed for this signer
-        set_signer_data(signer);
+        if (!json_get_value(m_result, "user_signed", false)) {
+            // We havent signed the users inputs yet, do so now
+            sign_user_inputs(signer);
+        }
+        return state_type::done;
+    }
 
+    void sign_transaction_call::sign_user_inputs(const std::shared_ptr<signer>& signer)
+    {
         const auto& hw_reply = get_hw_reply();
         const auto& inputs = m_twofactor_data["signing_inputs"];
         const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
@@ -698,7 +707,6 @@ namespace sdk {
         m_result["user_signed"] = true;
         m_result["blinded"] = true;
         update_tx_size_info(m_net_params, tx, m_result);
-        return state_type::done;
     }
 
     //
