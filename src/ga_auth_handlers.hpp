@@ -69,6 +69,7 @@ namespace sdk {
     private:
         state_type call_impl() override;
         void initialize();
+        void set_signer_data(const std::shared_ptr<signer>& signer);
 
         nlohmann::json m_tx_details;
         bool m_initialized;

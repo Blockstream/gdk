@@ -47,6 +47,13 @@ namespace sdk {
             data["ae_host_commitment"] = b2h(host_commitment);
         }
 
+        // Remove keys added by add_ae_host_data()
+        static void remove_ae_host_data(nlohmann::json& data)
+        {
+            data.erase("ae_host_entropy");
+            data.erase("ae_host_commitment");
+        }
+
         // If the hww is populated and supports the AE signing protocol, add
         // the host-entropy and host-commitment fields to the passed json.
         static bool add_required_ae_data(const std::shared_ptr<signer>& signer, nlohmann::json& data)
@@ -549,28 +556,23 @@ namespace sdk {
 
     void sign_transaction_call::initialize()
     {
-        if (true) {
+        if (!m_twofactor_data.contains("signing_inputs")) {
             // Compute the data we need for the hardware to sign the transaction
-            // We use the Anti-Exfil protocol if the hw supports it
-            m_use_anti_exfil = get_signer()->get_ae_protocol_support() != ae_protocol_support_level::none;
             signal_hw_request(hw_request::sign_tx);
             m_twofactor_data["transaction"] = m_tx_details;
-            m_twofactor_data["use_ae_protocol"] = m_use_anti_exfil;
 
             // We need the inputs, augmented with types, scripts and paths
             auto signing_inputs = get_ga_signing_inputs(m_tx_details);
             for (auto& input : signing_inputs) {
                 const auto& addr_type = input.at("address_type");
+                // FIXME: Allow including inputs that are not spendable by us,
+                // and that include sweep outouts
                 GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
                 // TODO: Support mixed/batched sweep transactions with non-sweep inputs
                 GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
-
-                // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-                if (m_use_anti_exfil) {
-                    add_ae_host_data(input);
-                }
             }
 
+            // FIXME: Only add "signing_transactions" for local signers
             nlohmann::json prev_txs;
             if (!m_net_params.is_liquid()) {
                 // BTC: Provide the previous txs data for validation, even
@@ -584,10 +586,31 @@ namespace sdk {
                     }
                 }
             }
-            m_twofactor_data["signing_inputs"] = signing_inputs;
             m_twofactor_data["signing_transactions"] = std::move(prev_txs);
             // FIXME: Do not duplicate the transaction_outputs in required_data
             m_twofactor_data["transaction_outputs"] = m_tx_details["transaction_outputs"];
+            m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
+        }
+    }
+
+    void sign_transaction_call::set_signer_data(const std::shared_ptr<signer>& signer)
+    {
+        // We use the Anti-Exfil protocol if the hw supports it
+        m_use_anti_exfil = signer->get_ae_protocol_support() != ae_protocol_support_level::none;
+        m_twofactor_data["use_ae_protocol"] = m_use_anti_exfil;
+
+        for (auto& input : m_twofactor_data["signing_inputs"]) {
+            const auto& addr_type = input.at("address_type");
+            GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
+            // TODO: Support mixed/batched sweep transactions with non-sweep inputs
+            GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
+
+            // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
+            if (m_use_anti_exfil) {
+                add_ae_host_data(input);
+            } else {
+                remove_ae_host_data(input);
+            }
         }
     }
 
@@ -604,10 +627,15 @@ namespace sdk {
         }
 
         if (!m_initialized) {
+            // Create signing/twofactor data for user signing
             initialize();
             m_initialized = true;
             return m_state;
         }
+
+        auto signer = get_signer();
+        // Create the data needed for this signer
+        set_signer_data(signer);
 
         const auto& hw_reply = get_hw_reply();
         const auto& inputs = m_twofactor_data["signing_inputs"];
@@ -617,7 +645,7 @@ namespace sdk {
         const bool is_liquid = m_net_params.is_liquid();
         const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
-        if (is_liquid && get_signer()->is_hardware()) {
+        if (is_liquid && signer->is_hardware()) {
             // FIMXE: We skip re-blinding for the internal software signer here,
             // since we have already done it. It should be possible to avoid blinding
             // the tx twice in the general HWW case.
@@ -656,7 +684,7 @@ namespace sdk {
             }
         }
 
-        const bool is_low_r = get_signer()->supports_low_r();
+        const bool is_low_r = signer->supports_low_r();
         size_t i = 0;
         for (const auto& utxo : inputs) {
             add_input_signature(tx, i, utxo, signatures[i], is_low_r);
