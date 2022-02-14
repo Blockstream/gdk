@@ -882,6 +882,16 @@ pub fn create_tx(
                     if !address.is_blinded() {
                         return Err(Error::NonConfidentialAddress);
                     }
+                    if let elements::address::Payload::WitnessProgram {
+                        version: v,
+                        program: p,
+                    } = &address.payload
+                    {
+                        // Do not support segwit greater than v1 and non-P2TR v1
+                        if v.to_u8() > 1 || (v.to_u8() == 1 && p.len() != 32) {
+                            return Err(Error::InvalidAddress);
+                        }
+                    }
                 } else {
                     return Err(Error::InvalidAddress);
                 }
