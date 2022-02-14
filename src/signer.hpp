@@ -71,6 +71,10 @@ namespace sdk {
         // Currently always true if the signer supports it.
         bool use_ae_protocol() const;
 
+        // Returns true if this signer is for a remote service
+        bool is_remote() const;
+
+        // Returns true if this signer is for a Liquid session
         bool is_liquid() const;
 
         // Returns true if this signer is watch-only (cannot sign)
