@@ -189,7 +189,7 @@ test_rust:
     - curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.21.0/elements-elements-0.21.0-x86_64-linux-gnu.tar.gz | tar -xvz elements-elements-0.21.0/bin/elementsd
     - export ELEMENTSD_EXEC=$PWD/elements-elements-0.21.0/bin/elementsd
     - cd subprojects/gdk_rust
-    - RUST_LOG=debug DEBUG=1 RUST_BACKTRACE=1 cargo test -- --nocapture
+    - RUST_LOG=debug RUST_BACKTRACE=1 cargo test -- --nocapture
 
 test_osx_clang:
   extends: .osx_test
