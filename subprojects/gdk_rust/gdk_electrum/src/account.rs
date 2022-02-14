@@ -379,6 +379,7 @@ impl Account {
             txhash: txid.to_hex(),
             satoshi: satoshi,
             subaccount: self.account_num,
+            is_segwit: self.script_type.is_segwit(),
             is_internal: is_internal,
             confidential: tx.output_is_confidential(vout),
             scriptpubkey: tx.output_script(vout),
