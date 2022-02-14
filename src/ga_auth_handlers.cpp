@@ -573,21 +573,6 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
             }
 
-            // FIXME: Only add "signing_transactions" for local signers
-            nlohmann::json prev_txs;
-            if (!m_net_params.is_liquid()) {
-                // BTC: Provide the previous txs data for validation, even
-                // for segwit, in order to mitigate the segwit fee attack.
-                // (Liquid txs are segwit+explicit fee and so not affected)
-                for (const auto& input : signing_inputs) {
-                    const std::string txhash = input.at("txhash");
-                    if (!prev_txs.contains(txhash)) {
-                        auto prev_tx = m_session->get_raw_transaction_details(txhash);
-                        prev_txs.emplace(txhash, tx_to_hex(prev_tx));
-                    }
-                }
-            }
-            m_twofactor_data["signing_transactions"] = std::move(prev_txs);
             // FIXME: Do not duplicate the transaction_outputs in required_data
             m_twofactor_data["transaction_outputs"] = m_tx_details["transaction_outputs"];
             m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
@@ -612,6 +597,23 @@ namespace sdk {
             } else {
                 remove_ae_host_data(input);
             }
+        }
+
+        if (!signer->is_remote() && !m_twofactor_data.contains("signing_transactions")) {
+            nlohmann::json prev_txs;
+            if (!m_net_params.is_liquid()) {
+                // BTC: Provide the previous txs data for validation, even
+                // for segwit, in order to mitigate the segwit fee attack.
+                // (Liquid txs are segwit+explicit fee and so not affected)
+                for (const auto& input : m_twofactor_data["signing_inputs"]) {
+                    const std::string txhash = input.at("txhash");
+                    if (!prev_txs.contains(txhash)) {
+                        auto prev_tx = m_session->get_raw_transaction_details(txhash);
+                        prev_txs.emplace(txhash, tx_to_hex(prev_tx));
+                    }
+                }
+            }
+            m_twofactor_data["signing_transactions"] = std::move(prev_txs);
         }
     }
 
