@@ -52,7 +52,6 @@ namespace sdk {
         , m_state(state_type::make_call)
         , m_attempts_remaining(TWO_FACTOR_ATTEMPTS)
         , m_hw_request(hw_request::none)
-        , m_use_anti_exfil(false)
     {
     }
 

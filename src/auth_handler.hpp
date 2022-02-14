@@ -121,7 +121,6 @@ namespace sdk {
         auth_handler::state_type m_state; // Current state
         uint32_t m_attempts_remaining;
         hw_request m_hw_request;
-        bool m_use_anti_exfil;
 
     private:
         bool has_retry_counter() const;

@@ -163,10 +163,8 @@ namespace sdk {
 
     bool signer::supports_low_r() const
     {
-        if (get_ae_protocol_support() != ae_protocol_support_level::none) {
-            return false; // Always use AE if the HW supports it
-        }
-        return m_device["supports_low_r"];
+        // Note we always use AE if the HW supports it
+        return !use_ae_protocol() && m_device["supports_low_r"];
     }
 
     bool signer::supports_arbitrary_scripts() const { return m_device["supports_arbitrary_scripts"]; }
@@ -176,6 +174,8 @@ namespace sdk {
     bool signer::supports_host_unblinding() const { return m_device["supports_host_unblinding"]; }
 
     ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device["supports_ae_protocol"]; }
+
+    bool signer::use_ae_protocol() const { return get_ae_protocol_support() != ae_protocol_support_level::none; }
 
     bool signer::is_liquid() const { return m_is_liquid; }
 

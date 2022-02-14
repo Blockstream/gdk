@@ -67,6 +67,10 @@ namespace sdk {
         // Returns how this signer supports the Anti-Exfil protocol
         ae_protocol_support_level get_ae_protocol_support() const;
 
+        // Returns true if this signer should use the Anti-Exfil protocol.
+        // Currently always true if the signer supports it.
+        bool use_ae_protocol() const;
+
         bool is_liquid() const;
 
         // Returns true if this signer is watch-only (cannot sign)

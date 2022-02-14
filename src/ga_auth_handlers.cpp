@@ -58,7 +58,7 @@ namespace sdk {
         // the host-entropy and host-commitment fields to the passed json.
         static bool add_required_ae_data(const std::shared_ptr<signer>& signer, nlohmann::json& data)
         {
-            const bool using_ae_protocol = signer->get_ae_protocol_support() != ae_protocol_support_level::none;
+            const bool using_ae_protocol = signer->use_ae_protocol();
             data["use_ae_protocol"] = using_ae_protocol;
             if (using_ae_protocol) {
                 add_ae_host_data(data);
@@ -357,12 +357,12 @@ namespace sdk {
             signal_hw_request(hw_request::sign_message);
             m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
             m_twofactor_data["path"] = signer::LOGIN_PATH;
-            m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
+            add_required_ae_data(m_signer, m_twofactor_data);
             return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
             const auto& hw_reply = get_hw_reply();
-            if (m_use_anti_exfil) {
+            if (m_signer->use_ae_protocol()) {
                 // Anti-Exfil protocol: verify the signature
                 const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
                 verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
@@ -480,16 +480,17 @@ namespace sdk {
                 signal_hw_request(hw_request::sign_message);
                 m_twofactor_data["message"] = format_recovery_key_message(m_details["recovery_xpub"], m_subaccount);
                 m_twofactor_data["path"] = signer::LOGIN_PATH;
-                m_use_anti_exfil = add_required_ae_data(m_signer, m_twofactor_data);
+                add_required_ae_data(get_signer(), m_twofactor_data);
                 return m_state;
             }
             // Fall through to create the subaccount
         } else if (m_hw_request == hw_request::sign_message) {
             // 2of3 subaccount: Caller has signed the recovery key
+            auto signer = get_signer();
             const auto& hw_reply = get_hw_reply();
-            if (m_use_anti_exfil) {
+            if (signer->use_ae_protocol()) {
                 // Anti-Exfil protocol: verify the signature
-                auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
+                auto login_bip32_xpub = signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
                 verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
             }
 
@@ -519,12 +520,11 @@ namespace sdk {
     void ack_system_message_call::initialize()
     {
         m_message_info = m_session->get_system_message_info(m_msg);
-        m_use_anti_exfil = m_signer->get_ae_protocol_support() != ae_protocol_support_level::none;
 
         signal_hw_request(hw_request::sign_message);
         m_twofactor_data["message"] = m_message_info.first;
         m_twofactor_data["path"] = m_message_info.second;
-        add_required_ae_data(m_signer, m_twofactor_data);
+        add_required_ae_data(get_signer(), m_twofactor_data);
     }
 
     auth_handler::state_type ack_system_message_call::call_impl()
@@ -536,8 +536,9 @@ namespace sdk {
         }
 
         const auto& hw_reply = get_hw_reply();
-        if (m_use_anti_exfil) {
-            const auto master_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::EMPTY_PATH));
+        auto signer = get_signer();
+        if (signer->use_ae_protocol()) {
+            const auto master_bip32_xpub = signer->get_bip32_xpub(make_vector(signer::EMPTY_PATH));
             verify_ae_message(m_twofactor_data, master_bip32_xpub, m_message_info.second, hw_reply);
         }
         m_session->ack_system_message(m_message_info.first, hw_reply.at("signature"));
@@ -596,8 +597,8 @@ namespace sdk {
     void sign_transaction_call::set_signer_data(const std::shared_ptr<signer>& signer)
     {
         // We use the Anti-Exfil protocol if the hw supports it
-        m_use_anti_exfil = signer->get_ae_protocol_support() != ae_protocol_support_level::none;
-        m_twofactor_data["use_ae_protocol"] = m_use_anti_exfil;
+        const bool use_ae_protocol = signer->use_ae_protocol();
+        m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
 
         for (auto& input : m_twofactor_data["signing_inputs"]) {
             const auto& addr_type = input.at("address_type");
@@ -606,7 +607,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
 
             // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-            if (m_use_anti_exfil) {
+            if (use_ae_protocol) {
                 add_ae_host_data(input);
             } else {
                 remove_ae_host_data(input);
@@ -667,7 +668,7 @@ namespace sdk {
         // If we are using the Anti-Exfil protocol we verify the signatures
         // TODO: the signer-commitments should be verified as being the same for the
         // same input data and host-entropy (eg. if retrying following failure).
-        if (m_use_anti_exfil) {
+        if (signer->use_ae_protocol()) {
             // FIXME: User pubkeys is not threadsafe if adding a subaccount
             // at the same time (this cant happen yet but should be allowed
             // in the future).
@@ -1036,7 +1037,7 @@ namespace sdk {
         if (!missing.empty()) {
             // We have missing nonces we need to fetch, request them
             signal_hw_request(hw_request::get_blinding_nonces);
-            set_blinding_nonce_request_data(m_signer, missing, m_twofactor_data);
+            set_blinding_nonce_request_data(get_signer(), missing, m_twofactor_data);
             return m_state;
         }
         // No missing nonces, cleanup and store the fetched txs directly
@@ -1089,7 +1090,7 @@ namespace sdk {
         // Some utxos need unblinding; ask the caller to resolve them
         m_result.swap(utxos);
         signal_hw_request(hw_request::get_blinding_nonces);
-        set_blinding_nonce_request_data(m_signer, missing, m_twofactor_data);
+        set_blinding_nonce_request_data(get_signer(), missing, m_twofactor_data);
     }
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
