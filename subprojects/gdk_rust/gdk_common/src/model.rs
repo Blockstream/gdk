@@ -317,6 +317,10 @@ pub struct TransactionMeta {
     // The utxos used in the transaction
     #[serde(default)]
     pub used_utxos: Vec<UnspentOutput>,
+    #[serde(rename = "transaction_version")]
+    pub version: u32,
+    #[serde(rename = "transaction_locktime")]
+    pub lock_time: u32,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -349,6 +353,8 @@ impl From<BETransaction> for TransactionMeta {
             vsize: (weight as f32 / 4.0) as usize,
             size: transaction.get_size(),
             used_utxos: vec![],
+            version: transaction.version(),
+            lock_time: transaction.lock_time(),
         }
     }
 }
