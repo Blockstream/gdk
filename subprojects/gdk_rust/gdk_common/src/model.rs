@@ -321,6 +321,7 @@ pub struct TransactionMeta {
     pub version: u32,
     #[serde(rename = "transaction_locktime")]
     pub lock_time: u32,
+    pub transaction_outputs: Vec<TransactionOutput>,
 }
 
 impl From<BETransaction> for TransactionMeta {
@@ -355,6 +356,7 @@ impl From<BETransaction> for TransactionMeta {
             used_utxos: vec![],
             version: transaction.version(),
             lock_time: transaction.lock_time(),
+            transaction_outputs: vec![],
         }
     }
 }
@@ -394,6 +396,25 @@ impl TransactionMeta {
         wgtx.spv_verified = spv_verified;
         wgtx
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionOutput {
+    pub address: String, // Only used by Trezor
+    pub address_type: String,
+
+    /// True if the corresponding scriptpubkey belongs to the account (not the wallet)
+    pub is_relevant: bool,
+    pub is_change: bool, // Same as is_relevant
+
+    pub subaccount: u32,
+    pub is_internal: bool,
+    pub pointer: u32, // child_number in bip32 terminology
+    pub user_path: Vec<ChildNumber>,
+
+    pub pt_idx: u32,    // vout
+    pub script: String, // script code
+    pub satoshi: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

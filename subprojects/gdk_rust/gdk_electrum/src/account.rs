@@ -22,8 +22,8 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction,
-    GetTransactionsOpt, SPVVerifyTxResult, TransactionMeta, UnspentOutput, UpdateAccountOpt,
-    UtxoStrategy,
+    GetTransactionsOpt, SPVVerifyTxResult, TransactionMeta, TransactionOutput, UnspentOutput,
+    UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::util::is_confidential_txoutsecrets;
@@ -306,6 +306,49 @@ impl Account {
         let public_key = &xpub.public_key;
         // script code is the same for the currently supported script type
         p2pkh_script(public_key).into()
+    }
+
+    pub fn tx_outputs(&self, tx: &BETransaction) -> Result<Vec<TransactionOutput>, Error> {
+        let store_read = self.store.read()?;
+        let acc_store = store_read.account_cache(self.account_num)?;
+        let mut tx_outputs = vec![];
+        for vout in 0..tx.output_len() as u32 {
+            let address = tx.output_address(vout, self.network.id()).unwrap_or_default();
+            let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
+            let script_pubkey = tx.output_script(vout);
+            tx_outputs.push(match acc_store.paths.get(&script_pubkey) {
+                None => TransactionOutput {
+                    address,
+                    satoshi,
+                    address_type: "".into(),
+                    is_relevant: false,
+                    is_change: false,
+                    subaccount: self.account_num,
+                    is_internal: false,
+                    pointer: 0,
+                    pt_idx: vout,
+                    script: "".into(),
+                    user_path: vec![],
+                },
+                Some(account_path) => {
+                    let (is_internal, pointer) = parse_path(&account_path)?;
+                    TransactionOutput {
+                        address,
+                        satoshi,
+                        address_type: self.script_type.to_string(),
+                        is_relevant: true,
+                        is_change: true, // same as is_relevant
+                        subaccount: self.account_num,
+                        is_internal,
+                        pointer,
+                        pt_idx: vout,
+                        script: self.script_code(&account_path).to_hex(),
+                        user_path: self.get_full_path(&account_path).into(),
+                    }
+                }
+            });
+        }
+        Ok(tx_outputs)
     }
 
     fn txo(&self, outpoint: &BEOutPoint) -> Result<UnspentOutput, Error> {
@@ -1243,6 +1286,7 @@ pub fn create_tx(
     }
 
     let used_utxos = account.used_utxos(&tx)?;
+    let tx_outputs = account.tx_outputs(&tx)?;
     let mut created_tx = TransactionMeta::new(
         tx,
         None,
@@ -1256,6 +1300,7 @@ pub fn create_tx(
         SPVVerifyTxResult::InProgress,
     );
     created_tx.used_utxos = used_utxos;
+    created_tx.transaction_outputs = tx_outputs;
     created_tx.changes_used = Some(changes.len() as u32);
     created_tx.addressees_read_only = request.previous_transaction.is_some();
     info!("returning: {:?}", created_tx);
