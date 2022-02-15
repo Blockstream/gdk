@@ -43,10 +43,11 @@ namespace sdk {
         {
             const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
             const uint32_t pointer = utxo.at("pointer");
+            const bool is_internal = utxo.value("is_internal", false);
 
             if (utxo.find("user_path") == utxo.end()) {
                 // Populate the full user path for h/w signing
-                utxo["user_path"] = session.get_subaccount_full_path(subaccount, pointer);
+                utxo["user_path"] = session.get_subaccount_full_path(subaccount, pointer, is_internal);
             }
 
             if (utxo.find("service_xpub") == utxo.end()) {
@@ -887,6 +888,7 @@ namespace sdk {
             const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
             const uint32_t pointer = json_get_value(u, "pointer", 0u);
             const auto type = script_type(u.at("script_type"));
+            const bool is_internal = json_get_value(u, "is_internal", false);
             const auto script = h2b(u.at("prevout_script"));
             const std::string private_key = json_get_value(u, "private_key");
             auto signer = session.get_nonnull_signer();
@@ -903,7 +905,7 @@ namespace sdk {
                 tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
                 return b2h(der);
             } else {
-                const auto path = session.get_subaccount_full_path(subaccount, pointer);
+                const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
                 const auto user_sig = signer->sign_hash(path, tx_hash);
                 const auto der = ec_sig_to_der(user_sig, true);
 

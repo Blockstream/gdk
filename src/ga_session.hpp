@@ -155,7 +155,7 @@ namespace sdk {
         ga_user_pubkeys& get_recovery_pubkeys();
         bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
-        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
+        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal);
         std::string get_service_xpub(uint32_t subaccount);
         std::string get_recovery_xpub(uint32_t subaccount);
 

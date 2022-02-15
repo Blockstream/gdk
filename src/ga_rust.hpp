@@ -44,7 +44,7 @@ namespace sdk {
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
         std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
-        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
+        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal);
 
         nlohmann::json get_available_currencies() const;
 

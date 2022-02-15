@@ -326,9 +326,13 @@ namespace sdk {
         return call_session("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } })).at("path");
     }
 
-    std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
+    std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
-        throw std::runtime_error("get_subaccount_full_path not implemented");
+        // FIXME: do everything on the rust side
+        std::vector<uint32_t> path = get_subaccount_root_path(subaccount);
+        path.push_back(is_internal ? 1 : 0);
+        path.push_back(pointer);
+        return path;
     }
 
     nlohmann::json ga_rust::get_available_currencies() const
