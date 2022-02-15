@@ -988,9 +988,22 @@ namespace sdk {
             = u.value("is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
         const auto script = h2b(u.at("prevout_script"));
         auto der = h2b(der_hex);
+        const auto address_type = u.at("address_type");
 
-        if (is_segwit) {
-            // See above re: spending using the users key only
+        if (address_type == "p2pkh") {
+            tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
+        } else if (address_type == "p2sh-p2wpkh" || address_type == "p2wpkh") {
+            const auto public_key = h2b(u.at("public_key"));
+            auto wit = tx_witness_stack_init(2);
+            tx_witness_stack_add(wit, der);
+            tx_witness_stack_add(wit, public_key);
+            tx_set_input_witness(tx, index, wit);
+            if (address_type == "p2sh-p2wpkh") {
+                // for native segwit do not set the scriptsig
+                tx_set_input_script(tx, index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
+            }
+        } else if (is_segwit) {
+            // Multisig cases
             auto wit = tx_witness_stack_init(1);
             tx_witness_stack_add(wit, der);
             tx_set_input_witness(tx, index, wit);

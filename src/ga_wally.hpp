@@ -130,6 +130,8 @@ namespace sdk {
 
     std::vector<unsigned char> scriptsig_p2pkh_from_der(byte_span_t public_key, byte_span_t sig);
 
+    std::vector<unsigned char> scriptsig_p2sh_p2wpkh_from_bytes(byte_span_t public_key);
+
     void scriptpubkey_csv_2of2_then_1_from_bytes(
         byte_span_t keys, uint32_t csv_blocks, bool optimize, std::vector<unsigned char>& out);
 
