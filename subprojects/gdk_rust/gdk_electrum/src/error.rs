@@ -1,4 +1,5 @@
 use crate::store::StoreMeta;
+use crate::State;
 use aes_gcm_siv::aead;
 use serde::ser::Serialize;
 use std::convert::From;
@@ -269,6 +270,18 @@ impl From<PoisonError<RwLockReadGuard<'_, StoreMeta>>> for Error {
 
 impl From<PoisonError<RwLockWriteGuard<'_, StoreMeta>>> for Error {
     fn from(err: PoisonError<RwLockWriteGuard<'_, StoreMeta>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockReadGuard<'_, State>>> for Error {
+    fn from(err: PoisonError<RwLockReadGuard<'_, State>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockWriteGuard<'_, State>>> for Error {
+    fn from(err: PoisonError<RwLockWriteGuard<'_, State>>) -> Self {
         Error::Generic(err.to_string())
     }
 }

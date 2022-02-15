@@ -157,6 +157,27 @@ impl From<bool> for State {
     }
 }
 
+#[derive(Clone)]
+pub struct StateUpdater {
+    current: Arc<RwLock<State>>,
+    desired: Arc<AtomicBool>,
+    notify: NativeNotif,
+}
+
+impl StateUpdater {
+    fn update_if_needed(&self, state: State) {
+        let _ = self.try_update_if_needed(state);
+    }
+    fn try_update_if_needed(&self, state: State) -> Result<(), Error> {
+        let current_read = *self.current.read()?;
+        if state != current_read {
+            *self.current.write()? = state;
+            self.notify.network(state, self.desired.load(Ordering::Relaxed).into());
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
@@ -544,18 +565,27 @@ impl ElectrumSession {
         self.get_wallet_hash_id()
     }
 
-    fn notify_network(&self) {
+    fn notify_network(&self) -> Result<(), Error> {
         self.notify.network(
-            (*self.state.read().unwrap()).clone(),
-            (!self.closer.terminates.as_ref().unwrap().load(Ordering::Relaxed)).into(),
+            (*self.state.read()?).clone(),
+            (!self.closer.terminates()?.load(Ordering::Relaxed)).into(),
         );
+        Ok(())
     }
 
     pub fn stop_threads(&mut self) -> Result<(), Error> {
         self.closer.close()?;
-        *self.state.write().unwrap() = State::Disconnected;
-        self.notify_network();
+        *self.state.write()? = State::Disconnected;
+        self.notify_network()?;
         Ok(())
+    }
+
+    pub fn state_updater(&self) -> Result<StateUpdater, Error> {
+        Ok(StateUpdater {
+            current: self.state.clone(),
+            desired: self.closer.terminates()?,
+            notify: self.notify.clone(),
+        })
     }
 
     pub fn start_threads(&mut self) -> Result<(), Error> {
@@ -576,27 +606,19 @@ impl ElectrumSession {
             self.url.url(),
             self.proxy.as_ref().unwrap_or(&"".to_string())
         );
-        let current_state = self.state.clone();
-        let notify_clone = self.notify.clone();
+
+        let state_updater = self.state_updater()?;
         if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref()) {
             info!("building built end");
             let fee_store = self.store()?;
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client) {
                     Ok(fee_estimates) => {
-                        update_state_if_needed(
-                            State::Connected,
-                            current_state.clone(),
-                            notify_clone.clone(),
-                        );
+                        state_updater.update_if_needed(State::Connected);
                         fee_store.write().unwrap().cache.fee_estimates = fee_estimates
                     }
                     Err(e) => {
-                        update_state_if_needed(
-                            State::Disconnected,
-                            current_state.clone(),
-                            notify_clone.clone(),
-                        );
+                        state_updater.update_if_needed(State::Disconnected);
                         warn!("can't update fee estimates {:?}", e)
                     }
                 };
@@ -627,11 +649,11 @@ impl ElectrumSession {
 
             let headers_url = self.url.clone();
             let proxy = self.proxy.clone();
-            let terminates = self.closer.terminates()?;
             let notify_txs = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
-            let current_state = self.state.clone();
-            let notify_clone = self.notify.clone();
+            let state_updater = self.state_updater()?;
+            let terminates = self.closer.terminates()?;
+
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
                 let mut round = 0u8;
@@ -650,11 +672,7 @@ impl ElectrumSession {
                             }
                             match headers.ask(chunk_size, &client) {
                                 Ok(headers_found) => {
-                                    update_state_if_needed(
-                                        State::Connected,
-                                        current_state.clone(),
-                                        notify_clone.clone(),
-                                    );
+                                    state_updater.update_if_needed(State::Connected);
                                     if headers_found < chunk_size {
                                         break;
                                     } else {
@@ -672,11 +690,7 @@ impl ElectrumSession {
                                     // XXX clear affected blocks/txs more surgically?
                                 }
                                 Err(e) => {
-                                    update_state_if_needed(
-                                        State::Disconnected,
-                                        current_state.clone(),
-                                        notify_clone.clone(),
-                                    );
+                                    state_updater.update_if_needed(State::Disconnected);
                                     warn!("error while asking headers {}", e);
                                     thread::sleep(Duration::from_millis(500));
                                 }
@@ -726,19 +740,15 @@ impl ElectrumSession {
         let terminates = self.closer.terminates()?;
         let tipper_url = self.url.clone();
         let proxy = self.proxy.clone();
-        let current_state = self.state.clone();
-        let notify_clone = self.notify.clone();
+        let state_updater = self.state_updater()?;
+
         let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
             loop {
                 if let Ok(client) = tipper_url.build_client(proxy.as_deref()) {
                     match tipper.tip(&client) {
                         Ok(current_tip) => {
-                            update_state_if_needed(
-                                State::Connected,
-                                current_state.clone(),
-                                notify_clone.clone(),
-                            );
+                            state_updater.update_if_needed(State::Connected);
                             if tip_height != current_tip {
                                 tip_height = current_tip;
                                 info!("tip is {:?}", tip_height);
@@ -746,11 +756,7 @@ impl ElectrumSession {
                             }
                         }
                         Err(e) => {
-                            update_state_if_needed(
-                                State::Disconnected,
-                                current_state.clone(),
-                                notify_clone.clone(),
-                            );
+                            state_updater.update_if_needed(State::Disconnected);
                             warn!("exception in tipper {:?}", e);
                         }
                     }
@@ -767,30 +773,22 @@ impl ElectrumSession {
         let notify_txs = self.notify.clone();
         let syncer_url = self.url.clone();
         let proxy = self.proxy.clone();
-        let current_state = self.state.clone();
-        let notify_clone = self.notify.clone();
+        let state_updater = self.state_updater()?;
+
         let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
             loop {
                 match syncer_url.build_client(proxy.as_deref()) {
                     Ok(client) => match syncer.sync(&client) {
                         Ok(updated_accounts) => {
-                            update_state_if_needed(
-                                State::Connected,
-                                current_state.clone(),
-                                notify_clone.clone(),
-                            );
+                            state_updater.update_if_needed(State::Connected);
                             for account_num in updated_accounts {
                                 info!("there are new transactions");
                                 notify_txs.updated_txs(account_num);
                             }
                         }
                         Err(e) => {
-                            update_state_if_needed(
-                                State::Disconnected,
-                                current_state.clone(),
-                                notify_clone.clone(),
-                            );
+                            state_updater.update_if_needed(State::Disconnected);
                             warn!("Error during sync, {:?}", e)
                         }
                     },
@@ -806,12 +804,12 @@ impl ElectrumSession {
         });
         self.closer.handles.push(syncer_handle);
 
-        *self.state.write().unwrap() = State::Connected;
+        *self.state.write()? = State::Connected;
 
         if self.login_done {
             // we notify network only after the first time,
             // because we already do at first connect and it would be notified twice otherwise
-            self.notify_network();
+            self.notify_network()?;
         } else {
             self.notify.settings(&self.get_settings()?);
             self.login_done = true;
@@ -1160,14 +1158,6 @@ impl ElectrumSession {
         let status = hasher.finish();
         info!("txs status={}", status);
         Ok(status)
-    }
-}
-
-fn update_state_if_needed(state: State, current: Arc<RwLock<State>>, notify: NativeNotif) {
-    let current_read = *current.read().unwrap();
-    if state != current_read {
-        *current.write().unwrap() = state;
-        notify.network(state, state); //FIXME with correct desired statecurrent
     }
 }
 
