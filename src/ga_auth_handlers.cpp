@@ -570,7 +570,7 @@ namespace sdk {
                 // and that include sweep outouts
                 GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
                 // TODO: Support mixed/batched sweep transactions with non-sweep inputs
-                GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
+                GDK_RUNTIME_ASSERT(!input.contains("private_key"));
             }
 
             // FIXME: Do not duplicate the transaction_outputs in required_data
@@ -589,7 +589,7 @@ namespace sdk {
             const auto& addr_type = input.at("address_type");
             GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
             // TODO: Support mixed/batched sweep transactions with non-sweep inputs
-            GDK_RUNTIME_ASSERT(addr_type != address_type::p2pkh);
+            GDK_RUNTIME_ASSERT(!input.contains("private_key"));
 
             // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
             if (use_ae_protocol) {
