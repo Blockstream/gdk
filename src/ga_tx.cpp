@@ -67,7 +67,8 @@ namespace sdk {
             const std::string txhash = utxo.at("txhash");
             const auto txid = h2b_rev(txhash);
             const uint32_t index = utxo.at("pt_idx");
-            const auto type = script_type(utxo.at("script_type"));
+            const auto is_segwit = utxo.value(
+                "is_segwit", is_segwit_script_type(utxo.value("script_type", script_type::ga_pubkey_hash_out)));
             const bool low_r = session.get_nonnull_signer()->supports_low_r();
             const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
             const bool external = !json_get_value(utxo, "private_key").empty();
@@ -90,7 +91,7 @@ namespace sdk {
 
                 wally_tx_witness_stack_ptr wit;
 
-                if (is_segwit_script_type(type)) {
+                if (is_segwit) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     wit = tx_witness_stack_init(4);
                     tx_witness_stack_add_dummy(wit, WALLY_TX_DUMMY_NULL);
@@ -128,7 +129,8 @@ namespace sdk {
             // - 2of3 p2wsh, backup key signing
             // - 2of2 csv, csv path
             const auto type = script_type(utxo.at("script_type"));
-            if (!is_segwit_script_type(type)) {
+            const auto is_segwit = utxo.value("is_segwit", is_segwit_script_type(type));
+            if (!is_segwit) {
                 // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
                 // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
                 const auto& input = tx->inputs[index];
@@ -887,8 +889,9 @@ namespace sdk {
             const auto txhash = u.at("txhash");
             const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
             const uint32_t pointer = json_get_value(u, "pointer", 0u);
-            const auto type = script_type(u.at("script_type"));
             const bool is_internal = json_get_value(u, "is_internal", false);
+            const auto is_segwit
+                = u.value("is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
             const auto script = h2b(u.at("prevout_script"));
             const std::string private_key = json_get_value(u, "private_key");
             auto signer = session.get_nonnull_signer();
@@ -909,7 +912,7 @@ namespace sdk {
                 const auto user_sig = signer->sign_hash(path, tx_hash);
                 const auto der = ec_sig_to_der(user_sig, true);
 
-                if (is_segwit_script_type(type)) {
+                if (is_segwit) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     // Note that this requires setting the inputs sequence number to the CSV time too
                     auto wit = tx_witness_stack_init(1);
@@ -929,10 +932,11 @@ namespace sdk {
         const network_parameters& net_params, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
     {
         const amount::value_type v = utxo.at("satoshi");
-        const auto type = script_type(utxo.at("script_type"));
+        const auto is_segwit = utxo.value(
+            "is_segwit", is_segwit_script_type(utxo.value("script_type", script_type::ga_pubkey_hash_out)));
         const auto script = h2b(utxo.at("prevout_script"));
 
-        const uint32_t flags = is_segwit_script_type(type) ? WALLY_TX_FLAG_USE_WITNESS : 0;
+        const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
         if (!net_params.is_liquid()) {
             const amount satoshi{ v };
@@ -980,11 +984,12 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(json_get_value(u, "private_key").empty());
 
-        const auto type = script_type(u.at("script_type"));
+        const auto is_segwit
+            = u.value("is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
         const auto script = h2b(u.at("prevout_script"));
         auto der = h2b(der_hex);
 
-        if (is_segwit_script_type(type)) {
+        if (is_segwit) {
             // See above re: spending using the users key only
             auto wit = tx_witness_stack_init(1);
             tx_witness_stack_add(wit, der);
