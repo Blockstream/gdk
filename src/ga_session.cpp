@@ -3284,13 +3284,12 @@ namespace sdk {
         const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send)
     {
         GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
+        // We must have a tx and it must be signed by the user
+        GDK_RUNTIME_ASSERT(details.find("transaction") != details.end());
         GDK_RUNTIME_ASSERT_MSG(json_get_value(details, "user_signed", false), "Tx must be signed before sending");
 
         nlohmann::json result = details;
 
-        // We must have a tx and it must be signed by the user
-        GDK_RUNTIME_ASSERT(result.find("transaction") != result.end());
-        GDK_RUNTIME_ASSERT(json_get_value(result, "user_signed", false));
         // Check memo is storable, if we are sending and have one
         const std::string memo = is_send ? json_get_value(result, "memo") : std::string();
         check_tx_memo(memo);
