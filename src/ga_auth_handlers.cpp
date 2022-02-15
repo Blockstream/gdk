@@ -619,12 +619,13 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        if (json_get_value(m_tx_details, "is_sweep", false) || m_net_params.is_electrum()) {
-            // For sweep txs and electrum single sig, sign the tx in software.
+        if (json_get_value(m_tx_details, "is_sweep", false)
+            || (m_net_params.is_electrum() && m_net_params.is_liquid())) {
+            // For sweep txs and liquid electrum single sig, sign the tx in software.
             // TODO: Once tx aggregation is implemented, merge the sweep logic
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)
-            // FIXME: Sign rust txs using the standard code path
+            // FIXME: Sign rust liquid txs using the standard code path
             m_result = m_session->user_sign_transaction(m_tx_details);
             return state_type::done;
         }
