@@ -977,7 +977,10 @@ impl ElectrumSession {
         if let Some(memo) = tx.create_transaction.as_ref().and_then(|o| o.memo.as_ref()) {
             self.get_wallet()?.store.write()?.insert_memo(txid.into(), memo)?;
         }
-        Ok(tx.clone())
+        let mut tx = tx.clone();
+        // If sign transaction happens externally txid might not have been updated
+        tx.txid = txid.to_string();
+        Ok(tx)
     }
 
     pub fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
