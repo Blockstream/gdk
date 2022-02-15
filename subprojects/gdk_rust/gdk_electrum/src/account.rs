@@ -300,12 +300,15 @@ impl Account {
         Ok(txs)
     }
 
-    pub fn script_code(&self, path: &DerivationPath) -> BEScript {
-        // FIXME: (leo) is this the correct path?
+    pub fn public_key(&self, path: &DerivationPath) -> PublicKey {
         let xpub = self.xpub.derive_pub(&crate::EC, path).unwrap();
-        let public_key = &xpub.public_key;
+        xpub.public_key
+    }
+
+    pub fn script_code(&self, path: &DerivationPath) -> BEScript {
+        let public_key = self.public_key(path);
         // script code is the same for the currently supported script type
-        p2pkh_script(public_key).into()
+        p2pkh_script(&public_key).into()
     }
 
     pub fn tx_outputs(&self, tx: &BETransaction) -> Result<Vec<TransactionOutput>, Error> {
@@ -385,6 +388,7 @@ impl Account {
             scriptpubkey: tx.output_script(vout),
             sequence: None,
             script_code: self.script_code(&account_path).to_hex(),
+            public_key: self.public_key(&account_path).to_string(),
             user_path: self.get_full_path(&account_path).into(),
         })
     }
