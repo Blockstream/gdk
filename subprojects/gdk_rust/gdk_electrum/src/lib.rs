@@ -102,25 +102,25 @@ pub struct Headers {
 }
 
 pub struct Closer {
-    pub terminates: Option<Arc<AtomicBool>>,
+    pub threads_stopped: Option<Arc<AtomicBool>>,
     pub handles: Vec<JoinHandle<()>>,
 }
 
 impl Closer {
     pub fn close(&mut self) -> Result<(), Error> {
-        self.terminates()?.store(true, Ordering::Relaxed);
+        self.threads_stopped()?.store(true, Ordering::Relaxed);
 
         while let Some(handle) = self.handles.pop() {
             handle.join().expect("Couldn't join on the associated thread");
         }
         Ok(())
     }
-    pub fn terminates(&self) -> Result<Arc<AtomicBool>, Error> {
+    pub fn threads_stopped(&self) -> Result<Arc<AtomicBool>, Error> {
         Ok(self
-            .terminates
+            .threads_stopped
             .as_ref()
             .cloned()
-            .ok_or_else(|| Error::Generic("terminates not initialized".to_string()))?)
+            .ok_or_else(|| Error::Generic("threads_stopped not initialized".to_string()))?)
     }
 }
 
@@ -375,7 +375,7 @@ impl ElectrumSession {
             wallet: None,
             notify: NativeNotif::new(),
             closer: Closer {
-                terminates: None,
+                threads_stopped: None,
                 handles: vec![],
             },
             state: Arc::new(RwLock::new(State::Disconnected)),
@@ -413,12 +413,11 @@ impl ElectrumSession {
     }
 
     pub fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
-
         // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
 
         if self.wallet_initialized {
-            if self.closer.terminates()?.load(Ordering::Relaxed) == true {
+            if self.threads_stopped_load()? {
                 self.start_threads()?;
             }
         } else {
@@ -448,7 +447,7 @@ impl ElectrumSession {
     }
 
     pub fn disconnect(&mut self) -> Result<(), Error> {
-        if self.closer.terminates()?.load(Ordering::Relaxed) == false {
+        if !self.threads_stopped_load()? {
             self.stop_threads()?;
 
             // The following flush is redundant since a flush is done when the store is dropped,
@@ -569,31 +568,28 @@ impl ElectrumSession {
     }
 
     fn notify_network(&self) -> Result<(), Error> {
-        self.notify.network(
-            (*self.state.read()?).clone(),
-            (!self.closer.terminates()?.load(Ordering::Relaxed)).into(),
-        );
+        self.notify.network((*self.state.read()?).clone(), (!self.threads_stopped_load()?).into());
         Ok(())
     }
 
     pub fn stop_threads(&mut self) -> Result<(), Error> {
         self.closer.close()?;
         *self.state.write()? = State::Disconnected;
-        self.notify_network()?;
+        self.notify.network(State::Disconnected, State::Disconnected);
         Ok(())
     }
 
     pub fn state_updater(&self) -> Result<StateUpdater, Error> {
         Ok(StateUpdater {
             current: self.state.clone(),
-            desired: self.closer.terminates()?,
+            desired: self.closer.threads_stopped()?,
             notify: self.notify.clone(),
         })
     }
 
     pub fn start_threads(&mut self) -> Result<(), Error> {
-        let terminates = Arc::new(AtomicBool::new(false));
-        self.closer.terminates = Some(terminates);
+        let threads_stopped = Arc::new(AtomicBool::new(false));
+        self.closer.threads_stopped = Some(threads_stopped);
 
         let master_blinding = if self.network.liquid {
             Some(self.get_master_blinding_key()?)
@@ -655,21 +651,21 @@ impl ElectrumSession {
             let notify_txs = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let state_updater = self.state_updater()?;
-            let terminates = self.closer.terminates()?;
+            let threads_stopped = self.closer.threads_stopped()?;
 
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
                 let mut round = 0u8;
 
                 'outer: loop {
-                    if wait_or_close(&terminates, sync_interval) {
+                    if wait_or_close(&threads_stopped, sync_interval) {
                         info!("closing headers thread");
                         break;
                     }
 
                     if let Ok(client) = headers_url.build_client(proxy.as_deref()) {
                         loop {
-                            if terminates.load(Ordering::Relaxed) {
+                            if threads_stopped.load(Ordering::Relaxed) {
                                 info!("closing headers thread");
                                 break 'outer;
                             }
@@ -740,7 +736,7 @@ impl ElectrumSession {
 
         let notify_blocks = self.notify.clone();
 
-        let terminates = self.closer.terminates()?;
+        let threads_stopped = self.closer.threads_stopped()?;
         let tipper_url = self.url.clone();
         let proxy = self.proxy.clone();
         let state_updater = self.state_updater()?;
@@ -764,7 +760,7 @@ impl ElectrumSession {
                         }
                     }
                 }
-                if wait_or_close(&terminates, sync_interval) {
+                if wait_or_close(&threads_stopped, sync_interval) {
                     info!("closing tipper thread {:?}", tip_height);
                     break;
                 }
@@ -772,7 +768,7 @@ impl ElectrumSession {
         });
         self.closer.handles.push(tipper_handle);
 
-        let terminates = self.closer.terminates()?;
+        let threads_stopped = self.closer.threads_stopped()?;
         let notify_txs = self.notify.clone();
         let syncer_url = self.url.clone();
         let proxy = self.proxy.clone();
@@ -799,7 +795,7 @@ impl ElectrumSession {
                         warn!("Can't build client {:?}", e)
                     }
                 }
-                if wait_or_close(&terminates, sync_interval) {
+                if wait_or_close(&threads_stopped, sync_interval) {
                     info!("closing syncer thread");
                     break;
                 }
@@ -1161,6 +1157,10 @@ impl ElectrumSession {
         let status = hasher.finish();
         info!("txs status={}", status);
         Ok(status)
+    }
+
+    fn threads_stopped_load(&self) -> Result<bool, Error> {
+        Ok(self.closer.threads_stopped()?.load(Ordering::Relaxed))
     }
 }
 
