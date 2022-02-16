@@ -413,7 +413,10 @@ impl ElectrumSession {
     }
 
     pub fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
+
+        // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
+
         if self.wallet_initialized {
             if self.closer.terminates()?.load(Ordering::Relaxed) == true {
                 self.start_threads()?;
