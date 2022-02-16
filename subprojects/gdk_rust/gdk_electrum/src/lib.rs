@@ -157,6 +157,15 @@ impl From<bool> for State {
     }
 }
 
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            State::Disconnected => write!(f, "disconnected"),
+            State::Connected => write!(f, "connected"),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct StateUpdater {
     current: Arc<RwLock<State>>,
@@ -175,15 +184,6 @@ impl StateUpdater {
             self.notify.network(state, self.desired.load(Ordering::Relaxed).into());
         }
         Ok(())
-    }
-}
-
-impl fmt::Display for State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            State::Disconnected => write!(f, "disconnected"),
-            State::Connected => write!(f, "connected"),
-        }
     }
 }
 
