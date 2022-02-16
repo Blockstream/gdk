@@ -137,7 +137,7 @@ pub struct ElectrumSession {
 
     pub store: Option<Store>,
 
-    pub login_done: bool,
+    pub wallet_initialized: bool,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -382,7 +382,7 @@ impl ElectrumSession {
             timeout: None,
             store: None,
 
-            login_done: false,
+            wallet_initialized: false,
         }
     }
 
@@ -414,7 +414,7 @@ impl ElectrumSession {
 
     pub fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
-        if self.login_done {
+        if self.wallet_initialized {
             if self.closer.terminates()?.load(Ordering::Relaxed) == true {
                 self.start_threads()?;
             }
@@ -526,7 +526,7 @@ impl ElectrumSession {
         info!("login {:?} {:?}", self.network, self.state);
 
         // This check must be done before everything else to allow re-login
-        if self.login_done {
+        if self.wallet_initialized {
             // we consider login already done if wallet is some
             return self.get_wallet_hash_id();
         }
@@ -806,13 +806,13 @@ impl ElectrumSession {
 
         *self.state.write()? = State::Connected;
 
-        if self.login_done {
+        if self.wallet_initialized {
             // we notify network only after the first time,
             // because we already do at first connect and it would be notified twice otherwise
             self.notify_network()?;
         } else {
             self.notify.settings(&self.get_settings()?);
-            self.login_done = true;
+            self.wallet_initialized = true;
         }
 
         Ok(())
