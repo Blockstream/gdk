@@ -113,18 +113,14 @@ impl NativeNotif {
         }
     }
 
-    pub fn notifications(&self) -> Vec<Value> {
-        self.testing.lock().unwrap().clone()
-    }
-
-    pub fn find_last_event(&self, event: &str) -> Option<Value> {
+    pub fn filter_events(&self, event: &str) -> Vec<Value> {
         self.testing
             .lock()
             .unwrap()
             .iter()
-            .rev()
-            .find(|e| e.get("event").unwrap().as_str().unwrap() == event)
+            .filter(|e| e.get("event").unwrap().as_str().unwrap() == event)
             .cloned()
+            .collect()
     }
 
     pub fn push(&self, value: Value) {

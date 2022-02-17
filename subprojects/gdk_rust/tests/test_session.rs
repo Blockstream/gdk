@@ -159,17 +159,19 @@ pub fn setup(
 
     info!("creating gdk session");
     let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
+    let ntf_len = session.filter_events("network").len();
     session.connect(&serde_json::to_value(network.clone()).unwrap()).unwrap();
-
     assert_eq!(
-        session.notify.find_last_event("network"),
-        Some(Notification::new_network_value(State::Connected, State::Connected))
+        session.filter_events("network").last(),
+        Some(&Notification::new_network_value(State::Connected, State::Connected))
     );
+    assert_eq!(session.filter_events("network").len(), ntf_len + 1);
 
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     info!("logging in gdk session");
     let login_data = session.login(&mnemonic, None).unwrap();
-    assert!(session.notify.find_last_event("settings").is_some());
+    assert!(session.filter_events("settings").last().is_some());
+
     assert_eq!(network.name, ""); // network name contributes to wallet hash id
     assert_eq!(
         login_data.wallet_hash_id,
@@ -190,8 +192,8 @@ pub fn setup(
     };
     assert_eq!(block_status.0, 101);
     assert_eq!(
-        session.notify.find_last_event("block"),
-        Some(json!({"block":{"block_height":101},"event":"block"}))
+        session.filter_events("block").last(),
+        Some(&json!({"block":{"block_height":101},"event":"block"}))
     );
 
     let network_id = if is_liquid {
@@ -455,18 +457,23 @@ impl TestSession {
     }
 
     pub fn reconnect(&mut self) {
+        let ntf_len = self.session.filter_events("network").len();
         self.session.disconnect().unwrap();
 
         assert_eq!(
-            self.session.notify.find_last_event("network"),
-            Some(Notification::new_network_value(State::Disconnected, State::Disconnected))
+            self.session.filter_events("network").last(),
+            Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
         );
+        assert_eq!(self.session.filter_events("network").len(), ntf_len + 1);
+
         self.session.connect(&Value::Null).unwrap();
 
         assert_eq!(
-            self.session.notify.find_last_event("network"),
-            Some(Notification::new_network_value(State::Connected, State::Connected))
+            self.session.filter_events("network").last(),
+            Some(&Notification::new_network_value(State::Connected, State::Connected))
         );
+        assert_eq!(self.session.filter_events("network").len(), ntf_len + 2);
+
         let address = self.node_getnewaddress(None);
         let txid = self.send_tx(&address, 1000, None, None, None, None, None);
         self.list_tx_contains(&txid, &[address], true);

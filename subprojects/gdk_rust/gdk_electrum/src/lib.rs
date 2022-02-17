@@ -1684,7 +1684,7 @@ fn get_registry_sentinel() -> Value {
 
 #[cfg(feature = "testing")]
 impl ElectrumSession {
-    pub fn notifications(&self) -> Vec<Value> {
-        self.notify.notifications()
+    pub fn filter_events(&self, event: &str) -> Vec<Value> {
+        self.notify.filter_events(event)
     }
 }
