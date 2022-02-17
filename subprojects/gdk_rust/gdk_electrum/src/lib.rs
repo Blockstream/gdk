@@ -604,18 +604,15 @@ impl ElectrumSession {
             self.proxy.as_ref().unwrap_or(&"".to_string())
         );
 
-        let state_updater = self.state_updater()?;
         if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref()) {
             info!("building built end");
             let fee_store = self.store()?;
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client) {
                     Ok(fee_estimates) => {
-                        state_updater.update_if_needed(State::Connected);
                         fee_store.write().unwrap().cache.fee_estimates = fee_estimates
                     }
                     Err(e) => {
-                        state_updater.update_if_needed(State::Disconnected);
                         warn!("can't update fee estimates {:?}", e)
                     }
                 };
@@ -648,7 +645,6 @@ impl ElectrumSession {
             let proxy = self.proxy.clone();
             let notify_txs = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
-            let state_updater = self.state_updater()?;
             let threads_stopped = self.closer.threads_stopped()?;
 
             let headers_handle = thread::spawn(move || {
@@ -669,7 +665,6 @@ impl ElectrumSession {
                             }
                             match headers.ask(chunk_size, &client) {
                                 Ok(headers_found) => {
-                                    state_updater.update_if_needed(State::Connected);
                                     if headers_found < chunk_size {
                                         break;
                                     } else {
@@ -687,7 +682,6 @@ impl ElectrumSession {
                                     // XXX clear affected blocks/txs more surgically?
                                 }
                                 Err(e) => {
-                                    state_updater.update_if_needed(State::Disconnected);
                                     warn!("error while asking headers {}", e);
                                     thread::sleep(Duration::from_millis(500));
                                 }
@@ -737,7 +731,6 @@ impl ElectrumSession {
         let threads_stopped = self.closer.threads_stopped()?;
         let tipper_url = self.url.clone();
         let proxy = self.proxy.clone();
-        let state_updater = self.state_updater()?;
 
         let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
@@ -745,7 +738,6 @@ impl ElectrumSession {
                 if let Ok(client) = tipper_url.build_client(proxy.as_deref()) {
                     match tipper.tip(&client) {
                         Ok(current_tip) => {
-                            state_updater.update_if_needed(State::Connected);
                             if tip_height != current_tip {
                                 tip_height = current_tip;
                                 info!("tip is {:?}", tip_height);
@@ -753,7 +745,6 @@ impl ElectrumSession {
                             }
                         }
                         Err(e) => {
-                            state_updater.update_if_needed(State::Disconnected);
                             warn!("exception in tipper {:?}", e);
                         }
                     }
