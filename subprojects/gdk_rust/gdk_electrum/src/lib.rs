@@ -430,6 +430,10 @@ impl ElectrumSession {
                 Ok(client) => match client.ping() {
                     Ok(_) => {
                         info!("connect succesfully ping the electrum server");
+
+                        // We can't use the state_updater here because the wallet isn't initialized and also we need
+                        // desired state as connected but thread didn't start yet
+                        *self.state.write()? = State::Connected;
                         self.notify.network(State::Connected, State::Connected)
                     }
                     Err(e) => {
@@ -567,14 +571,8 @@ impl ElectrumSession {
         self.get_wallet_hash_id()
     }
 
-    fn notify_network(&self) -> Result<(), Error> {
-        self.notify.network((*self.state.read()?).clone(), (!self.threads_stopped_load()?).into());
-        Ok(())
-    }
-
     pub fn stop_threads(&mut self) -> Result<(), Error> {
         self.closer.close()?;
-        *self.state.write()? = State::Disconnected;
         self.notify.network(State::Disconnected, State::Disconnected);
         Ok(())
     }
@@ -803,12 +801,10 @@ impl ElectrumSession {
         });
         self.closer.handles.push(syncer_handle);
 
-        *self.state.write()? = State::Connected;
-
         if self.wallet_initialized {
             // we notify network only after the first time,
             // because we already do at first connect and it would be notified twice otherwise
-            self.notify_network()?;
+            self.notify.network((*self.state.read()?).clone(), State::Connected);
         } else {
             self.notify.settings(&self.get_settings()?);
             self.wallet_initialized = true;
