@@ -10,7 +10,7 @@ use gdk_common::Network;
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession};
+use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession, Notification, State};
 
 use log::info;
 use serde_json::json;
@@ -1128,6 +1128,23 @@ fn rbf() {
 
     drop(wallet);
     test_session.stop();
+}
+
+#[test]
+fn test_electrum_disconnect() {
+    let mut test_session = setup_session(false, |_| ());
+    assert!(test_session.electrs.client.ping().is_ok());
+
+    let ntf_len = test_session.session.filter_events("network").len();
+    test_session.electrs.kill().unwrap();
+    while test_session.session.filter_events("network").len() <= ntf_len {
+        std::thread::sleep(Duration::from_millis(100));
+    }
+
+    assert_eq!(
+        test_session.session.filter_events("network").last(),
+        Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+    )
 }
 
 // Test the low-level spv_cross_validate()

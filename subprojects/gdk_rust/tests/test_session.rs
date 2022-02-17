@@ -31,7 +31,7 @@ const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
 pub struct TestSession {
-    node: electrsd::bitcoind::BitcoinD,
+    pub node: electrsd::bitcoind::BitcoinD,
     pub electrs: electrsd::ElectrsD,
     pub session: ElectrumSession,
     tx_status: u64,
@@ -87,12 +87,12 @@ pub fn setup(
         args.extend_from_slice(&["-regtest"]);
         "regtest"
     };
-    let conf = electrsd::bitcoind::Conf {
-        args,
-        view_stdout: is_debug,
-        p2p: electrsd::bitcoind::P2P::Yes,
-        network,
-    };
+    let mut conf = electrsd::bitcoind::Conf::default();
+    conf.args = args;
+    conf.view_stdout = is_debug;
+    conf.p2p = electrsd::bitcoind::P2P::Yes;
+    conf.network = network;
+
     let node = electrsd::bitcoind::BitcoinD::with_conf(&node_exec, &conf).unwrap();
     info!("node spawned");
 
@@ -108,12 +108,13 @@ pub fn setup(
     if is_debug {
         args.push("-v");
     }
-    let conf = electrsd::Conf {
-        args,
-        view_stderr: is_debug,
-        http_enabled: false,
-        network,
-    };
+
+    let mut conf = electrsd::Conf::default();
+    conf.args = args;
+    conf.view_stderr = is_debug;
+    conf.http_enabled = false;
+    conf.network = network;
+
     let electrs = electrsd::ElectrsD::with_conf(&electrs_exec, &node, &conf).unwrap();
     info!("Electrs spawned");
 
@@ -191,10 +192,15 @@ pub fn setup(
         }
     };
     assert_eq!(block_status.0, 101);
-    assert_eq!(
-        session.filter_events("block").last(),
-        Some(&json!({"block":{"block_height":101},"event":"block"}))
-    );
+    let expected = json!({"block":{"block_height":101},"event":"block"});
+    for i in 0.. {
+        assert!(i < 10);
+        if session.filter_events("block").last() == Some(&expected) {
+            break;
+        } else {
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
 
     let network_id = if is_liquid {
         NetworkId::Elements(ElementsNetwork::ElementsRegtest)

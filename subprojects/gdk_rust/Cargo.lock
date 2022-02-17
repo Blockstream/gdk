@@ -158,19 +158,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitcoind"
-version = "0.17.0"
+name = "bitcoincore-rpc"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44c902054f96735e9ebe725a1aaa82d8646f6c127ae59fe9aaf916745641548b"
+checksum = "7b8d99d58466295cb2bf72c6959b784d59f8f0d6977458d2ba3eb75c834f36c3"
+dependencies = [
+ "bitcoincore-rpc-json",
+ "jsonrpc",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "bitcoincore-rpc-json"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dce91de73c61f5776cf938bfa88378c5b404a70e3369b761dacbe6024fea79dd"
+dependencies = [
+ "bitcoin",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "bitcoind"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d66a30b785215fcac6ef21bea4a7b8c42f60f8688ca1b426cedb75cca4d78237"
 dependencies = [
  "bitcoin_hashes 0.10.0",
- "core-rpc",
+ "bitcoincore-rpc",
  "flate2",
  "home",
  "log",
  "tar",
  "tempfile",
- "ureq 2.2.0",
+ "ureq 1.5.5",
 ]
 
 [[package]]
@@ -277,7 +301,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a5d7b21829bc7b4bf4754a978a241ae54ea55a40f92bb20216e54096f4b951"
 dependencies = [
  "percent-encoding 2.1.0",
- "time 0.2.27",
+ "time",
  "version_check",
 ]
 
@@ -293,32 +317,8 @@ dependencies = [
  "publicsuffix",
  "serde",
  "serde_json",
- "time 0.2.27",
+ "time",
  "url 2.2.2",
-]
-
-[[package]]
-name = "core-rpc"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec1785f0b884d8a2a2a420e09da1c1d15f36f2a5b85dd19d7331f66777de50ca"
-dependencies = [
- "core-rpc-json",
- "jsonrpc",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "core-rpc-json"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "443b2a9969ea2ecd42a5c717570f7ef127e3dd0d2548c1d0b3713f6fa102d4fa"
-dependencies = [
- "bitcoin",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -356,9 +356,9 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "electrsd"
-version = "0.10.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad7b57ec4e810e9ca09c5318b7f4dc13e47579aa7b8eaa1b5e050d7457d58f1"
+checksum = "d42b831cc7d1402f9c986e84a68771a339e598174312181c15450d4a034a5bd5"
 dependencies = [
  "bitcoin_hashes 0.10.0",
  "bitcoind",
@@ -569,7 +569,7 @@ checksum = "8fc3cb4d91f53b50155bdcfd23f6a4c39ae1969c2ae85982b135750cccaf5fce"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.9.0+wasi-snapshot-preview1",
+ "wasi",
 ]
 
 [[package]]
@@ -1360,17 +1360,6 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "time"
 version = "0.2.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4752a97f8eebd6854ff91f1c1824cd6160626ac4bd44287f7f4ea2035a02a242"
@@ -1545,12 +1534,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
 
 [[package]]
-name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
-
-[[package]]
 name = "wasm-bindgen"
 version = "0.2.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1712,5 +1695,4 @@ dependencies = [
  "crc32fast",
  "flate2",
  "thiserror",
- "time 0.1.44",
 ]
