@@ -781,6 +781,7 @@ impl ElectrumSession {
                         }
                     },
                     Err(e) => {
+                        state_updater.update_if_needed(State::Disconnected);
                         warn!("Can't build client {:?}", e)
                     }
                 }
