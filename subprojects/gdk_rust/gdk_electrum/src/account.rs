@@ -448,7 +448,7 @@ impl Account {
                                 output.value,
                                 output.script_pubkey.into(),
                                 height.clone(),
-                                path.clone(),
+                                self.get_full_path(&path).into(),
                                 self.script_code(&path).to_hex(),
                             ),
                         )
@@ -490,7 +490,7 @@ impl Account {
                                             unblinded.value,
                                             output.script_pubkey.into(),
                                             height.clone(),
-                                            path.clone(),
+                                            self.get_full_path(&path).into(),
                                             output.asset.is_confidential()
                                                 && output.value.is_confidential(),
                                             self.script_code(&path).to_hex(),
