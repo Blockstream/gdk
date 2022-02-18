@@ -13,7 +13,7 @@ use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession, Notification, State};
 
 use log::info;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::time::{Duration, Instant};
@@ -1137,14 +1137,36 @@ fn test_electrum_disconnect() {
 
     let ntf_len = test_session.session.filter_events("network").len();
     test_session.electrs.kill().unwrap();
-    while test_session.session.filter_events("network").len() <= ntf_len {
+    for i in 0.. {
+        assert!(i < 100);
+        if test_session.session.filter_events("network").len() > ntf_len {
+            break;
+        }
         std::thread::sleep(Duration::from_millis(100));
     }
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
         Some(&Notification::new_network_value(State::Disconnected, State::Connected))
-    )
+    );
+    assert_eq!(test_session.session.filter_events("network").len(), ntf_len + 1);
+
+    test_session.session.disconnect().unwrap();
+
+    assert_eq!(
+        test_session.session.filter_events("network").last(),
+        Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+    );
+    assert_eq!(test_session.session.filter_events("network").len(), ntf_len + 2);
+
+    // Attempt to connect but Electrs is still down
+    test_session.session.connect(&Value::Null).unwrap();
+
+    assert_eq!(
+        test_session.session.filter_events("network").last(),
+        Some(&Notification::new_network_value(State::Disconnected, State::Connected))
+    );
+    assert_eq!(test_session.session.filter_events("network").len(), ntf_len + 3);
 }
 
 // Test the low-level spv_cross_validate()
