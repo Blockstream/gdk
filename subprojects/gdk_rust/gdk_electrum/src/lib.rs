@@ -428,7 +428,7 @@ impl ElectrumSession {
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
 
         if self.wallet_initialized {
-            if self.threads_stopped_load()? {
+            if self.threads_stopped_load() {
                 self.start_threads()?;
             }
         } else {
@@ -462,7 +462,7 @@ impl ElectrumSession {
     }
 
     pub fn disconnect(&mut self) -> Result<(), Error> {
-        if !self.threads_stopped_load()? {
+        if !self.threads_stopped_load() {
             self.stop_threads()?;
 
             // The following flush is redundant since a flush is done when the store is dropped,
@@ -1157,8 +1157,8 @@ impl ElectrumSession {
         Ok(status)
     }
 
-    fn threads_stopped_load(&self) -> Result<bool, Error> {
-        Ok(self.closer.threads_stopped()?.load(Ordering::Relaxed))
+    fn threads_stopped_load(&self) -> bool {
+        self.closer.threads_stopped.as_ref().map(|b| b.load(Ordering::Relaxed)).unwrap_or(false)
     }
 }
 
