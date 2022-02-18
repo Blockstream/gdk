@@ -78,9 +78,9 @@ class Session(object):
     @staticmethod
     @atexit.register
     def destroy_all():
-        for session in Session.to_destroy:
+        while len(Session.to_destroy):
+            session = Session.to_destroy.pop()
             session._destroy()
-        Session.to_destroy = []
 
     def __init__(self, net_params):
         self.notifications = queue.Queue()
@@ -90,16 +90,24 @@ class Session(object):
         return self.connect(net_params)
 
     def _destroy(self):
-        destroy_session(self.session_obj)
+        if getattr(self, 'session_obj', None):
+            obj = self.session_obj
+            self.session_obj = None
+            _python_set_callback_handler(obj, None)
+            _python_destroy_session(obj)
 
     def destroy(self):
-        self._destroy()
-        Session.to_destroy.remove(self)
+        if self in Session.to_destroy:
+            Session.to_destroy.remove(self)
+            self._destroy()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
+        self.destroy()
+
+    def __del__(self):
         self.destroy()
 
     def _callback_handler(self, obj, event):

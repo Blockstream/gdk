@@ -102,6 +102,17 @@ static int python_string_to_GA_json(PyObject* in, struct GA_json** out)
     return result;
 }
 
+
+static void* get_from_capsule(PyObject *obj, const char* name)
+{
+    void* p = PyCapsule_GetPointer(obj, name);
+    if (p && !PyCapsule_GetDestructor(obj))
+        p = NULL; /* Object has been destroyed, Don't return it */
+    if (PyErr_Occurred())
+        PyErr_Clear(); /* Let the caller set any error */
+    return p;
+}
+
 static void notification_handler(void* context_p, GA_json* details)
 {
     PyObject* session_capsule = (PyObject*) context_p;
@@ -116,7 +127,7 @@ static void notification_handler(void* context_p, GA_json* details)
     GA_destroy_json(details);
 
     SWIG_PYTHON_THREAD_BEGIN_BLOCK;
-    struct GA_session *p = (struct GA_session *)PyCapsule_GetPointer(session_capsule, "struct GA_session *");
+    struct GA_session *p = (struct GA_session *)get_from_capsule(session_capsule, "struct GA_session *");
     if (!p)
         goto end;
 
@@ -140,27 +151,69 @@ end:
 
 static int _python_set_callback_handler(PyObject* obj, PyObject* arg)
 {
-    struct GA_session *p = (struct GA_session *)PyCapsule_GetPointer(obj, "struct GA_session *");
+    PyObject* old_arg;
+    struct GA_session *p;
+    int ret = GA_ERROR;
+
+    SWIG_PYTHON_THREAD_BEGIN_BLOCK;
+    p = (struct GA_session *)get_from_capsule(obj, "struct GA_session *");
     if (!p)
-        return GA_ERROR;
+        goto end;
+
+    old_arg = PyCapsule_GetContext(obj);
+    if (PyErr_Occurred())
+        goto end;
+
+    if (old_arg)
+        Py_DecRef(old_arg);
 
     if (PyCapsule_SetContext(obj, arg))
-        return GA_ERROR;
+        goto end;
 
     Py_IncRef(arg);
-    if (GA_set_notification_handler(p, notification_handler, obj) != GA_OK)
-        return GA_ERROR;
 
-    Py_IncRef(obj);
+    if (arg == Py_None)
+        ret = GA_set_notification_handler(p, NULL, NULL);
+    else
+        ret = GA_set_notification_handler(p, notification_handler, obj);
+
+end:
+    SWIG_PYTHON_THREAD_END_BLOCK;
+    return ret;
+}
+
+static void _python_destroy_GA_session(PyObject* obj)
+{
+    struct GA_session *p;
+
+    SWIG_PYTHON_THREAD_BEGIN_BLOCK;
+    p = (struct GA_session *)get_from_capsule(obj, "struct GA_session *");
+    if (p) {
+        _python_set_callback_handler(obj, Py_None);
+        GA_destroy_session(p);
+        PyCapsule_SetDestructor(obj, NULL);
+    }
+    SWIG_PYTHON_THREAD_END_BLOCK;
+}
+
+static int _python_destroy_session(PyObject* obj)
+{
+    _python_destroy_GA_session(obj);
     return GA_OK;
 }
 
-#define capsule_dtor(name, fn) static void destroy_##name(PyObject *obj) { \
-    struct name *p = obj == Py_None ? NULL : (struct name *)PyCapsule_GetPointer(obj, "struct " #name " *"); \
-    if (p) fn(p); }
+static void _python_destroy_GA_auth_handler(PyObject* obj)
+{
+    struct GA_auth_handler *p;
 
-capsule_dtor(GA_session, GA_destroy_session)
-capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
+    SWIG_PYTHON_THREAD_BEGIN_BLOCK;
+    p = (struct GA_auth_handler *)get_from_capsule(obj, "struct GA_auth_handler *");
+    if (p) {
+        GA_destroy_auth_handler(p);
+        PyCapsule_SetDestructor(obj, NULL);
+    }
+    SWIG_PYTHON_THREAD_END_BLOCK;
+}
 %}
 
 %include pybuffer.i
@@ -198,23 +251,27 @@ capsule_dtor(GA_auth_handler, GA_destroy_auth_handler)
    w = 0; $1 = ($1_ltype)&w;
 }
 %typemap (in) const struct NAME * {
-    $1 = $input == Py_None ? NULL : PyCapsule_GetPointer($input, "struct NAME *");
-    if (PyErr_Occurred()) {
-        PyErr_Clear();
-        %argument_fail(-1, "(NAME)", $symname, $argnum);
+    $1 = NULL;
+    if ($input != Py_None) {
+        $1 = (struct NAME *)get_from_capsule($input, "struct NAME *");
+        if (!$1) {
+            %argument_fail(-1, "(NAME)", $symname, $argnum);
+        }
     }
 }
 %typemap (in) struct  NAME * {
-    $1 = $input == Py_None ? NULL : PyCapsule_GetPointer($input, "struct NAME *");
-    if (PyErr_Occurred()) {
-        PyErr_Clear();
-        %argument_fail(-1, "(NAME)", $symname, $argnum);
+    $1 = NULL;
+    if ($input != Py_None) {
+        $1 = (struct NAME *)get_from_capsule($input, "struct NAME *");
+        if (!$1) {
+            %argument_fail(-1, "(NAME)", $symname, $argnum);
+        }
     }
 }
 %typemap(argout) struct NAME ** {
    if (*$1 != NULL) {
        Py_DecRef($result);
-       $result = PyCapsule_New(*$1, "struct NAME *", destroy_ ## NAME);
+       $result = PyCapsule_New(*$1, "struct NAME *", _python_destroy_ ## NAME);
    }
 }
 %enddef
@@ -266,4 +323,5 @@ typedef unsigned int uint32_t;
 
 %include "../include/gdk.h"
 
-int _python_set_callback_handler(PyObject* obj, PyObject* arg);
+static int _python_set_callback_handler(PyObject* obj, PyObject* arg);
+static int _python_destroy_session(PyObject* obj);
