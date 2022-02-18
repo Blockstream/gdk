@@ -90,12 +90,16 @@ GDK_API int GA_create_session(struct GA_session** session);
  * :param handler: The handler to receive notifications.
  * :param context: A context pointer to be passed to the handler.
  *
- * This call must be made on a session before `GA_connect`.
+ * This call must be initially made on a session before `GA_connect`.
  * :ref:`ntf-notifications` may arrive on different threads, so the caller
  * must ensure that shared data is correctly locked within the handler.
  * The ``GA_json`` object passed to the caller must be destroyed by the
  * caller using `GA_destroy_json`. Failing to do so will result in
  * memory leaks.
+ *
+ * Once a session has been connected, this call can be made only with null
+ * values for ``handler`` and ``context``. Once this returns, no further
+ * notifications will be delivered for the lifetime of the session.
  *
  * The caller should not call session functions from within the callback
  * handler as this may block the application.

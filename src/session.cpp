@@ -271,9 +271,19 @@ namespace sdk {
     void session::set_notification_handler(GA_notification_handler handler, void* context)
     {
         auto p = get_impl();
-        GDK_RUNTIME_ASSERT(p == nullptr);
-        m_notification_handler = handler;
-        m_notification_context = context;
+        if (!p) {
+            // Setting or disabling notifications before connect()
+            GDK_RUNTIME_ASSERT(handler || !context);
+            m_notification_handler = handler;
+            m_notification_context = context;
+        } else {
+            // Already connected.
+            // Only a null handler can be set; this disables notifications
+            // for the remainder of the sessions lifetime. This allows handler
+            // references for wrapped languages to be dropped safely
+            GDK_RUNTIME_ASSERT(!handler && !context);
+            p->disable_notifications();
+        }
     }
 
     nlohmann::json session::get_available_currencies()

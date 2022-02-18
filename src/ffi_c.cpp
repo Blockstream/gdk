@@ -334,11 +334,18 @@ GDK_DEFINE_C_FUNCTION_4(GA_set_transaction_memo, struct GA_session*, session, co
         session->set_transaction_memo(txhash_hex, memo);
     })
 
-GDK_DEFINE_C_FUNCTION_3(
-    GA_set_notification_handler, struct GA_session*, session, GA_notification_handler, handler, void*, context, {
-        GDK_RUNTIME_ASSERT(handler);
+int GA_set_notification_handler(struct GA_session* session, GA_notification_handler handler, void* context)
+{
+    try {
+        GDK_RUNTIME_ASSERT_MSG(session, "null argument calling GA_set_notification_handler");
         session->set_notification_handler(handler, context);
-    })
+    } catch (const std::exception& e) {
+        set_thread_error(e.what());
+        return GA_ERROR;
+    }
+    g_thread_error.reset();
+    return GA_OK;
+}
 
 GDK_DEFINE_C_FUNCTION_2(GA_remove_account, struct GA_session*, session, struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::remove_account_call(*session)); });

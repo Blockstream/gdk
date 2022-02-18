@@ -56,6 +56,8 @@ namespace sdk {
         m_notification_context = context;
     }
 
+    void session_impl::disable_notifications() { m_notify = false; }
+
     void session_impl::emit_notification(nlohmann::json details, bool /*async*/)
     {
         // By default, ignore the async flag
