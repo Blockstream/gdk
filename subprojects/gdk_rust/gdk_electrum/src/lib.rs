@@ -169,7 +169,7 @@ impl fmt::Display for State {
 #[derive(Clone)]
 pub struct StateUpdater {
     current: Arc<RwLock<State>>,
-    desired: Arc<AtomicBool>,
+    threads_stopped: Arc<AtomicBool>,
     notify: NativeNotif,
 }
 
@@ -181,7 +181,7 @@ impl StateUpdater {
         let current_read = *self.current.read()?;
         if state != current_read {
             *self.current.write()? = state;
-            self.notify.network(state, self.desired.load(Ordering::Relaxed).into());
+            self.notify.network(state, (!self.threads_stopped.load(Ordering::Relaxed)).into());
         }
         Ok(())
     }
@@ -580,7 +580,7 @@ impl ElectrumSession {
     pub fn state_updater(&self) -> Result<StateUpdater, Error> {
         Ok(StateUpdater {
             current: self.state.clone(),
-            desired: self.closer.threads_stopped()?,
+            threads_stopped: self.closer.threads_stopped()?,
             notify: self.notify.clone(),
         })
     }

@@ -1143,7 +1143,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+        Some(&Notification::new_network_value(State::Disconnected, State::Connected))
     )
 }
 
