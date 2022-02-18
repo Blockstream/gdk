@@ -133,6 +133,8 @@ pub struct ElectrumSession {
     pub wallet: Option<Arc<RwLock<WalletCtx>>>,
     pub notify: NativeNotif,
     pub closer: Closer,
+
+    // used in place of `Arc<Mutex<State>>` to avoid the Mutex since the State is binary
     pub state: Arc<AtomicBool>,
 
     pub store: Option<Store>,
@@ -441,20 +443,16 @@ impl ElectrumSession {
                 Ok(client) => match client.ping() {
                     Ok(_) => {
                         info!("connect succesfully ping the electrum server");
-
-                        // We can't use the state_updater here because the wallet isn't initialized and also we need
-                        // desired state as connected but thread didn't start yet
-                        self.state.store(true, Ordering::Relaxed);
-                        self.notify.network(State::Connected, State::Connected)
+                        self.state_updater()?.update_if_needed(State::Connected);
                     }
                     Err(e) => {
                         warn!("ping failed {:?}", e);
-                        self.notify.network(State::Disconnected, State::Disconnected);
+                        self.notify.network(State::Disconnected, State::Connected);
                     }
                 },
                 Err(e) => {
                     warn!("build client failed {:?}", e);
-                    self.notify.network(State::Disconnected, State::Disconnected);
+                    self.notify.network(State::Disconnected, State::Connected);
                 }
             }
         }
@@ -468,8 +466,11 @@ impl ElectrumSession {
             // The following flush is redundant since a flush is done when the store is dropped,
             // however it's safer to call it also here because some garbage collected caller could
             // postpone the object drop. Moreover, since we check the hash of what is written and
-            // avoid touching disk if equivalent to last, it isn't a big performance penalty
-            self.store()?.write()?.flush()?;
+            // avoid touching disk if equivalent to last, it isn't a big performance penalty.
+            // disconnect() may be called without login, so we check the store is loaded.
+            if let Ok(store) = self.store() {
+                store.write()?.flush()?;
+            }
         }
         Ok(())
     }
@@ -583,7 +584,10 @@ impl ElectrumSession {
     }
 
     pub fn stop_threads(&mut self) -> Result<(), Error> {
-        self.closer.close()?;
+        // We don't need to stop threads if they never started
+        if self.closer.threads_stopped.is_some() {
+            self.closer.close()?;
+        }
         self.notify.network(State::Disconnected, State::Disconnected);
         Ok(())
     }
@@ -771,6 +775,11 @@ impl ElectrumSession {
         let notify_txs = self.notify.clone();
         let syncer_url = self.url.clone();
         let proxy = self.proxy.clone();
+
+        // Only the syncer thread is responsible to send network notification due for the state
+        // of the electrum server. This is to avoid intermittent connect/disconnect if one endpoint
+        // works while another don't. Once we categorize the disconnection by endpoint we can
+        // monitor state of every network call.
         let state_updater = self.state_updater()?;
 
         let syncer_handle = thread::spawn(move || {

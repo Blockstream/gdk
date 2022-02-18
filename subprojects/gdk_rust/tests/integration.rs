@@ -1135,11 +1135,11 @@ fn test_electrum_disconnect() {
     let mut test_session = setup_session(false, |_| ());
     assert!(test_session.electrs.client.ping().is_ok());
 
-    let ntf_len = test_session.session.filter_events("network").len();
+    assert_eq!(test_session.session.filter_events("network").len(), 1);
     test_session.electrs.kill().unwrap();
     for i in 0.. {
         assert!(i < 100);
-        if test_session.session.filter_events("network").len() > ntf_len {
+        if test_session.session.filter_events("network").len() > 1 {
             break;
         }
         std::thread::sleep(Duration::from_millis(100));
@@ -1149,7 +1149,7 @@ fn test_electrum_disconnect() {
         test_session.session.filter_events("network").last(),
         Some(&Notification::new_network_value(State::Disconnected, State::Connected))
     );
-    assert_eq!(test_session.session.filter_events("network").len(), ntf_len + 1);
+    assert_eq!(test_session.session.filter_events("network").len(), 2);
 
     test_session.session.disconnect().unwrap();
 
@@ -1157,7 +1157,7 @@ fn test_electrum_disconnect() {
         test_session.session.filter_events("network").last(),
         Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
     );
-    assert_eq!(test_session.session.filter_events("network").len(), ntf_len + 2);
+    assert_eq!(test_session.session.filter_events("network").len(), 3);
 
     // Attempt to connect but Electrs is still down
     test_session.session.connect(&Value::Null).unwrap();
@@ -1166,7 +1166,32 @@ fn test_electrum_disconnect() {
         test_session.session.filter_events("network").last(),
         Some(&Notification::new_network_value(State::Disconnected, State::Connected))
     );
-    assert_eq!(test_session.session.filter_events("network").len(), ntf_len + 3);
+    assert_eq!(test_session.session.filter_events("network").len(), 4);
+
+    // Attempt to connect with another session but Electrs is still down
+    let mut new_session = {
+        let network = test_session.network().clone();
+        let url = determine_electrum_url_from_net(&network).unwrap();
+        let db_root_dir = TempDir::new().unwrap();
+        let db_root = format!("{}", db_root_dir.path().display());
+        let proxy = Some("");
+        ElectrumSession::create_session(network, &db_root, proxy, url)
+    };
+    new_session.connect(&Value::Null).unwrap();
+
+    assert_eq!(
+        new_session.filter_events("network").last(),
+        Some(&Notification::new_network_value(State::Disconnected, State::Connected))
+    );
+    assert_eq!(new_session.filter_events("network").len(), 1);
+
+    // Disconnect without having called login
+    new_session.disconnect().unwrap();
+    assert_eq!(new_session.filter_events("network").len(), 2);
+    assert_eq!(
+        new_session.filter_events("network").last(),
+        Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+    );
 }
 
 // Test the low-level spv_cross_validate()
