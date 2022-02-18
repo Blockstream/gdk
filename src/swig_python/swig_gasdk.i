@@ -111,22 +111,14 @@ static void notification_handler(void* context_p, GA_json* details)
     if (!session_capsule)
         return;
 
-    if (details) {
-        if (GA_convert_json_to_string(details, &json_cstring) != GA_OK)
-            return;
-        GA_destroy_json(details);
-    }
+    if (GA_convert_json_to_string(details, &json_cstring) != GA_OK)
+        return;
+    GA_destroy_json(details);
 
     SWIG_PYTHON_THREAD_BEGIN_BLOCK;
     struct GA_session *p = (struct GA_session *)PyCapsule_GetPointer(session_capsule, "struct GA_session *");
     if (!p)
         goto end;
-
-    if (!details) {
-        /* Un-registering */
-        GA_set_notification_handler(p, NULL, NULL);
-        goto end;
-    }
 
     handler = (PyObject *)PyCapsule_GetContext(session_capsule);
     if (!handler)
