@@ -133,7 +133,7 @@ pub struct ElectrumSession {
     pub wallet: Option<Arc<RwLock<WalletCtx>>>,
     pub notify: NativeNotif,
     pub closer: Closer,
-    pub state: Arc<RwLock<State>>,
+    pub state: Arc<AtomicBool>,
 
     pub store: Option<Store>,
 
@@ -157,6 +157,15 @@ impl From<bool> for State {
     }
 }
 
+impl From<State> for bool {
+    fn from(s: State) -> Self {
+        match s {
+            State::Connected => true,
+            State::Disconnected => false,
+        }
+    }
+}
+
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
@@ -168,7 +177,7 @@ impl fmt::Display for State {
 
 #[derive(Clone)]
 pub struct StateUpdater {
-    current: Arc<RwLock<State>>,
+    current: Arc<AtomicBool>,
     notify: NativeNotif,
 }
 
@@ -177,9 +186,9 @@ impl StateUpdater {
         let _ = self.try_update_if_needed(state);
     }
     fn try_update_if_needed(&self, state: State) -> Result<(), Error> {
-        let current_read = *self.current.read()?;
+        let current_read: State = self.current.load(Ordering::Relaxed).into();
         if state != current_read {
-            *self.current.write()? = state;
+            self.current.store(state.into(), Ordering::Relaxed);
 
             // The second parameter should be taken from the state of the threads, but the current state could
             // be changed only if threads are running so we use the constant `State::Connected`
@@ -380,7 +389,7 @@ impl ElectrumSession {
                 threads_stopped: None,
                 handles: vec![],
             },
-            state: Arc::new(RwLock::new(State::Disconnected)),
+            state: Arc::new(AtomicBool::new(false)),
             timeout: None,
             store: None,
 
@@ -435,7 +444,7 @@ impl ElectrumSession {
 
                         // We can't use the state_updater here because the wallet isn't initialized and also we need
                         // desired state as connected but thread didn't start yet
-                        *self.state.write()? = State::Connected;
+                        self.state.store(true, Ordering::Relaxed);
                         self.notify.network(State::Connected, State::Connected)
                     }
                     Err(e) => {
@@ -797,7 +806,7 @@ impl ElectrumSession {
         if self.wallet_initialized {
             // we notify network only after the first time,
             // because we already do at first connect and it would be notified twice otherwise
-            self.notify.network((*self.state.read()?).clone(), State::Connected);
+            self.notify.network(self.state.load(Ordering::Relaxed).into(), State::Connected);
         } else {
             self.notify.settings(&self.get_settings()?);
             self.wallet_initialized = true;
