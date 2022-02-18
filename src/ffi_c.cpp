@@ -19,13 +19,13 @@ static boost::thread_specific_ptr<nlohmann::json> g_thread_error;
 static void set_thread_error(const char* what) { g_thread_error.reset(new nlohmann::json({ { "details", what } })); }
 
 template <typename Arg>
-static typename std::enable_if_t<!std::is_pointer<Arg>::value> assert_pointer_args(
+static typename std::enable_if_t<!std::is_pointer<Arg>::value> assert_pointer_arg(
     const char* /*func*/, const Arg& /*arg*/)
 {
 }
 
 template <typename Arg>
-static typename std::enable_if_t<std::is_pointer<Arg>::value> assert_pointer_args(const char* func, const Arg& arg)
+static typename std::enable_if_t<std::is_pointer<Arg>::value> assert_pointer_arg(const char* func, const Arg& arg)
 {
     if (!arg) {
         GDK_RUNTIME_ASSERT_MSG(false, std::string("null argument calling ") + func);
@@ -34,7 +34,7 @@ static typename std::enable_if_t<std::is_pointer<Arg>::value> assert_pointer_arg
 
 template <typename... Args> static void assert_invoke_args(const char* func, Args&&... args)
 {
-    (void)std::initializer_list<int>{ (assert_pointer_args(func, std::forward<Args>(args)), 0)... };
+    (void)std::initializer_list<int>{ (assert_pointer_arg(func, std::forward<Args>(args)), 0)... };
 }
 
 template <typename F, typename... Args> static auto c_invoke(const char* func, F&& f, Args&&... args)
