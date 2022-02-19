@@ -69,7 +69,7 @@ class Call(object):
 
 
 class Session(object):
-    """A GreenAddress session
+    """A session representing either a Green multisig or a singlesig wallet.
 
     """
 

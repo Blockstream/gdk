@@ -1,4 +1,4 @@
-# GreenAddress C/C++ SDK
+# Green C/C++ SDK
 
 GDK is a cross-platform, cross-language library for Blockstream Green wallets.
 
