@@ -365,12 +365,7 @@ impl Account {
             acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid.to_string()))?;
         let tx = &txe.tx;
         let height = acc_store.heights.get(&txid).cloned().flatten().unwrap_or(0);
-        let script_pubkey = tx.output_script(vout);
-        let account_path: DerivationPath = acc_store
-            .paths
-            .get(&script_pubkey)
-            .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-            .clone();
+        let account_path = acc_store.get_path(&tx.output_script(vout))?;
         let (is_internal, pointer) = parse_path(&account_path)?;
         let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
 
@@ -582,11 +577,7 @@ impl Account {
                     info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = acc_store.get_bitcoin_tx(&prev_output.txid)?;
                     let out = prev_tx.output[prev_output.vout as usize].clone();
-                    let derivation_path: DerivationPath = acc_store
-                        .paths
-                        .get(&out.script_pubkey.into())
-                        .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                        .clone();
+                    let derivation_path = acc_store.get_path(&out.script_pubkey.into())?;
                     info!(
                         "input#{} prev_output:{:?} derivation_path:{:?}",
                         i, prev_output, derivation_path
@@ -621,11 +612,7 @@ impl Account {
                     info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = acc_store.get_liquid_tx(&prev_output.txid)?;
                     let out = prev_tx.output[prev_output.vout as usize].clone();
-                    let derivation_path: DerivationPath = acc_store
-                        .paths
-                        .get(&out.script_pubkey.into())
-                        .ok_or_else(|| Error::Generic("can't find derivation path".into()))?
-                        .clone();
+                    let derivation_path = acc_store.get_path(&out.script_pubkey.into())?;
 
                     let (script_sig, witness) = internal_sign_elements(
                         &tx,

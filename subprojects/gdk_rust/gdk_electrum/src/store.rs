@@ -478,6 +478,12 @@ impl RawAccountCache {
             _ => Err(Error::Generic("expected liquid tx".to_string())),
         }
     }
+
+    pub fn get_path(&self, script_pubkey: &BEScript) -> Result<&DerivationPath, Error> {
+        self.paths
+            .get(script_pubkey)
+            .ok_or_else(|| Error::Generic("can't find derivation path".into()))
+    }
 }
 
 #[cfg(test)]
