@@ -906,11 +906,39 @@ pub fn discover_account(
     Ok(false)
 }
 
+/// Populate `derivation_path` and `scriptpubkey` in `UnspentOutput` by looking in our internal
+/// cache by provided `subaccount`, `txid` and `pt_idx` (vout) and return an error if not present.
+/// This allows to have this data if missing, but also avoid trusting the user input for this fields.
+pub fn populate_unspent_from_db(
+    account: &Account,
+    request: &mut CreateTransaction,
+) -> Result<(), Error> {
+    let store = account.store.read()?;
+
+    for u in request.utxos.0.values_mut().flat_map(|e| e.iter_mut()) {
+        let cache = store.account_cache(u.subaccount)?;
+        let txid = BETxid::from_hex(&u.txhash, account.network.id())?;
+        let tx_entry = cache.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?;
+        let tx = &tx_entry.tx;
+        let vout = u.pt_idx;
+        if (vout as usize) >= tx.output_len() {
+            return Err(Error::Generic("vout greater or equal number of outputs".into()));
+        }
+        let script_pubkey = tx.output_script(vout);
+        let derivation_path =
+            cache.paths.get(&script_pubkey).ok_or_else(|| Error::ScriptPubkeyNotFound)?;
+        u.user_path = account.get_full_path(derivation_path).into();
+        u.scriptpubkey = script_pubkey;
+    }
+    Ok(())
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn create_tx(
     account: &Account,
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
+    let _ = populate_unspent_from_db(account, request);
     info!("create_tx {:?}", request);
 
     let network = &account.network;
