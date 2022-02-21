@@ -1,5 +1,5 @@
 use crate::store::StoreMeta;
-use crate::State;
+use crate::{BETxid, State};
 use aes_gcm_siv::aead;
 use serde::ser::Serialize;
 use std::convert::From;
@@ -33,7 +33,7 @@ pub enum Error {
     StoreNotLoaded,
     WalletNotInitialized,
     MissingMasterBlindingKey,
-    TxNotFound(String),
+    TxNotFound(BETxid),
     ScriptPubkeyNotFound,
     AddrParse(String),
     InvalidElectrumUrl(String),

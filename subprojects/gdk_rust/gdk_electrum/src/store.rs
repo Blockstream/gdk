@@ -460,7 +460,7 @@ impl StoreMeta {
                 return Ok(tx_entry);
             }
         }
-        Err(Error::TxNotFound(txid.to_string()))
+        Err(Error::TxNotFound(txid.clone()))
     }
 }
 

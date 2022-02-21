@@ -361,8 +361,7 @@ impl Account {
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
 
-        let txe =
-            acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid.to_string()))?;
+        let txe = acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?;
         let tx = &txe.tx;
         let height = acc_store.heights.get(&txid).cloned().flatten().unwrap_or(0);
         let account_path = acc_store.get_path(&tx.output_script(vout))?;
@@ -1032,8 +1031,7 @@ pub fn create_tx(
         let acc_store = store_read.account_cache(account.num())?;
 
         let txid = BETxid::from_hex(&prev_txitem.txhash, network.id())?;
-        let prev_tx =
-            &acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid.to_string()))?.tx;
+        let prev_tx = &acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?.tx;
 
         // Strip the mining fee change output from the transaction, keeping the change address for reuse
         template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
