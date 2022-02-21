@@ -173,10 +173,12 @@ namespace sdk {
     session::~session()
     {
         no_std_exception_escape([this]() {
-            auto p = get_impl();
+            impl_ptr p;
+            p.swap(m_impl); // Ensure the session_impl is deleted in this block
             if (p) {
                 const bool is_electrum = p->get_network_parameters().is_electrum();
-                GDK_LOG_SEV(log_level::info) << "disconnecting " << (is_electrum ? "single" : "multi") << "sig session";
+                GDK_LOG_SEV(log_level::info)
+                    << "destroying " << (is_electrum ? "single" : "multi") << "sig session " << (void*)this;
                 p->disconnect();
             }
         });
