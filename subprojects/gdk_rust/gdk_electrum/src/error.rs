@@ -34,6 +34,7 @@ pub enum Error {
     WalletNotInitialized,
     MissingMasterBlindingKey,
     TxNotFound(String),
+    ScriptPubkeyNotFound,
     AddrParse(String),
     InvalidElectrumUrl(String),
     Bitcoin(bitcoin::util::Error),
@@ -108,6 +109,7 @@ impl Display for Error {
             Error::InvalidElectrumUrl(url) => write!(f, "Invalid Electrum URL: {}", url),
             Error::PsetAndTxMismatch => write!(f, "PSET and Tx mismatch"),
             Error::TxNotFound(txid) => write!(f, "Transaction not found ({})", txid),
+            Error::ScriptPubkeyNotFound => write!(f, "Scriptpubkey not found"),
         }
     }
 }
