@@ -937,7 +937,7 @@ pub fn create_tx(
     account: &Account,
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
-    populate_unspent_from_db(account, request)?;
+    let _ = populate_unspent_from_db(account, request);  // FIXME: throw error if cannot be populated
     info!("create_tx {:?}", request);
 
     let network = &account.network;
