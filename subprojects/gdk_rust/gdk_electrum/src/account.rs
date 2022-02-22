@@ -925,8 +925,7 @@ pub fn populate_unspent_from_db(
             return Err(Error::Generic("vout greater or equal number of outputs".into()));
         }
         let script_pubkey = tx.output_script(vout);
-        let derivation_path =
-            cache.paths.get(&script_pubkey).ok_or_else(|| Error::ScriptPubkeyNotFound)?;
+        let derivation_path = cache.get_path(&script_pubkey)?;
         u.user_path = account.get_full_path(derivation_path).into();
         u.scriptpubkey = script_pubkey;
     }
@@ -938,7 +937,7 @@ pub fn create_tx(
     account: &Account,
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
-    let _ = populate_unspent_from_db(account, request);
+    populate_unspent_from_db(account, request)?;
     info!("create_tx {:?}", request);
 
     let network = &account.network;
