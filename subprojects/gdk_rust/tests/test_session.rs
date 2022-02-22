@@ -8,7 +8,7 @@ use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
-use gdk_common::model::*;
+use gdk_common::{model::*, wally};
 use gdk_common::scripts::ScriptType;
 use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::Network;
@@ -1274,7 +1274,7 @@ impl TestSigner {
         }
     }
     fn seed(&self) -> [u8; 64] {
-        gdk_common::wally::bip39_mnemonic_to_seed(&self.mnemonic, "").unwrap()
+        wally::bip39_mnemonic_to_seed(&self.mnemonic, "").unwrap()
     }
 
     fn master_xprv(&self) -> ExtendedPrivKey {

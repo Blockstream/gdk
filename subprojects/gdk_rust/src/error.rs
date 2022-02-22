@@ -1,5 +1,6 @@
 use gdk_common::model::ExchangeRateError;
 use gdk_electrum as electrum;
+use gdk_common::error::Error as CommonError;
 
 #[derive(Debug)]
 pub enum Error {
@@ -7,7 +8,7 @@ pub enum Error {
     JsonFrom(serde_json::Error),
     Electrum(electrum::error::Error),
     Rates(ExchangeRateError),
-    Common(gdk_common::error::Error),
+    Common(CommonError),
     MethodNotFound {
         method: String,
         in_session: bool,

@@ -1,6 +1,7 @@
 use crate::store::StoreMeta;
 use crate::{BETxid, State};
 use aes_gcm_siv::aead;
+use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
 use std::convert::From;
 use std::fmt::Display;
@@ -49,7 +50,7 @@ pub enum Error {
     ElementsPset(elements::pset::Error),
     PsetBlindError(elements::pset::PsetBlindError),
     UnblindError(elements::UnblindError),
-    Common(gdk_common::error::Error),
+    Common(CommonError),
     Send(std::sync::mpsc::SendError<()>),
     Encryption(block_modes::BlockModeError),
     Secp256k1(bitcoin::secp256k1::Error),
@@ -204,8 +205,8 @@ impl From<elements::UnblindError> for Error {
     }
 }
 
-impl From<gdk_common::error::Error> for Error {
-    fn from(err: gdk_common::error::Error) -> Self {
+impl From<CommonError> for Error {
+    fn from(err: CommonError) -> Self {
         Error::Common(err)
     }
 }
