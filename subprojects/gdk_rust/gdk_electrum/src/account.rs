@@ -906,8 +906,8 @@ pub fn discover_account(
     Ok(false)
 }
 
-/// Populate `derivation_path` and `scriptpubkey` in `UnspentOutput` by looking in our internal
-/// cache by provided `subaccount`, `txid` and `pt_idx` (vout) and return an error if not present.
+/// Populate `derivation_path` and `scriptpubkey` in `utxos` by looking in our internal
+/// cache by provided `txhash` and `pt_idx` and return an error if not present.
 /// This allows to have this data if missing, but also avoid trusting the user input for this fields.
 pub fn populate_unspent_from_db(
     account: &Account,
@@ -916,7 +916,7 @@ pub fn populate_unspent_from_db(
     let store = account.store.read()?;
 
     for u in request.utxos.0.values_mut().flat_map(|e| e.iter_mut()) {
-        let cache = store.account_cache(u.subaccount)?;
+        let cache = store.account_cache(account.account_num)?;
         let txid = BETxid::from_hex(&u.txhash, account.network.id())?;
         let tx_entry = cache.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?;
         let tx = &tx_entry.tx;
@@ -937,7 +937,7 @@ pub fn create_tx(
     account: &Account,
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
-    let _ = populate_unspent_from_db(account, request);  // FIXME: throw error if cannot be populated
+    populate_unspent_from_db(account, request)?;
     info!("create_tx {:?}", request);
 
     let network = &account.network;
