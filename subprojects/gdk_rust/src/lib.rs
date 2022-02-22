@@ -27,8 +27,9 @@ use gdk_common::model::{
 };
 
 use crate::error::Error;
-use gdk_electrum::pset::{ExtractTxParam, FromTxParam, MergeTxParam};
-use gdk_electrum::ElectrumSession;
+use gdk_electrum::error::Error as ElectrumError;
+use gdk_electrum::pset::{self, ExtractTxParam, FromTxParam, MergeTxParam};
+use gdk_electrum::{determine_electrum_url_from_net, headers, ElectrumSession};
 use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
 use std::str::FromStr;
@@ -134,8 +135,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
         Some("electrum") => {
-            let url = gdk_electrum::determine_electrum_url_from_net(&parsed_network)
-                .map_err(|x| json!(x))?;
+            let url = determine_electrum_url_from_net(&parsed_network).map_err(|x| json!(x))?;
 
             let session = ElectrumSession::create_session(parsed_network, db_root, proxy, url);
             let backend = GdkBackend::Electrum(session);
@@ -245,7 +245,7 @@ pub extern "C" fn GDKRUST_call_session(
         Ok(ref val) => (val.to_string(), GA_OK),
         Err(ref e) => {
             let ret_val = match e {
-                Error::Electrum(gdk_electrum::error::Error::InvalidPin) => GA_NOT_AUTHORIZED,
+                Error::Electrum(ElectrumError::InvalidPin) => GA_NOT_AUTHORIZED,
                 _ => GA_ERROR,
             };
             let json_error = build_error(&method, e);
@@ -527,23 +527,23 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
     match method {
         "psbt_extract_tx" => {
             let param: ExtractTxParam = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_electrum::pset::extract_tx(&param)?))
+            Ok(to_string(&pset::extract_tx(&param)?))
         }
         "psbt_from_tx" => {
             let param: FromTxParam = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_electrum::pset::from_tx(&param)?))
+            Ok(to_string(&pset::from_tx(&param)?))
         }
         "psbt_merge_tx" => {
             let param: MergeTxParam = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_electrum::pset::merge_tx(&param)?))
+            Ok(to_string(&pset::merge_tx(&param)?))
         }
         "spv_verify_tx" => {
             let param: SPVVerifyTxParams = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_electrum::headers::spv_verify_tx(&param)?.as_i32()))
+            Ok(to_string(&headers::spv_verify_tx(&param)?.as_i32()))
         }
         "spv_download_headers" => {
             let param: SPVDownloadHeadersParams = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_electrum::headers::download_headers(&param)?))
+            Ok(to_string(&headers::download_headers(&param)?))
         }
         _ => Err(Error::MethodNotFound {
             method: method.to_string(),

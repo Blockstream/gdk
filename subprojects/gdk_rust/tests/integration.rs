@@ -10,7 +10,9 @@ use gdk_common::Network;
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession, Notification, State};
+use gdk_electrum::{
+    determine_electrum_url_from_net, headers, spv, ElectrumSession, Notification, State,
+};
 
 use log::info;
 use serde_json::{json, Value};
@@ -1364,7 +1366,7 @@ fn test_spv_timeout() {
         },
         headers_to_download: Some(1),
     };
-    let _ = gdk_electrum::headers::download_headers(&param_download);
+    let _ = headers::download_headers(&param_download);
 
     assert!(now.elapsed().as_secs() <= 5, "more than timeout time passed");
 }

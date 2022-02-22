@@ -14,10 +14,10 @@ use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::Network;
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
-use gdk_electrum::Notification;
 use gdk_electrum::{
     determine_electrum_url_from_net, keys_from_mnemonic, spv, ElectrumSession, State,
 };
+use gdk_electrum::{headers, Notification};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -968,12 +968,12 @@ impl TestSession {
         thread::spawn(move || {
             let mut synced = 0;
             while synced < tip {
-                let result = gdk_electrum::headers::download_headers(&param_download).unwrap();
+                let result = headers::download_headers(&param_download).unwrap();
                 synced = result.height;
             }
         });
         loop {
-            match gdk_electrum::headers::spv_verify_tx(&param) {
+            match headers::spv_verify_tx(&param) {
                 Ok(SPVVerifyTxResult::InProgress) => {
                     thread::sleep(Duration::from_millis(100));
                 }
@@ -983,10 +983,7 @@ impl TestSession {
         }
 
         // second should verify immediately, (and also hit cache)
-        assert!(matches!(
-            gdk_electrum::headers::spv_verify_tx(&param),
-            Ok(SPVVerifyTxResult::Verified)
-        ));
+        assert!(matches!(headers::spv_verify_tx(&param), Ok(SPVVerifyTxResult::Verified)));
     }
 
     pub fn refresh_assets(
