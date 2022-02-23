@@ -138,8 +138,6 @@ pub struct ElectrumSession {
     pub state: Arc<AtomicBool>,
 
     pub store: Option<Store>,
-
-    pub wallet_initialized: bool,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -394,8 +392,6 @@ impl ElectrumSession {
             state: Arc::new(AtomicBool::new(false)),
             timeout: None,
             store: None,
-
-            wallet_initialized: false,
         }
     }
 
@@ -429,7 +425,7 @@ impl ElectrumSession {
         // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
 
-        let last_network_state = if self.wallet_initialized {
+        let last_network_state = if self.wallet.is_some() {
             if self.threads_stopped_load() {
                 self.start_threads()?;
             }
@@ -549,7 +545,7 @@ impl ElectrumSession {
         info!("login {:?} {:?}", self.network, self.state);
 
         // This check must be done before everything else to allow re-login
-        if self.wallet_initialized {
+        if self.wallet.is_some() {
             // we consider login already done if wallet is some
             return self.get_wallet_hash_id();
         }
@@ -816,11 +812,6 @@ impl ElectrumSession {
             }
         });
         self.closer.handles.push(syncer_handle);
-
-        if !self.wallet_initialized {
-            self.notify.settings(&self.get_settings()?);
-            self.wallet_initialized = true;
-        }
 
         Ok(())
     }
@@ -1209,6 +1200,7 @@ impl ElectrumSession {
             self.get_master_blinding_key().ok(),
         )?));
         self.wallet = Some(wallet.clone());
+        self.notify.settings(&self.get_settings()?);
         Ok(())
     }
 }
