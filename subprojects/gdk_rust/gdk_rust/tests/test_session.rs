@@ -1112,6 +1112,15 @@ impl TestSession {
             thread::sleep(Duration::from_secs(1));
         }
     }
+
+    pub fn test_signer(&self) -> TestSigner {
+        let mnemonic = self.session.get_mnemonic().unwrap().get_mnemonic_str();
+        TestSigner::new(
+            &mnemonic,
+            self.session.network.bip32_network(),
+            self.session.network.liquid,
+        )
+    }
 }
 fn node_sendtoaddress(
     client: &Client,
@@ -1271,7 +1280,7 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
 }
 
 /// Struct that holds the secret, so that we can replicate the resolver behavior
-struct TestSigner {
+pub struct TestSigner {
     pub mnemonic: String,
     pub network: Bip32Network,
     is_liquid: bool,
