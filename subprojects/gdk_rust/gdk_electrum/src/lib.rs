@@ -1197,7 +1197,6 @@ impl ElectrumSession {
             mnemonic,
             master_xprv,
             master_xpub,
-            self.get_master_blinding_key().ok(),
         )?));
         self.wallet = Some(wallet.clone());
         self.notify.settings(&self.get_settings()?);

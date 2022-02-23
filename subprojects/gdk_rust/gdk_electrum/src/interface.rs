@@ -7,7 +7,6 @@ use gdk_common::model::{
 };
 use gdk_common::network::Network;
 use gdk_common::scripts::ScriptType;
-use gdk_common::wally::MasterBlindingKey;
 
 use crate::account::{get_account_script_purpose, get_last_next_account_nums, Account};
 use crate::error::*;
@@ -26,7 +25,6 @@ pub struct WalletCtx {
     pub master_xprv: ExtendedPrivKey,
     pub master_xpub: ExtendedPubKey,
     pub mnemonic: Mnemonic,
-    pub master_blinding: Option<MasterBlindingKey>,
     pub accounts: HashMap<u32, Account>,
 }
 
@@ -108,7 +106,6 @@ impl WalletCtx {
         mnemonic: Mnemonic,
         master_xprv: ExtendedPrivKey,
         master_xpub: ExtendedPubKey,
-        master_blinding: Option<MasterBlindingKey>,
     ) -> Result<Self, Error> {
         let mut wallet = WalletCtx {
             store: store.clone(),
@@ -116,7 +113,6 @@ impl WalletCtx {
             mnemonic,
             master_xprv,
             master_xpub,
-            master_blinding,
             accounts: Default::default(),
         };
         let account_nums = store.read()?.account_nums();
@@ -182,15 +178,18 @@ impl WalletCtx {
     ) -> Result<&mut Account, Error> {
         Ok(match self.accounts.entry(account_num) {
             Entry::Occupied(entry) => entry.into_mut(),
-            Entry::Vacant(entry) => entry.insert(Account::new(
-                self.network.clone(),
-                &self.master_xprv,
-                &account_xpub,
-                self.master_blinding.clone(),
-                self.store.clone(),
-                account_num,
-                discovered,
-            )?),
+            Entry::Vacant(entry) => {
+                let master_blinding = self.store.read()?.cache.master_blinding.clone();
+                entry.insert(Account::new(
+                    self.network.clone(),
+                    &self.master_xprv,
+                    &account_xpub,
+                    master_blinding,
+                    self.store.clone(),
+                    account_num,
+                    discovered,
+                )?)
+            }
         })
     }
 
