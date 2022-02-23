@@ -82,13 +82,16 @@ pub extern "C" fn GDKRUST_create_session(
 /// Initialize the logging framework.
 /// Note that once initialized it cannot be changed, only by reloading the library.
 fn init_logging(level: LevelFilter) {
-
     #[cfg(target_os = "android")]
     INIT_LOGGER.call_once(|| {
         android_logger::init_once(
-            android_logger::Config::default().with_min_level(level.to_level().unwrap_or(log::Level::Error)).with_filter(
-                android_logger::FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build(),
-            ),
+            android_logger::Config::default()
+                .with_min_level(level.to_level().unwrap_or(log::Level::Error))
+                .with_filter(
+                    android_logger::FilterBuilder::new()
+                        .parse("warn,gdk_rust=debug,gdk_electrum=debug")
+                        .build(),
+                ),
         )
     });
 

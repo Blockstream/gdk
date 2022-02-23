@@ -1,6 +1,6 @@
+use gdk_common::error::Error as CommonError;
 use gdk_common::model::ExchangeRateError;
 use gdk_electrum as electrum;
-use gdk_common::error::Error as CommonError;
 
 #[derive(Debug)]
 pub enum Error {

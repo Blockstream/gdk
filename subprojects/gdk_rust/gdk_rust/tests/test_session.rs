@@ -8,10 +8,10 @@ use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
-use gdk_common::{model::*, wally};
 use gdk_common::scripts::ScriptType;
 use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::Network;
+use gdk_common::{model::*, wally};
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
 use gdk_electrum::{
@@ -1181,7 +1181,8 @@ pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) 
 // Perform BIP44 account discovery as it is performed in the resolver
 pub fn discover_subaccounts(session: &mut ElectrumSession) {
     let mnemonic = session.get_mnemonic().unwrap().get_mnemonic_str();
-    let signer = TestSigner::new(&mnemonic, session.network.bip32_network());
+    let signer =
+        TestSigner::new(&mnemonic, session.network.bip32_network(), session.network.liquid);
 
     for script_type in ScriptType::types() {
         loop {
@@ -1216,8 +1217,11 @@ pub fn discover_subaccounts(session: &mut ElectrumSession) {
 
 // Simulate login through the auth handler
 pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
-    let signer =
-        TestSigner::new(&mnemonic.clone().get_mnemonic_str(), session.network.bip32_network());
+    let signer = TestSigner::new(
+        &mnemonic.clone().get_mnemonic_str(),
+        session.network.bip32_network(),
+        session.network.liquid,
+    );
 
     session
         .load_store(&LoadStoreOpt {
@@ -1262,14 +1266,16 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
 struct TestSigner {
     pub mnemonic: String,
     pub network: Bip32Network,
+    is_liquid: bool,
     secp: Secp256k1<All>,
 }
 
 impl TestSigner {
-    pub fn new(mnemonic: &str, network: Bip32Network) -> Self {
+    pub fn new(mnemonic: &str, network: Bip32Network, is_liquid: bool) -> Self {
         TestSigner {
             mnemonic: mnemonic.into(),
             network,
+            is_liquid,
             secp: bitcoin::secp256k1::Secp256k1::new(),
         }
     }
