@@ -28,7 +28,6 @@ pub struct WalletCtx {
     pub mnemonic: Mnemonic,
     pub master_blinding: Option<MasterBlindingKey>,
     pub accounts: HashMap<u32, Account>,
-    pub change_max_deriv: u32,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -119,7 +118,6 @@ impl WalletCtx {
             master_xpub,
             master_blinding,
             accounts: Default::default(),
-            change_max_deriv: 0,
         };
         let account_nums = store.read()?.account_nums();
         for account_num in account_nums {
