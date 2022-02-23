@@ -82,6 +82,11 @@ if [ -n "${CARGO_FEATURES[*]}" ]; then
     CARGO_ARGS+=("${CARGO_FEATURES[*]}")
 fi
 
+if [ -n "${NUM_JOBS}" ]; then
+    CARGO_ARGS+=("--jobs")
+    CARGO_ARGS+=(${NUM_JOBS})
+fi
+
 printf "cargo args: ${CARGO_ARGS[*]}\n"
 OPENSSL_DIR=${BUILD_ROOT}/openssl/build OPENSSL_STATIC=1 \
   cargo build "${CARGO_ARGS[@]}"
