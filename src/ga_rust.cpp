@@ -20,70 +20,12 @@
 namespace ga {
 namespace sdk {
 
-    namespace {
-        static std::pair<std::string, std::string> get_exception_details(const nlohmann::json& details)
-        {
-            std::pair<std::string, std::string> ret;
-            if (!details.is_null()) {
-                try {
-                    ret.first = details.value("error", std::string());
-                    ret.second = details.value("message", std::string());
-                } catch (const std::exception&) {
-                    // Ignore
-                }
-            }
-            return ret;
-        }
-
-        static void check_code(const int32_t return_code, const nlohmann::json& json)
-        {
-            if (return_code != GA_OK) {
-                switch (return_code) {
-                case GA_RECONNECT:
-                case GA_SESSION_LOST:
-                    throw reconnect_error();
-
-                case GA_TIMEOUT:
-                    throw timeout_error();
-
-                case GA_NOT_AUTHORIZED:
-                    throw login_error(get_exception_details(json).second);
-
-                case GA_ERROR:
-                default:
-                    throw user_error(get_exception_details(json).second);
-                }
-            }
-        }
-
-        static nlohmann::json rust_call_impl(
-            const std::string& method, const nlohmann::json& input, void* session = nullptr)
-        {
-            char* output = nullptr;
-            int ret;
-            if (session) {
-                ret = GDKRUST_call_session(session, method.c_str(), input.dump().c_str(), &output);
-            } else {
-                ret = GDKRUST_call(method.c_str(), input.dump().c_str(), &output);
-            }
-            nlohmann::json cppjson = nlohmann::json();
-            if (output) {
-                // output was set by calling `std::ffi::CString::into_raw`;
-                // parse it, then destroy it with GDKRUST_destroy_string.
-                cppjson = nlohmann::json::parse(output);
-                GDKRUST_destroy_string(output);
-            }
-            check_code(ret, cppjson);
-            return cppjson;
-        }
-    } // namespace
-
     ga_rust::ga_rust(network_parameters&& net_params)
         : session_impl(std::move(net_params))
     {
         auto np = m_net_params.get_json();
         const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
-        GDK_RUNTIME_ASSERT(res == GA_OK);
+        GDK_RUNTIME_ASSERT(res == GA_OK && m_session);
     }
 
     ga_rust::~ga_rust()
@@ -97,7 +39,7 @@ namespace sdk {
     {
         nlohmann::json net_params = m_net_params.get_json();
         net_params["proxy"] = session_impl::connect_tor();
-        call_session("connect", net_params);
+        rust_call("connect", net_params, m_session);
     }
 
     void ga_rust::reconnect()
@@ -127,18 +69,7 @@ namespace sdk {
     void ga_rust::disconnect()
     {
         GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
-        call_session("disconnect", {});
-    }
-
-    nlohmann::json ga_rust::call_rust(const std::string& method, const nlohmann::json& input)
-    {
-        return rust_call_impl(method, input);
-    }
-
-    nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
-    {
-        GDK_RUNTIME_ASSERT(m_session);
-        return rust_call_impl(method, input, m_session);
+        rust_call("disconnect", {}, m_session);
     }
 
     nlohmann::json ga_rust::http_request(nlohmann::json params)
@@ -150,7 +81,7 @@ namespace sdk {
     {
         nlohmann::json p = params;
         p["proxy"] = get_proxy_settings()["proxy"];
-        auto result = call_session("refresh_assets", p);
+        auto result = rust_call("refresh_assets", p, m_session);
         const std::array<const char*, 2> keys = { "assets", "icons" };
         for (const auto& key : keys) {
             if (params.value(key, false)) {
@@ -179,12 +110,12 @@ namespace sdk {
     {
         set_signer(signer);
         auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
-        call_session("load_store", { { "master_xpub", std::move(master_xpub) } });
+        rust_call("load_store", { { "master_xpub", std::move(master_xpub) } }, m_session);
     }
 
-    void ga_rust::start_sync_threads() { call_session("start_threads", {}); }
+    void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
 
-    nlohmann::json ga_rust::get_subaccount_pointers() { return call_session("get_subaccount_nums", {}); }
+    nlohmann::json ga_rust::get_subaccount_pointers() { return rust_call("get_subaccount_nums", {}, m_session); }
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
@@ -201,11 +132,11 @@ namespace sdk {
         set_signer(signer);
         std::string empty;
         auto mnemonic = signer->get_mnemonic(empty);
-        return call_session("login", { { "mnemonic", std::move(mnemonic) }, { "password", empty } });
+        return rust_call("login", { { "mnemonic", std::move(mnemonic) }, { "password", empty } }, m_session);
     }
     std::string ga_rust::mnemonic_from_pin_data(const nlohmann::json& pin_data)
     {
-        return call_session("mnemonic_from_pin_data", pin_data);
+        return rust_call("mnemonic_from_pin_data", pin_data, m_session);
     }
     nlohmann::json ga_rust::login_watch_only(std::shared_ptr<signer> signer)
     {
@@ -229,12 +160,12 @@ namespace sdk {
     bool ga_rust::discover_subaccount(const std::string& xpub, const std::string& type)
     {
         const auto details = nlohmann::json({ { "type", type }, { "xpub", xpub } });
-        return call_session("discover_subaccount", details);
+        return rust_call("discover_subaccount", details, m_session);
     }
 
     uint32_t ga_rust::get_next_subaccount(const std::string& type)
     {
-        return call_session("get_next_subaccount", nlohmann::json({ { "type", type } }));
+        return rust_call("get_next_subaccount", nlohmann::json({ { "type", type } }), m_session);
     }
 
     nlohmann::json ga_rust::create_subaccount(
@@ -243,20 +174,21 @@ namespace sdk {
         auto details_c = details;
         details_c["subaccount"] = subaccount;
         details_c["xpub"] = xpub;
-        return call_session("create_subaccount", details_c);
+        return rust_call("create_subaccount", details_c, m_session);
     }
 
     std::pair<std::string, bool> ga_rust::get_cached_master_blinding_key()
     {
-        const std::string blinding_key_hex
-            = call_session("get_master_blinding_key", {}).value("master_blinding_key", std::string());
-        return std::make_pair(blinding_key_hex, blinding_key_hex.empty());
+        auto ret = rust_call("get_master_blinding_key", {}, m_session);
+        auto blinding_key_hex = ret.value("master_blinding_key", std::string());
+        const bool is_empty = blinding_key_hex.empty();
+        return std::make_pair(std::move(blinding_key_hex), is_empty);
     }
 
     void ga_rust::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
     {
         session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
-        call_session("set_master_blinding_key", { { "master_blinding_key", master_blinding_key_hex } });
+        rust_call("set_master_blinding_key", { { "master_blinding_key", master_blinding_key_hex } }, m_session);
     }
 
     void ga_rust::change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)
@@ -274,7 +206,7 @@ namespace sdk {
             actual_details = details;
         }
 
-        return call_session("get_transactions", actual_details);
+        return rust_call("get_transactions", actual_details, m_session);
     }
 
     void ga_rust::GDKRUST_notif_handler(void* self_context, char* json)
@@ -298,7 +230,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_receive_address(const nlohmann::json& details)
     {
-        return call_session("get_receive_address", details);
+        return rust_call("get_receive_address", details, m_session);
     }
 
     nlohmann::json ga_rust::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
@@ -306,11 +238,11 @@ namespace sdk {
         throw std::runtime_error("get_previous_addresses not implemented");
     }
 
-    nlohmann::json ga_rust::get_subaccounts() { return call_session("get_subaccounts", {}); }
+    nlohmann::json ga_rust::get_subaccounts() { return rust_call("get_subaccounts", {}, m_session); }
 
     nlohmann::json ga_rust::get_subaccount(uint32_t subaccount)
     {
-        return call_session("get_subaccount", nlohmann::json{ { "subaccount", subaccount } });
+        return rust_call("get_subaccount", nlohmann::json{ { "subaccount", subaccount } }, m_session);
     }
 
     void ga_rust::rename_subaccount(uint32_t subaccount, const std::string& new_name)
@@ -319,7 +251,7 @@ namespace sdk {
             { "subaccount", subaccount },
             { "new_name", new_name },
         });
-        call_session("rename_subaccount", details);
+        rust_call("rename_subaccount", details, m_session);
     }
 
     void ga_rust::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
@@ -328,7 +260,7 @@ namespace sdk {
             { "subaccount", subaccount },
             { "hidden", is_hidden },
         });
-        call_session("set_subaccount_hidden", details);
+        rust_call("set_subaccount_hidden", details, m_session);
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
@@ -343,7 +275,8 @@ namespace sdk {
         const uint32_t account = subaccount / 16;
         return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
 #endif
-        return call_session("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } })).at("path");
+        return rust_call("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } }, m_session))
+            .at("path");
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
@@ -357,18 +290,18 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_subaccount_xpub(uint32_t subaccount)
     {
-        return call_session("get_subaccount_xpub", { { "subaccount", subaccount } });
+        return rust_call("get_subaccount_xpub", { { "subaccount", subaccount } }, m_session);
     }
 
     nlohmann::json ga_rust::get_available_currencies() const
     {
-        return call_session("get_available_currencies", nlohmann::json({}));
+        return rust_call("get_available_currencies", nlohmann::json({}), m_session);
     }
 
     bool ga_rust::is_rbf_enabled() const { throw std::runtime_error("is_rbf_enabled not implemented"); }
     bool ga_rust::is_watch_only() const { return false; }
 
-    nlohmann::json ga_rust::get_settings() { return call_session("get_settings", nlohmann::json({})); }
+    nlohmann::json ga_rust::get_settings() { return rust_call("get_settings", nlohmann::json({}), m_session); }
 
     nlohmann::json ga_rust::get_post_login_data()
     {
@@ -377,7 +310,7 @@ namespace sdk {
             { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
     }
 
-    void ga_rust::change_settings(const nlohmann::json& settings) { call_session("change_settings", settings); }
+    void ga_rust::change_settings(const nlohmann::json& settings) { rust_call("change_settings", settings, m_session); }
 
     nlohmann::json ga_rust::get_twofactor_config(bool reset_cached) { return nlohmann::json({}); }
 
@@ -431,14 +364,14 @@ namespace sdk {
             { "device_id", device_id },
         });
 
-        return call_session("set_pin", details);
+        return rust_call("set_pin", details, m_session);
     }
 
     nlohmann::json ga_rust::get_unspent_outputs(
         const nlohmann::json& details, unique_pubkeys_and_scripts_t& /*missing*/)
     {
         // FIXME: Use 'missing' once unblinding uses HWW interface
-        return call_session("get_unspent_outputs", details);
+        return rust_call("get_unspent_outputs", details, m_session);
     }
 
     nlohmann::json ga_rust::get_unspent_outputs_for_private_key(
@@ -456,7 +389,7 @@ namespace sdk {
     wally_tx_ptr ga_rust::get_raw_transaction_details(const std::string& txhash_hex) const
     {
         try {
-            const auto tx_hex = call_session("get_transaction_hex", nlohmann::json(txhash_hex));
+            const auto tx_hex = rust_call("get_transaction_hex", nlohmann::json(txhash_hex), m_session);
             return tx_from_hex(tx_hex, tx_flags(m_net_params.is_liquid()));
         } catch (const std::exception& e) {
             GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
@@ -467,7 +400,7 @@ namespace sdk {
     nlohmann::json ga_rust::get_transaction_details(const std::string& txhash_hex) const
     {
         try {
-            return call_session("get_transaction_details", nlohmann::json(txhash_hex));
+            return rust_call("get_transaction_details", nlohmann::json(txhash_hex), m_session);
         } catch (const std::exception& e) {
             GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
@@ -517,12 +450,12 @@ namespace sdk {
         }
         GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction result: " << result.dump();
 
-        return call_session("create_transaction", result);
+        return rust_call("create_transaction", result, m_session);
     }
 
     nlohmann::json ga_rust::user_sign_transaction(const nlohmann::json& details)
     {
-        return call_session("sign_transaction", details);
+        return rust_call("sign_transaction", details, m_session);
     }
 
     nlohmann::json ga_rust::service_sign_transaction(
@@ -538,12 +471,12 @@ namespace sdk {
 
     nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        return call_session("send_transaction", details);
+        return rust_call("send_transaction", details, m_session);
     }
 
     std::string ga_rust::broadcast_transaction(const std::string& tx_hex)
     {
-        return call_session("broadcast_transaction", nlohmann::json(tx_hex)).get<std::string>();
+        return rust_call("broadcast_transaction", nlohmann::json(tx_hex), m_session).get<std::string>();
     }
 
     void ga_rust::send_nlocktimes() { throw std::runtime_error("send_nlocktimes not implemented"); }
@@ -564,10 +497,13 @@ namespace sdk {
             { "memo", memo },
         });
 
-        call_session("set_transaction_memo", details);
+        rust_call("set_transaction_memo", details, m_session);
     }
 
-    nlohmann::json ga_rust::get_fee_estimates() { return call_session("get_fee_estimates", nlohmann::json({})); }
+    nlohmann::json ga_rust::get_fee_estimates()
+    {
+        return rust_call("get_fee_estimates", nlohmann::json({}), m_session);
+    }
 
     std::string ga_rust::get_system_message()
     {
@@ -590,7 +526,7 @@ namespace sdk {
         auto currency = amount_json.value("fiat_currency", "USD");
         auto fallback_rate = amount_json.value("fiat_rate", "");
         auto currency_query = nlohmann::json({ { "currencies", currency } });
-        auto xrates = call_session("exchange_rates", currency_query)["currencies"];
+        auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
         auto fetched_rate = xrates.value(currency, "");
         auto rate = fetched_rate.empty() ? fallback_rate : fetched_rate;
         return amount::convert(amount_json, currency, rate);

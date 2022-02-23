@@ -27,17 +27,6 @@ namespace sdk {
     // Return a uint32_t in the range 0 to (upper_bound - 1) without bias
     uint32_t get_uniform_uint32_t(uint32_t upper_bound);
 
-    // GA_init for rust
-    void init_rust(const nlohmann::json& details);
-
-    int32_t spv_verify_tx(const nlohmann::json& details);
-
-    // Extract the transaction from a PSBT or PSET
-    std::string psbt_extract_tx(const std::string& psbt);
-
-    // Merge a transaction in a PSBT or PSET
-    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex);
-
     // STL compatible RNG returning uniform uint32_t's
     struct uniform_uint32_rng {
         uniform_uint32_rng() // NOLINT: ignored for valgrind use
@@ -123,6 +112,24 @@ namespace sdk {
     std::string get_wallet_hash_id(
         const network_parameters& net_params, const std::string& chain_code_hex, const std::string& public_key_hex);
     nlohmann::json get_wallet_hash_id(const nlohmann::json& net_params, const nlohmann::json& params);
+
+    // RUST FFI:
+    // GA_init for rust
+    // No-op if rust support is not compiled in
+    void init_rust(const nlohmann::json& details);
+
+    // Make a call into rust code and return the result
+    // Throws if rust support is not compiled in
+    nlohmann::json rust_call(const std::string& method, const nlohmann::json& input, void* session = nullptr);
+
+    // Return the SPV verification status of a tx
+    int32_t spv_verify_tx(const nlohmann::json& details);
+
+    // Extract the transaction from a PSBT or PSET
+    std::string psbt_extract_tx(const std::string& psbt);
+
+    // Merge a transaction in a PSBT or PSET
+    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex);
 
 } // namespace sdk
 } // namespace ga

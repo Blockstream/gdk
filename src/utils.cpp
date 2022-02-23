@@ -20,7 +20,7 @@
 #include "assertion.hpp"
 #include "exception.hpp"
 #ifdef BUILD_GDK_RUST
-#include "ga_rust.hpp"
+#include "../subprojects/gdk_rust/gdk_rust.h"
 #endif
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
@@ -124,6 +124,71 @@ namespace sdk {
 
             return true;
         }
+
+#ifdef BUILD_GDK_RUST
+        static std::pair<std::string, std::string> get_rust_exception_details(const nlohmann::json& details)
+        {
+            std::pair<std::string, std::string> ret;
+            if (!details.is_null()) {
+                try {
+                    ret.first = details.value("error", std::string());
+                    ret.second = details.value("message", std::string());
+                } catch (const std::exception&) {
+                    // Ignore
+                }
+            }
+            return ret;
+        }
+
+        static void check_rust_return_code(const int32_t return_code, const nlohmann::json& json)
+        {
+            if (return_code != GA_OK) {
+                switch (return_code) {
+                case GA_RECONNECT:
+                case GA_SESSION_LOST:
+                    throw reconnect_error();
+
+                case GA_TIMEOUT:
+                    throw timeout_error();
+
+                case GA_NOT_AUTHORIZED:
+                    throw login_error(get_rust_exception_details(json).second);
+
+                case GA_ERROR:
+                default:
+                    throw user_error(get_rust_exception_details(json).second);
+                }
+            }
+        }
+
+        static nlohmann::json rust_call_impl(
+            const std::string& method, const nlohmann::json& input, void* session = nullptr)
+        {
+            char* output = nullptr;
+            int ret;
+            if (session) {
+                ret = GDKRUST_call_session(session, method.c_str(), input.dump().c_str(), &output);
+            } else {
+                ret = GDKRUST_call(method.c_str(), input.dump().c_str(), &output);
+            }
+            nlohmann::json cppjson = nlohmann::json();
+            if (output) {
+                // output was set by calling `std::ffi::CString::into_raw`;
+                // parse it, then destroy it with GDKRUST_destroy_string.
+                cppjson = nlohmann::json::parse(output);
+                GDKRUST_destroy_string(output);
+            }
+            check_rust_return_code(ret, cppjson);
+            return cppjson;
+        }
+#else // BUILD_GDK_RUST
+        static nlohmann::json rust_call_impl(
+            const std::string& method, const nlohmann::json& /*input*/, void* /*session*/)
+        {
+            GDK_RUNTIME_ASSERT_MSG(false, method + " not implemented");
+            return nlohmann::json();
+        }
+#endif // BUILD_GDK_RUST
     } // namespace
 
     // use the same strategy as bitcoin core
@@ -169,51 +234,36 @@ namespace sdk {
         wally_bzero(hashed.data(), hashed.size());
     }
 
+    nlohmann::json rust_call(const std::string& method, const nlohmann::json& details, void* session)
+    {
+        return rust_call_impl(method, details, session);
+    }
+
     void init_rust(const nlohmann::json& details)
     {
         // No-op if rust isn't enabled
 #ifdef BUILD_GDK_RUST
-        ga_rust::call_rust("init", details);
+        rust_call("init", details);
+#else
+        (void)details;
 #endif
     }
 
-    int32_t spv_verify_tx(const nlohmann::json& details)
-    {
-#ifdef BUILD_GDK_RUST
-        return ga_rust::call_rust("spv_verify_tx", details);
-#else
-        (void)details;
-        GDK_RUNTIME_ASSERT_MSG(false, "SPV not implemented");
-        return 0;
-#endif
-    }
+    int32_t spv_verify_tx(const nlohmann::json& details) { return rust_call("spv_verify_tx", details); }
 
     std::string psbt_extract_tx(const std::string& psbt)
     {
-#ifdef BUILD_GDK_RUST
         auto psbt_hex = b2h(base64_to_bytes(psbt));
-        nlohmann::json input = { { "psbt_hex", std::move(psbt_hex) } };
-        return ga_rust::call_rust("psbt_extract_tx", input).at("transaction");
-#else
-        (void)psbt;
-        GDK_RUNTIME_ASSERT_MSG(false, "PSBT functions not implemented");
-        return std::string();
-#endif
+        nlohmann::json details = { { "psbt_hex", std::move(psbt_hex) } };
+        return rust_call("psbt_extract_tx", details).at("transaction");
     }
 
     std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex)
     {
-#ifdef BUILD_GDK_RUST
         auto psbt_hex = b2h(base64_to_bytes(psbt));
-        nlohmann::json input = { { "psbt_hex", std::move(psbt_hex) }, { "transaction", tx_hex } };
-        auto result = ga_rust::call_rust("psbt_merge_tx", input);
+        nlohmann::json details = { { "psbt_hex", std::move(psbt_hex) }, { "transaction", tx_hex } };
+        auto result = rust_call("psbt_merge_tx", details);
         return base64_from_bytes(h2b(result.at("psbt_hex")));
-#else
-        (void)psbt;
-        (void)tx;
-        GDK_RUNTIME_ASSERT_MSG(false, "PSBT functions not implemented");
-        return std::string();
-#endif
     }
 
     uint32_t get_uniform_uint32_t(uint32_t upper_bound)

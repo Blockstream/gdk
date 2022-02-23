@@ -151,12 +151,7 @@ namespace sdk {
 
         void disable_all_pin_logins();
 
-        // Make a call into rust code and return the result
-        static nlohmann::json call_rust(const std::string& method, const nlohmann::json& input);
-
     private:
-        nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
-
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
 
