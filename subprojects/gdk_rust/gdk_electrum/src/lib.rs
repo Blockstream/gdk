@@ -429,10 +429,12 @@ impl ElectrumSession {
         // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
 
-        if self.wallet_initialized {
+        let last_network_state = if self.wallet_initialized {
             if self.threads_stopped_load() {
                 self.start_threads()?;
             }
+            // Use the last persisted state so we don't have to wait for a network roundtrip
+            self.state.load(Ordering::Relaxed).into()
         } else {
             // We can't call start_threads() here because not everything is loaded before login,
             // but we need to emit a network notification, to do so we test the electrum server
@@ -443,19 +445,22 @@ impl ElectrumSession {
                 Ok(client) => match client.ping() {
                     Ok(_) => {
                         info!("connect succesfully ping the electrum server");
-                        self.state_updater()?.update_if_needed(State::Connected);
+                        self.state.store(State::Connected.into(), Ordering::Relaxed);
+                        State::Connected
                     }
                     Err(e) => {
                         warn!("ping failed {:?}", e);
-                        self.notify.network(State::Disconnected, State::Connected);
+                        State::Disconnected
                     }
                 },
                 Err(e) => {
                     warn!("build client failed {:?}", e);
-                    self.notify.network(State::Disconnected, State::Connected);
+                    State::Disconnected
                 }
             }
-        }
+        };
+        // Always send a notification after connect
+        self.notify.network(last_network_state.into(), State::Connected);
         Ok(())
     }
 
@@ -812,11 +817,7 @@ impl ElectrumSession {
         });
         self.closer.handles.push(syncer_handle);
 
-        if self.wallet_initialized {
-            // we notify network only after the first time,
-            // because we already do at first connect and it would be notified twice otherwise
-            self.notify.network(self.state.load(Ordering::Relaxed).into(), State::Connected);
-        } else {
+        if !self.wallet_initialized {
             self.notify.settings(&self.get_settings()?);
             self.wallet_initialized = true;
         }
