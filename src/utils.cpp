@@ -161,8 +161,7 @@ namespace sdk {
             }
         }
 
-        static nlohmann::json rust_call_impl(
-            const std::string& method, const nlohmann::json& input, void* session = nullptr)
+        static nlohmann::json rust_call_impl(const std::string& method, const nlohmann::json& input, void* session)
         {
             char* output = nullptr;
             int ret;
@@ -249,7 +248,30 @@ namespace sdk {
 #endif
     }
 
-    int32_t spv_verify_tx(const nlohmann::json& details) { return rust_call("spv_verify_tx", details); }
+    namespace {
+        static const std::array<const char*, 6> SPV_STATUS_NAMES
+            = { "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed" };
+        static constexpr size_t SPV_STATUS_DISABLED = 3;
+    } // namespace
+
+    uint32_t spv_verify_tx(const nlohmann::json& details)
+    {
+        try {
+            const size_t spv_status = rust_call("spv_verify_tx", details);
+            GDK_LOG_SEV(log_level::debug)
+                << "spv_verify_tx:" << details.at("txhash") << "=" << spv_get_status_string(spv_status);
+            return spv_status;
+        } catch (const std::exception& e) {
+            GDK_LOG_SEV(log_level::warning) << "spv_verify_tx exception:" << e.what();
+            return SPV_STATUS_DISABLED;
+        }
+    }
+
+    std::string spv_get_status_string(uint32_t spv_status)
+    {
+        GDK_RUNTIME_ASSERT_MSG(spv_status < SPV_STATUS_NAMES.size(), "Unknown SPV status");
+        return SPV_STATUS_NAMES[spv_status];
+    }
 
     std::string psbt_extract_tx(const std::string& psbt)
     {

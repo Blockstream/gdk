@@ -123,7 +123,11 @@ namespace sdk {
     nlohmann::json rust_call(const std::string& method, const nlohmann::json& input, void* session = nullptr);
 
     // Return the SPV verification status of a tx
-    int32_t spv_verify_tx(const nlohmann::json& details);
+    uint32_t spv_verify_tx(const nlohmann::json& details);
+
+    // Convert an SPV status into one of:
+    // "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed"
+    std::string spv_get_status_string(uint32_t spv_status);
 
     // Extract the transaction from a PSBT or PSET
     std::string psbt_extract_tx(const std::string& psbt);

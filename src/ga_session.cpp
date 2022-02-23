@@ -49,11 +49,6 @@ namespace sdk {
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
         static const uint32_t NUM_FEE_ESTIMATES = 25; // Min fee followed by blocks 1-24
 
-        static const std::array<const char*, 6> SPV_STATUS_NAMES
-            = { "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed" };
-        static const int SPV_STATUS_IN_PROGRESS = 0;
-        static const int SPV_STATUS_VERIFIED = 1;
-        static const int SPV_STATUS_DISABLED = 3;
         static const std::string ZEROS(64, '0');
 
         // Multi-call categories
@@ -2279,49 +2274,32 @@ namespace sdk {
         const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), current_block);
         const uint32_t reorg_block = current_block - num_reorg_blocks;
 
-        const auto& verified_status_str = SPV_STATUS_NAMES.at(SPV_STATUS_VERIFIED);
-
-        const std::string datadir = gdk_config()["datadir"];
-        const auto path = datadir + "/state";
-        const auto spv_enabled = m_net_params.spv_enabled() && !datadir.empty();
+        const auto spv_enabled = m_net_params.spv_enabled();
         nlohmann::json spv_params
-            = { { "path", path }, { "network", m_net_params.get_json() }, { "encryption_key", "TBD" } };
-        auto sync_in_progress = false;
+            = { { "network", m_net_params.get_json() }, { "path", m_net_params.get_json()["state_dir"] } };
+        // TODO: Add proxy settings?
 
         for (auto& tx_details : tx_list) {
             const auto tx_block_height = tx_details["block_height"];
             auto& spv_verified = tx_details["spv_verified"];
 
-            if (tx_block_height < reorg_block && spv_verified == verified_status_str) {
+            if (tx_block_height < reorg_block && spv_verified == "verified") {
                 continue; // Verified and committed beyond our reorg depth
             }
 
-            int spv_status = SPV_STATUS_DISABLED;
-
             if (spv_enabled) {
-                spv_status = SPV_STATUS_IN_PROGRESS;
-                if (!sync_in_progress) {
-                    spv_params["txid"] = tx_details["txhash"];
-                    spv_params["height"] = tx_block_height;
+                spv_params["txid"] = tx_details["txhash"];
+                spv_params["height"] = tx_block_height;
 
-                    spv_status = spv_verify_tx(spv_params);
-                    GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << tx_details["txhash"] << "=" << spv_status;
-                    if (spv_status == SPV_STATUS_IN_PROGRESS) {
-                        // Headers are not synced. Fire off a thread to load them
-                        // FIXME: Creates a thread for every get_transactions call until synced
-                        // to the txs_block height.
-                        sync_in_progress = true;
-                        m_wamp->post([spv_params] {
-                            while (!spv_verify_tx(spv_params)) {
-                            }
-                        });
-                    } else if (spv_status == SPV_STATUS_VERIFIED && tx_block_height < reorg_block) {
-                        // Verified and committed beyond our reorg depth, update the cache
-                        m_cache->set_transaction_spv_verified(tx_details["txhash"]);
-                    }
+                auto spv_status = spv_get_status_string(spv_verify_tx(spv_params));
+                if (tx_block_height < reorg_block && spv_status == "verified") {
+                    // Verified and committed beyond our reorg depth, update the cache
+                    m_cache->set_transaction_spv_verified(tx_details["txhash"]);
                 }
+                spv_verified = std::move(spv_status);
+            } else {
+                spv_verified = "disabled";
             }
-            spv_verified = SPV_STATUS_NAMES.at(spv_status);
         }
         m_cache->save_db(); // No-op if unchanged
     }
@@ -2347,7 +2325,7 @@ namespace sdk {
         m_cache->get_transactions(subaccount, first, count,
             { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, uint32_t /*spent*/,
                   uint32_t spv_status, nlohmann::json& tx_json) {
-                tx_json["spv_verified"] = SPV_STATUS_NAMES.at(spv_status);
+                tx_json["spv_verified"] = spv_get_status_string(spv_status);
                 result.emplace_back(std::move(tx_json));
             } });
 
