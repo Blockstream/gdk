@@ -1052,6 +1052,27 @@ fn labels() {
     assert_eq!(test_session.get_tx_from_list(account1.account_num, &txid).memo, "Bar, Foo Qux");
     assert_eq!(test_session.get_tx_from_list(account2.account_num, &txid).memo, "Bar, Foo Qux");
 
+    // Using the external signer and broadcast_transaction does not the memo
+    let test_signer = test_session.test_signer();
+    let mut create_opt = CreateTransaction::default();
+    create_opt.subaccount = account1.account_num;
+    create_opt.addressees.push(AddressAmount {
+        address: test_session.get_receive_address(account2.account_num).address,
+        satoshi: 50000,
+        asset_id: None,
+    });
+    create_opt.utxos = test_session.utxos(create_opt.subaccount);
+    create_opt.memo = Some("Foo, Bar Foo".into());
+    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
+    let signed_tx = test_signer.sign_tx(&tx);
+    let txid = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+    test_session.wait_account_tx(account1.account_num, &txid);
+    test_session.wait_account_tx(account2.account_num, &txid);
+
+    // Memos is not set across all accounts
+    assert_eq!(test_session.get_tx_from_list(account1.account_num, &txid).memo, "");
+    assert_eq!(test_session.get_tx_from_list(account2.account_num, &txid).memo, "");
+
     test_session.stop();
 }
 
