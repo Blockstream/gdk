@@ -159,6 +159,9 @@ namespace sdk {
         // One-time initialization function
         static void init(const nlohmann::json& details);
 
+        // Make a call into rust code and return the result
+        static nlohmann::json call_rust(const std::string& method, const nlohmann::json& input);
+
     private:
         nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
 

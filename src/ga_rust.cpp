@@ -56,16 +56,24 @@ namespace sdk {
             }
         }
 
-        static nlohmann::json call(const std::string& method, const nlohmann::json& input)
+        static nlohmann::json rust_call_impl(
+            const std::string& method, const nlohmann::json& input, void* session = nullptr)
         {
             char* output = nullptr;
-            int res = GDKRUST_call(method.c_str(), input.dump().c_str(), &output);
+            int ret;
+            if (session) {
+                ret = GDKRUST_call_session(session, method.c_str(), input.dump().c_str(), &output);
+            } else {
+                ret = GDKRUST_call(method.c_str(), input.dump().c_str(), &output);
+            }
             nlohmann::json cppjson = nlohmann::json();
             if (output) {
+                // output was set by calling `std::ffi::CString::into_raw`;
+                // parse it, then destroy it with GDKRUST_destroy_string.
                 cppjson = nlohmann::json::parse(output);
                 GDKRUST_destroy_string(output);
             }
-            check_code(res, cppjson);
+            check_code(ret, cppjson);
             return cppjson;
         }
     } // namespace
@@ -122,21 +130,15 @@ namespace sdk {
         call_session("disconnect", {});
     }
 
+    nlohmann::json ga_rust::call_rust(const std::string& method, const nlohmann::json& input)
+    {
+        return rust_call_impl(method, input);
+    }
+
     nlohmann::json ga_rust::call_session(const std::string& method, const nlohmann::json& input) const
     {
-        char* output = nullptr;
-        int res = GDKRUST_call_session(m_session, method.c_str(), input.dump().c_str(), &output);
-        if (!output) {
-            // output was not set by calling `std::ffi::CString::into_raw`;
-            // avoid calling GDKRUST_destroy_string.
-            const auto cppjson = nlohmann::json();
-            check_code(res, cppjson);
-            return cppjson;
-        }
-        const nlohmann::json cppjson = nlohmann::json::parse(output);
-        GDKRUST_destroy_string(output);
-        check_code(res, cppjson);
-        return cppjson;
+        GDK_RUNTIME_ASSERT(m_session);
+        return rust_call_impl(method, input, m_session);
     }
 
     nlohmann::json ga_rust::http_request(nlohmann::json params)
@@ -622,21 +624,21 @@ namespace sdk {
 
     void ga_rust::disable_all_pin_logins() {}
 
-    int32_t ga_rust::spv_verify_tx(const nlohmann::json& details) { return call("spv_verify_tx", details); }
+    int32_t ga_rust::spv_verify_tx(const nlohmann::json& details) { return call_rust("spv_verify_tx", details); }
 
     std::string ga_rust::psbt_extract_tx(const std::string& psbt_hex)
     {
         const nlohmann::json input = { { "psbt_hex", psbt_hex } };
-        return call("psbt_extract_tx", input).at("transaction");
+        return call_rust("psbt_extract_tx", input).at("transaction");
     }
 
     std::string ga_rust::psbt_merge_tx(const std::string& psbt_hex, const std::string& tx_hex)
     {
         const nlohmann::json input = { { "psbt_hex", psbt_hex }, { "transaction", tx_hex } };
-        return call("psbt_merge_tx", input).at("psbt_hex");
+        return call_rust("psbt_merge_tx", input).at("psbt_hex");
     }
 
-    void ga_rust::init(const nlohmann::json& details) { call("init", details); }
+    void ga_rust::init(const nlohmann::json& details) { call_rust("init", details); }
 
 } // namespace sdk
 } // namespace ga
