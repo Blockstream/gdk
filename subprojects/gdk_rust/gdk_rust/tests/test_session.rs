@@ -27,6 +27,14 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
 
+use bitcoin::blockdata::script::Builder as ScriptBuilder;
+use bitcoin::blockdata::transaction::SigHashType;
+use bitcoin::hashes::hex::ToHex;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::Message;
+use bitcoin::util::address::Address;
+use bitcoin::util::bip143::SigHashCache;
+
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
@@ -1298,5 +1306,83 @@ impl TestSigner {
     pub fn account_xpub(&self, path: &DerivationPath) -> ExtendedPubKey {
         let xprv = self.master_xprv().derive_priv(&self.secp, path).unwrap();
         ExtendedPubKey::from_private(&self.secp, &xprv)
+    }
+
+    pub fn sign_tx(&self, details: &TransactionMeta) -> TransactionMeta {
+        let be_tx: BETransaction = if self.is_liquid {
+            // FIXME: sort out what we need to do with blinding and implement this
+            unimplemented!();
+        } else {
+            let tx: bitcoin::Transaction =
+                bitcoin::consensus::deserialize(&Vec::<u8>::from_hex(&details.hex).unwrap())
+                    .unwrap();
+            let mut out_tx = tx.clone();
+
+            let num_inputs = tx.input.len();
+            assert_eq!(details.used_utxos.len(), num_inputs);
+
+            for i in 0..num_inputs {
+                let utxo = &details.used_utxos[i];
+
+                let path: DerivationPath = utxo.user_path.clone().into();
+                let private_key =
+                    self.master_xprv().derive_priv(&self.secp, &path).unwrap().private_key;
+
+                // Optional sanity checks
+                let public_key = private_key.public_key(&self.secp);
+                assert_eq!(utxo.public_key, public_key.to_string());
+                let script_code =
+                    Address::p2pkh(&public_key, Bip32Network::Regtest).script_pubkey();
+                assert_eq!(utxo.script_code, script_code.to_hex());
+                assert_eq!(utxo.is_segwit, utxo.address_type != "p2pkh");
+
+                let signature_hash = if utxo.is_segwit {
+                    SigHashCache::new(&tx).signature_hash(
+                        i,
+                        &script_code,
+                        utxo.satoshi,
+                        SigHashType::All,
+                    )
+                } else {
+                    tx.signature_hash(i, &script_code, SigHashType::All as u32)
+                };
+
+                let message = Message::from_slice(&signature_hash.into_inner()[..]).unwrap();
+                let signature = self.secp.sign(&message, &private_key.key);
+
+                let mut der = signature.serialize_der().to_vec();
+                der.push(SigHashType::All as u8);
+
+                let pk = public_key.to_bytes();
+                let (script_sig, witness) = match utxo.address_type.as_str() {
+                    "p2pkh" => (
+                        ScriptBuilder::new()
+                            .push_slice(der.as_slice())
+                            .push_slice(pk.as_slice())
+                            .into_script(),
+                        vec![],
+                    ),
+                    "p2sh-p2wpkh" => (
+                        Address::p2shwpkh(&public_key, Bip32Network::Regtest)
+                            .unwrap()
+                            .script_pubkey(),
+                        vec![der, pk],
+                    ),
+                    "p2wpkh" => (bitcoin::Script::new(), vec![der, pk]),
+                    _ => unimplemented!(),
+                };
+
+                out_tx.input[i].script_sig = script_sig;
+                out_tx.input[i].witness = witness;
+            }
+            BETransaction::Bitcoin(out_tx)
+        };
+
+        let mut details_out: TransactionMeta = be_tx.into();
+        // FIXME: set more fields
+        details_out.fee = details.fee;
+        details_out.create_transaction = details.create_transaction.clone();
+        details_out.user_signed = true;
+        details_out
     }
 }
