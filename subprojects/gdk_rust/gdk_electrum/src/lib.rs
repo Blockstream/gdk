@@ -131,6 +131,11 @@ pub struct ElectrumSession {
     pub network: Network,
     pub url: ElectrumUrl,
     pub wallet: Option<Arc<RwLock<WalletCtx>>>,
+
+    /// Master xpub of the signer associated to the session
+    ///
+    /// It is Some after wallet initialization
+    pub master_xpub: Option<ExtendedPubKey>,
     pub notify: NativeNotif,
     pub closer: Closer,
 
@@ -392,6 +397,7 @@ impl ElectrumSession {
             state: Arc::new(AtomicBool::new(false)),
             timeout: None,
             store: None,
+            master_xpub: None,
         }
     }
 
@@ -425,7 +431,7 @@ impl ElectrumSession {
         // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
 
-        let last_network_state = if self.wallet.is_some() {
+        let last_network_state = if self.master_xpub.is_some() {
             if self.threads_stopped_load() {
                 self.start_threads()?;
             }
@@ -507,7 +513,7 @@ impl ElectrumSession {
             info!("Store root path: {:?}", path);
             let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id())?;
             let store = Arc::new(RwLock::new(store));
-            self.store = Some(store)
+            self.store = Some(store);
         }
         Ok(())
     }
@@ -545,7 +551,7 @@ impl ElectrumSession {
         info!("login {:?} {:?}", self.network, self.state);
 
         // This check must be done before everything else to allow re-login
-        if self.wallet.is_some() {
+        if self.master_xpub.is_some() {
             // we consider login already done if wallet is some
             return self.get_wallet_hash_id();
         }
@@ -817,8 +823,9 @@ impl ElectrumSession {
     }
 
     pub fn get_wallet_hash_id(&self) -> Result<LoginData, Error> {
+        let master_xpub = self.master_xpub.ok_or_else(|| Error::WalletNotInitialized)?;
         Ok(LoginData {
-            wallet_hash_id: self.network.wallet_hash_id(&self.get_wallet()?.master_xpub),
+            wallet_hash_id: self.network.wallet_hash_id(&master_xpub),
         })
     }
 
@@ -1196,9 +1203,9 @@ impl ElectrumSession {
             self.network.clone(),
             mnemonic,
             master_xprv,
-            master_xpub,
         )?));
         self.wallet = Some(wallet.clone());
+        self.master_xpub = Some(master_xpub);
         self.notify.settings(&self.get_settings()?);
         Ok(())
     }

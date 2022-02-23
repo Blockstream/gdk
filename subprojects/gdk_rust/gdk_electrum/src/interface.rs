@@ -23,7 +23,6 @@ pub struct WalletCtx {
     pub network: Network,
     pub store: Store,
     pub master_xprv: ExtendedPrivKey,
-    pub master_xpub: ExtendedPubKey,
     pub mnemonic: Mnemonic,
     pub accounts: HashMap<u32, Account>,
 }
@@ -105,14 +104,12 @@ impl WalletCtx {
         network: Network,
         mnemonic: Mnemonic,
         master_xprv: ExtendedPrivKey,
-        master_xpub: ExtendedPubKey,
     ) -> Result<Self, Error> {
         let mut wallet = WalletCtx {
             store: store.clone(),
             network, // TODO: from db
             mnemonic,
             master_xprv,
-            master_xpub,
             accounts: Default::default(),
         };
         let account_nums = store.read()?.account_nums();
