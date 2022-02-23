@@ -27,13 +27,16 @@ namespace sdk {
     // Return a uint32_t in the range 0 to (upper_bound - 1) without bias
     uint32_t get_uniform_uint32_t(uint32_t upper_bound);
 
+    // GA_init for rust
+    void init_rust(const nlohmann::json& details);
+
     int32_t spv_verify_tx(const nlohmann::json& details);
 
     // Extract the transaction from a PSBT or PSET
     std::string psbt_extract_tx(const std::string& psbt);
 
     // Merge a transaction in a PSBT or PSET
-    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx);
+    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex);
 
     // STL compatible RNG returning uniform uint32_t's
     struct uniform_uint32_rng {

@@ -151,14 +151,6 @@ namespace sdk {
 
         void disable_all_pin_logins();
 
-        static int32_t spv_verify_tx(const nlohmann::json& details);
-
-        static std::string psbt_extract_tx(const std::string& psbt_hex);
-        static std::string psbt_merge_tx(const std::string& psbt_hex, const std::string& tx_hex);
-
-        // One-time initialization function
-        static void init(const nlohmann::json& details);
-
         // Make a call into rust code and return the result
         static nlohmann::json call_rust(const std::string& method, const nlohmann::json& input);
 

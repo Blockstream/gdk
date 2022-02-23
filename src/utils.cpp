@@ -169,10 +169,18 @@ namespace sdk {
         wally_bzero(hashed.data(), hashed.size());
     }
 
+    void init_rust(const nlohmann::json& details)
+    {
+        // No-op if rust isn't enabled
+#ifdef BUILD_GDK_RUST
+        ga_rust::call_rust("init", details);
+#endif
+    }
+
     int32_t spv_verify_tx(const nlohmann::json& details)
     {
 #ifdef BUILD_GDK_RUST
-        return ga_rust::spv_verify_tx(details);
+        return ga_rust::call_rust("spv_verify_tx", details);
 #else
         (void)details;
         GDK_RUNTIME_ASSERT_MSG(false, "SPV not implemented");
@@ -183,7 +191,9 @@ namespace sdk {
     std::string psbt_extract_tx(const std::string& psbt)
     {
 #ifdef BUILD_GDK_RUST
-        return ga_rust::psbt_extract_tx(b2h(base64_to_bytes(psbt)));
+        auto psbt_hex = b2h(base64_to_bytes(psbt));
+        nlohmann::json input = { { "psbt_hex", std::move(psbt_hex) } };
+        return ga_rust::call_rust("psbt_extract_tx", input).at("transaction");
 #else
         (void)psbt;
         GDK_RUNTIME_ASSERT_MSG(false, "PSBT functions not implemented");
@@ -191,10 +201,13 @@ namespace sdk {
 #endif
     }
 
-    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx)
+    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex)
     {
 #ifdef BUILD_GDK_RUST
-        return base64_from_bytes(h2b(ga_rust::psbt_merge_tx(b2h(base64_to_bytes(psbt)), tx)));
+        auto psbt_hex = b2h(base64_to_bytes(psbt));
+        nlohmann::json input = { { "psbt_hex", std::move(psbt_hex) }, { "transaction", tx_hex } };
+        auto result = ga_rust::call_rust("psbt_merge_tx", input);
+        return base64_from_bytes(h2b(result.at("psbt_hex")));
 #else
         (void)psbt;
         (void)tx;

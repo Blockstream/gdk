@@ -79,9 +79,7 @@ namespace sdk {
         start_android_std_outerr_bridge();
 #endif
 
-#ifdef BUILD_GDK_RUST
-        ga_rust::init(global_config);
-#endif
+        init_rust(global_config);
         init_done = true;
 
         return GA_OK;

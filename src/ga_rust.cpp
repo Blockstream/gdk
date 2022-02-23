@@ -624,21 +624,5 @@ namespace sdk {
 
     void ga_rust::disable_all_pin_logins() {}
 
-    int32_t ga_rust::spv_verify_tx(const nlohmann::json& details) { return call_rust("spv_verify_tx", details); }
-
-    std::string ga_rust::psbt_extract_tx(const std::string& psbt_hex)
-    {
-        const nlohmann::json input = { { "psbt_hex", psbt_hex } };
-        return call_rust("psbt_extract_tx", input).at("transaction");
-    }
-
-    std::string ga_rust::psbt_merge_tx(const std::string& psbt_hex, const std::string& tx_hex)
-    {
-        const nlohmann::json input = { { "psbt_hex", psbt_hex }, { "transaction", tx_hex } };
-        return call_rust("psbt_merge_tx", input).at("psbt_hex");
-    }
-
-    void ga_rust::init(const nlohmann::json& details) { call_rust("init", details); }
-
 } // namespace sdk
 } // namespace ga
