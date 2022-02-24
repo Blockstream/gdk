@@ -33,13 +33,11 @@ export CC_armv7_linux_androideabi=armv7a-linux-androideabi19-clang
 export CC_aarch64_linux_android=aarch64-linux-android21-clang
 
 OUT_LIB_FILE="libgdk_rust.a"
-CARGO_FEATURES=()
 CARGO_ARGS=()
 
 cd "$BUILD_ROOT/subprojects/gdk_rust"
 
 if [ \( "$1" = "--ndk" \) ]; then
-    CARGO_FEATURES+=("android_log")
     if [ "$(uname)" = "Darwin" ]; then
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin
     else
@@ -75,11 +73,6 @@ fi
 
 if [ -n "$RUSTTARGET" ]; then
     CARGO_ARGS+=("--target=$RUSTTARGET")
-fi
-
-if [ -n "${CARGO_FEATURES[*]}" ]; then
-    CARGO_ARGS+=("--features")
-    CARGO_ARGS+=("${CARGO_FEATURES[*]}")
 fi
 
 if [ -n "${NUM_JOBS}" ]; then

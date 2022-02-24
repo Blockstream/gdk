@@ -29,10 +29,10 @@ if target_os != ''
 endif
 
 rust_sources = [
-  'Cargo.toml',
-  'src/error.rs',
-  'src/lib.rs',
-  'src/serialize.rs',
+  'gdk_rust/Cargo.toml',
+  'gdk_rust/src/error.rs',
+  'gdk_rust/src/lib.rs',
+  'gdk_rust/src/serialize.rs',
 
   'gdk_common/Cargo.toml',
   'gdk_common/src/be/mod.rs',
