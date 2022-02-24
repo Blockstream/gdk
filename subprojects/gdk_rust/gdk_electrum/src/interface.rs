@@ -14,7 +14,6 @@ use crate::store::*;
 
 use electrum_client::{Client, ConfigBuilder};
 use gdk_common::be::*;
-use gdk_common::mnemonic::Mnemonic;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -23,7 +22,6 @@ pub struct WalletCtx {
     pub network: Network,
     pub store: Store,
     pub master_xprv: ExtendedPrivKey,
-    pub mnemonic: Mnemonic,
     pub accounts: HashMap<u32, Account>,
 }
 
@@ -102,13 +100,11 @@ impl WalletCtx {
     pub fn new(
         store: Store,
         network: Network,
-        mnemonic: Mnemonic,
         master_xprv: ExtendedPrivKey,
     ) -> Result<Self, Error> {
         let mut wallet = WalletCtx {
             store: store.clone(),
             network, // TODO: from db
-            mnemonic,
             master_xprv,
             accounts: Default::default(),
         };

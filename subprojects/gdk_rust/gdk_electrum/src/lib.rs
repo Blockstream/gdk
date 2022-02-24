@@ -585,7 +585,7 @@ impl ElectrumSession {
             }
         }
 
-        self.init_wallet(mnemonic.clone(), master_xprv, master_xpub)?;
+        self.init_wallet(master_xprv, master_xpub)?;
         self.start_threads()?;
         self.get_wallet_hash_id()
     }
@@ -1186,7 +1186,6 @@ pub fn keys_from_mnemonic(
 impl ElectrumSession {
     pub fn init_wallet(
         &mut self,
-        mnemonic: Mnemonic,
         master_xprv: ExtendedPrivKey,
         master_xpub: ExtendedPubKey,
     ) -> Result<(), Error> {
@@ -1197,7 +1196,6 @@ impl ElectrumSession {
         let wallet = Arc::new(RwLock::new(WalletCtx::new(
             self.store()?,
             self.network.clone(),
-            mnemonic,
             master_xprv,
         )?));
         self.wallet = Some(wallet.clone());

@@ -1258,7 +1258,7 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
     }
     let (master_xprv, master_xpub, _) =
         keys_from_mnemonic(&mnemonic, None, session.network.bip32_network()).unwrap();
-    session.init_wallet(mnemonic, master_xprv, master_xpub).unwrap();
+    session.init_wallet(master_xprv, master_xpub).unwrap();
 
     if session.get_subaccounts().unwrap().iter().find(|a| a.account_num == 0).is_none() {
         // for compatibility reason, account 0 must always be present
