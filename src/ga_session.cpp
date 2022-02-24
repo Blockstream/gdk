@@ -263,6 +263,7 @@ namespace sdk {
 
     ga_session::ga_session(network_parameters&& net_params)
         : session_impl(std::move(net_params))
+        , m_spv_enabled(m_net_params.is_spv_enabled())
         , m_blob()
         , m_blob_hmac()
         , m_blob_outdated(false)
@@ -280,6 +281,8 @@ namespace sdk {
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
         , m_wamp(new wamp_transport(m_net_params,
               std::bind(&ga_session::emit_notification, this, std::placeholders::_1, std::placeholders::_2)))
+        , m_spv_thread_done(false)
+        , m_spv_thread_stop(false)
     {
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
     }
@@ -288,6 +291,11 @@ namespace sdk {
     {
         m_notify = false;
         no_std_exception_escape([this] { reset_all_session_data(true); });
+        no_std_exception_escape([this] {
+            locker_t locker(m_mutex);
+            constexpr bool do_start = false;
+            download_headers_ctl(locker, do_start);
+        });
     }
 
     void ga_session::connect()
@@ -2273,33 +2281,43 @@ namespace sdk {
         const uint32_t current_block = m_last_block_notification["block_height"];
         const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), current_block);
         const uint32_t reorg_block = current_block - num_reorg_blocks;
+        bool are_downloading = false;
 
-        const auto spv_enabled = m_net_params.spv_enabled();
         nlohmann::json spv_params
             = { { "network", m_net_params.get_json() }, { "path", m_net_params.get_json()["state_dir"] } };
         // TODO: Add proxy settings?
 
         for (auto& tx_details : tx_list) {
-            const auto tx_block_height = tx_details["block_height"];
+            const uint32_t tx_block_height = tx_details["block_height"];
             auto& spv_verified = tx_details["spv_verified"];
 
-            if (tx_block_height < reorg_block && spv_verified == "verified") {
+            if (tx_block_height && tx_block_height < reorg_block && spv_verified == "verified") {
                 continue; // Verified and committed beyond our reorg depth
             }
-
-            if (spv_enabled) {
-                spv_params["txid"] = tx_details["txhash"];
-                spv_params["height"] = tx_block_height;
-
-                auto spv_status = spv_get_status_string(spv_verify_tx(spv_params));
-                if (tx_block_height < reorg_block && spv_status == "verified") {
-                    // Verified and committed beyond our reorg depth, update the cache
-                    m_cache->set_transaction_spv_verified(tx_details["txhash"]);
-                }
-                spv_verified = std::move(spv_status);
-            } else {
+            if (!m_spv_enabled) {
                 spv_verified = "disabled";
+                continue; // Not already verified and SPV is disabled
             }
+            if (!tx_block_height) {
+                spv_verified = "unconfirmed";
+                continue; // Need to be confirmed before we can verify
+            }
+
+            spv_params["txid"] = tx_details["txhash"];
+            spv_params["height"] = tx_block_height;
+
+            auto spv_status = spv_get_status_string(spv_verify_tx(spv_params));
+            if (!are_downloading && spv_status == "in_progress") {
+                // Start syncing headers for SPV if we aren't already doing it
+                constexpr bool do_start = true;
+                download_headers_ctl(locker, do_start);
+                are_downloading = true;
+            }
+            if (tx_block_height < reorg_block && spv_status == "verified") {
+                // Verified and committed beyond our reorg depth, update the cache
+                m_cache->set_transaction_spv_verified(tx_details["txhash"]);
+            }
+            spv_verified = std::move(spv_status);
         }
         m_cache->save_db(); // No-op if unchanged
     }
@@ -3357,6 +3375,77 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
         update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+    }
+
+    void ga_session::download_headers_ctl(session_impl::locker_t& locker, bool do_start)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        if (!m_spv_enabled) {
+            return; // SPV is not enabled: nothing to do
+        }
+
+        if (m_spv_thread) {
+            // A thread downloading headers already exists
+            if (!m_spv_thread_done) {
+                // Thread is still running
+                if (do_start) {
+                    // Let the existing thread continue running
+                    return;
+                }
+                // Ask and wait for the thread to die
+                m_spv_thread_stop = true;
+                while (!m_spv_thread_done) {
+                    unique_unlock unlocker(locker);
+                    std::this_thread::sleep_for(100ms);
+                }
+            }
+            // Thread is finished, join and delete it
+            m_spv_thread->join();
+            m_spv_thread.reset();
+        }
+
+        m_spv_thread_done = false;
+        m_spv_thread_stop = false;
+
+        if (do_start) {
+            // Start up a new sync thread
+            GDK_RUNTIME_ASSERT(!m_spv_thread);
+            m_spv_thread.reset(new std::thread([this] { download_headers_thread_fn(); }));
+        }
+    }
+
+    void ga_session::download_headers_thread_fn()
+    {
+        const nlohmann::json spv_params
+            = { { "network", m_net_params.get_json() }, { "path", m_net_params.get_json()["state_dir"] } };
+
+        // Loop downloading block headers until we are caught up, then exit
+        GDK_LOG_SEV(log_level::info) << "spv_download_headers: starting sync";
+        for (;;) {
+            try {
+                uint32_t block_height;
+                {
+                    locker_t locker(m_mutex);
+                    if (m_spv_thread_stop) {
+                        GDK_LOG_SEV(log_level::info) << "spv_download_headers: exit requested";
+                        break; // We have been asked to terminate; do so
+                    }
+                    block_height = m_last_block_notification["block_height"];
+                }
+                const auto ret = rust_call("spv_download_headers", spv_params);
+                const auto fetched_height = ret.at("height");
+                GDK_LOG_SEV(log_level::info) << "spv_download_headers:" << fetched_height << '/' << block_height;
+                if (fetched_height == block_height) {
+                    break; // Caught up, exit
+                }
+                std::this_thread::sleep_for(10ms);
+            } catch (const std::exception& e) {
+                GDK_LOG_SEV(log_level::warning) << "spv_download_headers exception:" << e.what();
+                break; // Exception, exit
+            }
+        }
+        locker_t locker(m_mutex);
+        m_spv_thread_done = true;
     }
 
 } // namespace sdk

@@ -685,7 +685,7 @@ namespace sdk {
     bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
     bool network_parameters::is_electrum() const { return m_details.value("server_type", std::string()) == "electrum"; }
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
-    bool network_parameters::spv_enabled() const { return m_details.at("spv_enabled"); }
+    bool network_parameters::is_spv_enabled() const { return m_details.at("spv_enabled"); }
     std::string network_parameters::user_agent() const { return m_details.value("user_agent", std::string()); }
     std::string network_parameters::get_connection_string() const { return use_tor() ? gait_onion() : gait_wamp_url(); }
     std::string network_parameters::get_registry_connection_string() const

@@ -242,6 +242,11 @@ namespace sdk {
 
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
 
+        // Start/stop background header downloads
+        void download_headers_ctl(locker_t& locker, bool do_start);
+        void download_headers_thread_fn();
+
+        const bool m_spv_enabled;
         nlohmann::json m_login_data;
         boost::optional<pbkdf2_hmac512_t> m_local_encryption_key;
         client_blob m_blob;
@@ -286,6 +291,11 @@ namespace sdk {
         std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
         std::unique_ptr<wamp_transport> m_wamp;
+
+        // SPV header downloading
+        std::shared_ptr<std::thread> m_spv_thread; // Header download thread
+        std::atomic_bool m_spv_thread_done; // True when m_spv_thread has exited
+        std::atomic_bool m_spv_thread_stop; // True when we want m_spv_thread to stop
     };
 
 } // namespace sdk
