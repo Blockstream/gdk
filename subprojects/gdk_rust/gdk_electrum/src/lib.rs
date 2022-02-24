@@ -1009,10 +1009,6 @@ impl ElectrumSession {
         //TODO better implement default
     }
 
-    pub fn get_mnemonic(&self) -> Result<Mnemonic, Error> {
-        Ok(self.get_wallet()?.mnemonic.clone())
-    }
-
     pub fn get_settings(&self) -> Result<Settings, Error> {
         Ok(self.get_wallet()?.get_settings()?)
     }

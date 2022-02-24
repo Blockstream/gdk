@@ -1,5 +1,6 @@
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
+use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
     GetTransactionsOpt, GetUnspentOutputs, RefreshAssets, RenameAccountOpt, SPVCommonParams,
@@ -850,14 +851,14 @@ fn subaccounts(is_liquid: bool) {
         ElectrumSession::create_session(network, &db_root, proxy, url)
     };
 
-    let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
-    auth_handler_login(&mut new_session, mnemonic);
+    let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
+    auth_handler_login(&mut new_session, mnemonic.clone());
 
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), 1);
     assert!(new_session.get_subaccount(0).is_ok());
 
-    discover_subaccounts(&mut new_session);
+    discover_subaccounts(&mut new_session, mnemonic.clone());
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), balances.len());
     assert_eq!(new_session.get_subaccount(0).unwrap().bip44_discovered, true);
@@ -882,7 +883,7 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(new_account).or_insert(0) += sat;
 
     assert!(new_session.get_subaccount(new_account).is_err());
-    discover_subaccounts(&mut new_session);
+    discover_subaccounts(&mut new_session, mnemonic.clone());
     new_session.get_subaccounts().unwrap();
     assert!(new_session.get_subaccount(new_account).is_ok());
 

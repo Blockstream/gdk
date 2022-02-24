@@ -221,7 +221,7 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    let methods_to_redact_out = vec!["get_mnemonic", "mnemonic_from_pin_data"];
+    let methods_to_redact_out = vec!["mnemonic_from_pin_data"];
     let mut output_redacted = if methods_to_redact_out.contains(&method.as_str()) {
         "redacted".to_string()
     } else {
@@ -405,11 +405,6 @@ fn handle_session_call(
             info!("gdk_rust get_receive_address returning {:?}", a);
             a
         }
-
-        "get_mnemonic" => session
-            .get_mnemonic()
-            .map(|m| Value::String(m.clone().get_mnemonic_str()))
-            .map_err(Into::into),
 
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))

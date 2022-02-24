@@ -42,6 +42,7 @@ pub struct TestSession {
     pub node: electrsd::bitcoind::BitcoinD,
     pub electrs: electrsd::ElectrsD,
     pub session: ElectrumSession,
+    pub mnemonic: Mnemonic,
     tx_status: u64,
     block_status: (u32, BEBlockHash),
     db_root_dir: TempDir,
@@ -223,6 +224,7 @@ pub fn setup(
         node,
         electrs,
         session,
+        mnemonic,
         db_root_dir,
         network_id,
         network,
@@ -1114,9 +1116,8 @@ impl TestSession {
     }
 
     pub fn test_signer(&self) -> TestSigner {
-        let mnemonic = self.session.get_mnemonic().unwrap().get_mnemonic_str();
         TestSigner::new(
-            &mnemonic,
+            &self.mnemonic.clone().get_mnemonic_str(),
             self.session.network.bip32_network(),
             self.session.network.liquid,
         )
@@ -1196,10 +1197,12 @@ pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) 
 }
 
 // Perform BIP44 account discovery as it is performed in the resolver
-pub fn discover_subaccounts(session: &mut ElectrumSession) {
-    let mnemonic = session.get_mnemonic().unwrap().get_mnemonic_str();
-    let signer =
-        TestSigner::new(&mnemonic, session.network.bip32_network(), session.network.liquid);
+pub fn discover_subaccounts(session: &mut ElectrumSession, mnemonic: Mnemonic) {
+    let signer = TestSigner::new(
+        &mnemonic.clone().get_mnemonic_str(),
+        session.network.bip32_network(),
+        session.network.liquid,
+    );
 
     for script_type in ScriptType::types() {
         loop {
