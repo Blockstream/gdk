@@ -19,7 +19,10 @@ def main():
     # login_with_pin methods. The example uses Bitcoin's testnet.
 
     # Initialize GDK.
-    gdk.init({})
+    gdk.init({
+        'datadir': '.',     # Use the current directory for any state files
+        'log_level': 'warn'
+    })
 
     # Wallet creation and login using Mnemonic
     # ========================================

@@ -18,11 +18,8 @@ Passed to `GA_init` when initializing the library.
         "log_level": "info",
     }
 
-:datadir: A directory which gdk will use to store encrypted data relating to
-         sessions. Mandatory for single-sig sessions. If omitted for multisig
-         sessions, no local storage will be used. Note that this will
-         significantly decrease the performance of some calls and make login in
-         particular much slower.
+:datadir: Mandatory. A directory which gdk will use to store encrypted data
+          relating to sessions.
 :tordir: An optional directory for tor state data, used when the internal tor
          implementation is enabled in :ref:`net-params`. Note that each process
          using the library at the same time requires its own distinct directory.

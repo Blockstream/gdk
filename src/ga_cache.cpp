@@ -383,9 +383,9 @@ namespace sdk {
     cache::cache(const network_parameters& net_params, const std::string& network_name)
         : m_network_name(network_name)
         , m_net_params(net_params)
+        , m_data_dir(gdk_config().at("datadir"))
         , m_is_liquid(net_params.is_liquid())
         , m_type(0)
-        , m_data_dir()
         , m_db_name()
         , m_encryption_key()
         , m_require_write(false)
@@ -457,12 +457,6 @@ namespace sdk {
     void cache::load_db(byte_span_t encryption_key, const uint32_t type)
     {
         GDK_RUNTIME_ASSERT(!encryption_key.empty());
-
-        m_data_dir = gdk_config()["datadir"];
-        if (m_data_dir.empty()) {
-            GDK_LOG_SEV(log_level::info) << "datadir not set - thus no get_persistent_storage_file available";
-            return;
-        }
 
         m_type = type;
         const auto intermediate = hmac_sha512(encryption_key, ustring_span(m_network_name));

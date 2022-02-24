@@ -73,9 +73,9 @@ namespace sdk {
 
         const std::string m_network_name;
         const network_parameters& m_net_params;
+        const std::string m_data_dir;
         const bool m_is_liquid;
         uint32_t m_type; // Set on first call to load_db
-        std::string m_data_dir; // Set on first call to load_db
         std::string m_db_name; // Set on first call to load_db
         std::array<unsigned char, SHA256_LEN> m_encryption_key; // Set on first call to load_db
         bool m_require_write;
