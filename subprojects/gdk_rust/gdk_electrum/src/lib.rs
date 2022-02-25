@@ -143,6 +143,11 @@ pub struct ElectrumSession {
     pub state: Arc<AtomicBool>,
 
     pub store: Option<Store>,
+
+    /// Master xprv of the signer associated to the session
+    ///
+    /// FIXME: remove this once we have fully migrated to the hw signer interface
+    pub master_xprv: Option<ExtendedPrivKey>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -398,6 +403,7 @@ impl ElectrumSession {
             timeout: None,
             store: None,
             master_xpub: None,
+            master_xprv: None,
         }
     }
 
@@ -888,8 +894,9 @@ impl ElectrumSession {
     }
 
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
+        let master_xprv = self.master_xprv.ok_or_else(|| Error::WalletNotInitialized)?;
         let mut wallet = self.get_wallet_mut()?;
-        let account = wallet.create_account(opt)?;
+        let account = wallet.create_account(opt, &master_xprv)?;
         account.info()
     }
 
@@ -1216,6 +1223,7 @@ impl ElectrumSession {
         )?));
         self.wallet = Some(wallet.clone());
         self.master_xpub = Some(master_xpub);
+        self.master_xprv = Some(master_xprv);
         self.notify.settings(&self.get_settings()?);
         Ok(())
     }

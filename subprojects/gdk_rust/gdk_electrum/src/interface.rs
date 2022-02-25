@@ -21,7 +21,6 @@ use std::str::FromStr;
 pub struct WalletCtx {
     pub network: Network,
     pub store: Store,
-    pub master_xprv: ExtendedPrivKey,
     pub accounts: HashMap<u32, Account>,
 }
 
@@ -105,14 +104,13 @@ impl WalletCtx {
         let mut wallet = WalletCtx {
             store: store.clone(),
             network, // TODO: from db
-            master_xprv,
             accounts: Default::default(),
         };
         let account_nums = store.read()?.account_nums();
         for account_num in account_nums {
-            wallet._ensure_account(account_num, false, None)?;
+            wallet._ensure_account(account_num, false, None, &master_xprv)?;
         }
-        wallet._ensure_account(0, false, None)?;
+        wallet._ensure_account(0, false, None, &master_xprv)?;
 
         Ok(wallet)
     }
@@ -137,7 +135,11 @@ impl WalletCtx {
         next_account
     }
 
-    pub fn create_account(&mut self, opt: CreateAccountOpt) -> Result<&Account, Error> {
+    pub fn create_account(
+        &mut self,
+        opt: CreateAccountOpt,
+        master_xprv: &ExtendedPrivKey,
+    ) -> Result<&Account, Error> {
         // Check that the given subaccount number is the next available one for its script type.
         let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
         let (last_account, next_account) =
@@ -154,7 +156,8 @@ impl WalletCtx {
             }
         }
 
-        let account = self._ensure_account(opt.subaccount, opt.discovered, opt.xpub)?;
+        let account =
+            self._ensure_account(opt.subaccount, opt.discovered, opt.xpub, master_xprv)?;
         account.set_name(&opt.name)?;
         Ok(account)
     }
@@ -168,6 +171,7 @@ impl WalletCtx {
         account_num: u32,
         discovered: bool,
         account_xpub: Option<ExtendedPubKey>,
+        master_xprv: &ExtendedPrivKey,
     ) -> Result<&mut Account, Error> {
         Ok(match self.accounts.entry(account_num) {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -175,7 +179,7 @@ impl WalletCtx {
                 let master_blinding = self.store.read()?.cache.master_blinding.clone();
                 entry.insert(Account::new(
                     self.network.clone(),
-                    &self.master_xprv,
+                    master_xprv,
                     &account_xpub,
                     master_blinding,
                     self.store.clone(),
