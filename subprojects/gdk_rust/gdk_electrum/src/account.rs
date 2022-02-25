@@ -40,6 +40,7 @@ use crate::store::{Store, BATCH_SIZE};
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
 const NUM_RESERVED_ACCOUNT_TYPES: u32 = 16;
 
+#[derive(Clone)]
 pub struct Account {
     account_num: u32,
     script_type: ScriptType,

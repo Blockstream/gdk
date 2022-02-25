@@ -1,8 +1,9 @@
 use crate::store::StoreMeta;
-use crate::{BETxid, State};
+use crate::{Account, BETxid, State};
 use aes_gcm_siv::aead;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
+use std::collections::HashMap;
 use std::convert::From;
 use std::fmt::Display;
 use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
@@ -285,6 +286,18 @@ impl From<PoisonError<RwLockReadGuard<'_, State>>> for Error {
 
 impl From<PoisonError<RwLockWriteGuard<'_, State>>> for Error {
     fn from(err: PoisonError<RwLockWriteGuard<'_, State>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockReadGuard<'_, HashMap<u32, Account>>>> for Error {
+    fn from(err: PoisonError<RwLockReadGuard<'_, HashMap<u32, Account>>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>> for Error {
+    fn from(err: PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>) -> Self {
         Error::Generic(err.to_string())
     }
 }

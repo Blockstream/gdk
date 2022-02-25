@@ -1057,8 +1057,8 @@ impl TestSession {
     }
 
     pub fn get_spv_cross_validation(&self) -> Option<spv::CrossValidationResult> {
-        let wallet = self.session.get_wallet().unwrap();
-        let store = wallet.store.read().unwrap();
+        let store = self.session.store().unwrap();
+        let store = store.read().unwrap();
         store.cache.cross_validation_result.clone()
     }
 

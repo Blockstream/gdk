@@ -21,9 +21,12 @@ pub mod pin;
 pub mod pset;
 pub mod spv;
 
-use crate::account::{discover_account, get_account_derivation};
+use crate::account::{
+    discover_account, get_account_derivation, get_account_script_purpose,
+    get_last_next_account_nums, Account,
+};
 use crate::error::Error;
-use crate::interface::{ElectrumUrl, WalletCtx};
+use crate::interface::ElectrumUrl;
 use crate::store::*;
 
 use bitcoin::hashes::hex::{FromHex, ToHex};
@@ -43,6 +46,7 @@ use gdk_common::wally::{
 use elements::confidential::{self, Asset, Nonce};
 use gdk_common::NetworkId;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -84,7 +88,7 @@ lazy_static! {
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 struct Syncer {
-    wallet: Arc<RwLock<WalletCtx>>,
+    accounts: Arc<RwLock<HashMap<u32, Account>>>,
     store: Store,
     master_blinding: Option<MasterBlindingKey>,
     network: Network,
@@ -130,7 +134,9 @@ pub struct ElectrumSession {
     pub timeout: Option<u8>,
     pub network: Network,
     pub url: ElectrumUrl,
-    pub wallet: Option<Arc<RwLock<WalletCtx>>>,
+
+    /// Accounts of the wallet
+    pub accounts: Arc<RwLock<HashMap<u32, Account>>>,
 
     /// Master xpub of the signer associated to the session
     ///
@@ -393,7 +399,7 @@ impl ElectrumSession {
             proxy: socksify(proxy),
             network,
             url,
-            wallet: None,
+            accounts: Arc::new(RwLock::new(HashMap::<u32, Account>::new())),
             notify: NativeNotif::new(),
             closer: Closer {
                 threads_stopped: None,
@@ -407,14 +413,24 @@ impl ElectrumSession {
         }
     }
 
-    pub fn get_wallet(&self) -> Result<sync::RwLockReadGuard<WalletCtx>, Error> {
-        let wallet = self.wallet.as_ref().ok_or_else(|| Error::WalletNotInitialized)?;
-        Ok(wallet.read().unwrap())
+    pub fn get_accounts(&self) -> Result<sync::RwLockReadGuard<HashMap<u32, Account>>, Error> {
+        Ok(self.accounts.read()?)
     }
 
-    pub fn get_wallet_mut(&mut self) -> Result<sync::RwLockWriteGuard<WalletCtx>, Error> {
-        let wallet = self.wallet.as_mut().ok_or_else(|| Error::WalletNotInitialized)?;
-        Ok(wallet.write().unwrap())
+    pub fn get_accounts_mut(
+        &mut self,
+    ) -> Result<sync::RwLockWriteGuard<HashMap<u32, Account>>, Error> {
+        Ok(self.accounts.write()?)
+    }
+
+    /// Get the Account if exists
+    pub fn get_account(&self, account_num: u32) -> Result<Account, Error> {
+        // The Account struct is immutable, things that mutate (e.g. name) are in the store.
+        // Thus we can clone without the risk of having inconsistent data.
+        self.get_accounts()?
+            .get(&account_num)
+            .cloned()
+            .ok_or_else(|| Error::InvalidSubaccount(account_num))
     }
 
     pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
@@ -568,7 +584,8 @@ impl ElectrumSession {
         self.load_store(&LoadStoreOpt {
             master_xpub: master_xpub.clone(),
         })?;
-        if let Err(Error::InvalidSubaccount(_)) = self.get_subaccount(0) {
+        // TODO: refactor create/ensure accounts here
+        if !self.get_subaccount_nums()?.contains(&0) {
             // for compatibility reason, account 0 must always be present
             let path = self.get_subaccount_root_path(GetAccountPathOpt {
                 subaccount: 0,
@@ -740,7 +757,7 @@ impl ElectrumSession {
         }
 
         let syncer = Syncer {
-            wallet: self.wallet.as_ref().ok_or_else(|| Error::WalletNotInitialized)?.clone(),
+            accounts: self.accounts.clone(),
             store: self.store()?,
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
@@ -837,7 +854,7 @@ impl ElectrumSession {
 
     pub fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
         debug!("get_receive_address {:?}", opt);
-        let address = self.get_wallet()?.get_next_address(opt.subaccount)?;
+        let address = self.get_account(opt.subaccount)?.get_next_address()?;
         debug!("get_address {:?}", address);
         Ok(address)
     }
@@ -876,11 +893,14 @@ impl ElectrumSession {
     }
 
     pub fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
-        self.get_wallet()?.iter_accounts_sorted().map(|a| a.info()).collect()
+        let accounts = self.get_accounts()?;
+        let mut accounts = accounts.iter().collect::<Vec<_>>();
+        accounts.sort_unstable_by(|(a_num, _), (b_num, _)| a_num.cmp(b_num));
+        accounts.into_iter().map(|(_, account)| account.info()).collect()
     }
 
     pub fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
-        self.get_wallet()?.get_account(account_num)?.info()
+        self.get_account(account_num)?.info()
     }
 
     pub fn get_subaccount_root_path(
@@ -893,10 +913,74 @@ impl ElectrumSession {
         })
     }
 
+    // TODO: use create_subaccount and remove this
+    fn _ensure_account(
+        &mut self,
+        account_num: u32,
+        discovered: bool,
+        account_xpub: Option<ExtendedPubKey>,
+        master_xprv: &ExtendedPrivKey,
+    ) -> Result<(), Error> {
+        let master_blinding = self.store()?.read()?.cache.master_blinding.clone();
+        let store = self.store()?.clone();
+        let network = self.network.clone();
+        match self.get_accounts_mut()?.entry(account_num) {
+            Entry::Occupied(_) => (),
+            Entry::Vacant(entry) => {
+                entry.insert(Account::new(
+                    network,
+                    master_xprv,
+                    &account_xpub,
+                    master_blinding,
+                    store,
+                    account_num,
+                    discovered,
+                )?);
+            }
+        }
+        Ok(())
+    }
+
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let master_xprv = self.master_xprv.ok_or_else(|| Error::WalletNotInitialized)?;
-        let mut wallet = self.get_wallet_mut()?;
-        let account = wallet.create_account(opt, &master_xprv)?;
+        let store = self.store()?.clone();
+        let master_blinding = store.read()?.cache.master_blinding.clone();
+        let network = self.network.clone();
+        let mut accounts = self.get_accounts_mut()?;
+        // Check that the given subaccount number is the next available one for its script type.
+        let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
+        let (last_account, next_account) =
+            get_last_next_account_nums(accounts.keys().copied().collect(), script_type);
+
+        if opt.subaccount != next_account {
+            // The subaccount already exists, or skips over the next available subaccount number
+            bail!(Error::InvalidSubaccount(opt.subaccount));
+        }
+        if let Some(last_account) = last_account {
+            // This is the next subaccount number, but the last one is still unused
+            let account = accounts
+                .get(&last_account)
+                .ok_or_else(|| Error::InvalidSubaccount(last_account))?;
+            if !account.has_transactions() {
+                bail!(Error::AccountGapsDisallowed);
+            }
+        }
+
+        let account = match accounts.entry(opt.subaccount) {
+            Entry::Occupied(entry) => (entry.into_mut()),
+            Entry::Vacant(entry) => {
+                entry.insert(Account::new(
+                    network,
+                    &master_xprv,
+                    &opt.xpub, // account xpub
+                    master_blinding,
+                    store,
+                    opt.subaccount,
+                    opt.discovered,
+                )?)
+            }
+        };
+        account.set_name(&opt.name)?;
         account.info()
     }
 
@@ -905,11 +989,15 @@ impl ElectrumSession {
     }
 
     pub fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {
-        Ok(self.get_wallet()?.get_next_subaccount(opt.script_type))
+        let (_, next_account) = get_last_next_account_nums(
+            self.get_accounts()?.keys().copied().collect(),
+            opt.script_type,
+        );
+        Ok(next_account)
     }
 
     pub fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), Error> {
-        self.get_wallet_mut()?.update_account(UpdateAccountOpt {
+        self.get_account(opt.subaccount)?.set_settings(UpdateAccountOpt {
             subaccount: opt.subaccount,
             name: Some(opt.new_name),
             hidden: None,
@@ -917,7 +1005,7 @@ impl ElectrumSession {
     }
 
     pub fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<(), Error> {
-        self.get_wallet_mut()?.update_account(UpdateAccountOpt {
+        self.get_account(opt.subaccount)?.set_settings(UpdateAccountOpt {
             subaccount: opt.subaccount,
             hidden: Some(opt.hidden),
             name: None,
@@ -925,15 +1013,15 @@ impl ElectrumSession {
     }
 
     pub fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<(), Error> {
-        self.get_wallet_mut()?.update_account(opt)
+        self.get_account(opt.subaccount)?.set_settings(opt)
     }
 
     pub fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
-        let wallet = self.get_wallet()?;
-        let store = wallet.store.read()?;
+        let store = self.store()?;
+        let store = store.read()?;
         let acc_store = store.account_cache(opt.subaccount)?;
         let txs = self
-            .get_wallet()?
+            .get_account(opt.subaccount)?
             .list_tx(opt)?
             .iter()
             .map(|tx| {
@@ -951,20 +1039,21 @@ impl ElectrumSession {
 
     pub fn get_transaction_hex(&self, txid: &str) -> Result<String, Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
-        let wallet = self.get_wallet()?;
-        let store = wallet.store.read()?;
+        let store = self.store()?;
+        let store = store.read()?;
         store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_hex())
     }
 
     pub fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
-        let wallet = self.get_wallet()?;
-        let store = wallet.store.read()?;
+        let store = self.store()?;
+        let store = store.read()?;
         store.get_tx_entry(&txid).map(|e| e.into())
     }
 
     pub fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
-        self.get_wallet()?.balance(opt)
+        self.get_account(opt.subaccount)?
+            .balance(opt.num_confs, opt.confidential_utxos_only.unwrap_or(false))
     }
 
     pub fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
@@ -972,7 +1061,7 @@ impl ElectrumSession {
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        self.get_wallet()?.store.write()?.insert_memo(txid, memo)?;
+        self.store()?.write()?.insert_memo(txid, memo)?;
 
         Ok(())
     }
@@ -983,12 +1072,17 @@ impl ElectrumSession {
     ) -> Result<TransactionMeta, Error> {
         info!("electrum create_transaction {:?}", tx_req);
 
-        self.get_wallet()?.create_tx(tx_req)
+        self.get_account(tx_req.subaccount)?.create_tx(tx_req)
     }
 
     pub fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum sign_transaction {:?}", create_tx);
-        self.get_wallet()?.sign(create_tx)
+        let account_num = create_tx
+            .create_transaction
+            .as_ref()
+            .ok_or_else(|| Error::Generic("Cannot sign without tx data".into()))?
+            .subaccount;
+        self.get_account(account_num)?.sign(create_tx)
     }
 
     pub fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
@@ -997,7 +1091,7 @@ impl ElectrumSession {
         let tx_bytes = Vec::<u8>::from_hex(&tx.hex)?;
         let txid = client.transaction_broadcast_raw(&tx_bytes)?;
         if let Some(memo) = tx.create_transaction.as_ref().and_then(|o| o.memo.as_ref()) {
-            self.get_wallet()?.store.write()?.insert_memo(txid.into(), memo)?;
+            self.store()?.write()?.insert_memo(txid.into(), memo)?;
         }
         let mut tx = tx.clone();
         // If sign transaction happens externally txid might not have been updated
@@ -1027,20 +1121,19 @@ impl ElectrumSession {
         };
         let fee_estimates = try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref())?)
             .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
-        self.get_wallet()?.store.write()?.cache.fee_estimates = fee_estimates.clone();
+        self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
         Ok(fee_estimates)
         //TODO better implement default
     }
 
     pub fn get_settings(&self) -> Result<Settings, Error> {
-        Ok(self.get_wallet()?.get_settings()?)
+        Ok(self.store()?.read()?.get_settings().unwrap_or_default())
     }
 
     pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
-        let wallet = self.get_wallet()?;
-        let mut settings = wallet.get_settings()?;
+        let mut settings = self.get_settings()?;
         settings.update(value);
-        self.get_wallet()?.change_settings(&settings)?;
+        self.store()?.write()?.insert_settings(Some(settings.clone()))?;
         self.notify.settings(&settings);
         Ok(())
     }
@@ -1072,8 +1165,7 @@ impl ElectrumSession {
                     .policy_asset
                     .clone()
                     .ok_or_else(|| Error::Generic("policy assets not available".into()))?;
-                let last_modified =
-                    self.get_wallet()?.store.read()?.cache.assets_last_modified.clone();
+                let last_modified = self.store()?.read()?.cache.assets_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
                 let agent = self.build_request_agent()?;
                 thread::spawn(move || {
@@ -1086,8 +1178,7 @@ impl ElectrumSession {
 
             let (tx_icons, rx_icons) = mpsc::channel();
             if details.icons {
-                let last_modified =
-                    self.get_wallet()?.store.read()?.cache.icons_last_modified.clone();
+                let last_modified = self.store()?.read()?.cache.icons_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
                 let agent = self.build_request_agent()?;
                 thread::spawn(move || match call_icons(agent, base_url, last_modified) {
@@ -1109,8 +1200,8 @@ impl ElectrumSession {
                 }
             }
 
-            let wallet = self.get_wallet()?;
-            let mut store_write = wallet.store.write()?;
+            let store = self.store()?;
+            let mut store_write = store.write()?;
             if let Value::Object(_) = icons {
                 store_write.write_asset_icons(&icons)?;
                 store_write.cache.icons_last_modified = icons_last_modified;
@@ -1126,8 +1217,7 @@ impl ElectrumSession {
             let assets_not_null = match assets {
                 Value::Object(_) => assets,
                 _ => self
-                    .get_wallet()?
-                    .store
+                    .store()?
                     .read()?
                     .read_asset_registry()?
                     .unwrap_or_else(|| get_registry_sentinel()),
@@ -1139,8 +1229,7 @@ impl ElectrumSession {
             let icons_not_null = match icons {
                 Value::Object(_) => icons,
                 _ => self
-                    .get_wallet()?
-                    .store
+                    .store()?
                     .read()?
                     .read_asset_icons()?
                     .unwrap_or_else(|| get_registry_sentinel()),
@@ -1153,7 +1242,12 @@ impl ElectrumSession {
 
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
-        for (outpoint, info) in self.get_wallet()?.utxos(opt)?.iter() {
+        // TODO does not support the `all_coins` option
+        for (outpoint, info) in self
+            .get_account(opt.subaccount)?
+            .utxos(opt.num_confs.unwrap_or(0), opt.confidential_utxos_only.unwrap_or(false))?
+            .iter()
+        {
             let cur = UnspentOutput::new(outpoint, info);
             (*unspent_outputs.entry(info.asset.clone()).or_insert(vec![])).push(cur);
         }
@@ -1162,11 +1256,11 @@ impl ElectrumSession {
     }
 
     pub fn export_cache(&mut self) -> Result<RawCache, Error> {
-        self.get_wallet()?.store.write()?.export_cache()
+        self.store()?.write()?.export_cache()
     }
 
     pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
-        let tip = self.get_wallet()?.get_tip()?;
+        let tip = self.store()?.read()?.cache.tip;
         info!("tip={:?}", tip);
         Ok(tip)
     }
@@ -1175,8 +1269,12 @@ impl ElectrumSession {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let mut hasher = DefaultHasher::new();
-        let wallet = self.get_wallet()?;
-        for account in wallet.iter_accounts_sorted() {
+        // sort the accounts
+        let accounts = self.get_accounts()?;
+        let mut accounts = accounts.iter().collect::<Vec<_>>();
+        accounts.sort_unstable_by(|(a_num, _), (b_num, _)| a_num.cmp(b_num));
+        // FIXME: should this be sorted?
+        for (_, account) in accounts.into_iter() {
             let txs = account.list_tx(&opt)?;
             for tx in txs.iter() {
                 std::hash::Hash::hash(&tx.txid, &mut hasher);
@@ -1216,14 +1314,15 @@ impl ElectrumSession {
             assert!(self.get_master_blinding_key().is_ok());
         }
 
-        let wallet = Arc::new(RwLock::new(WalletCtx::new(
-            self.store()?,
-            self.network.clone(),
-            master_xprv,
-        )?));
-        self.wallet = Some(wallet.clone());
+        let account_nums = self.store()?.read()?.account_nums();
         self.master_xpub = Some(master_xpub);
         self.master_xprv = Some(master_xprv);
+
+        // TODO: move this to login and auth_handler
+        for account_num in account_nums {
+            self._ensure_account(account_num, false, None, &master_xprv)?;
+        }
+        self._ensure_account(0, false, None, &master_xprv)?;
         self.notify.settings(&self.get_settings()?);
         Ok(())
     }
@@ -1423,10 +1522,10 @@ impl Syncer {
         debug!("start sync");
         let start = Instant::now();
 
-        let wallet = self.wallet.read().unwrap();
+        let accounts = self.accounts.read().unwrap();
         let mut updated_accounts = HashSet::new();
 
-        for account in wallet.iter_accounts() {
+        for account in accounts.values() {
             let mut history_txs_id = HashSet::<BETxid>::new();
             let mut heights_set = HashSet::new();
             let mut txid_height = HashMap::<BETxid, _>::new();
