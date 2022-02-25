@@ -324,6 +324,10 @@ fn handle_session_call(
             .map(|v| json!(v))
             .map_err(Into::into),
 
+        "get_subaccount_nums" => {
+            session.get_subaccount_nums().map(|v| json!(v)).map_err(Into::into)
+        }
+
         "get_subaccounts" => session.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
 
         "get_subaccount" => get_subaccount(session, input),

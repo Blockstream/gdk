@@ -853,6 +853,22 @@ impl ElectrumSession {
         Ok(result)
     }
 
+    /// Get the subaccount pointers/numbers from the store
+    ///
+    /// Multisig sessions receive the subaccount pointer from the server
+    /// and then get the xpubs for them from the signer. We need to allow
+    /// to do the same. So we fetch the subaccount pointers from the
+    /// persisted store and return them here.
+    pub fn get_subaccount_nums(&self) -> Result<Vec<u32>, Error> {
+        let mut account_nums = self.store()?.read()?.account_nums();
+        // For compatibility reason, account 0 must always be present
+        if !account_nums.contains(&0) {
+            // Insert it at the start to preserve sorting
+            account_nums.insert(0, 0);
+        }
+        Ok(account_nums)
+    }
+
     pub fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
         self.get_wallet()?.iter_accounts_sorted().map(|a| a.info()).collect()
     }

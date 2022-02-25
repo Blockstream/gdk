@@ -337,7 +337,7 @@ impl StoreMeta {
         self.cache.accounts.entry(account_num).or_default()
     }
 
-    pub fn account_nums(&self) -> HashSet<u32> {
+    pub fn account_nums(&self) -> Vec<u32> {
         // Read the account nums from both the cache and store for backward compatibility.
         // Between version 0.0.48 and 0.0.49 some changes were done to split account
         // discovery from login, which is a necessary step for adding HWW support.
@@ -353,7 +353,10 @@ impl StoreMeta {
         };
         let cache_account_nums = self.cache.accounts.keys().copied().collect();
 
-        store_account_nums.union(&cache_account_nums).copied().collect()
+        let mut account_nums: Vec<_> =
+            store_account_nums.union(&cache_account_nums).copied().collect();
+        account_nums.sort_unstable();
+        account_nums
     }
 
     pub fn read_asset_icons(&self) -> Result<Option<Value>, Error> {
