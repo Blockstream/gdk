@@ -13,7 +13,7 @@ use gdk_common::model::{
     SPVVerifyTxResult,
 };
 use gdk_common::NetworkId;
-use log::{info, warn};
+use log::{debug, info, warn};
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::fs::File;
@@ -94,7 +94,7 @@ pub fn download_headers(
 ) -> Result<SPVDownloadHeadersResult, Error> {
     let _ = SPV_MUTEX.lock().unwrap();
 
-    info!("download_headers {:?}", input);
+    debug!("download_headers {:?}", input);
     let client = input.params.build_client()?;
     let mut chain = input.params.headers_chain()?;
     let headers_to_download = input.headers_to_download.unwrap_or(2016);
@@ -110,6 +110,7 @@ pub fn download_headers(
         cache.remove(144)?;
         reorg_happened = true;
     }
+    info!("downloaded {:?}", chain.height());
     Ok(SPVDownloadHeadersResult {
         height: chain.height(),
         reorg: reorg_happened,
@@ -124,7 +125,7 @@ pub fn download_headers(
 ///
 /// used to expose SPV functionality through C interface
 pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Error> {
-    info!("spv_verify_tx {:?}", input);
+    debug!("spv_verify_tx {:?}", input);
     let txid = BETxid::from_hex(&input.txid, input.params.network.id())?;
 
     let mut cache = input.params.verified_cache()?;
@@ -156,7 +157,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Err
                     Ok(SPVVerifyTxResult::NotVerified)
                 }
             } else {
-                info!("chain height ({}) not enough to verify", chain.height());
+                info!("chain height ({}) not enough to verify tx at height {}", chain.height(), input.height);
 
                 Ok(SPVVerifyTxResult::InProgress)
             }
