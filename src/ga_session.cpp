@@ -310,7 +310,17 @@ namespace sdk {
     {
         session_impl::reconnect_hint(hint);
         const auto proxy_settings = get_proxy_settings();
-        m_wamp->reconnect_hint(hint, proxy_settings["proxy"]);
+        const auto& proxy = proxy_settings.at("proxy");
+        const auto hint_p = proxy.find("hint");
+        if (hint_p != proxy.end() && *hint_p != "connect") {
+            // Stop any outstanding header sync when disconnecting. Leave
+            // resuming until after the session is authed and we know what
+            // the current block is.
+            locker_t locker(m_mutex);
+            constexpr bool do_start = false;
+            download_headers_ctl(locker, do_start);
+        }
+        m_wamp->reconnect_hint(hint, proxy);
     }
 
     void ga_session::disconnect() { m_wamp->disconnect(); }
@@ -1015,6 +1025,10 @@ namespace sdk {
             last = details;
             m_cache->set_latest_block(last["block_height"]);
             m_cache->save_db();
+
+            // Start syncing headers for SPV (if enabled)
+            constexpr bool do_start = true;
+            download_headers_ctl(locker, do_start);
 
             locker.unlock();
             if (treat_as_reorg) {
