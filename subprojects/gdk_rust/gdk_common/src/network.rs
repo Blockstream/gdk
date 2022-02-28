@@ -32,6 +32,11 @@ pub struct Network {
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
     pub taproot_enabled_at: Option<u32>,
+
+    pub proxy: Option<String>,
+    pub use_tor: Option<bool>,
+    pub state_dir: String,
+    pub max_reorg_blocks: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

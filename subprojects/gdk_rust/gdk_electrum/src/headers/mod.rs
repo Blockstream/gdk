@@ -71,7 +71,7 @@ trait ParamsMethods {
 impl ParamsMethods for SPVCommonParams {
     fn build_client(&self) -> Result<Client, Error> {
         let url = determine_electrum_url_from_net(&self.network)?;
-        url.build_client_with_proxy_and_timeout(&self.tor_proxy, self.timeout)
+        url.build_client_with_proxy_and_timeout(&self.network.proxy, self.timeout)
     }
     fn headers_chain(&self) -> Result<HeadersChain, Error> {
         let network = self
@@ -79,10 +79,10 @@ impl ParamsMethods for SPVCommonParams {
             .id()
             .get_bitcoin_network()
             .expect("headers_chain available only on bitcoin");
-        Ok(HeadersChain::new(&self.path, network)?)
+        Ok(HeadersChain::new(&self.network.state_dir, network)?)
     }
     fn verified_cache(&self) -> Result<VerifiedCache, Error> {
-        Ok(VerifiedCache::new(&self.path, self.network.id(), &self.encryption_key))
+        Ok(VerifiedCache::new(&self.network.state_dir, self.network.id(), &self.encryption_key))
     }
 }
 
@@ -105,10 +105,9 @@ pub fn download_headers(
         warn!(
             "invalid headers, possible reorg, invalidating latest headers and latest verified tx"
         );
-        // handle reorgs, using 144 as a super safe bet, should be parametrized per network
         let mut cache = input.params.verified_cache()?;
-        chain.remove(144)?;
-        cache.remove(144)?;
+        chain.remove(input.params.network.max_reorg_blocks.unwrap_or(144))?;
+        cache.remove(input.params.network.max_reorg_blocks.unwrap_or(144))?;
         reorg_happened = true;
     }
     info!("downloaded {:?}", chain.height());

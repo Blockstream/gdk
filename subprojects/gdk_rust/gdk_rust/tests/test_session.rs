@@ -43,7 +43,7 @@ pub struct TestSession {
     pub mnemonic: Mnemonic,
     tx_status: u64,
     block_status: (u32, BEBlockHash),
-    db_root_dir: TempDir,
+    state_dir: TempDir,
     network_id: NetworkId,
     pub network: Network,
     pub p2p_port: u16,
@@ -159,9 +159,12 @@ pub fn setup(
 
     network_conf(&mut network);
 
-    let db_root_dir = TempDir::new().unwrap();
+    let state_dir = TempDir::new().unwrap();
 
-    let db_root = format!("{}", db_root_dir.path().display());
+    let state_dir_str = format!("{}", state_dir.path().display());
+    network.state_dir = state_dir_str;
+
+    let db_root = format!("{}/db", state_dir.path().display());
     let proxy = Some("");
     let url = determine_electrum_url_from_net(&network).unwrap();
 
@@ -223,7 +226,7 @@ pub fn setup(
         electrs,
         session,
         mnemonic,
-        db_root_dir,
+        state_dir,
         network_id,
         network,
         p2p_port,
@@ -952,13 +955,8 @@ impl TestSession {
     }
 
     pub fn spv_verify_tx(&mut self, txid: &str, height: u32, headers_to_download: Option<usize>) {
-        let temp_dir = TempDir::new().unwrap();
-        let temp_dir_str = format!("{}", &temp_dir.path().display());
-
         let common = SPVCommonParams {
             network: self.network.clone(),
-            path: temp_dir_str,
-            tor_proxy: None,
             timeout: None,
             encryption_key: Some("testing".to_string()),
         };

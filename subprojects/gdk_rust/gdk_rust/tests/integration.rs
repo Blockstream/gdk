@@ -1390,8 +1390,6 @@ fn test_spv_timeout() {
     let param_download = SPVDownloadHeadersParams {
         params: SPVCommonParams {
             network,
-            path: "".to_string(),
-            tor_proxy: None,
             timeout: Some(1),
             encryption_key: None,
         },

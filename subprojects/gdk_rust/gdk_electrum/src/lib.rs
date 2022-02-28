@@ -701,6 +701,7 @@ impl ElectrumSession {
             let notify_txs = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
             let threads_stopped = self.closer.threads_stopped()?;
+            let max_reorg_blocks = self.network.max_reorg_blocks.unwrap_or(144);
 
             let headers_handle = thread::spawn(move || {
                 info!("starting headers thread");
@@ -730,7 +731,7 @@ impl ElectrumSession {
                                     warn!("invalid headers");
                                     // this should handle reorgs and also broke IO writes update
                                     headers.store.write().unwrap().cache.txs_verif.clear();
-                                    if let Err(e) = headers.remove(144) {
+                                    if let Err(e) = headers.remove(max_reorg_blocks) {
                                         warn!("failed removing headers: {:?}", e);
                                         break;
                                     }

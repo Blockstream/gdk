@@ -248,19 +248,10 @@ pub struct SPVCommonParams {
     /// In which network we are verifying the transaction
     pub network: crate::network::Network,
 
-    /// Path where to store the headers chain and the cache of the already verified transactions if
-    /// `encryption_key` is provided
-    pub path: String,
-
-    /// Optional tor proxy to use for network calls.
-    ///
-    /// Cannot be specified if `timeout` is some
-    pub tor_proxy: Option<String>,
-
     /// Maximum timeout for network calls,
     /// the final timeout in seconds is roughly equivalent to 2 + `timeout` * 2
     ///
-    /// Cannot be specified if `tor_proxy` is some.
+    /// Cannot be specified if `network.proxy` is non empty.
     pub timeout: Option<u8>,
 
     /// If callers are not handling a cache of the already verified tx, they can set this params to
