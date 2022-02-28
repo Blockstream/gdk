@@ -142,12 +142,12 @@ namespace sdk {
         static void save_db_file(byte_span_t key, byte_span_t data, const std::string& path)
         {
             GDK_RUNTIME_ASSERT(!key.empty() && !data.empty());
+            const size_t encrypted_len = aes_gcm_encrypt_get_length(data);
+            std::vector<unsigned char> cyphertext(encrypted_len);
+            GDK_RUNTIME_ASSERT(aes_gcm_encrypt(key, data, cyphertext) == encrypted_len);
+
             std::ofstream f(path, f.out | f.binary);
             if (f.is_open()) {
-                const size_t encrypted_len = aes_gcm_encrypt_get_length(data);
-                std::vector<unsigned char> cyphertext(encrypted_len);
-                GDK_RUNTIME_ASSERT(aes_gcm_encrypt(key, data, cyphertext) == encrypted_len);
-
                 for (size_t written = 0; written != encrypted_len; written = f.tellp()) {
                     auto p = reinterpret_cast<const char*>(&cyphertext[written]);
                     f.write(p, encrypted_len - written);
