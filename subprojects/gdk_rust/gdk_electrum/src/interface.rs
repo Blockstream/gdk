@@ -30,8 +30,10 @@ impl ElectrumUrl {
         // rename to build_client and delete the old build_client
         let mut config = ConfigBuilder::new();
         if let Some(proxy) = proxy {
-            // TODO: add support for credentials?
-            config = config.socks5(Some(electrum_client::Socks5Config::new(proxy)))?;
+            if !proxy.trim().is_empty() {
+                // TODO: add support for credentials?
+                config = config.socks5(Some(electrum_client::Socks5Config::new(proxy)))?;
+            }
         }
         config = config.timeout(timeout)?;
         self.build_config(config)
