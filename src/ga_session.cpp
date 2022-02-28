@@ -235,10 +235,9 @@ namespace sdk {
         {
             auto np = net_params.get_json();
             np.update(proxy_settings);
-            np.erase("wamp_cert_pins");
+            np.erase("wamp_cert_pins"); // WMP certs are huge & unused by SPV, remove them
             np.erase("wamp_cert_roots");
-            const std::string state_dir = np.at("state_dir"); // FIXME: Remove
-            return { { "network", np }, { "path", state_dir } };
+            return { { "network", std::move(np) } };
         }
     } // namespace
 
