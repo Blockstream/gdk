@@ -212,14 +212,13 @@ impl StoreMeta {
         id: NetworkId,
     ) -> Result<StoreMeta, Error> {
         let cipher = get_cipher(xpub);
-        let mut cache = RawCache::new(path.as_ref(), &cipher);
+        let cache = RawCache::new(path.as_ref(), &cipher);
 
         let mut store = RawStore::new(path.as_ref(), &cipher);
         let path = path.as_ref().to_path_buf();
 
         std::fs::create_dir_all(&path)?; // does nothing if path exists
 
-        cache.accounts.entry(0).or_default();
         store.accounts_settings.get_or_insert_with(|| Default::default());
 
         let store = StoreMeta {
@@ -512,6 +511,7 @@ mod tests {
 
         {
             let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
+            store.make_account(0);
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }

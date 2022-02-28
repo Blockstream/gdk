@@ -584,22 +584,7 @@ impl ElectrumSession {
         self.load_store(&LoadStoreOpt {
             master_xpub: master_xpub.clone(),
         })?;
-        // TODO: refactor create/ensure accounts here
-        if !self.get_subaccount_nums()?.contains(&0) {
-            // for compatibility reason, account 0 must always be present
-            let path = self.get_subaccount_root_path(GetAccountPathOpt {
-                subaccount: 0,
-            })?;
-            let xprv = master_xprv.derive_priv(&crate::EC, &path.path).unwrap();
-            let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
 
-            self.create_subaccount(CreateAccountOpt {
-                subaccount: 0,
-                name: "".to_string(),
-                xpub: Some(xpub),
-                discovered: false,
-            })?;
-        }
         if self.network.liquid {
             if let Err(Error::MissingMasterBlindingKey) = self.get_master_blinding_key() {
                 self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
@@ -609,6 +594,23 @@ impl ElectrumSession {
         }
 
         self.init_wallet(master_xprv, master_xpub)?;
+
+        // Get xpubs from signer and (re)create subaccounts
+        for account_num in self.get_subaccount_nums()? {
+            let path = self.get_subaccount_root_path(GetAccountPathOpt {
+                subaccount: account_num,
+            })?;
+            let xprv = master_xprv.derive_priv(&crate::EC, &path.path).unwrap();
+            let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+
+            self.create_subaccount(CreateAccountOpt {
+                subaccount: account_num,
+                name: "".to_string(),
+                xpub: Some(xpub),
+                discovered: false,
+            })?;
+        }
+
         self.start_threads()?;
         self.get_wallet_hash_id()
     }
@@ -913,34 +915,6 @@ impl ElectrumSession {
         })
     }
 
-    // TODO: use create_subaccount and remove this
-    fn _ensure_account(
-        &mut self,
-        account_num: u32,
-        discovered: bool,
-        account_xpub: Option<ExtendedPubKey>,
-        master_xprv: &ExtendedPrivKey,
-    ) -> Result<(), Error> {
-        let master_blinding = self.store()?.read()?.cache.master_blinding.clone();
-        let store = self.store()?.clone();
-        let network = self.network.clone();
-        match self.get_accounts_mut()?.entry(account_num) {
-            Entry::Occupied(_) => (),
-            Entry::Vacant(entry) => {
-                entry.insert(Account::new(
-                    network,
-                    master_xprv,
-                    &account_xpub,
-                    master_blinding,
-                    store,
-                    account_num,
-                    discovered,
-                )?);
-            }
-        }
-        Ok(())
-    }
-
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let master_xprv = self.master_xprv.ok_or_else(|| Error::WalletNotInitialized)?;
         let store = self.store()?.clone();
@@ -969,7 +943,7 @@ impl ElectrumSession {
         let account = match accounts.entry(opt.subaccount) {
             Entry::Occupied(entry) => (entry.into_mut()),
             Entry::Vacant(entry) => {
-                entry.insert(Account::new(
+                let account = entry.insert(Account::new(
                     network,
                     &master_xprv,
                     &opt.xpub, // account xpub
@@ -977,10 +951,13 @@ impl ElectrumSession {
                     store,
                     opt.subaccount,
                     opt.discovered,
-                )?)
+                )?);
+                if !opt.name.is_empty() {
+                    account.set_name(&opt.name)?;
+                }
+                account
             }
         };
-        account.set_name(&opt.name)?;
         account.info()
     }
 
@@ -1314,15 +1291,9 @@ impl ElectrumSession {
             assert!(self.get_master_blinding_key().is_ok());
         }
 
-        let account_nums = self.store()?.read()?.account_nums();
         self.master_xpub = Some(master_xpub);
         self.master_xprv = Some(master_xprv);
 
-        // TODO: move this to login and auth_handler
-        for account_num in account_nums {
-            self._ensure_account(account_num, false, None, &master_xprv)?;
-        }
-        self._ensure_account(0, false, None, &master_xprv)?;
         self.notify.settings(&self.get_settings()?);
         Ok(())
     }

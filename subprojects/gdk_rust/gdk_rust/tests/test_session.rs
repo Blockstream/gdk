@@ -1260,18 +1260,18 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
         keys_from_mnemonic(&mnemonic, None, session.network.bip32_network()).unwrap();
     session.init_wallet(master_xprv, master_xpub).unwrap();
 
-    if !session.get_subaccount_nums().unwrap().contains(&0) {
-        // for compatibility reason, account 0 must always be present
+    // Get xpubs from signer and (re)create subaccounts
+    for account_num in session.get_subaccount_nums().unwrap() {
         let path = session
             .get_subaccount_root_path(GetAccountPathOpt {
-                subaccount: 0,
+                subaccount: account_num,
             })
             .unwrap();
         let xpub = signer.account_xpub(&path.path.into());
 
         session
             .create_subaccount(CreateAccountOpt {
-                subaccount: 0,
+                subaccount: account_num,
                 name: "".to_string(),
                 xpub: Some(xpub),
                 discovered: false,
