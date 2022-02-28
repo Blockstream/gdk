@@ -3432,6 +3432,7 @@ namespace sdk {
     {
         const nlohmann::json spv_params
             = { { "network", m_net_params.get_json() }, { "path", m_net_params.get_json()["state_dir"] } };
+        uint32_t last_fetched_height = 0;
 
         // Loop downloading block headers until we are caught up, then exit
         GDK_LOG_SEV(log_level::info) << "spv_download_headers: starting sync";
@@ -3452,7 +3453,11 @@ namespace sdk {
                 if (fetched_height == block_height) {
                     break; // Caught up, exit
                 }
-                std::this_thread::sleep_for(10ms);
+                // Use a short delay for initial header loading, longer
+                // if we are waiting for the current block.
+                const auto delay_ms = fetched_height == last_fetched_height ? 1000ms : 50ms;
+                last_fetched_height = fetched_height;
+                std::this_thread::sleep_for(delay_ms);
             } catch (const std::exception& e) {
                 GDK_LOG_SEV(log_level::warning) << "spv_download_headers exception:" << e.what();
                 break; // Exception, exit
