@@ -644,15 +644,15 @@ namespace sdk {
                     m_session.swap(s);
                     m_subscriptions.swap(subscriptions);
 
-                    locker.unlock();
+                    unique_unlock unlocker(locker);
                     GDK_LOG_SEV(log_level::info) << "net: disconnecting";
                     handle_disconnect(executor, t, s);
-                    // Mark all currently notified failures as handled. We
-                    // will then loop to either connect or not according
-                    // to our desired state.
-                    locker.lock();
-                    last_handled_failure_count = m_failure_count.load();
                 }
+
+                // Mark all currently notified failures as handled. We
+                // will then loop to either connect or not according
+                // to our desired state.
+                last_handled_failure_count = m_failure_count.load();
 
                 m_state = desired_state;
                 desired_state = m_desired_state.load();
