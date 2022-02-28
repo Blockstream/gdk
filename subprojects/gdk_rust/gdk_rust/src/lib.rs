@@ -11,10 +11,6 @@ use crate::serialize::*;
 use gdk_common::wally::{make_str, read_str};
 use serde_json::Value;
 
-#[cfg(feature = "android_log")]
-use android_logger::{Config, FilterBuilder};
-#[cfg(feature = "android_log")]
-use log::Level;
 use std::ffi::CString;
 use std::fmt;
 use std::os::raw::c_char;
@@ -97,16 +93,17 @@ pub extern "C" fn GDKRUST_create_session(
 /// Initialize the logging framework.
 /// Note that once initialized it cannot be changed, only by reloading the library.
 fn init_logging(level: LevelFilter) {
-    #[cfg(feature = "android_log")]
+
+    #[cfg(target_os = "android")]
     INIT_LOGGER.call_once(|| {
         android_logger::init_once(
-            Config::default().with_min_level(level.to_level().unwrap_or(Level::Error)).with_filter(
-                FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build(),
+            android_logger::Config::default().with_min_level(level.to_level().unwrap_or(log::Level::Error)).with_filter(
+                android_logger::FilterBuilder::new().parse("warn,gdk_rust=debug,gdk_electrum=debug").build(),
             ),
         )
     });
 
-    #[cfg(not(feature = "android_log"))]
+    #[cfg(not(target_os = "android"))]
     INIT_LOGGER.call_once(|| {
         log::set_logger(&LOGGER)
             .map(|()| log::set_max_level(level))
@@ -552,7 +549,7 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
     }
 }
 
-#[cfg(not(feature = "android_log"))]
+#[cfg(not(target_os = "android"))]
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub struct SimpleLogger;
