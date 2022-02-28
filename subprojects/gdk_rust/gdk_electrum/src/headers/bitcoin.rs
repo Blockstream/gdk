@@ -33,7 +33,7 @@ impl HeadersChain {
         filepath.push(format!("headers_chain_{}", network));
         let checkpoints = get_checkpoints(network);
         if !filepath.exists() {
-            info!("{:?} chain file don't exists, creating", filepath);
+            info!("{:?} chain file doesn't exist, creating", filepath);
             let last = genesis_block(network).header;
             let mut file = File::create(&filepath)?;
             file.write_all(&serialize(&last))?;
