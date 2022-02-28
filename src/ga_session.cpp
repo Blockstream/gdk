@@ -259,6 +259,15 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(memo.size() <= 1024, "Transaction memo too long");
         }
 
+        static nlohmann::json get_spv_params(const network_parameters& net_params, const nlohmann::json& proxy_settings)
+        {
+            auto np = net_params.get_json();
+            np.update(proxy_settings);
+            np.erase("wamp_cert_pins");
+            np.erase("wamp_cert_roots");
+            const std::string state_dir = np.at("state_dir"); // FIXME: Remove
+            return { { "network", np }, { "path", state_dir } };
+        }
     } // namespace
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -2301,9 +2310,10 @@ namespace sdk {
         const uint32_t reorg_block = current_block - num_reorg_blocks;
         bool are_downloading = false;
 
-        nlohmann::json spv_params
-            = { { "network", m_net_params.get_json() }, { "path", m_net_params.get_json()["state_dir"] } };
-        // TODO: Add proxy settings?
+        nlohmann::json spv_params;
+        if (m_spv_enabled) {
+            spv_params = get_spv_params(m_net_params, get_proxy_settings());
+        }
 
         for (auto& tx_details : tx_list) {
             const uint32_t tx_block_height = tx_details["block_height"];
@@ -3447,8 +3457,7 @@ namespace sdk {
 
     void ga_session::download_headers_thread_fn()
     {
-        const nlohmann::json spv_params
-            = { { "network", m_net_params.get_json() }, { "path", m_net_params.get_json()["state_dir"] } };
+        const auto spv_params = get_spv_params(m_net_params, get_proxy_settings());
         uint32_t last_fetched_height = 0;
 
         // Loop downloading block headers until we are caught up, then exit
