@@ -15,8 +15,7 @@ named with the content of the ``"event"`` element.
 Network notification
 --------------------
 
-Notified by multisig sessions when the state of a session's underlying network
-connection changes.
+Notified when the state of a session's underlying network connection changes.
 
 .. code-block:: json
 
@@ -120,6 +119,33 @@ Notified when a new block is mined by the network.
 :block/block_height: The height of the block.
 :block/initial_timestamp: Multisig only. The time that the users wallet was created, in seconds since the epoc.
 :block/previous_hash: The hash of the block prior to this block.
+
+
+.. _ntf-transaction:
+
+Transaction notification
+------------------------
+
+Notified when a new transaction is received by the wallet.
+
+.. code-block:: json
+
+  {
+    "event":"transaction",
+    "transaction":{
+        "satoshi":50000,
+        "subaccounts":[
+            0
+        ],
+        "txhash":"2bee55e07ab6cc520487f57cb74e87c2960d5f01d291d34f6b395417a276a42c",
+        "type":"incoming"
+    }
+  }
+
+:transaction/satoshi: Bitcoin multisig only. The net amount of the transaction (always positive).
+:transaction/subaccounts: The wallet subaccounts the transaction affects.
+:transaction/txhash: Multisig only. The txid of the transaction.
+:transaction/type: Multisig only. One of ``"incoming"``, ``"outgoing"`` or ``"redeposit"``.
 
 
 .. _ntf-ticker:
