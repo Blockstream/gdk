@@ -997,6 +997,10 @@ namespace sdk {
                 reorg_block = last_seen_block_height - num_reorg_blocks;
                 GDK_LOG_SEV(TX_CACHE_LEVEL)
                     << "Tx sync: removing " << num_reorg_blocks << " blocks from cache tip " << last_seen_block_height;
+
+                // We can't trust the SPV state of any txs younger than the
+                // max reorg depth, so clear them.
+                m_spv_verified_txs.clear();
             }
 
             // Update the tx cache.
@@ -2317,19 +2321,32 @@ namespace sdk {
                 continue; // Need to be confirmed before we can verify
             }
 
-            spv_params["txid"] = tx_details["txhash"];
+            const std::string txhash_hex = tx_details["txhash"];
+            spv_params["txid"] = txhash_hex;
             spv_params["height"] = tx_block_height;
 
-            auto spv_status = spv_get_status_string(spv_verify_tx(spv_params));
+            std::string spv_status;
+            if (m_spv_verified_txs.count(txhash_hex)) {
+                GDK_LOG_SEV(log_level::debug) << txhash_hex << " cached as verified";
+                spv_status = "verified"; // Previously verified
+            } else {
+                spv_status = spv_get_status_string(spv_verify_tx(spv_params));
+                GDK_LOG_SEV(log_level::debug) << txhash_hex << " status " << spv_status;
+            }
             if (!are_downloading && spv_status == "in_progress") {
                 // Start syncing headers for SPV if we aren't already doing it
                 constexpr bool do_start = true;
                 download_headers_ctl(locker, do_start);
                 are_downloading = true;
             }
-            if (tx_block_height < reorg_block && spv_status == "verified") {
-                // Verified and committed beyond our reorg depth, update the cache
-                m_cache->set_transaction_spv_verified(tx_details["txhash"]);
+            if (spv_status == "verified") {
+                if (tx_block_height < reorg_block) {
+                    // Verified and committed beyond our reorg depth, update the cache
+                    m_cache->set_transaction_spv_verified(txhash_hex);
+                } else {
+                    // Not committed beyond reorg depth: cache in memory only
+                    m_spv_verified_txs.insert(txhash_hex);
+                }
             }
             spv_verified = std::move(spv_status);
         }
@@ -3449,7 +3466,7 @@ namespace sdk {
                 }
                 const auto ret = rust_call("spv_download_headers", spv_params);
                 const auto fetched_height = ret.at("height");
-                GDK_LOG_SEV(log_level::info) << "spv_download_headers:" << fetched_height << '/' << block_height;
+                GDK_LOG_SEV(log_level::debug) << "spv_download_headers:" << fetched_height << '/' << block_height;
                 if (fetched_height == block_height) {
                     break; // Caught up, exit
                 }

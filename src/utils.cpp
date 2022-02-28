@@ -258,8 +258,8 @@ namespace sdk {
     {
         try {
             const size_t spv_status = rust_call("spv_verify_tx", details);
-            GDK_LOG_SEV(log_level::debug)
-                << "spv_verify_tx:" << details.at("txhash") << "=" << spv_get_status_string(spv_status);
+            GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << details.at("txid") << ":" << details.at("height")
+                                          << "=" << spv_get_status_string(spv_status);
             return spv_status;
         } catch (const std::exception& e) {
             GDK_LOG_SEV(log_level::warning) << "spv_verify_tx exception:" << e.what();

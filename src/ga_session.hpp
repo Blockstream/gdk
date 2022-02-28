@@ -296,6 +296,8 @@ namespace sdk {
         std::shared_ptr<std::thread> m_spv_thread; // Header download thread
         std::atomic_bool m_spv_thread_done; // True when m_spv_thread has exited
         std::atomic_bool m_spv_thread_stop; // True when we want m_spv_thread to stop
+        // Txs that are SPV verified but not yet confirmed beyond the reorg limit
+        std::set<std::string> m_spv_verified_txs;
     };
 
 } // namespace sdk
