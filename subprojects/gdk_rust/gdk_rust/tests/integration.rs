@@ -62,7 +62,7 @@ fn roundtrip_bitcoin() {
     test_session.settings();
     test_session.is_verified(&txid, SPVVerifyTxResult::Verified);
     test_session.reconnect();
-    test_session.spv_verify_tx(&txid, 102);
+    test_session.spv_verify_tx(&txid, 102, Some(1));
     test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
     let mut utxos = test_session.utxo("btc", vec![149739, 96697483]);
     test_session.check_decryption(103, &[&txid]);
@@ -113,7 +113,7 @@ fn roundtrip_liquid() {
     test_session.settings();
     test_session.is_verified(&txid, SPVVerifyTxResult::Verified);
     test_session.reconnect();
-    test_session.spv_verify_tx(&txid, 102);
+    test_session.spv_verify_tx(&txid, 102, Some(1));
     test_session.test_set_get_memo(&txid, MEMO2, "");
     test_session.utxo(&assets[0], vec![99000000]);
 
@@ -1439,6 +1439,38 @@ fn test_tor() {
     assert!(value.get("assets").is_some());
 
     assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
+}
+
+#[test]
+fn test_spv_over_period() {
+    // regtest doesn't retarget after a period (2016 blocks)
+    let mut test_session = setup_session(false, |_| ());
+
+    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
+    test_session.fund(100_000_000, None);
+
+    let initial_block = 101;
+    let block_to_mine = 200;
+    let times = 10;
+
+    for i in 1..(times + 1) {
+        // generating all blocks at once may cause rpc timeout
+        test_session.node_generate(block_to_mine);
+        test_session.wait_blockheight(initial_block + i * block_to_mine);
+    }
+
+    let txid = test_session.send_tx(
+        &node_address,
+        10_000,
+        None,
+        Some(MEMO1.to_string()),
+        None,
+        None,
+        None,
+    ); // p2shwpkh
+    test_session.mine_block();
+
+    test_session.spv_verify_tx(&txid, initial_block + block_to_mine * times + 1, Some(100));
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {

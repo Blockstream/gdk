@@ -144,17 +144,20 @@ impl HeadersChain {
             }
 
             if new_height % DIFFCHANGE_INTERVAL == 0 {
-                let first_height = new_height - DIFFCHANGE_INTERVAL;
-                let first = match cache.remove(&first_height) {
-                    Some(header) => header,
-                    None => self.get(first_height)?,
-                };
-                let new_target = calc_difficulty_retarget(&first, &self.last);
-
-                if new_header.bits != BlockHeader::compact_target_from_u256(&new_target) {
-                    return Err(Error::InvalidHeaders);
+                if let Network::Regtest = self.network {
+                    // regtest doesn't retarget https://github.com/bitcoin/bitcoin/blob/7fcf53f7b4524572d1d0c9a5fdc388e87eb02416/src/pow.cpp#L51
+                } else {
+                    let first_height = new_height - DIFFCHANGE_INTERVAL;
+                    let first = match cache.remove(&first_height) {
+                        Some(header) => header,
+                        None => self.get(first_height)?,
+                    };
+                    let new_target = calc_difficulty_retarget(&first, &self.last);
+                    if new_header.bits != BlockHeader::compact_target_from_u256(&new_target) {
+                        return Err(Error::InvalidHeaders);
+                    }
+                    curr_bits = new_header.bits;
                 }
-                curr_bits = new_header.bits;
             } else {
                 if new_header.bits != curr_bits {
                     if !self.pow_allow_min_difficulty_blocks()

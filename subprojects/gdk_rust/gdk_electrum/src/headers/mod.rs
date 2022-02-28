@@ -99,6 +99,7 @@ pub fn download_headers(
     let mut chain = input.params.headers_chain()?;
     let headers_to_download = input.headers_to_download.unwrap_or(2016);
     let headers = client.block_headers(chain.height() as usize + 1, headers_to_download)?.headers;
+    info!("height:{} downloaded_headers:{}", chain.height(), headers.len());
     let mut reorg_happened = false;
     if let Err(Error::InvalidHeaders) = chain.push(headers) {
         warn!(

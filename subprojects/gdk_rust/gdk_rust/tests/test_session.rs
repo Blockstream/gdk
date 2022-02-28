@@ -951,7 +951,7 @@ impl TestSession {
         }
     }
 
-    pub fn spv_verify_tx(&mut self, txid: &str, height: u32) {
+    pub fn spv_verify_tx(&mut self, txid: &str, height: u32, headers_to_download: Option<usize>) {
         let temp_dir = TempDir::new().unwrap();
         let temp_dir_str = format!("{}", &temp_dir.path().display());
 
@@ -969,12 +969,13 @@ impl TestSession {
         };
         let param_download = SPVDownloadHeadersParams {
             params: common.clone(),
-            headers_to_download: Some(1), // TODO increase to 100 when electrs 2f8759e940a3fe56002d653c29a480ed3bffa416 goes in prod
+            headers_to_download,
         };
         let tip = self.electrs_tip() as u32;
 
         thread::spawn(move || {
             let mut synced = 0;
+
             while synced < tip {
                 let result = headers::download_headers(&param_download).unwrap();
                 synced = result.height;
@@ -1163,7 +1164,11 @@ fn node_getnewaddress(client: &Client, kind: Option<&str>) -> String {
 fn node_generate(client: &Client, block_num: u32, address: Option<String>) {
     let address = address.unwrap_or(node_getnewaddress(client, None));
     let r = client.call::<Value>("generatetoaddress", &[block_num.into(), address.into()]).unwrap();
-    info!("generate result {:?}", r);
+    if block_num < 10 {
+        info!("generate result {:?}", r);
+    } else {
+        info!("generated {} blocks", block_num);
+    }
 }
 
 fn node_issueasset(client: &Client, satoshi: u64) -> String {
