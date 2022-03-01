@@ -7,7 +7,7 @@ use gdk_common::model::{
     SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
-use gdk_common::Network;
+use gdk_common::{Network, NetworkId};
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
@@ -16,7 +16,7 @@ use gdk_electrum::{
 };
 
 use log::info;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::time::{Duration, Instant};
@@ -1405,24 +1405,31 @@ fn test_spv_timeout() {
 fn test_tor() {
     let _ = env_logger::try_init();
 
-    let mut network = Network::default();
+    let state_dir = TempDir::new().unwrap();
+    let state_dir_str = format!("{}", state_dir.path().display());
 
+    let mut network = Network::default();
+    network.mainnet = true;
+    network.state_dir = state_dir_str;
+    assert_eq!(network.id(), NetworkId::Bitcoin(bitcoin::Network::Bitcoin));
     // blockstream mainnet server, we can't use localhost because it's not reachable via tor
     network.electrum_url =
         Some("explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110".to_string());
     network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
     network.policy_asset =
         Some("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d".to_string());
+    network.proxy = Some("127.0.0.1:9050".into());
+    network.spv_enabled = Some(false);
 
     let db_root_dir = TempDir::new().unwrap();
     let db_root = format!("{}", db_root_dir.path().display());
-    let proxy_str = "127.0.0.1:9050";
-    let proxy = Some(proxy_str);
+
     let url = determine_electrum_url_from_net(&network).unwrap();
     info!("url: {:?}", url);
     info!("creating gdk session");
-    let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
-    session.connect(&json!({"proxy":proxy_str.to_string()})).unwrap();
+    let mut session =
+        ElectrumSession::create_session(network.clone(), &db_root, network.proxy.as_deref(), url);
+    session.connect(&serde_json::to_value(&network).unwrap()).unwrap();
 
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     auth_handler_login(&mut session, mnemonic);
@@ -1437,6 +1444,17 @@ fn test_tor() {
     assert!(value.get("assets").is_some());
 
     assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
+
+    let params = SPVDownloadHeadersParams {
+        params: SPVCommonParams {
+            network,
+            timeout: None,
+            encryption_key: None,
+        },
+        headers_to_download: Some(1),
+    };
+    let result = headers::download_headers(&params).unwrap();
+    assert_eq!(result.height, 1);
 }
 
 #[test]
