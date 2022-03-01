@@ -105,7 +105,7 @@ impl Display for Error {
             Error::Encryption(ref send_err) => write!(f, "encryption_err: {:?}", send_err),
             Error::Secp256k1(ref err) => write!(f, "Secp256k1_err: {:?}", err),
             Error::Secp256k1Zkp(ref err) => write!(f, "Secp256k1_zkp_err: {:?}", err),
-            Error::PinError => write!(f, "PinError"),
+            Error::PinError => write!(f, "id_connection_failed"),
             Error::InvalidPin => write!(f, "id_invalid_pin"),
             Error::InvalidElectrumUrl(url) => write!(f, "Invalid Electrum URL: {}", url),
             Error::PsetAndTxMismatch => write!(f, "PSET and Tx mismatch"),
