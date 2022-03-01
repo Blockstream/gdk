@@ -139,6 +139,28 @@ namespace sdk {
         return nlohmann::json();
     }
 
+    void session_impl::load_store(std::shared_ptr<signer> /*signer*/)
+    {
+        // Overriden for ga_rust
+    }
+
+    void session_impl::start_sync_threads()
+    {
+        // Overriden for ga_rust
+    }
+
+    nlohmann::json session_impl::get_subaccount_xpub(uint32_t /*subaccount*/)
+    {
+        // Overriden for ga_rust
+        return nlohmann::json();
+    }
+
+    nlohmann::json session_impl::get_subaccount_pointers()
+    {
+        // Overriden for ga_rust
+        return nlohmann::json();
+    }
+
     bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
     {
         // Overriden for ga_rust
@@ -183,6 +205,15 @@ namespace sdk {
     void session_impl::save_cache()
     {
         // Refers to the ga_session cache at the moment, so a no-op for rust sessions
+    }
+
+    void session_impl::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
+    {
+        if (!master_blinding_key_hex.empty()) {
+            // Add the master blinding key to the signer to allow it to unblind.
+            // This validates the key is of the correct format
+            get_nonnull_signer()->set_master_blinding_key(master_blinding_key_hex);
+        }
     }
 
     session_impl::utxo_cache_value_t session_impl::get_cached_utxos(uint32_t subaccount, uint32_t num_confs) const
@@ -251,17 +282,6 @@ namespace sdk {
     }
 
     void session_impl::encache_signer_xpubs(std::shared_ptr<signer> /*signer*/)
-    {
-        // Overriden for multisig
-    }
-
-    std::pair<std::string, bool> session_impl::get_cached_master_blinding_key()
-    {
-        // Overriden for multisig
-        return std::make_pair(std::string(), false);
-    }
-
-    void session_impl::set_cached_master_blinding_key(const std::string& /*master_blinding_key_hex*/)
     {
         // Overriden for multisig
     }

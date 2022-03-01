@@ -77,6 +77,9 @@ namespace sdk {
         virtual nlohmann::json refresh_assets(const nlohmann::json& params) = 0;
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
 
+        virtual void load_store(std::shared_ptr<signer> signer);
+        virtual void start_sync_threads();
+        virtual nlohmann::json get_subaccount_pointers();
         virtual std::string get_challenge(const pub_key_t& public_key) = 0;
         virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
@@ -114,6 +117,7 @@ namespace sdk {
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) = 0;
         virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
             = 0;
+        virtual nlohmann::json get_subaccount_xpub(uint32_t subaccount);
 
         virtual nlohmann::json get_available_currencies() const = 0;
 
@@ -216,7 +220,7 @@ namespace sdk {
         virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
 
         // Cached data
-        virtual std::pair<std::string, bool> get_cached_master_blinding_key();
+        virtual std::pair<std::string, bool> get_cached_master_blinding_key() = 0;
         virtual void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
     protected:

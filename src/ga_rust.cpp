@@ -173,6 +173,22 @@ namespace sdk {
 
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
 
+    void ga_rust::load_store(std::shared_ptr<signer> signer)
+    {
+        {
+            locker_t locker(m_mutex);
+            // Re-login must use the same signer
+            GDK_RUNTIME_ASSERT(!m_signer.get() || m_signer.get() == signer.get());
+            m_signer = signer;
+        }
+        auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
+        call_session("load_store", { { "master_xpub", std::move(master_xpub) } });
+    }
+
+    void ga_rust::start_sync_threads() { call_session("start_threads", {}); }
+
+    nlohmann::json ga_rust::get_subaccount_pointers() { return call_session("get_subaccount_nums", {}); }
+
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
@@ -236,6 +252,19 @@ namespace sdk {
         details_c["subaccount"] = subaccount;
         details_c["xpub"] = xpub;
         return call_session("create_subaccount", details_c);
+    }
+
+    std::pair<std::string, bool> ga_rust::get_cached_master_blinding_key()
+    {
+        const std::string blinding_key_hex
+            = call_session("get_master_blinding_key", {}).value("master_blinding_key", std::string());
+        return std::make_pair(blinding_key_hex, blinding_key_hex.empty());
+    }
+
+    void ga_rust::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
+    {
+        session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
+        call_session("set_master_blinding_key", { { "master_blinding_key", master_blinding_key_hex } });
     }
 
     void ga_rust::change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)
@@ -332,6 +361,11 @@ namespace sdk {
         path.push_back(is_internal ? 1 : 0);
         path.push_back(pointer);
         return path;
+    }
+
+    nlohmann::json ga_rust::get_subaccount_xpub(uint32_t subaccount)
+    {
+        return call_session("get_subaccount_xpub", { { "subaccount", subaccount } });
     }
 
     nlohmann::json ga_rust::get_available_currencies() const

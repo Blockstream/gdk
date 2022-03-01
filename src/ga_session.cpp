@@ -1744,11 +1744,7 @@ namespace sdk {
 
     void ga_session::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
     {
-        if (!master_blinding_key_hex.empty()) {
-            // Add the master blinding key to the signer to allow it to unblind.
-            // This validates the key is of the correct format
-            m_signer->set_master_blinding_key(master_blinding_key_hex);
-        }
+        session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
         // Note: this update is a no-op if the key is already cached
         locker_t locker(m_mutex);
         update_blob(locker, std::bind(&client_blob::set_master_blinding_key, &m_blob, master_blinding_key_hex));

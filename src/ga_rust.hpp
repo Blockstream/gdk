@@ -18,7 +18,6 @@ namespace sdk {
         nlohmann::json http_request(nlohmann::json params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
-
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_bip32_xpub, std::shared_ptr<signer> signer);
@@ -33,6 +32,36 @@ namespace sdk {
         bool discover_subaccount(const std::string& xpub, const std::string& type);
         uint32_t get_next_subaccount(const std::string& type);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
+
+        // Load the rust cache or create it.
+        void load_store(std::shared_ptr<signer> signer);
+
+        // Get the master blinding key from the rust cache if available.
+        // If the master blinding key is missing,
+        // The caller should obtain it from the signer and set it with
+        // set_cached_master_blinding_key
+        std::pair<std::string, bool> get_cached_master_blinding_key();
+
+        // Set the master blinding key in the rust cache.
+        // If the cache has already a master blinding key,
+        // attempting to set a different key results in an error.
+        void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
+
+        // Start the rust sync threads.
+        // This must be done once the store is loaded
+        // and for liquid after the master blinding key is set.
+        void start_sync_threads();
+
+        // Get the subaccount pointers for the subaccount that belongs to the wallet.
+        // For each of these subaccounts, the caller should set the xpub with
+        // create_subaccount if the xpub missing from the store.
+        nlohmann::json get_subaccount_pointers();
+
+        // Get the subaccount xpub from the rust store if available.
+        // If the account or xpub is missing,
+        // the caller should obtain it from the signer and set it
+        // create_subaccount.
+        nlohmann::json get_subaccount_xpub(uint32_t subaccount);
 
         void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transactions(const nlohmann::json& details);
