@@ -1,3 +1,4 @@
+use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
 use crate::Error;
 use aes_gcm_siv::aead::{AeadInPlace, NewAead};
@@ -17,7 +18,7 @@ use log::{info, warn};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
@@ -83,6 +84,12 @@ pub struct RawAccountCache {
 
     /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
     pub indexes: Indexes,
+
+    /// the xpub of the account
+    ///
+    /// This field is optional to avoid breaking the cache,
+    /// but it should always be set.
+    pub xpub: Option<ExtendedPubKey>,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
@@ -327,13 +334,37 @@ impl StoreMeta {
 
     /// Make an account entry
     /// Note that we need to insert an account entry both in the store and in the cache.
-    pub fn make_account(&mut self, account_num: u32) -> &mut RawAccountCache {
+    pub fn make_account(
+        &mut self,
+        account_num: u32,
+        account_xpub: ExtendedPubKey,
+    ) -> Result<(), Error> {
         self.store
             .accounts_settings
             .get_or_insert_with(|| Default::default())
             .entry(account_num)
             .or_default();
-        self.cache.accounts.entry(account_num).or_default()
+        match self.cache.accounts.entry(account_num) {
+            Entry::Vacant(entry) => {
+                let mut account = RawAccountCache::default();
+                account.xpub = Some(account_xpub);
+                entry.insert(account);
+            }
+            Entry::Occupied(mut entry) => {
+                match entry.get().xpub {
+                    None => {
+                        // This is a cache upgrade from a version that did not persist the xpub
+                        entry.get_mut().xpub = Some(account_xpub);
+                    }
+                    Some(xpub) => {
+                        if !xpubs_equivalent(&xpub, &account_xpub) {
+                            return Err(Error::Generic("Mismatching xpub".to_string()));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn account_nums(&self) -> Vec<u32> {
@@ -511,7 +542,7 @@ mod tests {
 
         {
             let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
-            store.make_account(0);
+            store.make_account(0, xpub).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }

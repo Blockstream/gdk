@@ -63,7 +63,7 @@ pub struct Account {
 }
 
 /// Compare xpub ignoring the fingerprint (which computation might be skipped).
-fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> bool {
+pub fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> bool {
     xpub1.network == xpub2.network
         && xpub1.depth == xpub2.depth
         && xpub1.child_number == xpub2.child_number
@@ -95,7 +95,7 @@ impl Account {
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];
 
-        store.write().unwrap().make_account(account_num);
+        store.write().unwrap().make_account(account_num, xpub.clone())?;
 
         info!("initialized account #{} path={} type={:?}", account_num, path, script_type);
 
