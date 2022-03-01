@@ -914,6 +914,16 @@ fn subaccounts(is_liquid: bool) {
     assert!(test_session.session.get_transaction_hex(&fake_txid).is_err());
     assert!(test_session.session.get_transaction_details(&fake_txid).is_err());
 
+    // Auth handler login does not have xprv, thus signing is disabled
+    let tx = {
+        let utxos = test_session.utxos(1);
+        let asset = test_session.session.network.policy_asset.clone();
+        let mut create_opt =
+            test_session.create_opt(&address.address, 10000, asset, None, 1, utxos);
+        test_session.session.create_transaction(&mut create_opt).unwrap()
+    };
+    assert!(matches!(new_session.sign_transaction(&tx), Err(Error::Generic(_))));
+
     new_session.disconnect().unwrap();
     test_session.stop();
 }
