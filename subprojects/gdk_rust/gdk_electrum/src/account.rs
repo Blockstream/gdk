@@ -44,7 +44,13 @@ const NUM_RESERVED_ACCOUNT_TYPES: u32 = 16;
 pub struct Account {
     account_num: u32,
     script_type: ScriptType,
-    xprv: ExtendedPrivKey,
+
+    /// The account extended private key
+    ///
+    /// This fields will be removed once we have full support for external signers.
+    /// For the time being, if it is None, the xpub cannot be verified and
+    /// `Account::sign` will always fail.
+    xprv: Option<ExtendedPrivKey>,
     xpub: ExtendedPubKey,
     chains: [ExtendedPubKey; 2],
     network: Network,
@@ -74,7 +80,7 @@ pub fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> bool 
 impl Account {
     pub fn new(
         network: Network,
-        master_xprv: &ExtendedPrivKey,
+        master_xprv: &Option<ExtendedPrivKey>,
         account_xpub: &Option<ExtendedPubKey>,
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
@@ -83,14 +89,24 @@ impl Account {
     ) -> Result<Self, Error> {
         let (script_type, path) = get_account_derivation(account_num, network.id())?;
 
-        let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
-        let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
-
-        if let Some(account_xpub) = account_xpub {
-            if !xpubs_equivalent(&xpub, account_xpub) {
-                return Err(Error::Generic("Mismatching xpub".to_string()));
+        let (xprv, xpub) = if let Some(master_xprv) = master_xprv {
+            let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
+            let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+            if let Some(account_xpub) = account_xpub {
+                if !xpubs_equivalent(&xpub, account_xpub) {
+                    return Err(Error::Generic("Mismatching xpub".to_string()));
+                }
+            };
+            (Some(xprv), xpub)
+        } else {
+            if let Some(xpub) = account_xpub {
+                (None, xpub.clone())
+            } else {
+                return Err(Error::Generic(
+                    "Account::new: either master_xprv or account_xpub must be Some".to_string(),
+                ));
             }
-        }
+        };
 
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];
@@ -562,6 +578,9 @@ impl Account {
     //pub fn sign(&self, psbt: PartiallySignedTransaction) -> Result<PartiallySignedTransaction, Error> { Err(Error::Generic("NotImplemented".to_string())) }
     pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("sign");
+        let xprv = self
+            .xprv
+            .ok_or_else(|| Error::Generic("Internal software signing is not supported".into()))?;
 
         let be_tx =
             BETransaction::deserialize(&Vec::<u8>::from_hex(&request.hex)?, self.network.id())?;
@@ -586,7 +605,7 @@ impl Account {
                     let (script_sig, witness) = internal_sign_bitcoin(
                         &tx,
                         i,
-                        &self.xprv,
+                        &xprv,
                         &derivation_path,
                         out.value,
                         self.script_type,
@@ -617,7 +636,7 @@ impl Account {
                     let (script_sig, witness) = internal_sign_elements(
                         &tx,
                         i,
-                        &self.xprv,
+                        &xprv,
                         &derivation_path,
                         out.value,
                         self.script_type,

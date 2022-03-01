@@ -593,7 +593,7 @@ impl ElectrumSession {
             }
         }
 
-        self.init_wallet(master_xprv, master_xpub)?;
+        self.init_wallet(Some(master_xprv), master_xpub)?;
 
         // Get xpubs from signer and (re)create subaccounts
         for account_num in self.get_subaccount_nums()? {
@@ -916,7 +916,7 @@ impl ElectrumSession {
     }
 
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
-        let master_xprv = self.master_xprv.ok_or_else(|| Error::WalletNotInitialized)?;
+        let master_xprv = self.master_xprv.clone();
         let store = self.store()?.clone();
         let master_blinding = store.read()?.cache.master_blinding.clone();
         let network = self.network.clone();
@@ -1284,7 +1284,7 @@ pub fn keys_from_mnemonic(
 impl ElectrumSession {
     pub fn init_wallet(
         &mut self,
-        master_xprv: ExtendedPrivKey,
+        master_xprv: Option<ExtendedPrivKey>,
         master_xpub: ExtendedPubKey,
     ) -> Result<(), Error> {
         if self.network.liquid {
@@ -1292,7 +1292,7 @@ impl ElectrumSession {
         }
 
         self.master_xpub = Some(master_xpub);
-        self.master_xprv = Some(master_xprv);
+        self.master_xprv = master_xprv;
 
         self.notify.settings(&self.get_settings()?);
         Ok(())

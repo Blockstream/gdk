@@ -1258,7 +1258,7 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
     }
     let (master_xprv, master_xpub, _) =
         keys_from_mnemonic(&mnemonic, None, session.network.bip32_network()).unwrap();
-    session.init_wallet(master_xprv, master_xpub).unwrap();
+    session.init_wallet(Some(master_xprv), master_xpub).unwrap();
 
     // Get xpubs from signer and (re)create subaccounts
     for account_num in session.get_subaccount_nums().unwrap() {
