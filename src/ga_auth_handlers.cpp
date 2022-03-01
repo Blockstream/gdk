@@ -281,6 +281,7 @@ namespace sdk {
         : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
         , m_hw_device(hw_device)
         , m_credential_data(credential_data)
+        , m_wallet_initialized(false)
     {
     }
 
@@ -320,16 +321,25 @@ namespace sdk {
                 return state_type::done;
             }
 
+            m_signer = new_signer;
             if (m_net_params.is_electrum()) {
-                // FIXME: Implement rust login via authenticate()
-                m_result = m_session->login(new_signer);
-                m_signer = new_signer;
-                return state_type::done;
+                if (m_net_params.is_liquid()) {
+                    // FIXME: Implement rust liquid login via authenticate()
+                    m_result = m_session->login(new_signer);
+                    return state_type::done;
+                } else if (m_signer->has_bip32_xpub(std::vector<uint32_t>())) {
+                    // If the master xpub is in the signer, we assume we loaded
+                    // everything into the rust session (master blinding, account
+                    // xpubs). No need to interact with the signer, return early.
+                    const auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
+                    m_result = get_wallet_hash_id(
+                        { { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
+                    return state_type::done;
+                }
             }
 
             // We need master pubkey for the challenge, client secret pubkey for login
             try {
-                m_signer = new_signer;
                 signal_hw_request(hw_request::get_xpubs);
                 auto& paths = m_twofactor_data["paths"];
                 paths.emplace_back(signer::EMPTY_PATH);
@@ -339,6 +349,57 @@ namespace sdk {
                 throw;
             }
             return m_state;
+        }
+
+        if (m_net_params.is_electrum()) {
+            if (m_hw_request == hw_request::get_xpubs && m_master_bip32_xpub.empty()) {
+                // Result from first get_xpubs, get the master xpub
+                const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+                m_master_bip32_xpub = xpubs.at(0);
+                // Load the store from disk, or create it if missing
+                m_session->load_store(m_signer);
+                // TODO: get master blinding key and account xpubs from the store if available
+                if (m_net_params.is_liquid()) {
+                    GDK_RUNTIME_ASSERT_MSG(m_signer->supports_host_unblinding(),
+                        "For Electrum session, signer must support host unblinding");
+                    // Ask for the master blinding key
+                    signal_hw_request(hw_request::get_master_blinding_key);
+                    return m_state;
+                }
+            } else if (m_hw_request == hw_request::get_master_blinding_key) {
+                // Cache the master blinding key
+                m_session->set_cached_master_blinding_key(get_hw_reply().at("master_blinding_key"));
+            }
+
+            if (!m_wallet_initialized) {
+                m_wallet_initialized = true;
+                // Fetch the subaccount xpubs
+                m_subaccount_pointers = m_session->get_subaccount_pointers();
+                std::vector<nlohmann::json> paths;
+                paths.reserve(m_subaccount_pointers.size());
+                for (const auto& pointer : m_subaccount_pointers) {
+                    paths.emplace_back(m_session->get_subaccount_root_path(pointer));
+                }
+                signal_hw_request(hw_request::get_xpubs);
+                m_twofactor_data["paths"] = paths;
+                return m_state;
+            } else if (m_hw_request == hw_request::get_xpubs) {
+                // Get the subaccount xpub
+                const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+                const nlohmann::json details({ { "name", std::string() } });
+                size_t i = 0;
+                for (const auto& pointer : m_subaccount_pointers) {
+                    const std::string& account_xpub = xpubs.at(i);
+                    m_session->create_subaccount(details, pointer, account_xpub);
+                    ++i;
+                }
+            }
+
+            // Got everything from the signer
+            m_session->start_sync_threads();
+            const auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
+            m_result = get_wallet_hash_id({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
+            return state_type::done;
         }
 
         if (m_hw_request == hw_request::get_xpubs && m_challenge.empty()) {
