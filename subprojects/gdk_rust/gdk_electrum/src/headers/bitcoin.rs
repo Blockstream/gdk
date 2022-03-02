@@ -7,7 +7,7 @@ use bitcoin::hashes::hex::FromHex;
 use bitcoin::{BlockHash, Txid};
 use bitcoin::{BlockHeader, Network};
 use electrum_client::GetMerkleRes;
-use log::info;
+use log::{warn, info};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -50,11 +50,15 @@ impl HeadersChain {
             info!("{:?} chain file exists, reading", filepath);
             let mut file = File::open(&filepath)?;
             let file_size = file.metadata()?.len();
-            if file_size % 80 != 0 {
+            if file_size % 80 != 0 || file_size < 80 {
                 return Err(Error::InvalidHeaders);
             }
-
-            file.seek(SeekFrom::Start(file_size - 80))?;
+            let wanted_seek = file_size - 80;
+            let effective_seek = file.seek(SeekFrom::Start(wanted_seek))?;
+            if wanted_seek != effective_seek {
+                warn!("Seek failed wanted:{} effective:{}", wanted_seek, effective_seek);
+                return Err(Error::Generic("failed seek".into()));
+            }
             let mut buf = [0u8; 80];
             file.read_exact(&mut buf)?;
             let height = (file_size as u32 / 80) - 1;
@@ -107,7 +111,12 @@ impl HeadersChain {
 
     pub fn get(&self, height: u32) -> Result<BlockHeader, Error> {
         let mut file = File::open(&self.path)?;
-        file.seek(SeekFrom::Start(height as u64 * 80))?;
+        let wanted_seek = height as u64 * 80;
+        let effective_seek = file.seek(SeekFrom::Start(wanted_seek))?;
+        if wanted_seek != effective_seek {
+            warn!("Seek failed wanted:{} effective:{}", wanted_seek, effective_seek);
+            return Err(Error::Generic("failed seek".into()));
+        }
         let mut buf = [0u8; 80];
         file.read_exact(&mut buf)?;
         let header: BlockHeader = deserialize(&buf)?;
