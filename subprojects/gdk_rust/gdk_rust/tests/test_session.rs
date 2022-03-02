@@ -786,11 +786,11 @@ impl TestSession {
     }
 
     /// mine a block with the node and check if gdk session see the change
-    pub fn mine_block(&mut self) {
+    pub fn mine_block(&mut self) -> String {
         let initial_height_electrs = self.electrs_tip() as u32;
         let initial_height_wallet = self.session.block_status().unwrap().0;
         assert_eq!(initial_height_electrs, initial_height_wallet);
-        self.node_generate(1);
+        let block = self.node_generate(1);
         let height = initial_height_electrs + 1;
         // Wait until electrs has updated
         let mut i = 60;
@@ -805,6 +805,8 @@ impl TestSession {
 
         // Wait until wallet has updated
         self.wait_blockheight(height);
+
+        block[0].to_string()
     }
 
     pub fn node_getnewaddress(&self, kind: Option<&str>) -> String {
@@ -817,9 +819,10 @@ impl TestSession {
     pub fn node_issueasset(&self, satoshi: u64) -> String {
         node_issueasset(&self.node.client, satoshi)
     }
-    pub fn node_generate(&self, block_num: u32) {
-        node_generate(&self.node.client, block_num, None);
+    pub fn node_generate(&self, block_num: u32) -> Vec<String> {
+        let hashes = node_generate(&self.node.client, block_num, None);
         self.electrs.trigger().unwrap();
+        hashes
     }
 
     pub fn node_generatetoaddress(&self, block_num: u32, address: String) {
@@ -855,7 +858,7 @@ impl TestSession {
     }
 
     /// ask the blockcain tip to electrs
-    fn electrs_tip(&mut self) -> usize {
+    pub fn electrs_tip(&mut self) -> usize {
         for _ in 0..10 {
             match self.electrs.client.block_headers_subscribe_raw() {
                 Ok(header) => return header.height,
@@ -955,42 +958,9 @@ impl TestSession {
     }
 
     pub fn spv_verify_tx(&mut self, txid: &str, height: u32, headers_to_download: Option<usize>) {
-        let common = SPVCommonParams {
-            network: self.network.clone(),
-            timeout: None,
-            encryption_key: Some("testing".to_string()),
-        };
-        let param = SPVVerifyTxParams {
-            txid: txid.to_string(),
-            height,
-            params: common.clone(),
-        };
-        let param_download = SPVDownloadHeadersParams {
-            params: common.clone(),
-            headers_to_download,
-        };
         let tip = self.electrs_tip() as u32;
-
-        thread::spawn(move || {
-            let mut synced = 0;
-
-            while synced < tip {
-                let result = headers::download_headers(&param_download).unwrap();
-                synced = result.height;
-            }
-        });
-        loop {
-            match headers::spv_verify_tx(&param) {
-                Ok(SPVVerifyTxResult::InProgress) => {
-                    thread::sleep(Duration::from_millis(100));
-                }
-                Ok(SPVVerifyTxResult::Verified) => break,
-                _ => assert!(false),
-            }
-        }
-
-        // second should verify immediately, (and also hit cache)
-        assert!(matches!(headers::spv_verify_tx(&param), Ok(SPVVerifyTxResult::Verified)));
+        let network = self.network.clone();
+        spv_verify_tx(network, tip, txid, height, headers_to_download);
     }
 
     pub fn refresh_assets(
@@ -1159,7 +1129,7 @@ fn node_getnewaddress(client: &Client, kind: Option<&str>) -> String {
     addr.as_str().unwrap().to_string()
 }
 
-fn node_generate(client: &Client, block_num: u32, address: Option<String>) {
+fn node_generate(client: &Client, block_num: u32, address: Option<String>) -> Vec<String> {
     let address = address.unwrap_or(node_getnewaddress(client, None));
     let r = client.call::<Value>("generatetoaddress", &[block_num.into(), address.into()]).unwrap();
     if block_num < 10 {
@@ -1167,6 +1137,7 @@ fn node_generate(client: &Client, block_num: u32, address: Option<String>) {
     } else {
         info!("generated {} blocks", block_num);
     }
+    serde_json::from_value(r).unwrap()
 }
 
 fn node_issueasset(client: &Client, satoshi: u64) -> String {
@@ -1234,6 +1205,52 @@ pub fn discover_subaccounts(session: &mut ElectrumSession, mnemonic: Mnemonic) {
             }
         }
     }
+}
+
+pub fn spv_verify_tx(
+    network: Network,
+    tip: u32,
+    txid: &str,
+    height: u32,
+    headers_to_download: Option<usize>,
+) {
+    let common = SPVCommonParams {
+        network,
+        timeout: None,
+        encryption_key: Some("testing".to_string()),
+    };
+    let param = SPVVerifyTxParams {
+        txid: txid.to_string(),
+        height,
+        params: common.clone(),
+    };
+    let param_download = SPVDownloadHeadersParams {
+        params: common.clone(),
+        headers_to_download,
+    };
+
+    thread::spawn(move || {
+        let mut synced = 0;
+
+        while synced < tip {
+            let result = headers::download_headers(&param_download).unwrap();
+            synced = result.height;
+            thread::sleep(Duration::from_millis(100));
+        }
+    });
+    loop {
+        match headers::spv_verify_tx(&param) {
+            Ok(SPVVerifyTxResult::InProgress) => {
+                thread::sleep(Duration::from_millis(100));
+            }
+            Ok(SPVVerifyTxResult::Verified) => break,
+            Ok(e) => assert!(false, "status {:?}", e),
+            Err(e) => assert!(false, "error {:?}", e),
+        }
+    }
+
+    // second should verify immediately, (and also hit cache)
+    assert!(matches!(headers::spv_verify_tx(&param), Ok(SPVVerifyTxResult::Verified)));
 }
 
 // Simulate login through the auth handler

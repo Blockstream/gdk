@@ -24,7 +24,7 @@ use std::{env, thread};
 use tempfile::TempDir;
 
 mod test_session;
-use test_session::{auth_handler_login, discover_subaccounts, TestSession};
+use test_session::{auth_handler_login, discover_subaccounts, spv_verify_tx, TestSession};
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
@@ -1490,6 +1490,51 @@ fn test_spv_over_period() {
     test_session.mine_block();
 
     test_session.spv_verify_tx(&txid, initial_block + block_to_mine * times + 1, Some(100));
+}
+
+#[test]
+fn test_spv_external_concurrent() {
+    let mut test_session = setup_session(false, |network| {
+        network.spv_enabled = Some(false);
+        //network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
+    });
+
+    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
+    test_session.fund(100_000_000, None);
+
+    let initial_block = 101u32;
+
+    let mut txids = vec![];
+    for _ in 0..10u32 {
+        let txid = test_session.send_tx(
+            &node_address,
+            10_000,
+            None,
+            Some(MEMO1.to_string()),
+            None,
+            None,
+            None,
+        ); // p2shwpkh
+        test_session.mine_block();
+
+        txids.push(txid);
+    }
+
+    let mut handles = vec![];
+    for (i, txid) in txids.into_iter().enumerate() {
+        let tip = test_session.electrs_tip() as u32;
+        let network = test_session.network.clone();
+        //network.state_dir = ".".into();
+        test_session.node_generate(1); // doesn't wait the sync
+
+        handles.push(thread::spawn(move || {
+            spv_verify_tx(network, tip, &txid, initial_block + i as u32 + 1, Some(10));
+        }));
+    }
+
+    while let Some(h) = handles.pop() {
+        h.join().unwrap();
+    }
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
