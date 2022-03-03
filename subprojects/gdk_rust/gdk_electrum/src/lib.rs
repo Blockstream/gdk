@@ -552,15 +552,11 @@ impl ElectrumSession {
     }
 
     /// Return the master blinding key if the cache contains it, it needs to be called after `load_store`
-    pub fn get_master_blinding_key(&mut self) -> Result<MasterBlindingKey, Error> {
-        Ok(self
-            .store()?
-            .read()?
-            .cache
-            .master_blinding
-            .as_ref()
-            .ok_or_else(|| Error::MissingMasterBlindingKey)?
-            .clone())
+    pub fn get_master_blinding_key(&mut self) -> Result<GetMasterBlindingKeyResult, Error> {
+        let master_blinding_key = self.store()?.read()?.cache.master_blinding.clone();
+        Ok(GetMasterBlindingKeyResult {
+            master_blinding_key,
+        })
     }
 
     pub fn store(&self) -> Result<Store, Error> {
@@ -588,7 +584,7 @@ impl ElectrumSession {
         })?;
 
         if self.network.liquid {
-            if let Err(Error::MissingMasterBlindingKey) = self.get_master_blinding_key() {
+            if self.get_master_blinding_key()?.master_blinding_key.is_none() {
                 self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
                     master_blinding_key,
                 })?;
@@ -638,7 +634,11 @@ impl ElectrumSession {
         self.closer.threads_stopped = Some(threads_stopped);
 
         let master_blinding = if self.network.liquid {
-            Some(self.get_master_blinding_key()?)
+            let master_blinding = self.store()?.read()?.cache.master_blinding.clone();
+            if master_blinding.is_none() {
+                return Err(Error::MissingMasterBlindingKey);
+            }
+            master_blinding
         } else {
             None
         };
@@ -1290,7 +1290,7 @@ impl ElectrumSession {
         master_xpub: ExtendedPubKey,
     ) -> Result<(), Error> {
         if self.network.liquid {
-            assert!(self.get_master_blinding_key().is_ok());
+            assert!(self.get_master_blinding_key()?.master_blinding_key.is_some());
         }
 
         self.master_xpub = Some(master_xpub);

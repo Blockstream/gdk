@@ -170,6 +170,16 @@ pub struct LoadStoreOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetMasterBlindingKeyResult {
+    /// Master blinding key, when encoded in json is an hex of 128 chars
+    ///
+    /// If the master blinding key is missing from the store,
+    /// it is None and the caller should set it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub master_blinding_key: Option<MasterBlindingKey>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SetMasterBlindingKeyOpt {
     /// Master blinding key, when encoded in json is an hex of 128 chars
     pub master_blinding_key: MasterBlindingKey,
