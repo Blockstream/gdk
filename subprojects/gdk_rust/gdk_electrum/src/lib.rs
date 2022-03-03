@@ -537,6 +537,8 @@ impl ElectrumSession {
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
         }
+        self.master_xpub = Some(opt.master_xpub);
+        self.notify.settings(&self.get_settings()?);
         Ok(())
     }
 
@@ -1294,7 +1296,6 @@ impl ElectrumSession {
         self.master_xpub = Some(master_xpub);
         self.master_xprv = master_xprv;
 
-        self.notify.settings(&self.get_settings()?);
         Ok(())
     }
 }
