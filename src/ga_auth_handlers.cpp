@@ -332,8 +332,7 @@ namespace sdk {
                     // everything into the rust session (master blinding, account
                     // xpubs). No need to interact with the signer, return early.
                     const auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
-                    m_result = get_wallet_hash_id(
-                        { { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
+                    m_result = m_session->get_post_login_data();
                     return state_type::done;
                 }
             }
@@ -397,8 +396,7 @@ namespace sdk {
 
             // Got everything from the signer
             m_session->start_sync_threads();
-            const auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
-            m_result = get_wallet_hash_id({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
+            m_result = m_session->get_post_login_data();
             return state_type::done;
         }
 

@@ -378,7 +378,12 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_settings() { return call_session("get_settings", nlohmann::json({})); }
 
-    nlohmann::json ga_rust::get_post_login_data() { throw std::runtime_error("get_post_login_data not implemented"); }
+    nlohmann::json ga_rust::get_post_login_data()
+    {
+        auto master_xpub = get_nonnull_signer()->get_bip32_xpub(std::vector<uint32_t>());
+        return get_wallet_hash_id(
+            { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
+    }
 
     void ga_rust::change_settings(const nlohmann::json& settings) { call_session("change_settings", settings); }
 
