@@ -417,12 +417,6 @@ impl ElectrumSession {
         Ok(self.accounts.read()?)
     }
 
-    pub fn get_accounts_mut(
-        &mut self,
-    ) -> Result<sync::RwLockWriteGuard<HashMap<u32, Account>>, Error> {
-        Ok(self.accounts.write()?)
-    }
-
     /// Get the Account if exists
     pub fn get_account(&self, account_num: u32) -> Result<Account, Error> {
         // The Account struct is immutable, things that mutate (e.g. name) are in the store.
@@ -934,7 +928,7 @@ impl ElectrumSession {
         let store = self.store()?.clone();
         let master_blinding = store.read()?.cache.master_blinding.clone();
         let network = self.network.clone();
-        let mut accounts = self.get_accounts_mut()?;
+        let mut accounts = self.accounts.write()?;
         // Check that the given subaccount number is the next available one for its script type.
         let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
         let (last_account, next_account) =
