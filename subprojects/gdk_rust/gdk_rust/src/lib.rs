@@ -340,6 +340,10 @@ fn handle_session_call(
             .get_subaccount_root_path(serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
+        "get_subaccount_xpub" => session
+            .get_subaccount_xpub(serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "create_subaccount" => {
             let opt: CreateAccountOpt = serde_json::from_value(input.clone())?;
             session.create_subaccount(opt).map(|v| json!(v)).map_err(Into::into)

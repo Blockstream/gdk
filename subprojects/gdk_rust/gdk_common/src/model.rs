@@ -219,6 +219,19 @@ pub struct GetAccountPathResult {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetAccountXpubOpt {
+    pub subaccount: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetAccountXpubResult {
+    /// If the account xpub is missing from the store,
+    /// it is None and the caller should set it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub xpub: Option<ExtendedPubKey>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetNextAccountOpt {
     #[serde(rename = "type")]
     pub script_type: ScriptType,

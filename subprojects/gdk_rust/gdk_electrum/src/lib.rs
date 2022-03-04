@@ -917,6 +917,17 @@ impl ElectrumSession {
         })
     }
 
+    pub fn get_subaccount_xpub(
+        &mut self,
+        opt: GetAccountXpubOpt,
+    ) -> Result<GetAccountXpubResult, Error> {
+        // If the account cache is missing, we also return None
+        let xpub = self.store()?.read()?.account_cache(opt.subaccount).map_or(None, |c| c.xpub);
+        Ok(GetAccountXpubResult {
+            xpub,
+        })
+    }
+
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let master_xprv = self.master_xprv.clone();
         let store = self.store()?.clone();
