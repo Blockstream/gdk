@@ -106,7 +106,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
 
-    void ga_rust::load_store(std::shared_ptr<signer> signer)
+    void ga_rust::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> signer)
     {
         set_signer(signer);
         auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());

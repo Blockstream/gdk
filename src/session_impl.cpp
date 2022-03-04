@@ -205,11 +205,6 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    void session_impl::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> /*signer*/)
-    {
-        // Refers to the ga_session cache at the moment, so a no-op for rust sessions
-    }
-
     void session_impl::save_cache()
     {
         // Refers to the ga_session cache at the moment, so a no-op for rust sessions

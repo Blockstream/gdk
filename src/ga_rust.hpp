@@ -33,9 +33,6 @@ namespace sdk {
         uint32_t get_next_subaccount(const std::string& type);
         nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
 
-        // Load the rust cache or create it.
-        void load_store(std::shared_ptr<signer> signer);
-
         // Get the master blinding key from the rust cache if available.
         // If the master blinding key is missing,
         // The caller should obtain it from the signer and set it with
@@ -144,6 +141,7 @@ namespace sdk {
         amount get_dust_threshold() const;
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
+        void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_user_pubkeys();

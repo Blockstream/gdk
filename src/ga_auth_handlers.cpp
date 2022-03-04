@@ -328,13 +328,6 @@ namespace sdk {
                     // FIXME: Implement rust liquid login via authenticate()
                     m_result = m_session->login(new_signer);
                     return state_type::done;
-                } else if (m_signer->has_bip32_xpub(std::vector<uint32_t>())) {
-                    // If the master xpub is in the signer, we assume we loaded
-                    // everything into the rust session (master blinding, account
-                    // xpubs). No need to interact with the signer, return early.
-                    const auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
-                    m_result = m_session->get_post_login_data();
-                    return state_type::done;
                 }
             }
 
@@ -364,24 +357,23 @@ namespace sdk {
                 m_challenge = m_session->get_challenge(public_key);
             }
 
-            if (!is_electrum) {
-                const auto local_xpub = make_xpub(xpubs.at(1));
-                m_session->set_local_encryption_keys(local_xpub.second, m_signer);
-            } else {
-                // Load the store from disk, or create it if missing
-                m_session->load_store(m_signer);
+            // Set the cache keys for the wallet, loading/creating the
+            // local cache as needed.
+            const auto local_xpub = make_xpub(xpubs.at(1));
+            m_session->set_local_encryption_keys(local_xpub.second, m_signer);
+
+            if (is_electrum) {
+                // Skip the challenge/response steps since we have no server
+                // to authenticate to.
+                goto get_subaccount_xpubs;
             }
 
-            if (!is_electrum) {
-                // Ask the caller to sign the challenge
-                signal_hw_request(hw_request::sign_message);
-                m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
-                m_twofactor_data["path"] = signer::LOGIN_PATH;
-                add_required_ae_data(m_signer, m_twofactor_data);
-                return m_state;
-            }
-            goto get_subaccount_xpubs;
-
+            // Ask the caller to sign the challenge
+            signal_hw_request(hw_request::sign_message);
+            m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
+            m_twofactor_data["path"] = signer::LOGIN_PATH;
+            add_required_ae_data(m_signer, m_twofactor_data);
+            return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
             {
