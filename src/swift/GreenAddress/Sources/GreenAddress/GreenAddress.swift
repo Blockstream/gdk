@@ -129,18 +129,8 @@ public class TwoFactorCall {
 }
 
 public typealias NotificationCompletionHandler = (_ notification: [String: Any]?) -> Void
-fileprivate var notificationContexts = [String: NotificationContext]()
+fileprivate var notificationContexts = [NSString: NotificationCompletionHandler?]()
 fileprivate let queue = DispatchQueue(label: "BarrierQueue", attributes: .concurrent)
-
-fileprivate class NotificationContext {
-    var uuid: String
-    var notificationCompletionHandler: NotificationCompletionHandler
-
-    init(uuid: String, notificationCompletionHandler: @escaping NotificationCompletionHandler) {
-        self.uuid = uuid
-        self.notificationCompletionHandler = notificationCompletionHandler
-    }
-}
 
 public func gdkInit(config: [String: Any]) throws {
     var config_json: OpaquePointer = try convertDictToJSON(dict: config)
@@ -154,12 +144,16 @@ public class Session {
     private typealias NotificationHandler = @convention(c) (UnsafeMutableRawPointer?, OpaquePointer?) -> Void
 
     private let notificationHandler : NotificationHandler = { (context: UnsafeMutableRawPointer?, details: OpaquePointer?) -> Void in
-        let context : NotificationContext = Unmanaged.fromOpaque(context!).takeUnretainedValue()
         queue.async(flags: .barrier) {
-            if let notificationContext = notificationContexts[context.uuid],
-               let jsonDetails = details,
-               let dict = try! convertOpaqueJsonToDict(o: jsonDetails) {
-                notificationContext.notificationCompletionHandler(dict)
+            if let context = context {
+                let string = String(cString: context.assumingMemoryBound(to: CChar.self))
+                if let nsString = NSString(utf8String: string),
+                    let notificationContext = notificationContexts[nsString],
+                    let notificationContext = notificationContext,
+                    let jsonDetails = details,
+                    let dict = try! convertOpaqueJsonToDict(o: jsonDetails) {
+                    notificationContext(dict)
+                }
             }
         }
     }
@@ -170,12 +164,16 @@ public class Session {
     func setNotificationHandler(notificationCompletionHandler: NotificationCompletionHandler?) {
         queue.sync() {
             guard let notificationCompletionHandler = notificationCompletionHandler else {
-                notificationContexts.removeValue(forKey: self.uuid)
+                let nsString = NSString(string: self.uuid)
+                if notificationContexts.keys.contains(nsString) {
+                    notificationContexts[nsString] = nil
+                }
                 return
             }
-            notificationContexts[self.uuid] = NotificationContext(uuid: self.uuid, notificationCompletionHandler: notificationCompletionHandler)
-            let context = UnsafeMutableRawPointer(Unmanaged.passUnretained(notificationContexts[self.uuid]!).toOpaque())
-            try? callWrapper(fun: GA_set_notification_handler(self.session, self.notificationHandler, context))
+            let nsString = NSString(string: self.uuid)
+            notificationContexts[nsString] = notificationCompletionHandler
+            let ctx = UnsafeMutablePointer<Int8>(mutating: nsString.utf8String)
+            try? callWrapper(fun: GA_set_notification_handler(self.session, self.notificationHandler, ctx))
         }
     }
 
