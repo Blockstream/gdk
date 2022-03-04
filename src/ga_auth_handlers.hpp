@@ -28,7 +28,6 @@ namespace sdk {
         nlohmann::json m_credential_data;
         std::string m_challenge;
         std::string m_master_bip32_xpub;
-        bool m_wallet_initialized;
         nlohmann::json m_subaccount_pointers;
     };
 

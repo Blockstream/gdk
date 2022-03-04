@@ -281,12 +281,13 @@ namespace sdk {
         : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
         , m_hw_device(hw_device)
         , m_credential_data(credential_data)
-        , m_wallet_initialized(false)
     {
     }
 
     auth_handler::state_type login_user_call::call_impl()
     {
+        const bool is_electrum = m_net_params.is_electrum();
+
         if (!m_signer) {
             if (m_credential_data.contains("pin")) {
                 // Login with PIN. Fetch the mnemonic from the pin and pin data
@@ -322,7 +323,7 @@ namespace sdk {
             }
 
             m_signer = new_signer;
-            if (m_net_params.is_electrum()) {
+            if (is_electrum) {
                 if (m_net_params.is_liquid()) {
                     // FIXME: Implement rust liquid login via authenticate()
                     m_result = m_session->login(new_signer);
@@ -350,41 +351,76 @@ namespace sdk {
             return m_state;
         }
 
-        if (m_net_params.is_electrum()) {
-            if (m_hw_request == hw_request::get_xpubs && m_master_bip32_xpub.empty()) {
-                // Result from first get_xpubs, get the master xpub
-                const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
-                m_master_bip32_xpub = xpubs.at(0);
-                // Load the store from disk, or create it if missing
-                m_session->load_store(m_signer);
-                // TODO: get master blinding key and account xpubs from the store if available
-                if (m_net_params.is_liquid()) {
-                    GDK_RUNTIME_ASSERT_MSG(m_signer->supports_host_unblinding(),
-                        "For Electrum session, signer must support host unblinding");
-                    // Ask for the master blinding key
-                    signal_hw_request(hw_request::get_master_blinding_key);
-                    return m_state;
-                }
-            } else if (m_hw_request == hw_request::get_master_blinding_key) {
-                // Cache the master blinding key
-                m_session->set_cached_master_blinding_key(get_hw_reply().at("master_blinding_key"));
+        if (m_hw_request == hw_request::get_xpubs && m_master_bip32_xpub.empty()) {
+            GDK_RUNTIME_ASSERT(m_challenge.empty());
+
+            // We have a result from our first get_xpubs request.
+            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+
+            m_master_bip32_xpub = xpubs.at(0);
+            if (!is_electrum) {
+                // Compute the login challenge with the master pubkey
+                const auto public_key = make_xpub(m_master_bip32_xpub).second;
+                m_challenge = m_session->get_challenge(public_key);
             }
 
-            if (!m_wallet_initialized) {
-                m_wallet_initialized = true;
-                // Fetch the subaccount xpubs
-                m_subaccount_pointers = m_session->get_subaccount_pointers();
-                std::vector<nlohmann::json> paths;
-                paths.reserve(m_subaccount_pointers.size());
-                for (const auto& pointer : m_subaccount_pointers) {
-                    paths.emplace_back(m_session->get_subaccount_root_path(pointer));
-                }
-                signal_hw_request(hw_request::get_xpubs);
-                m_twofactor_data["paths"] = paths;
+            if (!is_electrum) {
+                const auto local_xpub = make_xpub(xpubs.at(1));
+                m_session->set_local_encryption_keys(local_xpub.second, m_signer);
+            } else {
+                // Load the store from disk, or create it if missing
+                m_session->load_store(m_signer);
+            }
+
+            if (!is_electrum) {
+                // Ask the caller to sign the challenge
+                signal_hw_request(hw_request::sign_message);
+                m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
+                m_twofactor_data["path"] = signer::LOGIN_PATH;
+                add_required_ae_data(m_signer, m_twofactor_data);
                 return m_state;
-            } else if (m_hw_request == hw_request::get_xpubs) {
-                // Get the subaccount xpub
-                const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+            }
+            goto get_subaccount_xpubs;
+
+        } else if (m_hw_request == hw_request::sign_message) {
+            // Caller has signed the challenge
+            {
+                const auto& hw_reply = get_hw_reply();
+                if (m_signer->use_ae_protocol()) {
+                    // Anti-Exfil protocol: verify the signature
+                    const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
+                    verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
+                }
+
+                // Log in and set up the session
+                m_result = m_session->authenticate(hw_reply.at("signature"), "GA", m_master_bip32_xpub, m_signer);
+            }
+
+        get_subaccount_xpubs:
+            // Ask the caller for the xpubs for each subaccount
+            if (is_electrum) {
+                // FIXME: return vector<uint32_t>
+                m_subaccount_pointers = m_session->get_subaccount_pointers();
+            } else {
+                m_subaccount_pointers.clear();
+                for (const auto& sa : m_session->get_subaccounts()) {
+                    m_subaccount_pointers.emplace_back(sa["pointer"]);
+                }
+            }
+
+            std::vector<nlohmann::json> paths;
+            paths.reserve(m_subaccount_pointers.size());
+            for (const auto& pointer : m_subaccount_pointers) {
+                paths.emplace_back(m_session->get_subaccount_root_path(pointer));
+            }
+            signal_hw_request(hw_request::get_xpubs);
+            m_twofactor_data["paths"] = paths;
+            return m_state;
+        } else if (m_hw_request == hw_request::get_xpubs) {
+            // Caller has provided the xpubs for each subaccount
+            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+
+            if (is_electrum) {
                 const nlohmann::json details({ { "name", std::string() } });
                 size_t i = 0;
                 for (const auto& pointer : m_subaccount_pointers) {
@@ -392,66 +428,24 @@ namespace sdk {
                     m_session->create_subaccount(details, pointer, account_xpub);
                     ++i;
                 }
+            } else {
+                m_session->register_subaccount_xpubs(get_hw_reply().at("xpubs"));
             }
 
-            // Got everything from the signer
-            m_session->start_sync_threads();
-            m_result = m_session->get_post_login_data();
-            return state_type::done;
-        }
-
-        if (m_hw_request == hw_request::get_xpubs && m_challenge.empty()) {
-            // We have a result from our first get_xpubs request for the challenge.
-            // Compute the challenge with the master pubkey
-            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
-
-            m_master_bip32_xpub = xpubs.at(0);
-            const auto public_key = make_xpub(m_master_bip32_xpub).second;
-            m_challenge = m_session->get_challenge(public_key);
-
-            const auto local_xpub = make_xpub(xpubs.at(1));
-            m_session->set_local_encryption_keys(local_xpub.second, m_signer);
-
-            // Ask the caller to sign the challenge
-            signal_hw_request(hw_request::sign_message);
-            m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
-            m_twofactor_data["path"] = signer::LOGIN_PATH;
-            add_required_ae_data(m_signer, m_twofactor_data);
-            return m_state;
-        } else if (m_hw_request == hw_request::sign_message) {
-            // Caller has signed the challenge
-            const auto& hw_reply = get_hw_reply();
-            if (m_signer->use_ae_protocol()) {
-                // Anti-Exfil protocol: verify the signature
-                const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
-                verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
-            }
-
-            // Log in and set up the session
-            m_result = m_session->authenticate(hw_reply.at("signature"), "GA", m_master_bip32_xpub, m_signer);
-
-            // Ask the caller for the xpubs for each subaccount
-            std::vector<nlohmann::json> paths;
-            for (const auto& sa : m_session->get_subaccounts()) {
-                paths.emplace_back(m_session->get_subaccount_root_path(sa["pointer"]));
-            }
-            signal_hw_request(hw_request::get_xpubs);
-            m_twofactor_data["paths"] = paths;
-            return m_state;
-        } else if (m_hw_request == hw_request::get_xpubs) {
-            // Caller has provided the xpubs for each subaccount
-            m_session->register_subaccount_xpubs(get_hw_reply().at("xpubs"));
-
-            if (m_signer->is_liquid() && m_signer->supports_host_unblinding()) {
-                // Ask the HW device to provide the master blinding key.
-                // If we are a software wallet, we already have it, but we
-                // use the HW interface to ensure we exercise the same
-                // fetching and caching logic.
-                signal_hw_request(hw_request::get_master_blinding_key);
-                return m_state;
+            if (m_signer->is_liquid()) {
+                if (m_signer->supports_host_unblinding()) {
+                    // Ask the HW device to provide the master blinding key.
+                    // If we are a software wallet, we already have it, but we
+                    // use the HW interface to ensure we exercise the same
+                    // fetching and caching logic.
+                    signal_hw_request(hw_request::get_master_blinding_key);
+                    return m_state;
+                } else {
+                    GDK_RUNTIME_ASSERT_MSG(!is_electrum, "HWW must support host unblinding for singlesig wallets");
+                }
             }
             //
-            // Completed Login. FALL THROUGH to check for confidential address upload below
+            // Completed Login. FALL THROUGH for post-login processing
             //
         } else if (m_hw_request == hw_request::get_master_blinding_key) {
             // We either had the master blinding key cached, have fetched it
@@ -461,11 +455,16 @@ namespace sdk {
             const std::string key_hex = get_hw_reply().at("master_blinding_key");
             m_session->set_cached_master_blinding_key(key_hex);
             //
-            // Completed Login. FALL THROUGH to check for confidential address upload below
+            // Completed Login. FALL THROUGH for post-login processing
             //
         }
 
         // We are logged in,
+        if (is_electrum) {
+            m_session->start_sync_threads();
+            m_result = m_session->get_post_login_data();
+            return state_type::done;
+        }
         // Check whether we need to upload confidential addresses.
         std::unique_ptr<upload_ca_handler> handler_p;
         for (const auto& sa : m_session->get_subaccounts()) {
