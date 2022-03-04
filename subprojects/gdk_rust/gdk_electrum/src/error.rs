@@ -1,6 +1,7 @@
 use crate::store::StoreMeta;
 use crate::{Account, BETxid, State};
 use aes_gcm_siv::aead;
+use bitcoin::util::bip32::ExtendedPubKey;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
 use std::collections::HashMap;
@@ -37,6 +38,7 @@ pub enum Error {
     MissingMasterBlindingKey,
     TxNotFound(BETxid),
     ScriptPubkeyNotFound,
+    MismatchingXpubs(ExtendedPubKey, ExtendedPubKey),
     AddrParse(String),
     InvalidElectrumUrl(String),
     Bitcoin(bitcoin::util::Error),
@@ -112,6 +114,9 @@ impl Display for Error {
             Error::PsetAndTxMismatch => write!(f, "PSET and Tx mismatch"),
             Error::TxNotFound(txid) => write!(f, "Transaction not found ({})", txid),
             Error::ScriptPubkeyNotFound => write!(f, "Scriptpubkey not found"),
+            Error::MismatchingXpubs(xpub1, xpub2) => {
+                write!(f, "Xpubs mismatch ({}, {})", xpub1, xpub2)
+            }
         }
     }
 }

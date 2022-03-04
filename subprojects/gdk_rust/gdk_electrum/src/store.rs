@@ -356,11 +356,7 @@ impl StoreMeta {
                         // This is a cache upgrade from a version that did not persist the xpub
                         entry.get_mut().xpub = Some(account_xpub);
                     }
-                    Some(xpub) => {
-                        if !xpubs_equivalent(&xpub, &account_xpub) {
-                            return Err(Error::Generic("Mismatching xpub".to_string()));
-                        }
-                    }
+                    Some(xpub) => xpubs_equivalent(&xpub, &account_xpub)?,
                 }
             }
         }
