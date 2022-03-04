@@ -155,6 +155,7 @@ namespace sdk {
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         void* m_session;
+        bool m_are_subaccounts_registered;
     };
 
 } // namespace sdk

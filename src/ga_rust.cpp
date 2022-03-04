@@ -22,6 +22,7 @@ namespace sdk {
 
     ga_rust::ga_rust(network_parameters&& net_params)
         : session_impl(std::move(net_params))
+        , m_are_subaccounts_registered(false)
     {
         auto np = m_net_params.get_json();
         const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
@@ -125,9 +126,13 @@ namespace sdk {
     void ga_rust::register_subaccount_xpubs(
         const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
-        const nlohmann::json details({ { "name", std::string() } });
-        for (size_t i = 0; i < pointers.size(); ++i) {
-            create_subaccount(details, pointers.at(i), bip32_xpubs.at(i));
+        // Note we only register the loaded subaccount once.
+        if (!m_are_subaccounts_registered) {
+            const nlohmann::json details({ { "name", std::string() } });
+            for (size_t i = 0; i < pointers.size(); ++i) {
+                create_subaccount(details, pointers.at(i), bip32_xpubs.at(i));
+            }
+            m_are_subaccounts_registered = true;
         }
     }
 
