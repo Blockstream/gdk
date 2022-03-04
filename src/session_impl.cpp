@@ -56,6 +56,20 @@ namespace sdk {
         m_notification_context = context;
     }
 
+    bool session_impl::set_signer(std::shared_ptr<signer> signer)
+    {
+        locker_t locker(m_mutex);
+
+        const bool is_initial_login = m_signer == nullptr;
+        if (is_initial_login) {
+            m_signer = signer;
+        } else {
+            // Re-login must use the same signer
+            GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
+        }
+        return is_initial_login;
+    }
+
     void session_impl::disable_notifications() { m_notify = false; }
 
     void session_impl::emit_notification(nlohmann::json details, bool /*async*/)

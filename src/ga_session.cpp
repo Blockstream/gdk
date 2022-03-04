@@ -1066,15 +1066,9 @@ namespace sdk {
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
     {
-        locker_t locker(m_mutex);
+        const bool is_initial_login = set_signer(signer);
 
-        const bool is_initial_login = m_signer == nullptr;
-        if (is_initial_login) {
-            m_signer = signer;
-        } else {
-            // Re-login must use the same signer
-            GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
-        }
+        locker_t locker(m_mutex);
 
         constexpr bool minimal = true; // Don't return balance/nlocktime info
         const std::string id; // Device id, no longer used
@@ -1418,15 +1412,9 @@ namespace sdk {
 
     nlohmann::json ga_session::login_watch_only(std::shared_ptr<signer> signer)
     {
-        locker_t locker(m_mutex);
+        const bool is_initial_login = set_signer(signer);
 
-        const bool is_initial_login = m_signer == nullptr;
-        if (is_initial_login) {
-            m_signer = signer;
-        } else {
-            // Re-login must use the same signer
-            GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
-        }
+        locker_t locker(m_mutex);
 
         const auto& credentials = m_signer->get_credentials();
         const std::map<std::string, std::string> args = { { "username", credentials.at("username") },

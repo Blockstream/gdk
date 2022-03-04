@@ -175,12 +175,7 @@ namespace sdk {
 
     void ga_rust::load_store(std::shared_ptr<signer> signer)
     {
-        {
-            locker_t locker(m_mutex);
-            // Re-login must use the same signer
-            GDK_RUNTIME_ASSERT(!m_signer.get() || m_signer.get() == signer.get());
-            m_signer = signer;
-        }
+        set_signer(signer);
         auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
         call_session("load_store", { { "master_xpub", std::move(master_xpub) } });
     }
@@ -201,15 +196,10 @@ namespace sdk {
     }
     nlohmann::json ga_rust::login(std::shared_ptr<signer> signer)
     {
-        {
-            locker_t locker(m_mutex);
-            // Re-login must use the same signer
-            GDK_RUNTIME_ASSERT(!m_signer.get() || m_signer.get() == signer.get());
-            m_signer = signer;
-        }
-        auto details
-            = nlohmann::json({ { "mnemonic", signer->get_mnemonic(std::string()) }, { "password", std::string() } });
-        return call_session("login", details);
+        set_signer(signer);
+        std::string empty;
+        auto mnemonic = signer->get_mnemonic(empty);
+        return call_session("login", { { "mnemonic", std::move(mnemonic) }, { "password", empty } });
     }
     std::string ga_rust::mnemonic_from_pin_data(const nlohmann::json& pin_data)
     {

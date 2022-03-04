@@ -107,6 +107,7 @@ namespace sdk {
         virtual void postprocess_transactions(nlohmann::json& tx_list);
 
         virtual void set_notification_handler(GA_notification_handler handler, void* context);
+        bool set_signer(std::shared_ptr<signer> signer);
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer) = 0;
