@@ -15,6 +15,7 @@ Passed to `GA_init` when initializing the library.
     {
         "datadir": "/path/to/store/data"
         "tordir": "/path/to/store/tor/data"
+        "log_level": "info",
     }
 
 :datadir: A directory which gdk will use to store encrypted data relating to
@@ -26,6 +27,8 @@ Passed to `GA_init` when initializing the library.
          implementation is enabled in :ref:`net-params`. Note that each process
          using the library at the same time requires its own distinct directory.
          If not given, a subdirectory ``"tor"`` inside ``"datadir"`` is used.
+:log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
+           ``"error"``, or ``"none"``.
 
 .. _net-params:
 
@@ -36,7 +39,6 @@ Connection parameters JSON
 
    {
       "name": "testnet",
-      "log_level": "info",
       "proxy": "localhost:9150",
       "use_tor": true,
       "user_agent": "green_android v2.33",
@@ -45,8 +47,6 @@ Connection parameters JSON
    }
 
 :name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
-:log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
-           ``"error"``, or ``"none"``.
 :proxy: The proxy connection to pass network traffic through, if any.
 :use_tor: ``true`` to enable Tor connections, ``false`` otherwise. If enabled
           and a proxy is not given, a Tor connection will be started internally.
