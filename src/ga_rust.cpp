@@ -185,6 +185,8 @@ namespace sdk {
 
     void ga_rust::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
     {
+        GDK_RUNTIME_ASSERT_MSG(
+            !master_blinding_key_hex.empty(), "HWW must enable host unblinding for singlesig wallets");
         session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
         rust_call("set_master_blinding_key", { { "master_blinding_key", master_blinding_key_hex } }, m_session);
     }
