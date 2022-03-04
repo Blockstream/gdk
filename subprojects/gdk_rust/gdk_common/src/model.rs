@@ -15,6 +15,11 @@ use std::fmt;
 use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Debug, Deserialize)]
+pub struct InitParam {
+    pub log_level: String,
+}
+
 pub type Balances = HashMap<String, i64>;
 
 // =========== v exchange rate stuff v ===========

@@ -74,7 +74,6 @@ namespace sdk {
         : session_impl(std::move(net_params))
     {
         auto np = m_net_params.get_json();
-        np["log_level"] = gdk_config()["log_level"]; // FIXME: rust should get this from gdk_config
         const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
         GDK_RUNTIME_ASSERT(res == GA_OK);
     }
@@ -607,6 +606,8 @@ namespace sdk {
         const nlohmann::json input = { { "psbt_hex", psbt_hex }, { "transaction", tx_hex } };
         return call("psbt_merge_tx", input).at("psbt_hex");
     }
+
+    void ga_rust::init(const nlohmann::json& details) { call("init", details); }
 
 } // namespace sdk
 } // namespace ga

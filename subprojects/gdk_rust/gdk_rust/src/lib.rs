@@ -18,7 +18,7 @@ use std::sync::Once;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{
-    CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, RenameAccountOpt,
+    CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, InitParam, RenameAccountOpt,
     SPVDownloadHeadersParams, SPVVerifyTxParams, SetAccountHiddenOpt, UpdateAccountOpt,
 };
 
@@ -56,7 +56,6 @@ pub extern "C" fn GDKRUST_create_session(
     ret: *mut *const libc::c_void,
     network: *const c_char,
 ) -> i32 {
-    const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Off;
     let network: Value = match serde_json::from_str(&read_str(network)) {
         Ok(x) => x,
         Err(err) => {
@@ -64,16 +63,6 @@ pub extern "C" fn GDKRUST_create_session(
             return GA_ERROR;
         }
     };
-    let level = if network.is_object() {
-        match network.as_object().unwrap().get("log_level") {
-            Some(Value::String(val)) => LevelFilter::from_str(val).unwrap_or(DEFAULT_LOG_LEVEL),
-            _ => DEFAULT_LOG_LEVEL,
-        }
-    } else {
-        DEFAULT_LOG_LEVEL
-    };
-    init_logging(level);
-    debug!("init logging");
 
     match create_session(&network) {
         Err(err) => {
@@ -503,7 +492,6 @@ pub extern "C" fn GDKRUST_call(
     input: *const c_char,
     output: *mut *const c_char,
 ) -> i32 {
-    init_logging(LevelFilter::Info);
     let method = read_str(method);
     let input = read_str(input);
     debug!("GDKRUST_call {}", &method);
@@ -522,6 +510,12 @@ pub extern "C" fn GDKRUST_call(
 
 fn handle_call(method: &str, input: &str) -> Result<String, Error> {
     match method {
+        "init" => {
+            let param: InitParam = serde_json::from_str(input)?;
+            init_logging(LevelFilter::from_str(&param.log_level).unwrap_or(LevelFilter::Off));
+            // TODO: read more initialization params
+            Ok(to_string(&json!("".to_string())))
+        }
         "psbt_extract_tx" => {
             let param: ExtractTxParam = serde_json::from_str(input)?;
             Ok(to_string(&pset::extract_tx(&param)?))

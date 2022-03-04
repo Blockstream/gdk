@@ -127,6 +127,9 @@ namespace sdk {
         static std::string psbt_extract_tx(const std::string& psbt_hex);
         static std::string psbt_merge_tx(const std::string& psbt_hex, const std::string& tx_hex);
 
+        // One-time initialization function
+        static void init(const nlohmann::json& details);
+
     private:
         nlohmann::json call_session(const std::string& method, const nlohmann::json& input) const;
 

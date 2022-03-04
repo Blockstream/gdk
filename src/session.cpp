@@ -11,6 +11,7 @@
 #include "amount.hpp"
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
+#include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -76,6 +77,10 @@ namespace sdk {
 
 #if defined(__ANDROID__) and not defined(NDEBUG)
         start_android_std_outerr_bridge();
+#endif
+
+#ifdef BUILD_GDK_RUST
+        ga_rust::init(global_config);
 #endif
         init_done = true;
 
