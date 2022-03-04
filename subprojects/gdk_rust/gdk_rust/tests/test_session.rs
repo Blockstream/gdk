@@ -14,9 +14,7 @@ use gdk_common::Network;
 use gdk_common::{model::*, wally};
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
-use gdk_electrum::{
-    determine_electrum_url_from_net, keys_from_mnemonic, spv, ElectrumSession, State,
-};
+use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession, State};
 use gdk_electrum::{headers, Notification};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
@@ -1243,42 +1241,48 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
         session.network.liquid,
     );
 
-    session
-        .load_store(&LoadStoreOpt {
-            master_xpub: signer.master_xpub(),
-        })
-        .unwrap();
+    // Load the rust persisted cache
+    let opt = LoadStoreOpt {
+        master_xpub: signer.master_xpub(),
+    };
+    session.load_store(&opt).unwrap();
 
+    // Set the master blinding key if missing in the cache
     if session.network.liquid {
-        session
-            .set_master_blinding_key(&SetMasterBlindingKeyOpt {
-                master_blinding_key: signer.master_blinding(),
-            })
-            .unwrap();
+        if session.get_master_blinding_key().unwrap().master_blinding_key.is_none() {
+            // Master blinding key is missing
+            let master_blinding_key = signer.master_blinding();
+            let opt = SetMasterBlindingKeyOpt {
+                master_blinding_key,
+            };
+            session.set_master_blinding_key(&opt).unwrap();
+        }
     }
-    let (_, master_xpub, _) =
-        keys_from_mnemonic(&mnemonic, None, session.network.bip32_network()).unwrap();
-    session.init_wallet(None, master_xpub).unwrap();
 
-    // Get xpubs from signer and (re)create subaccounts
+    // Set the account xpubs if missing in the cache
     for account_num in session.get_subaccount_nums().unwrap() {
-        let path = session
-            .get_subaccount_root_path(GetAccountPathOpt {
+        let opt = GetAccountXpubOpt {
+            subaccount: account_num,
+        };
+        if session.get_subaccount_xpub(opt).unwrap().xpub.is_none() {
+            // Account xpub is missing
+            let opt = GetAccountPathOpt {
                 subaccount: account_num,
-            })
-            .unwrap();
-        let xpub = signer.account_xpub(&path.path.into());
+            };
+            let path = session.get_subaccount_root_path(opt).unwrap();
+            let xpub = signer.account_xpub(&path.path.into());
 
-        session
-            .create_subaccount(CreateAccountOpt {
+            let opt = CreateAccountOpt {
                 subaccount: account_num,
                 name: "".to_string(),
                 xpub: Some(xpub),
                 discovered: false,
-            })
-            .unwrap();
+            };
+            session.create_subaccount(opt).unwrap();
+        }
     }
 
+    // We got everything from the signer
     session.start_threads().unwrap();
 }
 
