@@ -1156,12 +1156,10 @@ fn rbf() {
     tx.input[0].witness[0][5] = tx.input[0].witness[0][5].wrapping_add(1);
     let tx = BETransaction::Bitcoin(tx);
 
-    let accounts = test_session.session.get_accounts().unwrap();
-    let account = accounts.get(&1).unwrap();
+    let account = test_session.session.get_account(1).unwrap();
     let is_valid = account.verify_own_txs(&[(tx.txid(), tx)]).unwrap();
     assert_eq!(is_valid, false);
 
-    drop(accounts);
     test_session.stop();
 }
 

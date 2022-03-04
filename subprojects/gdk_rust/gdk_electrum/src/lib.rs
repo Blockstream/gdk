@@ -50,7 +50,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use std::{iter, sync, thread};
+use std::{iter, thread};
 
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
@@ -413,15 +413,20 @@ impl ElectrumSession {
         }
     }
 
-    pub fn get_accounts(&self) -> Result<sync::RwLockReadGuard<HashMap<u32, Account>>, Error> {
-        Ok(self.accounts.read()?)
+    pub fn get_accounts(&self) -> Result<Vec<Account>, Error> {
+        // The Account struct is immutable and we don't allow account deletion.
+        // Thus we can clone without the risk of having inconsistent data.
+        let mut accounts = self.accounts.read()?.values().cloned().collect::<Vec<Account>>();
+        accounts.sort_unstable_by(|a, b| a.num().cmp(&b.num()));
+        Ok(accounts)
     }
 
     /// Get the Account if exists
     pub fn get_account(&self, account_num: u32) -> Result<Account, Error> {
         // The Account struct is immutable, things that mutate (e.g. name) are in the store.
         // Thus we can clone without the risk of having inconsistent data.
-        self.get_accounts()?
+        self.accounts
+            .read()?
             .get(&account_num)
             .cloned()
             .ok_or_else(|| Error::InvalidSubaccount(account_num))
@@ -892,10 +897,7 @@ impl ElectrumSession {
     }
 
     pub fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
-        let accounts = self.get_accounts()?;
-        let mut accounts = accounts.iter().collect::<Vec<_>>();
-        accounts.sort_unstable_by(|(a_num, _), (b_num, _)| a_num.cmp(b_num));
-        accounts.into_iter().map(|(_, account)| account.info()).collect()
+        self.get_accounts()?.iter().map(|a| a.info()).collect()
     }
 
     pub fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
@@ -975,7 +977,7 @@ impl ElectrumSession {
 
     pub fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {
         let (_, next_account) = get_last_next_account_nums(
-            self.get_accounts()?.keys().copied().collect(),
+            self.accounts.read()?.keys().copied().collect(),
             opt.script_type,
         );
         Ok(next_account)
@@ -1254,12 +1256,7 @@ impl ElectrumSession {
         let mut opt = GetTransactionsOpt::default();
         opt.count = 100;
         let mut hasher = DefaultHasher::new();
-        // sort the accounts
-        let accounts = self.get_accounts()?;
-        let mut accounts = accounts.iter().collect::<Vec<_>>();
-        accounts.sort_unstable_by(|(a_num, _), (b_num, _)| a_num.cmp(b_num));
-        // FIXME: should this be sorted?
-        for (_, account) in accounts.into_iter() {
+        for account in self.get_accounts()? {
             let txs = account.list_tx(&opt)?;
             for tx in txs.iter() {
                 std::hash::Hash::hash(&tx.txid, &mut hasher);
