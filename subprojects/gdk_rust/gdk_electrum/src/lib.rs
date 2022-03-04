@@ -591,7 +591,8 @@ impl ElectrumSession {
             }
         }
 
-        self.init_wallet(Some(master_xprv), master_xpub)?;
+        // Set the master xprv
+        self.master_xprv = Some(master_xprv);
 
         // Get xpubs from signer and (re)create subaccounts
         for account_num in self.get_subaccount_nums()? {
@@ -1292,23 +1293,6 @@ pub fn keys_from_mnemonic(
     let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
     let master_blinding = asset_blinding_key_from_seed(&seed);
     Ok((master_xprv, master_xpub, master_blinding))
-}
-
-impl ElectrumSession {
-    pub fn init_wallet(
-        &mut self,
-        master_xprv: Option<ExtendedPrivKey>,
-        master_xpub: ExtendedPubKey,
-    ) -> Result<(), Error> {
-        if self.network.liquid {
-            assert!(self.get_master_blinding_key()?.master_blinding_key.is_some());
-        }
-
-        self.master_xpub = Some(master_xpub);
-        self.master_xprv = master_xprv;
-
-        Ok(())
-    }
 }
 
 fn call_icons(
