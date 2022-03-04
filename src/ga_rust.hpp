@@ -55,7 +55,7 @@ namespace sdk {
         // Get the subaccount pointers for the subaccount that belongs to the wallet.
         // For each of these subaccounts, the caller should set the xpub with
         // create_subaccount if the xpub missing from the store.
-        nlohmann::json get_subaccount_pointers();
+        std::vector<uint32_t> get_subaccount_pointers();
 
         // Get the subaccount xpub from the rust store if available.
         // If the account or xpub is missing,

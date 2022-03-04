@@ -169,12 +169,6 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    nlohmann::json session_impl::get_subaccount_pointers()
-    {
-        // Overriden for ga_rust
-        return nlohmann::json();
-    }
-
     bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
     {
         // Overriden for ga_rust

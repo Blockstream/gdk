@@ -79,7 +79,7 @@ namespace sdk {
 
         virtual void load_store(std::shared_ptr<signer> signer);
         virtual void start_sync_threads();
-        virtual nlohmann::json get_subaccount_pointers();
+        virtual std::vector<uint32_t> get_subaccount_pointers() = 0;
         virtual std::string get_challenge(const pub_key_t& public_key) = 0;
         virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)

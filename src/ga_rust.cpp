@@ -115,8 +115,6 @@ namespace sdk {
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
 
-    nlohmann::json ga_rust::get_subaccount_pointers() { return rust_call("get_subaccount_nums", {}, m_session); }
-
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
     nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
@@ -239,6 +237,15 @@ namespace sdk {
     }
 
     nlohmann::json ga_rust::get_subaccounts() { return rust_call("get_subaccounts", {}, m_session); }
+
+    std::vector<uint32_t> ga_rust::get_subaccount_pointers()
+    {
+        std::vector<uint32_t> ret;
+        for (const auto& pointer : rust_call("get_subaccount_nums", {}, m_session)) {
+            ret.emplace_back(pointer);
+        }
+        return ret;
+    }
 
     nlohmann::json ga_rust::get_subaccount(uint32_t subaccount)
     {

@@ -398,15 +398,7 @@ namespace sdk {
 
         get_subaccount_xpubs:
             // Ask the caller for the xpubs for each subaccount
-            if (is_electrum) {
-                // FIXME: return vector<uint32_t>
-                m_subaccount_pointers = m_session->get_subaccount_pointers();
-            } else {
-                m_subaccount_pointers.clear();
-                for (const auto& sa : m_session->get_subaccounts()) {
-                    m_subaccount_pointers.emplace_back(sa["pointer"]);
-                }
-            }
+            m_subaccount_pointers = m_session->get_subaccount_pointers();
 
             std::vector<nlohmann::json> paths;
             paths.reserve(m_subaccount_pointers.size());

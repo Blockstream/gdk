@@ -1577,6 +1577,17 @@ namespace sdk {
         return nlohmann::json(std::move(subaccounts));
     }
 
+    std::vector<uint32_t> ga_session::get_subaccount_pointers()
+    {
+        std::vector<uint32_t> ret;
+        locker_t locker(m_mutex);
+        ret.reserve(m_subaccounts.size());
+        for (const auto& sa : m_subaccounts) {
+            ret.emplace_back(sa.second.at("pointer"));
+        }
+        return ret;
+    }
+
     nlohmann::json ga_session::get_subaccount(uint32_t subaccount)
     {
         locker_t locker(m_mutex);
