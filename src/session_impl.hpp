@@ -84,7 +84,9 @@ namespace sdk {
         virtual nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
             = 0;
-        virtual void register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs) = 0;
+        virtual void register_subaccount_xpubs(
+            const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
+            = 0;
         virtual nlohmann::json login(std::shared_ptr<signer> signer);
         virtual std::string mnemonic_from_pin_data(const nlohmann::json& pin_data) = 0;
         virtual nlohmann::json login_watch_only(std::shared_ptr<signer> signer) = 0;

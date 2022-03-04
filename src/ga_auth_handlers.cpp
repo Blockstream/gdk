@@ -403,18 +403,7 @@ namespace sdk {
         } else if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for each subaccount
             const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
-
-            if (is_electrum) {
-                const nlohmann::json details({ { "name", std::string() } });
-                size_t i = 0;
-                for (const auto& pointer : m_subaccount_pointers) {
-                    const std::string& account_xpub = xpubs.at(i);
-                    m_session->create_subaccount(details, pointer, account_xpub);
-                    ++i;
-                }
-            } else {
-                m_session->register_subaccount_xpubs(get_hw_reply().at("xpubs"));
-            }
+            m_session->register_subaccount_xpubs(m_subaccount_pointers, xpubs);
 
             if (m_signer->is_liquid()) {
                 if (m_signer->supports_host_unblinding()) {
@@ -443,12 +432,13 @@ namespace sdk {
             //
         }
 
-        // We are logged in,
+        // We are logged in
         if (is_electrum) {
             m_session->start_sync_threads();
             m_result = m_session->get_post_login_data();
             return state_type::done;
         }
+
         // Check whether we need to upload confidential addresses.
         std::unique_ptr<upload_ca_handler> handler_p;
         for (const auto& sa : m_session->get_subaccounts()) {

@@ -121,10 +121,16 @@ namespace sdk {
     {
         throw std::runtime_error("not implemented");
     }
-    void ga_rust::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
+
+    void ga_rust::register_subaccount_xpubs(
+        const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
-        throw std::runtime_error("register_subaccount_xpubs not implemented");
+        const nlohmann::json details({ { "name", std::string() } });
+        for (size_t i = 0; i < pointers.size(); ++i) {
+            create_subaccount(details, pointers.at(i), bip32_xpubs.at(i));
+        }
     }
+
     nlohmann::json ga_rust::login(std::shared_ptr<signer> signer)
     {
         set_signer(signer);

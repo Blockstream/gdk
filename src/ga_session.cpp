@@ -1436,28 +1436,30 @@ namespace sdk {
         return on_post_login(locker, login_data, std::string(), watch_only, is_initial_login);
     }
 
-    void ga_session::register_subaccount_xpubs(const std::vector<std::string>& bip32_xpubs)
+    void ga_session::register_subaccount_xpubs(
+        const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
         locker_t locker(m_mutex);
 
         GDK_RUNTIME_ASSERT(!m_subaccounts.empty());
+        GDK_RUNTIME_ASSERT(pointers.size() == m_subaccounts.size());
         GDK_RUNTIME_ASSERT(bip32_xpubs.size() == m_subaccounts.size());
 
-        size_t i = 0;
-        for (const auto& sa : m_subaccounts) {
-            auto xpub = make_xpub(bip32_xpubs[i]);
-            if (i == 0) {
+        for (size_t i = 0; i < pointers.size(); ++i) {
+            auto xpub = make_xpub(bip32_xpubs.at(i));
+            const auto pointer = pointers.at(i);
+            if (pointer == 0) {
                 // Main account
                 if (m_user_pubkeys) {
-                    m_user_pubkeys->add_subaccount(0, xpub);
+                    m_user_pubkeys->add_subaccount(pointer, xpub);
                 } else {
                     m_user_pubkeys = std::make_unique<ga_user_pubkeys>(m_net_params, std::move(xpub));
                 }
             } else {
                 // Subaccount
-                m_user_pubkeys->add_subaccount(sa.first, xpub);
+                GDK_RUNTIME_ASSERT(m_user_pubkeys.get()); // Subaccount 0 must be first in 'pointers'
+                m_user_pubkeys->add_subaccount(pointer, xpub);
             }
-            ++i;
         }
     }
 
