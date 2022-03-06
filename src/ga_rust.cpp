@@ -265,7 +265,7 @@ namespace sdk {
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
     {
-#if 0
+#if 1
         const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
         const bool main_net = m_net_params.is_main_net();
         const bool liquid = m_net_params.is_liquid();
@@ -274,9 +274,10 @@ namespace sdk {
         const uint32_t coin_type = main_net ? (liquid ? 1776 : 0) : 1;
         const uint32_t account = subaccount / 16;
         return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
+#else
+        // FIXME: If we want to use the rust path, this method needs to be made sessionless
+        return rust_call("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } })).at("path");
 #endif
-        return rust_call("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } }, m_session))
-            .at("path");
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
