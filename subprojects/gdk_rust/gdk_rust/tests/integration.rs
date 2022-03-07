@@ -1493,8 +1493,17 @@ fn test_spv_over_period() {
 }
 
 #[test]
-fn test_spv_external_concurrent() {
-    let mut test_session = setup_session(false, |_| {});
+fn test_spv_external_concurrent_spv_enabled() {
+    test_spv_external_concurrent(true);
+}
+
+#[test]
+fn test_spv_external_concurrent_spv_disabled() {
+    test_spv_external_concurrent(false);
+}
+
+fn test_spv_external_concurrent(spv_enabled: bool) {
+    let mut test_session = setup_session(false, |n| n.spv_enabled = Some(spv_enabled));
     // network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
@@ -1522,8 +1531,7 @@ fn test_spv_external_concurrent() {
     for (i, txid) in txids.into_iter().enumerate() {
         let tip = test_session.electrs_tip() as u32;
         let network = test_session.network.clone();
-        //network.state_dir = ".".into();
-        test_session.node_generate(1); // doesn't wait the sync
+        test_session.node_generate(1); // doesn't wait the sync, may trigger header download anywhere
 
         handles.push(thread::spawn(move || {
             spv_verify_tx(network, tip, &txid, initial_block + i as u32 + 1, Some(10));
