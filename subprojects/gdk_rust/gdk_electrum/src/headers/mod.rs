@@ -92,7 +92,7 @@ impl ParamsMethods for SPVCommonParams {
 pub fn download_headers(
     input: &SPVDownloadHeadersParams,
 ) -> Result<SPVDownloadHeadersResult, Error> {
-    let _ = SPV_MUTEX.lock().unwrap();
+    let lock = SPV_MUTEX.lock().unwrap();
 
     debug!("download_headers {:?}", input);
     let client = input.params.build_client()?;
@@ -111,6 +111,11 @@ pub fn download_headers(
         reorg_happened = true;
     }
     info!("downloaded {:?}", chain.height());
+
+    // We are explicitly dropping the lock because using a `let _` binding may cause a bug preventing
+    // the lock to work properly.
+    drop(lock);
+
     Ok(SPVDownloadHeadersResult {
         height: chain.height(),
         reorg: reorg_happened,
