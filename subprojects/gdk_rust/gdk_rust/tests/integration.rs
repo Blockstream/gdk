@@ -1494,10 +1494,8 @@ fn test_spv_over_period() {
 
 #[test]
 fn test_spv_external_concurrent() {
-    let mut test_session = setup_session(false, |network| {
-        network.spv_enabled = Some(false);
-        //network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
-    });
+    let mut test_session = setup_session(false, |_| {});
+    // network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     test_session.fund(100_000_000, None);

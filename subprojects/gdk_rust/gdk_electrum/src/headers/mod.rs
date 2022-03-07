@@ -59,7 +59,7 @@ where
 }
 
 lazy_static! {
-    static ref SPV_MUTEX: Mutex<()> = Mutex::new(());
+    pub static ref SPV_MUTEX: Mutex<()> = Mutex::new(());
 }
 
 trait ParamsMethods {

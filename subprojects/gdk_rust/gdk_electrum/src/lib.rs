@@ -54,7 +54,7 @@ use std::{iter, thread};
 
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
-use crate::headers::ChainOrVerifier;
+use crate::headers::{ChainOrVerifier, SPV_MUTEX};
 pub use crate::notification::{NativeNotif, Notification};
 use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
@@ -677,6 +677,7 @@ impl ElectrumSession {
         let sync_interval = self.network.sync_interval.unwrap_or(7);
 
         if self.network.spv_enabled.unwrap_or(false) {
+            let _lock = SPV_MUTEX.lock().unwrap();
             let checker = match self.network.id() {
                 NetworkId::Bitcoin(network) => {
                     ChainOrVerifier::Chain(HeadersChain::new(&self.data_root, network)?)
