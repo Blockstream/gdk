@@ -3392,8 +3392,8 @@ namespace sdk {
     void ga_session::download_headers_ctl(session_impl::locker_t& locker, bool do_start)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (!m_spv_enabled) {
-            return; // SPV is not enabled: nothing to do
+        if (!m_spv_enabled || m_net_params.is_liquid()) {
+            return; // SPV is not enabled or we are on Liquid: nothing to do
         }
 
         if (m_spv_thread) {
