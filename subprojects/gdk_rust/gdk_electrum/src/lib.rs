@@ -630,6 +630,13 @@ impl ElectrumSession {
     }
 
     pub fn start_threads(&mut self) -> Result<(), Error> {
+        if let Some(b) = &self.closer.threads_stopped {
+            if !b.load(Ordering::Relaxed) {
+                // Threads are already running
+                return Ok(());
+            }
+        }
+
         let threads_stopped = Arc::new(AtomicBool::new(false));
         self.closer.threads_stopped = Some(threads_stopped);
 
