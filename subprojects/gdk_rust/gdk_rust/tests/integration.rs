@@ -1375,6 +1375,9 @@ fn spv_cross_validation_session() {
 fn test_spv_timeout() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap(); // 0 means the OS choose a free port
     let mut network = Network::default();
+    let tempdir = TempDir::new().unwrap();
+    let tempdir = format!("{}", tempdir.path().display());
+    network.state_dir = tempdir;
     network.electrum_url = Some(format!("{}", listener.local_addr().unwrap()));
     let (s, r) = std::sync::mpsc::channel();
     thread::spawn(move || {
