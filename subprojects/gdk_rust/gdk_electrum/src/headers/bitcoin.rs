@@ -7,7 +7,7 @@ use bitcoin::hashes::hex::FromHex;
 use bitcoin::{BlockHash, Txid};
 use bitcoin::{BlockHeader, Network};
 use electrum_client::GetMerkleRes;
-use log::{warn, info};
+use log::{info, warn};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};

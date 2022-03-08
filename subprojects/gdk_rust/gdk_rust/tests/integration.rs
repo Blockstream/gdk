@@ -843,12 +843,12 @@ fn subaccounts(is_liquid: bool) {
     // Start a new session, using the same mnemonic and electrum server, but
     // with a brand new database -- unaware of our subaccounts.
     let mut new_session = {
-        let network = test_session.network().clone();
+        let mut network = test_session.network().clone();
+        let temp_dir = TempDir::new().unwrap();
+        network.state_dir = format!("{}", temp_dir.path().display());
         let url = determine_electrum_url_from_net(&network).unwrap();
-        let db_root_dir = TempDir::new().unwrap();
-        let db_root = format!("{}", db_root_dir.path().display());
         let proxy = Some("");
-        ElectrumSession::create_session(network, &db_root, proxy, url)
+        ElectrumSession::create_session(network, proxy, url)
     };
 
     let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
@@ -1205,10 +1205,8 @@ fn test_electrum_disconnect() {
     let mut new_session = {
         let network = test_session.network().clone();
         let url = determine_electrum_url_from_net(&network).unwrap();
-        let db_root_dir = TempDir::new().unwrap();
-        let db_root = format!("{}", db_root_dir.path().display());
         let proxy = Some("");
-        ElectrumSession::create_session(network, &db_root, proxy, url)
+        ElectrumSession::create_session(network, proxy, url)
     };
     new_session.connect(&Value::Null).unwrap();
 
@@ -1424,14 +1422,11 @@ fn test_tor() {
     network.proxy = Some("127.0.0.1:9050".into());
     network.spv_enabled = Some(false);
 
-    let db_root_dir = TempDir::new().unwrap();
-    let db_root = format!("{}", db_root_dir.path().display());
-
     let url = determine_electrum_url_from_net(&network).unwrap();
     info!("url: {:?}", url);
     info!("creating gdk session");
     let mut session =
-        ElectrumSession::create_session(network.clone(), &db_root, network.proxy.as_deref(), url);
+        ElectrumSession::create_session(network.clone(), network.proxy.as_deref(), url);
     session.connect(&serde_json::to_value(&network).unwrap()).unwrap();
 
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
@@ -1591,7 +1586,7 @@ fn setup_session(is_liquid: bool, network_conf: impl FnOnce(&mut Network)) -> Te
 
 fn get_chain(test_session: &mut TestSession) -> HeadersChain {
     test_session.stop();
-    HeadersChain::new(&test_session.session.data_root, bitcoin::Network::Regtest).unwrap()
+    HeadersChain::new(&test_session.session.network.state_dir, bitcoin::Network::Regtest).unwrap()
 }
 
 fn assert_unwrap_invalid(result: spv::CrossValidationResult) -> spv::CrossValidationInvalid {

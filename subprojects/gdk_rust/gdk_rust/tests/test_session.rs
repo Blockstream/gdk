@@ -164,12 +164,11 @@ pub fn setup(
     let state_dir_str = format!("{}", state_dir.path().display());
     network.state_dir = state_dir_str;
 
-    let db_root = format!("{}/db", state_dir.path().display());
     let proxy = Some("");
     let url = determine_electrum_url_from_net(&network).unwrap();
 
     info!("creating gdk session");
-    let mut session = ElectrumSession::create_session(network.clone(), &db_root, proxy, url);
+    let mut session = ElectrumSession::create_session(network.clone(), proxy, url);
     let ntf_len = session.filter_events("network").len();
     session.connect(&serde_json::to_value(network.clone()).unwrap()).unwrap();
     assert_eq!(

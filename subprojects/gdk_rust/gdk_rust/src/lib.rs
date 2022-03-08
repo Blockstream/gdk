@@ -118,7 +118,6 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let parsed_network = parsed_network.unwrap();
 
-    let db_root = network["state_dir"].as_str().unwrap_or("");
     let proxy = network["proxy"].as_str();
 
     match network["server_type"].as_str() {
@@ -126,7 +125,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
         Some("electrum") => {
             let url = determine_electrum_url_from_net(&parsed_network).map_err(|x| json!(x))?;
 
-            let session = ElectrumSession::create_session(parsed_network, db_root, proxy, url);
+            let session = ElectrumSession::create_session(parsed_network, proxy, url);
             let backend = GdkBackend::Electrum(session);
 
             // some time in the past

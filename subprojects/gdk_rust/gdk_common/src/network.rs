@@ -33,8 +33,19 @@ pub struct Network {
 
     pub proxy: Option<String>,
     pub use_tor: Option<bool>,
-    pub state_dir: String,
     pub max_reorg_blocks: Option<u32>,
+
+    /// For electrum sessions is used as root directory for the db cache and for
+    /// the headers chain files
+    ///
+    /// When using external SPV API is used as root directory for headers chain
+    /// files
+    ///
+    /// Note that electrum session and external API could use the same dir and,
+    /// if on the same network, share the same headers chain file but it's
+    /// required to use a single process.
+    pub state_dir: String,
+
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

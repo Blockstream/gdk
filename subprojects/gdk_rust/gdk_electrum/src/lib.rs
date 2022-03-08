@@ -129,7 +129,6 @@ impl Closer {
 }
 
 pub struct ElectrumSession {
-    pub data_root: String,
     pub proxy: Option<String>,
     pub timeout: Option<u8>,
     pub network: Network,
@@ -388,14 +387,8 @@ pub fn make_txlist_item(
 }
 
 impl ElectrumSession {
-    pub fn create_session(
-        network: Network,
-        db_root: &str,
-        proxy: Option<&str>,
-        url: ElectrumUrl,
-    ) -> Self {
+    pub fn create_session(network: Network, proxy: Option<&str>, url: ElectrumUrl) -> Self {
         Self {
-            data_root: db_root.to_string(),
             proxy: socksify(proxy),
             network,
             url,
@@ -527,7 +520,7 @@ impl ElectrumSession {
     pub fn load_store(&mut self, opt: &LoadStoreOpt) -> Result<(), Error> {
         if self.store.is_none() {
             let wallet_hash_id = self.network.wallet_hash_id(&opt.master_xpub);
-            let mut path: PathBuf = self.data_root.as_str().into();
+            let mut path: PathBuf = self.network.state_dir.as_str().into();
             std::fs::create_dir_all(&path)?; // does nothing if path exists
             path.push(wallet_hash_id);
 
@@ -680,7 +673,7 @@ impl ElectrumSession {
             let _lock = SPV_MUTEX.lock().unwrap();
             let checker = match self.network.id() {
                 NetworkId::Bitcoin(network) => {
-                    ChainOrVerifier::Chain(HeadersChain::new(&self.data_root, network)?)
+                    ChainOrVerifier::Chain(HeadersChain::new(&self.network.state_dir, network)?)
                 }
                 NetworkId::Elements(network) => {
                     let verifier = Verifier::new(network);
