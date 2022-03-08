@@ -230,10 +230,12 @@ fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
             i(500_000, "00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04");
             i(600_000, "00000000000000000007316856900e76b4f7a9139cfbfba89842c8d196cd5f91");
             i(700_000, "0000000000000000000590fc0f3eba193a278534220b2b37e9849e1a770ca959");
+            i(720_000, "00000000000000000000664d48a530c8a9047ae31f6ba81ff5c49c22072d4536");
         }
         Network::Testnet => {
             i(1_000_000, "0000000000478e259a3eda2fafbeeb0106626f946347955e99278fe6cc848414");
             i(2_000_000, "000000000000010dd0863ec3d7a0bae17c1957ae1de9cbcdae8e77aad33e3b8c");
+            i(2_100_000, "000000000000002befeeec5aaa3b675ef421896c870e28669f00b0932e277eef");
         }
         Network::Regtest | Network::Signet => (),
     };
