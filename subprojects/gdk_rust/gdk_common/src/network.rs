@@ -27,8 +27,6 @@ pub struct Network {
     pub asset_registry_url: Option<String>,
     pub asset_registry_onion_url: Option<String>,
 
-    // These fields must NOT be encoded as part of the wallet identifier
-    // to retain backwards compatibility.
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
     pub taproot_enabled_at: Option<u32>,
