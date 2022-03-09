@@ -44,6 +44,8 @@ namespace sdk {
         std::string asset_registry_onion_url() const;
         std::string chain_code() const;
         std::string electrum_url() const;
+        std::string get_pin_server_url() const;
+        std::string get_pin_server_public_key() const;
         std::string pub_key() const;
         std::string gait_onion() const;
         std::string policy_asset() const;
