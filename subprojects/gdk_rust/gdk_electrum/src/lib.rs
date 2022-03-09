@@ -524,6 +524,15 @@ impl ElectrumSession {
         Ok(())
     }
 
+    /// Remove the persisted cache and store
+    ///
+    /// The actual file removal will happen when the session will be dropped.
+    pub fn remove_account(&mut self) -> Result<(), Error> {
+        // Mark the store as to be removed when it will be dropped
+        self.store()?.write()?.to_remove();
+        Ok(())
+    }
+
     /// Set the master key in the internal store, it needs to be called after `load_store`
     pub fn set_master_blinding_key(&mut self, opt: &SetMasterBlindingKeyOpt) -> Result<(), Error> {
         if let Some(master_blinding) = self.store()?.read()?.cache.master_blinding.as_ref() {

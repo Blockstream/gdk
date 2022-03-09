@@ -114,6 +114,7 @@ pub struct StoreMeta {
     path: PathBuf,
     cipher: Aes256GcmSiv,
     last: HashMap<Kind, sha256::Hash>,
+    to_remove: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -133,7 +134,13 @@ impl Display for Kind {
 
 impl Drop for StoreMeta {
     fn drop(&mut self) {
-        self.flush().unwrap();
+        if self.to_remove && self.path.exists() {
+            self.remove_file(Kind::Store);
+            self.remove_file(Kind::Cache);
+            std::fs::remove_dir(&self.path).unwrap();
+        } else {
+            self.flush().unwrap();
+        }
     }
 }
 
@@ -235,8 +242,26 @@ impl StoreMeta {
             cipher,
             path,
             last: HashMap::new(),
+            to_remove: false,
         };
         Ok(store)
+    }
+
+    pub fn to_remove(&mut self) {
+        self.to_remove = true;
+    }
+
+    fn file_path(&mut self, kind: Kind) -> PathBuf {
+        let mut path = self.path.clone();
+        path.push(kind.to_string());
+        path
+    }
+
+    fn remove_file(&mut self, kind: Kind) {
+        let path = self.file_path(kind);
+        if path.exists() {
+            std::fs::remove_file(&path).unwrap();
+        }
     }
 
     fn flush_serializable(&mut self, kind: Kind) -> Result<(), Error> {
@@ -261,8 +286,7 @@ impl StoreMeta {
         self.cipher.encrypt_in_place(nonce, b"", &mut plaintext)?;
         let ciphertext = plaintext;
 
-        let mut store_path = self.path.clone();
-        store_path.push(kind.to_string());
+        let store_path = self.file_path(kind);
         //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
         // in the front of the file
         let mut file = File::create(&store_path)?;

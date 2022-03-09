@@ -259,7 +259,8 @@ GDK_API int GA_get_watch_only_username(struct GA_session* session, char** userna
  * undone, and re-registering the wallet will not bring back the wallet's
  * history. For this reason, only empty wallets can be deleted.
  *
- * For singlesig wallets this call currently has no effect.
+ * For singlesig sessions, removing a wallet removes the locally persisted cache.
+ * The actual removal will happen after `GA_destroy_session` is called.
  */
 GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler** call);
 

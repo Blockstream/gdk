@@ -179,7 +179,8 @@ namespace sdk {
     }
     bool ga_rust::remove_account(const nlohmann::json& twofactor_data)
     {
-        throw std::runtime_error("remove_account not implemented");
+        rust_call("remove_account", {}, m_session);
+        return true;
     }
 
     bool ga_rust::discover_subaccount(const std::string& xpub, const std::string& type)
