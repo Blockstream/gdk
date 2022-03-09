@@ -30,7 +30,7 @@ use gdk_common::util::is_confidential_txoutsecrets;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
-use gdk_common::{ElementsNetwork, Network, NetworkId};
+use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters};
 
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
@@ -53,7 +53,7 @@ pub struct Account {
     xprv: Option<ExtendedPrivKey>,
     xpub: ExtendedPubKey,
     chains: [ExtendedPubKey; 2],
-    network: Network,
+    network: NetworkParameters,
     store: Store,
     // elements only
     master_blinding: Option<MasterBlindingKey>,
@@ -83,7 +83,7 @@ pub fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> Resul
 
 impl Account {
     pub fn new(
-        network: Network,
+        network: NetworkParameters,
         master_xprv: &Option<ExtendedPrivKey>,
         account_xpub: &Option<ExtendedPubKey>,
         master_blinding: Option<MasterBlindingKey>,

@@ -37,7 +37,7 @@ use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
-use gdk_common::network::Network;
+use gdk_common::network::NetworkParameters;
 use gdk_common::password::Password;
 use gdk_common::wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, MasterBlindingKey,
@@ -91,12 +91,12 @@ struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,
     store: Store,
     master_blinding: Option<MasterBlindingKey>,
-    network: Network,
+    network: NetworkParameters,
 }
 
 pub struct Tipper {
     pub store: Store,
-    pub network: Network,
+    pub network: NetworkParameters,
 }
 
 pub struct Headers {
@@ -131,7 +131,7 @@ impl Closer {
 pub struct ElectrumSession {
     pub proxy: Option<String>,
     pub timeout: Option<u8>,
-    pub network: Network,
+    pub network: NetworkParameters,
     pub url: ElectrumUrl,
 
     /// Accounts of the wallet
@@ -230,7 +230,7 @@ fn determine_electrum_url(
     }
 }
 
-pub fn determine_electrum_url_from_net(network: &Network) -> Result<ElectrumUrl, Error> {
+pub fn determine_electrum_url_from_net(network: &NetworkParameters) -> Result<ElectrumUrl, Error> {
     determine_electrum_url(&network.electrum_url, network.electrum_tls, network.validate_domain)
 }
 
@@ -387,7 +387,11 @@ pub fn make_txlist_item(
 }
 
 impl ElectrumSession {
-    pub fn create_session(network: Network, proxy: Option<&str>, url: ElectrumUrl) -> Self {
+    pub fn create_session(
+        network: NetworkParameters,
+        proxy: Option<&str>,
+        url: ElectrumUrl,
+    ) -> Self {
         Self {
             proxy: socksify(proxy),
             network,

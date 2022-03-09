@@ -8,7 +8,7 @@ use bitcoin::BlockHash;
 use bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
 use electrum_client::{Client as ElectrumClient, ElectrumApi};
 
-use gdk_common::network::Network;
+use gdk_common::network::NetworkParameters;
 
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
@@ -124,7 +124,7 @@ impl SpvCrossValidator {
     }
 
     pub fn from_network(
-        network: &Network,
+        network: &NetworkParameters,
         proxy: &Option<String>,
         timeout: Option<u8>,
     ) -> Result<Option<Self>, Error> {
@@ -400,7 +400,7 @@ fn parse_server_file(sl: &str) -> Vec<ElectrumUrl> {
     sl.lines().map(FromStr::from_str).collect::<Result<_, _>>().unwrap()
 }
 
-pub fn get_cross_servers(network: &Network) -> Result<Vec<ElectrumUrl>, Error> {
+pub fn get_cross_servers(network: &NetworkParameters) -> Result<Vec<ElectrumUrl>, Error> {
     let net = network.id().get_bitcoin_network().expect("spv cross-validation is bitcoin-only");
 
     let servers = match &network.spv_servers {

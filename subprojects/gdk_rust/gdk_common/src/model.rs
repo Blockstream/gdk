@@ -246,7 +246,7 @@ pub struct RenameAccountOpt {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVCommonParams {
     /// In which network we are verifying the transaction
-    pub network: crate::network::Network,
+    pub network: crate::network::NetworkParameters,
 
     /// Maximum timeout for network calls,
     /// the final timeout in seconds is roughly equivalent to 2 + `timeout` * 2

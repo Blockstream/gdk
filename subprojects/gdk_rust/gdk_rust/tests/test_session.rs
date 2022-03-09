@@ -10,7 +10,7 @@ use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::scripts::ScriptType;
 use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
-use gdk_common::Network;
+use gdk_common::NetworkParameters;
 use gdk_common::{model::*, wally};
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
@@ -45,7 +45,7 @@ pub struct TestSession {
     block_status: (u32, BEBlockHash),
     state_dir: TempDir,
     network_id: NetworkId,
-    pub network: Network,
+    pub network: NetworkParameters,
     pub p2p_port: u16,
 }
 
@@ -78,7 +78,7 @@ pub fn setup(
     is_debug: bool,
     electrs_exec: &str,
     node_exec: &str,
-    network_conf: impl FnOnce(&mut Network),
+    network_conf: impl FnOnce(&mut NetworkParameters),
 ) -> TestSession {
     let _ = env_logger::try_init();
 
@@ -142,7 +142,7 @@ pub fn setup(
     }
     info!("Electrs synced with node");
 
-    let mut network = Network::default();
+    let mut network = NetworkParameters::default();
     network.electrum_url = Some(electrs.electrum_url.clone());
     network.sync_interval = Some(1);
     network.development = true;
@@ -234,7 +234,7 @@ pub fn setup(
 
 // NOTE: Methods that don't accept an explicit account number operate on account #0
 impl TestSession {
-    pub fn network(&self) -> &Network {
+    pub fn network_parameters(&self) -> &NetworkParameters {
         &self.network
     }
 
@@ -1207,7 +1207,7 @@ pub fn discover_subaccounts(session: &mut ElectrumSession, mnemonic: Mnemonic) {
 }
 
 pub fn spv_verify_tx(
-    network: Network,
+    network: NetworkParameters,
     tip: u32,
     txid: &str,
     height: u32,

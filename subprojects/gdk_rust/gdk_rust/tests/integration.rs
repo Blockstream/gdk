@@ -7,7 +7,7 @@ use gdk_common::model::{
     SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
-use gdk_common::{Network, NetworkId};
+use gdk_common::{NetworkId, NetworkParameters};
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
@@ -843,7 +843,7 @@ fn subaccounts(is_liquid: bool) {
     // Start a new session, using the same mnemonic and electrum server, but
     // with a brand new database -- unaware of our subaccounts.
     let mut new_session = {
-        let mut network = test_session.network().clone();
+        let mut network = test_session.network_parameters().clone();
         let temp_dir = TempDir::new().unwrap();
         network.state_dir = format!("{}", temp_dir.path().display());
         let url = determine_electrum_url_from_net(&network).unwrap();
@@ -1203,7 +1203,7 @@ fn test_electrum_disconnect() {
 
     // Attempt to connect with another session but Electrs is still down
     let mut new_session = {
-        let network = test_session.network().clone();
+        let network = test_session.network_parameters().clone();
         let url = determine_electrum_url_from_net(&network).unwrap();
         let proxy = Some("");
         ElectrumSession::create_session(network, proxy, url)
@@ -1372,7 +1372,7 @@ fn spv_cross_validation_session() {
 #[test]
 fn test_spv_timeout() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap(); // 0 means the OS choose a free port
-    let mut network = Network::default();
+    let mut network = NetworkParameters::default();
     let tempdir = TempDir::new().unwrap();
     let tempdir = format!("{}", tempdir.path().display());
     network.state_dir = tempdir;
@@ -1409,7 +1409,7 @@ fn test_tor() {
     let state_dir = TempDir::new().unwrap();
     let state_dir_str = format!("{}", state_dir.path().display());
 
-    let mut network = Network::default();
+    let mut network = NetworkParameters::default();
     network.mainnet = true;
     network.state_dir = state_dir_str;
     assert_eq!(network.id(), NetworkId::Bitcoin(bitcoin::Network::Bitcoin));
@@ -1561,7 +1561,10 @@ fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSessi
     (test_session1, test_session2)
 }
 
-fn setup_session(is_liquid: bool, network_conf: impl FnOnce(&mut Network)) -> TestSession {
+fn setup_session(
+    is_liquid: bool,
+    network_conf: impl FnOnce(&mut NetworkParameters),
+) -> TestSession {
     let electrs_exec = if !is_liquid {
         env::var("ELECTRS_EXEC")
             .expect("env ELECTRS_EXEC pointing to electrs executable is required")

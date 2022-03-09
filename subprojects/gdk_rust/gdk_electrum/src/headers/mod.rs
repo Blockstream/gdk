@@ -162,7 +162,11 @@ pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Err
                     Ok(SPVVerifyTxResult::NotVerified)
                 }
             } else {
-                info!("chain height ({}) not enough to verify tx at height {}", chain.height(), input.height);
+                info!(
+                    "chain height ({}) not enough to verify tx at height {}",
+                    chain.height(),
+                    input.height
+                );
 
                 Ok(SPVVerifyTxResult::InProgress)
             }

@@ -4,7 +4,7 @@ use bitcoin::util::bip32::ExtendedPubKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct Network {
+pub struct NetworkParameters {
     pub name: String,
     network: String,
 
@@ -45,7 +45,6 @@ pub struct Network {
     /// if on the same network, share the same headers chain file but it's
     /// required to use a single process.
     pub state_dir: String,
-
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,7 +93,7 @@ impl ElementsNetwork {
     }
 }
 
-impl Network {
+impl NetworkParameters {
     pub fn id(&self) -> NetworkId {
         match (self.liquid, self.mainnet, self.development) {
             (true, true, false) => NetworkId::Elements(ElementsNetwork::Liquid),
@@ -154,7 +153,7 @@ mod tests {
         ).unwrap();
         let master_xprv = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
         let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
-        let mut network = crate::Network::default();
+        let mut network = crate::NetworkParameters::default();
         network.network = "mainnet".to_string();
         network.mainnet = true;
         let wallet_hash_id = network.wallet_hash_id(&master_xpub);
