@@ -26,6 +26,7 @@ target/debug
 *.pyc
 Package.resolved
 .idea/
+.vscode/
 docs/source/gdk.rst
 docs/build
 .pytest_cache/
