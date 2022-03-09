@@ -14,7 +14,7 @@ use gdk_common::NetworkParameters;
 use gdk_common::{model::*, wally};
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
-use gdk_electrum::{determine_electrum_url_from_net, spv, ElectrumSession, State};
+use gdk_electrum::{determine_electrum_url, spv, ElectrumSession, State};
 use gdk_electrum::{headers, Notification};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
@@ -165,7 +165,7 @@ pub fn setup(
     network.state_dir = state_dir_str;
 
     let proxy = Some("");
-    let url = determine_electrum_url_from_net(&network).unwrap();
+    let url = determine_electrum_url(&network).unwrap();
 
     info!("creating gdk session");
     let mut session = ElectrumSession::create_session(network.clone(), proxy, url);

@@ -415,7 +415,7 @@ pub fn get_cross_servers(network: &NetworkParameters) -> Result<Vec<ElectrumUrl>
     }?;
 
     // Don't cross validation against the primary server
-    let primary_server = super::determine_electrum_url_from_net(network)?;
+    let primary_server = super::determine_electrum_url(network)?;
     let primary_url = primary_server.url();
     Ok(servers.into_iter().filter(|s| s.url() != primary_url).collect())
 }

@@ -213,25 +213,27 @@ impl StateUpdater {
     }
 }
 
-fn determine_electrum_url(
-    url: &Option<String>,
-    tls: Option<bool>,
-    validate_domain: Option<bool>,
-) -> Result<ElectrumUrl, Error> {
-    let url = url.as_ref().ok_or_else(|| Error::Generic("network url is missing".into()))?;
-    if url == "" {
+pub fn determine_electrum_url(network: &NetworkParameters) -> Result<ElectrumUrl, Error> {
+    if let Some(true) = network.use_tor {
+        if let Some(electrum_onion_url) = network.electrum_onion_url.as_ref() {
+            if !electrum_onion_url.is_empty() {
+                return Ok(ElectrumUrl::Plaintext(electrum_onion_url.into()));
+            }
+        }
+    }
+    let electrum_url = network
+        .electrum_url
+        .as_ref()
+        .ok_or_else(|| Error::Generic("network url is missing".into()))?;
+    if electrum_url == "" {
         return Err(Error::Generic("network url is empty".into()));
     }
 
-    if tls.unwrap_or(false) {
-        Ok(ElectrumUrl::Tls(url.into(), validate_domain.unwrap_or(false)))
+    if network.electrum_tls.unwrap_or(false) {
+        Ok(ElectrumUrl::Tls(electrum_url.into(), network.validate_domain.unwrap_or(false)))
     } else {
-        Ok(ElectrumUrl::Plaintext(url.into()))
+        Ok(ElectrumUrl::Plaintext(electrum_url.into()))
     }
-}
-
-pub fn determine_electrum_url_from_net(network: &NetworkParameters) -> Result<ElectrumUrl, Error> {
-    determine_electrum_url(&network.electrum_url, network.electrum_tls, network.validate_domain)
 }
 
 fn socksify(proxy: Option<&str>) -> Option<String> {

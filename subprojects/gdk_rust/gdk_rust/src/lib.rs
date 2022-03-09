@@ -25,7 +25,7 @@ use gdk_common::model::{
 use crate::error::Error;
 use gdk_electrum::error::Error as ElectrumError;
 use gdk_electrum::pset::{self, ExtractTxParam, FromTxParam, MergeTxParam};
-use gdk_electrum::{determine_electrum_url_from_net, headers, ElectrumSession};
+use gdk_electrum::{determine_electrum_url, headers, ElectrumSession};
 use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
 use std::str::FromStr;
@@ -123,7 +123,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
         Some("electrum") => {
-            let url = determine_electrum_url_from_net(&parsed_network).map_err(|x| json!(x))?;
+            let url = determine_electrum_url(&parsed_network).map_err(|x| json!(x))?;
 
             let session = ElectrumSession::create_session(parsed_network, proxy, url);
             let backend = GdkBackend::Electrum(session);

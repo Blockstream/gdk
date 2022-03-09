@@ -1,4 +1,4 @@
-use crate::determine_electrum_url_from_net;
+use crate::determine_electrum_url;
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
@@ -70,7 +70,7 @@ trait ParamsMethods {
 
 impl ParamsMethods for SPVCommonParams {
     fn build_client(&self) -> Result<Client, Error> {
-        let url = determine_electrum_url_from_net(&self.network)?;
+        let url = determine_electrum_url(&self.network)?;
         url.build_client(self.network.proxy.as_deref(), self.timeout)
     }
     fn headers_chain(&self) -> Result<HeadersChain, Error> {

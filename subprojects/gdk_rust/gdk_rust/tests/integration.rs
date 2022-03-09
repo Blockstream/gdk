@@ -11,9 +11,7 @@ use gdk_common::{NetworkId, NetworkParameters};
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{
-    determine_electrum_url_from_net, headers, spv, ElectrumSession, Notification, State,
-};
+use gdk_electrum::{determine_electrum_url, headers, spv, ElectrumSession, Notification, State};
 
 use log::info;
 use serde_json::Value;
@@ -846,7 +844,7 @@ fn subaccounts(is_liquid: bool) {
         let mut network = test_session.network_parameters().clone();
         let temp_dir = TempDir::new().unwrap();
         network.state_dir = format!("{}", temp_dir.path().display());
-        let url = determine_electrum_url_from_net(&network).unwrap();
+        let url = determine_electrum_url(&network).unwrap();
         let proxy = Some("");
         ElectrumSession::create_session(network, proxy, url)
     };
@@ -1204,7 +1202,7 @@ fn test_electrum_disconnect() {
     // Attempt to connect with another session but Electrs is still down
     let mut new_session = {
         let network = test_session.network_parameters().clone();
-        let url = determine_electrum_url_from_net(&network).unwrap();
+        let url = determine_electrum_url(&network).unwrap();
         let proxy = Some("");
         ElectrumSession::create_session(network, proxy, url)
     };
@@ -1414,15 +1412,16 @@ fn test_tor() {
     network.state_dir = state_dir_str;
     assert_eq!(network.id(), NetworkId::Bitcoin(bitcoin::Network::Bitcoin));
     // blockstream mainnet server, we can't use localhost because it's not reachable via tor
-    network.electrum_url =
+    network.electrum_onion_url =
         Some("explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110".to_string());
+    network.use_tor = Some(true);
     network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
     network.policy_asset =
         Some("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d".to_string());
     network.proxy = Some("127.0.0.1:9050".into());
     network.spv_enabled = Some(false);
 
-    let url = determine_electrum_url_from_net(&network).unwrap();
+    let url = determine_electrum_url(&network).unwrap();
     info!("url: {:?}", url);
     info!("creating gdk session");
     let mut session =
