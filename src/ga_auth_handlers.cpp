@@ -365,7 +365,7 @@ namespace sdk {
             if (is_electrum) {
                 // Skip the challenge/response steps since we have no server
                 // to authenticate to.
-                goto get_subaccount_xpubs;
+                goto do_authenticate;
             }
 
             // Ask the caller to sign the challenge
@@ -376,19 +376,21 @@ namespace sdk {
             return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
-            {
+        do_authenticate:
+            std::string sig_der_hex;
+
+            if (!is_electrum) {
                 const auto& hw_reply = get_hw_reply();
                 if (m_signer->use_ae_protocol()) {
                     // Anti-Exfil protocol: verify the signature
                     const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
                     verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
                 }
-
-                // Log in and set up the session
-                m_result = m_session->authenticate(hw_reply.at("signature"), "GA", m_master_bip32_xpub, m_signer);
+                sig_der_hex = hw_reply.at("signature");
             }
+            // Log in and set up the session
+            m_result = m_session->authenticate(sig_der_hex, "GA", m_master_bip32_xpub, m_signer);
 
-        get_subaccount_xpubs:
             // Ask the caller for the xpubs for each subaccount
             m_subaccount_pointers = m_session->get_subaccount_pointers();
 
@@ -435,7 +437,6 @@ namespace sdk {
         // We are logged in
         if (is_electrum) {
             m_session->start_sync_threads();
-            m_result = m_session->get_post_login_data();
             return state_type::done;
         }
 

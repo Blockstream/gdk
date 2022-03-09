@@ -109,18 +109,19 @@ namespace sdk {
 
     void ga_rust::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> signer)
     {
-        set_signer(signer);
-        auto master_xpub = m_signer->get_bip32_xpub(std::vector<uint32_t>());
+        auto master_xpub = signer->get_bip32_xpub(std::vector<uint32_t>());
         rust_call("load_store", { { "master_xpub", std::move(master_xpub) } }, m_session);
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
-    nlohmann::json ga_rust::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
+
+    nlohmann::json ga_rust::authenticate(const std::string& /*sig_der_hex*/, const std::string& /*path_hex*/,
+        const std::string& /*root_bip32_xpub*/, std::shared_ptr<signer> signer)
     {
-        throw std::runtime_error("not implemented");
+        set_signer(signer);
+        return get_post_login_data();
     }
 
     void ga_rust::register_subaccount_xpubs(
