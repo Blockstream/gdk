@@ -167,6 +167,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", true },
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
+            { "electrum_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -203,6 +204,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:995" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:195" },
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
@@ -240,6 +242,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", true },
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
+            { "electrum_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -277,6 +280,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:465" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:587" },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -308,6 +312,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:700" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110" },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -338,6 +343,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:993" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143" },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -375,6 +381,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:995" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:195" },
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
@@ -412,6 +419,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", true },
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
+            { "electrum_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -443,6 +451,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:700" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110" },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -473,6 +482,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:993" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143" },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -503,6 +513,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", true },
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
+            { "electrum_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -539,6 +550,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:465" },
+            { "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:587" },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -669,7 +681,11 @@ namespace sdk {
     }
     std::string network_parameters::chain_code() const { return m_details.at("service_chain_code"); }
     bool network_parameters::electrum_tls() const { return m_details.at("electrum_tls"); }
-    std::string network_parameters::electrum_url() const { return m_details.at("electrum_url"); }
+    std::string network_parameters::electrum_url() const
+    {
+        return use_tor() && !m_details.at("electrum_onion_url").empty() ? m_details.at("electrum_onion_url")
+                                                                        : m_details.at("electrum_url");
+    }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
     std::string network_parameters::policy_asset() const { return m_details.value("policy_asset", std::string()); }
