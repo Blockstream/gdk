@@ -908,7 +908,7 @@ pub fn discover_account(
     use electrum_client::ElectrumApi;
 
     // build our own client so that the subscriptions are dropped at the end
-    let client = electrum_url.build_client(proxy)?;
+    let client = electrum_url.build_client(proxy, None)?;
 
     // the batch size is the effective gap limit for our purposes. in reality it is a lower bound.
     let gap_limit = BATCH_SIZE;

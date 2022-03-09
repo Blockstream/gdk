@@ -71,7 +71,7 @@ trait ParamsMethods {
 impl ParamsMethods for SPVCommonParams {
     fn build_client(&self) -> Result<Client, Error> {
         let url = determine_electrum_url_from_net(&self.network)?;
-        url.build_client_with_proxy_and_timeout(&self.network.proxy, self.timeout)
+        url.build_client(self.network.proxy.as_deref(), self.timeout)
     }
     fn headers_chain(&self) -> Result<HeadersChain, Error> {
         let network = self

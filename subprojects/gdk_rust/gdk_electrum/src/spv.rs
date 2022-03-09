@@ -154,7 +154,7 @@ pub fn spv_cross_validate(
     timeout: Option<u8>,
     proxy: &Option<String>,
 ) -> Result<CrossValidationResult, CrossValidationError> {
-    let client = server_url.build_client_with_proxy_and_timeout(proxy, timeout)?;
+    let client = server_url.build_client(proxy.as_deref(), timeout)?;
     let remote_tip = client.block_headers_subscribe()?;
     let remote_tip_hash = remote_tip.header.block_hash();
     let remote_tip_height = remote_tip.height as u32;

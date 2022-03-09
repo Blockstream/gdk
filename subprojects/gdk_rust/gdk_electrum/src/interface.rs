@@ -12,34 +12,16 @@ pub enum ElectrumUrl {
 }
 
 impl ElectrumUrl {
-    pub fn build_client(&self, proxy: Option<&str>) -> Result<Client, Error> {
+    /// returns error if both proxy and timeout are set
+    pub fn build_client(&self, proxy: Option<&str>, timeout: Option<u8>) -> Result<Client, Error> {
         let mut config = ConfigBuilder::new();
-        if let Some(proxy) = proxy {
-            // TODO: add support for credentials?
-            config = config.socks5(Some(electrum_client::Socks5Config::new(proxy)))?;
-        }
-        self.build_config(config)
-    }
 
-    pub fn build_client_with_proxy_and_timeout(
-        &self,
-        proxy: &Option<String>,
-        timeout: Option<u8>,
-    ) -> Result<Client, Error> {
-        // TODO: once electrum_client support both proxy and timeout, use it always this method,
-        // rename to build_client and delete the old build_client
-        let mut config = ConfigBuilder::new();
-        if let Some(proxy) = proxy {
-            if !proxy.trim().is_empty() {
-                // TODO: add support for credentials?
-                config = config.socks5(Some(electrum_client::Socks5Config::new(proxy)))?;
-            }
-        }
+        // TODO: add support for socks5 credentials?
+        config = config.socks5(
+            proxy.filter(|p| !p.trim().is_empty()).map(|p| electrum_client::Socks5Config::new(p)),
+        )?;
         config = config.timeout(timeout)?;
-        self.build_config(config)
-    }
 
-    fn build_config(&self, config: ConfigBuilder) -> Result<Client, Error> {
         let (url, config) = match self {
             ElectrumUrl::Tls(url, validate) => {
                 (format!("ssl://{}", url), config.validate_domain(*validate))

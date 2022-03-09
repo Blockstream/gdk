@@ -461,7 +461,7 @@ impl ElectrumSession {
             // with a ping to emit a notification
             let electrum_url = self.url.clone();
             let proxy = self.proxy.clone();
-            match electrum_url.build_client(proxy.as_deref()) {
+            match electrum_url.build_client(proxy.as_deref(), None) {
                 Ok(client) => match client.ping() {
                     Ok(_) => {
                         info!("connect succesfully ping the electrum server");
@@ -656,7 +656,7 @@ impl ElectrumSession {
             self.proxy.as_ref().unwrap_or(&"".to_string())
         );
 
-        if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref()) {
+        if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref(), None) {
             info!("building built end");
             let fee_store = self.store()?;
             thread::spawn(move || {
@@ -711,7 +711,7 @@ impl ElectrumSession {
                         break;
                     }
 
-                    if let Ok(client) = headers_url.build_client(proxy.as_deref()) {
+                    if let Ok(client) = headers_url.build_client(proxy.as_deref(), None) {
                         loop {
                             if threads_stopped.load(Ordering::Relaxed) {
                                 info!("closing headers thread");
@@ -789,7 +789,7 @@ impl ElectrumSession {
         let tipper_handle = thread::spawn(move || {
             info!("starting tipper thread");
             loop {
-                if let Ok(client) = tipper_url.build_client(proxy.as_deref()) {
+                if let Ok(client) = tipper_url.build_client(proxy.as_deref(), None) {
                     match tipper.tip(&client) {
                         Ok(current_tip) => {
                             if tip_height != current_tip {
@@ -825,7 +825,7 @@ impl ElectrumSession {
         let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
             loop {
-                match syncer_url.build_client(proxy.as_deref()) {
+                match syncer_url.build_client(proxy.as_deref(), None) {
                     Ok(client) => match syncer.sync(&client) {
                         Ok(updated_accounts) => {
                             state_updater.update_if_needed(State::Connected);
@@ -1080,7 +1080,7 @@ impl ElectrumSession {
 
     pub fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum send_transaction {:#?}", tx);
-        let client = self.url.build_client(self.proxy.as_deref())?;
+        let client = self.url.build_client(self.proxy.as_deref(), None)?;
         let tx_bytes = Vec::<u8>::from_hex(&tx.hex)?;
         let txid = client.transaction_broadcast_raw(&tx_bytes)?;
         if let Some(memo) = tx.create_transaction.as_ref().and_then(|o| o.memo.as_ref()) {
@@ -1096,7 +1096,7 @@ impl ElectrumSession {
         let transaction = BETransaction::from_hex(&tx_hex, self.network.id())?;
 
         info!("broadcast_transaction {:#?}", transaction.txid());
-        let client = self.url.build_client(self.proxy.as_deref())?;
+        let client = self.url.build_client(self.proxy.as_deref(), None)?;
         let hex = Vec::<u8>::from_hex(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
         Ok(format!("{}", txid))
@@ -1112,8 +1112,9 @@ impl ElectrumSession {
             NetworkId::Bitcoin(_) => 1000,
             NetworkId::Elements(_) => 100,
         };
-        let fee_estimates = try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref())?)
-            .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
+        let fee_estimates =
+            try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref(), None)?)
+                .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
         self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
         Ok(fee_estimates)
         //TODO better implement default
