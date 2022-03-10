@@ -7,6 +7,7 @@
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
+#include "xpub_hdkey.hpp"
 
 namespace ga {
 namespace sdk {
@@ -287,6 +288,13 @@ namespace sdk {
     void session_impl::encache_signer_xpubs(std::shared_ptr<signer> /*signer*/)
     {
         // Overriden for multisig
+    }
+
+    // Post-login idempotent
+    user_pubkeys& session_impl::get_user_pubkeys()
+    {
+        GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
+        return *m_user_pubkeys;
     }
 
     nlohmann::json session_impl::sync_transactions(uint32_t /*subaccount*/, unique_pubkeys_and_scripts_t& /*missing*/)

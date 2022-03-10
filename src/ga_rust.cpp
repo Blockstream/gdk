@@ -16,13 +16,13 @@
 #include "session.hpp"
 #include "signer.hpp"
 #include "utils.hpp"
+#include "xpub_hdkey.hpp"
 
 namespace ga {
 namespace sdk {
 
     ga_rust::ga_rust(network_parameters&& net_params)
         : session_impl(std::move(net_params))
-        , m_are_subaccounts_registered(false)
     {
         auto np = m_net_params.get_json();
         const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
@@ -140,12 +140,15 @@ namespace sdk {
         const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
         // Note we only register the loaded subaccount once.
-        if (!m_are_subaccounts_registered) {
+        if (!m_user_pubkeys) {
+            m_user_pubkeys = std::make_unique<bip44_pubkeys>(m_net_params);
             const nlohmann::json details({ { "name", std::string() } });
             for (size_t i = 0; i < pointers.size(); ++i) {
-                create_subaccount(details, pointers.at(i), bip32_xpubs.at(i));
+                const auto pointer = pointers.at(i);
+                const auto& bip32_xpub = bip32_xpubs.at(i);
+                create_subaccount(details, pointer, bip32_xpub);
+                m_user_pubkeys->add_subaccount(pointer, make_xpub(bip32_xpub));
             }
-            m_are_subaccounts_registered = true;
         }
     }
 
@@ -298,28 +301,22 @@ namespace sdk {
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
     {
-#if 1
-        const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
-        const bool main_net = m_net_params.is_main_net();
-        const bool liquid = m_net_params.is_liquid();
-
-        const uint32_t purpose = purpose_lookup.at(subaccount % 16);
-        const uint32_t coin_type = main_net ? (liquid ? 1776 : 0) : 1;
-        const uint32_t account = subaccount / 16;
-        return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
-#else
-        // FIXME: If we want to use the rust path, this method needs to be made sessionless
-        return rust_call("get_subaccount_root_path", nlohmann::json({ { "subaccount", subaccount } })).at("path");
-#endif
+        if (m_user_pubkeys) {
+            locker_t locker(m_mutex);
+            return m_user_pubkeys->get_subaccount_root_path(subaccount);
+        }
+        return bip44_pubkeys::get_bip44_subaccount_root_path(
+            m_net_params.is_main_net(), m_net_params.is_liquid(), subaccount);
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
-        // FIXME: do everything on the rust side
-        std::vector<uint32_t> path = get_subaccount_root_path(subaccount);
-        path.push_back(is_internal ? 1 : 0);
-        path.push_back(pointer);
-        return path;
+        if (m_user_pubkeys) {
+            locker_t locker(m_mutex);
+            return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
+        }
+        return bip44_pubkeys::get_bip44_subaccount_full_path(
+            m_net_params.is_main_net(), m_net_params.is_liquid(), subaccount, pointer, is_internal);
     }
 
     nlohmann::json ga_rust::get_subaccount_xpub(uint32_t subaccount)
@@ -580,11 +577,7 @@ namespace sdk {
     }
 
     ga_pubkeys& ga_rust::get_ga_pubkeys() { throw std::runtime_error("get_ga_pubkeys not implemented"); }
-    user_pubkeys& ga_rust::get_user_pubkeys() { throw std::runtime_error("get_user_pubkeys not implemented"); }
-    ga_user_pubkeys& ga_rust::get_recovery_pubkeys()
-    {
-        throw std::runtime_error("get_recovery_pubkeys not implemented");
-    }
+    user_pubkeys& ga_rust::get_recovery_pubkeys() { throw std::runtime_error("get_recovery_pubkeys not implemented"); }
 
     void ga_rust::upload_confidential_addresses(
         uint32_t subaccount, const std::vector<std::string>& confidential_addresses)

@@ -145,8 +145,7 @@ namespace sdk {
         void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
         ga_pubkeys& get_ga_pubkeys();
-        user_pubkeys& get_user_pubkeys();
-        ga_user_pubkeys& get_recovery_pubkeys();
+        user_pubkeys& get_recovery_pubkeys();
 
         void disable_all_pin_logins();
 
@@ -155,7 +154,6 @@ namespace sdk {
         void set_notification_handler(GA_notification_handler handler, void* context);
 
         void* m_session;
-        bool m_are_subaccounts_registered;
     };
 
 } // namespace sdk

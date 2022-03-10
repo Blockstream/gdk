@@ -16,6 +16,7 @@
 namespace ga {
 namespace sdk {
     struct cache;
+    class ga_user_pubkeys;
     class wamp_transport;
 
     class ga_session final : public session_impl {
@@ -153,8 +154,7 @@ namespace sdk {
         bool is_spending_limits_decrease(const nlohmann::json& details);
 
         ga_pubkeys& get_ga_pubkeys();
-        user_pubkeys& get_user_pubkeys();
-        ga_user_pubkeys& get_recovery_pubkeys();
+        user_pubkeys& get_recovery_pubkeys();
         bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal);
@@ -272,7 +272,6 @@ namespace sdk {
 
         std::map<uint32_t, nlohmann::json> m_subaccounts; // Includes 0 for main
         std::unique_ptr<ga_pubkeys> m_ga_pubkeys;
-        std::unique_ptr<user_pubkeys> m_user_pubkeys;
         std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys;
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;

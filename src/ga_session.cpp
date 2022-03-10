@@ -3119,14 +3119,7 @@ namespace sdk {
     }
 
     // Post-login idempotent
-    user_pubkeys& ga_session::get_user_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
-        return *m_user_pubkeys;
-    }
-
-    // Post-login idempotent
-    ga_user_pubkeys& ga_session::get_recovery_pubkeys()
+    user_pubkeys& ga_session::get_recovery_pubkeys()
     {
         GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
         return *m_recovery_pubkeys;

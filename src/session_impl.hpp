@@ -17,7 +17,6 @@ namespace sdk {
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
     class ga_pubkeys;
-    class ga_user_pubkeys;
     class user_pubkeys;
     class signer;
     struct tor_controller;
@@ -219,8 +218,8 @@ namespace sdk {
         virtual void encache_signer_xpubs(std::shared_ptr<signer> signer);
 
         virtual ga_pubkeys& get_ga_pubkeys() = 0;
-        virtual user_pubkeys& get_user_pubkeys() = 0;
-        virtual ga_user_pubkeys& get_recovery_pubkeys() = 0;
+        virtual user_pubkeys& get_user_pubkeys();
+        virtual user_pubkeys& get_recovery_pubkeys() = 0;
 
         // Cached data
         virtual std::pair<std::string, bool> get_cached_master_blinding_key() = 0;
@@ -259,6 +258,7 @@ namespace sdk {
 
         // Immutable post-login
         std::shared_ptr<signer> m_signer;
+        std::unique_ptr<user_pubkeys> m_user_pubkeys;
 
         // Mutable
         std::string m_tor_proxy; // Updated on connect(), protected by m_mutex
