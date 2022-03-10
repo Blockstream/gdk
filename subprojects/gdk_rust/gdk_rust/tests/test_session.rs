@@ -1271,6 +1271,9 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
         session.network.liquid,
     );
 
+    // Connect must be done before login
+    session.connect(&serde_json::to_value(session.network.clone()).unwrap()).unwrap();
+
     // Load the rust persisted cache
     let opt = LoadStoreOpt {
         master_xpub: signer.master_xpub(),

@@ -106,29 +106,6 @@ pub struct Headers {
     pub cross_validator: Option<SpvCrossValidator>,
 }
 
-pub struct Closer {
-    pub threads_stopped: Option<Arc<AtomicBool>>,
-    pub handles: Vec<JoinHandle<()>>,
-}
-
-impl Closer {
-    pub fn close(&mut self) -> Result<(), Error> {
-        self.threads_stopped()?.store(true, Ordering::Relaxed);
-
-        while let Some(handle) = self.handles.pop() {
-            handle.join().expect("Couldn't join on the associated thread");
-        }
-        Ok(())
-    }
-    pub fn threads_stopped(&self) -> Result<Arc<AtomicBool>, Error> {
-        Ok(self
-            .threads_stopped
-            .as_ref()
-            .cloned()
-            .ok_or_else(|| Error::Generic("threads_stopped not initialized".to_string()))?)
-    }
-}
-
 pub struct ElectrumSession {
     pub proxy: Option<String>,
     pub timeout: Option<u8>,
@@ -143,10 +120,13 @@ pub struct ElectrumSession {
     /// It is Some after wallet initialization
     pub master_xpub: Option<ExtendedPubKey>,
     pub notify: NativeNotif,
-    pub closer: Closer,
+    pub handles: Vec<JoinHandle<()>>,
 
-    // used in place of `Arc<Mutex<State>>` to avoid the Mutex since the State is binary
-    pub state: Arc<AtomicBool>,
+    // True if the users wants the background threads to run
+    pub user_wants_to_sync: Arc<AtomicBool>,
+
+    // True if the last call (to the Electrum server) succeeded
+    pub last_network_call_succeeded: Arc<AtomicBool>,
 
     pub store: Option<Store>,
 
@@ -198,19 +178,15 @@ pub struct StateUpdater {
 }
 
 impl StateUpdater {
-    fn update_if_needed(&self, state: State) {
-        let _ = self.try_update_if_needed(state);
-    }
-    fn try_update_if_needed(&self, state: State) -> Result<(), Error> {
-        let current_read: State = self.current.load(Ordering::Relaxed).into();
-        if state != current_read {
-            self.current.store(state.into(), Ordering::Relaxed);
-
+    fn update_if_needed(&self, new_network_call_succeeded: bool) {
+        let last_network_call_succeeded =
+            self.current.swap(new_network_call_succeeded, Ordering::Relaxed);
+        if last_network_call_succeeded != new_network_call_succeeded {
             // The second parameter should be taken from the state of the threads, but the current state could
             // be changed only if threads are running so we use the constant `State::Connected`
+            let state: State = new_network_call_succeeded.into();
             self.notify.network(state, State::Connected);
         }
-        Ok(())
     }
 }
 
@@ -401,11 +377,9 @@ impl ElectrumSession {
             url,
             accounts: Arc::new(RwLock::new(HashMap::<u32, Account>::new())),
             notify: NativeNotif::new(),
-            closer: Closer {
-                threads_stopped: None,
-                handles: vec![],
-            },
-            state: Arc::new(AtomicBool::new(false)),
+            handles: vec![],
+            user_wants_to_sync: Arc::new(AtomicBool::new(false)),
+            last_network_call_succeeded: Arc::new(AtomicBool::new(false)),
             timeout: None,
             store: None,
             master_xpub: None,
@@ -452,12 +426,14 @@ impl ElectrumSession {
         // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));
 
-        let last_network_state = if self.master_xpub.is_some() {
-            if self.threads_stopped_load() {
-                self.start_threads()?;
-            }
-            // Use the last persisted state so we don't have to wait for a network roundtrip
-            self.state.load(Ordering::Relaxed).into()
+        // A call to connect signals that the caller wants the background threads to start
+        self.user_wants_to_sync.store(true, Ordering::Relaxed);
+
+        let last_network_call_succeeded = if self.master_xpub.is_some() {
+            // Wallet initialized, we can start the background threads.
+            self.start_threads()?;
+            // Use the last persisted network call result so we don't have to wait for a network roundtrip
+            self.last_network_call_succeeded.load(Ordering::Relaxed)
         } else {
             // We can't call start_threads() here because not everything is loaded before login,
             // but we need to emit a network notification, to do so we test the electrum server
@@ -468,28 +444,30 @@ impl ElectrumSession {
                 Ok(client) => match client.ping() {
                     Ok(_) => {
                         info!("connect succesfully ping the electrum server");
-                        self.state.store(State::Connected.into(), Ordering::Relaxed);
-                        State::Connected
+                        self.last_network_call_succeeded.store(true, Ordering::Relaxed);
+                        true
                     }
                     Err(e) => {
                         warn!("ping failed {:?}", e);
-                        State::Disconnected
+                        false
                     }
                 },
                 Err(e) => {
                     warn!("build client failed {:?}", e);
-                    State::Disconnected
+                    false
                 }
             }
         };
-        // Always send a notification after connect
-        self.notify.network(last_network_state.into(), State::Connected);
+
+        self.notify.network(last_network_call_succeeded.into(), State::Connected);
         Ok(())
     }
 
     pub fn disconnect(&mut self) -> Result<(), Error> {
-        if !self.threads_stopped_load() {
-            self.stop_threads()?;
+        // A call to disconnect signals that the caller does to wants the background threads to run
+        if self.user_wants_to_sync.swap(false, Ordering::Relaxed) {
+            // This is an actual disconnect, stop the threads and send the notification
+            self.join_threads();
 
             // The following flush is redundant since a flush is done when the store is dropped,
             // however it's safer to call it also here because some garbage collected caller could
@@ -499,6 +477,7 @@ impl ElectrumSession {
             if let Ok(store) = self.store() {
                 store.write()?.flush()?;
             }
+            self.notify.network(State::Disconnected, State::Disconnected);
         }
         Ok(())
     }
@@ -571,7 +550,10 @@ impl ElectrumSession {
         mnemonic: &Mnemonic,
         password: Option<Password>,
     ) -> Result<LoginData, Error> {
-        info!("login {:?} {:?}", self.network, self.state);
+        info!(
+            "login {:?} last network call succeeded {:?}",
+            self.network, self.last_network_call_succeeded
+        );
 
         // This check must be done before everything else to allow re-login
         if self.master_xpub.is_some() {
@@ -617,32 +599,28 @@ impl ElectrumSession {
         self.get_wallet_hash_id()
     }
 
-    pub fn stop_threads(&mut self) -> Result<(), Error> {
-        // We don't need to stop threads if they never started
-        if self.closer.threads_stopped.is_some() {
-            self.closer.close()?;
+    pub fn join_threads(&mut self) {
+        while let Some(handle) = self.handles.pop() {
+            handle.join().expect("Couldn't join on the associated thread");
         }
-        self.notify.network(State::Disconnected, State::Disconnected);
-        Ok(())
     }
 
     pub fn state_updater(&self) -> Result<StateUpdater, Error> {
         Ok(StateUpdater {
-            current: self.state.clone(),
+            current: self.last_network_call_succeeded.clone(),
             notify: self.notify.clone(),
         })
     }
 
     pub fn start_threads(&mut self) -> Result<(), Error> {
-        if let Some(b) = &self.closer.threads_stopped {
-            if !b.load(Ordering::Relaxed) {
-                // Threads are already running
-                return Ok(());
-            }
+        if !self.user_wants_to_sync.load(Ordering::Relaxed) {
+            return Err(Error::Generic("connect must be called before start_threads".into()));
         }
 
-        let threads_stopped = Arc::new(AtomicBool::new(false));
-        self.closer.threads_stopped = Some(threads_stopped);
+        if self.handles.len() > 0 {
+            // Threads are already running
+            return Ok(());
+        }
 
         let master_blinding = if self.network.liquid {
             let master_blinding = self.store()?.read()?.cache.master_blinding.clone();
@@ -704,7 +682,7 @@ impl ElectrumSession {
             let proxy = self.proxy.clone();
             let notify_txs = self.notify.clone();
             let chunk_size = DIFFCHANGE_INTERVAL as usize;
-            let threads_stopped = self.closer.threads_stopped()?;
+            let user_wants_to_sync = self.user_wants_to_sync.clone();
             let max_reorg_blocks = self.network.max_reorg_blocks.unwrap_or(144);
 
             let headers_handle = thread::spawn(move || {
@@ -712,7 +690,7 @@ impl ElectrumSession {
                 let mut round = 0u8;
 
                 'outer: loop {
-                    if wait_or_close(&threads_stopped, sync_interval) {
+                    if wait_or_close(&user_wants_to_sync, sync_interval) {
                         info!("closing headers thread");
                         break;
                     }
@@ -727,7 +705,7 @@ impl ElectrumSession {
 
                     if let Ok(client) = headers_url.build_client(proxy.as_deref(), None) {
                         loop {
-                            if threads_stopped.load(Ordering::Relaxed) {
+                            if !user_wants_to_sync.load(Ordering::Relaxed) {
                                 info!("closing headers thread");
                                 break 'outer;
                             }
@@ -777,7 +755,7 @@ impl ElectrumSession {
                     }
                 }
             });
-            self.closer.handles.push(headers_handle);
+            self.handles.push(headers_handle);
         }
 
         let syncer = Syncer {
@@ -796,7 +774,7 @@ impl ElectrumSession {
 
         let notify_blocks = self.notify.clone();
 
-        let threads_stopped = self.closer.threads_stopped()?;
+        let user_wants_to_sync = self.user_wants_to_sync.clone();
         let tipper_url = self.url.clone();
         let proxy = self.proxy.clone();
 
@@ -817,15 +795,15 @@ impl ElectrumSession {
                         }
                     }
                 }
-                if wait_or_close(&threads_stopped, sync_interval) {
+                if wait_or_close(&user_wants_to_sync, sync_interval) {
                     info!("closing tipper thread {:?}", tip_height);
                     break;
                 }
             }
         });
-        self.closer.handles.push(tipper_handle);
+        self.handles.push(tipper_handle);
 
-        let threads_stopped = self.closer.threads_stopped()?;
+        let user_wants_to_sync = self.user_wants_to_sync.clone();
         let notify_txs = self.notify.clone();
         let syncer_url = self.url.clone();
         let proxy = self.proxy.clone();
@@ -842,29 +820,29 @@ impl ElectrumSession {
                 match syncer_url.build_client(proxy.as_deref(), None) {
                     Ok(client) => match syncer.sync(&client) {
                         Ok(updated_accounts) => {
-                            state_updater.update_if_needed(State::Connected);
+                            state_updater.update_if_needed(true);
                             for account_num in updated_accounts {
                                 info!("there are new transactions");
                                 notify_txs.updated_txs(account_num);
                             }
                         }
                         Err(e) => {
-                            state_updater.update_if_needed(State::Disconnected);
+                            state_updater.update_if_needed(false);
                             warn!("Error during sync, {:?}", e)
                         }
                     },
                     Err(e) => {
-                        state_updater.update_if_needed(State::Disconnected);
+                        state_updater.update_if_needed(false);
                         warn!("Can't build client {:?}", e)
                     }
                 }
-                if wait_or_close(&threads_stopped, sync_interval) {
+                if wait_or_close(&user_wants_to_sync, sync_interval) {
                     info!("closing syncer thread");
                     break;
                 }
             }
         });
-        self.closer.handles.push(syncer_handle);
+        self.handles.push(syncer_handle);
 
         Ok(())
     }
@@ -1290,10 +1268,6 @@ impl ElectrumSession {
         let status = hasher.finish();
         info!("txs status={}", status);
         Ok(status)
-    }
-
-    fn threads_stopped_load(&self) -> bool {
-        self.closer.threads_stopped.as_ref().map(|b| b.load(Ordering::Relaxed)).unwrap_or(false)
     }
 }
 
@@ -1789,9 +1763,10 @@ impl Syncer {
     }
 }
 
-fn wait_or_close(terminate: &Arc<AtomicBool>, interval: u32) -> bool {
+fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
     for _ in 0..(interval * 2) {
-        if terminate.load(Ordering::Relaxed) {
+        if !user_wants_to_sync.load(Ordering::Relaxed) {
+            // Threads should stop, close
             return true;
         }
         thread::sleep(Duration::from_millis(500));
