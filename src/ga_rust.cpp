@@ -111,6 +111,15 @@ namespace sdk {
     {
         auto master_xpub = signer->get_bip32_xpub(std::vector<uint32_t>());
         rust_call("load_store", { { "master_xpub", std::move(master_xpub) } }, m_session);
+        if (!signer->has_master_blinding_key()) {
+            // Load the cached master blinding key, if we have it
+            std::string blinding_key_hex;
+            bool denied;
+            std::tie(blinding_key_hex, denied) = get_cached_master_blinding_key();
+            if (!denied) {
+                signer->set_master_blinding_key(blinding_key_hex);
+            }
+        }
         // FIXME: Load subaccount paths and xpubs from the store and add them
         // with signer->cache_bip32_xpub() - see ga_session::load_signer_xpubs
         // (This avoids having to go to the HWW to fetch these xpubs)
