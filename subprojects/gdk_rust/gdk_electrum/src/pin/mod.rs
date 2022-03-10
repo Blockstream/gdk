@@ -11,11 +11,6 @@ use rand::prelude::ThreadRng;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use std::str::FromStr;
-
-const PINSERVER_URL: &'static str = "https://jadepin.blockstream.com";
-const PINSERVER_PUBKEY: &'static str =
-    "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547";
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 type ShaHmac = Hmac<sha256::Hash>;
@@ -49,6 +44,7 @@ pub struct PinManager {
     response_hmac_key: ShaHmac,
     rng: ThreadRng,
     agent: ureq::Agent,
+    url: String,
 }
 
 enum PinOp {
@@ -57,10 +53,10 @@ enum PinOp {
 }
 
 impl PinManager {
-    pub fn new(agent: ureq::Agent) -> Result<Self, Error> {
+    pub fn new(agent: ureq::Agent, url: &str, public_key: &PublicKey) -> Result<Self, Error> {
         info!("PinManager new()");
-        let data = Self::handshake_request(&agent)?;
-        Self::with_handshake(data, agent)
+        let data = Self::handshake_request(&agent, url)?;
+        Self::with_handshake(data, agent, url, public_key)
     }
 
     /// `set_pin` consume self, because handshake must be done for every request
@@ -73,11 +69,9 @@ impl PinManager {
         self.server_call(pin_secret, private_key, PinOp::Get).map_err(|_| Error::PinError)
     }
 
-    fn handshake_request(agent: &ureq::Agent) -> Result<Handshake, Error> {
-        let response = agent
-            .post(&format!("{}/start_handshake", PINSERVER_URL))
-            .set("content-length", "0")
-            .call();
+    fn handshake_request(agent: &ureq::Agent, url: &str) -> Result<Handshake, Error> {
+        let response =
+            agent.post(&format!("{}/start_handshake", url)).set("content-length", "0").call();
         if !response.ok() {
             return Err(Error::PinError);
         }
@@ -85,14 +79,18 @@ impl PinManager {
         Ok(data)
     }
 
-    fn with_handshake(data: Handshake, agent: ureq::Agent) -> Result<Self, Error> {
+    fn with_handshake(
+        data: Handshake,
+        agent: ureq::Agent,
+        url: &str,
+        public_key: &PublicKey,
+    ) -> Result<Self, Error> {
         let mut rng = rand::thread_rng();
-        let pinserver_pubkey = PublicKey::from_str(PINSERVER_PUBKEY).unwrap();
 
         let sig = data.sig()?;
         let (ske, msg) = data.ske()?;
 
-        crate::EC.verify(&msg, &sig, &pinserver_pubkey.key)?;
+        crate::EC.verify(&msg, &sig, &public_key.key)?;
 
         let secret_key = SecretKey::new(&mut rng);
         let shared_secret = secp256k1::ecdh::SharedSecret::new(&ske, &secret_key);
@@ -107,6 +105,7 @@ impl PinManager {
             response_encryption_key: Self::derive(2, &shared_secret),
             response_hmac_key: Self::derive(3, &shared_secret),
             agent,
+            url: url.to_string(),
         })
     }
 
@@ -165,7 +164,7 @@ impl PinManager {
 
         let response = self
             .agent
-            .post(&format!("{}/{}", PINSERVER_URL, op))
+            .post(&format!("{}/{}", self.url, op))
             .send_json(serde_json::to_value(&req).unwrap());
 
         if !response.ok() {
@@ -224,21 +223,54 @@ impl Display for PinOp {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use crate::pin::{Handshake, PinManager, ResponseData};
     use bitcoin::hashes::hex::{FromHex, ToHex};
     use bitcoin::hashes::Hmac;
     use bitcoin::secp256k1::SecretKey;
+    use bitcoin::PublicKey;
+
+    const PINSERVER_URL: &'static str = "https://jadepin.blockstream.com";
+    const PINSERVER_ONION_URL: &'static str =
+        "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion";
+    const PINSERVER_PUBKEY: &'static str =
+        "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547";
+
+    fn pin_server_pubkey() -> PublicKey {
+        PublicKey::from_str(PINSERVER_PUBKEY).unwrap()
+    }
 
     #[test]
-    fn test_with_pin_server() {
+    fn test_with_pin_server_clearnet() {
+        test_with_pin_server(PINSERVER_URL, None);
+    }
+
+    #[test]
+    #[ignore] // launch `cargo test -- test_with_pin_server_onion --include-ignored` with a running tor session on 127.0.0.1:9050
+    fn test_with_pin_server_onion() {
+        test_with_pin_server(PINSERVER_ONION_URL, Some("socks5://127.0.0.1:9050"));
+    }
+
+    pub fn test_with_pin_server(url: &str, proxy: Option<&str>) {
+        let agent = match proxy {
+            Some(proxy) => {
+                let proxy = ureq::Proxy::new(&proxy).unwrap();
+                let mut agent = ureq::agent();
+                agent.set_proxy(proxy);
+                agent
+            }
+            None => ureq::agent(),
+        };
+
         // requires internet connection and pin server working
         let mut rng = rand::thread_rng();
         let secret_key = SecretKey::new(&mut rng);
 
-        let manager = PinManager::new(ureq::Agent::new()).unwrap();
+        let manager = PinManager::new(agent.clone(), url, &pin_server_pubkey()).unwrap();
         let pin_key_set = manager.set_pin(&[0u8; 4], &secret_key).unwrap();
 
-        let manager = PinManager::new(ureq::Agent::new()).unwrap();
+        let manager = PinManager::new(agent, url, &pin_server_pubkey()).unwrap();
         let pin_key_get = manager.get_pin(&[0u8; 4], &secret_key).unwrap();
         assert_eq!(pin_key_get, pin_key_set);
     }
@@ -247,7 +279,13 @@ mod test {
     fn test_handshake() {
         // test vector taken from a random response from the production pin server
         let data = Handshake { sig: "004a58b09b6b4b6585536c5fbd662fb729a277426875a644fa56f5d05d6724281576f9d7844fc131102cd9d4fd56ca0b7f3cf9872379510407b3075f5c862c70".to_string(), ske: "032541c31f808a28750daf386e52ad70f16db153fa9e8375a6178021a0c7a74c09".to_string() };
-        assert!(PinManager::with_handshake(data, ureq::Agent::new()).is_ok());
+        assert!(PinManager::with_handshake(
+            data,
+            ureq::Agent::new(),
+            PINSERVER_URL,
+            &pin_server_pubkey()
+        )
+        .is_ok());
     }
 
     #[test]

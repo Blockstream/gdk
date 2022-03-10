@@ -47,6 +47,7 @@ impl_error!(elements::encode::Error);
 impl_error!(elements::address::AddressError);
 impl_error!(bitcoin::util::address::Error);
 impl_error!(bitcoin::secp256k1::Error);
+impl_error!(bitcoin::util::key::Error);
 
 #[macro_export]
 macro_rules! bail {

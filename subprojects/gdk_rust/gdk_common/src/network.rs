@@ -1,6 +1,8 @@
+use std::str::FromStr;
+
 use crate::error::Error;
-use bitcoin::hashes::hex::ToHex;
 use bitcoin::util::bip32::ExtendedPubKey;
+use bitcoin::{hashes::hex::ToHex, PublicKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -27,6 +29,10 @@ pub struct NetworkParameters {
     pub spv_enabled: Option<bool>,
     asset_registry_url: Option<String>,
     asset_registry_onion_url: Option<String>,
+
+    pin_server_url: String,
+    pin_server_onion_url: String,
+    pin_server_public_key: String,
 
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
@@ -135,6 +141,19 @@ impl NetworkParameters {
 
     pub fn set_asset_registry_onion_url(&mut self, url: String) {
         self.asset_registry_onion_url = Some(url);
+    }
+
+    pub fn pin_server_url(&self) -> &str {
+        if self.use_tor.unwrap_or(false) {
+            if !self.pin_server_url.is_empty() {
+                return &self.pin_server_url;
+            }
+        }
+        &self.pin_server_onion_url
+    }
+
+    pub fn pin_manager_public_key(&self) -> Result<PublicKey, Error> {
+        Ok(PublicKey::from_str(&self.pin_server_public_key)?)
     }
 
     // Unique wallet identifier for the given xpub on this network. Used as part of the database

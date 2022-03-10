@@ -508,7 +508,11 @@ impl ElectrumSession {
         details: PinGetDetails,
     ) -> Result<String, Error> {
         let agent = self.build_request_agent()?;
-        let manager = PinManager::new(agent)?;
+        let manager = PinManager::new(
+            agent,
+            self.network.pin_server_url(),
+            &self.network.pin_manager_public_key()?,
+        )?;
         let client_key = SecretKey::from_slice(&Vec::<u8>::from_hex(&details.pin_identifier)?)?;
         let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
         let iv = Vec::<u8>::from_hex(&details.salt)?;
@@ -873,7 +877,11 @@ impl ElectrumSession {
 
     pub fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
         let agent = self.build_request_agent()?;
-        let manager = PinManager::new(agent)?;
+        let manager = PinManager::new(
+            agent,
+            self.network.pin_server_url(),
+            &self.network.pin_manager_public_key()?,
+        )?;
         let client_key = SecretKey::new(&mut thread_rng());
         let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
         let iv = thread_rng().gen::<[u8; 16]>();
