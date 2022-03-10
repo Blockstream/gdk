@@ -1415,7 +1415,9 @@ fn test_tor() {
     network.electrum_onion_url =
         Some("explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110".to_string());
     network.use_tor = Some(true);
-    network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
+    network.set_asset_registry_onion_url(
+        "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion".to_string(),
+    );
     network.policy_asset =
         Some("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d".to_string());
     network.proxy = Some("127.0.0.1:9050".into());

@@ -25,8 +25,8 @@ pub struct NetworkParameters {
     pub ct_exponent: Option<i32>,
     pub ct_min_value: Option<u64>,
     pub spv_enabled: Option<bool>,
-    pub asset_registry_url: Option<String>,
-    pub asset_registry_onion_url: Option<String>,
+    asset_registry_url: Option<String>,
+    asset_registry_onion_url: Option<String>,
 
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
@@ -116,10 +116,25 @@ impl NetworkParameters {
     }
 
     pub fn registry_base_url(&self) -> Result<String, Error> {
+        if self.use_tor.unwrap_or(false) {
+            if let Some(asset_registry_onion_url) = self.asset_registry_onion_url.as_ref() {
+                if !asset_registry_onion_url.is_empty() {
+                    return Ok(asset_registry_onion_url.into());
+                }
+            }
+        }
         self.asset_registry_url
             .as_ref()
             .map(|s| s.to_string())
-            .ok_or_else(|| Error::Generic("asset regitry url not available".into()))
+            .ok_or_else(|| Error::Generic("asset_registry_url not available".into()))
+    }
+
+    pub fn set_asset_registry_url(&mut self, url: String) {
+        self.asset_registry_url = Some(url);
+    }
+
+    pub fn set_asset_registry_onion_url(&mut self, url: String) {
+        self.asset_registry_onion_url = Some(url);
     }
 
     // Unique wallet identifier for the given xpub on this network. Used as part of the database

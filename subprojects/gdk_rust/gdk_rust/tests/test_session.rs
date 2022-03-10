@@ -149,7 +149,7 @@ pub fn setup(
     network.ct_bits = Some(52);
     network.ct_exponent = Some(0);
     network.spv_enabled = Some(true);
-    network.asset_registry_url = Some("https://assets.blockstream.info".to_string());
+    network.set_asset_registry_url("https://assets.blockstream.info".to_string());
     network.taproot_enabled_at = Some(0);
     if is_liquid {
         network.liquid = true;
