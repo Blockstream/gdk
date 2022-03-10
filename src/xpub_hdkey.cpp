@@ -124,7 +124,8 @@ namespace sdk {
         return get_ga_subaccount_root_path(subaccount); // Defer to static impl
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_ga_subaccount_full_path(uint32_t subaccount, uint32_t pointer)
+    std::vector<uint32_t> ga_user_pubkeys::get_ga_subaccount_full_path(
+        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/)
     {
         if (subaccount != 0u) {
             return std::vector<uint32_t>({ harden(3), harden(subaccount), 1, pointer });
@@ -132,9 +133,10 @@ namespace sdk {
         return std::vector<uint32_t>({ 1, pointer });
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) const
+    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_full_path(
+        uint32_t subaccount, uint32_t pointer, bool is_internal) const
     {
-        return get_ga_subaccount_full_path(subaccount, pointer); // Defer to static impl
+        return get_ga_subaccount_full_path(subaccount, pointer, is_internal); // Defer to static impl
     }
 
     bool ga_user_pubkeys::have_subaccount(uint32_t subaccount)

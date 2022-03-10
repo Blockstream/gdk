@@ -3141,14 +3141,13 @@ namespace sdk {
         return ga_user_pubkeys::get_ga_subaccount_root_path(subaccount);
     }
 
-    std::vector<uint32_t> ga_session::get_subaccount_full_path(
-        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/)
+    std::vector<uint32_t> ga_session::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
         if (m_user_pubkeys) {
             locker_t locker(m_mutex);
-            return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer);
+            return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
         }
-        return ga_user_pubkeys::get_ga_subaccount_full_path(subaccount, pointer);
+        return ga_user_pubkeys::get_ga_subaccount_full_path(subaccount, pointer, is_internal);
     }
 
     bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)

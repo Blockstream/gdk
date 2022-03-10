@@ -102,7 +102,8 @@ namespace sdk {
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const = 0;
 
         // Get the full path to a key in a subaccount
-        virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) const = 0;
+        virtual std::vector<uint32_t> get_subaccount_full_path(
+            uint32_t subaccount, uint32_t pointer, bool is_internal) const = 0;
 
         virtual bool have_subaccount(uint32_t subaccount) = 0;
 
@@ -139,13 +140,15 @@ namespace sdk {
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
         static std::vector<uint32_t> get_ga_subaccount_root_path(uint32_t subaccount);
         // Get the full path to a key in a subaccount
-        static std::vector<uint32_t> get_ga_subaccount_full_path(uint32_t subaccount, uint32_t pointer);
+        static std::vector<uint32_t> get_ga_subaccount_full_path(
+            uint32_t subaccount, uint32_t pointer, bool is_internal);
 
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
 
         // Get the full path to a key in a subaccount
-        virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer) const override;
+        virtual std::vector<uint32_t> get_subaccount_full_path(
+            uint32_t subaccount, uint32_t pointer, bool is_internal) const override;
 
         virtual bool have_subaccount(uint32_t subaccount) override;
 
