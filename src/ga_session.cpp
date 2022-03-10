@@ -1287,7 +1287,6 @@ namespace sdk {
             m_signer.reset();
             remove_cached_utxos(std::vector<uint32_t>());
             swap_with_default(m_login_data);
-            m_user_pubkeys.reset();
             m_local_encryption_key = boost::none;
             m_blob.reset();
             m_blob_hmac.clear();
@@ -1649,7 +1648,7 @@ namespace sdk {
 
         if (subaccount != 0) {
             // Add user and recovery pubkeys for the subaccount
-            if (m_user_pubkeys != nullptr && !m_user_pubkeys->have_subaccount(subaccount)) {
+            if (m_user_pubkeys && !m_user_pubkeys->have_subaccount(subaccount)) {
                 const std::vector<uint32_t> path{ harden(3), harden(subaccount) };
                 // TODO: Investigate whether this code path can ever execute
                 m_user_pubkeys->add_subaccount(subaccount, make_xpub(m_signer->get_bip32_xpub(path)));
