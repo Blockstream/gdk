@@ -201,7 +201,7 @@ pub fn setup(
         }
     };
     assert_eq!(block_status.0, 101);
-    let expected = json!({"block":{"block_height":101},"event":"block"});
+    let expected = json!({"block":{"block_height":101u32},"event":"block"});
     for i in 0.. {
         assert!(i < 10);
         if session.filter_events("block").last() == Some(&expected) {
