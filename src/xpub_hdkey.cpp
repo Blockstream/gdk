@@ -26,9 +26,9 @@ namespace sdk {
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
 
-    pub_key_t xpub_hdkey::derive(uint32_t pointer)
+    pub_key_t xpub_hdkey::derive(uint32_span_t path)
     {
-        ext_key result = bip32_public_key_from_parent(m_ext_key, pointer);
+        ext_key result = bip32_public_key_from_parent_path(m_ext_key, path);
         pub_key_t ret;
         std::copy(result.pub_key, result.pub_key + ret.size(), ret.begin());
         wally_bzero(&result, sizeof(result));
@@ -50,6 +50,7 @@ namespace sdk {
     namespace detail {
         xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params)
             : m_is_main_net(net_params.is_main_net())
+            , m_is_liquid(net_params.is_liquid())
         {
         }
 
@@ -61,7 +62,14 @@ namespace sdk {
 
         pub_key_t xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer)
         {
-            return get_subaccount(subaccount).derive(pointer);
+            std::array<uint32_t, 1> path{ { pointer } };
+            return get_subaccount(subaccount).derive(path);
+        }
+
+        pub_key_t xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, bool is_internal)
+        {
+            std::array<uint32_t, 2> path{ { is_internal ? 1u : 0u, pointer } };
+            return get_subaccount(subaccount).derive(path);
         }
     } // namespace detail
 
@@ -163,6 +171,70 @@ namespace sdk {
     }
 
     xpub_hdkey ga_user_pubkeys::get_subaccount(uint32_t subaccount)
+    {
+        const auto p = m_subaccounts.find(subaccount);
+        GDK_RUNTIME_ASSERT(p != m_subaccounts.end());
+        return p->second;
+    }
+
+    bip44_pubkeys::bip44_pubkeys(const network_parameters& net_params)
+        : user_pubkeys(net_params)
+    {
+    }
+
+    std::vector<uint32_t> bip44_pubkeys::get_bip44_subaccount_root_path(
+        bool is_main_net, bool is_liquid, uint32_t subaccount)
+    {
+        const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
+        const uint32_t purpose = purpose_lookup.at(subaccount % 16);
+        const uint32_t coin_type = is_main_net ? (is_liquid ? 1776 : 0) : 1;
+        const uint32_t account = subaccount / 16;
+        return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
+    }
+
+    std::vector<uint32_t> bip44_pubkeys::get_bip44_subaccount_full_path(
+        bool is_main_net, bool is_liquid, uint32_t subaccount, uint32_t pointer, bool is_internal)
+    {
+        auto path = get_bip44_subaccount_root_path(is_main_net, is_liquid, subaccount);
+        path.emplace_back(is_internal ? 1 : 0);
+        path.emplace_back(pointer);
+        return path;
+    }
+
+    std::vector<uint32_t> bip44_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    {
+        return get_bip44_subaccount_root_path(m_is_main_net, m_is_liquid, subaccount);
+    }
+
+    std::vector<uint32_t> bip44_pubkeys::get_subaccount_full_path(
+        uint32_t subaccount, uint32_t pointer, bool is_internal) const
+    {
+        return get_bip44_subaccount_full_path(m_is_main_net, m_is_liquid, subaccount, pointer, is_internal);
+    }
+
+    bool bip44_pubkeys::have_subaccount(uint32_t subaccount)
+    {
+        return m_subaccounts.find(subaccount) != m_subaccounts.end();
+    }
+
+    void bip44_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
+    {
+        auto user_key = xpub_hdkey(m_is_main_net, xpub);
+        const auto ret = m_subaccounts.emplace(subaccount, std::move(user_key));
+        if (!ret.second) {
+            // Subaccount is already present; xpub must match whats already there
+            GDK_RUNTIME_ASSERT(ret.first->second.to_xpub_t() == user_key.to_xpub_t());
+        }
+    }
+
+    void bip44_pubkeys::remove_subaccount(uint32_t subaccount)
+    {
+        // Removing subaccounts is not supported
+        (void)subaccount;
+        GDK_RUNTIME_ASSERT(false);
+    }
+
+    xpub_hdkey bip44_pubkeys::get_subaccount(uint32_t subaccount)
     {
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT(p != m_subaccounts.end());
