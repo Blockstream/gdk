@@ -111,6 +111,9 @@ namespace sdk {
     {
         auto master_xpub = signer->get_bip32_xpub(std::vector<uint32_t>());
         rust_call("load_store", { { "master_xpub", std::move(master_xpub) } }, m_session);
+        // FIXME: Load subaccount paths and xpubs from the store and add them
+        // with signer->cache_bip32_xpub() - see ga_session::load_signer_xpubs
+        // (This avoids having to go to the HWW to fetch these xpubs)
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
