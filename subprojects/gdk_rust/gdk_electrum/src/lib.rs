@@ -9,6 +9,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate gdk_common;
 
+use headers::bitcoin::HEADERS_FILE_MUTEX;
 use log::{debug, info, trace, warn};
 use serde_json::Value;
 
@@ -54,7 +55,7 @@ use std::{iter, thread};
 
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
-use crate::headers::{ChainOrVerifier, SPV_MUTEX};
+use crate::headers::ChainOrVerifier;
 pub use crate::notification::{NativeNotif, Notification};
 use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
@@ -680,7 +681,6 @@ impl ElectrumSession {
         let sync_interval = self.network.sync_interval.unwrap_or(7);
 
         if self.network.spv_enabled.unwrap_or(false) {
-            let _lock = SPV_MUTEX.lock().unwrap();
             let checker = match self.network.id() {
                 NetworkId::Bitcoin(network) => {
                     ChainOrVerifier::Chain(HeadersChain::new(&self.network.state_dir, network)?)
@@ -715,6 +715,14 @@ impl ElectrumSession {
                     if wait_or_close(&threads_stopped, sync_interval) {
                         info!("closing headers thread");
                         break;
+                    }
+                    let mut _lock;
+                    if let ChainOrVerifier::Chain(chain) = &headers.checker {
+                        _lock = HEADERS_FILE_MUTEX
+                            .get(&chain.network)
+                            .expect("unreachable because map populate with every enum variants")
+                            .lock()
+                            .unwrap();
                     }
 
                     if let Ok(client) = headers_url.build_client(proxy.as_deref(), None) {

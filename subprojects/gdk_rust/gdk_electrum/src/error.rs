@@ -7,7 +7,7 @@ use serde::ser::Serialize;
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt::Display;
-use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{MutexGuard, PoisonError, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Debug)]
 pub enum Error {
@@ -303,6 +303,12 @@ impl From<PoisonError<RwLockReadGuard<'_, HashMap<u32, Account>>>> for Error {
 
 impl From<PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>> for Error {
     fn from(err: PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<MutexGuard<'_, ()>>> for Error {
+    fn from(err: PoisonError<MutexGuard<'_, ()>>) -> Self {
         Error::Generic(err.to_string())
     }
 }

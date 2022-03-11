@@ -12,6 +12,18 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+
+lazy_static! {
+    pub static ref HEADERS_FILE_MUTEX: HashMap<Network, Mutex<()>> = {
+        let mut m = HashMap::new();
+        m.insert(Network::Bitcoin, Mutex::new(()));
+        m.insert(Network::Testnet, Mutex::new(()));
+        m.insert(Network::Regtest, Mutex::new(()));
+        m.insert(Network::Signet, Mutex::new(()));  // unused
+        m
+    };
+}
 
 #[derive(Debug)]
 pub struct HeadersChain {
@@ -19,7 +31,7 @@ pub struct HeadersChain {
     height: u32,
     last: BlockHeader,
     checkpoints: HashMap<u32, BlockHash>,
-    network: Network,
+    pub network: Network,
 }
 
 impl HeadersChain {

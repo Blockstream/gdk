@@ -1,6 +1,6 @@
 use crate::determine_electrum_url;
 use crate::error::Error;
-use crate::headers::bitcoin::HeadersChain;
+use crate::headers::bitcoin::{HeadersChain, HEADERS_FILE_MUTEX};
 use crate::headers::liquid::Verifier;
 use ::bitcoin::hashes::hex::ToHex;
 use ::bitcoin::hashes::{sha256, sha256d, Hash};
@@ -19,7 +19,6 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 
 pub mod bitcoin;
 pub mod liquid;
@@ -58,10 +57,6 @@ where
     Ok(N::from_slice(&current)?)
 }
 
-lazy_static! {
-    pub static ref SPV_MUTEX: Mutex<()> = Mutex::new(());
-}
-
 trait ParamsMethods {
     fn build_client(&self) -> Result<Client, Error>;
     fn headers_chain(&self) -> Result<HeadersChain, Error>;
@@ -92,8 +87,10 @@ impl ParamsMethods for SPVCommonParams {
 pub fn download_headers(
     input: &SPVDownloadHeadersParams,
 ) -> Result<SPVDownloadHeadersResult, Error> {
-    let lock = SPV_MUTEX.lock().unwrap();
-
+    let _lock = HEADERS_FILE_MUTEX
+        .get(&input.params.network.bip32_network())
+        .expect("unreachable because map populate with every enum variants")
+        .lock()?;
     debug!("download_headers {:?}", input);
     let client = input.params.build_client()?;
     let mut chain = input.params.headers_chain()?;
@@ -112,10 +109,6 @@ pub fn download_headers(
     }
     info!("downloaded {:?}", chain.height());
 
-    // We are explicitly dropping the lock because using a `let _` binding may cause a bug preventing
-    // the lock to work properly.
-    drop(lock);
-
     Ok(SPVDownloadHeadersResult {
         height: chain.height(),
         reorg: reorg_happened,
@@ -130,6 +123,10 @@ pub fn download_headers(
 ///
 /// used to expose SPV functionality through C interface
 pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Error> {
+    let _lock = HEADERS_FILE_MUTEX
+        .get(&input.params.network.bip32_network())
+        .expect("unreachable because map populate with every enum variants")
+        .lock()?;
     debug!("spv_verify_tx {:?}", input);
     let txid = BETxid::from_hex(&input.txid, input.params.network.id())?;
 
