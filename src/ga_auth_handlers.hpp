@@ -23,6 +23,7 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
+        state_type request_subaccount_xpubs();
 
         const nlohmann::json m_hw_device;
         nlohmann::json m_credential_data;

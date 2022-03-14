@@ -391,22 +391,6 @@ namespace sdk {
             // Log in and set up the session
             m_result = m_session->authenticate(sig_der_hex, "GA", m_master_bip32_xpub, m_signer);
 
-            // Ask the caller for the xpubs for each subaccount
-            m_subaccount_pointers = m_session->get_subaccount_pointers();
-
-            std::vector<nlohmann::json> paths;
-            paths.reserve(m_subaccount_pointers.size());
-            for (const auto& pointer : m_subaccount_pointers) {
-                paths.emplace_back(m_session->get_subaccount_root_path(pointer));
-            }
-            signal_hw_request(hw_request::get_xpubs);
-            m_twofactor_data["paths"] = paths;
-            return m_state;
-        } else if (m_hw_request == hw_request::get_xpubs) {
-            // Caller has provided the xpubs for each subaccount
-            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
-            m_session->register_subaccount_xpubs(m_subaccount_pointers, xpubs);
-
             if (m_signer->is_liquid()) {
                 if (m_signer->supports_host_unblinding()) {
                     // Ask the HW device to provide the master blinding key.
@@ -419,9 +403,8 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT_MSG(!is_electrum, "HWW must support host unblinding for singlesig wallets");
                 }
             }
-            //
-            // Completed Login. FALL THROUGH for post-login processing
-            //
+
+            return request_subaccount_xpubs();
         } else if (m_hw_request == hw_request::get_master_blinding_key) {
             // We either had the master blinding key cached, have fetched it
             // from the HWW, or the user has denied the request (if its blank).
@@ -429,6 +412,13 @@ namespace sdk {
             // our signer if present to allow host unblinding.
             const std::string key_hex = get_hw_reply().at("master_blinding_key");
             m_session->set_cached_master_blinding_key(key_hex);
+
+            return request_subaccount_xpubs();
+        } else if (m_hw_request == hw_request::get_xpubs) {
+            // Caller has provided the xpubs for each subaccount
+            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+            m_session->register_subaccount_xpubs(m_subaccount_pointers, xpubs);
+
             //
             // Completed Login. FALL THROUGH for post-login processing
             //
@@ -457,6 +447,21 @@ namespace sdk {
             add_next_handler(handler_p.release());
         }
         return state_type::done;
+    }
+
+    auth_handler::state_type login_user_call::request_subaccount_xpubs()
+    {
+        // Ask the caller for the xpubs for each subaccount
+        m_subaccount_pointers = m_session->get_subaccount_pointers();
+
+        std::vector<nlohmann::json> paths;
+        paths.reserve(m_subaccount_pointers.size());
+        for (const auto& pointer : m_subaccount_pointers) {
+            paths.emplace_back(m_session->get_subaccount_root_path(pointer));
+        }
+        signal_hw_request(hw_request::get_xpubs);
+        m_twofactor_data["paths"] = paths;
+        return m_state;
     }
 
     //
