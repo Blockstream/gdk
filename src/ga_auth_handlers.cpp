@@ -689,6 +689,7 @@ namespace sdk {
         const auto& outputs = m_twofactor_data["transaction_outputs"];
         const auto& transaction_details = m_twofactor_data["transaction"];
         const bool is_liquid = m_net_params.is_liquid();
+        const bool is_electrum = m_net_params.is_electrum();
         const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
         if (is_liquid && signer->is_hardware()) {
@@ -721,7 +722,15 @@ namespace sdk {
             size_t i = 0;
             const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
             for (const auto& utxo : inputs) {
-                const auto pubkey = user_pubkeys.derive(utxo.at("subaccount"), utxo.at("pointer"));
+                const uint32_t subaccount = utxo.at("subaccount");
+                const uint32_t pointer = utxo.at("pointer");
+
+                pub_key_t pubkey;
+                if (!is_electrum) {
+                    pubkey = user_pubkeys.derive(subaccount, pointer);
+                } else {
+                    pubkey = user_pubkeys.derive(subaccount, pointer, utxo.value("is_internal", false));
+                }
                 const auto script_hash = get_script_hash(m_net_params, utxo, tx, i);
                 constexpr bool has_sighash = true;
                 verify_ae_signature(
