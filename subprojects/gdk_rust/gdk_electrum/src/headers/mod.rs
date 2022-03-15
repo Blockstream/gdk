@@ -61,6 +61,7 @@ trait ParamsMethods {
     fn build_client(&self) -> Result<Client, Error>;
     fn headers_chain(&self) -> Result<HeadersChain, Error>;
     fn verified_cache(&self) -> Result<VerifiedCache, Error>;
+    fn bitcoin_network(&self) -> Option<::bitcoin::Network>;
 }
 
 impl ParamsMethods for SPVCommonParams {
@@ -69,15 +70,14 @@ impl ParamsMethods for SPVCommonParams {
         url.build_client(self.network.proxy.as_deref(), self.timeout)
     }
     fn headers_chain(&self) -> Result<HeadersChain, Error> {
-        let network = self
-            .network
-            .id()
-            .get_bitcoin_network()
-            .expect("headers_chain available only on bitcoin");
+        let network = self.bitcoin_network().expect("headers_chain available only on bitcoin");
         Ok(HeadersChain::new(&self.network.state_dir, network)?)
     }
     fn verified_cache(&self) -> Result<VerifiedCache, Error> {
         Ok(VerifiedCache::new(&self.network.state_dir, self.network.id(), &self.encryption_key))
+    }
+    fn bitcoin_network(&self) -> Option<::bitcoin::Network> {
+        self.network.id().get_bitcoin_network()
     }
 }
 
@@ -87,8 +87,10 @@ impl ParamsMethods for SPVCommonParams {
 pub fn download_headers(
     input: &SPVDownloadHeadersParams,
 ) -> Result<SPVDownloadHeadersResult, Error> {
+    let network =
+        input.params.bitcoin_network().expect("download_headers only in bitcoin networks");
     let _lock = HEADERS_FILE_MUTEX
-        .get(&input.params.network.bip32_network())
+        .get(&network)
         .expect("unreachable because map populate with every enum variants")
         .lock()?;
     debug!("download_headers {:?}", input);
@@ -123,10 +125,14 @@ pub fn download_headers(
 ///
 /// used to expose SPV functionality through C interface
 pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Error> {
-    let _lock = HEADERS_FILE_MUTEX
-        .get(&input.params.network.bip32_network())
-        .expect("unreachable because map populate with every enum variants")
-        .lock()?;
+    let mut _lock;
+    if let NetworkId::Bitcoin(network) = input.params.network.id() {
+        // Liquid hasn't a shared headers chain file
+        _lock = HEADERS_FILE_MUTEX
+            .get(&network)
+            .expect("unreachable because map populate with every enum variants")
+            .lock()?;
+    }
     debug!("spv_verify_tx {:?}", input);
     let txid = BETxid::from_hex(&input.txid, input.params.network.id())?;
 

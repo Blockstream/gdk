@@ -1213,6 +1213,7 @@ pub fn spv_verify_tx(
     height: u32,
     headers_to_download: Option<usize>,
 ) {
+    let id = network.id();
     let common = SPVCommonParams {
         network,
         timeout: None,
@@ -1228,15 +1229,21 @@ pub fn spv_verify_tx(
         headers_to_download,
     };
 
-    thread::spawn(move || {
-        let mut synced = 0;
+    let mut handle = None;
+    if let NetworkId::Bitcoin(_) = id {
+        // Liquid doesn't need to download headers chain
+        handle = Some(thread::spawn(move || {
+            let mut synced = 0;
 
-        while synced < tip {
-            let result = headers::download_headers(&param_download).unwrap();
-            synced = result.height;
-            thread::sleep(Duration::from_millis(100));
-        }
-    });
+            while synced < tip {
+                if let Ok(result) = headers::download_headers(&param_download) {
+                    synced = result.height;
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+        }));
+    }
+
     loop {
         match headers::spv_verify_tx(&param) {
             Ok(SPVVerifyTxResult::InProgress) => {
@@ -1250,6 +1257,10 @@ pub fn spv_verify_tx(
 
     // second should verify immediately, (and also hit cache)
     assert!(matches!(headers::spv_verify_tx(&param), Ok(SPVVerifyTxResult::Verified)));
+
+    if let Some(handle) = handle {
+        handle.join().unwrap();
+    }
 }
 
 // Simulate login through the auth handler
