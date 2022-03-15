@@ -145,11 +145,11 @@ impl NetworkParameters {
 
     pub fn pin_server_url(&self) -> &str {
         if self.use_tor.unwrap_or(false) {
-            if !self.pin_server_url.is_empty() {
-                return &self.pin_server_url;
+            if !self.pin_server_onion_url.is_empty() {
+                return &self.pin_server_onion_url;
             }
         }
-        &self.pin_server_onion_url
+        &self.pin_server_url
     }
 
     pub fn pin_manager_public_key(&self) -> Result<PublicKey, Error> {
