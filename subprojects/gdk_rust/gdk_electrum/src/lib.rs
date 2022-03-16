@@ -632,8 +632,8 @@ impl ElectrumSession {
             None
         };
 
-        let mut tip_height = self.store()?.read()?.cache.tip.0;
-        self.notify.block(tip_height);
+        let (mut tip_height, mut tip_hash) = self.store()?.read()?.cache.tip;
+        self.notify.block(tip_height, tip_hash);
 
         info!(
             "building client, url {}, proxy {}",
@@ -783,11 +783,12 @@ impl ElectrumSession {
             loop {
                 if let Ok(client) = tipper_url.build_client(proxy.as_deref(), None) {
                     match tipper.tip(&client) {
-                        Ok(current_tip) => {
-                            if tip_height != current_tip {
-                                tip_height = current_tip;
-                                info!("tip is {:?}", tip_height);
-                                notify_blocks.block(tip_height);
+                        Ok((current_tip_height, current_tip_hash)) => {
+                            if tip_height != current_tip_height || tip_hash != current_tip_hash {
+                                tip_height = current_tip_height;
+                                tip_hash = current_tip_hash;
+                                info!("tip is {:?} {:?}", tip_height, tip_hash);
+                                notify_blocks.block(tip_height, tip_hash);
                             }
                         }
                         Err(e) => {
@@ -1333,16 +1334,19 @@ fn call_assets(
 }
 
 impl Tipper {
-    pub fn tip(&self, client: &Client) -> Result<u32, Error> {
+    pub fn tip(&self, client: &Client) -> Result<(u32, BEBlockHash), Error> {
         let header = client.block_headers_subscribe_raw()?;
-        let height = header.height as u32;
-        let tip_height = self.store.read()?.cache.tip.0;
-        if height != tip_height {
-            let hash = BEBlockHeader::deserialize(&header.header, self.network.id())?.block_hash();
-            info!("saving in store new tip {:?}", (height, hash));
-            self.store.write()?.cache.tip = (height, hash);
+        let new_height = header.height as u32;
+        let new_hash = BEBlockHeader::deserialize(&header.header, self.network.id())?.block_hash();
+        let (current_height, current_hash) = self.store.read()?.cache.tip;
+        if new_height != current_height || new_hash != current_hash {
+            let new_tip = (new_height, new_hash);
+            info!("saving in store new tip {:?}", new_tip);
+            self.store.write()?.cache.tip = new_tip;
+            Ok(new_tip)
+        } else {
+            Ok((current_height, current_hash))
         }
-        Ok(height)
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::State;
-use gdk_common::model::Settings;
 use gdk_common::wally::make_str;
+use gdk_common::{be::BEBlockHash, model::Settings};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -77,8 +77,9 @@ impl NativeNotif {
         self.native = Some(native_type);
     }
 
-    pub fn block(&self, height: u32) {
-        let data = json!({"block":{"block_height":height},"event":"block"});
+    pub fn block(&self, height: u32, hash: BEBlockHash) {
+        let data =
+            json!({"block":{"block_height":height,"block_hash": hash.to_hex()},"event":"block"});
         self.notify(data);
     }
 

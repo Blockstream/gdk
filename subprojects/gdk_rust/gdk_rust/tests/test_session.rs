@@ -125,7 +125,7 @@ pub fn setup(
     let electrs = electrsd::ElectrsD::with_conf(&electrs_exec, &node, &conf).unwrap();
     info!("Electrs spawned");
 
-    node_generate(&node.client, 100, None);
+    let hashes = node_generate(&node.client, 100, None);
     electrs.trigger().unwrap();
 
     let mut i = 60;
@@ -201,7 +201,7 @@ pub fn setup(
         }
     };
     assert_eq!(block_status.0, 101);
-    let expected = json!({"block":{"block_height":101u32},"event":"block"});
+    let expected = json!({"block":{"block_height":101u32, "block_hash": hashes.last().unwrap()},"event":"block"});
     for i in 0.. {
         assert!(i < 10);
         if session.filter_events("block").last() == Some(&expected) {
