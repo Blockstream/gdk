@@ -1149,7 +1149,7 @@ namespace sdk {
             }
 
             const auto asset_id = h2b_rev(output.at("asset_id"));
-            const auto pub_key = h2b(output.at("public_key"));
+            const auto pub_key = h2b(output.at("blinding_key"));
             const uint64_t value = output.at("satoshi");
 
             const auto generator = asset_generator_from_bytes(asset_id, output_abfs[i]);
@@ -1205,7 +1205,7 @@ namespace sdk {
 
         const auto asset_id = h2b_rev(output.at("asset_id"));
         const auto script = h2b(output.at("script"));
-        const auto pub_key = h2b(output.at("public_key"));
+        const auto pub_key = h2b(output.at("blinding_key"));
         const uint64_t value = output.at("satoshi");
 
         const auto eph_keypair_sec = h2b(output.at("eph_keypair_sec"));

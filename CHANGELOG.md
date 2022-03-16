@@ -1,5 +1,11 @@
 # Changelog
 
+## Release 0.0.52
+
+### Changed
+
+- Multisig: In GA_create_transaction "transaction_outputs" rename "public_key" to "blinding_key" when appropriate.
+
 
 ## Release 0.0.51 - 2022-03-30
 

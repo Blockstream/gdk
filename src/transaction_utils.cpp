@@ -528,14 +528,14 @@ namespace sdk {
                     const auto& change_address = result.at("change_address").at(asset_id);
                     output.insert(change_address.begin(), change_address.end());
                     if (is_liquid) {
-                        output["public_key"] = blinding_key_from_addr(change_address.at("address"));
+                        output["blinding_key"] = blinding_key_from_addr(change_address.at("address"));
                     }
                 } else {
                     const auto& addressee = result.at("addressees").at(addressee_index);
                     const auto& address = addressee.at("address");
                     output["address"] = address;
                     if (is_liquid) {
-                        output["public_key"] = blinding_key_from_addr(address);
+                        output["blinding_key"] = blinding_key_from_addr(address);
                     }
                     ++addressee_index;
                 }
