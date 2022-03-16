@@ -1184,7 +1184,7 @@ namespace sdk {
 
     void get_unspent_outputs_call::filter_result(bool encache)
     {
-        if (encache) {
+        if (encache && !m_net_params.is_electrum()) {
             // Encache the unfiltered results, and set our result to a copy
             // for filtering.
             auto p = m_session->set_cached_utxos(m_details.at("subaccount"), m_details.at("num_confs"), m_result);
