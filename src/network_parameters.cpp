@@ -420,7 +420,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "taproot_enabled_at", 0xffffffff }, // Not yet enabled
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() }
         })) },
@@ -461,7 +461,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "taproot_enabled_at", 0xffffffff }, // Not yet enabled
             { "tx_explorer_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() }
         })) },
@@ -495,7 +495,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "taproot_enabled_at", 709776 }, // 144 Blocks following activation
             { "tx_explorer_url", "https://blockstream.info/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -529,7 +529,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "taproot_enabled_at", 0 }, // Enabled
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -563,7 +563,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "taproot_enabled_at", 0 }, // Enabled
             { "tx_explorer_url", "http://127.0.0.1:8080/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -604,7 +604,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "taproot_enabled_at", 0xffffffff }, // Not yet enabled
             { "tx_explorer_url", "https://blockstream.info/liquidtestnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", nlohmann::json::array() },
+            { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() }
         })) },
