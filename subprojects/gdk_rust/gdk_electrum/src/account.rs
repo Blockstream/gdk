@@ -193,13 +193,17 @@ impl Account {
         let pointer = {
             let store = &mut self.store.write()?;
             let acc_store = store.account_cache_mut(self.account_num)?;
+
             acc_store.indexes.external += 1;
             acc_store.indexes.external
         };
+        let account_path = DerivationPath::from(&[0.into(), pointer.into()][..]); // 0 is external
+        let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(false, pointer)?.to_string();
         Ok(AddressPointer {
             address,
             pointer,
+            user_path: user_path.into(),
         })
     }
 

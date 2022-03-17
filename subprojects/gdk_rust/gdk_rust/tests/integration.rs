@@ -1,3 +1,4 @@
+use bitcoin::util::bip32::DerivationPath;
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::mnemonic::Mnemonic;
@@ -721,6 +722,10 @@ fn subaccounts(is_liquid: bool) {
         assert!(acc1_address.address.starts_with("bcrt1")); // Native Bech32 P2WPKH
         assert!(acc2_address.address.starts_with(&['m', 'n'][..])); // Legacy P2PKH
     }
+    let s = |v| DerivationPath::from(v).to_string();
+    assert_eq!(s(acc0_address.user_path), "m/49'/1'/0'/0/1");
+    assert_eq!(s(acc1_address.user_path), "m/84'/1'/0'/0/1");
+    assert_eq!(s(acc2_address.user_path), "m/44'/1'/0'/0/1");
 
     let mut balances: HashMap<u32, u64> = HashMap::new();
 
@@ -790,6 +795,9 @@ fn subaccounts(is_liquid: bool) {
         .unwrap();
     assert_eq!(account3.script_type, ScriptType::P2pkh);
     assert_eq!(test_session.session.get_subaccount(18).unwrap().bip44_discovered, false);
+
+    let acc18_address = test_session.get_receive_address(18);
+    assert_eq!(s(acc18_address.user_path), "m/44'/1'/1'/0/1");
 
     // Should fail - the second P2PKH account is still inactive
     let err = test_session

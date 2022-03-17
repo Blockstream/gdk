@@ -556,6 +556,7 @@ pub struct PinGetDetails {
 pub struct AddressPointer {
     pub address: String,
     pub pointer: u32, // child_number in bip32 terminology
+    pub user_path: Vec<ChildNumber>,
 }
 
 // This one is simple enough to derive a serializer
