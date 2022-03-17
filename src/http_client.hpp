@@ -101,6 +101,9 @@ namespace sdk {
         boost::beast::tcp_stream m_stream;
     };
 
+    std::shared_ptr<boost::asio::ssl::context> tls_init(const std::string& host_name,
+        const std::vector<std::string>& roots, const std::vector<std::string>& pins, uint32_t cert_expiry_threshold);
+
     inline std::shared_ptr<http_client> make_http_client(
         boost::asio::io_context& io, gsl::owner<boost::asio::ssl::context*> ssl_ctx)
     {

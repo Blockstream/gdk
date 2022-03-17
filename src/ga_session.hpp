@@ -33,8 +33,6 @@ namespace sdk {
 
         void emit_notification(nlohmann::json details, bool async);
 
-        nlohmann::json http_request(nlohmann::json params);
-
         nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
 

@@ -65,9 +65,6 @@ namespace sdk {
         // subscription after reconnecting
         void subscribe(const std::string& topic, subscribe_fn_t fn, bool is_initial = false);
 
-        // Make an http request to an arbitrary host governed by 'params'.
-        nlohmann::json http_request(nlohmann::json params);
-
         // Make a background WAMP call and return its result to the current thread.
         // The session mutex must not be held when calling this function.
         template <typename... Args> autobahn::wamp_call_result call(const std::string& method_name, Args&&... args)

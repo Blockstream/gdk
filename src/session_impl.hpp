@@ -72,7 +72,8 @@ namespace sdk {
         virtual void connect() = 0;
         virtual void disconnect() = 0;
 
-        virtual nlohmann::json http_request(nlohmann::json params) = 0;
+        // Make an http request to an arbitrary host governed by 'params'.
+        virtual nlohmann::json http_request(nlohmann::json params);
         virtual nlohmann::json refresh_assets(const nlohmann::json& params) = 0;
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
 
@@ -249,6 +250,9 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
+        boost::asio::io_context m_io;
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+        std::thread m_run_thread; // Runs the asio context
         const std::string m_user_proxy;
         std::shared_ptr<tor_controller> m_tor_ctrl;
 

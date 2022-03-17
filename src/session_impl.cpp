@@ -3,6 +3,7 @@
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "ga_tor.hpp"
+#include "http_client.hpp"
 #include "logging.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
@@ -38,6 +39,8 @@ namespace sdk {
 
     session_impl::session_impl(network_parameters&& net_params)
         : m_net_params(net_params)
+        , m_io()
+        , m_work_guard(boost::asio::make_work_guard(m_io))
         , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string())))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
@@ -47,9 +50,14 @@ namespace sdk {
             // Enable internal tor controller
             m_tor_ctrl = tor_controller::get_shared_ref();
         }
+        m_run_thread = std::thread([this] { m_io.run(); });
     }
 
-    session_impl::~session_impl() {}
+    session_impl::~session_impl()
+    {
+        no_std_exception_escape([this] { m_work_guard.reset(); }, "session_impl dtor(1)");
+        no_std_exception_escape([this] { m_run_thread.join(); }, "session_impl dtor(2)");
+    }
 
     void session_impl::set_notification_handler(GA_notification_handler handler, void* context)
     {
@@ -81,6 +89,58 @@ namespace sdk {
             const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
             m_notification_handler(m_notification_context, details_p);
         }
+    }
+
+    nlohmann::json session_impl::http_request(nlohmann::json params)
+    {
+        GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");
+        const auto proxy_settings = get_proxy_settings();
+        params.update(select_url(params["urls"], proxy_settings["use_tor"]));
+        params["proxy"] = proxy_settings["proxy"];
+
+        nlohmann::json result;
+        try {
+            auto root_certificates = m_net_params.gait_wamp_cert_roots();
+
+            // The caller can specify a set of custom root certiifcates to add
+            // to the default network roots
+            const auto custom_roots_p = params.find("root_certificates");
+            if (custom_roots_p != params.end()) {
+                for (const auto& custom_root_certificate : *custom_roots_p) {
+                    root_certificates.push_back(custom_root_certificate.get<std::string>());
+                }
+            }
+
+            const bool is_secure = params["is_secure"];
+            std::shared_ptr<boost::asio::ssl::context> ssl_ctx;
+            if (is_secure) {
+                ssl_ctx = tls_init(params["host"], root_certificates, {}, m_net_params.cert_expiry_threshold());
+            }
+
+            std::shared_ptr<http_client> client;
+            auto&& get = [&] {
+                client = make_http_client(m_io, ssl_ctx.get());
+                GDK_RUNTIME_ASSERT(client != nullptr);
+
+                const auto verb = boost::beast::http::string_to_verb(params["method"]);
+                return client->request(verb, params).get();
+            };
+
+            constexpr uint8_t num_redirects = 5;
+            for (uint8_t i = 0; i < num_redirects; ++i) {
+                result = get();
+                if (!result.value("location", std::string{}).empty()) {
+                    GDK_RUNTIME_ASSERT_MSG(!m_net_params.use_tor(), "redirection over Tor is not supported");
+                    params.update(parse_url(result["location"]));
+                } else {
+                    break;
+                }
+            }
+        } catch (const std::exception& ex) {
+            result["error"] = ex.what();
+            GDK_LOG_SEV(log_level::warning) << "Error http_request: " << ex.what();
+        }
+        return result;
     }
 
     std::string session_impl::connect_tor()

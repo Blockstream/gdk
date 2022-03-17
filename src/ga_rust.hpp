@@ -15,7 +15,6 @@ namespace sdk {
         void connect();
         void disconnect();
 
-        nlohmann::json http_request(nlohmann::json params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
         std::string get_challenge(const pub_key_t& public_key);

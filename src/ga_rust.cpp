@@ -73,11 +73,6 @@ namespace sdk {
         rust_call("disconnect", {}, m_session);
     }
 
-    nlohmann::json ga_rust::http_request(nlohmann::json params)
-    {
-        throw std::runtime_error("http_request not implemented");
-    }
-
     nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
     {
         nlohmann::json p = params;
