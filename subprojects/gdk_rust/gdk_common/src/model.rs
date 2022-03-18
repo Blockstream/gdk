@@ -431,8 +431,9 @@ pub struct TransactionOutput {
     pub pointer: u32, // child_number in bip32 terminology
     pub user_path: Vec<ChildNumber>,
 
-    pub pt_idx: u32,    // vout
-    pub script: String, // script code
+    pub pt_idx: u32, // vout
+    #[serde(rename = "script")]
+    pub script_pubkey: String,
     pub satoshi: u64,
 }
 

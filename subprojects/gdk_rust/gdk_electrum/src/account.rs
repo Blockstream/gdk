@@ -353,7 +353,7 @@ impl Account {
                     is_internal: false,
                     pointer: 0,
                     pt_idx: vout,
-                    script: "".into(),
+                    script_pubkey: script_pubkey.to_hex(),
                     user_path: vec![],
                 },
                 Some(account_path) => {
@@ -368,7 +368,7 @@ impl Account {
                         is_internal,
                         pointer,
                         pt_idx: vout,
-                        script: self.script_code(&account_path).to_hex(),
+                        script_pubkey: script_pubkey.to_hex(),
                         user_path: self.get_full_path(&account_path).into(),
                     }
                 }
