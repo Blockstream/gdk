@@ -840,6 +840,7 @@ Receive address details JSON
     "script_type": 14,
     "subaccount": 0,
     "subtype": 0
+    "user_path": [1, 13]
   }
 
 :address: The wallet address in base58, bech32 or blech32 encoding.
@@ -851,6 +852,7 @@ Receive address details JSON
 :script_type: Integer representing the type of script.
 :subaccount: The subaccount this address belongs to. Matches ``"pointer"`` from :ref:`subaccount-list` or :ref:`subaccount-detail`.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks referenced in ``"script"``, otherwise, 0.
+:user_path: The BIP32 path for the user key.
 
 For Liquid addresses, the following additional fields are returned:
 
