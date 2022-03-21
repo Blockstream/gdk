@@ -11,7 +11,7 @@
 namespace ga {
 namespace sdk {
     class ga_pubkeys;
-    class ga_session;
+    class session_impl;
     class user_pubkeys;
 
     enum class script_type : int {
@@ -89,7 +89,7 @@ namespace sdk {
         const network_parameters& net_params, nlohmann::json& result, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
-    amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
+    amount add_tx_addressee(session_impl& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee);
 
     vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,

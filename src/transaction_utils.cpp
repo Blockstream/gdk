@@ -2,9 +2,9 @@
 
 #include "assertion.hpp"
 #include "exception.hpp"
-#include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "memory.hpp"
+#include "session_impl.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
@@ -371,7 +371,7 @@ namespace sdk {
         return asset_id_from_json(net_params, addressee);
     }
 
-    amount add_tx_addressee(ga_session& session, const network_parameters& net_params, nlohmann::json& result,
+    amount add_tx_addressee(session_impl& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee)
     {
         std::string address = addressee.at("address"); // Assume its a standard address
