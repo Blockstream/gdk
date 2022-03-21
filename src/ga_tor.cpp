@@ -783,7 +783,7 @@ namespace sdk {
         std::shared_ptr<tor_controller> shared = s_inst.lock();
 
         if (!shared) {
-            GDK_RUNTIME_ASSERT(!gdk_config()["tordir"].empty());
+            GDK_RUNTIME_ASSERT(!json_get_value(gdk_config(), "tordir").empty());
             s_inst = shared = std::make_shared<tor_controller>();
         }
 
