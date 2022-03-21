@@ -405,13 +405,22 @@ pub fn get_cross_servers(network: &NetworkParameters) -> Result<Vec<ElectrumUrl>
 
     let servers = match &network.spv_servers {
         Some(servers) if !servers.is_empty() => {
+            // If the user sets the list, we assume all of them should be used
             servers.iter().map(String::as_ref).map(FromStr::from_str).collect()
         }
-        _ => Ok(match net {
-            bitcoin::Network::Bitcoin => SERVER_LIST_MAINNET.clone(),
-            bitcoin::Network::Testnet => SERVER_LIST_TESTNET.clone(),
-            bitcoin::Network::Regtest | bitcoin::Network::Signet => vec![],
-        }),
+        _ => {
+            let mut servers = match net {
+                bitcoin::Network::Bitcoin => SERVER_LIST_MAINNET.clone(),
+                bitcoin::Network::Testnet => SERVER_LIST_TESTNET.clone(),
+                bitcoin::Network::Regtest | bitcoin::Network::Signet => vec![],
+            };
+            // Filter the default cross validation servers list.
+            // Note that if the user is using tor it might still want to use non-onion urls,
+            // but we are filtering them out.
+            let use_tor = network.use_tor();
+            servers.retain(|u| u.is_onion() == use_tor);
+            Ok(servers)
+        }
     }?;
 
     // Don't cross validation against the primary server
