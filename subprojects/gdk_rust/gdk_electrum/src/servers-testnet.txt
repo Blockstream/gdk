@@ -1,7 +1,7 @@
-bitcoin.cluelessperson.com:51002:s:noverify
+blackie.c3-soft.com:57006:s:noverify
 blockstream.info:993:s:noverify
 electrum.blockstream.info:60002:s:noverify
-testnet1.bauerj.eu:50002:s:noverify
+explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143:t
 testnet.aranguren.org:51002:s:noverify
 testnet.hsmiths.com:53012:s:noverify
 testnet.qtornado.com:51002:s:noverify
