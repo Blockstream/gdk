@@ -121,8 +121,12 @@ impl NetworkParameters {
         }
     }
 
+    pub fn use_tor(&self) -> bool {
+        self.use_tor.unwrap_or(false)
+    }
+
     pub fn registry_base_url(&self) -> Result<String, Error> {
-        if self.use_tor.unwrap_or(false) {
+        if self.use_tor() {
             if let Some(asset_registry_onion_url) = self.asset_registry_onion_url.as_ref() {
                 if !asset_registry_onion_url.is_empty() {
                     return Ok(asset_registry_onion_url.into());
@@ -144,7 +148,7 @@ impl NetworkParameters {
     }
 
     pub fn pin_server_url(&self) -> &str {
-        if self.use_tor.unwrap_or(false) {
+        if self.use_tor() {
             if !self.pin_server_onion_url.is_empty() {
                 return &self.pin_server_onion_url;
             }
