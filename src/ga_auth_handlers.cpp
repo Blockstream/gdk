@@ -116,13 +116,13 @@ namespace sdk {
             // Encache the blinding nonces and any blinding pubkeys
             bool updated = false;
             for (size_t i = 0; i < scripts.size(); ++i) {
-                const std::string script_hex = scripts.at(i);
-                if (!nonces.at(i).empty()) {
+                const std::string nonce = nonces.at(i);
+                if (!nonce.empty()) {
                     if (have_blinding_pubkeys) {
                         blinding_pubkey_hex = blinding_pubkeys_p->at(i);
                     }
-                    updated |= session.encache_blinding_data(
-                        public_keys.at(i), script_hex, nonces.at(i), blinding_pubkey_hex);
+                    updated
+                        |= session.encache_blinding_data(public_keys.at(i), scripts.at(i), nonce, blinding_pubkey_hex);
                 }
             }
             if (updated) {
