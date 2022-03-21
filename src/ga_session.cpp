@@ -449,7 +449,7 @@ namespace sdk {
             const std::string final_target = (target_str % asset_id).str();
             const std::string url = domain_name + final_target;
             result = http_request({ { "method", "GET" }, { "urls", { url } } });
-            if (!result.value("error", std::string{}).empty()) {
+            if (!json_get_value(result, "error").empty()) {
                 return result;
             }
             const std::string body_r = result.at("body");
@@ -2215,7 +2215,7 @@ namespace sdk {
                 tx_details["can_cpfp"] = !is_confirmed;
             } else {
                 for (auto& ep : tx_details["outputs"]) {
-                    if (is_liquid && ep.at("script").empty()) {
+                    if (is_liquid && json_get_value(ep, "script").empty()) {
                         continue;
                     }
                     std::string addressee;
