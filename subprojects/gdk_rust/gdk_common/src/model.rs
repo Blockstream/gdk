@@ -382,7 +382,10 @@ impl From<BETransaction> for TransactionMeta {
 impl From<BETransactionEntry> for TransactionMeta {
     fn from(txe: BETransactionEntry) -> Self {
         let mut txm: TransactionMeta = txe.tx.into();
+        // Overwrite with correct (v)size and weight
+        // (i.e. the ones before stripping the witness)
         txm.weight = txe.weight;
+        txm.vsize = weight_to_vsize(txe.weight);
         txm.size = txe.size;
         txm
     }
