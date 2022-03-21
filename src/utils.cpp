@@ -724,6 +724,10 @@ namespace sdk {
         return true;
     }
 
+    // For use in gdb as
+    // printf "%s", gdb_dump_json(<json_variable>).c_str()
+    std::string gdb_dump_json(const nlohmann::json& json) { return json.dump(4); }
+
 } // namespace sdk
 } // namespace ga
 

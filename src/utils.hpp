@@ -135,6 +135,7 @@ namespace sdk {
     // Merge a transaction in a PSBT or PSET
     std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex);
 
+    std::string gdb_dump_json(const nlohmann::json& json);
 } // namespace sdk
 } // namespace ga
 
