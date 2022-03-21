@@ -947,7 +947,8 @@ namespace sdk {
 
     void tx_set_input_script(const wally_tx_ptr& tx, size_t index, byte_span_t script)
     {
-        GDK_VERIFY(wally_tx_set_input_script(tx.get(), index, script.data(), script.size()));
+        const unsigned char* data = script.size() ? script.data() : nullptr;
+        GDK_VERIFY(wally_tx_set_input_script(tx.get(), index, data, script.size()));
     }
 
     void tx_set_input_witness(const wally_tx_ptr& tx, size_t index, const wally_tx_witness_stack_ptr& witness)

@@ -1000,8 +1000,10 @@ namespace sdk {
             tx_witness_stack_add(wit, public_key);
             tx_set_input_witness(tx, index, wit);
             if (address_type == "p2sh-p2wpkh") {
-                // for native segwit do not set the scriptsig
                 tx_set_input_script(tx, index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
+            } else {
+                // for native segwit ensure the scriptsig is empty
+                tx_set_input_script(tx, index, byte_span_t());
             }
         } else if (is_segwit) {
             // Multisig cases
