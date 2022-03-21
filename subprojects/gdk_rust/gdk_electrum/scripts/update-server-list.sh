@@ -16,13 +16,13 @@ dir=`mktemp -d`
 $(cd $dir && curl -o $filename -o $filename.asc https://download.electrum.org/$version/$filename{,.ThomasV.asc})
 gpg --verify $dir/$filename.asc $dir/$filename
 
-# Read servers.json out of the tar, filter for non-onion servers only
-# and format as a newline-separated list of `host:port:proto` strings.
+# Read servers.json out of the tar and format as a newline-separated list
+# of `host:port:proto` strings.
 # Note this sets the "noverify" flag to disable SSL certificate validation.
 serverlist() {
   tar -axf $dir/$filename Electrum-$version/electrum/$1 -O | jq -r 'to_entries[]
-    | select(.key | endswith(".onion") | not)
-    | .key + ":" + if .value.s != null then .value.s + ":s:noverify" else .value.t + ":t" end' \
+    | .key + ":" + if (.value.s != null and (.key | endswith(".onion") | not))
+    then .value.s + ":s:noverify" else .value.t + ":t" end' \
   | sort
 }
 
