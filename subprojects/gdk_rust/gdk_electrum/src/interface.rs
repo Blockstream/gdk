@@ -37,6 +37,13 @@ impl ElectrumUrl {
             ElectrumUrl::Plaintext(url) => url,
         }
     }
+
+    pub fn is_onion(&self) -> bool {
+        match self {
+            ElectrumUrl::Tls(_, _) => false,
+            ElectrumUrl::Plaintext(url) => url.ends_with(".onion"),
+        }
+    }
 }
 
 // Parse the standard <host>:<port>:<t|s> string format,
