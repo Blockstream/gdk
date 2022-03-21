@@ -618,6 +618,18 @@ static std::mutex registered_networks_mutex;
 namespace ga {
 namespace sdk {
     namespace {
+        static std::string get_url(
+            const nlohmann::json& details, const char* url_key, const char* onion_key, bool use_tor)
+        {
+            if (use_tor) {
+                std::string onion = details.at(onion_key);
+                if (!onion.empty()) {
+                    return onion;
+                }
+            }
+            return details.at(url_key);
+        }
+
         template <typename T>
         static void set_override(nlohmann::json& ret, const std::string& key, const nlohmann::json& src, T default_)
         {
@@ -710,22 +722,15 @@ namespace sdk {
     }
     std::string network_parameters::block_explorer_address() const { return m_details.at("address_explorer_url"); }
     std::string network_parameters::block_explorer_tx() const { return m_details.at("tx_explorer_url"); }
-    std::string network_parameters::asset_registry_url() const { return m_details.at("asset_registry_url"); }
-    std::string network_parameters::asset_registry_onion_url() const
-    {
-        return m_details.at("asset_registry_onion_url");
-    }
     std::string network_parameters::chain_code() const { return m_details.at("service_chain_code"); }
     bool network_parameters::electrum_tls() const { return m_details.at("electrum_tls"); }
     std::string network_parameters::electrum_url() const
     {
-        return use_tor() && !m_details.at("electrum_onion_url").empty() ? m_details.at("electrum_onion_url")
-                                                                        : m_details.at("electrum_url");
+        return get_url(m_details, "electrum_url", "electrum_onion_url", use_tor());
     }
     std::string network_parameters::get_pin_server_url() const
     {
-        return use_tor() && !m_details.at("pin_server_onion_url").empty() ? m_details.at("pin_server_onion_url")
-                                                                          : m_details.at("pin_server_url");
+        return get_url(m_details, "pin_server_url", "pin_server_onion_url", use_tor());
     }
     std::string network_parameters::get_pin_server_public_key() const { return m_details.at("pin_server_public_key"); }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
@@ -748,7 +753,7 @@ namespace sdk {
     std::string network_parameters::get_connection_string() const { return use_tor() ? gait_onion() : gait_wamp_url(); }
     std::string network_parameters::get_registry_connection_string() const
     {
-        return use_tor() ? asset_registry_onion_url() : asset_registry_url();
+        return get_url(m_details, "asset_registry_url", "asset_registry_onion_url", use_tor());
     }
     bool network_parameters::is_tls_connection() const
     {

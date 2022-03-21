@@ -40,8 +40,6 @@ namespace sdk {
         std::vector<std::string> gait_wamp_cert_roots() const;
         std::string block_explorer_address() const;
         std::string block_explorer_tx() const;
-        std::string asset_registry_url() const;
-        std::string asset_registry_onion_url() const;
         std::string chain_code() const;
         std::string electrum_url() const;
         std::string get_pin_server_url() const;
