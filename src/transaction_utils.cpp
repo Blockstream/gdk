@@ -117,9 +117,6 @@ namespace sdk {
 #define SIG_HIGH SIG_BYTES(OP_INVALIDOPCODE, OP_SUBSTR)
 #define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
 
-#define SIG_72(INITIAL, B) SIG_HIGH, SIG_HIGH
-#define SIG_71(INITIAL, B) SIG_LOW, SIG_HIGH
-
     static const ecdsa_sig_t DUMMY_GA_SIG = { { SIG_HIGH, SIG_HIGH } };
     static const ecdsa_sig_t DUMMY_GA_SIG_LOW_R = { { SIG_LOW, SIG_HIGH } };
 
