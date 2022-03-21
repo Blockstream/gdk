@@ -281,7 +281,7 @@ namespace sdk {
         return scriptsig_p2pkh_from_der(pub_key, ec_sig_to_der(dummy_sig, true));
     }
 
-    std::vector<unsigned char> witness_script(const std::vector<unsigned char>& script, uint32_t witness_ver)
+    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver)
     {
         return witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
     }

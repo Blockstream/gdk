@@ -63,7 +63,7 @@ namespace sdk {
 
     std::vector<unsigned char> dummy_external_input_script(bool low_r, byte_span_t pub_key);
 
-    std::vector<unsigned char> witness_script(const std::vector<unsigned char>& script, uint32_t witness_ver);
+    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver);
 
     // Compute the fee for a tx
     amount get_tx_fee(const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate);
