@@ -75,9 +75,17 @@ namespace sdk {
 
     nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
     {
+        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
+
         nlohmann::json p = params;
         p["proxy"] = get_proxy_settings()["proxy"];
-        auto result = rust_call("refresh_assets", p, m_session);
+        nlohmann::json result;
+        try {
+            result = rust_call("refresh_assets", p, m_session);
+        } catch (const std::exception& ex) {
+            GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
+            result = { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() } };
+        }
         const std::array<const char*, 2> keys = { "assets", "icons" };
         for (const auto& key : keys) {
             if (params.value(key, false)) {
