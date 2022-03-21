@@ -208,10 +208,9 @@ namespace sdk {
 
     std::pair<std::string, bool> ga_rust::get_cached_master_blinding_key()
     {
-        auto ret = rust_call("get_master_blinding_key", {}, m_session);
-        auto blinding_key_hex = ret.value("master_blinding_key", std::string());
-        const bool is_empty = blinding_key_hex.empty();
-        return std::make_pair(std::move(blinding_key_hex), is_empty);
+        const auto ret = rust_call("get_master_blinding_key", {}, m_session);
+        constexpr bool is_denied = false;
+        return { ret.value("master_blinding_key", std::string()), is_denied };
     }
 
     void ga_rust::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
