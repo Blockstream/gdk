@@ -262,10 +262,11 @@ namespace sdk {
 
                 const auto& net_params = session.get_network_parameters();
                 for (const auto& output : outputs) {
-                    if (!output.at("address").empty()) {
+                    const std::string output_addr = output.at("address");
+                    if (!output_addr.empty()) {
                         // Validate address matches the transaction scriptpubkey
                         const auto spk_from_address
-                            = scriptpubkey_from_address(net_params, session.get_block_height(), output["address"]);
+                            = scriptpubkey_from_address(net_params, session.get_block_height(), output_addr);
                         const auto& o = tx->outputs[i];
                         const auto spk_from_tx = gsl::make_span(o.script, o.script_len);
                         GDK_RUNTIME_ASSERT(static_cast<size_t>(spk_from_tx.size()) == spk_from_address.size());
@@ -278,7 +279,7 @@ namespace sdk {
                         const auto output_script = session.output_script_from_utxo(output);
                         const std::string address
                             = get_address_from_script(net_params, output_script, output.at("address_type"));
-                        GDK_RUNTIME_ASSERT(output["address"] == address);
+                        GDK_RUNTIME_ASSERT(output_addr == address);
                     }
                     if (is_relevant && change_index == NO_CHANGE_INDEX) {
                         // Change output.

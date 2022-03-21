@@ -50,5 +50,22 @@ int main()
     GDK_RUNTIME_ASSERT(obj.empty());
     GDK_RUNTIME_ASSERT(!obj.is_null());
 
+    // References to blank string values are not empty() and have a size() of 1
+    // This is because the reference is to the holding json object, not the
+    // string directly (you must convert to the string to check emptyness).
+    const nlohmann::json string_test = { { "empty", std::string() } };
+    GDK_RUNTIME_ASSERT(!string_test.at("empty").empty());
+    GDK_RUNTIME_ASSERT(string_test.at("empty").size() == 1);
+    // Operator [] is the same as at() in this regard
+    GDK_RUNTIME_ASSERT(!string_test["empty"].empty());
+    GDK_RUNTIME_ASSERT(string_test["empty"].size() == 1);
+
+    // In contrast, references to arrays *are* empty, and of zero size
+    const nlohmann::json array_test = { { "empty", nlohmann::json::array() } };
+    GDK_RUNTIME_ASSERT(array_test.at("empty").empty());
+    GDK_RUNTIME_ASSERT(array_test.at("empty").size() == 0);
+    GDK_RUNTIME_ASSERT(array_test["empty"].empty());
+    GDK_RUNTIME_ASSERT(array_test["empty"].size() == 0);
+
     return 0;
 }
