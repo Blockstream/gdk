@@ -1,5 +1,5 @@
 use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
-use crate::util::StringSerialized;
+use crate::util::{weight_to_vsize, StringSerialized};
 use bitcoin::Network;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -370,7 +370,7 @@ impl From<BETransaction> for TransactionMeta {
             spv_verified: SPVVerifyTxResult::InProgress,
             rbf_optin,
             weight,
-            vsize: (weight as f32 / 4.0) as usize,
+            vsize: weight_to_vsize(weight),
             size: transaction.get_size(),
             used_utxos: vec![],
             version: transaction.version(),
@@ -838,7 +838,7 @@ impl From<&BETransactionEntry> for TransactionDetails {
             transaction_locktime: tx_entry.tx.lock_time(),
             transaction_version: tx_entry.tx.version(),
             transaction_size: tx_entry.size,
-            transaction_vsize: (tx_entry.weight as f32 / 4.0) as usize,
+            transaction_vsize: weight_to_vsize(tx_entry.weight),
             transaction_weight: tx_entry.weight,
         }
     }
