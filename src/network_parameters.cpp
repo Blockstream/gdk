@@ -155,6 +155,12 @@ static std::vector<std::string> wamp_cert_pins = {
     // not before: Fri Sep  4 00:00:00 2020
     // not after: Mon Sep 15 16:00:00 2025
     "67add1166b020ae61b8f5fc96813c04c2aa589960796865572a3c7e737613dfd",
+
+    // subject: 'C=US, O=Google Trust Services LLC, CN=GTS CA 1D4'
+    // issuer: 'C=US, O=Google Trust Services LLC, CN=GTS Root R1'
+    // not before: 'Aug 13 00:00:42 2020 GMT'
+    // not after: 'Sep 30 00:00:42 2027 GMT'
+    "64e286b76063602a372efd60cde8db2656a49ee15e84254b3d6eb5fe38f4288b",
 };
 
 static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_networks = {
@@ -229,8 +235,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
             { "wamp_cert_pins", wamp_cert_pins },
             { "wamp_cert_roots", wamp_cert_roots },
-            { "wamp_onion_url", "ws://liquidbtc7u746j4.onion/v2/ws" },
-            { "wamp_url", "wss://liquidwss.greenaddress.it/v2/ws" }
+            { "wamp_onion_url", "ws://liquidbtcgecscpokecnr5uwg2de55shdq7dnvlpzeju7tnefbekicqd.onion/v2/ws" },
+            { "wamp_url", "wss://green-liquid-mainnet.blockstream.com/v2/ws" }
         })) },
 
     { "localtest-liquid",
