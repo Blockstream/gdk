@@ -386,7 +386,7 @@ dependencies = [
 [[package]]
 name = "elements"
 version = "0.18.0"
-source = "git+https://github.com/ElementsProject/rust-elements?rev=0881ad49b322b56162aa57a83984f46950c03c66#0881ad49b322b56162aa57a83984f46950c03c66"
+source = "git+https://github.com/ElementsProject/rust-elements?rev=0edddf730ff8fd441d3af28bc600b8bc8a8df5a9#0edddf730ff8fd441d3af28bc600b8bc8a8df5a9"
 dependencies = [
  "bitcoin",
  "bitcoin_hashes 0.10.0",

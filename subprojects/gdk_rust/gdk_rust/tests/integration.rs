@@ -319,7 +319,7 @@ fn create_tx_err(is_liquid: bool) {
 
     // Segwitv1 and b(l)ech32m
     let segwitv1_addr = if is_liquid {
-        "el1pq0umk3pez693jrrlxz9ndlkuwne93gdu9g83mhhzuyf46e3mdzfpva0w48gqgzgrklncnm0k5zeyw8my2ypfsxguu9nk3cxy6"
+        "el1pqdw8vgncs6ep0e4vcllwcvt8kr7z5e45z3qr4wsvnnq2qatsm3ejws3ylj93nn9qw0w7e5p20m06mp7hp33kt56nt0jtlw39md63p00wj7v4j5vahy5l"
     } else {
         "bcrt1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqc8gma6"
     };
@@ -332,15 +332,7 @@ fn create_tx_err(is_liquid: bool) {
         test_session.utxos(0),
     );
 
-    // FIXME: add liquid taproot support
-    if is_liquid {
-        assert!(matches!(
-            test_session.session.create_transaction(&mut create_opt),
-            Err(Error::InvalidAddress)
-        ));
-    } else {
-        test_session.session.create_transaction(&mut create_opt).unwrap();
-    }
+    test_session.session.create_transaction(&mut create_opt).unwrap();
 
     // Segwitv1 and b(l)ech32m, but len != 32
     let segwitv1_addr = if is_liquid {

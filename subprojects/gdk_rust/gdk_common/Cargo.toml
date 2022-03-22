@@ -13,7 +13,7 @@ libc = "0.2"
 rand = "0.6.5"
 bitcoin = { version = "0.27", features = ["use-serde"] }
 #elements = { version = "0.18", features = ["serde-feature"] }
-elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0881ad49b322b56162aa57a83984f46950c03c66", features = ["serde-feature"] }
+elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0edddf730ff8fd441d3af28bc600b8bc8a8df5a9", features = ["serde-feature"] }
 # We need to pin half (transitive dep from serde_cbor) to stay compatible with Rust 1.49.0
 half = "~1.7"
 secp256k1-sys = "=0.4.1" # 0.4.2 has compatibility issues with secp256k1-zkp-sys v0.4.0
