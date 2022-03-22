@@ -957,6 +957,26 @@ pub fn populate_unspent_from_db(
     Ok(())
 }
 
+// FIXME: taproot_enabled_at is useful close to the soft fork,
+// when enough blocks has passed we should consider removing it,
+// since it introduces more code complexity and might require a db read,
+// even though a reorg that deep is extremely unlikely.
+fn check_taproot_enabled(
+    account: &Account,
+    taproot_enabled_at: u32,
+    tip_height: Option<u32>,
+) -> Result<(), Error> {
+    let tip = match tip_height {
+        Some(h) => h,
+        None => account.store.read()?.cache.tip.0,
+    };
+    if tip < taproot_enabled_at {
+        Err(Error::Generic("Taproot has not yet activated on this network".into()))
+    } else {
+        Ok(())
+    }
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn create_tx(
     account: &Account,
@@ -981,7 +1001,7 @@ pub fn create_tx(
     info!("target fee_rate {:?} satoshi/byte", fee_rate);
 
     let taproot_enabled_at = network.taproot_enabled_at.unwrap_or(u32::MAX);
-    let mut tip_height: Option<u32> = if taproot_enabled_at == 0 {
+    let tip_height: Option<u32> = if taproot_enabled_at == 0 {
         // no need to get tip
         Some(0)
     } else {
@@ -1011,19 +1031,7 @@ pub fn create_tx(
                                 return Err(Error::InvalidAddress);
                             }
                             if v.to_u8() == 1 {
-                                let tip = match tip_height {
-                                    Some(h) => h,
-                                    None => {
-                                        let tip = account.store.read()?.cache.tip.0;
-                                        tip_height = Some(tip);
-                                        tip
-                                    }
-                                };
-                                if tip < taproot_enabled_at {
-                                    return Err(Error::Generic(
-                                        "Taproot has not yet activated on this network".into(),
-                                    ));
-                                }
+                                check_taproot_enabled(account, taproot_enabled_at, tip_height)?;
                             }
                         }
                         continue;
@@ -1047,6 +1055,9 @@ pub fn create_tx(
                         // Do not support segwit greater than v1 and non-P2TR v1
                         if v.to_u8() > 1 || (v.to_u8() == 1 && p.len() != 32) {
                             return Err(Error::InvalidAddress);
+                        }
+                        if v.to_u8() == 1 {
+                            check_taproot_enabled(account, taproot_enabled_at, tip_height)?;
                         }
                     }
                 } else {
