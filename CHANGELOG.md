@@ -2,6 +2,10 @@
 
 ## Release 0.0.52
 
+### Added
+
+- Support for sending to Liquid taproot addresses
+
 ### Changed
 
 - Multisig: In GA_create_transaction "transaction_outputs" rename "public_key" to "blinding_key" when appropriate.
