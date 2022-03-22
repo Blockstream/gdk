@@ -27,6 +27,7 @@ namespace sdk {
         auto np = m_net_params.get_json();
         const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
         GDK_RUNTIME_ASSERT(res == GA_OK && m_session);
+        m_user_pubkeys = std::make_unique<bip44_pubkeys>(m_net_params);
     }
 
     ga_rust::~ga_rust()
@@ -142,15 +143,13 @@ namespace sdk {
     void ga_rust::register_subaccount_xpubs(
         const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
-        // Note we only register the loaded subaccount once.
-        if (!m_user_pubkeys) {
-            m_user_pubkeys = std::make_unique<bip44_pubkeys>(m_net_params);
-            const nlohmann::json details({ { "name", std::string() } });
-            for (size_t i = 0; i < pointers.size(); ++i) {
-                const auto pointer = pointers.at(i);
+        // Note we only register each loaded subaccount once.
+        const nlohmann::json details({ { "name", std::string() } });
+        for (size_t i = 0; i < pointers.size(); ++i) {
+            const auto pointer = pointers.at(i);
+            if (!m_user_pubkeys->have_subaccount(pointer)) {
                 const auto& bip32_xpub = bip32_xpubs.at(i);
                 create_subaccount(details, pointer, bip32_xpub);
-                m_user_pubkeys->add_subaccount(pointer, make_xpub(bip32_xpub));
             }
         }
     }
@@ -203,7 +202,9 @@ namespace sdk {
         auto details_c = details;
         details_c["subaccount"] = subaccount;
         details_c["xpub"] = xpub;
-        return rust_call("create_subaccount", details_c, m_session);
+        auto ret = rust_call("create_subaccount", details_c, m_session);
+        m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        return ret;
     }
 
     std::pair<std::string, bool> ga_rust::get_cached_master_blinding_key()
