@@ -2493,7 +2493,7 @@ namespace sdk {
         // Compute the locktime of our UTXOs locally where we can
         bool need_nlocktime_info = false;
         for (auto& utxo : utxos) {
-            if (utxo["address_type"] != "csv") {
+            if (utxo["address_type"] != address_type::csv) {
                 // We must get the nlocktime information from the server for this UTXO
                 need_nlocktime_info = true;
             } else {

@@ -991,7 +991,7 @@ namespace sdk {
         auto der = h2b(der_hex);
         const auto address_type = u.at("address_type");
 
-        if (address_type == "p2pkh") {
+        if (address_type == address_type::p2pkh) {
             tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
         } else if (address_type == "p2sh-p2wpkh" || address_type == "p2wpkh") {
             const auto public_key = h2b(u.at("public_key"));
