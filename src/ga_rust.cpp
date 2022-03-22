@@ -305,20 +305,12 @@ namespace sdk {
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
     {
-        if (m_user_pubkeys) {
-            locker_t locker(m_mutex);
-            return m_user_pubkeys->get_subaccount_root_path(subaccount);
-        }
         return bip44_pubkeys::get_bip44_subaccount_root_path(
             m_net_params.is_main_net(), m_net_params.is_liquid(), subaccount);
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
-        if (m_user_pubkeys) {
-            locker_t locker(m_mutex);
-            return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
-        }
         return bip44_pubkeys::get_bip44_subaccount_full_path(
             m_net_params.is_main_net(), m_net_params.is_liquid(), subaccount, pointer, is_internal);
     }
