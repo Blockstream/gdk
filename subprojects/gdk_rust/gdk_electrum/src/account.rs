@@ -6,7 +6,7 @@ use std::str::FromStr;
 use log::{info, trace, warn};
 
 use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::FromHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -376,7 +376,7 @@ impl Account {
         Ok(tx_outputs)
     }
 
-    fn txo(&self, outpoint: &BEOutPoint) -> Result<UnspentOutput, Error> {
+    pub fn txo(&self, outpoint: &BEOutPoint) -> Result<UnspentOutput, Error> {
         let vout = outpoint.vout();
         let txid = outpoint.txid();
 
@@ -389,6 +389,8 @@ impl Account {
         let account_path = acc_store.get_path(&tx.output_script(vout))?;
         let (is_internal, pointer) = parse_path(&account_path)?;
         let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
+        let asset_id_hex =
+            tx.output_asset(vout, &acc_store.unblinded).map_or("".into(), |a| a.to_hex());
 
         Ok(UnspentOutput {
             address_type: self.script_type.to_string(),
@@ -406,6 +408,7 @@ impl Account {
             script_code: self.script_code(&account_path).to_hex(),
             public_key: self.public_key(&account_path).to_string(),
             user_path: self.get_full_path(&account_path).into(),
+            asset_id: asset_id_hex,
         })
     }
 
@@ -524,6 +527,23 @@ impl Account {
         utxos.sort_by(|a, b| (b.1).value.cmp(&(a.1).value));
 
         Ok(utxos)
+    }
+
+    pub fn unspents(&self) -> Result<HashSet<BEOutPoint>, Error> {
+        let mut relevant_outputs = HashSet::new();
+        let mut inputs = HashSet::new();
+        let store_read = self.store.read()?;
+        let acc_store = store_read.account_cache(self.account_num)?;
+        for txe in acc_store.all_txs.values() {
+            inputs.extend(txe.tx.previous_outputs());
+            for vout in 0..(txe.tx.output_len() as u32) {
+                let script_pubkey = txe.tx.output_script(vout);
+                if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey) {
+                    relevant_outputs.insert(txe.tx.outpoint(vout));
+                }
+            }
+        }
+        Ok(relevant_outputs.difference(&inputs).cloned().collect())
     }
 
     fn spent(&self) -> Result<HashSet<BEOutPoint>, Error> {

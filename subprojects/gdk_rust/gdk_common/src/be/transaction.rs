@@ -178,6 +178,13 @@ impl BETransaction {
         }
     }
 
+    pub fn outpoint(&self, vout: u32) -> BEOutPoint {
+        match self {
+            Self::Bitcoin(tx) => BEOutPoint::new_bitcoin(tx.txid(), vout),
+            Self::Elements(tx) => BEOutPoint::new_elements(tx.txid(), vout),
+        }
+    }
+
     pub fn output_value(
         &self,
         vout: u32,

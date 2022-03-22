@@ -1242,16 +1242,27 @@ impl ElectrumSession {
 
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
-        // TODO does not support the `all_coins` option
-        for (outpoint, info) in self
-            .get_account(opt.subaccount)?
-            .utxos(opt.num_confs.unwrap_or(0), opt.confidential_utxos_only.unwrap_or(false))?
-            .iter()
-        {
-            let cur = UnspentOutput::new(outpoint, info);
-            (*unspent_outputs.entry(info.asset.clone()).or_insert(vec![])).push(cur);
+        let account = self.get_account(opt.subaccount)?;
+        let tip = self.store()?.read()?.cache.tip.0;
+        let num_confs = opt.num_confs.unwrap_or(0);
+        let confidential_utxos_only = opt.confidential_utxos_only.unwrap_or(false);
+        for outpoint in account.unspents()? {
+            let utxo = account.txo(&outpoint)?;
+            let confirmations = if utxo.block_height == 0 {
+                0
+            } else {
+                (tip + 1).saturating_sub(utxo.block_height)
+            };
+            if num_confs > confirmations || (confidential_utxos_only && !utxo.confidential) {
+                continue;
+            }
+            let asset_id = if utxo.asset_id.is_empty() {
+                "btc".to_string()
+            } else {
+                utxo.asset_id.clone()
+            };
+            (*unspent_outputs.entry(asset_id).or_insert(vec![])).push(utxo);
         }
-
         Ok(GetUnspentOutputs(unspent_outputs))
     }
 
