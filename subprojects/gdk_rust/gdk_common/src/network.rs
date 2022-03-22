@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::error::Error;
-use bitcoin::util::bip32::ExtendedPubKey;
+use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
 use bitcoin::{hashes::hex::ToHex, PublicKey};
 use serde::{Deserialize, Serialize};
 
@@ -164,7 +164,12 @@ impl NetworkParameters {
     // root path, any changes will result in the creation of a new separate database.
     pub fn wallet_hash_id(&self, master_xpub: &ExtendedPubKey) -> String {
         assert_eq!(self.bip32_network(), master_xpub.network);
-        let password = master_xpub.encode().to_vec();
+        // Only network, public_key and chain_code contribute to the hash
+        let mut xpub = master_xpub.clone();
+        xpub.depth = 0;
+        xpub.parent_fingerprint = Fingerprint::default();
+        xpub.child_number = ChildNumber::from_normal_idx(0).unwrap();
+        let password = xpub.encode().to_vec();
         let salt = self.network.as_bytes().to_vec();
         let cost = 2048;
         crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
