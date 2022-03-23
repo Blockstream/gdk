@@ -183,9 +183,9 @@ dependencies = [
 
 [[package]]
 name = "bitcoind"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d66a30b785215fcac6ef21bea4a7b8c42f60f8688ca1b426cedb75cca4d78237"
+checksum = "babb9fa83a624acd064677eb50b06ce5120c0a8a159c3de38c8e8ecdbe48af77"
 dependencies = [
  "bitcoin_hashes 0.10.0",
  "bitcoincore-rpc",
@@ -356,9 +356,9 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "electrsd"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d42b831cc7d1402f9c986e84a68771a339e598174312181c15450d4a034a5bd5"
+checksum = "d40b5cc4614e7cc64c66dfabdeacfaafd17ec2cec4c28b4db22ad136a99e1b08"
 dependencies = [
  "bitcoin_hashes 0.10.0",
  "bitcoind",

@@ -32,7 +32,7 @@ bitcoin = { version = "0.27.0", features = [ "use-serde" ] }
 #elements = { version = "0.18", features = ["serde-feature"] }
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0881ad49b322b56162aa57a83984f46950c03c66", features = ["serde-feature"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
-electrsd = { version = "0.16.0", features = [ "legacy", "trigger" ] }
+electrsd = { version = "0.17.0", features = [ "legacy", "trigger" ] }
 # We need to pin ureq (transitive dep from electrsd) to stay compatible with Rust 1.49.0
 ureq = "~2.2"
 secp256k1-sys = "=0.4.1" # 0.4.2 has compatibility issues with secp256k1-zkp-sys v0.4.0
