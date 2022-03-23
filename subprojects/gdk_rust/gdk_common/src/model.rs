@@ -762,26 +762,6 @@ pub fn parse_path(path: &DerivationPath) -> Result<(bool, u32), Error> {
     Ok((is_internal, address_pointer))
 }
 
-impl UnspentOutput {
-    pub fn new(outpoint: &BEOutPoint, info: &UTXOInfo) -> Self {
-        let mut unspent_output = UnspentOutput::default();
-        unspent_output.address_type = "p2shwpkh".to_string();
-        unspent_output.satoshi = info.value;
-        unspent_output.txhash = format!("{}", outpoint.txid());
-        unspent_output.pt_idx = outpoint.vout();
-        unspent_output.user_path = info.path.clone().into();
-        unspent_output.scriptpubkey = info.script.clone();
-        unspent_output.script_code = info.script_code.clone();
-        unspent_output.confidential = info.confidential;
-        if let Ok((is_internal, pointer)) = parse_path(&info.path) {
-            unspent_output.is_internal = is_internal;
-            unspent_output.pointer = pointer;
-        };
-        unspent_output.block_height = info.height.unwrap_or(0);
-        unspent_output
-    }
-}
-
 impl TryFrom<&GetUnspentOutputs> for Utxos {
     type Error = Error;
 
