@@ -26,7 +26,6 @@ use gdk_common::model::{
     UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
-use gdk_common::util::is_confidential_txoutsecrets;
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
@@ -426,109 +425,6 @@ impl Account {
             .collect()
     }
 
-    pub fn utxos(&self, num_confs: u32, confidential_utxos_only: bool) -> Result<Utxos, Error> {
-        info!("start utxos");
-        let store_read = self.store.read()?;
-        let acc_store = store_read.account_cache(self.account_num)?;
-
-        let tip_height = store_read.cache.tip.0;
-
-        let mut utxos = vec![];
-        let spent = self.spent()?;
-        for (tx_id, height) in acc_store.heights.iter() {
-            if num_confs > height.map_or(0, |height| (tip_height + 1).saturating_sub(height)) {
-                continue;
-            }
-
-            let tx = &acc_store
-                .all_txs
-                .get(tx_id)
-                .ok_or_else(fn_err(&format!("utxos no tx {}", tx_id)))?
-                .tx;
-            let tx_utxos: Vec<(BEOutPoint, UTXOInfo)> = match tx {
-                BETransaction::Bitcoin(tx) => tx
-                    .output
-                    .clone()
-                    .into_iter()
-                    .enumerate()
-                    .filter(|(_, output)| output.value > DUST_VALUE)
-                    .map(|(vout, output)| (BEOutPoint::new_bitcoin(tx.txid(), vout as u32), output))
-                    .filter_map(|(vout, output)| {
-                        acc_store
-                            .paths
-                            .get(&(&output.script_pubkey).into())
-                            .map(|path| (vout, output, path))
-                    })
-                    .filter(|(outpoint, _, _)| !spent.contains(&outpoint))
-                    .map(|(outpoint, output, path)| {
-                        (
-                            outpoint,
-                            UTXOInfo::new_bitcoin(
-                                output.value,
-                                output.script_pubkey.into(),
-                                height.clone(),
-                                self.get_full_path(&path).into(),
-                                self.script_code(&path).to_hex(),
-                            ),
-                        )
-                    })
-                    .collect(),
-                BETransaction::Elements(tx) => {
-                    let policy_asset = self.network.policy_asset_id()?;
-                    tx.output
-                        .clone()
-                        .into_iter()
-                        .enumerate()
-                        .map(|(vout, output)| {
-                            (BEOutPoint::new_elements(tx.txid(), vout as u32), output)
-                        })
-                        .filter_map(|(vout, output)| {
-                            acc_store
-                                .paths
-                                .get(&(&output.script_pubkey).into())
-                                .map(|path| (vout, output, path))
-                        })
-                        .filter(|(outpoint, _, _)| !spent.contains(&outpoint))
-                        .filter_map(|(outpoint, output, path)| {
-                            if let BEOutPoint::Elements(el_outpoint) = outpoint {
-                                if let Some(unblinded) = acc_store.unblinded.get(&el_outpoint) {
-                                    if unblinded.value < DUST_VALUE
-                                        && unblinded.asset == policy_asset
-                                    {
-                                        return None;
-                                    }
-                                    if confidential_utxos_only
-                                        && is_confidential_txoutsecrets(unblinded)
-                                    {
-                                        return None;
-                                    }
-                                    return Some((
-                                        outpoint,
-                                        UTXOInfo::new_elements(
-                                            unblinded.asset,
-                                            unblinded.value,
-                                            output.script_pubkey.into(),
-                                            height.clone(),
-                                            self.get_full_path(&path).into(),
-                                            output.asset.is_confidential()
-                                                && output.value.is_confidential(),
-                                            self.script_code(&path).to_hex(),
-                                        ),
-                                    ));
-                                }
-                            }
-                            None
-                        })
-                        .collect()
-                }
-            };
-            utxos.extend(tx_utxos);
-        }
-        utxos.sort_by(|a, b| (b.1).value.cmp(&(a.1).value));
-
-        Ok(utxos)
-    }
-
     pub fn unspents(&self) -> Result<HashSet<BEOutPoint>, Error> {
         let mut relevant_outputs = HashSet::new();
         let mut inputs = HashSet::new();
@@ -544,24 +440,6 @@ impl Account {
             }
         }
         Ok(relevant_outputs.difference(&inputs).cloned().collect())
-    }
-
-    fn spent(&self) -> Result<HashSet<BEOutPoint>, Error> {
-        let store_read = self.store.read()?;
-        let acc_store = store_read.account_cache(self.account_num)?;
-        let mut result = HashSet::new();
-        for txe in acc_store.all_txs.values() {
-            let outpoints: Vec<BEOutPoint> = match &txe.tx {
-                BETransaction::Bitcoin(tx) => {
-                    tx.input.iter().map(|i| BEOutPoint::Bitcoin(i.previous_output)).collect()
-                }
-                BETransaction::Elements(tx) => {
-                    tx.input.iter().map(|i| BEOutPoint::Elements(i.previous_output)).collect()
-                }
-            };
-            result.extend(outpoints.into_iter());
-        }
-        Ok(result)
     }
 
     pub fn has_transactions(&self) -> bool {
