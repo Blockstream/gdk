@@ -1504,4 +1504,20 @@ mod test {
         test_derivation(161, ScriptType::P2wpkh, "m/84'/1'/10'");
         test_derivation(162, ScriptType::P2pkh, "m/44'/1'/10'");
     }
+
+    #[test]
+    fn xpubs_equivalence() {
+        // equivalent xpubs from different signers
+        let j = ExtendedPubKey::from_str("xpub6BsYXth6AveJGNDT7LWSVPfjUuvsxfnBoNh4pLMxrqKvTLyKKzjfQb3nH5kQM7QiRM7ou9BH3Ff4thS7DE1fEKkijcFZJqvUSuoTHqw2hHb").unwrap();
+        let t = ExtendedPubKey::from_str("xpub67tVq9TC3jGc93MFouaJsne9ysbJTgd2z283AhzbJnJBYLaSgd7eCneb917z4mCmt9NT1jrex9JwZnxSqMo683zUWgMvBXGFcep95TuSPo6").unwrap();
+        let l = ExtendedPubKey::from_str("xpub67tVq9TC3jGc6VXHGwpDsFaC382minnK3Us9gBC6XRpoxGMYLu8UpywPrmGQ5ZgrFEzMU8g93Ag9XBztNSfnvkqmQFt6jMUCn6NuZwucwf6").unwrap();
+        // another xpub
+        let o = ExtendedPubKey::from_str("xpub67tVq9TC3jGc6UecWK21xBDnB32fHpL3tStfyi5QaDsArWv66HnXg59wQ2LWPxrqsoagvoLfmwG8YGRzfu3gqRAvouknar2HM7egLuGZzTE").unwrap();
+
+        xpubs_equivalent(&j, &j).unwrap();
+        xpubs_equivalent(&j, &t).unwrap();
+        xpubs_equivalent(&j, &l).unwrap();
+        xpubs_equivalent(&t, &l).unwrap();
+        assert!(xpubs_equivalent(&j, &o).is_err());
+    }
 }
