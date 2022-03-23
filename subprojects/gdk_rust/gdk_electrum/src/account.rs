@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::str::FromStr;
 
@@ -21,9 +21,9 @@ use gdk_common::be::{
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
-    parse_path, AccountInfo, AddressAmount, AddressPointer, Balances, CreateTransaction,
-    GetTransactionsOpt, SPVVerifyTxResult, TransactionMeta, TransactionOutput, UnspentOutput,
-    UpdateAccountOpt, UtxoStrategy,
+    parse_path, AccountInfo, AddressAmount, AddressPointer, CreateTransaction, GetTransactionsOpt,
+    SPVVerifyTxResult, TransactionMeta, TransactionOutput, UnspentOutput, UpdateAccountOpt,
+    UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::util::is_confidential_txoutsecrets;
@@ -560,25 +560,6 @@ impl Account {
                 }
             };
             result.extend(outpoints.into_iter());
-        }
-        Ok(result)
-    }
-
-    pub fn balance(
-        &self,
-        num_confs: u32,
-        confidential_utxos_only: bool,
-    ) -> Result<Balances, Error> {
-        info!("start balance");
-        let mut result = HashMap::new();
-        match self.network.id() {
-            NetworkId::Bitcoin(_) => result.entry("btc".to_string()).or_insert(0),
-            NetworkId::Elements(_) => {
-                result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0)
-            }
-        };
-        for (_, info) in self.utxos(num_confs, confidential_utxos_only)?.iter() {
-            *result.entry(info.asset.clone()).or_default() += info.value as i64;
         }
         Ok(result)
     }
