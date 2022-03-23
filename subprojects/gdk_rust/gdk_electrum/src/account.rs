@@ -68,11 +68,10 @@ pub struct Account {
     path: DerivationPath,
 }
 
-/// Compare xpub ignoring the fingerprint (which computation might be skipped).
+/// Compare xpub ignoring the fingerprint (which computation might be skipped),
+/// depth and child_number (which might not be set correctly by some signers).
 pub fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> Result<(), Error> {
     if !(xpub1.network == xpub2.network
-        && xpub1.depth == xpub2.depth
-        && xpub1.child_number == xpub2.child_number
         && xpub1.public_key == xpub2.public_key
         && xpub1.chain_code == xpub2.chain_code)
     {
