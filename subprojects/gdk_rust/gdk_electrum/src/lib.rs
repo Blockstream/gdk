@@ -1051,8 +1051,29 @@ impl ElectrumSession {
     }
 
     pub fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
-        self.get_account(opt.subaccount)?
-            .balance(opt.num_confs, opt.confidential_utxos_only.unwrap_or(false))
+        let mut result = HashMap::new();
+        // bitcoin balance is always set even if 0
+        match self.network.id() {
+            NetworkId::Bitcoin(_) => result.entry("btc".to_string()).or_insert(0),
+            NetworkId::Elements(_) => {
+                result.entry(self.network.policy_asset.as_ref().unwrap().clone()).or_insert(0)
+            }
+        };
+
+        // Compute balance from get_unspent_outputs
+        let opt = GetUnspentOpt {
+            subaccount: opt.subaccount,
+            num_confs: Some(opt.num_confs),
+            confidential_utxos_only: opt.confidential_utxos_only,
+            all_coins: None,
+        };
+        let unspent_outputs = self.get_unspent_outputs(&opt)?;
+        for (asset, utxos) in unspent_outputs.0.iter() {
+            let asset_balance = utxos.iter().map(|u| u.satoshi).sum::<u64>();
+            *result.entry(asset.clone()).or_default() += asset_balance as i64;
+        }
+
+        Ok(result)
     }
 
     pub fn set_transaction_memo(&self, txid: &str, memo: &str) -> Result<(), Error> {
