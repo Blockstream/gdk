@@ -792,17 +792,12 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
         let mut utxos = vec![];
         for (asset, v) in unspent_outputs.0.iter() {
             for e in v {
-                let height = match e.block_height {
-                    0 => None,
-                    n => Some(n),
-                };
                 let (outpoint, utxo_info) = match &asset[..] {
                     "btc" => (
                         BEOutPoint::new_bitcoin(e.txhash.parse()?, e.pt_idx),
                         UTXOInfo::new_bitcoin(
                             e.satoshi,
                             e.scriptpubkey.clone().into(),
-                            height,
                             e.user_path.clone().into(),
                         ),
                     ),
@@ -812,7 +807,6 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
                             asset.parse()?,
                             e.satoshi,
                             e.scriptpubkey.clone().into(),
-                            height,
                             e.user_path.clone().into(),
                             e.confidential,
                         ),
