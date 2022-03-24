@@ -6,7 +6,7 @@ use std::str::FromStr;
 use log::{info, trace, warn};
 
 use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::{FromHex, ToHex};
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -22,7 +22,7 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressAmount, AddressPointer, CreateTransaction, GetTransactionsOpt,
-    SPVVerifyTxResult, TransactionMeta, TransactionOutput, UnspentOutput, UpdateAccountOpt,
+    SPVVerifyTxResult, TransactionMeta, TransactionOutput, Txo, UnspentOutput, UpdateAccountOpt,
     UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
@@ -375,7 +375,7 @@ impl Account {
         Ok(tx_outputs)
     }
 
-    pub fn txo(&self, outpoint: &BEOutPoint) -> Result<UnspentOutput, Error> {
+    pub fn txo(&self, outpoint: &BEOutPoint) -> Result<Txo, Error> {
         let vout = outpoint.vout();
         let txid = outpoint.txid();
 
@@ -384,30 +384,31 @@ impl Account {
 
         let txe = acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?;
         let tx = &txe.tx;
-        let height = acc_store.heights.get(&txid).cloned().flatten().unwrap_or(0);
-        let account_path = acc_store.get_path(&tx.output_script(vout))?;
-        let (is_internal, pointer) = parse_path(&account_path)?;
+        let height = acc_store.heights.get(&txid).cloned().flatten();
+        let script_pubkey = tx.output_script(vout);
+        let account_path = acc_store.get_path(&script_pubkey)?;
         let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
-        let asset_id_hex =
-            tx.output_asset(vout, &acc_store.unblinded).map_or("".into(), |a| a.to_hex());
+        let txoutsecrets = match outpoint {
+            BEOutPoint::Bitcoin(_) => None,
+            BEOutPoint::Elements(o) => acc_store.unblinded.get(&o).cloned(),
+        };
 
-        Ok(UnspentOutput {
-            address_type: self.script_type.to_string(),
-            block_height: height,
-            pointer: pointer,
-            pt_idx: vout,
-            txhash: txid.to_hex(),
-            satoshi: satoshi,
+        Ok(Txo {
+            outpoint: outpoint.clone(),
+            height,
+
+            public_key: self.public_key(&account_path),
+            script_pubkey,
+            script_code: self.script_code(&account_path),
+
             subaccount: self.account_num,
-            is_segwit: self.script_type.is_segwit(),
-            is_internal: is_internal,
-            confidential: tx.output_is_confidential(vout),
-            scriptpubkey: tx.output_script(vout),
-            sequence: None,
-            script_code: self.script_code(&account_path).to_hex(),
-            public_key: self.public_key(&account_path).to_string(),
+            script_type: self.script_type.clone(),
+
             user_path: self.get_full_path(&account_path).into(),
-            asset_id: asset_id_hex,
+
+            satoshi,
+            sequence: None,
+            txoutsecrets,
         })
     }
 
@@ -416,9 +417,9 @@ impl Account {
             .into_iter()
             .map(|(sequence, outpoint)| {
                 self.txo(&outpoint)
-                    .map(|mut u| {
+                    .and_then(|mut u| {
                         u.sequence = Some(sequence);
-                        u
+                        Ok(u.try_into()?)
                     })
                     .map_err(|_| Error::Generic("missing inputs not supported yet".into()))
             })

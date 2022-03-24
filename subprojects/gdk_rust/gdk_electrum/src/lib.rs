@@ -49,6 +49,7 @@ use gdk_common::NetworkId;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::convert::TryInto;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use std::{iter, thread};
@@ -1269,20 +1270,18 @@ impl ElectrumSession {
         let confidential_utxos_only = opt.confidential_utxos_only.unwrap_or(false);
         for outpoint in account.unspents()? {
             let utxo = account.txo(&outpoint)?;
-            let confirmations = if utxo.block_height == 0 {
-                0
-            } else {
-                (tip + 1).saturating_sub(utxo.block_height)
+            let confirmations = match utxo.height {
+                None | Some(0) => 0,
+                Some(h) => (tip + 1).saturating_sub(h),
             };
-            if num_confs > confirmations || (confidential_utxos_only && !utxo.confidential) {
+            if num_confs > confirmations || (confidential_utxos_only && !utxo.is_confidential()) {
                 continue;
             }
-            let asset_id = if utxo.asset_id.is_empty() {
-                "btc".to_string()
-            } else {
-                utxo.asset_id.clone()
+            let asset_id = match &utxo.txoutsecrets {
+                None => "btc".to_string(),
+                Some(s) => s.asset.to_hex(),
             };
-            (*unspent_outputs.entry(asset_id).or_insert(vec![])).push(utxo);
+            (*unspent_outputs.entry(asset_id).or_insert(vec![])).push(utxo.try_into()?);
         }
         Ok(GetUnspentOutputs(unspent_outputs))
     }
