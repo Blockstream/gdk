@@ -1,5 +1,5 @@
 use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid, UTXOInfo, Utxos};
-use crate::util::{weight_to_vsize, StringSerialized};
+use crate::util::{is_confidential_txoutsecrets, weight_to_vsize, StringSerialized};
 use crate::NetworkId;
 use bitcoin::Network;
 use serde::{Deserialize, Serialize};
@@ -729,6 +729,39 @@ impl CreateTxUtxo {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Txo {
+    pub outpoint: BEOutPoint,
+
+    pub height: Option<u32>,
+
+    pub public_key: bitcoin::PublicKey,
+    pub script_pubkey: BEScript,
+    pub script_code: BEScript,
+
+    pub subaccount: u32,
+    pub script_type: ScriptType,
+
+    /// The full path from the master key
+    pub user_path: Vec<ChildNumber>,
+
+    pub satoshi: u64,
+
+    pub sequence: Option<u32>,
+
+    /// The Liquid commitment preimages (asset, satoshi and blinders)
+    pub txoutsecrets: Option<elements::TxOutSecrets>,
+}
+
+impl Txo {
+    pub fn is_confidential(&self) -> bool {
+        match &self.txoutsecrets {
+            None => false,
+            Some(s) => is_confidential_txoutsecrets(&s),
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GetUnspentOutputs(pub HashMap<String, Vec<UnspentOutput>>);
 
@@ -757,6 +790,37 @@ pub struct UnspentOutput {
 
     // liquid fields
     pub asset_id: String,
+}
+
+impl TryFrom<Txo> for UnspentOutput {
+    type Error = Error;
+
+    fn try_from(txo: Txo) -> Result<Self, Error> {
+        let (is_internal, pointer) = parse_path(&txo.user_path.clone().into())?;
+        let asset_id = match &txo.txoutsecrets {
+            None => "".into(),
+            Some(s) => s.asset.to_hex(),
+        };
+        let confidential = txo.is_confidential();
+        Ok(Self {
+            txhash: txo.outpoint.txid().to_hex(),
+            pt_idx: txo.outpoint.vout(),
+            block_height: txo.height.unwrap_or(0),
+            public_key: txo.public_key.to_string(),
+            scriptpubkey: txo.script_pubkey,
+            script_code: txo.script_code.to_hex(),
+            subaccount: txo.subaccount,
+            is_segwit: txo.script_type.is_segwit(),
+            address_type: txo.script_type.to_string(),
+            user_path: txo.user_path,
+            is_internal,
+            pointer,
+            satoshi: txo.satoshi,
+            sequence: txo.sequence,
+            confidential,
+            asset_id,
+        })
+    }
 }
 
 /// Partially parse the derivation path and return (is_internal, address_pointer)
