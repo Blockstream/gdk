@@ -24,21 +24,15 @@ pub struct UTXOInfo {
     pub asset: String,
     pub value: u64,
     pub script: BEScript,
-    pub path: DerivationPath,
     pub confidential: bool,
 }
 
 impl UTXOInfo {
-    pub fn new_bitcoin(
-        value: u64,
-        script: BEScript,
-        path: DerivationPath,
-    ) -> Self {
+    pub fn new_bitcoin(value: u64, script: BEScript) -> Self {
         UTXOInfo {
             asset: "btc".to_string(),
             value,
             script,
-            path,
             confidential: false,
         }
     }
@@ -47,14 +41,12 @@ impl UTXOInfo {
         asset: elements::issuance::AssetId,
         value: u64,
         script: BEScript,
-        path: DerivationPath,
         confidential: bool,
     ) -> Self {
         UTXOInfo {
             asset: asset.to_hex(),
             value,
             script,
-            path,
             confidential,
         }
     }
