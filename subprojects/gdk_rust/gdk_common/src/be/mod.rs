@@ -17,8 +17,6 @@ use std::fmt::Debug;
 pub use transaction::*;
 pub use txid::*;
 
-pub type Utxos = Vec<(BEOutPoint, UTXOInfo)>;
-
 #[derive(Debug)]
 pub struct UTXOInfo {
     pub asset: String,

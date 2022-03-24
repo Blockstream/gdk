@@ -1,4 +1,4 @@
-use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid, UTXOInfo, Utxos};
+use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid};
 use crate::util::{is_confidential_txoutsecrets, weight_to_vsize, StringSerialized};
 use crate::NetworkId;
 use bitcoin::Network;
@@ -851,35 +851,6 @@ pub fn parse_path(path: &DerivationPath) -> Result<(bool, u32), Error> {
         return Err(Error::Generic("Unexpected derivation path".into()));
     };
     Ok((is_internal, address_pointer))
-}
-
-impl TryFrom<&GetUnspentOutputs> for Utxos {
-    type Error = Error;
-
-    fn try_from(unspent_outputs: &GetUnspentOutputs) -> Result<Self, Error> {
-        let mut utxos = vec![];
-        for (asset, v) in unspent_outputs.0.iter() {
-            for e in v {
-                let (outpoint, utxo_info) = match &asset[..] {
-                    "btc" => (
-                        BEOutPoint::new_bitcoin(e.txhash.parse()?, e.pt_idx),
-                        UTXOInfo::new_bitcoin(e.satoshi, e.scriptpubkey.clone().into()),
-                    ),
-                    _ => (
-                        BEOutPoint::new_elements(e.txhash.parse()?, e.pt_idx),
-                        UTXOInfo::new_elements(
-                            asset.parse()?,
-                            e.satoshi,
-                            e.scriptpubkey.clone().into(),
-                            e.confidential,
-                        ),
-                    ),
-                };
-                utxos.push((outpoint, utxo_info));
-            }
-        }
-        Ok(utxos)
-    }
 }
 
 // Output of get_transaction_details
