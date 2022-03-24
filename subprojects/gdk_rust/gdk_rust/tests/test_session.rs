@@ -35,6 +35,12 @@ use bitcoin::util::bip143::SigHashCache;
 
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
+pub fn convertutxos(utxos: &GetUnspentOutputs) -> CreateTxUtxos {
+    let s = serde_json::to_string(utxos).unwrap();
+    let utxos: CreateTxUtxos = serde_json::from_str(&s).unwrap();
+    utxos
+}
+
 #[allow(unused)]
 pub struct TestSession {
     pub node: electrsd::bitcoind::BitcoinD,
@@ -322,7 +328,8 @@ impl TestSession {
         let init_sat = self.balance_account(subaccount, asset_id.clone(), None);
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
-        create_opt.utxos = unspent_outputs.unwrap_or(self.utxos(create_opt.subaccount));
+        let utxos = unspent_outputs.unwrap_or(self.utxos(create_opt.subaccount));
+        create_opt.utxos = convertutxos(&utxos);
         if let Some(strategy) = utxo_strategy {
             create_opt.utxo_strategy = strategy;
         }
@@ -346,7 +353,7 @@ impl TestSession {
         self.wait_account_tx(subaccount, &txid);
 
         let key = asset_id.clone().unwrap_or(self.btc_key());
-        let sent_sat: u64 = create_opt.utxos.0.get(&key).unwrap().iter().map(|u| u.satoshi).sum();
+        let sent_sat: u64 = utxos.0.get(&key).unwrap().iter().map(|u| u.satoshi).sum();
         let end_sat = init_sat - sent_sat;
         assert_eq!(self.balance_account(subaccount, asset_id, None), end_sat);
 
@@ -380,7 +387,7 @@ impl TestSession {
             asset_id: asset.clone().or(self.asset_id()),
         });
         create_opt.memo = memo;
-        create_opt.utxos = unspent_outputs.unwrap_or_else(|| self.utxos(0));
+        create_opt.utxos = convertutxos(&unspent_outputs.unwrap_or_else(|| self.utxos(0)));
         create_opt.confidential_utxos_only = confidential_utxos_only.unwrap_or(false);
         if let Some(strategy) = utxo_strategy {
             create_opt.utxo_strategy = strategy;
@@ -391,7 +398,7 @@ impl TestSession {
             NetworkId::Elements(_) => assert!(!tx.rbf_optin),
             NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
         };
-        let num_utxos: usize = create_opt.utxos.0.iter().map(|(_, au)| au.len()).sum();
+        let num_utxos: usize = create_opt.utxos.iter().map(|(_, au)| au.len()).sum();
         let num_used_utxos = tx.used_utxos.len();
         match create_opt.utxo_strategy {
             UtxoStrategy::Manual => assert_eq!(num_used_utxos, num_utxos),
@@ -458,7 +465,7 @@ impl TestSession {
             satoshi,
             asset_id: asset.clone().or(self.asset_id()),
         });
-        create_opt.utxos = self.utxos(create_opt.subaccount);
+        create_opt.utxos = convertutxos(&self.utxos(create_opt.subaccount));
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
@@ -576,7 +583,7 @@ impl TestSession {
             });
             addressees.push(address);
         }
-        create_opt.utxos = self.utxos(create_opt.subaccount);
+        create_opt.utxos = convertutxos(&self.utxos(create_opt.subaccount));
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
@@ -638,7 +645,7 @@ impl TestSession {
             satoshi: init_sat, // not enough to pay the fee with confidential utxos only
             asset_id: self.asset_id(),
         });
-        create_opt.utxos = self.utxos(create_opt.subaccount);
+        create_opt.utxos = convertutxos(&self.utxos(create_opt.subaccount));
         create_opt.confidential_utxos_only = true;
         assert!(matches!(
             self.session.create_transaction(&mut create_opt),
@@ -692,7 +699,7 @@ impl TestSession {
             satoshi,
             asset_id: self.asset_id(),
         });
-        create_opt.utxos = self.utxos(create_opt.subaccount);
+        create_opt.utxos = convertutxos(&self.utxos(create_opt.subaccount));
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
@@ -716,7 +723,7 @@ impl TestSession {
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
         create_opt.fee_rate = fee_rate;
-        create_opt.utxos = utxos;
+        create_opt.utxos = convertutxos(&utxos);
         create_opt.addressees.push(AddressAmount {
             address: address.to_string(),
             satoshi: satoshi,

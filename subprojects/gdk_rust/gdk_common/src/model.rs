@@ -130,7 +130,7 @@ pub struct CreateTransaction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
     #[serde(default)]
-    pub utxos: GetUnspentOutputs,
+    pub utxos: CreateTxUtxos,
     /// Minimum number of confirmations for coin selection
     #[serde(default)]
     pub num_confs: u32,
@@ -759,6 +759,10 @@ impl Txo {
             None => false,
             Some(s) => is_confidential_txoutsecrets(&s),
         }
+    }
+
+    pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
+        self.txoutsecrets.as_ref().map(|s| s.asset.clone())
     }
 }
 

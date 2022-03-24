@@ -3,9 +3,9 @@ use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, GetBalanceOpt, GetNextAccountOpt,
-    GetTransactionsOpt, GetUnspentOutputs, RefreshAssets, RenameAccountOpt, SPVCommonParams,
-    SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
+    AddressAmount, CreateAccountOpt, CreateTransaction, CreateTxUtxos, GetBalanceOpt,
+    GetNextAccountOpt, GetTransactionsOpt, GetUnspentOutputs, RefreshAssets, RenameAccountOpt,
+    SPVCommonParams, SPVDownloadHeadersParams, SPVVerifyTxResult, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::{NetworkId, NetworkParameters};
@@ -23,7 +23,9 @@ use std::{env, thread};
 use tempfile::TempDir;
 
 mod test_session;
-use test_session::{auth_handler_login, discover_subaccounts, spv_verify_tx, TestSession};
+use test_session::{
+    auth_handler_login, convertutxos, discover_subaccounts, spv_verify_tx, TestSession,
+};
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
@@ -199,7 +201,7 @@ fn create_tx_err(is_liquid: bool) {
         subaccount,
         GetUnspentOutputs::default(),
     );
-    assert!(create_opt.utxos.0.iter().all(|(_, v)| v.len() == 0));
+    assert!(create_opt.utxos.iter().all(|(_, v)| v.len() == 0));
     assert!(matches!(
         test_session.session.create_transaction(&mut create_opt),
         Err(Error::InsufficientFunds)
@@ -519,7 +521,7 @@ fn coin_selection(is_liquid: bool) {
         satoshi: sat8,
         asset_id: test_session.asset_id(),
     });
-    create_opt.utxos = GetUnspentOutputs::default();
+    create_opt.utxos = CreateTxUtxos::default();
     create_opt.utxo_strategy = UtxoStrategy::Manual;
     assert!(matches!(
         test_session.session.create_transaction(&mut create_opt),
@@ -545,7 +547,7 @@ fn coin_selection(is_liquid: bool) {
             asset_id: Some(asset_a.clone()),
         });
         utxos.0.remove_entry(&btc_key);
-        create_opt.utxos = utxos.clone();
+        create_opt.utxos = convertutxos(&utxos);
         create_opt.utxo_strategy = UtxoStrategy::Manual;
         assert!(matches!(
             test_session.session.create_transaction(&mut create_opt),
@@ -1045,7 +1047,7 @@ fn labels() {
         satoshi: 50000,
         asset_id: None,
     });
-    create_opt.utxos = test_session.utxos(create_opt.subaccount);
+    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
     create_opt.memo = Some("Foo, Bar Foo".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
@@ -1070,7 +1072,7 @@ fn labels() {
         satoshi: 50000,
         asset_id: None,
     });
-    create_opt.utxos = test_session.utxos(create_opt.subaccount);
+    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
     create_opt.memo = Some("Foo, Bar Foo".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_signer.sign_tx(&tx);
@@ -1113,7 +1115,7 @@ fn rbf() {
         satoshi: 50000,
         asset_id: None,
     });
-    create_opt.utxos = test_session.utxos(create_opt.subaccount);
+    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
     create_opt.fee_rate = Some(25000);
     create_opt.memo = Some("poz qux".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();

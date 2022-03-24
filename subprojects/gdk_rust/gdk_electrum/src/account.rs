@@ -16,8 +16,8 @@ use bitcoin::{PublicKey, SigHashType};
 use elements::confidential::Value;
 
 use gdk_common::be::{
-    BEAddress, BEOutPoint, BEScript, BEScriptConvert, BETransaction, BETxid, ScriptBatch, UTXOInfo,
-    Utxos, DUST_VALUE,
+    BEAddress, BEOutPoint, BEScript, BEScriptConvert, BETransaction, BETxid, ScriptBatch,
+    DUST_VALUE,
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
@@ -811,32 +811,6 @@ pub fn discover_account(
     Ok(false)
 }
 
-/// Populate `derivation_path` and `scriptpubkey` in `utxos` by looking in our internal
-/// cache by provided `txhash` and `pt_idx` and return an error if not present.
-/// This allows to have this data if missing, but also avoid trusting the user input for this fields.
-pub fn populate_unspent_from_db(
-    account: &Account,
-    request: &mut CreateTransaction,
-) -> Result<(), Error> {
-    let store = account.store.read()?;
-
-    for u in request.utxos.0.values_mut().flat_map(|e| e.iter_mut()) {
-        let cache = store.account_cache(account.account_num)?;
-        let txid = BETxid::from_hex(&u.txhash, account.network.id())?;
-        let tx_entry = cache.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?;
-        let tx = &tx_entry.tx;
-        let vout = u.pt_idx;
-        if (vout as usize) >= tx.output_len() {
-            return Err(Error::Generic("vout greater or equal number of outputs".into()));
-        }
-        let script_pubkey = tx.output_script(vout);
-        let derivation_path = cache.get_path(&script_pubkey)?;
-        u.user_path = account.get_full_path(derivation_path).into();
-        u.scriptpubkey = script_pubkey;
-    }
-    Ok(())
-}
-
 // FIXME: taproot_enabled_at is useful close to the soft fork,
 // when enough blocks has passed we should consider removing it,
 // since it introduces more code complexity and might require a db read,
@@ -862,7 +836,6 @@ pub fn create_tx(
     account: &Account,
     request: &mut CreateTransaction,
 ) -> Result<TransactionMeta, Error> {
-    populate_unspent_from_db(account, request)?;
     info!("create_tx {:?}", request);
 
     let network = &account.network;
@@ -1043,9 +1016,19 @@ pub fn create_tx(
         }
     }
 
-    let mut utxos: Utxos = (&request.utxos).try_into()?;
-    if request.confidential_utxos_only {
-        utxos.retain(|(_, i)| i.confidential);
+    let id = network.id();
+    let mut utxos: Vec<Txo> = vec![];
+    for (_, outpoints) in request.utxos.iter() {
+        for o in outpoints {
+            let outpoint = o.outpoint(id)?;
+            // TODO: check that the outpoint is not confirmed
+            // TODO: check that outpoints are unique
+            let utxo = account.txo(&outpoint)?;
+            if request.confidential_utxos_only && !utxo.is_confidential() {
+                continue;
+            }
+            utxos.push(utxo);
+        }
     }
     info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
 
@@ -1057,14 +1040,13 @@ pub fn create_tx(
             return Err(Error::SendAll);
         }
         let asset = request.addressees[0].asset_id();
-        let all_utxos: Vec<&(BEOutPoint, UTXOInfo)> =
-            utxos.iter().filter(|(_, i)| i.asset_id() == asset).collect();
-        let total_amount_utxos: u64 = all_utxos.iter().map(|(_, i)| i.value).sum();
+        let all_utxos: Vec<&Txo> = utxos.iter().filter(|u| u.asset_id() == asset).collect();
+        let total_amount_utxos: u64 = all_utxos.iter().map(|u| u.satoshi).sum();
 
         let to_send = if asset == network.policy_asset_id().ok() {
             let mut dummy_tx = BETransaction::new(network.id());
             for utxo in all_utxos.iter() {
-                dummy_tx.add_input(utxo.0.clone());
+                dummy_tx.add_input(utxo.outpoint.clone());
             }
             let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
             dummy_tx
@@ -1125,22 +1107,24 @@ pub fn create_tx(
                 let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
 
                 // taking only utxos of current asset considered, filters also utxos used in this loop
-                let mut asset_utxos: Vec<&(BEOutPoint, UTXOInfo)> = utxos
+                let mut asset_utxos: Vec<&Txo> = utxos
                     .iter()
-                    .filter(|(o, i)| i.asset_id() == current_need.asset && !used_utxo.contains(o))
+                    .filter(|u| {
+                        u.asset_id() == current_need.asset && !used_utxo.contains(&u.outpoint)
+                    })
                     .collect();
 
                 // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
-                asset_utxos.sort_by(|a, b| (a.1).value.cmp(&(b.1).value));
+                asset_utxos.sort_by(|a, b| a.satoshi.cmp(&b.satoshi));
                 let utxo = asset_utxos.pop().ok_or(Error::InsufficientFunds)?;
 
                 match network.id() {
                     NetworkId::Bitcoin(_) => {
                         // UTXO with same script must be spent together
                         for other_utxo in utxos.iter() {
-                            if (other_utxo.1).script == (utxo.1).script {
-                                used_utxo.insert(other_utxo.0.clone());
-                                tx.add_input(other_utxo.0.clone());
+                            if other_utxo.script_pubkey == utxo.script_pubkey {
+                                used_utxo.insert(other_utxo.outpoint.clone());
+                                tx.add_input(other_utxo.outpoint.clone());
                             }
                         }
                     }
@@ -1150,15 +1134,15 @@ pub fn create_tx(
                         // waste fees for the extra tx inputs and (eventually) outputs.
                         // While blinded address are required and not public knowledge,
                         // they are still available to whom transacted with us in the past
-                        used_utxo.insert(utxo.0.clone());
-                        tx.add_input(utxo.0.clone());
+                        used_utxo.insert(utxo.outpoint.clone());
+                        tx.add_input(utxo.outpoint.clone());
                     }
                 }
             }
         }
         UtxoStrategy::Manual => {
             for utxo in utxos.iter() {
-                tx.add_input(utxo.0.clone());
+                tx.add_input(utxo.outpoint.clone());
             }
             let needs = tx.needs(
                 fee_rate,
