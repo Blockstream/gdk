@@ -19,6 +19,13 @@ impl From<elements::OutPoint> for BEOutPoint {
 }
 
 impl BEOutPoint {
+    pub fn new(betxid: BETxid, vout: u32) -> Self {
+        match betxid {
+            BETxid::Bitcoin(txid) => Self::new_bitcoin(txid, vout),
+            BETxid::Elements(txid) => Self::new_elements(txid, vout),
+        }
+    }
+
     pub fn new_bitcoin(txid: bitcoin::Txid, vout: u32) -> Self {
         BEOutPoint::Bitcoin(bitcoin::OutPoint {
             txid,

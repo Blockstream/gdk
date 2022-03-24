@@ -1,5 +1,6 @@
-use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, UTXOInfo, Utxos};
+use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid, UTXOInfo, Utxos};
 use crate::util::{weight_to_vsize, StringSerialized};
+use crate::NetworkId;
 use bitcoin::Network;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -720,6 +721,13 @@ pub struct CreateTxUtxo {
 }
 
 pub type CreateTxUtxos = HashMap<String, Vec<CreateTxUtxo>>;
+
+impl CreateTxUtxo {
+    pub fn outpoint(&self, id: NetworkId) -> Result<BEOutPoint, Error> {
+        let betxid = BETxid::from_hex(&self.txid, id)?;
+        Ok(BEOutPoint::new(betxid, self.vout))
+    }
+}
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GetUnspentOutputs(pub HashMap<String, Vec<UnspentOutput>>);
