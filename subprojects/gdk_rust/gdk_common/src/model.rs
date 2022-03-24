@@ -804,7 +804,6 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
                             e.scriptpubkey.clone().into(),
                             height,
                             e.user_path.clone().into(),
-                            e.script_code.clone(),
                         ),
                     ),
                     _ => (
@@ -816,7 +815,6 @@ impl TryFrom<&GetUnspentOutputs> for Utxos {
                             height,
                             e.user_path.clone().into(),
                             e.confidential,
-                            e.script_code.clone(),
                         ),
                     ),
                 };
