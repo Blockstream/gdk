@@ -58,14 +58,9 @@
 - Add support for pay to taproot to both multisig and singlesig wallets (unavailable until activation on the main chain)
 
 
-
-
 ## Release 0.0.46.post1 - 2021-10-26
 
-#### What's new in this release
-
 - Fix: increase proxy and socks setup timeouts
-
 - Fix: tor wakeup
 
 
@@ -78,7 +73,6 @@
 - Improve expired certificate handling
 - Allow fetching wallet id without login and return it from register. Note the identifier returned by single sig sessions has changed to match multisig behaviour
 - Fix builds under Python 3.9
-
 
 
 ## Release 0.0.45.post1 - 2021-09-29
@@ -111,11 +105,6 @@ Patched version from v0.0.45 with:
 - ABI: There are now fewer state changes for some auth handlers
 - General: Improved caching to speed up many operations
 - General: Various bug fixes and speedups
-
-
-##  - 2021-08-24
-
-
 
 
 ## Release 0.0.43.post1 - 2021-08-12
