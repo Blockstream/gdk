@@ -442,9 +442,7 @@ namespace sdk {
             decltype(m_session) s;
             decltype(m_subscriptions) subscriptions;
 
-            GDK_LOG_SEV(log_level::debug) << "net: taking mutex";
             locker_t locker(m_mutex);
-            GDK_LOG_SEV(log_level::debug) << "net: mutex taken";
             const auto state = m_state.load();
             auto desired_state = m_desired_state.load();
             const auto failure_count = m_failure_count.load();
@@ -455,7 +453,6 @@ namespace sdk {
                 desired_state = state_t::disconnected;
             } else if (state == desired_state) {
                 // We are already in the desired state. Wait until something changes
-                GDK_LOG_SEV(log_level::debug) << "net: in state " << state_str(state);
                 if (m_transport) {
                     if (!m_transport->is_connected()) {
                         // The transport has been closed or failed. Mark the
