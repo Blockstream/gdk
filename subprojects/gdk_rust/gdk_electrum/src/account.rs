@@ -436,7 +436,14 @@ impl Account {
             for vout in 0..(txe.tx.output_len() as u32) {
                 let script_pubkey = txe.tx.output_script(vout);
                 if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey) {
-                    relevant_outputs.insert(txe.tx.outpoint(vout));
+                    let outpoint = txe.tx.outpoint(vout);
+                    if let BEOutPoint::Elements(outpoint) = outpoint {
+                        if acc_store.unblinded.get(&outpoint).is_none() {
+                            // If Liquid, ignore outputs we cannot unblind
+                            continue;
+                        }
+                    }
+                    relevant_outputs.insert(outpoint);
                 }
             }
         }
