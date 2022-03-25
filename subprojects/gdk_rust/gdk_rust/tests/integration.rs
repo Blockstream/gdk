@@ -24,7 +24,8 @@ use tempfile::TempDir;
 
 mod test_session;
 use test_session::{
-    auth_handler_login, convertutxos, discover_subaccounts, spv_verify_tx, TestSession,
+    auth_handler_login, convertutxos, discover_subaccounts, spv_verify_tx, to_not_unblindable,
+    TestSession,
 };
 
 static MEMO1: &str = "hello memo";
@@ -1011,6 +1012,22 @@ fn registry_liquid() {
     let value = test_session.refresh_assets(false, true, true).unwrap();
     assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
     assert!(value.get("icons").is_some());
+}
+
+#[test]
+fn not_unblindable_liquid() {
+    let test_session = setup_session(true, |_| ());
+
+    // Receive a utxos that is not unblindable by the wallet
+    let ap = test_session.get_receive_address(0);
+    let address = to_not_unblindable(&ap.address);
+    let sat = 10_000;
+    let txid = test_session.node_sendtoaddress(&address, sat, None);
+    test_session.wait_account_tx(0, &txid);
+
+    // Balance is empty and there are no utxos
+    assert_eq!(0, test_session.balance_account(0, None, None));
+    assert!(test_session.utxos(0).0.is_empty());
 }
 
 #[test]

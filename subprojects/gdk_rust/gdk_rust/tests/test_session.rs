@@ -1160,6 +1160,13 @@ pub fn to_unconfidential(elements_address: &str) -> String {
     address_unconf.to_string()
 }
 
+pub fn to_not_unblindable(elements_address: &str) -> String {
+    let pk = elements::secp256k1_zkp::PublicKey::from_slice(&[2; 33]).unwrap();
+    let mut address = elements::Address::from_str(elements_address).unwrap();
+    address.blinding_pubkey = Some(pk);
+    address.to_string()
+}
+
 /// wait for the n txs to show up in the given account
 pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) {
     let mut opt = GetTransactionsOpt::default();
