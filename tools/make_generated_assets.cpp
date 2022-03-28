@@ -74,7 +74,7 @@ static std::string generate(sdk::session& session, const std::string& page, cons
 
 int main()
 {
-    sdk::init(nlohmann::json::object());
+    sdk::init({ { "datadir", "." } });
     sdk::session session;
     session.connect({ { "name", "liquid" }, { "log_level", "info" } });
 
