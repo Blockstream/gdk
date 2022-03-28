@@ -9,9 +9,9 @@ int main()
 {
     nlohmann::json init_config;
     init_config["datadir"] = ".";
+    init_config["log_level"] = "debug";
 
     nlohmann::json net_params;
-    net_params["log_level"] = "debug";
     net_params["use_tor"] = true;
     // net_params["proxy"] = "localhost:9050";
     net_params["name"] = "testnet";

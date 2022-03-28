@@ -74,9 +74,9 @@ static std::string generate(sdk::session& session, const std::string& page, cons
 
 int main()
 {
-    sdk::init({ { "datadir", "." } });
+    sdk::init({ { "datadir", "." }, { "log_level", "info" } });
     sdk::session session;
-    session.connect({ { "name", "liquid" }, { "log_level", "info" } });
+    session.connect({ { "name", "liquid" } });
 
     const auto mnemonic_env = std::getenv("GA_MNEMONIC");
     GDK_RUNTIME_ASSERT_MSG(mnemonic_env, "Set GA_MNEMONIC to generate assets");
