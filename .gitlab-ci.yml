@@ -10,6 +10,7 @@ stages:
   - build
   - test
   - deploy
+  - publish
 
 .ndk_release:
   tags:
@@ -331,3 +332,19 @@ package_release:
   - release_osx_ios
   - apidocs
   - release_osx_ios_sim
+
+cp_gcloud:
+  image: blockstream/gcloud-docker-tf:1.1.7
+  tags:
+    - ga
+  stage: publish
+  script:
+    - echo gs://green-gdk-builds/$CI_PROJECT_NAME-$CI_COMMIT_SHA
+    - TMPF=$(mktemp) || exit 1
+    - echo $GCLOUD_PUSH_KEY > $TMPF
+    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
+    - gcloud auth activate-service-account --key-file=$TMPF
+    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist gs://green-gdk-builds/$CI_PROJECT_NAME-$CI_COMMIT_SHA
+  dependencies:
+  - package_release
+
