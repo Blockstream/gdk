@@ -348,3 +348,21 @@ cp_gcloud:
   dependencies:
   - package_release
 
+cp_gcloud_master:
+  image: blockstream/gcloud-docker-tf:1.1.7
+  tags:
+    - ga
+  stage: publish
+  only:
+    refs:
+      - master
+  script:
+    - TMPF=$(mktemp) || exit 1
+    - echo $GCLOUD_PUSH_KEY > $TMPF
+    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
+    - gcloud auth activate-service-account --key-file=$TMPF
+    - gsutil rm -r gs://green-gdk-builds/gdk-master || echo fail # avoid failing when dir does not exist
+    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist gs://green-gdk-builds/gdk-master
+  dependencies:
+  - package_release
+
