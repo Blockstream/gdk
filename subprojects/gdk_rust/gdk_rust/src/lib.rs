@@ -269,10 +269,9 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 }
 
 fn fetch_exchange_rates(agent: ureq::Agent) -> Vec<Ticker> {
-    if let Ok(result) =
-        agent.get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call().into_json()
+    if let Ok(result) = agent.get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call()
     {
-        if let Value::Array(array) = result {
+        if let Ok(Value::Array(array)) = result.into_json() {
             if let Some(Value::Array(array)) = array.get(0) {
                 // using BIDPRICE https://docs.bitfinex.com/reference#rest-public-tickers
                 if let Some(rate) = array.get(1).and_then(|e| e.as_f64()) {

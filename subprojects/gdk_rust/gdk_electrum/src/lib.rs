@@ -411,9 +411,7 @@ impl ElectrumSession {
         match &self.proxy {
             Some(proxy) => {
                 let proxy = ureq::Proxy::new(&proxy)?;
-                let mut agent = ureq::agent();
-                agent.set_proxy(proxy);
-                Ok(agent)
+                Ok(ureq::AgentBuilder::new().proxy(proxy).build())
             }
             None => Ok(ureq::agent()),
         }
@@ -1336,10 +1334,9 @@ fn call_icons(
     info!("START call_icons {}", &url);
     let icons_response = agent
         .get(&url)
-        .timeout_connect(15_000)
-        .timeout_read(15_000)
+        .timeout(Duration::from_secs(30))
         .set("If-Modified-Since", &last_modified)
-        .call();
+        .call()?;
     let status = icons_response.status();
     info!("call_icons {} returns {}", &url, status);
     let last_modified = icons_response.header("Last-Modified").unwrap_or_default().to_string();
@@ -1359,14 +1356,13 @@ fn call_assets(
     info!("START call_assets {}", &url);
     let assets_response = agent
         .get(&url)
-        .timeout_connect(15_000)
-        .timeout_read(15_000)
+        .timeout(Duration::from_secs(30))
         .set("If-Modified-Since", &last_modified)
-        .call();
+        .call()?;
     let status = assets_response.status();
     info!("call_assets {} returns {}", url, status);
     let last_modified = assets_response.header("Last-Modified").unwrap_or_default().to_string();
-    let mut assets = assets_response.into_json()?;
+    let mut assets: Value = assets_response.into_json()?;
     assets[registry_policy] =
         json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
     info!("END call_assets {} {}", &url, status);

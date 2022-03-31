@@ -72,10 +72,10 @@ impl PinManager {
     fn handshake_request(agent: &ureq::Agent, url: &str) -> Result<Handshake, Error> {
         let response =
             agent.post(&format!("{}/start_handshake", url)).set("content-length", "0").call();
-        if !response.ok() {
+        if !response.is_ok() {
             return Err(Error::PinError);
         }
-        let data: Handshake = serde_json::from_reader(response.into_reader())?;
+        let data: Handshake = serde_json::from_reader(response?.into_reader())?;
         Ok(data)
     }
 
@@ -167,11 +167,11 @@ impl PinManager {
             .post(&format!("{}/{}", self.url, op))
             .send_json(serde_json::to_value(&req).unwrap());
 
-        if !response.ok() {
+        if !response.is_ok() {
             return Err(Error::PinError);
         }
 
-        let response: ResponseData = serde_json::from_reader(response.into_reader())?;
+        let response: ResponseData = serde_json::from_reader(response?.into_reader())?;
 
         response.verify_and_decrypt(&self.response_hmac_key, &self.response_encryption_key)
     }
@@ -256,9 +256,7 @@ mod test {
         let agent = match proxy {
             Some(proxy) => {
                 let proxy = ureq::Proxy::new(&proxy).unwrap();
-                let mut agent = ureq::agent();
-                agent.set_proxy(proxy);
-                agent
+                ureq::AgentBuilder::new().proxy(proxy).build()
             }
             None => ureq::agent(),
         };
