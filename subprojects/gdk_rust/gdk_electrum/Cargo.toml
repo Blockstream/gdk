@@ -19,7 +19,7 @@ aes-gcm-siv = "0.10.0"
 gdk-common = { path = "../gdk_common" }
 libc = "0.2"
 electrum-client = { version = "0.8.0", default-features = false, features = [ "proxy", "use-openssl" ] }
-ureq = { version = "2.4.0", features = ["json", "socks-proxy"] }
+ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
 block-modes = "0.8.0"
 aes = "0.7.0"
 tempfile = "3.2.0"
