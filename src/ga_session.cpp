@@ -345,7 +345,8 @@ namespace sdk {
         if (refresh) {
             // Check the server to see if the data has been updated
             const std::string last_modified = (cached.empty() ? base : cached).at("headers").at("last-modified");
-            const std::string url = m_net_params.get_registry_connection_string() + "/" + page + ".json";
+            const std::string minimal_page = page == "index" ? "index.minimal" : page;
+            const std::string url = m_net_params.get_registry_connection_string() + "/" + minimal_page + ".json";
             const nlohmann::json get_params = { { "method", "GET" }, { "urls", { url } }, { "accept", "json" },
                 { "headers", { { "If-Modified-Since", last_modified } } } };
 
@@ -379,15 +380,19 @@ namespace sdk {
             }
         }
 
+        nlohmann::json result;
         if (!cached.empty()) {
             // We have an update to the base data, return it
-            auto result = base.at("body").patch(cached.at("body"));
+            result = base.at("body").patch(cached.at("body"));
             // Filter the result in case our cached update contained a bad asset id
             json_filter_bad_asset_ids(result);
-            return result;
+        } else {
+            // Return the unchanged base data
+            result = std::move(base.at("body"));
         }
-        // Return the unchanged base data
-        auto result(std::move(base.at("body")));
+        if (page == "index") {
+            json_expand_asset_info(result);
+        }
         return result;
     }
 

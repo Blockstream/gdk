@@ -46,7 +46,8 @@ static std::string get_code(const std::string& name, const std::vector<uint8_t>&
 
 static std::string generate(sdk::session& session, const std::string& page, const std::string& key)
 {
-    const auto url = session.get_network_parameters().get_registry_connection_string() + "/" + page + ".json";
+    const std::string minimal_page = page == "index" ? "index.minimal" : page;
+    const auto url = session.get_network_parameters().get_registry_connection_string() + "/" + minimal_page + ".json";
     auto data = session.http_request({ { "method", "GET" }, { "urls", { url } }, { "accept", "json" } });
     data.at("headers").erase("date"); // Make the generated data reproducible
     ::ga::sdk::json_filter_bad_asset_ids(data.at("body")); // Remove any bad keys
@@ -61,11 +62,10 @@ static std::string generate(sdk::session& session, const std::string& page, cons
         auto &body = data.at("body");
         auto p = body.find(start_asset);
         GDK_RUNTIME_ASSERT(p != body.end());
-        p->at("asset_id") = end_asset;
         body[end_asset].swap(*p);
         body.erase(p);
-        // Update an assets version, refreshing should revert it
-        body["005302fd8aa65fec1883ba93911dd1fb28763650205c67109fee66017c90899c"]["version"] = 99;
+        // Update an assets precision, refreshing should revert it
+        body["005302fd8aa65fec1883ba93911dd1fb28763650205c67109fee66017c90899c"].at(3) = 2;
     }
 #endif
     auto compressed = sdk::compress(sdk::byte_span_t(), nlohmann::json::to_msgpack(data));

@@ -27,5 +27,16 @@ namespace sdk {
         return json_filter(data, filter_fn);
     }
 
+    void json_expand_asset_info(nlohmann::json& data)
+    {
+        for (auto& item : data.items()) {
+            nlohmann::json entity{ { "domain", std::move(item.value().at(0)) } };
+            nlohmann::json new_value = { { "asset_id", item.key() }, { "ticker", std::move(item.value().at(1)) },
+                { "name", std::move(item.value().at(2)) }, { "precision", std::move(item.value().at(3)) },
+                { "entity", std::move(entity) } };
+            item.value().swap(new_value);
+        }
+    }
+
 } // namespace sdk
 } // namespace ga
