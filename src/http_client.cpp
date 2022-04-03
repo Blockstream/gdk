@@ -267,6 +267,7 @@ namespace sdk {
 
         NET_ERROR_CODE_CHECK("on write", ec);
         get_lowest_layer().expires_after(m_timeout);
+        m_response.body_limit(64 * 1024 * 1024);
         async_read();
     }
 
@@ -295,7 +296,8 @@ namespace sdk {
 
     void http_client::set_result()
     {
-        const auto result = m_response.result();
+        auto response = m_response.release();
+        const auto result = response.result();
 
         if (result == beast::http::status::not_modified) {
             const nlohmann::json body = { { "not_modified", true } };
@@ -305,7 +307,7 @@ namespace sdk {
         }
 
         if (beast::http::to_status_class(result) == beast::http::status_class::redirection) {
-            const nlohmann::json body = { { "location", m_response[beast::http::field::location] } };
+            const nlohmann::json body = { { "location", response[beast::http::field::location] } };
             m_promise.set_value(body);
             return;
         }
@@ -321,14 +323,14 @@ namespace sdk {
             nlohmann::json body;
 
             if (m_accept == "json") {
-                body["body"] = nlohmann::json::parse(m_response.body());
+                body["body"] = nlohmann::json::parse(response.body());
             } else if (m_accept == "base64") {
-                body["body"] = base64_from_bytes(ustring_span(m_response.body()));
+                body["body"] = base64_from_bytes(ustring_span(response.body()));
             } else {
-                body["body"] = m_response.body();
+                body["body"] = std::move(response.body());
             }
 
-            for (const auto& field : m_response.base()) {
+            for (const auto& field : response.base()) {
                 const std::string field_name = field.name_string().to_string();
                 const std::string field_value = field.value().to_string();
                 body["headers"][boost::algorithm::to_lower_copy(field_name)] = field_value;

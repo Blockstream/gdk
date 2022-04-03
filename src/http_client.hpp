@@ -48,7 +48,7 @@ namespace sdk {
         boost::asio::ip::tcp::resolver m_resolver;
         boost::beast::flat_buffer m_buffer;
         boost::beast::http::request<boost::beast::http::string_body> m_request;
-        boost::beast::http::response<boost::beast::http::string_body> m_response;
+        boost::beast::http::response_parser<boost::beast::http::string_body> m_response;
         std::chrono::seconds m_timeout;
         std::string m_host;
         std::string m_port;
