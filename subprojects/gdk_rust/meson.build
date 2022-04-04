@@ -60,6 +60,16 @@ rust_sources = [
   'gdk_electrum/src/headers/liquid.rs',
   'gdk_electrum/src/headers/bitcoin.rs',
 
+  'gdk_registry/Cargo.toml',
+  'gdk_registry/src/error.rs',
+  'gdk_registry/src/file.rs',
+  'gdk_registry/src/http.rs',
+  'gdk_registry/src/inner.rs',
+  'gdk_registry/src/lib.rs',
+  'gdk_registry/src/param.rs',
+  'gdk_registry/src/result.rs',
+  'gdk_registry/src/bin/make_hard_coded.rs',
+  'gdk_registry/src/hard/mod.rs',
 ]
 
 gdk_rust_target = custom_target('libgdk_rust',

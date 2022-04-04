@@ -1,0 +1,20 @@
+{
+  "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225": {
+    "asset_id": "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+    "contract": null,
+    "issuance_txin": {
+      "txid": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "",
+    "name": "btc",
+    "ticker": "L-TEST",
+    "precision": 8,
+    "entity": null
+  }
+}

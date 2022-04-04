@@ -1,0 +1,1106 @@
+{
+  "0e99c1a6da379d1f4151fb9df90449d40d0608f6cb33a5bcbfc8c265f42bab0a": {
+    "asset_id": "0e99c1a6da379d1f4151fb9df90449d40d0608f6cb33a5bcbfc8c265f42bab0a",
+    "contract": {
+      "entity": {
+        "domain": "lcad.bullbitcoin.com"
+      },
+      "issuer_pubkey": "027fa34026195b05f3aa217335416811dca4f5b579d00271a1bb6304c0152458a8",
+      "name": "Liquid CAD",
+      "precision": 8,
+      "ticker": "LCAD",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "238badf029cadcf546d90ce23c7eafc2fa2082585c9bd62dc26f1aa11c7bd850",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "a87f13917c08c7ccd8eddb1830c5c9a2bcd59c7d167e9d528659ba40808a6b76",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "027fa34026195b05f3aa217335416811dca4f5b579d00271a1bb6304c0152458a8",
+    "name": "Liquid CAD",
+    "ticker": "LCAD",
+    "precision": 8,
+    "entity": {
+      "domain": "lcad.bullbitcoin.com"
+    }
+  },
+  "81a5ac0f335498b061f9c066a8aab1cab26ce04c024ae29e58a093b1febf4e10": {
+    "asset_id": "81a5ac0f335498b061f9c066a8aab1cab26ce04c024ae29e58a093b1febf4e10",
+    "contract": {
+      "entity": {
+        "domain": "excellion.com"
+      },
+      "issuer_pubkey": "03c88a50034a2599722cd22e7a49a2765919cc75715352860433700f6b3fd24db0",
+      "name": "Excellion Taproot Hat",
+      "precision": 0,
+      "ticker": "E-TAP",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "253fdbf998692229f35c6db23044e724b49a9d875f78885554910fbbe98576dd",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "e1fe744be7ee790023c50968f964c333a58cf1a37f9de18acaa99326b5283caf",
+      "vout": 2
+    },
+    "version": 0,
+    "issuer_pubkey": "03c88a50034a2599722cd22e7a49a2765919cc75715352860433700f6b3fd24db0",
+    "name": "Excellion Taproot Hat",
+    "ticker": "E-TAP",
+    "precision": 0,
+    "entity": {
+      "domain": "excellion.com"
+    }
+  },
+  "5949bb9926a40d0c6bee9a985abcad35eb2a953a5b7280eda47221f443004822": {
+    "asset_id": "5949bb9926a40d0c6bee9a985abcad35eb2a953a5b7280eda47221f443004822",
+    "contract": {
+      "entity": {
+        "domain": "bmdt.stablehouse.io"
+      },
+      "issuer_pubkey": "03c7722f7577579d5bf90a039c551f1d1d45df6ed5316a8f0417fc710db2da80b2",
+      "name": "Bermuda Token",
+      "precision": 2,
+      "ticker": "BMDt",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "5b59480caaf30d4a43e5b9a49a037c5065c95e51a4707d89092cccb1682f1ff1",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "d44b9344261aa277a8e0d48545ed8035041e6a0c2054deef63f9d89edfef7658",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "03c7722f7577579d5bf90a039c551f1d1d45df6ed5316a8f0417fc710db2da80b2",
+    "name": "Bermuda Token",
+    "ticker": "BMDt",
+    "precision": 2,
+    "entity": {
+      "domain": "bmdt.stablehouse.io"
+    }
+  },
+  "6273bf7f31df9c2621722f4fdeb28b89fa94dfc1c8aa675915aa80fd76a89723": {
+    "asset_id": "6273bf7f31df9c2621722f4fdeb28b89fa94dfc1c8aa675915aa80fd76a89723",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Sticker pack",
+      "nonce": "68384",
+      "precision": 0,
+      "ticker": "STIKR",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "998778d86818343a3dba52afcd0f53e8d9d0bbe9038b2994a9cc3d0e5df840eb",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "1cca1067a139ae833aba16f0d8eb01e8fe2528dc9219fbcb6e83b6549677868c",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Sticker pack",
+    "ticker": "STIKR",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "0000b161ead41dbdfc3814078fdb02ee78f9697ffc7b15395db6c62fd1e7fe2c": {
+    "asset_id": "0000b161ead41dbdfc3814078fdb02ee78f9697ffc7b15395db6c62fd1e7fe2c",
+    "contract": {
+      "entity": {
+        "domain": "esky33kubernetes.github.io"
+      },
+      "issuer_pubkey": "039db44ce9bb74b81402ade3a4da75b09a3ce714708a4ed4471c991135a2a39538",
+      "name": "OMG Education",
+      "nonce": "40059",
+      "precision": 0,
+      "ticker": "OMG",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "09b403dc26d4407a5ade1ff2100bf45e6d566b35c992b18651175569bb77425e",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "ed1ab2d5aa0960fbdd72909b24ecb7803db5c0807725c3a22f0eeff41e32c064",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "039db44ce9bb74b81402ade3a4da75b09a3ce714708a4ed4471c991135a2a39538",
+    "name": "OMG Education",
+    "ticker": "OMG",
+    "precision": 0,
+    "entity": {
+      "domain": "esky33kubernetes.github.io"
+    }
+  },
+  "b014a428eeb2ae9ef7f24e523b845ee2e4b6e2f4e215b5d8c3c9487338a73d31": {
+    "asset_id": "b014a428eeb2ae9ef7f24e523b845ee2e4b6e2f4e215b5d8c3c9487338a73d31",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "022e235b7dbe946d9a0ef065be4039e3dc35e66309abd1b9839dfae641d1bd9cbb",
+      "name": "Geisha",
+      "precision": 0,
+      "ticker": "CGeis",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "68a256046c37b5a4c28d7eaf909fba7f1248c20b6329e356c5e30236edc79fed",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "4bac8a967eeb7048c0738844c6e11adc217dcda88c4518d50c23ad82d7ff96ce",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "022e235b7dbe946d9a0ef065be4039e3dc35e66309abd1b9839dfae641d1bd9cbb",
+    "name": "Geisha",
+    "ticker": "CGeis",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  },
+  "62738df3ef663072c2b81107199b071385b2bf6ec54f1922553a8e3daad57233": {
+    "asset_id": "62738df3ef663072c2b81107199b071385b2bf6ec54f1922553a8e3daad57233",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Hoodie",
+      "nonce": "6730",
+      "precision": 0,
+      "ticker": "HOODY",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "d240c3466df588567d6716c3498f7778af4846fed60de530d34c3c8df128f6a3",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "e28e79775032fd5070f6def676e75507501d6961b1d79fcd616d76fa80f9afae",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Hoodie",
+    "ticker": "HOODY",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "6273cfefcfe53663406aee1b65e9960275440e7d124bf2b3a28602070674873d": {
+    "asset_id": "6273cfefcfe53663406aee1b65e9960275440e7d124bf2b3a28602070674873d",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Trezor Model T",
+      "nonce": "50432",
+      "precision": 0,
+      "ticker": "TREZR",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "f63704f3d61fd83be0fbe3d14f8ff77a2004a706619ebdd5f5ab0d9721e1e81b",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "d240c3466df588567d6716c3498f7778af4846fed60de530d34c3c8df128f6a3",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Trezor Model T",
+    "ticker": "TREZR",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "62739643f18a6acbc2bd134c9b4ac6d449ef94df598d495f9f3413d149e4713f": {
+    "asset_id": "62739643f18a6acbc2bd134c9b4ac6d449ef94df598d495f9f3413d149e4713f",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Blockstream Tee",
+      "nonce": "37809",
+      "precision": 0,
+      "ticker": "TEE",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "413236cdf7346e0a9bdc17f86d1b3a59ba351b665781a4ab7f1c8a5183795e74",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "ec3c464acffc945fa81200a0b7fea8af81a0b0b3c3c6eb1c9b98ea904a992f68",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Blockstream Tee",
+    "ticker": "TEE",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "35ea9ce5fb1afdcd287c424e60a9af59470c72aa071e4e7b60e92d35f33a2942": {
+    "asset_id": "35ea9ce5fb1afdcd287c424e60a9af59470c72aa071e4e7b60e92d35f33a2942",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "03c69b7304ab3e8ca48340b585bea127fd2ca6fed2e44394cc5fb6df578a159399",
+      "name": "Laser Blunderbuss",
+      "precision": 0,
+      "ticker": "GLaBl",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "f02ec1cabfa031d41b8f8e37e2546709d02c7cfa342e301924cd54e4cccfaa9b",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "45c185ae92237f088e989a79c751fdda7f765137e8ce3e87c128e8eef6132731",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "03c69b7304ab3e8ca48340b585bea127fd2ca6fed2e44394cc5fb6df578a159399",
+    "name": "Laser Blunderbuss",
+    "ticker": "GLaBl",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  },
+  "179327503cf4485f7836f95c6a06c0533d0f182761fc33187b02f9c07dc3494a": {
+    "asset_id": "179327503cf4485f7836f95c6a06c0533d0f182761fc33187b02f9c07dc3494a",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "021ea5a3da4fc1e949692f54e2369b181ad17f1833b0304090ee73d647f253cf3a",
+      "name": "Blockstream Webcam Token",
+      "precision": 0,
+      "ticker": "B-WEB",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "41b4a292ecec0acbf02af1501f0a0ffb0f40c4bf2455b7656391700296a9c002",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "e8e48c196114b46233b0c26b5722ea605f3ba971e3b9737ec1248c673a9a9c20",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "021ea5a3da4fc1e949692f54e2369b181ad17f1833b0304090ee73d647f253cf3a",
+    "name": "Blockstream Webcam Token",
+    "ticker": "B-WEB",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "ea79766f9ac8fec6bc484b8f081af5b7bb2f87576e6e2918819ae6d98048a94d": {
+    "asset_id": "ea79766f9ac8fec6bc484b8f081af5b7bb2f87576e6e2918819ae6d98048a94d",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "0377bf165fe27ba1dee73c159c46494132a92438dd6f4a9a7c15493d34e39396a2",
+      "name": "Blockstream Sticker Token",
+      "precision": 0,
+      "ticker": "B-STK",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "42fcba3b5f8e1360a4672b6e943dacbba38491b1f730348c43360316cb512af9",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "2fa14c0f3642a6613314a69bea344a61cf2be86889ff1bde08aaf86609f2b876",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "0377bf165fe27ba1dee73c159c46494132a92438dd6f4a9a7c15493d34e39396a2",
+    "name": "Blockstream Sticker Token",
+    "ticker": "B-STK",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "1dba49d38fb9773988f23b6e47b044e852064bfd0706485e61e61467b776196d": {
+    "asset_id": "1dba49d38fb9773988f23b6e47b044e852064bfd0706485e61e61467b776196d",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "0377822495ee62fa0d29e287b36d5fb95b59ba87c8b632e7406de2bf0c1147f03f",
+      "name": "Blockstream Cap",
+      "precision": 0,
+      "ticker": "BBlCa",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "1149c5437e8f488e7c0e675b38ddea85f34a2ad1b46aca95c77835493ab3dad5",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "141fb3240f175a2d9ddf015e950f6b3f59e20c5030c9813b1c3eb0d7470dae71",
+      "vout": 2
+    },
+    "version": 0,
+    "issuer_pubkey": "0377822495ee62fa0d29e287b36d5fb95b59ba87c8b632e7406de2bf0c1147f03f",
+    "name": "Blockstream Cap",
+    "ticker": "BBlCa",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  },
+  "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d": {
+    "asset_id": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
+    "contract": null,
+    "issuance_txin": {
+      "txid": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "",
+    "name": "Liquid Bitcoin",
+    "ticker": "L-BTC",
+    "precision": 8,
+    "entity": null
+  },
+  "177682cabf37373c365475620adf5b393519a35b3e78163a9679f6dcd83c6f85": {
+    "asset_id": "177682cabf37373c365475620adf5b393519a35b3e78163a9679f6dcd83c6f85",
+    "contract": {
+      "entity": {
+        "domain": "bfungible.network"
+      },
+      "icon": {
+        "cid": "QmTnz8T3qYrj2sAb1So5vQtDeJNGu5PQUrfKdBU2xL9r2T",
+        "content_type": "image/png",
+        "hash": "eb477ef3bf3d54634703187a1ddac73fb9e17c762d49c7b450222b0605950316"
+      },
+      "issuer_pubkey": "032707d05b6aa5e823956b5a0d83e5d1d2acd80e8d8d5a2833f3157f3604b0ef8d",
+      "name": "Tribeke Token",
+      "precision": 6,
+      "ticker": "TRBK",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "6d0a3a536a5bc6cc5c9b3ec5fb15e5fad3b6dd4bcbedc74541dd12c4b2849cd0",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "de813e74271f9abd9e0faee464d088f181448c321abd29b9083d37326beef5a3",
+      "vout": 2
+    },
+    "version": 0,
+    "issuer_pubkey": "032707d05b6aa5e823956b5a0d83e5d1d2acd80e8d8d5a2833f3157f3604b0ef8d",
+    "name": "Tribeke Token",
+    "ticker": "TRBK",
+    "precision": 6,
+    "entity": {
+      "domain": "bfungible.network"
+    }
+  },
+  "e73d75039ba1372d7726b92463fe0f18dadc3d4586faa6a76457f922153e1890": {
+    "asset_id": "e73d75039ba1372d7726b92463fe0f18dadc3d4586faa6a76457f922153e1890",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "02d4080b0ab2b998e1f40fb69055e73f07015c335a1986979e3f0a2bd897dd9eee",
+      "name": "Moloch's Hammer",
+      "precision": 0,
+      "ticker": "MMoHa",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "81a31644918bc5b2ccfe337293752ef270995be44228c9cf73e688e3387b7c03",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "413825478b5d832ace997ef7e02d9fdcba09c7a3d477efb08527f1b9aaf67b57",
+      "vout": 2
+    },
+    "version": 0,
+    "issuer_pubkey": "02d4080b0ab2b998e1f40fb69055e73f07015c335a1986979e3f0a2bd897dd9eee",
+    "name": "Moloch's Hammer",
+    "ticker": "MMoHa",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  },
+  "d9f6bb516c9f3ab16bed3f3662ae018573ee6b00130f2347a4b735d8e7c4c396": {
+    "asset_id": "d9f6bb516c9f3ab16bed3f3662ae018573ee6b00130f2347a4b735d8e7c4c396",
+    "contract": {
+      "entity": {
+        "domain": "sideshift.ai"
+      },
+      "issuer_pubkey": "0256ab1f36d239a7aca87eceec1e1654998b48dcb2e73f86332bcd9db37a9f8882",
+      "name": "Sai Token",
+      "precision": 8,
+      "ticker": "SAI",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "4de2f4c4f4a5422969921a1960f154d0965dfe79454a3053a60ce95cdc63e553",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "286c733efb1d52423e8d6ff3bec31a08a800d8155989711b114adc753d5f2cfd",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "0256ab1f36d239a7aca87eceec1e1654998b48dcb2e73f86332bcd9db37a9f8882",
+    "name": "Sai Token",
+    "ticker": "SAI",
+    "precision": 8,
+    "entity": {
+      "domain": "sideshift.ai"
+    }
+  },
+  "a28d04f3e243a9a187f4a8b797be2f19a9c01b6ef4e1d65bfb6abbd6a2042097": {
+    "asset_id": "a28d04f3e243a9a187f4a8b797be2f19a9c01b6ef4e1d65bfb6abbd6a2042097",
+    "contract": {
+      "entity": {
+        "domain": "blockstream.com"
+      },
+      "issuer_pubkey": "02c60432320d5b3fdf53d51e8217d9f608c2b7faf348e817f673e159d54e5b9d25",
+      "name": "Transfer Restricted Demo Asset",
+      "precision": 0,
+      "ticker": "TR-DA",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "0c3ec80b0912b1c6d276e92c28161b684afcbd49a276ca079f3cca245a458d48",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "0737b2c61381b597b41e547f19690c9e7da719bcf1ac125985e8727ebe9ae36e",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "02c60432320d5b3fdf53d51e8217d9f608c2b7faf348e817f673e159d54e5b9d25",
+    "name": "Transfer Restricted Demo Asset",
+    "ticker": "TR-DA",
+    "precision": 0,
+    "entity": {
+      "domain": "blockstream.com"
+    }
+  },
+  "9c11715c79783d7ba09ecece1e82c652eccbb8d019aec50cf913f540310724a6": {
+    "asset_id": "9c11715c79783d7ba09ecece1e82c652eccbb8d019aec50cf913f540310724a6",
+    "contract": {
+      "entity": {
+        "domain": "exordium.co"
+      },
+      "issuer_pubkey": "025d743bc53ee8b260a65ee0ce4ac7363c8ea7feda7785db1f36cfb19f49015147",
+      "name": "EXO Token US",
+      "precision": 0,
+      "ticker": "EXOus",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "0b9f8d3e2086cf44dbc1dbe82b394288ed81fd984428743128e4546f727f9e22",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "dcb4556fedbd60ff30b643bf6e2467ae879af4dd70dddd6aeea49050c2af3d81",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "025d743bc53ee8b260a65ee0ce4ac7363c8ea7feda7785db1f36cfb19f49015147",
+    "name": "EXO Token US",
+    "ticker": "EXOus",
+    "precision": 0,
+    "entity": {
+      "domain": "exordium.co"
+    }
+  },
+  "f266a3f15e78b71481adfedff9aefe47c69501a181ffc68527bb5fb26da6a4b2": {
+    "asset_id": "f266a3f15e78b71481adfedff9aefe47c69501a181ffc68527bb5fb26da6a4b2",
+    "contract": {
+      "entity": {
+        "domain": "blockstream.com"
+      },
+      "issuer_pubkey": "0263c2ca97a43fe66163ea1e764a57b56f9ddb47e02b9510059affd5a93215e54c",
+      "name": "Issuer Tracked Demo Asset",
+      "precision": 0,
+      "ticker": "IT-DA",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "49cc1ca72be5b5ca3375348274cee22ccb686f4c3a8f8bc7767156680ca61d92",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "0c3ec80b0912b1c6d276e92c28161b684afcbd49a276ca079f3cca245a458d48",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "0263c2ca97a43fe66163ea1e764a57b56f9ddb47e02b9510059affd5a93215e54c",
+    "name": "Issuer Tracked Demo Asset",
+    "ticker": "IT-DA",
+    "precision": 0,
+    "entity": {
+      "domain": "blockstream.com"
+    }
+  },
+  "627378a5f63f00f3f0aa151d40ab32d2085ccd695ee447c7b03006d9dccfceb5": {
+    "asset_id": "627378a5f63f00f3f0aa151d40ab32d2085ccd695ee447c7b03006d9dccfceb5",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Ledger Nano S",
+      "nonce": "4148",
+      "precision": 0,
+      "ticker": "LEDGR",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "ec3c464acffc945fa81200a0b7fea8af81a0b0b3c3c6eb1c9b98ea904a992f68",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "692d5571515077fcc0af05fbeae68e96bb20248e3257108cc9a3bc338565c7d8",
+      "vout": 2
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Ledger Nano S",
+    "ticker": "LEDGR",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "f321fea00c3a8dfcbdd8ec245677c6510f8f8d763fe39dd4407e20a708454fb7": {
+    "asset_id": "f321fea00c3a8dfcbdd8ec245677c6510f8f8d763fe39dd4407e20a708454fb7",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "03cd20f82e967e9b822dc537a8b0579f6a9c4958aa03a56a98efd94fa77c24f786",
+      "name": "Forest Guardian",
+      "precision": 0,
+      "ticker": "CFoGu",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "84c8f633d77b8ef1d22f76ce17cb925e3978ef1e2ecd77b169f67660884fbeff",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "e2c38a615ba1dee6af554374a0b46dab4cb55cdbc87d69b85a9f7bbbbf86fa18",
+      "vout": 2
+    },
+    "version": 0,
+    "issuer_pubkey": "03cd20f82e967e9b822dc537a8b0579f6a9c4958aa03a56a98efd94fa77c24f786",
+    "name": "Forest Guardian",
+    "ticker": "CFoGu",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  },
+  "b00b0ff0b11ebd47f7c6f57614c046dbbd204e84bf01178baf2be3713a206eb7": {
+    "asset_id": "b00b0ff0b11ebd47f7c6f57614c046dbbd204e84bf01178baf2be3713a206eb7",
+    "contract": {
+      "entity": {
+        "domain": "assets.btse.com"
+      },
+      "issuer_pubkey": "032f7ef9146fe218d1322fb47767e73aced7b647ea103cb4ccf330ca363ffd3e9a",
+      "name": "BTSE Token",
+      "precision": 8,
+      "ticker": "BTSE",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "aea9eced0ec66502e25d563a48f2378fe2c6f07855038f7783e514b0053d2748",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "8dececf2b3cfa61eebb2ac89afb0d225b991734702b13cbb1ee76e86b957b75b",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "032f7ef9146fe218d1322fb47767e73aced7b647ea103cb4ccf330ca363ffd3e9a",
+    "name": "BTSE Token",
+    "ticker": "BTSE",
+    "precision": 8,
+    "entity": {
+      "domain": "assets.btse.com"
+    }
+  },
+  "62730d1919b31c37c345940fb8e656da61698af109da001fe248b46fd68584b9": {
+    "asset_id": "62730d1919b31c37c345940fb8e656da61698af109da001fe248b46fd68584b9",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Hat",
+      "nonce": "171716",
+      "precision": 0,
+      "ticker": "HAT",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "1cca1067a139ae833aba16f0d8eb01e8fe2528dc9219fbcb6e83b6549677868c",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "08b144f3699fb2df021439471cf48d68928ac3a2f12cc5a77720b42deba41ce0",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Hat",
+    "ticker": "HAT",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "958ec94440de773b5f2d811848f88bc1da5b46f0554b6cc6414dc4c5504994b9": {
+    "asset_id": "958ec94440de773b5f2d811848f88bc1da5b46f0554b6cc6414dc4c5504994b9",
+    "contract": {
+      "entity": {
+        "domain": "blockstream.com"
+      },
+      "issuer_pubkey": "0271ea03aaa3dba8302bb917560fee3b69c1553a09d77460b584e86e1aa31025e7",
+      "name": "Blockstream Hat Token",
+      "precision": 0,
+      "ticker": "B-HAT",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "1c448dcd814d914fa7b32f84199c981178ae49a53fe050f7e3f603e714940454",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "531f0c8b9281cab4cd4392fc2499dee93969d8ccedcbfe4573dba1ce286c0c82",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "0271ea03aaa3dba8302bb917560fee3b69c1553a09d77460b584e86e1aa31025e7",
+    "name": "Blockstream Hat Token",
+    "ticker": "B-HAT",
+    "precision": 0,
+    "entity": {
+      "domain": "blockstream.com"
+    }
+  },
+  "8f181f7e4d761ace65c102a01686fda561ab7034c39e0f8d23b8b926f2a620c2": {
+    "asset_id": "8f181f7e4d761ace65c102a01686fda561ab7034c39e0f8d23b8b926f2a620c2",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "0337e243979f736390299f3a824add5e956c517321c6e3b19d1a919f67dbf84ec4",
+      "name": "Blockstream Hat Token",
+      "precision": 0,
+      "ticker": "B-HAT",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "2fa14c0f3642a6613314a69bea344a61cf2be86889ff1bde08aaf86609f2b876",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "a3360b60a6fa5093739fb386d42add1e7353e355acc5de8b7a0d3c8f949a2c9f",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "0337e243979f736390299f3a824add5e956c517321c6e3b19d1a919f67dbf84ec4",
+    "name": "Blockstream Hat Token",
+    "ticker": "B-HAT",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "81caefa02aee3acb6d923f8f67cdeff3b5dd3aadb231db3f27eeb2bf356e75c2": {
+    "asset_id": "81caefa02aee3acb6d923f8f67cdeff3b5dd3aadb231db3f27eeb2bf356e75c2",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "034101b6af9f158c3967a896d57b4be07a8d6fe0b95cf37ce594385019f99c4586",
+      "name": "Jimmy",
+      "precision": 0,
+      "ticker": "CJimm",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "bbb84492092fe098e9ff7d85df86952235e5936d86d18bf42f315eecb44c6bb4",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "2a65e26c20e1afed1fe8c8383437e58bca1e56922d48fdbe0f6fc246e1686051",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "034101b6af9f158c3967a896d57b4be07a8d6fe0b95cf37ce594385019f99c4586",
+    "name": "Jimmy",
+    "ticker": "CJimm",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  },
+  "f59c5f3e8141f322276daa63ed5f307085808aea6d4ef9ba61e28154533fdec7": {
+    "asset_id": "f59c5f3e8141f322276daa63ed5f307085808aea6d4ef9ba61e28154533fdec7",
+    "contract": {
+      "entity": {
+        "domain": "listedreserve.com"
+      },
+      "issuer_pubkey": "031cc579d142a03b33cdd745922112821c16e5e8b74e3bd57f16f7fda872b6f1d0",
+      "name": "Liquid AUD",
+      "precision": 2,
+      "ticker": "AUDL",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "e5c5144ba3dc48259ae29023fe9f7775dec1fc049f456dd3d1f7178e31901fb5",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "ed48be2e035ffa425d2c6faaa82b6a7b648aed1246b6ac76c72e0408db8cf057",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "031cc579d142a03b33cdd745922112821c16e5e8b74e3bd57f16f7fda872b6f1d0",
+    "name": "Liquid AUD",
+    "ticker": "AUDL",
+    "precision": 2,
+    "entity": {
+      "domain": "listedreserve.com"
+    }
+  },
+  "97972e506598ca0b5ddc27ba259a93c174d5048803cc1422fd251d78506cc3c8": {
+    "asset_id": "97972e506598ca0b5ddc27ba259a93c174d5048803cc1422fd251d78506cc3c8",
+    "contract": {
+      "entity": {
+        "domain": "blockstream.com"
+      },
+      "issuer_pubkey": "032f37439afc28fe61e1a55a0bc0efec632bc969dce2d2f5784160f17ba4131642",
+      "name": "Blockstream Sticker Token",
+      "precision": 0,
+      "ticker": "B-STK",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "531f0c8b9281cab4cd4392fc2499dee93969d8ccedcbfe4573dba1ce286c0c82",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "4bb0455a97096ff85ebd8d4176aa04d7797b1f104fe09db95c3f8634e7f7531f",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "032f37439afc28fe61e1a55a0bc0efec632bc969dce2d2f5784160f17ba4131642",
+    "name": "Blockstream Sticker Token",
+    "ticker": "B-STK",
+    "precision": 0,
+    "entity": {
+      "domain": "blockstream.com"
+    }
+  },
+  "52d77159096eed69c73862a30b0d4012b88cedf92d518f98bc5fc8d34b6c27c9": {
+    "asset_id": "52d77159096eed69c73862a30b0d4012b88cedf92d518f98bc5fc8d34b6c27c9",
+    "contract": {
+      "entity": {
+        "domain": "exordium.co"
+      },
+      "issuer_pubkey": "030cff26f9c0d365f090e24917277e23269d7ef5d7f06dec9f09de9255b8950208",
+      "name": "EXO Token Europe",
+      "precision": 0,
+      "ticker": "EXOeu",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "b82e48ae97a86f90c4368dceaa7d496d96e3f61c6a7b430a9ac2e3ec67b4537e",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "60eafaf39f3d755de12dd836d98e07d7c87c2c0d8715b6c9e86191dfac713f25",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "030cff26f9c0d365f090e24917277e23269d7ef5d7f06dec9f09de9255b8950208",
+    "name": "EXO Token Europe",
+    "ticker": "EXOeu",
+    "precision": 0,
+    "entity": {
+      "domain": "exordium.co"
+    }
+  },
+  "ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2": {
+    "asset_id": "ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2",
+    "contract": {
+      "entity": {
+        "domain": "tether.to"
+      },
+      "issuer_pubkey": "0337cceec0beea0232ebe14cba0197a9fbd45fcf2ec946749de920e71434c2b904",
+      "name": "Tether USD",
+      "precision": 8,
+      "ticker": "USDt",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "abb4080d91849e933ee2ed65da6b436f7c385cf363fb4aa08399f1e27c58ff3d",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "9596d259270ef5bac0020435e6d859aea633409483ba64e232b8ba04ce288668",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "0337cceec0beea0232ebe14cba0197a9fbd45fcf2ec946749de920e71434c2b904",
+    "name": "Tether USD",
+    "ticker": "USDt",
+    "precision": 8,
+    "entity": {
+      "domain": "tether.to"
+    }
+  },
+  "d96a0d1596ea3423e166c26c673b3fc583a07c46ac4b2364784ae475b741d9d6": {
+    "asset_id": "d96a0d1596ea3423e166c26c673b3fc583a07c46ac4b2364784ae475b741d9d6",
+    "contract": {
+      "entity": {
+        "domain": "blockstream.com"
+      },
+      "issuer_pubkey": "0221c5959a22ff4835eb72035021cd1979ec4f029429753fb5b0769e8afc07f081",
+      "name": "Blockstream Webcam Token",
+      "precision": 0,
+      "ticker": "B-WEB",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "4b4c62aa8ead261a94f3cfbe811d4380debbf8e7ca31c2c9d98b0f7fc0c3c5d3",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "1c448dcd814d914fa7b32f84199c981178ae49a53fe050f7e3f603e714940454",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "0221c5959a22ff4835eb72035021cd1979ec4f029429753fb5b0769e8afc07f081",
+    "name": "Blockstream Webcam Token",
+    "ticker": "B-WEB",
+    "precision": 0,
+    "entity": {
+      "domain": "blockstream.com"
+    }
+  },
+  "0db21df3ca7d71f0fb9aafb019e67d0a23c3c79a11eb9e8c4e32e1cb5910e2da": {
+    "asset_id": "0db21df3ca7d71f0fb9aafb019e67d0a23c3c79a11eb9e8c4e32e1cb5910e2da",
+    "contract": {
+      "entity": {
+        "domain": "exordium.co"
+      },
+      "issuer_pubkey": "028ff1586cb9e862f8704f51c8c02eb1c708d1c0316b8fb563f72aa652db85e9bf",
+      "name": "EXO Token",
+      "precision": 0,
+      "ticker": "EXO",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "60eafaf39f3d755de12dd836d98e07d7c87c2c0d8715b6c9e86191dfac713f25",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "23cd7e5d8d0c91c74bb31f3bcbc34f14a9a5245dde70464acf2e4935a99b75d7",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "028ff1586cb9e862f8704f51c8c02eb1c708d1c0316b8fb563f72aa652db85e9bf",
+    "name": "EXO Token",
+    "ticker": "EXO",
+    "precision": 0,
+    "entity": {
+      "domain": "exordium.co"
+    }
+  },
+  "11f91cb5edd5d0822997ad81f068ed35002daec33986da173461a8427ac857e1": {
+    "asset_id": "11f91cb5edd5d0822997ad81f068ed35002daec33986da173461a8427ac857e1",
+    "contract": {
+      "entity": {
+        "domain": "blockstream.com"
+      },
+      "issuer_pubkey": "02a1ff5fd5d6f17febe5cd2d6b9e45b6775a1e416b56fa8414e337e2589c2e9bd5",
+      "name": "BMN Series 1",
+      "precision": 2,
+      "ticker": "BMN1",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "6fbe5f8aedadf1fbfe023e97bb64d27a600c2c71fbf852d11059606e4a8f43c0",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "ed790fac247b5dfff4c0529d9b562d0f76757f7c08256b41fc2469b9a85bb3f9",
+      "vout": 3
+    },
+    "version": 0,
+    "issuer_pubkey": "02a1ff5fd5d6f17febe5cd2d6b9e45b6775a1e416b56fa8414e337e2589c2e9bd5",
+    "name": "BMN Series 1",
+    "ticker": "BMN1",
+    "precision": 2,
+    "entity": {
+      "domain": "blockstream.com"
+    }
+  },
+  "18729918ab4bca843656f08d4dd877bed6641fbd596a0a963abbf199cfeb3cec": {
+    "asset_id": "18729918ab4bca843656f08d4dd877bed6641fbd596a0a963abbf199cfeb3cec",
+    "contract": {
+      "entity": {
+        "domain": "pegx.io"
+      },
+      "issuer_pubkey": "032f8acb1a92e761e201cf3f2fbecb38f3be0edd6d76f6b4d273a684c114e5f759",
+      "name": "PEGx EUR",
+      "precision": 8,
+      "ticker": "EURx",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "a6a340e26ab72139c896c38690489a94e79e580336e9607efde8418f49e6daf7",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "fdbeae738138cafedea4931a281f0347c133f1b279f0ef1f09ea2ca898364966",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "032f8acb1a92e761e201cf3f2fbecb38f3be0edd6d76f6b4d273a684c114e5f759",
+    "name": "PEGx EUR",
+    "ticker": "EURx",
+    "precision": 8,
+    "entity": {
+      "domain": "pegx.io"
+    }
+  },
+  "78557eb89ea8439dc1a519f4eb0267c86b261068648a0f84a5c6b55ca39b66f1": {
+    "asset_id": "78557eb89ea8439dc1a519f4eb0267c86b261068648a0f84a5c6b55ca39b66f1",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "03e95ae5b06d30c87006eb475e212b4097642cc54ffa571c7de8890284f4173dab",
+      "name": "Blockstream Jade Token",
+      "precision": 0,
+      "ticker": "B-JDE",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "e1fe744be7ee790023c50968f964c333a58cf1a37f9de18acaa99326b5283caf",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "783e5dfbb3ca97531d52397e8ee890b11510437254c59b95409f484b9fde5839",
+      "vout": 0
+    },
+    "version": 0,
+    "issuer_pubkey": "03e95ae5b06d30c87006eb475e212b4097642cc54ffa571c7de8890284f4173dab",
+    "name": "Blockstream Jade Token",
+    "ticker": "B-JDE",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "6273ec53a4eeeb6e1d8f992ad6f0439b1bda8fd4613bca77d5134beb321ae9f2": {
+    "asset_id": "6273ec53a4eeeb6e1d8f992ad6f0439b1bda8fd4613bca77d5134beb321ae9f2",
+    "contract": {
+      "entity": {
+        "domain": "store.blockstream.com"
+      },
+      "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+      "name": "Metal",
+      "nonce": "42497",
+      "precision": 0,
+      "ticker": "METAL",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "08b144f3699fb2df021439471cf48d68928ac3a2f12cc5a77720b42deba41ce0",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "f63704f3d61fd83be0fbe3d14f8ff77a2004a706619ebdd5f5ab0d9721e1e81b",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "023c239fd39ae5fc8b88454fe36cae6a65a10c5b637a28dbcbc423d1e7f3bcc25e",
+    "name": "Metal",
+    "ticker": "METAL",
+    "precision": 0,
+    "entity": {
+      "domain": "store.blockstream.com"
+    }
+  },
+  "31ca8862263e73983667a425f2bf0c001010d922eec8892a0a4816483eeb51fd": {
+    "asset_id": "31ca8862263e73983667a425f2bf0c001010d922eec8892a0a4816483eeb51fd",
+    "contract": {
+      "entity": {
+        "domain": "explorer.lightnite.io"
+      },
+      "issuer_pubkey": "028923b41ca6cc4d3439876a254c7269598e47fae2f66f2c1370764e389970d277",
+      "name": "Pirate",
+      "precision": 0,
+      "ticker": "CPira",
+      "version": 0
+    },
+    "issuance_txin": {
+      "txid": "fe6a7688295470de12ea57625c1964ef283fd9bf8651e5c7f8330b5eb7fa68e1",
+      "vin": 0
+    },
+    "issuance_prevout": {
+      "txid": "d71ac0f1650a9a15edc5e800811c29f7091dab1870c60edf41a6d4f989198e63",
+      "vout": 1
+    },
+    "version": 0,
+    "issuer_pubkey": "028923b41ca6cc4d3439876a254c7269598e47fae2f66f2c1370764e389970d277",
+    "name": "Pirate",
+    "ticker": "CPira",
+    "precision": 0,
+    "entity": {
+      "domain": "explorer.lightnite.io"
+    }
+  }
+}

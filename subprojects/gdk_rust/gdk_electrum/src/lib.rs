@@ -289,11 +289,11 @@ impl ElectrumSession {
 
     pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
         match &self.proxy {
-            Some(proxy) => {
+            Some(proxy) if !proxy.is_empty() => {
                 let proxy = ureq::Proxy::new(&proxy)?;
                 Ok(ureq::AgentBuilder::new().proxy(proxy).build())
             }
-            None => Ok(ureq::agent()),
+            _ => Ok(ureq::agent()),
         }
     }
 
@@ -1619,7 +1619,7 @@ impl Syncer {
             for vec in headers_bytes_downloaded {
                 headers_downloaded.push(BEBlockHeader::deserialize(&vec, self.network.id())?);
             }
-            info!("headers_downloaded {:?}", &headers_downloaded);
+            debug!("headers_downloaded {:?}", &headers_downloaded);
             for (header, height) in
                 headers_downloaded.into_iter().zip(heights_to_download.into_iter())
             {
