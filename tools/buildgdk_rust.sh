@@ -37,6 +37,10 @@ CARGO_ARGS=()
 
 cd "$BUILD_ROOT/subprojects/gdk_rust"
 
+if [ "$(uname)" = "Darwin" ]; then
+    export CARGO_PROFILE_DEV_LTO=true
+fi
+
 if [ \( "$1" = "--ndk" \) ]; then
     if [ "$(uname)" = "Darwin" ]; then
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin

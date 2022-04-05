@@ -14,9 +14,13 @@ opt-level = 'z'
 codegen-units = 1
 incremental = false
 
-# FIXME: LTO is required to fix building on iphone
 [profile.dev]
-# lto = true FIXME: at the moment is  broken even if lto is true, commenting so that testing in rust is faster
+
+## Link time optimizations are required for debug builds on iphone and iphonesim
+## If we set lto to true here we increase rust development build time.
+## CI builds overwrite this field by setting `CARGO_PROFILE_DEV_LTO=true`
+# lto = true
+
 debug = true
 debug-assertions = true
 panic = 'abort'
