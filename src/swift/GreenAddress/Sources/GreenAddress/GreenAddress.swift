@@ -294,6 +294,10 @@ public class Session {
         try callWrapper(fun: GA_rename_subaccount(session, subaccount, newName));
     }
 
+    public func updateSubaccount(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_update_subaccount)
+    }
+
     public func getTransactions(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_transactions)
     }
