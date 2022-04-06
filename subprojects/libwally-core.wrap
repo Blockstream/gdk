@@ -1,14 +1,14 @@
 [wrap-file]
-directory = wallycore-0.8.4
+directory = wallycore-0.8.5
 
-source_url = https://github.com/ElementsProject/libwally-core/releases/download/release_0.8.4/wallycore-0.8.4.tar.gz
-source_filename = wallycore-0.8.4.tar.gz
-source_hash = 8bca9067a8f10cf9e1fd2ae241c45ea891bada9d7685eadab052e948f2ae8afd
+source_url = https://github.com/ElementsProject/libwally-core/tarball/e6ab70fba3387d39cf5d871e45a8e6d16d90f593/ElementsProject-libwally-core-e6ab70f.tar.gz
+source_filename = ElementsProject-libwally-core-e6ab70f.tar.gz
+source_hash = c7dd0892a3c323f42505bfc852b75842ed60746daad71751f16a09f1c3711f33
 
 patch_url = file:./subprojects/libwally-core-meson/libwally-core-meson-f12b900e905ad04219f6b9e1598e1190706ff00a75f63964ab4a90182fb5ef3b.tar
 patch_filename = wallycore-meson-f12b900e905ad04219f6b9e1598e1190706ff00a75f63964ab4a90182fb5ef3b.tar
-patch_hash = b51f6e7d0e8d36c44bf94b66af1bbb78b306462d9775e8e68b48bfc2a459f422
+patch_hash = 7465c4ed52a59e2060135d1acefde2939c036a48f83f4e494914cde98400697e
 
 secp-url = https://github.com/ElementsProject/secp256k1-zkp.git
 # Update this line to the secp commit used in wally
-secp-commit = 7fec4e7acc66fb868a8546f36afd41742f381536
+secp-commit = 6c0aecf72b1f4290f50302440065392715d6240a

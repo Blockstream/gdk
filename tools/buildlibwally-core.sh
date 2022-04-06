@@ -43,7 +43,6 @@ cd ${WALLYCORE_BLDDIR}
 ${SED} -i 's/\"wallycore\"/\"greenaddress\"/' src/swig_java/swig.i
 
 CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests"
-CONFIGURE_ARGS="${CONFIGURE_ARGS} --enable-ecmult-static-precomputation"
 CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${WALLYCORE_BLDDIR}/build"
 
 if [ "${BUILDTYPE}" = "debug" ]; then
@@ -68,12 +67,7 @@ if [ "$1" = "--ndk" ]; then
     export CFLAGS="${CFLAGS} -DPIC -fPIC ${EXTRA_FLAGS}"
     export LDFLAGS="${LDFLAGS} ${EXTRA_FLAGS}"
 
-    case ${HOST_ARCH} in
-        x86) HOST_ARCH=i686;;
-    esac
-
-    android_build_wally ${HOST_ARCH} ${NDK_TOOLSDIR} ${ANDROID_VERSION} --build=${HOST_OS} \
-          ${CONFIGURE_ARGS} ac_cv_c_bigendian=no --enable-swig-java --disable-swig-python --target=${SDK_PLATFORM}
+    android_build_wally ${HOST_ARCH} ${NDK_TOOLSDIR} ${ANDROID_VERSION} ${CONFIGURE_ARGS}
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
     export CFLAGS="${CFLAGS} ${EXTRA_FLAGS} -O3"
