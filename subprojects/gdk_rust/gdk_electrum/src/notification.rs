@@ -63,7 +63,10 @@ impl NativeNotif {
         }
     }
 
-    fn notify(&self, data: Value) {
+    // TODO once every notification is a struct, accept a `Notification` here
+    fn notify<T: Serialize>(&self, data: T) {
+        let data = serde_json::to_value(data).unwrap();
+
         info!("push notification: {:?}", data);
         if let Some((handler, self_context)) = self.native.as_ref() {
             handler(*self_context, make_str(data.to_string()));
@@ -98,7 +101,14 @@ impl NativeNotif {
     }
 
     pub fn network(&self, current: State, desired: State) {
-        self.notify(Notification::new_network_value(current, desired));
+        self.notify(Notification {
+            network: Some(NetworkNotification {
+                current_state: current,
+                next_state: desired,
+                wait_ms: 0,
+            }),
+            event: Kind::Network,
+        });
     }
 
     #[cfg(not(feature = "testing"))]
@@ -133,13 +143,21 @@ impl NativeNotif {
 
 #[cfg(test)]
 mod test {
-    use crate::notification::Notification;
+    use super::*;
     use crate::State;
 
     #[test]
     fn test_network_json() {
         let expected = json!({"network":{"wait_ms": 0, "current_state": "connected", "next_state": "connected"},"event":"network"});
-        let obj = Notification::new_network_value(State::Connected, State::Connected);
-        assert_eq!(expected, obj);
+        let obj = Notification {
+            network: Some(NetworkNotification {
+                current_state: State::Connected,
+                next_state: State::Connected,
+                wait_ms: 0,
+            }),
+            event: Kind::Network,
+        };
+
+        assert_eq!(expected, serde_json::to_value(&obj).unwrap());
     }
 }
