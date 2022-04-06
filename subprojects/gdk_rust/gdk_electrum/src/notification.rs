@@ -1,11 +1,9 @@
 use crate::State;
 use gdk_common::wally::make_str;
-use gdk_common::{be::BEBlockHash, be::BETxid, model::Settings};
+use gdk_common::{be::BEBlockHash, model::Settings};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashSet;
-use std::iter::FromIterator;
 
 type NativeType = (extern "C" fn(*const libc::c_void, *const libc::c_char), *const libc::c_void);
 #[derive(Clone)]
@@ -21,7 +19,12 @@ unsafe impl Send for NativeNotif {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Notification {
+    #[serde(skip_serializing_if = "Option::is_none")]
     network: Option<NetworkNotification>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    transaction: Option<TransactionNotification>,
+
     event: Kind,
 }
 
@@ -29,6 +32,7 @@ pub struct Notification {
 #[serde(rename_all = "snake_case")]
 enum Kind {
     Network,
+    Transaction,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -36,6 +40,30 @@ struct NetworkNotification {
     current_state: State,
     next_state: State,
     wait_ms: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TransactionNotification {
+    /// The wallet subaccounts the transaction affects.
+    pub subaccounts: Vec<u32>,
+
+    /// The txid of the transaction.
+    #[serde(rename = "txhash")]
+    pub txid: bitcoin::Txid,
+
+    /// The net amount of the transaction, always positive.
+    ///
+    /// None if Liquid.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub satoshi: Option<u64>,
+
+    /// One of "incoming", "outgoing", "redeposit".
+    ///
+    /// None if Liquid.
+    // TODO: use an enum
+    #[serde(rename = "type")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub type_: Option<String>,
 }
 
 impl Notification {
@@ -46,7 +74,16 @@ impl Notification {
                 next_state: next,
                 wait_ms: 0,
             }),
+            transaction: None,
             event: Kind::Network,
+        }
+    }
+
+    pub fn new_transaction(ntf: &TransactionNotification) -> Self {
+        Notification {
+            network: None,
+            transaction: Some(ntf.clone()),
+            event: Kind::Transaction,
         }
     }
 }
@@ -89,11 +126,8 @@ impl NativeNotif {
         self.notify(data);
     }
 
-    pub fn updated_txs(&self, txid: BETxid, accounts: &HashSet<u32>) {
-        // This is used as a signal to trigger syncing via get_transactions, the transaction
-        // list contained here is ignored and can be just a mock.
-        let data = json!({"event":"transaction","transaction":{"txhash":txid.to_hex(),"subaccounts":Vec::from_iter(accounts)}});
-        self.notify(data);
+    pub fn updated_txs(&self, ntf: &TransactionNotification) {
+        self.notify(Notification::new_transaction(ntf));
     }
 
     pub fn network(&self, current: State, desired: State) {
@@ -139,6 +173,19 @@ mod test {
     fn test_network_json() {
         let expected = json!({"network":{"wait_ms": 0, "current_state": "connected", "next_state": "connected"},"event":"network"});
         let obj = Notification::new_network(State::Connected, State::Connected);
+        assert_eq!(expected, serde_json::to_value(&obj).unwrap());
+    }
+
+    #[test]
+    fn test_transaction_json() {
+        let account_num = 0;
+        let expected = json!({"event":"transaction","transaction":{"subaccounts":[account_num],"txhash":"0000000000000000000000000000000000000000000000000000000000000000"}});
+        let obj = Notification::new_transaction(&TransactionNotification {
+            subaccounts: vec![account_num],
+            txid: bitcoin::Txid::default(),
+            satoshi: None,
+            type_: None,
+        });
         assert_eq!(expected, serde_json::to_value(&obj).unwrap());
     }
 }

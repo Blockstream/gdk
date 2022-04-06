@@ -58,7 +58,7 @@ use std::{iter, thread};
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
-pub use crate::notification::{NativeNotif, Notification};
+pub use crate::notification::{NativeNotif, Notification, TransactionNotification};
 use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
 use aes::Aes256;
@@ -711,12 +711,12 @@ impl ElectrumSession {
             loop {
                 match syncer_url.build_client(proxy.as_deref(), None) {
                     Ok(client) => match syncer.sync(&client) {
-                        Ok(updated_txs) => {
+                        Ok(tx_ntfs) => {
                             state_updater.update_if_needed(true);
-                            for (txid, accounts) in updated_txs.iter() {
+                            for ntf in tx_ntfs.iter() {
                                 info!("there are new transactions");
                                 // TODO: limit the number of notifications
-                                notify_txs.updated_txs(txid.clone(), accounts);
+                                notify_txs.updated_txs(ntf);
                             }
                         }
                         Err(e) => {
@@ -1394,12 +1394,12 @@ struct DownloadTxResult {
 
 impl Syncer {
     /// Sync the wallet, return the set of updated accounts
-    pub fn sync(&self, client: &Client) -> Result<HashMap<BETxid, HashSet<u32>>, Error> {
+    pub fn sync(&self, client: &Client) -> Result<Vec<TransactionNotification>, Error> {
         debug!("start sync");
         let start = Instant::now();
 
         let accounts = self.accounts.read().unwrap();
-        let mut updated_txs: HashMap<BETxid, HashSet<u32>> = HashMap::new();
+        let mut updated_txs: HashMap<BETxid, TransactionNotification> = HashMap::new();
 
         for account in accounts.values() {
             let mut history_txs_id = HashSet::<BETxid>::new();
@@ -1510,12 +1510,21 @@ impl Syncer {
                 drop(store_write);
 
                 for tx in new_txs.txs.iter() {
-                    if let Some(accounts) = updated_txs.get_mut(&tx.0) {
-                        accounts.insert(account.num());
+                    if let Some(ntf) = updated_txs.get_mut(&tx.0) {
+                        // Make sure ntf.subaccounts is ordered and has no duplicates.
+                        let subaccount = account.num();
+                        match ntf.subaccounts.binary_search(&subaccount) {
+                            Ok(_) => {} // already there
+                            Err(pos) => ntf.subaccounts.insert(pos, subaccount),
+                        }
                     } else {
-                        let mut accounts = HashSet::new();
-                        accounts.insert(account.num());
-                        updated_txs.insert(tx.0, accounts);
+                        let ntf = TransactionNotification {
+                            subaccounts: vec![account.num()],
+                            txid: tx.0.into_bitcoin(),
+                            satoshi: None,
+                            type_: None,
+                        };
+                        updated_txs.insert(tx.0, ntf);
                     }
                 }
 
@@ -1534,7 +1543,7 @@ impl Syncer {
             );
         }
 
-        Ok(updated_txs)
+        Ok(updated_txs.into_values().collect())
     }
 
     fn download_headers(

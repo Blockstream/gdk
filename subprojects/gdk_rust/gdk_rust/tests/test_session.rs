@@ -15,7 +15,7 @@ use gdk_common::{model::*, wally};
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_electrum::error::Error;
 use gdk_electrum::{determine_electrum_url, spv, ElectrumSession, State};
-use gdk_electrum::{headers, Notification};
+use gdk_electrum::{headers, Notification, TransactionNotification};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -281,14 +281,14 @@ impl TestSession {
         let initial_satoshis = self.balance_gdk(None);
         let ap = self.get_receive_address(0);
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
-        self.wait_account_tx(0, &funding_tx);
+        self.wait_tx(vec![0], &funding_tx, None, None);
         self.list_tx_contains(&funding_tx, &vec![], false);
         let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
             let asset = self.node_issueasset(satoshi);
             let txid = self.node_sendtoaddress(&ap.address, satoshi, Some(asset.clone()));
-            self.wait_account_tx(0, &txid);
+            self.wait_tx(vec![0], &txid, None, None);
             assets_issued.push(asset);
         }
 
@@ -350,6 +350,7 @@ impl TestSession {
 
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
+        // TODO: use wait_tx, but need to passed the subaccounts involved in the transaction
         self.wait_account_tx(subaccount, &txid);
 
         let key = asset_id.clone().unwrap_or(self.btc_key());
@@ -408,7 +409,7 @@ impl TestSession {
         assert!(signed_tx.user_signed, "tx is not marked as user_signed");
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_account_tx(create_opt.subaccount, &txid);
+        self.wait_tx(vec![create_opt.subaccount], &txid, None, None);
 
         self.tx_checks(&signed_tx.hex);
 
@@ -469,7 +470,7 @@ impl TestSession {
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_account_tx(subaccount, &txid);
+        // caller is expected to call wait_tx
         txid
     }
 
@@ -588,7 +589,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_account_tx(create_opt.subaccount, &txid);
+        self.wait_tx(vec![create_opt.subaccount], &txid, None, None);
         self.tx_checks(&signed_tx.hex);
 
         if assets.is_empty() {
@@ -617,7 +618,7 @@ impl TestSession {
         let unconf_address = to_unconfidential(&ap.address);
         let unconf_sat = 10_000;
         let unconf_txid = self.node_sendtoaddress(&unconf_address, unconf_sat, None);
-        self.wait_account_tx(0, &unconf_txid);
+        self.wait_tx(vec![0], &unconf_txid, None, None);
         // confidential balance
         assert_eq!(init_sat, self.balance_account(0, None, Some(true)));
         utxos_opt.confidential_utxos_only = Some(true);
@@ -696,9 +697,9 @@ impl TestSession {
         let utxo_satoshi = 100_000;
         let ap = self.get_receive_address(0);
         let txid = self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_account_tx(0, &txid);
+        self.wait_tx(vec![0], &txid, None, None);
         let txid = self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_account_tx(0, &txid);
+        self.wait_tx(vec![0], &txid, None, None);
         let satoshi = 50_000; // one utxo would be enough
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
@@ -714,7 +715,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_account_tx(create_opt.subaccount, &txid);
+        self.wait_tx(vec![create_opt.subaccount], &txid, None, None);
         self.tx_checks(&signed_tx.hex);
 
         let transaction = BETransaction::from_hex(&signed_tx.hex, self.network_id).unwrap();
@@ -1069,8 +1070,42 @@ impl TestSession {
         panic!("timeout waiting for tx spv change");
     }
 
+    fn wait_tx_ntf(
+        &self,
+        subaccounts: Vec<u32>,
+        txid: &str,
+        satoshi: Option<u64>,
+        type_: Option<String>,
+    ) {
+        let ntf = ntf_transaction(&TransactionNotification {
+            subaccounts,
+            txid: bitcoin::Txid::from_str(&txid).unwrap(),
+            satoshi,
+            type_,
+        });
+        for _ in 0..10 {
+            let events = self.session.filter_events("transaction");
+            if events.iter().any(|e| e["transaction"]["txhash"].as_str().unwrap() == txid) {
+                if events.contains(&ntf) {
+                    return;
+                }
+                let got = events
+                    .iter()
+                    .filter(|e| e["transaction"]["txhash"].as_str().unwrap() == txid)
+                    .last()
+                    .unwrap();
+                panic!(
+                    "notification does not match the expected one: expected {:?} got {:?}",
+                    ntf, got
+                );
+            }
+            thread::sleep(Duration::from_secs(1));
+        }
+        panic!("timeout waiting for notification for tx {}", txid);
+    }
+
     /// wait for the txid to show up in the given account
-    pub fn wait_account_tx(&self, subaccount: u32, txid: &str) {
+    fn wait_account_tx(&self, subaccount: u32, txid: &str) {
         for _ in 0..60 {
             let txs = self.get_tx_list(subaccount);
             if txs.iter().any(|tx| tx.txhash == txid) {
@@ -1079,6 +1114,19 @@ impl TestSession {
             thread::sleep(Duration::from_secs(1));
         }
         panic!("timeout waiting for tx {} to show up in account {}", txid, subaccount);
+    }
+
+    pub fn wait_tx(
+        &self,
+        subaccounts: Vec<u32>,
+        txid: &str,
+        satoshi: Option<u64>,
+        type_: Option<String>,
+    ) {
+        for subaccount in subaccounts.iter() {
+            self.wait_account_tx(*subaccount, txid);
+        }
+        self.wait_tx_ntf(subaccounts, txid, satoshi, type_);
     }
 
     /// wait for the n txs to show up in the given account
@@ -1346,6 +1394,11 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
 /// Json of network notification
 pub fn ntf_network(current: State, desired: State) -> Value {
     serde_json::to_value(&Notification::new_network(current, desired)).unwrap()
+}
+
+/// Json of network notification
+pub fn ntf_transaction(ntf: &TransactionNotification) -> Value {
+    serde_json::to_value(&Notification::new_transaction(ntf)).unwrap()
 }
 
 /// Struct that holds the secret, so that we can replicate the resolver behavior
