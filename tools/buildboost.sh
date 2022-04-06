@@ -51,6 +51,7 @@ $EXTRA_COMPILE_FLAGS
 <compileflags>"-DBOOST_LOG_NO_ASIO"
 $(compile_flags $@)
 <archiver>$AR
+<ranlib>$RANLIB
 <linkflags>"--sysroot=${SYSROOT}"
 $EXTRA_LINK_FLAGS
 <architecture>${SDK_ARCH}
