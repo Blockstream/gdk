@@ -385,7 +385,7 @@ namespace sdk {
             // We have an update to the base data, return it
             result = base.at("body").patch(cached.at("body"));
             // Filter the result in case our cached update contained a bad asset id
-            json_filter_bad_asset_ids(result);
+            json_filter_bad_asset_ids(result, key);
         } else {
             // Return the unchanged base data
             result = std::move(base.at("body"));

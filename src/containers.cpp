@@ -8,6 +8,10 @@
 
 namespace ga {
 namespace sdk {
+    // We filter out the mainnet policy asset id to prevent it being returned
+    // in regtest (the mainnet minimal asset registry returns it). We insert
+    // the actual policy asset in the results after filtering.
+    static const std::string MAINNET_ASSET = "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d";
 
     bool json_rename_key(nlohmann::json& data, const std::string& from_key, const std::string& to_key)
     {
@@ -21,10 +25,15 @@ namespace sdk {
     }
 
     // Due to bad data in the prod asset registry, we need to call this from a few places.
-    std::vector<std::string> json_filter_bad_asset_ids(nlohmann::json& data)
+    std::vector<std::string> json_filter_bad_asset_ids(nlohmann::json& data, const std::string& key)
     {
-        auto&& filter_fn = [](const auto& item) { return !validate_hex(item.key(), ASSET_TAG_LEN); };
-        return json_filter(data, filter_fn);
+        if (key == "assets") {
+            return json_filter(data, [](const auto& item) {
+                return !validate_hex(item.key(), ASSET_TAG_LEN) || item.key() == MAINNET_ASSET;
+            });
+        } else {
+            return json_filter(data, [](const auto& item) { return !validate_hex(item.key(), ASSET_TAG_LEN); });
+        }
     }
 
     void json_expand_asset_info(nlohmann::json& data)

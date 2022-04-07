@@ -97,7 +97,7 @@ namespace sdk {
                     result[key] = get_inbuilt_data(m_net_params, key).at("body");
                 } else {
                     // Filter out any bad keys returned by the asset registry
-                    json_filter_bad_asset_ids(data);
+                    json_filter_bad_asset_ids(data, key);
                 }
             }
         }

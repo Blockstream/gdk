@@ -79,7 +79,7 @@ namespace sdk {
     }
 
     // Filter items without a valid asset id key (32 byte/64 char hex string)
-    std::vector<std::string> json_filter_bad_asset_ids(nlohmann::json& data);
+    std::vector<std::string> json_filter_bad_asset_ids(nlohmann::json& data, const std::string& key);
 
     // Expand minimal asset data into the full asset data format
     void json_expand_asset_info(nlohmann::json& data);
