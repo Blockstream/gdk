@@ -94,7 +94,7 @@ release_py3m_bullseye_debug:
     - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9 --enable-rust
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ubuntu_ci@sha256:fa4942de35b0cc54817d1ce94e568d13e5a00777b78b94542141099817e1a81f
+  image: greenaddress/ubuntu_ci@sha256:183cfff276003c28c4388bebbbcc977b1e93f8dc85f1dbf2c02881053ad0c46f
   extends: .py_release
   script:
     - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --enable-rust
@@ -111,7 +111,7 @@ release_py3m_osx:
     - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9 --enable-rust
 
 test_fedora_clang:
-  image: greenaddress/fedora_ci@sha256:da48654c02d38c570811fd42b7e2dabc5ac2ca91854982be9544c19b659e8abb
+  image: greenaddress/fedora_ci@sha256:2eb6f59eecc77929e68a8fd50aa1a50bcb394b57df41c3049d976b159ec2abcb
   tags:
     - ga
   script:
