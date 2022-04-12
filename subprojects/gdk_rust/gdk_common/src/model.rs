@@ -754,11 +754,12 @@ pub struct Txo {
 }
 
 impl Txo {
+    pub fn confidential(&self) -> Option<bool> {
+        self.txoutsecrets.as_ref().map(is_confidential_txoutsecrets)
+    }
+
     pub fn is_confidential(&self) -> bool {
-        match &self.txoutsecrets {
-            None => false,
-            Some(s) => is_confidential_txoutsecrets(&s),
-        }
+        self.confidential().unwrap_or(false)
     }
 
     pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
@@ -781,7 +782,6 @@ pub struct UnspentOutput {
     pub txhash: String,
     /// `true` iff belongs to internal chain, i.e. is change
     pub is_internal: bool,
-    pub confidential: bool,
     pub user_path: Vec<ChildNumber>,
     #[serde(skip)]
     pub scriptpubkey: BEScript,
@@ -793,7 +793,10 @@ pub struct UnspentOutput {
     pub public_key: String,
 
     // liquid fields
-    pub asset_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidential: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asset_id: Option<String>,
 }
 
 impl TryFrom<Txo> for UnspentOutput {
@@ -801,11 +804,8 @@ impl TryFrom<Txo> for UnspentOutput {
 
     fn try_from(txo: Txo) -> Result<Self, Error> {
         let (is_internal, pointer) = parse_path(&txo.user_path.clone().into())?;
-        let asset_id = match &txo.txoutsecrets {
-            None => "".into(),
-            Some(s) => s.asset.to_hex(),
-        };
-        let confidential = txo.is_confidential();
+        let asset_id = txo.txoutsecrets.as_ref().map(|s| s.asset.to_hex());
+        let confidential = txo.confidential();
         Ok(Self {
             txhash: txo.outpoint.txid().to_hex(),
             pt_idx: txo.outpoint.vout(),

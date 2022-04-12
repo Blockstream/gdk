@@ -623,14 +623,19 @@ impl TestSession {
         utxos_opt.confidential_utxos_only = Some(true);
         let utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         assert_eq!(init_num_utxos, utxos.0.get(policy_asset).unwrap().len());
-        assert!(utxos.0.get(policy_asset).unwrap().iter().all(|u| u.confidential));
+        assert!(utxos.0.get(policy_asset).unwrap().iter().all(|u| u.confidential.unwrap_or(false)));
         // confidential and unconfidential balance (default)
         assert_eq!(init_sat + unconf_sat, self.balance_account(0, None, Some(false)));
         utxos_opt.confidential_utxos_only = Some(false);
         let utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         assert_eq!(init_num_utxos + 1, utxos.0.get(policy_asset).unwrap().len());
-        assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| u.confidential));
-        assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| !u.confidential));
+        assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| u.confidential.unwrap_or(false)));
+        assert!(utxos
+            .0
+            .get(policy_asset)
+            .unwrap()
+            .iter()
+            .any(|u| !u.confidential.unwrap_or(false)));
 
         // Spend only confidential utxos
         let node_address = self.node_getnewaddress(None);
@@ -669,7 +674,12 @@ impl TestSession {
         let mut utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
         assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);
-        assert!(utxos.0.get(policy_asset).unwrap().iter().all(|u| !u.confidential));
+        assert!(utxos
+            .0
+            .get(policy_asset)
+            .unwrap()
+            .iter()
+            .all(|u| !u.confidential.unwrap_or(false)));
         let sat = unconf_sat / 2;
         let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
         self.list_tx_contains(&txid, &[node_address], true);
