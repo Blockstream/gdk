@@ -428,11 +428,11 @@ pub struct TransactionOutput {
 
     /// True if the corresponding scriptpubkey belongs to the account (not the wallet)
     pub is_relevant: bool,
-    pub is_change: bool, // Same as is_relevant
 
     pub subaccount: u32,
     pub is_internal: bool,
-    pub pointer: u32, // child_number in bip32 terminology
+    pub is_change: bool, // Same as is_internal
+    pub pointer: u32,    // child_number in bip32 terminology
     pub user_path: Vec<ChildNumber>,
 
     pub pt_idx: u32, // vout

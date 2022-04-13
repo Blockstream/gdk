@@ -9,6 +9,7 @@
 ### Changed
 
 - Multisig: In GA_create_transaction "transaction_outputs" rename "public_key" to "blinding_key" when appropriate.
+- Singlesig: In GA_create_transaction "transaction_outputs" make "is_change" equal to "is_internal", not "is_relevant"
 
 
 ## Release 0.0.51 - 2022-03-30

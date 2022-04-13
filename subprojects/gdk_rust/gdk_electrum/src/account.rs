@@ -361,9 +361,9 @@ impl Account {
                         satoshi,
                         address_type: self.script_type.to_string(),
                         is_relevant: true,
-                        is_change: true, // same as is_relevant
                         subaccount: self.account_num,
                         is_internal,
+                        is_change: is_internal,
                         pointer,
                         pt_idx: vout,
                         script_pubkey: script_pubkey.to_hex(),
