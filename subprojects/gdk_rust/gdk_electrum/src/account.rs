@@ -393,6 +393,14 @@ impl Account {
             BEOutPoint::Elements(o) => acc_store.unblinded.get(&o).cloned(),
         };
 
+        let txoutcommitments = match tx {
+            BETransaction::Bitcoin(_) => None,
+            BETransaction::Elements(tx) => {
+                let txout = &tx.output[vout as usize];
+                Some((txout.asset, txout.value, txout.nonce))
+            }
+        };
+
         Ok(Txo {
             outpoint: outpoint.clone(),
             height,
@@ -409,6 +417,7 @@ impl Account {
             satoshi,
             sequence: None,
             txoutsecrets,
+            txoutcommitments,
         })
     }
 

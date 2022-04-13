@@ -2,6 +2,7 @@ use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid}
 use crate::util::{is_confidential_txoutsecrets, weight_to_vsize, StringSerialized};
 use crate::NetworkId;
 use bitcoin::Network;
+use elements::confidential;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -751,6 +752,8 @@ pub struct Txo {
 
     /// The Liquid commitment preimages (asset, satoshi and blinders)
     pub txoutsecrets: Option<elements::TxOutSecrets>,
+    /// The Liquid commitments
+    pub txoutcommitments: Option<(confidential::Asset, confidential::Value, confidential::Nonce)>,
 }
 
 impl Txo {
@@ -803,6 +806,14 @@ pub struct UnspentOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "amountblinder")]
     pub amount_blinder: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "asset_tag")]
+    pub asset_commitment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "commitment")]
+    pub value_commitment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonce_commitment: Option<String>,
 }
 
 impl TryFrom<Txo> for UnspentOutput {
@@ -814,6 +825,14 @@ impl TryFrom<Txo> for UnspentOutput {
         let confidential = txo.confidential();
         let asset_blinder = txo.txoutsecrets.as_ref().map(|s| s.asset_bf.to_hex());
         let amount_blinder = txo.txoutsecrets.as_ref().map(|s| s.value_bf.to_hex());
+        let (asset_commitment, value_commitment, nonce_commitment) = match &txo.txoutcommitments {
+            None => (None, None, None),
+            Some((a, v, n)) => (
+                Some(elements::encode::serialize_hex(a)),
+                Some(elements::encode::serialize_hex(v)),
+                Some(elements::encode::serialize_hex(n)),
+            ),
+        };
         Ok(Self {
             txhash: txo.outpoint.txid().to_hex(),
             pt_idx: txo.outpoint.vout(),
@@ -833,6 +852,9 @@ impl TryFrom<Txo> for UnspentOutput {
             asset_id,
             asset_blinder,
             amount_blinder,
+            asset_commitment,
+            value_commitment,
+            nonce_commitment,
         })
     }
 }
