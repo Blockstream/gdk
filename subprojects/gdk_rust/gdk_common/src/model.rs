@@ -797,6 +797,12 @@ pub struct UnspentOutput {
     pub confidential: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "assetblinder")]
+    pub asset_blinder: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "amountblinder")]
+    pub amount_blinder: Option<String>,
 }
 
 impl TryFrom<Txo> for UnspentOutput {
@@ -806,6 +812,8 @@ impl TryFrom<Txo> for UnspentOutput {
         let (is_internal, pointer) = parse_path(&txo.user_path.clone().into())?;
         let asset_id = txo.txoutsecrets.as_ref().map(|s| s.asset.to_hex());
         let confidential = txo.confidential();
+        let asset_blinder = txo.txoutsecrets.as_ref().map(|s| s.asset_bf.to_hex());
+        let amount_blinder = txo.txoutsecrets.as_ref().map(|s| s.value_bf.to_hex());
         Ok(Self {
             txhash: txo.outpoint.txid().to_hex(),
             pt_idx: txo.outpoint.vout(),
@@ -823,6 +831,8 @@ impl TryFrom<Txo> for UnspentOutput {
             sequence: txo.sequence,
             confidential,
             asset_id,
+            asset_blinder,
+            amount_blinder,
         })
     }
 }
