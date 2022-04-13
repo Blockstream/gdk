@@ -5,11 +5,16 @@
 ### Added
 
 - Support for sending to Liquid taproot addresses
+- Documentation for GA_get_unspent_outputs result, including differences between singlesig and multisig.
 
 ### Changed
 
 - Multisig: In GA_create_transaction "transaction_outputs" rename "public_key" to "blinding_key" when appropriate.
 - Singlesig: In GA_create_transaction "transaction_outputs" make "is_change" equal to "is_internal", not "is_relevant"
+
+### Fixed
+
+- Singlesig: set GA_get_unspent_outputs result correctly and consistently with multisig.
 
 
 ## Release 0.0.51 - 2022-03-30

@@ -967,6 +967,91 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
 :dust_limit: If given, only UTXOs with a value greater than the limit value are returned.
 
 
+.. _unspent-outputs:
+
+Unspent outputs JSON
+--------------------
+
+Contains the filtered unspent outputs.
+
+.. code-block:: json
+
+  {
+    "unspent_outputs": {
+      "btc": [
+        {
+          "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
+          "pt_idx": 0,
+          "satoshi": 10000,
+          "block_height": 1448369,
+          "address_type": "p2wsh",
+          "is_internal": false,
+          "pointer": 474,
+          "subaccount": 0,
+          "prevout_script": "522102ff54a17dc6efe168673dbf679fe97e06b5cdcaf7dea8ab83dc6732350cd1b4e4210279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e52ae",
+          "user_path": [
+            1,
+            474
+          ],
+          "is_segwit": true,
+          "public_key": "0279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e",
+          "expiry_height": 1458369,
+          "script_type": 14,
+          "user_status": 0,
+          "subtype": 0,
+        },
+      ],
+    }
+  }
+
+:txhash: The txid of the transaction.
+:pt_idx: The index of the output, the vout.
+:satoshi: The amount of the output.
+:block_height: The height of the block where the transaction is included.
+               Is 0 if the transaction is unconfirmed.
+:address_type: One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+:is_internal: Whether or not the user key belongs to the internal chain.
+:pointer: The user key number/final number in the derivation path.
+:subaccount: The subaccount this output belongs to.
+             Matches ``"pointer"`` from :ref:`subaccount-list` or :ref:`subaccount-detail`.
+:prevout_script: The script being signed, the script code.
+:user_path: The BIP32 path for the user key.
+:is_segwit: Singlesig only. Whether or not the output is segwit.
+:public_key: Singlesig only. The user public key.
+:expiry_height: Multisig only.
+                The block height when two-factor authentication expires.
+:script_type: Multisig only. Integer representing the type of script.
+:user_status: Multisig only. 0 for ``"default"`` and 1 for ``"frozen"``.
+:subtype: Multisig only. For ``"address_type"`` ``"csv"``,
+          the number of CSV blocks referenced in ``"script"``, otherwise, 0.
+
+For Liquid instead of having the ``"btc"`` field, there are (possibly) multiple
+fields, one for each asset owned, and the keys are the hex-encoded policy ids.
+
+For Liquid the inner maps have additional fields:
+
+.. code-block:: json
+
+  {
+    "confidential": true,
+    "asset_id": "e4b76d990f27bf6063cb66ff5bbc783d03258a0406ba8ac09abab7610d547e72",
+    "assetblinder": "aedb6c37d0ea0bc64fbc7036b52d0a0784da0b1ca90ac918c19ee1025b0c944c",
+    "amountblinder": "3be117b88ba8284b05b89998bdee1ded8cd5b561ae3d05bcd91d4e8abab2cd47",
+    "asset_tag": "0b103a2d34cf469987dd06937919f9dae8c9856be17c554fd408fdc226b1769e59",
+    "commitment": "094c3f83d5bac22b527ccac141fe04883d79bf04aef10a1dd42f501c5b51318907",
+    "nonce_commitment": "0211b39afe463473e428cfafd387f9c85b350f440131fad03aa5f4809b6c834f30",
+  }
+
+:confidential: Whether or not the output is confidential.
+:asset_id: The hex-encoded asset id.
+:assetblinder: The hex-encoded asset blinder (asset blinding factor, abf)
+:amountblinder: The hex-encoded amount blinder (value blinding factor, vbf)
+:asset_tag: The hex-encoded asset commitment.
+:commitment: The hex-encoded value commitment.
+:nonce_commitment: The hex-encoded nonce commitment.
+
+
 .. _unspent-outputs-status:
 
 Unspent ouputs set status JSON

@@ -373,6 +373,7 @@ GDK_API int GA_get_previous_addresses(
  * :param session: The session to use.
  * :param details: :ref:`unspent-outputs-request` detailing the unspent transaction outputs to fetch.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`unspent-outputs`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_get_unspent_outputs(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
