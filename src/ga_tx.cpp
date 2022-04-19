@@ -266,9 +266,16 @@ namespace sdk {
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
                     if (is_relevant) {
                         // Validate address is owned by the wallet
-                        const auto output_script = session.output_script_from_utxo(output);
-                        const std::string address
-                            = get_address_from_script(net_params, output_script, output.at("address_type"));
+                        const auto address_type = output.at("address_type");
+                        std::string address;
+                        if (address_type == address_type::p2sh_p2wpkh || address_type == address_type::p2wpkh
+                            || address_type == address_type::p2pkh) {
+                            const auto pubkeys = session.pubkeys_from_utxo(output);
+                            address = get_address_from_public_key(net_params, pubkeys.at(0), address_type);
+                        } else {
+                            const auto output_script = session.output_script_from_utxo(output);
+                            address = get_address_from_script(net_params, output_script, address_type);
+                        }
                         GDK_RUNTIME_ASSERT(output_addr == address);
                     }
                     // For singlesig, only consider internal addresses as change candidates
