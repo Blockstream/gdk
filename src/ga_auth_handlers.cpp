@@ -195,14 +195,13 @@ namespace sdk {
 
             if (!m_is_blinded) {
                 // Blind our addresses with the signer provided blinding keys
-                const auto prefix = m_net_params.blinded_prefix();
                 const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
                 GDK_RUNTIME_ASSERT(public_keys.size() == m_num_required_addrs);
 
                 size_t i = 0;
                 for (auto& subaccount_addresses : m_addresses) {
                     for (auto& addr : subaccount_addresses.second) {
-                        blind_address(addr, prefix, public_keys.at(i));
+                        blind_address(m_net_params, addr, public_keys.at(i));
                         ++i;
                     }
                 }
@@ -856,8 +855,7 @@ namespace sdk {
         }
 
         // Liquid: blind the address using the blinding key from the caller
-        const auto prefix = m_net_params.blinded_prefix();
-        blind_address(m_result, prefix, get_hw_reply().at("public_keys").at(0));
+        blind_address(m_net_params, m_result, get_hw_reply().at("public_keys").at(0));
         return state_type::done;
     }
 
@@ -895,11 +893,10 @@ namespace sdk {
         }
 
         // Liquid: blind the addresses using the blinding key from the HW
-        const auto prefix = m_net_params.blinded_prefix();
         const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("list")) {
-            blind_address(it, prefix, public_keys.at(i));
+            blind_address(m_net_params, it, public_keys.at(i));
             ++i;
         }
         return state_type::done;
@@ -933,7 +930,7 @@ namespace sdk {
             if (!addr.value("is_blinded", false)) {
                 auto& address = addr.at("address");
                 address = confidential_addr_to_addr(address, prefix); // Remove fake blinding
-                blind_address(addr, prefix, public_keys.at(i));
+                blind_address(m_net_params, addr, public_keys.at(i));
                 ++i;
             }
         }

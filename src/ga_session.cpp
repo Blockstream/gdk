@@ -1963,7 +1963,7 @@ namespace sdk {
                     // We should now be able to blind the address
                     const auto blinding_pubkey = m_cache->get_liquid_blinding_pubkey(script);
                     GDK_RUNTIME_ASSERT(!blinding_pubkey.empty());
-                    blind_address(utxo, m_net_params.blinded_prefix(), b2h(blinding_pubkey));
+                    blind_address(m_net_params, utxo, b2h(blinding_pubkey));
                 }
 
                 return false; // Cache not updated
@@ -2022,7 +2022,7 @@ namespace sdk {
             // We should now be able to blind the address
             const auto blinding_pubkey = m_cache->get_liquid_blinding_pubkey(script);
             GDK_RUNTIME_ASSERT(!blinding_pubkey.empty());
-            blind_address(utxo, m_net_params.blinded_prefix(), b2h(blinding_pubkey));
+            blind_address(m_net_params, utxo, b2h(blinding_pubkey));
         }
 
         return updated_blinding_cache;
