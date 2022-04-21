@@ -1304,9 +1304,10 @@ impl ElectrumSession {
         opt.count = 100;
         let mut hasher = DefaultHasher::new();
         for account in self.get_accounts()? {
-            let txs = account.list_tx(&opt)?;
+            opt.subaccount = account.num();
+            let txs = self.get_transactions(&opt)?.0;
             for tx in txs.iter() {
-                std::hash::Hash::hash(&tx.txid, &mut hasher);
+                std::hash::Hash::hash(&tx.txhash, &mut hasher);
             }
         }
         let status = hasher.finish();
