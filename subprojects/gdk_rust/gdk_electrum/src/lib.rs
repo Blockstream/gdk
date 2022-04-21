@@ -20,6 +20,7 @@ pub mod interface;
 mod notification;
 pub mod pin;
 pub mod pset;
+mod registry;
 pub mod spv;
 
 use crate::account::{
