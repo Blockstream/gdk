@@ -73,7 +73,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc, RwLock};
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
@@ -1178,8 +1178,7 @@ impl ElectrumSession {
         let mut icons_last_modified = String::new();
 
         if details.refresh {
-            let (tx_assets, rx_assets) = mpsc::channel();
-            if details.assets {
+            let assets_handle = if details.assets {
                 let registry_policy = self
                     .network
                     .policy_asset
@@ -1188,33 +1187,31 @@ impl ElectrumSession {
                 let last_modified = self.store()?.read()?.cache.assets_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
                 let agent = self.build_request_agent()?;
-                thread::spawn(move || {
-                    match call_assets(agent, base_url, registry_policy, last_modified) {
-                        Ok(p) => tx_assets.send(Some(p)),
-                        Err(_) => tx_assets.send(None),
-                    }
-                });
-            }
+                Some(thread::spawn(move || {
+                    call_assets(agent, base_url, registry_policy, last_modified).ok()
+                }))
+            } else {
+                None
+            };
 
-            let (tx_icons, rx_icons) = mpsc::channel();
-            if details.icons {
+            let icons_handle = if details.icons {
                 let last_modified = self.store()?.read()?.cache.icons_last_modified.clone();
                 let base_url = self.network.registry_base_url()?;
                 let agent = self.build_request_agent()?;
-                thread::spawn(move || match call_icons(agent, base_url, last_modified) {
-                    Ok(p) => tx_icons.send(Some(p)),
-                    Err(_) => tx_icons.send(None),
-                });
-            }
+                Some(thread::spawn(move || call_icons(agent, base_url, last_modified).ok()))
+            } else {
+                None
+            };
 
-            if details.assets {
-                if let Ok(Some(assets_recv)) = rx_assets.recv() {
+            if let Some(assets_handle) = assets_handle {
+                if let Ok(Some(assets_recv)) = assets_handle.join() {
                     assets = assets_recv.0;
                     assets_last_modified = assets_recv.1;
                 }
             }
-            if details.icons {
-                if let Ok(Some(icons_recv)) = rx_icons.recv() {
+
+            if let Some(icons_handle) = icons_handle {
+                if let Ok(Some(icons_recv)) = icons_handle.join() {
                     icons = icons_recv.0;
                     icons_last_modified = icons_recv.1;
                 }
