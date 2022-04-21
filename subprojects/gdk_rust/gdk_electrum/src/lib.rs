@@ -70,6 +70,7 @@ use electrum_client::{Client, ElectrumApi};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
+pub use registry::AssetEntry;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::Hasher;
@@ -1189,7 +1190,13 @@ impl ElectrumSession {
                 let base_url = self.network.registry_base_url()?;
                 let agent = self.build_request_agent()?;
                 Some(thread::spawn(move || {
-                    call_assets(agent, base_url, registry_policy, last_modified).ok()
+                    match call_assets(agent, base_url, registry_policy, last_modified) {
+                        Ok(assets) => Some(assets),
+                        Err(e) => {
+                            warn!("call_assets error {:?}", e);
+                            None
+                        }
+                    }
                 }))
             } else {
                 None
@@ -1327,7 +1334,6 @@ fn call_icons(
     base_url: String,
     last_modified: String,
 ) -> Result<(Value, String), Error> {
-    // TODO gzip encoding
     let url = format!("{}/{}", base_url, "icons.json");
     info!("START call_icons {}", &url);
     let icons_response = agent
@@ -1349,7 +1355,6 @@ fn call_assets(
     registry_policy: String,
     last_modified: String,
 ) -> Result<(Value, String), Error> {
-    // TODO add gzip encoding
     let url = format!("{}/{}", base_url, "index.json");
     info!("START call_assets {}", &url);
     let assets_response = agent
@@ -1360,11 +1365,17 @@ fn call_assets(
     let status = assets_response.status();
     info!("call_assets {} returns {}", url, status);
     let last_modified = assets_response.header("Last-Modified").unwrap_or_default().to_string();
-    let mut assets: Value = assets_response.into_json()?;
-    assets[registry_policy] =
-        json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
+    let mut assets: HashMap<String, AssetEntry> = assets_response.into_json()?;
+    info!("downloaded assets map contains {} elements", assets.len());
+
+    assets.retain(|_k, v| v.verify().unwrap_or(false));
+    info!("verified assets map contains {} elements", assets.len());
+
+    let asset_policy = AssetEntry::new_policy(&registry_policy)?;
+    assets.insert(registry_policy, asset_policy);
+
     info!("END call_assets {} {}", &url, status);
-    Ok((assets, last_modified))
+    Ok((serde_json::to_value(&assets)?, last_modified))
 }
 
 impl Tipper {

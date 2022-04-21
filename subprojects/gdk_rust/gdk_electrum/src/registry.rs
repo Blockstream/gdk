@@ -1,10 +1,11 @@
 use crate::error::Error;
+use bitcoin::hashes::hex::FromHex;
 use elements::{AssetId, ContractHash, OutPoint, Txid};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct AssetEntry {
+pub struct AssetEntry {
     pub asset_id: AssetId,
     pub contract: Value,
     pub issuance_txin: Value,
@@ -12,14 +13,16 @@ struct AssetEntry {
     pub version: u8,
     pub issuer_pubkey: String,
     pub name: String,
-    pub ticker: String,
+
+    /// ticker can be null as allowed in https://github.com/Blockstream/asset_registry/commit/67a1e36152a1e5e84c4ca78d1c1609ac35131565
+    pub ticker: Option<String>,
     pub precision: u8,
     pub entity: Value,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 
-struct Prevout {
+pub struct Prevout {
     txid: Txid,
     vout: u32,
 }
@@ -33,12 +36,33 @@ impl AssetEntry {
         OutPoint::new(self.issuance_prevout.txid, self.issuance_prevout.vout)
     }
 
-    pub fn verify(&self) -> Result<bool, Error> {
+    pub(crate) fn verify(&self) -> Result<bool, Error> {
         let contract_hash = ContractHash::from_json_contract(&self.contract_string()?)?;
         let entropy = AssetId::generate_asset_entropy(self.issuance_prevout(), contract_hash);
         let asset_id = AssetId::from_entropy(entropy);
 
         Ok(asset_id == self.asset_id)
+    }
+
+    pub(crate) fn new_policy(registry_policy: &str) -> Result<AssetEntry, Error> {
+        // assets[registry_policy] =
+        //     json!({"asset_id": &registry_policy, "name": "Liquid Bitcoin", "ticker": "L-BTC"});
+
+        Ok(AssetEntry {
+            asset_id: AssetId::from_hex(registry_policy)?,
+            contract: Value::Null,
+            issuance_txin: Value::Null,
+            issuance_prevout: Prevout {
+                txid: Txid::default(),
+                vout: 0,
+            },
+            version: 0,
+            issuer_pubkey: "".into(),
+            name: "Liquid Bitcoin".into(),
+            ticker: Some("L-BTC".into()),
+            precision: 8,
+            entity: Value::Null,
+        })
     }
 }
 
