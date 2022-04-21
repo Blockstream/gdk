@@ -94,7 +94,7 @@ namespace sdk {
                 if (data.empty()) {
                     // An empty result is a sentinel indicating that the initial
                     // data fetch failed. Return the compiled-in data in this case.
-                    result[key] = get_inbuilt_data(m_net_params, key).at("body");
+                    result[key] = std::move(get_inbuilt_data(m_net_params, key).at("body"));
                     if (key == keys[0]) {
                         json_expand_asset_info(result[key]);
                     }
