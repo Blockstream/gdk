@@ -41,7 +41,18 @@ impl AssetEntry {
         let entropy = AssetId::generate_asset_entropy(self.issuance_prevout(), contract_hash);
         let asset_id = AssetId::from_entropy(entropy);
 
-        Ok(asset_id == self.asset_id)
+        let ticker = match self.ticker.clone() {
+            Some(val) => Value::String(val),
+            None => Value::Null,
+        };
+
+        Ok(asset_id == self.asset_id
+            && Some(self.version as u64) == self.contract["version"].as_u64()
+            && Some(self.issuer_pubkey.as_str()) == self.contract["issuer_pubkey"].as_str()
+            && Some(self.name.as_str()) == self.contract["name"].as_str()
+            && ticker == self.contract["ticker"]
+            && Some(self.precision as u64) == self.contract["precision"].as_u64()
+            && self.entity == self.contract["entity"])
     }
 
     pub(crate) fn new_policy(registry_policy: &str) -> Result<AssetEntry, Error> {
