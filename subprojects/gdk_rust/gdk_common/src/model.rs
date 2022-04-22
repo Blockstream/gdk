@@ -1,5 +1,5 @@
 use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid};
-use crate::util::{is_confidential_txoutsecrets, weight_to_vsize, StringSerialized};
+use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize, StringSerialized};
 use crate::NetworkId;
 use bitcoin::Network;
 use elements::confidential;
@@ -15,7 +15,6 @@ use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Deserialize)]
 pub struct InitParam {
@@ -673,13 +672,6 @@ impl Default for Settings {
             sound: false,
         }
     }
-}
-
-fn now() -> u64 {
-    let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    // Realistic timestamps can be converted to u64
-    u64::try_from(since_the_epoch.as_micros()).unwrap_or(u64::MAX)
 }
 
 impl SPVVerifyTxResult {
