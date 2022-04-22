@@ -1,5 +1,5 @@
 use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid};
-use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize, StringSerialized};
+use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize};
 use crate::NetworkId;
 use bitcoin::Network;
 use elements::confidential;
@@ -10,7 +10,6 @@ use crate::error::Error;
 use crate::scripts::ScriptType;
 use crate::wally::MasterBlindingKey;
 use bitcoin::hashes::hex::ToHex;
-use bitcoin::util::address::AddressType;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use std::convert::TryFrom;
 use std::fmt;
@@ -522,50 +521,6 @@ pub struct GetTxInOut {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "amountblinder")]
     pub amount_blinder: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddressIO {
-    pub address: String,
-    pub address_type: StringSerialized<AddressType>,
-    pub addressee: String,
-    pub is_output: bool,
-    // True if the corresponding scriptpubkey belongs to the account (not the wallet)
-    pub is_relevant: bool,
-    pub is_spent: bool,
-    pub is_internal: bool,
-    pub pointer: u32, // child_number in bip32 terminology
-    pub pt_idx: u32,  // vout
-    pub satoshi: u64,
-    pub asset_id: String,
-    pub assetblinder: String,
-    pub amountblinder: String,
-    pub script_type: u32,
-    pub subaccount: u32,
-    pub subtype: u32, // unused here, but used in gdk interface for CSV bucketing
-}
-
-impl Default for AddressIO {
-    fn default() -> Self {
-        AddressIO {
-            address: "".into(),
-            address_type: bitcoin::util::address::AddressType::P2sh.into(),
-            addressee: "".into(),
-            asset_id: "".into(),
-            is_output: false,
-            is_relevant: false,
-            is_spent: false,
-            is_internal: false,
-            pointer: 0,
-            pt_idx: 0,
-            satoshi: 0,
-            script_type: 0,
-            subaccount: 0,
-            subtype: 0,
-            assetblinder: "".into(),
-            amountblinder: "".into(),
-        }
-    }
 }
 
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
