@@ -3,10 +3,10 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 use std::str::FromStr;
 
-use log::{info, trace, warn};
+use log::{info, warn};
 
 use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::FromHex;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
@@ -22,10 +22,11 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressAmount, AddressPointer, CreateTransaction, GetTransactionsOpt,
-    SPVVerifyTxResult, TransactionMeta, TransactionOutput, Txo, UnspentOutput, UpdateAccountOpt,
-    UtxoStrategy,
+    GetTxInOut, SPVVerifyTxResult, TransactionMeta, TransactionOutput, TxListItem, Txo,
+    UnspentOutput, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
+use gdk_common::util::{now, weight_to_vsize};
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
@@ -205,7 +206,7 @@ impl Account {
         })
     }
 
-    pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TransactionMeta>, Error> {
+    pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TxListItem>, Error> {
         let store = self.store.read()?;
         let acc_store = store.account_cache(self.account_num)?;
 
@@ -229,47 +230,40 @@ impl Account {
         });
 
         for (tx_id, height) in my_txids.iter().skip(opt.first).take(opt.count) {
-            trace!("tx_id {}", tx_id);
-
             let txe = acc_store
                 .all_txs
                 .get(*tx_id)
                 .ok_or_else(fn_err(&format!("list_tx no tx {}", tx_id)))?;
             let tx = &txe.tx;
 
-            let header = height.map(|h| store.cache.headers.get(&h)).flatten();
-            trace!("tx_id {} header {:?}", tx_id, header);
+            let timestamp = height
+                .map(|h| store.cache.headers.get(&h))
+                .flatten()
+                .map(|h| 1_000_000u64.saturating_mul(h.time() as u64))
+                .unwrap_or_else(now); // in microseconds
+
             let mut addressees = vec![];
             for i in 0..tx.output_len() as u32 {
                 let script = tx.output_script(i);
                 if !script.is_empty() && !acc_store.paths.contains_key(&script) {
-                    let address = tx.output_address(i, self.network.id());
-                    trace!("tx_id {}:{} not my script, address {:?}", tx_id, i, address);
-                    addressees.push(AddressAmount {
-                        address: address.unwrap_or_else(|| "".to_string()),
-                        satoshi: 0, // apparently not needed in list_tx addressees
-                        asset_id: None,
-                    });
+                    if let Some(address) = tx.output_address(i, self.network.id()) {
+                        addressees.push(address);
+                    };
                 }
             }
-            let memo = store.get_memo(tx_id).cloned();
 
-            let create_transaction = CreateTransaction {
-                addressees,
-                memo,
-                ..Default::default()
-            };
+            let memo = store.get_memo(tx_id).cloned().unwrap_or("".to_string());
 
             let fee = tx.fee(
                 &acc_store.all_txs,
                 &acc_store.unblinded,
                 &self.network.policy_asset_id().ok(),
             )?;
-            trace!("tx_id {} fee {}", tx_id, fee);
+
+            let fee_rate = (fee as f64 / txe.weight as f64 * 4000.0) as u64;
 
             let satoshi =
                 tx.my_balance_changes(&acc_store.all_txs, &acc_store.paths, &acc_store.unblinded);
-            trace!("tx_id {} balances {:?}", tx_id, satoshi);
 
             // We define an incoming txs if there are more assets received by the wallet than spent
             // when they are equal it's an outgoing tx because the special asset liquid BTC
@@ -293,30 +287,162 @@ impl Account {
                 SPVVerifyTxResult::Disabled
             };
 
-            trace!(
-                "tx_id {} type {} user_signed {} spv_verified {:?}",
-                tx_id,
-                type_,
-                user_signed,
-                spv_verified
-            );
+            let rbf_optin = tx.rbf_optin();
+            let can_rbf =
+                height.is_none() && rbf_optin && type_ != "incoming" && type_ != "unblindable";
 
-            let tx_meta = TransactionMeta::new(
-                txe.clone(),
-                **height,
-                header.map(|h| 1_000_000u64.saturating_mul(h.time() as u64)), // in microseconds
+            let inputs = tx
+                .previous_outputs()
+                .iter()
+                .enumerate()
+                .map(|(vin, beoutpoint)| {
+                    let (is_relevant, is_internal, pointer) = {
+                        if let Some(script) =
+                            acc_store.all_txs.get_previous_output_script_pubkey(beoutpoint)
+                        {
+                            match acc_store.paths.get(&script) {
+                                None => (false, false, 0),
+                                Some(path) => {
+                                    let (is_internal, pointer) = parse_path(&path)?;
+                                    (true, is_internal, pointer)
+                                }
+                            }
+                        } else {
+                            (false, false, 0)
+                        }
+                    };
+
+                    let (subaccount, address_type) = if is_relevant {
+                        (self.account_num, self.script_type.to_string())
+                    } else {
+                        (0, "".to_string())
+                    };
+
+                    let address = acc_store
+                        .all_txs
+                        .get_previous_output_address(beoutpoint, self.network.id())
+                        .unwrap_or_else(|| "".to_string());
+
+                    let satoshi = acc_store
+                        .all_txs
+                        .get_previous_output_value(beoutpoint, &acc_store.unblinded)
+                        .unwrap_or(0);
+
+                    let (asset_id, asset_blinder, amount_blinder) = {
+                        if let BEOutPoint::Elements(outpoint) = beoutpoint {
+                            (
+                                acc_store
+                                    .all_txs
+                                    .get_previous_output_asset(*outpoint, &acc_store.unblinded)
+                                    .map(|a| a.to_hex()),
+                                acc_store.all_txs.get_previous_output_assetblinder_hex(
+                                    *outpoint,
+                                    &acc_store.unblinded,
+                                ),
+                                acc_store.all_txs.get_previous_output_amountblinder_hex(
+                                    *outpoint,
+                                    &acc_store.unblinded,
+                                ),
+                            )
+                        } else {
+                            (None, None, None)
+                        }
+                    };
+
+                    Ok(GetTxInOut {
+                        addressee: "".to_string(),
+                        is_output: false,
+                        is_spent: true,
+                        pt_idx: vin as u32,
+                        script_type: 0,
+                        subtype: 0,
+                        is_relevant,
+                        is_internal,
+                        pointer,
+                        subaccount,
+                        address_type,
+                        address,
+                        satoshi,
+                        asset_id,
+                        asset_blinder,
+                        amount_blinder,
+                    })
+                })
+                .collect::<Result<Vec<GetTxInOut>, Error>>()?;
+
+            let outputs = (0..tx.output_len() as u32)
+                .map(|vout| {
+                    let (is_relevant, is_internal, pointer) = {
+                        match acc_store.paths.get(&tx.output_script(vout)) {
+                            None => (false, false, 0),
+                            Some(path) => {
+                                let (is_internal, pointer) = parse_path(&path)?;
+                                (true, is_internal, pointer)
+                            }
+                        }
+                    };
+
+                    let (subaccount, address_type) = if is_relevant {
+                        (self.account_num, self.script_type.to_string())
+                    } else {
+                        (0, "".to_string())
+                    };
+
+                    let address = tx
+                        .output_address(vout, self.network.id())
+                        .unwrap_or_else(|| "".to_string());
+                    let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or(0);
+                    let asset_id = tx.output_asset(vout, &acc_store.unblinded).map(|a| a.to_hex());
+                    let asset_blinder = tx.output_assetblinder_hex(vout, &acc_store.unblinded);
+                    let amount_blinder = tx.output_amountblinder_hex(vout, &acc_store.unblinded);
+
+                    Ok(GetTxInOut {
+                        addressee: "".to_string(),
+                        is_output: true,
+                        // FIXME: this can be wrong, however setting this value correctly might be quite
+                        // expensive: involing db hits and potentially network calls; postponing it for now.
+                        is_spent: false,
+                        pt_idx: vout,
+                        script_type: 0,
+                        subtype: 0,
+                        is_relevant,
+                        is_internal,
+                        pointer,
+                        subaccount,
+                        address_type,
+                        address,
+                        satoshi,
+                        asset_id,
+                        asset_blinder,
+                        amount_blinder,
+                    })
+                })
+                .collect::<Result<Vec<GetTxInOut>, Error>>()?;
+
+            txs.push(TxListItem {
+                block_height: height.unwrap_or(0),
+                created_at_ts: timestamp,
+                type_: type_.to_string(),
+                memo,
+                txhash: tx_id.to_string(),
                 satoshi,
-                fee,
-                self.network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
-                type_.to_string(),
-                create_transaction,
+                rbf_optin,
+                can_cpfp: false,
+                can_rbf,
+                server_signed: false,
                 user_signed,
-                spv_verified,
-            );
-
-            txs.push(tx_meta);
+                spv_verified: spv_verified.to_string(),
+                fee,
+                fee_rate,
+                addressees,
+                inputs,
+                outputs,
+                transaction_size: txe.size,
+                transaction_vsize: weight_to_vsize(txe.weight),
+                transaction_weight: txe.weight,
+            });
         }
-        info!("list_tx {:?}", txs.iter().map(|e| &e.txid).collect::<Vec<&String>>());
+        info!("list_tx {:?}", txs.iter().map(|e| &e.txhash).collect::<Vec<&String>>());
 
         Ok(txs)
     }

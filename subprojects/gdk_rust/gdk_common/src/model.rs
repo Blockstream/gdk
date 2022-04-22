@@ -588,8 +588,8 @@ pub struct TxListItem {
     pub fee: u64,
     pub fee_rate: u64,
     pub addressees: Vec<String>, // receiver's addresses
-    pub inputs: Vec<AddressIO>,  // tx.input.iter().map(format_gdk_input).collect(),
-    pub outputs: Vec<AddressIO>, //tx.output.iter().map(format_gdk_output).collect(),
+    pub inputs: Vec<GetTxInOut>,
+    pub outputs: Vec<GetTxInOut>,
     pub transaction_size: usize,
     pub transaction_vsize: usize,
     pub transaction_weight: usize,
