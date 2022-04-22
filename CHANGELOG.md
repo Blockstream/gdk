@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.0.52
+## Release 0.0.52 - 2022-04-22
 
 ### Added
 
