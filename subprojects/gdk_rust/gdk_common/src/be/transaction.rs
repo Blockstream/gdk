@@ -935,6 +935,18 @@ impl BETransactions {
     pub fn get_previous_output_script_pubkey(&self, outpoint: &BEOutPoint) -> Option<BEScript> {
         self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_script(outpoint.vout()))
     }
+
+    pub fn get_previous_output_address(
+        &self,
+        outpoint: &BEOutPoint,
+        network: NetworkId,
+    ) -> Option<String> {
+        match self.0.get(&outpoint.txid()) {
+            None => None,
+            Some(txe) => txe.tx.output_address(outpoint.vout(), network),
+        }
+    }
+
     pub fn get_previous_output_value(
         &self,
         outpoint: &BEOutPoint,
