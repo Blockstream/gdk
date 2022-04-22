@@ -499,12 +499,8 @@ pub struct TxListItem {
     pub rbf_optin: bool,
     pub can_cpfp: bool,
     pub can_rbf: bool,
-    #[serde(skip)]
-    pub has_payment_request: bool,
     pub server_signed: bool,
     pub user_signed: bool,
-    #[serde(skip)]
-    pub instant: bool,
     pub spv_verified: String,
     pub fee: u64,
     pub fee_rate: u64,

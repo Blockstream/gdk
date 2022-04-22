@@ -352,11 +352,9 @@ pub fn make_txlist_item(
         rbf_optin: tx.rbf_optin, // TODO: TransactionMeta -> TxListItem rbf_optin
         can_cpfp: false,         // TODO: TransactionMeta -> TxListItem can_cpfp
         can_rbf,
-        has_payment_request: false, // TODO: Remove
-        server_signed: false,       // TODO: TransactionMeta -> TxListItem server_signed
+        server_signed: false, // TODO: TransactionMeta -> TxListItem server_signed
         user_signed: tx.user_signed,
         spv_verified: tx.spv_verified.to_string(),
-        instant: false, // TODO: Remove
         fee: tx.fee,
         fee_rate,
         addressees, // notice the extra "e" -- its intentional
