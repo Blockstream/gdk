@@ -441,6 +441,89 @@ pub struct TransactionOutput {
     pub satoshi: u64,
 }
 
+/// Input and output element for get_transactions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetTxInOut {
+    /// The address of the input or output.
+    ///
+    /// For Liquid is always unblinded.
+    ///
+    /// For not relevant Liquid inputs it might be empty,
+    /// because we don't need to fecth previous transaction for the fee computation.
+    pub address: String,
+
+    /// The address type of the element.
+    ///
+    /// Empty if the element is not relevant.
+    // TODO: use an enum and sort out AddressType/ScriptType
+    pub address_type: String,
+
+    /// Always empty for now.
+    pub addressee: String,
+
+    /// Whether the elements is an input or an output.
+    pub is_output: bool,
+
+    /// Whether the corresponding scriptpubkey belongs to the account (not the wallet).
+    pub is_relevant: bool,
+
+    /// Whether the element is spent.
+    ///
+    /// For outputs the computation is expensive and might require additional network calls,
+    /// thus for now it is always false.
+    pub is_spent: bool,
+
+    /// The subaccount the element belongs to.
+    ///
+    /// 0 if not relevant.
+    pub subaccount: u32,
+
+    /// Whether the element belongs to the internal chain.
+    ///
+    /// False if not relevant.
+    pub is_internal: bool,
+
+    /// Child number in bip32 terminology.
+    ///
+    /// 0 if not relevant.
+    pub pointer: u32,
+
+    /// If output the vout, if input the vin.
+    pub pt_idx: u32,
+
+    /// The amount associated to the element.
+    ///
+    /// For liquid is 0 if the amount cannot be unblinded.
+    pub satoshi: u64,
+
+    /// Multisig field, always 0.
+    pub script_type: u32,
+
+    /// Multisig field, always 0.
+    pub subtype: u32,
+
+    // Liquid fields
+    /// The asset id.
+    ///
+    /// None if not liquid or not unblindable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asset_id: Option<String>,
+
+    /// The asset blinder (aka asset blinding factor or abf).
+    ///
+    /// None if not liquid or not unblindable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "assetblinder")]
+    pub asset_blinder: Option<String>,
+
+    /// The amount blinder (aka value blinding factor or vbf).
+    ///
+    /// None if not liquid or not unblindable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "amountblinder")]
+    pub amount_blinder: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddressIO {
     pub address: String,
