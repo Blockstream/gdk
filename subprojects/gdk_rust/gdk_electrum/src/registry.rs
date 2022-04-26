@@ -4,11 +4,11 @@ use elements::{AssetId, ContractHash, OutPoint, Txid};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AssetEntry {
     pub asset_id: AssetId,
     pub contract: Value,
-    pub issuance_txin: Value,
+    pub issuance_txin: Txin,
     pub issuance_prevout: Prevout,
     pub version: u8,
     pub issuer_pubkey: String,
@@ -20,11 +20,16 @@ pub struct AssetEntry {
     pub entity: Value,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Prevout {
     txid: Txid,
     vout: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Txin {
+    txid: Txid,
+    vin: u32,
 }
 
 impl AssetEntry {
@@ -61,18 +66,10 @@ impl AssetEntry {
 
         Ok(AssetEntry {
             asset_id: AssetId::from_hex(registry_policy)?,
-            contract: Value::Null,
-            issuance_txin: Value::Null,
-            issuance_prevout: Prevout {
-                txid: Txid::default(),
-                vout: 0,
-            },
-            version: 0,
-            issuer_pubkey: "".into(),
             name: "Liquid Bitcoin".into(),
             ticker: Some("L-BTC".into()),
             precision: 8,
-            entity: Value::Null,
+            ..Default::default()
         })
     }
 }
