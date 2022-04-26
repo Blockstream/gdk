@@ -6,17 +6,38 @@ use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AssetEntry {
+    /// The identifier of the asset, it is a midstate of a `sha256` thus it's 32 supposedly random bytes.
     pub asset_id: AssetId,
+
+    /// Contains assets metadata provided by the issuer. This information is commited in the
+    /// `asset_id` so it's verifiable by third parties. Some fields in the contract are repeated at
+    /// this level such as `version`, `issuer_pubkey`, `name`, `ticker`, `precision` and `entity`.
+    /// Other fields could be custom values created by the issuer.
     pub contract: Value,
+
+    /// The transaction input containing this issuance.
     pub issuance_txin: Txin,
+
+    /// The previous output that is spent to create this issuance.
     pub issuance_prevout: Prevout,
+
+    /// The version of the registry protocol.
     pub version: u8,
+
+    /// A public key owned by the issuer used for authentication.
     pub issuer_pubkey: String,
+
+    /// Name of the asset.
     pub name: String,
 
-    /// ticker can be null as allowed in https://github.com/Blockstream/asset_registry/commit/67a1e36152a1e5e84c4ca78d1c1609ac35131565
+    /// Ticker of the asset.
     pub ticker: Option<String>,
+
+    /// Precision of the asset as the number of digits after the decimal separator.
+    /// Eg. bitcoin use 8 as precision.
     pub precision: u8,
+
+    /// Contains information regarding the internet domain of the asset issuer.
     pub entity: Value,
 }
 
