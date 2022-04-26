@@ -1368,8 +1368,11 @@ fn call_assets(
     let mut assets: HashMap<String, AssetEntry> = assets_response.into_json()?;
     info!("downloaded assets map contains {} elements", assets.len());
 
+    let assets_len_before = assets.len();
     assets.retain(|_k, v| v.verify().unwrap_or(false));
-    info!("verified assets map contains {} elements", assets.len());
+    if assets_len_before != assets.len() {
+        warn!("{} assets are not verified", assets_len_before - assets.len());
+    }
 
     let asset_policy = AssetEntry::new_policy(&registry_policy)?;
     assets.insert(registry_policy, asset_policy);
