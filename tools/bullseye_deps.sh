@@ -9,8 +9,8 @@ update-java-alternatives -s java-1.11.0-openjdk-amd64
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
 
-curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip
-echo "b65ea2d5c5b68fb603626adcbcea6e4d12c68eb8a73e373bbb9d23c252fc647b ndk.zip" | sha256sum --check
+curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
+echo "c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382 ndk.zip" | sha256sum --check
 unzip ndk.zip
 rm ndk.zip
 

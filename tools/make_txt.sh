@@ -8,8 +8,8 @@ function comma_separate() {
 if [ \( "$3" = "android" \) ]; then
     C_COMPILER=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang)
     CXX_COMPILER=$(ls $NDK_TOOLSDIR/bin/$clangarchname-linux-android*$ANDROID_VERSION-clang++)
-    STRIP="$(ls $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip)"
-    OBJCOPY="$(ls $NDK_TOOLSDIR/bin/$archfilename-linux-android*-objcopy)"
+    STRIP="$(ls $NDK_TOOLSDIR/bin/llvm-strip)"
+    OBJCOPY="$(ls $NDK_TOOLSDIR/bin/llvm-objcopy)"
     CFLAGS=$(comma_separate "--sysroot=$NDK_TOOLSDIR/sysroot" $SDK_CFLAGS)
     LDFLAGS=$(comma_separate $SDK_LDFLAGS)
     ARCHS="[]"

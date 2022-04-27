@@ -247,9 +247,8 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
                 arm64-v8a) clangarchname=aarch64;;
                 x86) clangarchname=i686;;
             esac
-            export SDK_PLATFORM=$(basename $NDK_TOOLSDIR/bin/$archfilename-linux-android*-strip | $SED 's/-strip$//')
-            export AR="$NDK_TOOLSDIR/bin/$SDK_PLATFORM-ar"
-            export RANLIB="$NDK_TOOLSDIR/bin/$SDK_PLATFORM-ranlib"
+            export AR="$NDK_TOOLSDIR/bin/llvm-ar"
+            export RANLIB="$NDK_TOOLSDIR/bin/llvm-ranlib"
 
             ./tools/make_txt.sh $bld_root $bld_root/$1_$2_ndk.txt $1 ndk $2
             compress_patch

@@ -127,32 +127,32 @@ gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true --enable-rust
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
 
 gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true --enable-rust
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r21 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true --enable-rust
 
 test_rust:
   tags:

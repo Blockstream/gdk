@@ -44,8 +44,11 @@ fi
 if [ \( "$1" = "--ndk" \) ]; then
     if [ "$(uname)" = "Darwin" ]; then
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin
+        export AR=${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar
     else
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin
+        export AR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+        export OBJCOPY=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy
     fi
     if [ "$HOST_ARCH" = "armeabi-v7a" ]; then
         RUSTTARGET=armv7-linux-androideabi
