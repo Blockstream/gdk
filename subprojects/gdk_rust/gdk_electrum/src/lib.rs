@@ -708,15 +708,20 @@ impl ElectrumSession {
 
         let syncer_handle = thread::spawn(move || {
             info!("starting syncer thread");
+            let mut first_sync = true;
             loop {
                 match syncer_url.build_client(proxy.as_deref(), None) {
                     Ok(client) => match syncer.sync(&client) {
                         Ok(tx_ntfs) => {
                             state_updater.update_if_needed(true);
-                            for ntf in tx_ntfs.iter() {
-                                info!("there are new transactions");
-                                // TODO: limit the number of notifications
-                                notify_txs.updated_txs(ntf);
+                            // Skip sending transaction notifications if it's the first call to
+                            // sync. This allows us to _not_ notify transactions that were sent or
+                            // received before login.
+                            if !first_sync {
+                                for ntf in tx_ntfs.iter() {
+                                    info!("there are new transactions");
+                                    notify_txs.updated_txs(ntf);
+                                }
                             }
                         }
                         Err(e) => {
@@ -733,6 +738,7 @@ impl ElectrumSession {
                     info!("closing syncer thread");
                     break;
                 }
+                first_sync = false;
             }
         });
         self.handles.push(syncer_handle);
