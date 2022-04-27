@@ -77,12 +77,6 @@ test_gcc:
   script:
     - ./tools/build.sh --gcc --enable-rust
 
-test_build_no_rust:
-  tags:
-    - ga
-  script:
-    - ./tools/build.sh --clang
-
 release_py3m_bullseye:
   extends: .py_release
   script:
