@@ -281,7 +281,7 @@ impl TestSession {
         let initial_satoshis = self.balance_gdk(None);
         let ap = self.get_receive_address(0);
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
-        self.wait_tx(vec![0], &funding_tx, None, None);
+        self.wait_tx(vec![0], &funding_tx, Some(satoshi), None);
         self.list_tx_contains(&funding_tx, &vec![], false);
         let mut assets_issued = vec![];
 
@@ -324,7 +324,7 @@ impl TestSession {
         asset_id: Option<String>,
         unspent_outputs: Option<GetUnspentOutputs>,
         utxo_strategy: Option<UtxoStrategy>,
-    ) -> String {
+    ) -> (String, u64, u64) {
         let init_sat = self.balance_account(subaccount, asset_id.clone(), None);
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
@@ -360,7 +360,7 @@ impl TestSession {
 
         assert!(tx.create_transaction.unwrap().send_all);
         assert!(signed_tx.create_transaction.unwrap().send_all);
-        txid
+        (txid, init_sat, signed_tx.fee)
     }
 
     /// send a tx from the gdk session to the specified address
@@ -409,7 +409,7 @@ impl TestSession {
         assert!(signed_tx.user_signed, "tx is not marked as user_signed");
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx(vec![create_opt.subaccount], &txid, None, None);
+        self.wait_tx(vec![create_opt.subaccount], &txid, Some(satoshi + signed_tx.fee), None);
 
         self.tx_checks(&signed_tx.hex);
 
@@ -453,7 +453,7 @@ impl TestSession {
         address: &str,
         satoshi: u64,
         asset: Option<String>,
-    ) -> String {
+    ) -> (String, u64) {
         let mut create_opt = CreateTransaction::default();
         create_opt.subaccount = subaccount;
         let fee_rate = match self.network.id() {
@@ -471,7 +471,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         // caller is expected to call wait_tx
-        txid
+        (txid, signed_tx.fee)
     }
 
     pub fn test_set_get_memo(&mut self, txid: &str, old: &str, new: &str) {
@@ -589,7 +589,8 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx(vec![create_opt.subaccount], &txid, None, None);
+        let tot_sat = signed_tx.fee + amount * recipients as u64;
+        self.wait_tx(vec![create_opt.subaccount], &txid, Some(tot_sat), None);
         self.tx_checks(&signed_tx.hex);
 
         if assets.is_empty() {
@@ -618,7 +619,7 @@ impl TestSession {
         let unconf_address = to_unconfidential(&ap.address);
         let unconf_sat = 10_000;
         let unconf_txid = self.node_sendtoaddress(&unconf_address, unconf_sat, None);
-        self.wait_tx(vec![0], &unconf_txid, None, None);
+        self.wait_tx(vec![0], &unconf_txid, Some(unconf_sat), None);
         // confidential balance
         assert_eq!(init_sat, self.balance_account(0, None, Some(true)));
         utxos_opt.confidential_utxos_only = Some(true);
@@ -697,9 +698,9 @@ impl TestSession {
         let utxo_satoshi = 100_000;
         let ap = self.get_receive_address(0);
         let txid = self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_tx(vec![0], &txid, None, None);
+        self.wait_tx(vec![0], &txid, Some(utxo_satoshi), None);
         let txid = self.node_sendtoaddress(&ap.address, utxo_satoshi, None);
-        self.wait_tx(vec![0], &txid, None, None);
+        self.wait_tx(vec![0], &txid, Some(utxo_satoshi), None);
         let satoshi = 50_000; // one utxo would be enough
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
@@ -715,7 +716,7 @@ impl TestSession {
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx(vec![create_opt.subaccount], &txid, None, None);
+        self.wait_tx(vec![create_opt.subaccount], &txid, Some(satoshi + signed_tx.fee), None);
         self.tx_checks(&signed_tx.hex);
 
         let transaction = BETransaction::from_hex(&signed_tx.hex, self.network_id).unwrap();
@@ -1077,6 +1078,12 @@ impl TestSession {
         satoshi: Option<u64>,
         type_: Option<String>,
     ) {
+        let is_liquid = self.network.liquid;
+        let satoshi = if is_liquid {
+            None
+        } else {
+            satoshi
+        };
         let ntf = ntf_transaction(&TransactionNotification {
             subaccounts,
             txid: bitcoin::Txid::from_str(&txid).unwrap(),

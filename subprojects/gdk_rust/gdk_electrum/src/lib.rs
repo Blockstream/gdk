@@ -1512,27 +1512,36 @@ impl Syncer {
                 acc_store.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
                 acc_store.paths.extend(scripts.into_iter());
 
-                store_write.flush()?;
-                drop(store_write);
-
                 for tx in new_txs.txs.iter() {
                     if let Some(ntf) = updated_txs.get_mut(&tx.0) {
                         // Make sure ntf.subaccounts is ordered and has no duplicates.
                         let subaccount = account.num();
                         match ntf.subaccounts.binary_search(&subaccount) {
                             Ok(_) => {} // already there
-                            Err(pos) => ntf.subaccounts.insert(pos, subaccount),
+                            Err(pos) => {
+                                ntf.subaccounts.insert(pos, subaccount);
+                                if pos == 0 {
+                                    // For transactions involving multiple subaccounts, the net effect for
+                                    // the transaction is the one considering the first subaccount.
+                                    // So replace it here.
+                                    ntf.satoshi = self.ntf_satoshi(&tx.1, &acc_store);
+                                }
+                            }
                         }
                     } else {
+                        let satoshi = self.ntf_satoshi(&tx.1, &acc_store);
                         let ntf = TransactionNotification {
                             subaccounts: vec![account.num()],
                             txid: tx.0.into_bitcoin(),
-                            satoshi: None,
+                            satoshi,
                             type_: None,
                         };
                         updated_txs.insert(tx.0, ntf);
                     }
                 }
+
+                store_write.flush()?;
+                drop(store_write);
 
                 // the transactions are first indexed into the db and then verified so that all the prevouts
                 // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
@@ -1550,6 +1559,19 @@ impl Syncer {
         }
 
         Ok(updated_txs.into_values().collect())
+    }
+
+    fn ntf_satoshi(&self, tx: &BETransaction, acc_store: &RawAccountCache) -> Option<u64> {
+        if self.network.liquid {
+            // For consistency with multisig do not set this
+            None
+        } else {
+            let balances =
+                tx.my_balance_changes(&acc_store.all_txs, &acc_store.paths, &acc_store.unblinded);
+            let balance =
+                balances.get(&"btc".to_string()).expect("bitcoin balance always has btc key");
+            Some(balance.abs() as u64)
+        }
     }
 
     fn download_headers(
