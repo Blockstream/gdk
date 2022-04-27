@@ -5,6 +5,10 @@
 ### Changed
 
 - Changed transcation type from "unblindable" to "not unblindable" to reflect its actual meaning.
+- Move to Android ndk r23b LTS release
+- Update openssl to 1.1.1n
+- Update libwally to latest
+- Rust is now mandatory for building
 
 ### Fixed
 
