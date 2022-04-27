@@ -920,6 +920,12 @@ pub struct BETransactionEntry {
     pub weight: usize,
 }
 
+impl BETransactionEntry {
+    pub fn fee_rate(&self, fee: u64) -> u64 {
+        (fee as f64 / self.weight as f64 * 4000.0) as u64
+    }
+}
+
 impl Deref for BETransactions {
     type Target = HashMap<BETxid, BETransactionEntry>;
     fn deref(&self) -> &<Self as Deref>::Target {

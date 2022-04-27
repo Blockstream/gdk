@@ -260,7 +260,7 @@ impl Account {
                 &self.network.policy_asset_id().ok(),
             )?;
 
-            let fee_rate = (fee as f64 / txe.weight as f64 * 4000.0) as u64;
+            let fee_rate = txe.fee_rate(fee);
 
             let satoshi =
                 tx.my_balance_changes(&acc_store.all_txs, &acc_store.paths, &acc_store.unblinded);
