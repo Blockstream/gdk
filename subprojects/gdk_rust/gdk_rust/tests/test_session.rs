@@ -179,7 +179,7 @@ pub fn setup(
     session.connect(&serde_json::to_value(network.clone()).unwrap()).unwrap();
     assert_eq!(
         session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Connected, State::Connected))
+        Some(&ntf_network(State::Connected, State::Connected))
     );
     assert_eq!(session.filter_events("network").len(), ntf_len + 1);
 
@@ -491,7 +491,7 @@ impl TestSession {
 
         assert_eq!(
             self.session.filter_events("network").last(),
-            Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+            Some(&ntf_network(State::Disconnected, State::Disconnected))
         );
         assert_eq!(self.session.filter_events("network").len(), ntf_len + 1);
 
@@ -499,7 +499,7 @@ impl TestSession {
 
         assert_eq!(
             self.session.filter_events("network").last(),
-            Some(&Notification::new_network_value(State::Connected, State::Connected))
+            Some(&ntf_network(State::Connected, State::Connected))
         );
         assert_eq!(self.session.filter_events("network").len(), ntf_len + 2);
 
@@ -1341,6 +1341,11 @@ pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
 
     // We got everything from the signer
     session.start_threads().unwrap();
+}
+
+/// Json of network notification
+pub fn ntf_network(current: State, desired: State) -> Value {
+    serde_json::to_value(&Notification::new_network(current, desired)).unwrap()
 }
 
 /// Struct that holds the secret, so that we can replicate the resolver behavior

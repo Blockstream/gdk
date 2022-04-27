@@ -12,7 +12,7 @@ use gdk_common::{NetworkId, NetworkParameters};
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{determine_electrum_url, headers, spv, ElectrumSession, Notification, State};
+use gdk_electrum::{determine_electrum_url, headers, spv, ElectrumSession, State};
 
 use log::info;
 use serde_json::Value;
@@ -24,8 +24,8 @@ use tempfile::TempDir;
 
 mod test_session;
 use test_session::{
-    auth_handler_login, convertutxos, discover_subaccounts, spv_verify_tx, to_not_unblindable,
-    TestSession,
+    auth_handler_login, convertutxos, discover_subaccounts, ntf_network, spv_verify_tx,
+    to_not_unblindable, TestSession,
 };
 
 static MEMO1: &str = "hello memo";
@@ -1197,7 +1197,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Disconnected, State::Connected))
+        Some(&ntf_network(State::Disconnected, State::Connected))
     );
     assert_eq!(test_session.session.filter_events("network").len(), 2);
 
@@ -1205,7 +1205,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+        Some(&ntf_network(State::Disconnected, State::Disconnected))
     );
     assert_eq!(test_session.session.filter_events("network").len(), 3);
 
@@ -1214,7 +1214,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Disconnected, State::Connected))
+        Some(&ntf_network(State::Disconnected, State::Connected))
     );
     assert_eq!(test_session.session.filter_events("network").len(), 4);
 
@@ -1229,7 +1229,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         new_session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Disconnected, State::Connected))
+        Some(&ntf_network(State::Disconnected, State::Connected))
     );
     assert_eq!(new_session.filter_events("network").len(), 1);
 
@@ -1238,7 +1238,7 @@ fn test_electrum_disconnect() {
     assert_eq!(new_session.filter_events("network").len(), 2);
     assert_eq!(
         new_session.filter_events("network").last(),
-        Some(&Notification::new_network_value(State::Disconnected, State::Disconnected))
+        Some(&ntf_network(State::Disconnected, State::Disconnected))
     );
 }
 
