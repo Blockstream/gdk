@@ -4,4 +4,4 @@ COPY requirements.txt /requirements.txt
 RUN /deps.sh && rm /deps.sh
 ENV ANDROID_NDK=/android-ndk-r23b
 ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
-CMD cd /sdk && ./tools/build.sh --clang --enable-rust
+CMD cd /sdk && ./tools/build.sh --clang

@@ -3,4 +3,3 @@ option('lto', type : 'boolean', value : false, description : 'override meson lto
 option('time-report', type : 'boolean', value : false, description : 'generate time reports')
 option('python-version', type : 'string', value : '', description : 'generate python bindings for version')
 option('enable-tests', type : 'boolean', value : false, description : 'enable tests')
-option('enable-rust', type : 'boolean', value : false, description : 'enable rust backend')

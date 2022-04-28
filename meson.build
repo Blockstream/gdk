@@ -136,9 +136,7 @@ if debug
 else
     add_project_arguments(['-DNDEBUG'], language : ['c', 'cpp'])
 endif
-if get_option('enable-rust')
-    add_project_arguments(['-DBUILD_GDK_RUST'], language : ['c', 'cpp'])
-endif
+add_project_arguments(['-DBUILD_GDK_RUST'], language : ['c', 'cpp'])
 
 if meson.is_cross_build()
     archs = meson.get_cross_property('archs')
@@ -179,9 +177,7 @@ if cross_win_build
 endif
 
 sed = find_program('gsed', 'sed')
-if get_option('enable-rust')
-    cargo = find_program('cargo')
-endif
+cargo = find_program('cargo')
 swig = find_program('swig', required : false)
 if swig.found()
     pymodule = import('python')
@@ -287,10 +283,8 @@ library_deps += compiler.find_library('execinfo', required : is_freebsd)
 subproject_deps = []
 
 wallycore = subproject('libwally-core')
-if get_option('enable-rust')
-    gdkrust = subproject('gdk_rust')
-    subproject_deps += gdkrust.get_variable('gdk_rust_dep')
-endif
+gdkrust = subproject('gdk_rust')
+subproject_deps += gdkrust.get_variable('gdk_rust_dep')
 subproject_deps += wallycore.get_variable('wallycore_dep')
 subproject_deps += dependency('external_autobahn-cpp', fallback : ['autobahn-cpp', 'autobahn_dep'])
 subproject_deps += dependency('external_boost', fallback : ['boost', 'boost_dep'])
@@ -302,10 +296,7 @@ subproject_deps += dependency('external_websocketpp', fallback : ['websocketpp',
 subproject_deps += dependency('external_tor', fallback : ['tor', 'tor_dep'])
 
 # includes
-incdirs = ['.']
-if get_option('enable-rust')
-    incdirs += ['subprojects/gdk_rust']
-endif
+incdirs = ['.', 'subprojects/gdk_rust']
 incdir = include_directories(incdirs)
 
 # builds

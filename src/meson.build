@@ -9,11 +9,12 @@ cpp_headers = [
            'exception.hpp',
            'ga_auth_handlers.hpp',
            'ga_cache.hpp',
-           'ga_wally.hpp',
+           'ga_rust.hpp',
            'ga_session.hpp',
            'ga_strings.hpp',
            'ga_tor.hpp',
            'ga_tx.hpp',
+           'ga_wally.hpp',
            'gsl_wrapper.hpp',
            'http_client.hpp',
            'inbuilt.hpp',
@@ -40,6 +41,7 @@ cpp_sources = [
            'ffi_c.cpp',
            'ga_auth_handlers.cpp',
            'ga_cache.cpp',
+           'ga_rust.cpp',
            'ga_session.cpp',
            'ga_strings.cpp',
            'ga_tor.cpp',
@@ -57,11 +59,6 @@ cpp_sources = [
            'utils.cpp',
            'wamp_transport.cpp',
            'xpub_hdkey.cpp']
-
-if get_option('enable-rust')
-    cpp_headers += ['ga_rust.hpp']
-    cpp_sources += ['ga_rust.cpp']
-endif
 
 headers = ['../include/gdk.h',
            '../include/wally_wrapper.h']
@@ -160,34 +157,19 @@ else
     libga_installdir = 'lib'
 endif
 
-if get_option('enable-rust')
-    gdk_rust_target = subproject('gdk_rust').get_variable('gdk_rust_target')
-    libga = both_libraries('greenaddress',
-                        sources,
-                        include_directories : incdir,
-                        link_whole : link_whole,
-                        link_with : gdk_rust_target,
-                        link_args : local_link_args,
-                        dependencies : dependencies,
-                        install : true,
-                        install_dir : libga_installdir)
-else
-    libga = both_libraries('greenaddress',
-                        sources,
-                        include_directories : incdir,
-                        link_whole : link_whole,
-                        link_args : local_link_args,
-                        dependencies : dependencies,
-                        install : true,
-                        install_dir : libga_installdir)
-endif
+gdk_rust_target = subproject('gdk_rust').get_variable('gdk_rust_target')
+libga = both_libraries('greenaddress',
+                    sources,
+                    include_directories : incdir,
+                    link_whole : link_whole,
+                    link_with : gdk_rust_target,
+                    link_args : local_link_args,
+                    dependencies : dependencies,
+                    install : true,
+                    install_dir : libga_installdir)
 
 if not cross_android_build
-    if get_option('enable-rust')
-        archiver_depends = [libga.get_static_lib(), gdk_rust_target]
-    else
-        archiver_depends = [libga.get_static_lib()]
-    endif
+    archiver_depends = [libga.get_static_lib(), gdk_rust_target]
     archiver = custom_target('archiver',
                              output : 'libgreenaddress_full.a',
                              command : [join_paths(meson.source_root(), 'tools', 'archiver.sh'), meson.build_root(), ar],

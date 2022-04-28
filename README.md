@@ -24,7 +24,7 @@ pip3 install --user meson
 xcode-select --install
 ```
 
-Install rust dependencies (Optional):
+Install rust dependencies:
 
   1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
@@ -98,11 +98,6 @@ or
 `tools/build.sh --buildtype=debugoptimized --clang`
 
 for a debug optimized build.
-
-#### Rust-Electrum support
-
-Pass `--enable-rust` to build the rust-electrum single signature support as used
-by e.g. [Aqua](https://github.com/Blockstream/aqua_ios).
 
 #### Disable LTO
 

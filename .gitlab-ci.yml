@@ -75,24 +75,24 @@ test_gcc:
   tags:
     - ga
   script:
-    - ./tools/build.sh --gcc --enable-rust
+    - ./tools/build.sh --gcc
 
 release_py3m_bullseye:
   extends: .py_release
   script:
-    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.9 --enable-rust
+    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.9
 
 release_py3m_bullseye_debug:
   extends: .py_release
   when: manual
   script:
-    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9 --enable-rust
+    - ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9
 
 release_py3m_ubuntu_18.04:
   image: greenaddress/ubuntu_ci@sha256:183cfff276003c28c4388bebbbcc977b1e93f8dc85f1dbf2c02881053ad0c46f
   extends: .py_release
   script:
-    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --enable-rust
+    - ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6
 
 release_py3m_osx:
   extends: .py_release
@@ -103,7 +103,7 @@ release_py3m_osx:
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9 --enable-rust
+    - ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
 
 test_fedora_clang:
   image: greenaddress/fedora_ci@sha256:2eb6f59eecc77929e68a8fd50aa1a50bcb394b57df41c3049d976b159ec2abcb
@@ -112,13 +112,13 @@ test_fedora_clang:
   script:
     - python3 -m pip install virtualenv
     - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --clang --enable-rust
+    - ./tools/build.sh --clang
 
 test_clang:
   tags:
     - ga
   script:
-    - ./tools/build.sh --clang --enable-rust --enable-tests # REVERTME
+    - ./tools/build.sh --clang --enable-tests # REVERTME
     - ./build-clang/test_aes_gcm >/dev/null
     - ./build-clang/test_json
     - ./build-clang/test_networks
@@ -127,32 +127,32 @@ gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=true
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
 gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=true
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=true
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true --enable-rust
+    - JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=true
 
 test_rust:
   tags:
@@ -187,7 +187,7 @@ test_osx_clang:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --clang --lto=true --enable-rust
+    - ./tools/build.sh --clang --lto=true
 
 release_osx_ios:
   extends: .ios_release
@@ -195,7 +195,7 @@ release_osx_ios:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone --enable-rust
+    - ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone
 
 release_osx_ios_sim:
   extends: .ios_sim_release
@@ -203,7 +203,7 @@ release_osx_ios_sim:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone-sim --enable-rust
+    - ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone-sim
 
 release_osx_ios_debug:
   extends: .ios_release
@@ -212,7 +212,7 @@ release_osx_ios_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphone static --lto=false --buildtype=debug --install $PWD/gdk-iphone --enable-rust
+    - ./tools/build.sh --iphone static --lto=false --buildtype=debug --install $PWD/gdk-iphone
 
 release_osx_ios_sim_debug:
   extends: .ios_sim_release
@@ -221,7 +221,7 @@ release_osx_ios_sim_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone-sim --enable-rust
+    - ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone-sim
 
 test_osx_clang_ndk_armeabi-v7a:
   only:
@@ -232,7 +232,7 @@ test_osx_clang_ndk_armeabi-v7a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --ndk armeabi-v7a --enable-rust
+    - ./tools/build.sh --ndk armeabi-v7a
 
 test_osx_clang_ndk_arm64-v8a:
   only:
@@ -243,7 +243,7 @@ test_osx_clang_ndk_arm64-v8a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --ndk arm64-v8a --enable-rust
+    - ./tools/build.sh --ndk arm64-v8a
 
 test_osx_clang_ndk_x86:
   extends: .osx_test
@@ -251,7 +251,7 @@ test_osx_clang_ndk_x86:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --ndk x86 --enable-rust
+    - ./tools/build.sh --ndk x86
 
 test_osx_clang_ndk_x86_64:
   only:
@@ -262,7 +262,7 @@ test_osx_clang_ndk_x86_64:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - ./tools/build.sh --ndk x86_64 --enable-rust
+    - ./tools/build.sh --ndk x86_64
 
 test_windows_mingw_w64_cross:
   tags:
@@ -273,7 +273,7 @@ test_windows_mingw_w64_cross:
     paths:
     - build-windows-mingw-w64/src/libgreenaddress*
   script:
-    - ./tools/build.sh --mingw-w64 --enable-rust
+    - ./tools/build.sh --mingw-w64
 
 apidocs:
   tags:
