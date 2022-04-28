@@ -265,21 +265,8 @@ impl Account {
             let satoshi =
                 tx.my_balance_changes(&acc_store.all_txs, &acc_store.paths, &acc_store.unblinded);
 
-            // We define an incoming txs if there are more assets received by the wallet than spent
-            // when they are equal it's an outgoing tx because the special asset liquid BTC
-            // is negative due to the fee being paid
-            // TODO how do we label issuance tx?
-            let negatives = satoshi.iter().filter(|(_, v)| **v < 0).count();
-            let positives = satoshi.iter().filter(|(_, v)| **v > 0).count();
-            let (type_, user_signed) = if satoshi.is_empty() && self.network.liquid {
-                ("unblindable", false)
-            } else if tx.is_redeposit(&acc_store.paths, &acc_store.all_txs) {
-                ("redeposit", true)
-            } else if positives > negatives {
-                ("incoming", false)
-            } else {
-                ("outgoing", true)
-            };
+            let is_redeposit = tx.is_redeposit(&acc_store.paths, &acc_store.all_txs);
+            let (type_, user_signed) = tx.type_and_user_signed(&satoshi, is_redeposit);
 
             let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
                 store.spv_verification_status(self.num(), tx_id)

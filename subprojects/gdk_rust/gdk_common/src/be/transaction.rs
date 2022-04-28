@@ -56,6 +56,13 @@ impl BETransaction {
         }
     }
 
+    pub fn is_elements(&self) -> bool {
+        match self {
+            BETransaction::Bitcoin(_) => false,
+            BETransaction::Elements(_) => true,
+        }
+    }
+
     pub fn from_hex(hex: &str, id: NetworkId) -> Result<Self, crate::error::Error> {
         Self::deserialize(&Vec::<u8>::from_hex(hex)?, id)
     }
@@ -813,6 +820,24 @@ impl BETransaction {
                 // we don't want to see redeposited assets
                 return result.into_iter().filter(|&(_, v)| v != 0).collect();
             }
+        }
+    }
+
+    pub fn type_and_user_signed(&self, balances: &Balances, is_redeposit: bool) -> (String, bool) {
+        // We define an incoming txs if there are more assets received by the wallet than spent
+        // when they are equal it's an outgoing tx because the special asset liquid BTC
+        // is negative due to the fee being paid
+        // TODO how do we label issuance tx?
+        let negatives = balances.iter().filter(|(_, v)| **v < 0).count();
+        let positives = balances.iter().filter(|(_, v)| **v > 0).count();
+        if balances.is_empty() && self.is_elements() {
+            ("unblindable".to_string(), false)
+        } else if is_redeposit {
+            ("redeposit".to_string(), true)
+        } else if positives > negatives {
+            ("incoming".to_string(), false)
+        } else {
+            ("outgoing".to_string(), true)
         }
     }
 

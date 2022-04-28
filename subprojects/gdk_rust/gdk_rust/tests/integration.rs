@@ -212,7 +212,7 @@ fn create_tx_err(is_liquid: bool) {
     let wallet_sat = 5000;
     let wallet_address = test_session.get_receive_address(0).address;
     let txid = test_session.node_sendtoaddress(&wallet_address, wallet_sat, None);
-    test_session.wait_tx(vec![0], &txid, Some(wallet_sat), None);
+    test_session.wait_tx(vec![0], &txid, Some(wallet_sat), Some("incoming".to_string()));
     let mut create_opt = test_session.create_opt(
         &addr,
         wallet_sat,
@@ -449,12 +449,12 @@ fn coin_selection(is_liquid: bool) {
     let sat1 = 10_000;
     let addr1 = test_session.get_receive_address(0).address;
     let txid1 = test_session.node_sendtoaddress(&addr1, sat1, None);
-    test_session.wait_tx(vec![0], &txid1, Some(sat1), None);
+    test_session.wait_tx(vec![0], &txid1, Some(sat1), Some("incoming".to_string()));
     test_session.mine_block();
     let sat2 = 20_000;
     let addr2 = test_session.get_receive_address(0).address;
     let txid2 = test_session.node_sendtoaddress(&addr2, sat2, None);
-    test_session.wait_tx(vec![0], &txid2, Some(sat2), None);
+    test_session.wait_tx(vec![0], &txid2, Some(sat2), Some("incoming".to_string()));
     test_session.mine_block();
 
     // Pass 2 utxos, but use one
@@ -491,7 +491,7 @@ fn coin_selection(is_liquid: bool) {
     let sat5 = 30_000;
     let addr = test_session.get_receive_address(0).address;
     let txid = test_session.node_sendtoaddress(&addr, sat5, None);
-    test_session.wait_tx(vec![0], &txid, Some(sat5), None);
+    test_session.wait_tx(vec![0], &txid, Some(sat5), Some("incoming".to_string()));
     test_session.mine_block();
 
     // Pass 2 utxos and send both with "manual"
@@ -726,7 +726,7 @@ fn subaccounts(is_liquid: bool) {
     // Send some to account #1
     let sat = 98766;
     let txid = test_session.node_sendtoaddress(&acc1_address.address, sat, None);
-    test_session.wait_tx(vec![1], &txid, Some(sat), None);
+    test_session.wait_tx(vec![1], &txid, Some(sat), Some("incoming".to_string()));
     *balances.entry(1).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
     assert_eq!(test_session.session.get_subaccount(1).unwrap().bip44_discovered, true);
@@ -734,7 +734,7 @@ fn subaccounts(is_liquid: bool) {
     // Send some to account #2
     let sat = 67899;
     let txid = test_session.node_sendtoaddress(&acc2_address.address, sat, None);
-    test_session.wait_tx(vec![2], &txid, Some(sat), None);
+    test_session.wait_tx(vec![2], &txid, Some(sat), Some("incoming".to_string()));
     *balances.entry(2).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
     assert_eq!(test_session.session.get_subaccount(2).unwrap().bip44_discovered, true);
@@ -747,7 +747,7 @@ fn subaccounts(is_liquid: bool) {
         None,
         None,
     );
-    test_session.wait_tx(vec![1, 2], &txid, Some(sat - fee), None);
+    test_session.wait_tx(vec![1, 2], &txid, Some(sat - fee), Some("incoming".to_string()));
     *balances.entry(1).or_insert(0) += sat - fee;
     *balances.entry(2).or_insert(0) = 0;
     check_account_balances(&test_session, &balances);
@@ -756,7 +756,7 @@ fn subaccounts(is_liquid: bool) {
     // Send from account #1 to account #0 (p2wpkh -> p2sh-p2wpkh)
     let sat = 11555;
     let (txid, fee) = test_session.send_tx_from(1, &acc0_address.address, sat, None);
-    test_session.wait_tx(vec![0, 1], &txid, Some(sat), None);
+    test_session.wait_tx(vec![0, 1], &txid, Some(sat), Some("incoming".to_string()));
     *balances.entry(1).or_insert(0) -= sat + fee;
     *balances.entry(0).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
@@ -773,7 +773,7 @@ fn subaccounts(is_liquid: bool) {
     let sat = 1000;
     let (txid, fee) =
         test_session.send_tx_from(0, &test_session.get_receive_address(2).address, sat, None);
-    test_session.wait_tx(vec![0, 2], &txid, Some(sat + fee), None);
+    test_session.wait_tx(vec![0, 2], &txid, Some(sat + fee), Some("outgoing".to_string()));
     *balances.entry(0).or_insert(0) -= sat + fee;
     *balances.entry(2).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
@@ -809,7 +809,7 @@ fn subaccounts(is_liquid: bool) {
     test_session.get_receive_address(18);
     let (txid, fee) =
         test_session.send_tx_from(0, &test_session.get_receive_address(18).address, sat, None);
-    test_session.wait_tx(vec![0, 18], &txid, Some(sat + fee), None);
+    test_session.wait_tx(vec![0, 18], &txid, Some(sat + fee), Some("outgoing".to_string()));
     *balances.entry(0).or_insert(0) -= sat + fee;
     *balances.entry(18).or_insert(0) += sat;
     check_account_balances(&test_session, &balances);
@@ -828,7 +828,7 @@ fn subaccounts(is_liquid: bool) {
     let address = test_session.get_receive_address(34);
     let sat = 1_000;
     let (txid, fee) = test_session.send_tx_from(0, &address.address, sat, None);
-    test_session.wait_tx(vec![0, 34], &txid, Some(sat + fee), None);
+    test_session.wait_tx(vec![0, 34], &txid, Some(sat + fee), Some("outgoing".to_string()));
     *balances.entry(34).or_insert(0) += sat;
     *balances.entry(0).or_insert(0) -= sat + fee;
 
@@ -880,7 +880,7 @@ fn subaccounts(is_liquid: bool) {
     let address = test_session.get_receive_address(new_account);
     let sat = 1_040;
     let txid = test_session.node_sendtoaddress(&address.address, sat, None);
-    test_session.wait_tx(vec![new_account], &txid, Some(sat), None);
+    test_session.wait_tx(vec![new_account], &txid, Some(sat), Some("incoming".to_string()));
     *balances.entry(new_account).or_insert(0) += sat;
 
     assert!(new_session.get_subaccount(new_account).is_err());
@@ -1055,7 +1055,12 @@ fn labels() {
     let sat = 9876543;
     let acc1_address = test_session.get_receive_address(account1.account_num);
     let txid = test_session.node_sendtoaddress(&acc1_address.address, sat, None);
-    test_session.wait_tx(vec![account1.account_num], &txid, Some(sat), None);
+    test_session.wait_tx(
+        vec![account1.account_num],
+        &txid,
+        Some(sat),
+        Some("incoming".to_string()),
+    );
 
     // Send from account #1 to account #2 with a memo
     let mut create_opt = CreateTransaction::default();
@@ -1075,7 +1080,7 @@ fn labels() {
         vec![account1.account_num, account2.account_num],
         &txid,
         Some(sat + signed_tx.fee),
-        None,
+        Some("outgoing".to_string()),
     );
 
     // Memos should be set across all accounts
@@ -1105,7 +1110,7 @@ fn labels() {
         vec![account1.account_num, account2.account_num],
         &txid,
         Some(sat + signed_tx.fee),
-        None,
+        Some("outgoing".to_string()),
     );
 
     // Memos is not set across all accounts
@@ -1130,7 +1135,7 @@ fn rbf() {
     let sat = 9876543;
     let txid =
         test_session.node_sendtoaddress(&test_session.get_receive_address(1).address, sat, None);
-    test_session.wait_tx(vec![1], &txid, Some(sat), None);
+    test_session.wait_tx(vec![1], &txid, Some(sat), Some("incoming".to_string()));
 
     // Create transaction for replacement
     let mut create_opt = CreateTransaction::default();
@@ -1147,7 +1152,7 @@ fn rbf() {
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
     let txid1 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
-    test_session.wait_tx(vec![1], &txid1, Some(signed_tx.fee), None);
+    test_session.wait_tx(vec![1], &txid1, Some(signed_tx.fee), Some("redeposit".to_string()));
     let txitem = test_session.get_tx_from_list(1, &txid1);
     assert_eq!(txitem.fee_rate / 1000, 25);
 
@@ -1161,7 +1166,7 @@ fn rbf() {
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
     assert!(signed_tx.user_signed, "tx is not marked as user_signed");
     let txid2 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
-    test_session.wait_tx(vec![1], &txid2, Some(signed_tx.fee), None);
+    test_session.wait_tx(vec![1], &txid2, Some(signed_tx.fee), Some("redeposit".to_string()));
     let txitem = test_session.get_tx_from_list(1, &txid2);
     assert_eq!(txitem.fee_rate / 1000, 43);
     assert_eq!(txitem.memo, "poz qux");
@@ -1324,7 +1329,7 @@ fn spv_cross_validation_session() {
     let sat = 999999;
     let ap = test_session1.get_receive_address(0);
     let txid = test_session1.node_sendtoaddress(&ap.address, sat, None);
-    test_session1.wait_tx(vec![0], &txid, Some(sat), None);
+    test_session1.wait_tx(vec![0], &txid, Some(sat), Some("incoming".to_string()));
     let txitem = test_session1.get_tx_from_list(0, &txid);
     assert_eq!(txitem.block_height, 0);
     assert_eq!(txitem.spv_verified, "unconfirmed");

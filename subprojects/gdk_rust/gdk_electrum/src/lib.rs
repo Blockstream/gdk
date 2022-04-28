@@ -1524,17 +1524,19 @@ impl Syncer {
                                     // For transactions involving multiple subaccounts, the net effect for
                                     // the transaction is the one considering the first subaccount.
                                     // So replace it here.
-                                    ntf.satoshi = self.ntf_satoshi(&tx.1, &acc_store);
+                                    let (satoshi, type_) = self.ntf_satoshi_type(&tx.1, &acc_store);
+                                    ntf.satoshi = satoshi;
+                                    ntf.type_ = type_;
                                 }
                             }
                         }
                     } else {
-                        let satoshi = self.ntf_satoshi(&tx.1, &acc_store);
+                        let (satoshi, type_) = self.ntf_satoshi_type(&tx.1, &acc_store);
                         let ntf = TransactionNotification {
                             subaccounts: vec![account.num()],
                             txid: tx.0.into_bitcoin(),
                             satoshi,
-                            type_: None,
+                            type_,
                         };
                         updated_txs.insert(tx.0, ntf);
                     }
@@ -1561,16 +1563,22 @@ impl Syncer {
         Ok(updated_txs.into_values().collect())
     }
 
-    fn ntf_satoshi(&self, tx: &BETransaction, acc_store: &RawAccountCache) -> Option<u64> {
+    fn ntf_satoshi_type(
+        &self,
+        tx: &BETransaction,
+        acc_store: &RawAccountCache,
+    ) -> (Option<u64>, Option<String>) {
         if self.network.liquid {
             // For consistency with multisig do not set this
-            None
+            (None, None)
         } else {
             let balances =
                 tx.my_balance_changes(&acc_store.all_txs, &acc_store.paths, &acc_store.unblinded);
             let balance =
                 balances.get(&"btc".to_string()).expect("bitcoin balance always has btc key");
-            Some(balance.abs() as u64)
+            let is_redeposit = tx.is_redeposit(&acc_store.paths, &acc_store.all_txs);
+            let (type_, _) = tx.type_and_user_signed(&balances, is_redeposit);
+            (Some(balance.abs() as u64), Some(type_))
         }
     }
 
