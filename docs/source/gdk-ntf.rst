@@ -142,10 +142,10 @@ Notified when a new transaction is received by the wallet.
     }
   }
 
-:transaction/satoshi: Bitcoin multisig only. The net amount of the transaction (always positive).
+:transaction/satoshi: Bitcoin only. The net amount of the transaction (always positive).
 :transaction/subaccounts: The wallet subaccounts the transaction affects.
-:transaction/txhash: Multisig only. The txid of the transaction.
-:transaction/type: Multisig only. One of ``"incoming"``, ``"outgoing"`` or ``"redeposit"``.
+:transaction/txhash: The txid of the transaction.
+:transaction/type: Bitcoin only. One of ``"incoming"``, ``"outgoing"`` or ``"redeposit"``.
 
 
 .. _ntf-ticker:

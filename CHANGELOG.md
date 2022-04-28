@@ -5,6 +5,7 @@
 ### Fixed
 
 - Singlesig: In GA_get_transactions "inputs" and "outputs" elements, set "address" and "address_type" correctly; do not set Liquid fields if not Liquid or not unblindable.
+- Singlesig: align transaction notification with multisig.
 
 
 ## Release 0.0.52 - 2022-04-22
