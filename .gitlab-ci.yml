@@ -71,12 +71,6 @@ test_format:
   script:
     - ./tools/format.sh && git diff --exit-code
 
-test_gcc:
-  tags:
-    - ga
-  script:
-    - ./tools/build.sh --gcc
-
 release_py3m_bullseye:
   extends: .py_release
   script:
