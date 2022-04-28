@@ -2,6 +2,10 @@
 
 ## Release 0.0.53
 
+### Added
+
+- Add build support for Apple M1
+
 ### Changed
 
 - Changed transcation type from "unblindable" to "not unblindable" to reflect its actual meaning.

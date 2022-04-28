@@ -38,7 +38,15 @@ if [ "$(uname)" = "Darwin" ]; then
     GETOPT='/usr/local/opt/gnu-getopt/bin/getopt'
     export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/darwin-x86_64"
     export SED=gsed
-    export HOST_OS="x86_64-apple-darwin"
+    if [ "$(uname -m)" = "arm64" ]; then
+        export HOST_OS="aarch64-apple-darwin"
+        export SDK_ARCH="aarch64"
+        export SDK_CPU="arm64"
+    else
+        export SDK_ARCH="x86_64"
+        export SDK_CPU="x86_64"
+        export HOST_OS="x86_64-apple-darwin"
+    fi
 elif [ "$(uname)" = "FreeBSD" ]; then
     GETOPT='/usr/local/bin/getopt'
 fi
