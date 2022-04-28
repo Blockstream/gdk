@@ -1,10 +1,10 @@
 [wrap-file]
-directory = openssl-OpenSSL_1_1_1g
+directory = openssl-OpenSSL_1_1_1n
 
-source_url = https://github.com/openssl/openssl/archive/OpenSSL_1_1_1g.tar.gz
-source_filename = openssl-OpenSSL_1_1_1g.tar.gz
-source_hash = 281e4f13142b53657bd154481e18195b2d477572fdffa8ed1065f73ef5a19777
+source_url = https://github.com/openssl/openssl/archive/OpenSSL_1_1_1n.tar.gz
+source_filename = openssl-OpenSSL_1_1_1n.tar.gz
+source_hash = 6b2d2440ced8c802aaa61475919f0870ec556694c466ebea460e35ea2b14839e
 
 patch_url = file:./subprojects/openssl-meson/openssl-meson-281e4f13142b53657bd154481e18195b2d477572fdffa8ed1065f73ef5a19777.tar
 patch_filename = openssl-meson-281e4f13142b53657bd154481e18195b2d477572fdffa8ed1065f73ef5a19777.tar
-patch_hash = 93bb32d001c9419870c58fe0829e219ae95da54aebae86ced74e03fc6c09c708
+patch_hash = 47165ebdf4c5bcb34b55d4d29ab8c135a208d0fb315b4324b79ef73bd56dc1e3
