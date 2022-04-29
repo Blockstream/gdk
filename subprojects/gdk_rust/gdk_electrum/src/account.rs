@@ -276,7 +276,7 @@ impl Account {
 
             let rbf_optin = tx.rbf_optin();
             let can_rbf =
-                height.is_none() && rbf_optin && type_ != "incoming" && type_ != "unblindable";
+                height.is_none() && rbf_optin && type_ != "incoming" && type_ != "not unblindable";
 
             let inputs = tx
                 .previous_outputs()

@@ -2,6 +2,10 @@
 
 ## Release 0.0.53
 
+### Changed
+
+- Changed transcation type from "unblindable" to "not unblindable" to reflect its actual meaning.
+
 ### Fixed
 
 - Singlesig: In GA_get_transactions "inputs" and "outputs" elements, set "address" and "address_type" correctly; do not set Liquid fields if not Liquid or not unblindable.

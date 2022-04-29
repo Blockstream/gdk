@@ -831,7 +831,7 @@ impl BETransaction {
         let negatives = balances.iter().filter(|(_, v)| **v < 0).count();
         let positives = balances.iter().filter(|(_, v)| **v > 0).count();
         if balances.is_empty() && self.is_elements() {
-            ("unblindable".to_string(), false)
+            ("not unblindable".to_string(), false)
         } else if is_redeposit {
             ("redeposit".to_string(), true)
         } else if positives > negatives {

@@ -2196,7 +2196,7 @@ namespace sdk {
             if (is_liquid && unique_asset_ids.empty()) {
                 // Failed to unblind all relevant inputs and outputs. This
                 // might be a spam transaction.
-                tx_details["type"] = "unblindable";
+                tx_details["type"] = "not unblindable";
                 tx_details["can_rbf"] = false;
                 tx_details["can_cpfp"] = false;
             } else if (net_positive) {
