@@ -57,6 +57,7 @@ namespace sdk {
         int ct_bits() const;
         bool is_main_net() const;
         bool is_liquid() const;
+        bool is_development() const;
         bool is_electrum() const;
         bool use_tor() const;
         bool is_spv_enabled() const;

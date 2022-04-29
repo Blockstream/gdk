@@ -423,8 +423,7 @@ fn handle_session_call(
             .map(|v| json!(v))
             .map_err(Into::into),
 
-        "refresh_assets" => session
-            .refresh_assets(&serde_json::from_value(input.clone())?)
+        "refresh_assets" => gdk_registry::refresh_assets(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
         "get_unspent_outputs" => session
@@ -519,6 +518,7 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
         "init" => {
             let param: InitParam = serde_json::from_str(input)?;
             init_logging(LevelFilter::from_str(&param.log_level).unwrap_or(LevelFilter::Off));
+            gdk_registry::init(&param.registry_dir)?;
             // TODO: read more initialization params
             Ok(to_string(&json!("".to_string())))
         }
@@ -541,6 +541,10 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
         "spv_download_headers" => {
             let param: SPVDownloadHeadersParams = serde_json::from_str(input)?;
             Ok(to_string(&headers::download_headers(&param)?))
+        }
+        "refresh_assets" => {
+            let param: gdk_registry::RefreshAssetsParam = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_registry::refresh_assets(&param)?))
         }
         _ => Err(Error::MethodNotFound {
             method: method.to_string(),

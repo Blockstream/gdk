@@ -17,6 +17,7 @@ serde_cbor = "0.11.1"
 zeroize = "<1.4.0"
 aes-gcm-siv = "0.10.0"
 gdk-common = { path = "../gdk_common" }
+gdk-registry = { path = "../gdk_registry" }
 libc = "0.2"
 electrum-client = { version = "0.8.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }

@@ -79,35 +79,25 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
         nlohmann::json p = params;
-        p["proxy"] = get_proxy_settings()["proxy"];
+
+        nlohmann::json config = nlohmann::json::object();
+        config["proxy"] = get_proxy_settings()["proxy"];
+        config["url"] = m_net_params.get_registry_connection_string();
+        if (m_net_params.is_main_net()) {
+            config["network"] = "liquid";
+        } else if (m_net_params.is_development()) {
+            config["network"] = "elements-regtest";
+        } else {
+            config["network"] = "liquid-testnet";
+        }
+        p["config"] = config;
+
         nlohmann::json result;
         try {
             result = rust_call("refresh_assets", p, m_session);
         } catch (const std::exception& ex) {
             GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
             result = { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() } };
-        }
-        const std::array<const char*, 2> keys = { "assets", "icons" };
-        for (const auto& key : keys) {
-            if (params.value(key, false)) {
-                auto& data = result.at(key);
-                if (data.empty()) {
-                    // An empty result is a sentinel indicating that the initial
-                    // data fetch failed. Return the compiled-in data in this case.
-                    result[key] = std::move(get_inbuilt_data(m_net_params, key).at("body"));
-                    if (key == keys[0]) {
-                        json_expand_asset_info(result[key]);
-                    }
-                } else {
-                    // Filter out any bad keys returned by the asset registry
-                    json_filter_bad_asset_ids(data, key);
-                }
-            }
-        }
-        if (params.value("assets", false)) {
-            // Add the policy asset to asset data
-            const auto policy_asset = m_net_params.policy_asset();
-            result["assets"][policy_asset] = { { "asset_id", policy_asset }, { "name", "btc" } };
         }
         return result;
     }

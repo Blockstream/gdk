@@ -998,20 +998,6 @@ impl TestSession {
         spv_verify_tx(network, tip, txid, height, headers_to_download);
     }
 
-    pub fn refresh_assets(
-        &mut self,
-        refresh: bool,
-        assets: bool,
-        icons: bool,
-    ) -> Result<Value, Error> {
-        let opt = RefreshAssets {
-            icons,
-            assets,
-            refresh,
-        };
-        self.session.refresh_assets(&opt)
-    }
-
     pub fn utxos(&self, subaccount: u32) -> GetUnspentOutputs {
         let utxo_opt = GetUnspentOpt {
             subaccount: subaccount,

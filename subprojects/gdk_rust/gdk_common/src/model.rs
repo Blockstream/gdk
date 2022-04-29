@@ -18,6 +18,9 @@ use std::fmt::Display;
 #[derive(Debug, Deserialize)]
 pub struct InitParam {
     pub log_level: String,
+
+    #[serde(rename = "registrydir")]
+    pub registry_dir: String,
 }
 
 pub type Balances = HashMap<String, i64>;
@@ -684,35 +687,6 @@ pub struct UpdateAccountOpt {
 pub struct SetAccountHiddenOpt {
     pub subaccount: u32,
     pub hidden: bool,
-}
-
-/// {"icons":true,"assets":false,"refresh":false}
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(default)]
-pub struct RefreshAssets {
-    pub icons: bool,
-    pub assets: bool,
-    pub refresh: bool,
-}
-
-impl Default for RefreshAssets {
-    fn default() -> Self {
-        Self {
-            icons: false,
-            assets: false,
-            refresh: true,
-        }
-    }
-}
-
-impl RefreshAssets {
-    pub fn new(icons: bool, assets: bool, refresh: bool) -> Self {
-        RefreshAssets {
-            icons,
-            assets,
-            refresh,
-        }
-    }
 }
 
 /// see comment for struct Settings

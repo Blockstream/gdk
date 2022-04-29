@@ -4,9 +4,8 @@ use gdk_common::be::BETransaction;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, CreateTxUtxos, GetBalanceOpt,
-    GetNextAccountOpt, GetTransactionsOpt, GetUnspentOutputs, RefreshAssets, RenameAccountOpt,
-    SPVCommonParams, SPVDownloadHeadersParams, SPVVerifyTxResult, TransactionType,
-    UpdateAccountOpt, UtxoStrategy,
+    GetNextAccountOpt, GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVCommonParams,
+    SPVDownloadHeadersParams, SPVVerifyTxResult, TransactionType, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::{NetworkId, NetworkParameters};
@@ -961,61 +960,6 @@ fn coinbase(is_liquid: bool) {
 }
 
 #[test]
-fn registry_liquid() {
-    // Get data from asset registry
-
-    let is_liquid = true;
-    let mut test_session = setup_session(is_liquid, |_| ());
-    let policy_asset = test_session.network.policy_asset.clone().unwrap();
-
-    // Either assets or icons must be requested
-    assert!(test_session.refresh_assets(true, false, false).is_err());
-
-    // if refresh=false and no cache, return the sentinel (empty map)
-
-    // refresh false, asset true (no cache), icons true (no cache)
-    let value = test_session.refresh_assets(false, true, true).unwrap();
-    assert!(value.get("assets").unwrap().as_object().unwrap().is_empty());
-    assert!(value.get("icons").unwrap().as_object().unwrap().is_empty());
-
-    // refresh false, asset true (no cache), icons false (no cache)
-    let value = test_session.refresh_assets(false, true, false).unwrap();
-    assert!(value.get("assets").unwrap().as_object().unwrap().is_empty());
-    assert!(value.get("icons").is_none());
-
-    // refresh false, asset false (no cache), icons true (no cache)
-    let value = test_session.refresh_assets(false, false, true).unwrap();
-    assert!(value.get("assets").is_none());
-    assert!(value.get("icons").unwrap().as_object().unwrap().is_empty());
-
-    // refresh true, asset true, icons false (no cache)
-    let value = test_session.refresh_assets(true, true, false).unwrap();
-    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
-    assert!(value.get("icons").is_none());
-
-    // refresh false, asset false, icons true (no cache)
-    let value = test_session.refresh_assets(false, false, true).unwrap();
-    assert!(value.get("assets").is_none());
-    assert!(value.get("icons").unwrap().as_object().unwrap().is_empty());
-
-    // refresh true, asset true, icons true (no cache)
-    // {"asset": data, "icons": data}
-    let value = test_session.refresh_assets(true, true, true).unwrap();
-    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
-    assert!(value.get("icons").is_some());
-
-    // check 304
-    let value = test_session.refresh_assets(true, true, true).unwrap();
-    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
-    assert!(value.get("icons").is_some());
-
-    // cache read
-    let value = test_session.refresh_assets(false, true, true).unwrap();
-    assert!(value.get("assets").unwrap().get(&policy_asset).is_some());
-    assert!(value.get("icons").is_some());
-}
-
-#[test]
 fn not_unblindable_liquid() {
     let test_session = setup_session(true, |_| ());
 
@@ -1467,15 +1411,6 @@ fn test_tor() {
 
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
     auth_handler_login(&mut session, mnemonic);
-
-    let value = session
-        .refresh_assets(&RefreshAssets {
-            icons: false,
-            assets: true,
-            refresh: true,
-        })
-        .unwrap();
-    assert!(value.get("assets").is_some());
 
     assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
 

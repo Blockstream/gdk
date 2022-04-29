@@ -15,6 +15,7 @@ Passed to `GA_init` when initializing the library.
     {
         "datadir": "/path/to/store/data"
         "tordir": "/path/to/store/tor/data"
+        "registrydir": "/path/to/store/registry/data"
         "log_level": "info",
     }
 
@@ -24,6 +25,10 @@ Passed to `GA_init` when initializing the library.
          implementation is enabled in :ref:`net-params`. Note that each process
          using the library at the same time requires its own distinct directory.
          If not given, a subdirectory ``"tor"`` inside ``"datadir"`` is used.
+:registrydir: An optional directory for the registry data, used when the network
+         is liquid based. Note that each process using the library at the same
+         time requires its own distinct directory.
+         If not given, a subdirectory ``"registry"`` inside ``"datadir"`` is used.
 :log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
            ``"error"``, or ``"none"``.
 

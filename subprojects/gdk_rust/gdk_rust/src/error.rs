@@ -9,6 +9,7 @@ pub enum Error {
     Electrum(electrum::error::Error),
     Rates(ExchangeRateError),
     Common(CommonError),
+    Registry(gdk_registry::Error),
     MethodNotFound {
         method: String,
         in_session: bool,
@@ -55,6 +56,7 @@ impl Error {
             Error::Electrum(ref electrum) => format!("{}", electrum),
             Error::Rates(ref rates_err) => format!("{:?}", rates_err),
             Error::Common(ref err) => format!("{:?}", err),
+            Error::Registry(ref err) => format!("{:?}", err),
             Error::MethodNotFound {
                 in_session,
                 method,
@@ -91,5 +93,11 @@ impl From<ExchangeRateError> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Error {
         Error::JsonFrom(e)
+    }
+}
+
+impl From<gdk_registry::Error> for Error {
+    fn from(e: gdk_registry::Error) -> Error {
+        Error::Registry(e)
     }
 }

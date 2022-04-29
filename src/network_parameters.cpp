@@ -752,6 +752,7 @@ namespace sdk {
     int network_parameters::ct_bits() const { return m_details.at("ct_bits"); }
     bool network_parameters::is_main_net() const { return m_details.at("mainnet"); }
     bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
+    bool network_parameters::is_development() const { return m_details.at("development"); }
     bool network_parameters::is_electrum() const { return m_details.value("server_type", std::string()) == "electrum"; }
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
     bool network_parameters::is_spv_enabled() const { return m_details.at("spv_enabled"); }

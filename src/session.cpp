@@ -53,6 +53,10 @@ namespace sdk {
         if (!global_config.contains("log_level")) {
             global_config.emplace("log_level", "none");
         }
+        if (!global_config.contains("registrydir")) {
+            const std::string datadir = global_config["datadir"];
+            global_config.emplace("registrydir", datadir + "/registry");
+        }
 
         // Set up logging. Default to fatal logging, effectively 'none',
         // since we don't use fatal severity for logging.

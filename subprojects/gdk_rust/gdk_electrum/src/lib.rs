@@ -20,7 +20,6 @@ pub mod interface;
 mod notification;
 pub mod pin;
 pub mod pset;
-mod registry;
 pub mod spv;
 
 use crate::account::{
@@ -70,7 +69,6 @@ use electrum_client::{Client, ElectrumApi};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
-pub use registry::AssetEntry;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::Hasher;
@@ -1046,106 +1044,6 @@ impl ElectrumSession {
         // TODO implement
     }
 
-    pub fn refresh_assets(&self, details: &RefreshAssets) -> Result<Value, Error> {
-        info!("refresh_assets {:?}", details);
-
-        if !(details.icons || details.assets) {
-            return Err(Error::Generic(
-                "cannot call refresh assets with both icons and assets false".to_string(),
-            ));
-        }
-
-        let mut assets = Value::Null;
-        let mut icons = Value::Null;
-        let mut assets_last_modified = String::new();
-        let mut icons_last_modified = String::new();
-
-        if details.refresh {
-            let assets_handle = if details.assets {
-                let registry_policy = self
-                    .network
-                    .policy_asset
-                    .clone()
-                    .ok_or_else(|| Error::Generic("policy assets not available".into()))?;
-                let last_modified = self.store()?.read()?.cache.assets_last_modified.clone();
-                let base_url = self.network.registry_base_url()?;
-                let agent = self.build_request_agent()?;
-                Some(thread::spawn(move || {
-                    match call_assets(agent, base_url, registry_policy, last_modified) {
-                        Ok(assets) => Some(assets),
-                        Err(e) => {
-                            warn!("call_assets error {:?}", e);
-                            None
-                        }
-                    }
-                }))
-            } else {
-                None
-            };
-
-            let icons_handle = if details.icons {
-                let last_modified = self.store()?.read()?.cache.icons_last_modified.clone();
-                let base_url = self.network.registry_base_url()?;
-                let agent = self.build_request_agent()?;
-                Some(thread::spawn(move || call_icons(agent, base_url, last_modified).ok()))
-            } else {
-                None
-            };
-
-            if let Some(assets_handle) = assets_handle {
-                if let Ok(Some(assets_recv)) = assets_handle.join() {
-                    assets = assets_recv.0;
-                    assets_last_modified = assets_recv.1;
-                }
-            }
-
-            if let Some(icons_handle) = icons_handle {
-                if let Ok(Some(icons_recv)) = icons_handle.join() {
-                    icons = icons_recv.0;
-                    icons_last_modified = icons_recv.1;
-                }
-            }
-
-            let store = self.store()?;
-            let mut store_write = store.write()?;
-            if let Value::Object(_) = icons {
-                store_write.write_asset_icons(&icons)?;
-                store_write.cache.icons_last_modified = icons_last_modified;
-            }
-            if let Value::Object(_) = assets {
-                store_write.write_asset_registry(&assets)?;
-                store_write.cache.assets_last_modified = assets_last_modified;
-            }
-        }
-
-        let mut map = serde_json::Map::new();
-        if details.assets {
-            let assets_not_null = match assets {
-                Value::Object(_) => assets,
-                _ => self
-                    .store()?
-                    .read()?
-                    .read_asset_registry()?
-                    .unwrap_or_else(|| get_registry_sentinel()),
-            };
-            map.insert("assets".to_string(), assets_not_null);
-        }
-
-        if details.icons {
-            let icons_not_null = match icons {
-                Value::Object(_) => icons,
-                _ => self
-                    .store()?
-                    .read()?
-                    .read_asset_icons()?
-                    .unwrap_or_else(|| get_registry_sentinel()),
-            };
-            map.insert("icons".to_string(), icons_not_null);
-        }
-
-        Ok(Value::Object(map))
-    }
-
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
         let account = self.get_account(opt.subaccount)?;
@@ -1211,58 +1109,6 @@ pub fn keys_from_mnemonic(
     let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
     let master_blinding = asset_blinding_key_from_seed(&seed);
     Ok((master_xprv, master_xpub, master_blinding))
-}
-
-fn call_icons(
-    agent: ureq::Agent,
-    base_url: String,
-    last_modified: String,
-) -> Result<(Value, String), Error> {
-    let url = format!("{}/{}", base_url, "icons.json");
-    info!("START call_icons {}", &url);
-    let icons_response = agent
-        .get(&url)
-        .timeout(Duration::from_secs(30))
-        .set("If-Modified-Since", &last_modified)
-        .call()?;
-    let status = icons_response.status();
-    info!("call_icons {} returns {}", &url, status);
-    let last_modified = icons_response.header("Last-Modified").unwrap_or_default().to_string();
-    let value = icons_response.into_json()?;
-    info!("END call_icons {} {}", &url, status);
-    Ok((value, last_modified))
-}
-
-fn call_assets(
-    agent: ureq::Agent,
-    base_url: String,
-    registry_policy: String,
-    last_modified: String,
-) -> Result<(Value, String), Error> {
-    let url = format!("{}/{}", base_url, "index.json");
-    info!("START call_assets {}", &url);
-    let assets_response = agent
-        .get(&url)
-        .timeout(Duration::from_secs(30))
-        .set("If-Modified-Since", &last_modified)
-        .call()?;
-    let status = assets_response.status();
-    info!("call_assets {} returns {}", url, status);
-    let last_modified = assets_response.header("Last-Modified").unwrap_or_default().to_string();
-    let mut assets: HashMap<String, AssetEntry> = assets_response.into_json()?;
-    info!("downloaded assets map contains {} elements", assets.len());
-
-    let assets_len_before = assets.len();
-    assets.retain(|_k, v| v.verify().unwrap_or(false));
-    if assets_len_before != assets.len() {
-        warn!("{} assets are not verified", assets_len_before - assets.len());
-    }
-
-    let asset_policy = AssetEntry::new_policy(&registry_policy)?;
-    assets.insert(registry_policy, asset_policy);
-
-    info!("END call_assets {} {}", &url, status);
-    Ok((serde_json::to_value(&assets)?, last_modified))
 }
 
 impl Tipper {
@@ -1759,11 +1605,6 @@ fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
         thread::sleep(Duration::from_millis(500));
     }
     false
-}
-
-// Return a sentinel value that the caller should interpret as "no cached data"
-fn get_registry_sentinel() -> Value {
-    json!({})
 }
 
 #[cfg(feature = "testing")]
