@@ -53,6 +53,8 @@ namespace sdk {
         static std::string compute_hmac(byte_span_t hmac_key, byte_span_t data);
 
     private:
+        bool is_key_encrypted(uint32_t key) const;
+
         nlohmann::json m_data;
     };
 
