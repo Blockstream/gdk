@@ -9,6 +9,7 @@
 #include "memory.hpp"
 #include "network_parameters.hpp"
 #include "session.hpp"
+#include "signer.hpp"
 #include "sqlite3/sqlite3.h"
 #include "utils.hpp"
 
@@ -16,6 +17,11 @@ namespace ga {
 namespace sdk {
 
     namespace {
+
+        // Cache types, each has a different filename for the cache file
+        constexpr uint32_t CT_SW = 0; // Software wallet cache
+        constexpr uint32_t CT_HW = 1; // Hardware wallet cache
+        constexpr uint32_t CT_WO = 2; // Watch-only wallet cache
 
         constexpr int VERSION = 1;
         constexpr int MINOR_VERSION = 0x1;
@@ -452,14 +458,14 @@ namespace sdk {
         m_require_write = false;
     }
 
-    void cache::load_db(byte_span_t encryption_key, const uint32_t type)
+    void cache::load_db(byte_span_t encryption_key, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(!encryption_key.empty());
 
-        m_type = type;
+        m_type = signer->is_watch_only() ? CT_WO : signer->is_hardware() ? CT_HW : CT_SW;
         const auto intermediate = hmac_sha512(encryption_key, ustring_span(m_network_name));
         // Note: the line below means the file name is endian dependant
-        const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&type), sizeof(m_type));
+        const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&m_type), sizeof(m_type));
         m_db_name = b2h(gsl::make_span(hmac_sha512(intermediate, type_span).data(), 16));
         m_encryption_key = sha256(encryption_key);
 
@@ -489,7 +495,7 @@ namespace sdk {
             } else {
                 // Loaded DB successfully
                 if (VERSION == 1) {
-                    if (m_is_liquid) {
+                    if (m_is_liquid && !signer->is_watch_only()) {
                         // Remove old assets keys if present. Note we don't bother
                         // marking dirty here, since that would force a write on every
                         // DB load. The DB will be saved at some point during normal

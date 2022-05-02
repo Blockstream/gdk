@@ -1147,7 +1147,7 @@ namespace sdk {
         const auto tmp_span = gsl::make_span(tmp_key);
         set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
         set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
-        m_cache->load_db(m_local_encryption_key.get(), signer->is_hardware() ? 1 : 0);
+        m_cache->load_db(m_local_encryption_key.get(), signer);
         // Save the cache in case we carried forward data from a previous version
         m_cache->save_db(); // No-op if unchanged
         load_signer_xpubs(locker, signer);

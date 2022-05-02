@@ -13,6 +13,7 @@ struct sqlite3_stmt;
 namespace ga {
 namespace sdk {
     class network_parameters;
+    class signer;
 
     struct cache final {
         using sqlite3_ptr = std::shared_ptr<struct ::sqlite3>;
@@ -64,7 +65,7 @@ namespace sdk {
         uint32_t get_latest_scriptpubkey_pointer(uint32_t subaccount);
 
         void save_db();
-        void load_db(byte_span_t encryption_key, const uint32_t type);
+        void load_db(byte_span_t encryption_key, std::shared_ptr<signer> signer);
 
         void update_to_latest_minor_version();
 
