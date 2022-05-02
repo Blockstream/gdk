@@ -230,11 +230,11 @@ GDK_API int GA_login_user(
     struct GA_session* session, const GA_json* hw_device, const GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Set a watch-only login for a logged-in user wallet.
+ * Set or disable a watch-only login for a logged-in user wallet.
  *
  * :param session: The session to use.
- * :param username: The username.
- * :param password: The password.
+ * :param username: The watch-only username to login with, or a blank string to disable.
+ * :param password: The watch-only password to login with, or a blank string to disable.
  */
 GDK_API int GA_set_watch_only(struct GA_session* session, const char* username, const char* password);
 
