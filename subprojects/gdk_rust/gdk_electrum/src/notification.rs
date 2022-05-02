@@ -1,4 +1,5 @@
 use crate::State;
+use gdk_common::be::BEBlockHeader;
 use gdk_common::wally::make_str;
 use gdk_common::{be::BEBlockHash, model::Settings, model::TransactionType};
 use log::{info, warn};
@@ -25,6 +26,9 @@ pub struct Notification {
     #[serde(skip_serializing_if = "Option::is_none")]
     transaction: Option<TransactionNotification>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    block: Option<BlockNotification>,
+
     event: Kind,
 }
 
@@ -33,6 +37,7 @@ pub struct Notification {
 enum Kind {
     Network,
     Transaction,
+    Block,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -65,6 +70,18 @@ pub struct TransactionNotification {
     pub type_: Option<TransactionType>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct BlockNotification {
+    /// The height of the block.
+    pub block_height: u32,
+
+    /// The hash of the block.
+    pub block_hash: bitcoin::BlockHash,
+
+    /// The hash of the block prior to this block
+    pub previous_hash: bitcoin::BlockHash,
+}
+
 impl Notification {
     pub fn new_network(current: State, next: State) -> Self {
         Notification {
@@ -74,6 +91,7 @@ impl Notification {
                 wait_ms: 0,
             }),
             transaction: None,
+            block: None,
             event: Kind::Network,
         }
     }
@@ -82,7 +100,34 @@ impl Notification {
         Notification {
             network: None,
             transaction: Some(ntf.clone()),
+            block: None,
             event: Kind::Transaction,
+        }
+    }
+
+    pub fn new_block_from_hashes(height: u32, hash: &BEBlockHash, prev_hash: &BEBlockHash) -> Self {
+        Notification {
+            network: None,
+            transaction: None,
+            block: Some(BlockNotification {
+                block_height: height,
+                block_hash: hash.into_bitcoin(),
+                previous_hash: prev_hash.into_bitcoin(),
+            }),
+            event: Kind::Block,
+        }
+    }
+
+    pub fn new_block_from_header(height: u32, header: &BEBlockHeader) -> Self {
+        Notification {
+            network: None,
+            transaction: None,
+            block: Some(BlockNotification {
+                block_height: height,
+                block_hash: header.block_hash().into_bitcoin(),
+                previous_hash: header.prev_block_hash().into_bitcoin(),
+            }),
+            event: Kind::Block,
         }
     }
 }
@@ -118,6 +163,14 @@ impl NativeNotif {
         let data =
             json!({"block":{"block_height":height,"block_hash": hash.to_hex()},"event":"block"});
         self.notify(data);
+    }
+
+    pub fn block_from_hashes(&self, height: u32, hash: &BEBlockHash, prev_hash: &BEBlockHash) {
+        self.notify(Notification::new_block_from_hashes(height, hash, prev_hash));
+    }
+
+    pub fn block_from_header(&self, height: u32, header: &BEBlockHeader) {
+        self.notify(Notification::new_block_from_header(height, &header));
     }
 
     pub fn settings(&self, settings: &Settings) {
@@ -185,6 +238,13 @@ mod test {
             satoshi: None,
             type_: None,
         });
+        assert_eq!(expected, serde_json::to_value(&obj).unwrap());
+    }
+
+    #[test]
+    fn test_block_json() {
+        let expected = json!({"block_height":0,"block_hash":"0000000000000000000000000000000000000000000000000000000000000000","previous_hash":"0000000000000000000000000000000000000000000000000000000000000000"});
+        let obj = BlockNotification::default();
         assert_eq!(expected, serde_json::to_value(&obj).unwrap());
     }
 }
