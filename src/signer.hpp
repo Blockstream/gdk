@@ -34,6 +34,10 @@ namespace sdk {
         static const std::array<uint32_t, 1> CLIENT_SECRET_PATH;
         static const std::array<unsigned char, 8> PASSWORD_SALT;
         static const std::array<unsigned char, 8> BLOB_SALT;
+        static const std::array<unsigned char, 8> WATCH_ONLY_SALT;
+        static const std::array<unsigned char, 8> WO_SEED_U;
+        static const std::array<unsigned char, 8> WO_SEED_P;
+        static const std::array<unsigned char, 8> WO_SEED_K;
 
         using cache_t = std::map<std::vector<uint32_t>, std::string>;
 

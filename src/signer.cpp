@@ -119,6 +119,18 @@ namespace sdk {
     const std::array<unsigned char, 8> signer::BLOB_SALT = {
         { 0x62, 0x6c, 0x6f, 0x62, 0x73, 0x61, 0x6c, 0x74 } // 'blobsalt'
     };
+    const std::array<unsigned char, 8> signer::WATCH_ONLY_SALT = {
+        { 0x5f, 0x77, 0x6f, 0x5f, 0x73, 0x61, 0x6c, 0x74 } // '_wo_salt'
+    };
+    const std::array<unsigned char, 8> signer::WO_SEED_U = {
+        { 0x01, 0x77, 0x6f, 0x5f, 0x75, 0x73, 0x65, 0x72 } // [1]'wo_user'
+    };
+    const std::array<unsigned char, 8> signer::WO_SEED_P = {
+        { 0x02, 0x77, 0x6f, 0x5f, 0x70, 0x61, 0x73, 0x73 } // [2]'wo_pass'
+    };
+    const std::array<unsigned char, 8> signer::WO_SEED_K = {
+        { 0x03, 0x77, 0x6f, 0x5f, 0x62, 0x6C, 0x6f, 0x62 } // [3]'wo_blob'
+    };
 
     signer::signer(
         const network_parameters& net_params, const nlohmann::json& hw_device, const nlohmann::json& credentials)

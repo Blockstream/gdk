@@ -93,6 +93,18 @@ namespace sdk {
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
 
+    // Compute watch only username and password for client blob watch only login
+    std::pair<std::string, std::string> get_watch_only_credentials(
+        const std::string& username, const std::string& password);
+
+    // Encrypt the client blob key to the watch only username and password, return as hex
+    std::string encrypt_wo_blob_key(
+        const pbkdf2_hmac256_t& blob_key, const std::string& username, const std::string& password);
+
+    // Decrypt the encrypted client blob key with the watch only username and password
+    pbkdf2_hmac256_t decrypt_wo_blob_key(
+        const std::string& wo_blob_key_hex, const std::string& username, const std::string& password);
+
     // Encryption
     std::string aes_cbc_decrypt(const pbkdf2_hmac256_t& key, const std::string& ciphertext);
     std::string aes_cbc_encrypt(const pbkdf2_hmac256_t& key, const std::string& plaintext);

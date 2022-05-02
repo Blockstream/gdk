@@ -1144,6 +1144,13 @@ namespace sdk {
     void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
+        set_local_encryption_keys_impl(locker, public_key, signer);
+    }
+
+    void ga_session::set_local_encryption_keys_impl(
+        locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         if (!set_optional_member(m_local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT))) {
             // Already set, we are re-logging in with the same credentials
@@ -1307,21 +1314,95 @@ namespace sdk {
         }
     }
 
+    // Idempotent
+    nlohmann::json ga_session::auth_watch_only(session_impl::locker_t& locker, const std::string& username,
+        const std::string& password, const std::string& user_agent, bool with_blob)
+    {
+        try {
+            nlohmann::json args = { { "username", username }, { "password", password }, { "minimal", "true" } };
+            auto ret
+                = m_wamp->call(locker, "login.watch_only_v2", "custom", mp_cast(args).get(), user_agent, with_blob);
+            return wamp_cast_json(ret);
+        } catch (const autobahn::call_error& e) {
+            const auto details = get_error_details(e);
+            if (with_blob && boost::algorithm::starts_with(details.second, "User not found")) {
+                return {};
+            }
+            throw;
+        }
+    }
+
     nlohmann::json ga_session::login_watch_only(std::shared_ptr<signer> signer)
     {
         const bool is_initial_login = set_signer(signer);
 
         locker_t locker(m_mutex);
 
+        const bool is_liquid = m_net_params.is_liquid();
         const auto& credentials = m_signer->get_credentials();
-        const std::map<std::string, std::string> args = { { "username", credentials.at("username") },
-            { "password", credentials.at("password") }, { "minimal", "true" } };
+        const std::string username = credentials.at("username");
+        const std::string password = credentials.at("password");
+        std::map<std::string, std::string> args;
         const auto user_agent = get_user_agent(true, m_user_agent);
-        auto login_data = wamp_cast_json(m_wamp->call(locker, "login.watch_only_v2", "custom", args, user_agent));
+
+        // First, try using client blob
+        const auto u_p = get_watch_only_credentials(username, password);
+        auto login_data = auth_watch_only(locker, u_p.first, u_p.second, user_agent, true);
+        if (login_data.empty()) {
+            // Client blob login failed: try a non-blob watch only login
+            if (is_liquid) {
+                // Liquid doesn't support non-blob watch only
+                throw user_error(res::id_user_not_found_or_invalid);
+            }
+            login_data = auth_watch_only(locker, username, password, user_agent, false);
+        }
 
         if (!is_initial_login) {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
+        }
+
+        pub_key_t encryption_key;
+        {
+            // Generate a cache encryption key from the username and password
+            const std::string usr_pwd = username + password;
+            auto key_bytes = sha256(ustring_span(usr_pwd));
+            std::copy(key_bytes.begin(), key_bytes.end(), encryption_key.begin() + 1);
+            encryption_key[0] = 2;
+            // FIXME: Check for valid pubkey
+        }
+
+        set_local_encryption_keys_impl(locker, encryption_key, signer);
+        const std::string wo_blob_key_hex = json_get_value(login_data, "wo_blob_key");
+        if (!wo_blob_key_hex.empty()) {
+            auto decrypted_key = decrypt_wo_blob_key(wo_blob_key_hex, username, password);
+            set_optional_member(m_blob_aes_key, std::move(decrypted_key));
+        }
+
+        const std::string server_hmac = login_data["client_blob_hmac"];
+        bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+
+        if (is_blob_on_server && m_blob_aes_key != boost::none) {
+            // The server has a blob for this wallet. If we havent got an
+            // up to date copy of it loaded yet, do so.
+            if (!is_initial_login && m_blob_hmac != server_hmac) {
+                // Re-login, and our blob has been updated on the server: re-load below
+                m_blob_hmac.clear();
+            }
+            if (m_blob_hmac.empty()) {
+                // No cached blob, or our cached blob is out of date:
+                // Load the latest blob from the server and cache it
+                load_client_blob(locker, true);
+            }
+            GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
+        }
+
+        if (is_liquid) {
+            std::string blinding_key_hex;
+            bool denied;
+            std::tie(blinding_key_hex, denied) = get_cached_master_blinding_key();
+            GDK_RUNTIME_ASSERT(!blinding_key_hex.empty() && !denied);
+            m_signer->set_master_blinding_key(blinding_key_hex);
         }
 
         constexpr bool watch_only = true;
@@ -1443,7 +1524,29 @@ namespace sdk {
     // Idempotent
     bool ga_session::set_watch_only(const std::string& username, const std::string& password)
     {
-        return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", username, password));
+        std::string wo_blob_key_hex;
+        {
+            locker_t locker(m_mutex);
+            if (m_net_params.is_liquid()) {
+                GDK_RUNTIME_ASSERT_MSG(
+                    m_signer->has_master_blinding_key(), "Master blinding key must be exported to enable watch-only");
+                if (m_blob_aes_key == boost::none) {
+                    // The wallet doesn't have a client blob: can only happen
+                    // when a 2FA reset is in progress and the wallet was
+                    // created before client blobs were enabled.
+                    throw user_error(res::id_twofactor_reset_in_progress);
+                }
+            }
+            if (m_blob_aes_key != boost::none) {
+                // Enable client blob watch only
+                wo_blob_key_hex = encrypt_wo_blob_key(m_blob_aes_key.get(), username, password);
+            }
+        }
+        std::pair<std::string, std::string> u_p{ username, password };
+        if (!wo_blob_key_hex.empty()) {
+            u_p = get_watch_only_credentials(username, password);
+        }
+        return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
     }
 
     std::string ga_session::get_watch_only_username()

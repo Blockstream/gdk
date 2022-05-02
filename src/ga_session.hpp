@@ -175,6 +175,8 @@ namespace sdk {
         void reset_cached_session_data(locker_t& locker);
         void delete_reorg_block_txs(locker_t& locker, bool from_latest_cached);
         void reset_all_session_data(bool in_dtor);
+        void set_local_encryption_keys_impl(
+            locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
         void load_client_blob(locker_t& locker, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
@@ -195,6 +197,8 @@ namespace sdk {
         bool is_twofactor_reset_active(session_impl::locker_t& locker);
         nlohmann::json set_twofactor_reset_config(const nlohmann::json& config);
         void set_enabled_twofactor_methods(locker_t& locker);
+        nlohmann::json auth_watch_only(locker_t& locker, const std::string& username, const std::string& password,
+            const std::string& user_agent, bool with_blob);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_initial_login);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);

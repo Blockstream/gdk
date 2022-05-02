@@ -252,6 +252,14 @@ namespace sdk {
         static const std::array<const char*, 6> SPV_STATUS_NAMES
             = { "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed" };
         static constexpr size_t SPV_STATUS_DISABLED = 3;
+
+        void write_length32(uint32_t len, std::vector<unsigned char>::iterator it)
+        {
+            *it++ = (unsigned char)(len >> 0);
+            *it++ = (unsigned char)(len >> 8);
+            *it++ = (unsigned char)(len >> 16);
+            *it = (unsigned char)(len >> 24);
+        }
     } // namespace
 
     uint32_t spv_verify_tx(const nlohmann::json& details)
@@ -362,6 +370,52 @@ namespace sdk {
         ciphertext.insert(ciphertext.end(), salt.begin(), salt.end());
 
         return bip39_mnemonic_from_bytes(ciphertext);
+    }
+
+    static std::vector<unsigned char> get_wo_entropy(const std::string& username, const std::string& password)
+    {
+        // Initial entropy is scrypt(len(username) + username + password, salt)
+        const std::string u_p = username + password;
+        std::vector<unsigned char> entropy;
+        entropy.resize(sizeof(uint32_t) + u_p.size());
+        write_length32(username.size(), entropy.begin());
+        std::copy(u_p.begin(), u_p.end(), entropy.begin() + sizeof(uint32_t));
+        return scrypt(entropy, signer::WATCH_ONLY_SALT);
+    }
+
+    std::pair<std::string, std::string> get_watch_only_credentials(
+        const std::string& username, const std::string& password)
+    {
+        if (username.empty() && password.empty()) {
+            return { std::string{}, std::string{} };
+        }
+        // Generate the watch only server username/password. Unlike non-blob
+        // watch only logins, we don't want the server to know the original
+        // username/password, since we use these to encrypt the client blob
+        // decryption key.
+        const auto entropy = get_wo_entropy(username, password);
+        const auto u_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_U);
+        const auto p_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_P);
+        return { b2h(u_blob), b2h(p_blob) };
+    }
+
+    static pbkdf2_hmac256_t get_wo_blob_aes_key(const std::string& username, const std::string& password)
+    {
+        const auto entropy = get_wo_entropy(username, password);
+        return pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_K);
+    }
+
+    std::string encrypt_wo_blob_key(
+        const pbkdf2_hmac256_t& blob_key, const std::string& username, const std::string& password)
+    {
+        return aes_cbc_encrypt(get_wo_blob_aes_key(username, password), b2h(blob_key));
+    }
+
+    pbkdf2_hmac256_t decrypt_wo_blob_key(
+        const std::string& wo_blob_key_hex, const std::string& username, const std::string& password)
+    {
+        constexpr size_t size = std::tuple_size<pbkdf2_hmac256_t>::value;
+        return h2b_array<size>(aes_cbc_decrypt(get_wo_blob_aes_key(username, password), wo_blob_key_hex));
     }
 
     // Parse a bitcoin uri as described in bip21/72 and return the components
@@ -568,10 +622,7 @@ namespace sdk {
         // Initialise result with supplied prefix bytes and decompressed length
         result.resize(prefix_len + sizeof(uint32_t) + compressed_len);
         std::copy(prefix.begin(), prefix.end(), result.begin());
-        result[prefix_len + 0] = (unsigned char)(bytes_len >> 0);
-        result[prefix_len + 1] = (unsigned char)(bytes_len >> 8);
-        result[prefix_len + 2] = (unsigned char)(bytes_len >> 16);
-        result[prefix_len + 3] = (unsigned char)(bytes_len >> 24);
+        write_length32(bytes_len, result.begin() + prefix_len);
         // Add the compressed data
         int z_result = compress2(result.data() + prefix_len + sizeof(uint32_t), &compressed_len, bytes.data(),
             bytes_len, Z_BEST_COMPRESSION);
