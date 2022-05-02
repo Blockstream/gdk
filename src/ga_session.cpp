@@ -1055,6 +1055,12 @@ namespace sdk {
             "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
 
         m_wamp->subscribe("com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
+            const uint64_t seq = event.at("sequence");
+            if (seq != 0) {
+                // Ignore client blobs whose sequence numbers we don't understand
+                GDK_LOG_SEV(log_level::warning) << "Unexpected client blob sequence " << seq;
+                return;
+            }
             locker_t notify_locker(m_mutex);
             // Check the hmac as we will be notified of our own changes
             // when more than one session is logged in at a time.
