@@ -1863,7 +1863,13 @@ namespace sdk {
             const bool is_external = !json_get_value(utxo, "private_key").empty();
 
             auto address_type_p = utxo.find("address_type");
-            if (address_type_p == utxo.end()) {
+            if (is_liquid && utxo.value("error", std::string()) == "missing blinding nonce") {
+                // UTXO was previously processed but could not be unblinded: try again
+                updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
+                if (!utxo.contains("error")) {
+                    utxo.erase("value"); // Only remove value if we unblinded it
+                }
+            } else if (address_type_p == utxo.end()) {
                 // This UTXO has not been processed yet
                 const script_type utxo_script_type = utxo["script_type"];
 
@@ -1889,7 +1895,6 @@ namespace sdk {
                     }
                     break;
                 }
-                utxo["address_type"] = addr_type;
 
                 if (is_external) {
                     json_rename_key(utxo, "tx_hash", "txhash");
@@ -1920,9 +1925,7 @@ namespace sdk {
                 }
                 json_add_if_missing(utxo, "subtype", 0u);
                 json_add_if_missing(utxo, "is_internal", false);
-            } else if (is_liquid && utxo.value("error", std::string()) == "missing blinding nonce") {
-                // UTXO was previously processed but could not be unblinded: try again
-                updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
+                utxo["address_type"] = addr_type;
             }
         }
 
