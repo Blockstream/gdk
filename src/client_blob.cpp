@@ -16,6 +16,7 @@ namespace sdk {
         constexpr uint32_t TX_MEMOS = 2; // Transaction memos
         constexpr uint32_t SA_HIDDEN = 3; // Subaccounts that are hidden
         constexpr uint32_t SLIP77KEY = 4; // Master blinding key
+        constexpr uint32_t WATCHONLY = 5; // Watch-only data
 
         // blob prefix: 1 byte version, 3 reserved bytes
         static const std::array<unsigned char, 4> PREFIX{ 1, 0, 0, 0 };
@@ -103,6 +104,29 @@ namespace sdk {
     bool client_blob::is_master_blinding_key_denied() const
     {
         return json_get_value(m_data[SLIP77KEY], "denied", false); // False if not explicitly denied
+    }
+
+    bool client_blob::set_watch_only_data(const std::string& username, const nlohmann::json& xpubs)
+    {
+        auto& wo = m_data[WATCHONLY];
+        json_add_non_default(wo, "username", username);
+        json_add_non_default(wo, "xpubs", xpubs);
+        return increment_version(m_data);
+    }
+
+    std::string client_blob::get_watch_only_username() const
+    {
+        return json_get_value(m_data[WATCHONLY], "username"); // Blank if unset
+    }
+
+    nlohmann::json client_blob::get_xpubs() const
+    {
+        auto& wo = m_data[WATCHONLY];
+        auto xpubs_p = wo.find("xpubs");
+        if (xpubs_p != wo.end()) {
+            return *xpubs_p;
+        }
+        return {};
     }
 
     bool client_blob::is_zero_hmac(const std::string& hmac) { return hmac == ZERO_HMAC_BASE64; }

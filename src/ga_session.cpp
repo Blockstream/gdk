@@ -238,6 +238,18 @@ namespace sdk {
             np.erase("wamp_cert_roots");
             return { { "network", std::move(np) } };
         }
+
+        // Get cached xpubs from a signer as a cacheable json format
+        static nlohmann::json get_signer_xpubs_json(std::shared_ptr<signer> signer)
+        {
+            const auto paths_and_xpubs = signer->get_cached_bip32_xpubs();
+            nlohmann::json xpubs_json;
+            for (auto& item : paths_and_xpubs) {
+                // Note that we cache the values inverted as the master key is empty
+                xpubs_json.emplace(item.second, item.first);
+            }
+            return xpubs_json;
+        }
     } // namespace
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -513,10 +525,10 @@ namespace sdk {
             const std::string recovery_chain_code = json_get_value(sa, "2of3_backup_chaincode");
             const std::string recovery_pub_key = json_get_value(sa, "2of3_backup_pubkey");
             const std::string recovery_xpub_sig = json_get_value(sa, "2of3_backup_xpub_sig");
-            std::string recovery_xpub = std::string();
+            std::string recovery_xpub;
             // TODO: fail if *any* 2of3 subaccount has missing or invalid
             //       signature of the corresponding backup/recovery key.
-            if (!recovery_xpub_sig.empty() && !watch_only) {
+            if (!recovery_xpub_sig.empty() && !root_bip32_xpub.empty()) {
                 recovery_xpub = json_get_value(sa, "2of3_backup_xpub");
                 GDK_RUNTIME_ASSERT(make_xpub(recovery_xpub) == make_xpub(recovery_chain_code, recovery_pub_key));
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
@@ -993,6 +1005,7 @@ namespace sdk {
             for (const auto& m : tx_memos["memos"].items()) {
                 m_blob.set_tx_memo(m.key(), m.value());
             }
+
             m_blob.set_user_version(1); // Initial version
 
             // If this save fails due to a race, m_blob_hmac will be empty below
@@ -1397,6 +1410,21 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
         }
 
+        std::string root_bip32_xpub;
+        if (!m_blob_hmac.empty()) {
+            // Load any locally cached xpubs, then from the client blob.
+            // If the client blob values differ from the cached values,
+            // cache_bip32_xpub will throw.
+            load_signer_xpubs(locker, m_signer);
+            const auto blob_xpubs = m_blob.get_xpubs();
+            for (auto& item : blob_xpubs.items()) {
+                // Inverted: See encache_signer_xpubs()
+                m_signer->cache_bip32_xpub(item.value(), item.key());
+            }
+            root_bip32_xpub = m_signer->get_bip32_xpub({});
+            GDK_RUNTIME_ASSERT(!root_bip32_xpub.empty());
+        }
+
         if (is_liquid) {
             std::string blinding_key_hex;
             bool denied;
@@ -1406,7 +1434,19 @@ namespace sdk {
         }
 
         constexpr bool watch_only = true;
-        return on_post_login(locker, login_data, std::string(), watch_only, is_initial_login);
+        auto ret = on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
+
+        // Note that locker is unlocked at this point
+        if (m_blob_aes_key != boost::none) {
+            const auto subaccount_pointers = get_subaccount_pointers();
+            std::vector<std::string> bip32_xpubs;
+            bip32_xpubs.reserve(subaccount_pointers.size());
+            for (const auto& pointer : subaccount_pointers) {
+                bip32_xpubs.emplace_back(m_signer->get_bip32_xpub(get_subaccount_root_path(pointer)));
+            }
+            register_subaccount_xpubs(subaccount_pointers, bip32_xpubs);
+        }
+        return ret;
     }
 
     void ga_session::register_subaccount_xpubs(
@@ -1538,6 +1578,10 @@ namespace sdk {
                 }
             }
             if (m_blob_aes_key != boost::none) {
+                // Set watch only data
+                const auto xpubs = get_signer_xpubs_json(m_signer);
+                update_blob(locker, std::bind(&client_blob::set_watch_only_data, &m_blob, username, xpubs));
+
                 // Enable client blob watch only
                 wo_blob_key_hex = encrypt_wo_blob_key(m_blob_aes_key.get(), username, password);
             }
@@ -1551,6 +1595,20 @@ namespace sdk {
 
     std::string ga_session::get_watch_only_username()
     {
+        {
+            locker_t locker(m_mutex);
+            if (m_blob_aes_key != boost::none) {
+                // Client blob watch only; return from the client blob,
+                // since the server doesn't know our real username.
+                const auto username = m_blob.get_watch_only_username();
+                if (m_watch_only || !username.empty()) {
+                    return username;
+                }
+                // If the username is blank, attempt to fetch from the
+                // server, we have a non-client blob watch only (or no
+                // watch only set up).
+            }
+        }
         auto result = wamp_cast_json(m_wamp->call("addressbook.get_sync_status"));
         return json_get_value(result, "username");
     }
@@ -1750,12 +1808,7 @@ namespace sdk {
     void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
-        auto paths_and_xpubs = signer->get_cached_bip32_xpubs();
-        nlohmann::json cached_xpubs;
-        for (auto& item : paths_and_xpubs) {
-            // Note that we cache the values inverted as the master key is empty
-            cached_xpubs.emplace(item.second, item.first);
-        }
+        const auto cached_xpubs = get_signer_xpubs_json(signer);
         m_cache->upsert_key_value("xpubs", nlohmann::json::to_msgpack(cached_xpubs));
         m_cache->save_db();
     }
