@@ -1087,15 +1087,17 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         auto ret = wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
         const auto server_blob = base64_to_bytes(ret["blob"]);
-        // Verify the servers hmac
-        auto server_hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
-        GDK_RUNTIME_ASSERT_MSG(server_hmac == ret["hmac"], "Bad server client blob");
+        if (!m_watch_only) {
+            // Verify the servers hmac
+            auto server_hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
+            GDK_RUNTIME_ASSERT_MSG(server_hmac == ret["hmac"], "Bad server client blob");
+        }
         m_blob.load(*m_blob_aes_key, server_blob);
 
         if (encache) {
             encache_client_blob(locker, server_blob);
         }
-        m_blob_hmac = server_hmac;
+        m_blob_hmac = ret["hmac"];
         m_blob_outdated = false; // Blob is now current with the servers view
     }
 
@@ -1147,10 +1149,15 @@ namespace sdk {
             // Already set, we are re-logging in with the same credentials
             return;
         }
-        const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
-        const auto tmp_span = gsl::make_span(tmp_key);
-        set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
-        set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+        if (!signer->is_watch_only()) {
+            // Watch only sessions get an encrypted m_blob_aes_key from the server,
+            // but don't ever get m_blob_hmac_key (they can read the blob, but
+            // not save it to the server or produce a valid hmac for it).
+            const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+            const auto tmp_span = gsl::make_span(tmp_key);
+            set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
+            set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+        }
         m_cache->load_db(m_local_encryption_key.get(), signer);
         // Save the cache in case we carried forward data from a previous version
         m_cache->save_db(); // No-op if unchanged
