@@ -110,7 +110,7 @@ namespace sdk {
         } catch (const autobahn::call_error& e) {
             std::pair<std::string, std::string> details;
             try {
-                details = get_error_details(e);
+                details = remap_ga_server_error(get_error_details(e));
                 GDK_LOG_SEV(log_level::debug) << "server exception (" << details.first << "):" << details.second;
             } catch (const std::exception&) {
                 log_exception("call error:", e);
