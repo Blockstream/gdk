@@ -63,8 +63,8 @@ namespace sdk {
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
         static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "device_type", "watch-only" }, { "supports_low_r", true },
-            { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
-            { "supports_liquid", liquid_support_level::none },
+            { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
+            { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "device_type", "software" }, { "supports_low_r", true },
