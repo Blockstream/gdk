@@ -94,10 +94,8 @@ namespace sdk {
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
 
     // Encryption
-    std::string aes_cbc_decrypt(
-        const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& ciphertext);
-    std::string aes_cbc_encrypt(
-        const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& plaintext);
+    std::string aes_cbc_decrypt(const pbkdf2_hmac256_t& key, const std::string& ciphertext);
+    std::string aes_cbc_encrypt(const pbkdf2_hmac256_t& key, const std::string& plaintext);
 
     size_t aes_gcm_decrypt_get_length(byte_span_t cyphertext);
     size_t aes_gcm_decrypt(byte_span_t key, byte_span_t cyphertext, gsl::span<unsigned char> plaintext);

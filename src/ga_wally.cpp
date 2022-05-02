@@ -66,11 +66,10 @@ namespace sdk {
         return ret;
     }
 
-    std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN> pbkdf2_hmac_sha512_256(
-        byte_span_t password, byte_span_t salt, uint32_t cost)
+    pbkdf2_hmac256_t pbkdf2_hmac_sha512_256(byte_span_t password, byte_span_t salt, uint32_t cost)
     {
         auto tmp = pbkdf2_hmac_sha512(password, salt, cost);
-        std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN> out;
+        pbkdf2_hmac256_t out;
         std::copy(std::begin(tmp), std::begin(tmp) + out.size(), std::begin(out));
         wally_bzero(tmp.data(), tmp.size());
         return out;

@@ -428,8 +428,7 @@ namespace sdk {
         return p == json.end() ? f() : h2b(p->get<std::string>());
     }
 
-    std::string aes_cbc_decrypt(
-        const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& ciphertext)
+    std::string aes_cbc_decrypt(const pbkdf2_hmac256_t& key, const std::string& ciphertext)
     {
         const auto ciphertext_bytes = h2b(ciphertext);
         const auto iv = gsl::make_span(ciphertext_bytes).first(AES_BLOCK_LEN);
@@ -440,8 +439,7 @@ namespace sdk {
         return std::string(plaintext.begin(), plaintext.end());
     }
 
-    std::string aes_cbc_encrypt(
-        const std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>& key, const std::string& plaintext)
+    std::string aes_cbc_encrypt(const pbkdf2_hmac256_t& key, const std::string& plaintext)
     {
         const auto iv = get_random_bytes<AES_BLOCK_LEN>();
         const size_t plaintext_padded_size = (plaintext.size() / AES_BLOCK_LEN + 1) * AES_BLOCK_LEN;
