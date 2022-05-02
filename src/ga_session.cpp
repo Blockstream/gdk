@@ -1810,9 +1810,10 @@ namespace sdk {
         constexpr bool mark_unblinded = true;
         remove_utxo_proofs(utxo, mark_unblinded);
 
+        bool updated_blinding_cache = false;
         if (!txhash.empty()) {
             m_cache->insert_liquid_output(h2b(txhash), pt_idx, utxo);
-            return true; // Cache was updated
+            updated_blinding_cache = true;
         }
 
         if (has_address) {
@@ -1822,7 +1823,7 @@ namespace sdk {
             blind_address(utxo, m_net_params.blinded_prefix(), b2h(blinding_pubkey));
         }
 
-        return false; // Cache not updated
+        return updated_blinding_cache;
     }
 
     std::vector<unsigned char> ga_session::get_alternate_blinding_nonce(
