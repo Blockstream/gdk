@@ -156,8 +156,8 @@ namespace sdk {
 
     std::string electrum_script_hash_hex(byte_span_t script_bytes);
 
-    void scrypt(byte_span_t password, byte_span_t salt, uint32_t cost, uint32_t block_size, uint32_t parallelism,
-        std::vector<unsigned char>& out);
+    std::vector<unsigned char> scrypt(byte_span_t password, byte_span_t salt, uint32_t cost = 16384,
+        uint32_t block_size = 8, uint32_t parallelism = 8);
 
     std::string bip39_mnemonic_from_bytes(byte_span_t data);
 

@@ -329,12 +329,13 @@ namespace sdk {
 
     std::string electrum_script_hash_hex(byte_span_t script_bytes) { return b2h_rev(sha256(script_bytes)); }
 
-    void scrypt(byte_span_t password, byte_span_t salt, uint32_t cost, uint32_t block_size, uint32_t parallelism,
-        std::vector<unsigned char>& out)
+    std::vector<unsigned char> scrypt(
+        byte_span_t password, byte_span_t salt, uint32_t cost, uint32_t block_size, uint32_t parallelism)
     {
-        GDK_RUNTIME_ASSERT(!out.empty());
+        std::vector<unsigned char> ret(64);
         GDK_VERIFY(wally_scrypt(password.data(), password.size(), salt.data(), salt.size(), cost, block_size,
-            parallelism, &out[0], out.size()));
+            parallelism, &ret[0], ret.size()));
+        return ret;
     }
 
     std::string bip39_mnemonic_from_bytes(byte_span_t data)

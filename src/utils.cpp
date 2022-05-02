@@ -321,8 +321,7 @@ namespace sdk {
         const auto ciphertext = gsl::make_span(entropy).first(32);
         const auto salt = gsl::make_span(entropy).last(4);
 
-        std::vector<unsigned char> derived(64);
-        scrypt(ustring_span(password), salt, 16384, 8, 8, derived);
+        const std::vector<unsigned char> derived = scrypt(ustring_span(password), salt);
 
         const auto key = gsl::make_span(derived).last(32);
         std::vector<unsigned char> plaintext(32);
@@ -347,8 +346,7 @@ namespace sdk {
         const auto sha_buffer = sha256d(plaintext);
         const auto salt = gsl::make_span(sha_buffer).first(4);
 
-        std::vector<unsigned char> derived(64);
-        scrypt(ustring_span(password), salt, 16384, 8, 8, derived);
+        const std::vector<unsigned char> derived = scrypt(ustring_span(password), salt);
         const auto derivedhalf1 = gsl::make_span(derived).first(32);
         const auto derivedhalf2 = gsl::make_span(derived).last(32);
 
