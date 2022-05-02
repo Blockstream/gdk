@@ -523,13 +523,43 @@ pub struct GetTxInOut {
     pub amount_blinder: Option<String>,
 }
 
+/// Transaction type
+///
+/// Note that the follwing types might be inaccurate for complex
+/// transactions such as swaps, coinjoins or involving multiple (sub)accounts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransactionType {
+    Unknown,
+    Incoming,
+    Outgoing,
+    Redeposit,
+    #[serde(rename = "not unblindable")]
+    NotUnblindable,
+}
+
+impl Default for TransactionType {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+impl TransactionType {
+    pub fn user_signed(&self) -> bool {
+        match self {
+            TransactionType::Outgoing | TransactionType::Redeposit => true,
+            _ => false,
+        }
+    }
+}
+
 // TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TxListItem {
     pub block_height: u32,
     pub created_at_ts: u64, // in microseconds
     #[serde(rename = "type")]
-    pub type_: String,
+    pub type_: TransactionType,
     pub memo: String,
     pub txhash: String,
     #[serde(serialize_with = "serialize_tx_balances")]

@@ -1,6 +1,6 @@
 use crate::be::*;
 use crate::error::Error;
-use crate::model::Balances;
+use crate::model::{Balances, TransactionType};
 use crate::scripts::{p2pkh_script, ScriptType};
 use crate::NetworkId;
 use crate::{bail, ensure};
@@ -823,7 +823,7 @@ impl BETransaction {
         }
     }
 
-    pub fn type_and_user_signed(&self, balances: &Balances, is_redeposit: bool) -> (String, bool) {
+    pub fn type_(&self, balances: &Balances, is_redeposit: bool) -> TransactionType {
         // We define an incoming txs if there are more assets received by the wallet than spent
         // when they are equal it's an outgoing tx because the special asset liquid BTC
         // is negative due to the fee being paid
@@ -831,13 +831,13 @@ impl BETransaction {
         let negatives = balances.iter().filter(|(_, v)| **v < 0).count();
         let positives = balances.iter().filter(|(_, v)| **v > 0).count();
         if balances.is_empty() && self.is_elements() {
-            ("not unblindable".to_string(), false)
+            TransactionType::NotUnblindable
         } else if is_redeposit {
-            ("redeposit".to_string(), true)
+            TransactionType::Redeposit
         } else if positives > negatives {
-            ("incoming".to_string(), false)
+            TransactionType::Incoming
         } else {
-            ("outgoing".to_string(), true)
+            TransactionType::Outgoing
         }
     }
 

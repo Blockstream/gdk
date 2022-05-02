@@ -1,6 +1,6 @@
 use crate::State;
 use gdk_common::wally::make_str;
-use gdk_common::{be::BEBlockHash, model::Settings};
+use gdk_common::{be::BEBlockHash, model::Settings, model::TransactionType};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -57,13 +57,12 @@ pub struct TransactionNotification {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub satoshi: Option<u64>,
 
-    /// One of "incoming", "outgoing", "redeposit".
+    /// Transaction type.
     ///
     /// None if Liquid.
-    // TODO: use an enum
     #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub type_: Option<String>,
+    pub type_: Option<TransactionType>,
 }
 
 impl Notification {

@@ -1567,7 +1567,7 @@ impl Syncer {
         &self,
         tx: &BETransaction,
         acc_store: &RawAccountCache,
-    ) -> (Option<u64>, Option<String>) {
+    ) -> (Option<u64>, Option<TransactionType>) {
         if self.network.liquid {
             // For consistency with multisig do not set this
             (None, None)
@@ -1577,7 +1577,7 @@ impl Syncer {
             let balance =
                 balances.get(&"btc".to_string()).expect("bitcoin balance always has btc key");
             let is_redeposit = tx.is_redeposit(&acc_store.paths, &acc_store.all_txs);
-            let (type_, _) = tx.type_and_user_signed(&balances, is_redeposit);
+            let type_ = tx.type_(&balances, is_redeposit);
             (Some(balance.abs() as u64), Some(type_))
         }
     }
