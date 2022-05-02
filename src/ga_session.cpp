@@ -1054,17 +1054,15 @@ namespace sdk {
         m_wamp->subscribe(
             "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
 
-        if (!m_watch_only) {
-            m_wamp->subscribe("com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
-                locker_t notify_locker(m_mutex);
-                // Check the hmac as we will be notified of our own changes
-                // when more than one session is logged in at a time.
-                if (m_blob_hmac != json_get_value(event, "hmac")) {
-                    // Another session has updated our client blob, mark it dirty.
-                    m_blob_outdated = true;
-                }
-            });
-        }
+        m_wamp->subscribe("com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
+            locker_t notify_locker(m_mutex);
+            // Check the hmac as we will be notified of our own changes
+            // when more than one session is logged in at a time.
+            if (m_blob_hmac != json_get_value(event, "hmac")) {
+                // Another session has updated our client blob, mark it dirty.
+                m_blob_outdated = true;
+            }
+        });
 
         m_wamp->subscribe("com.greenaddress.txs.wallet_" + receiving_id, [this](nlohmann::json event) {
             if (!ignore_tx_notification(event)) {
