@@ -520,12 +520,14 @@ impl ElectrumSession {
             None
         };
 
-        let (mut tip_height, mut tip_hash) = {
+        {
             let store = self.store()?;
             let store_read = store.read()?;
-            (store_read.cache.tip_height(), store_read.cache.tip_block_hash())
+            let tip_height = store_read.cache.tip_height();
+            let tip_hash = store_read.cache.tip_block_hash();
+            let tip_prev_hash = store_read.cache.tip_prev_block_hash();
+            self.notify.block_from_hashes(tip_height, &tip_hash, &tip_prev_hash);
         };
-        self.notify.block(tip_height, tip_hash);
 
         info!(
             "building client, url {}, proxy {}",
@@ -642,7 +644,12 @@ impl ElectrumSession {
                                 if let Ok(store_read) = headers.store.read() {
                                     let tip_height = store_read.cache.tip_height();
                                     let tip_hash = store_read.cache.tip_block_hash();
-                                    notify_blocks.block(tip_height, tip_hash);
+                                    let tip_prev_hash = store_read.cache.tip_prev_block_hash();
+                                    notify_blocks.block_from_hashes(
+                                        tip_height,
+                                        &tip_hash,
+                                        &tip_prev_hash,
+                                    );
                                 }
                             }
                         }
@@ -679,13 +686,10 @@ impl ElectrumSession {
             loop {
                 if let Ok(client) = tipper_url.build_client(proxy.as_deref(), None) {
                     match tipper.tip(&client) {
-                        Ok((current_tip_height, current_tip_hash)) => {
-                            if tip_height != current_tip_height || tip_hash != current_tip_hash {
-                                tip_height = current_tip_height;
-                                tip_hash = current_tip_hash;
-                                info!("tip is {:?} {:?}", tip_height, tip_hash);
-                                notify_blocks.block(tip_height, tip_hash);
-                            }
+                        Ok(None) => {} // nothing to update
+                        Ok(Some((height, header))) => {
+                            // This is a new block
+                            notify_blocks.block_from_header(height, &header);
                         }
                         Err(e) => {
                             warn!("exception in tipper {:?}", e);
@@ -693,7 +697,7 @@ impl ElectrumSession {
                     }
                 }
                 if wait_or_close(&user_wants_to_sync, sync_interval) {
-                    info!("closing tipper thread {:?}", tip_height);
+                    info!("closing tipper thread");
                     break;
                 }
             }
@@ -1262,22 +1266,23 @@ fn call_assets(
 }
 
 impl Tipper {
-    pub fn tip(&self, client: &Client) -> Result<(u32, BEBlockHash), Error> {
+    pub fn tip(&self, client: &Client) -> Result<Option<(u32, BEBlockHeader)>, Error> {
         let header = client.block_headers_subscribe_raw()?;
         let new_height = header.height as u32;
         let new_header = BEBlockHeader::deserialize(&header.header, self.network.id())?;
-        let new_hash = new_header.block_hash();
         let do_update = match &self.store.read()?.cache.tip_ {
             None => true,
             Some((current_height, current_header)) => {
-                &new_height != current_height || new_hash != current_header.block_hash()
+                &new_height != current_height || &new_header != current_header
             }
         };
         if do_update {
             info!("saving in store new tip {:?}", new_height);
-            self.store.write()?.cache.tip_ = Some((new_height, new_header));
+            self.store.write()?.cache.tip_ = Some((new_height, new_header.clone()));
+            Ok(Some((new_height, new_header)))
+        } else {
+            Ok(None)
         }
-        Ok((new_height, new_hash))
     }
 }
 
