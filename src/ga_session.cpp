@@ -1308,11 +1308,7 @@ namespace sdk {
         const auto user_agent = get_user_agent(true, m_user_agent);
         auto login_data = wamp_cast_json(m_wamp->call(locker, "login.watch_only_v2", "custom", args, user_agent));
 
-        if (login_data.is_boolean()) {
-            locker.unlock();
-            reset_all_session_data(false);
-            throw login_error(res::id_user_not_found_or_invalid);
-        } else if (!is_initial_login) {
+        if (!is_initial_login) {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
