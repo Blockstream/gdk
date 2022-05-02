@@ -38,6 +38,13 @@ impl BEBlockHeader {
             Self::Elements(header) => BEBlockHash::Elements(header.block_hash()),
         }
     }
+
+    pub fn prev_block_hash(&self) -> BEBlockHash {
+        match self {
+            Self::Bitcoin(header) => BEBlockHash::Bitcoin(header.prev_blockhash),
+            Self::Elements(header) => BEBlockHash::Elements(header.prev_blockhash),
+        }
+    }
 }
 
 #[cfg(test)]

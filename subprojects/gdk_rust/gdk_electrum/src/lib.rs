@@ -520,7 +520,11 @@ impl ElectrumSession {
             None
         };
 
-        let (mut tip_height, mut tip_hash) = self.store()?.read()?.cache.tip;
+        let (mut tip_height, mut tip_hash) = {
+            let store = self.store()?;
+            let store_read = store.read()?;
+            (store_read.cache.tip_height(), store_read.cache.tip_block_hash())
+        };
         self.notify.block(tip_height, tip_hash);
 
         info!(
@@ -636,7 +640,8 @@ impl ElectrumSession {
                             if status_changed {
                                 // TODO: improve block notification
                                 if let Ok(store_read) = headers.store.read() {
-                                    let (tip_height, tip_hash) = store_read.cache.tip;
+                                    let tip_height = store_read.cache.tip_height();
+                                    let tip_hash = store_read.cache.tip_block_hash();
                                     notify_blocks.block(tip_height, tip_hash);
                                 }
                             }
@@ -1140,14 +1145,14 @@ impl ElectrumSession {
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
         let account = self.get_account(opt.subaccount)?;
-        let tip = self.store()?.read()?.cache.tip.0;
+        let height = self.store()?.read()?.cache.tip_height();
         let num_confs = opt.num_confs.unwrap_or(0);
         let confidential_utxos_only = opt.confidential_utxos_only.unwrap_or(false);
         for outpoint in account.unspents()? {
             let utxo = account.txo(&outpoint)?;
             let confirmations = match utxo.height {
                 None | Some(0) => 0,
-                Some(h) => (tip + 1).saturating_sub(h),
+                Some(h) => (height + 1).saturating_sub(h),
             };
             if num_confs > confirmations || (confidential_utxos_only && !utxo.is_confidential()) {
                 continue;
@@ -1166,7 +1171,9 @@ impl ElectrumSession {
     }
 
     pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
-        let tip = self.store()?.read()?.cache.tip;
+        let store = self.store()?;
+        let store_read = store.read()?;
+        let tip = (store_read.cache.tip_height(), store_read.cache.tip_block_hash());
         info!("tip={:?}", tip);
         Ok(tip)
     }
@@ -1258,16 +1265,19 @@ impl Tipper {
     pub fn tip(&self, client: &Client) -> Result<(u32, BEBlockHash), Error> {
         let header = client.block_headers_subscribe_raw()?;
         let new_height = header.height as u32;
-        let new_hash = BEBlockHeader::deserialize(&header.header, self.network.id())?.block_hash();
-        let (current_height, current_hash) = self.store.read()?.cache.tip;
-        if new_height != current_height || new_hash != current_hash {
-            let new_tip = (new_height, new_hash);
-            info!("saving in store new tip {:?}", new_tip);
-            self.store.write()?.cache.tip = new_tip;
-            Ok(new_tip)
-        } else {
-            Ok((current_height, current_hash))
+        let new_header = BEBlockHeader::deserialize(&header.header, self.network.id())?;
+        let new_hash = new_header.block_hash();
+        let do_update = match &self.store.read()?.cache.tip_ {
+            None => true,
+            Some((current_height, current_header)) => {
+                &new_height != current_height || new_hash != current_header.block_hash()
+            }
+        };
+        if do_update {
+            info!("saving in store new tip {:?}", new_height);
+            self.store.write()?.cache.tip_ = Some((new_height, new_header));
         }
+        Ok((new_height, new_hash))
     }
 }
 

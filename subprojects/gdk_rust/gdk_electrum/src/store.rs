@@ -47,7 +47,13 @@ pub struct RawCache {
     pub fee_estimates: Vec<FeeEstimate>,
 
     /// height and hash of tip of the blockchain
+    #[deprecated(note = "Deprecated, use `tip_` instead")]
     pub tip: (u32, BEBlockHash),
+
+    /// height and block header of tip of the blockchain
+    ///
+    /// Note: Option and trailing underscore are for backward compatibility reasons.
+    pub tip_: Option<(u32, BEBlockHeader)>,
 
     /// registry assets last modified, used when making the http request
     pub assets_last_modified: String,
@@ -164,6 +170,31 @@ impl RawCache {
         let decrypted = load_decrypt(Kind::Cache, path, cipher)?;
         let store = serde_cbor::from_slice(&decrypted)?;
         Ok(store)
+    }
+
+    // The following 3 functions are needed to handle the missing `tip_`.
+    // This should be happening at most once when upgrading the cache.
+    #[allow(deprecated)]
+    pub fn tip_height(&self) -> u32 {
+        match &self.tip_ {
+            None => self.tip.0,
+            Some((height, _)) => *height,
+        }
+    }
+
+    #[allow(deprecated)]
+    pub fn tip_block_hash(&self) -> BEBlockHash {
+        match &self.tip_ {
+            None => self.tip.1,
+            Some((_, header)) => header.block_hash(),
+        }
+    }
+
+    pub fn tip_prev_block_hash(&self) -> BEBlockHash {
+        match &self.tip_ {
+            None => BEBlockHash::default(),
+            Some((_, header)) => header.prev_block_hash(),
+        }
     }
 }
 

@@ -210,7 +210,7 @@ impl Account {
         let store = self.store.read()?;
         let acc_store = store.account_cache(self.account_num)?;
 
-        let tip_height = store.cache.tip.0;
+        let tip_height = store.cache.tip_height();
         let num_confs = opt.num_confs.unwrap_or(0);
 
         let mut txs = vec![];
@@ -951,7 +951,7 @@ fn check_taproot_enabled(
 ) -> Result<(), Error> {
     let tip = match tip_height {
         Some(h) => h,
-        None => account.store.read()?.cache.tip.0,
+        None => account.store.read()?.cache.tip_height(),
     };
     if tip < taproot_enabled_at {
         Err(Error::Generic("Taproot has not yet activated on this network".into()))
