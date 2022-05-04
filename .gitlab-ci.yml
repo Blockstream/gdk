@@ -237,7 +237,7 @@ test_osx_clang_ndk_armeabi-v7a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --ndk armeabi-v7a
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk armeabi-v7a
 
 test_osx_clang_ndk_arm64-v8a:
   only:
@@ -248,15 +248,18 @@ test_osx_clang_ndk_arm64-v8a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --ndk arm64-v8a
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk arm64-v8a
 
 test_osx_clang_ndk_x86:
+  only:
+    refs:
+      - master
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --ndk x86
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk x86
 
 test_osx_clang_ndk_x86_64:
   only:
@@ -267,7 +270,7 @@ test_osx_clang_ndk_x86_64:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --ndk x86_64
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk x86_64
 
 test_windows_mingw_w64_cross:
   tags:
