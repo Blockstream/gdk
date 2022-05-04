@@ -91,7 +91,18 @@ release_py3m_ubuntu_18.04:
 release_py3m_osx:
   extends: .py_release
   tags:
-    - osx
+    - osx-ia
+  script:
+    - cd $CI_PROJECT_DIR
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install -r ./tools/requirements.txt
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
+
+release_py3m_osx_m1:
+  extends: .py_release
+  tags:
+    - osx-m1
   script:
     - cd $CI_PROJECT_DIR
     - python3 -m venv venv
@@ -317,6 +328,7 @@ package_release:
   - release_py3m_bullseye
   - release_py3m_ubuntu_18.04
   - release_py3m_osx
+  - release_py3m_osx_m1
   - release_osx_ios
   - apidocs
   - release_osx_ios_sim
