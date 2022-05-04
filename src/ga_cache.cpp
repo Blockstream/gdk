@@ -5,7 +5,6 @@
 
 #include "assertion.hpp"
 #include "ga_cache.hpp"
-#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
@@ -382,7 +381,6 @@ namespace sdk {
 
     cache::cache(const network_parameters& net_params, const std::string& network_name)
         : m_network_name(network_name)
-        , m_net_params(net_params)
         , m_data_dir(gdk_config().at("datadir"))
         , m_is_liquid(net_params.is_liquid())
         , m_type(0)
@@ -488,44 +486,26 @@ namespace sdk {
                 } catch (const std::exception&) {
                     // Ignore errors; fetch blob from server or recreate instead
                 }
+            } else {
+                // Loaded DB successfully
+                if (VERSION == 1) {
+                    if (m_is_liquid) {
+                        // Remove old assets keys if present. Note we don't bother
+                        // marking dirty here, since that would force a write on every
+                        // DB load. The DB will be saved at some point during normal
+                        // wallet operation, after which these calls are no-ops.
+                        clear_key_value("index");
+                        clear_key_value("icons");
+                        clear_key_value("http_assets");
+                        clear_key_value("http_icons");
+                        clear_key_value("http_assets_modified");
+                        clear_key_value("http_icons_modified");
+                    }
+                }
             }
 
             // Clean up old versions only on initial DB creation
             clean_up_old_db(m_data_dir, m_db_name);
-        } else {
-            // Loaded DB successfully
-            if (VERSION == 1) {
-                if (m_is_liquid) {
-                    // Remove old assets keys if present. Note we don't bother
-                    // marking dirty here, since that would force a write on every
-                    // DB load. The DB will be saved at some point during normal
-                    // wallet operation, after which these two calls are no-ops.
-                    clear_key_value("index");
-                    clear_key_value("icons");
-                    const auto assets_modified = get_inbuilt_data_timestamp(m_net_params, "assets");
-                    const auto icons_modified = get_inbuilt_data_timestamp(m_net_params, "icons");
-                    bool clean = false;
-                    get_key_value("http_assets_modified", { [&clean, &assets_modified](const auto& db_blob) {
-                        clean |= !db_blob || !std::equal(db_blob->begin(), db_blob->end(), assets_modified.begin());
-                    } });
-                    if (!clean) {
-                        get_key_value("http_icons_modified", { [&clean, &icons_modified](const auto& db_blob) {
-                            clean |= !db_blob || !std::equal(db_blob->begin(), db_blob->end(), icons_modified.begin());
-                        } });
-                    }
-                    if (clean) {
-                        // Our compiled-in assets have changed, nuke our diff data.
-                        GDK_LOG_SEV(log_level::info) << "Deleting cached http data";
-                        clear_key_value("http_assets");
-                        upsert_key_value("http_assets_modified", ustring_span(assets_modified));
-                        clear_key_value("http_icons");
-                        upsert_key_value("http_icons_modified", ustring_span(icons_modified));
-                        // Force this change to be written, it will not be
-                        // required again until the next gdk upgrade.
-                        m_require_write = true;
-                    }
-                }
-            }
         }
     }
 

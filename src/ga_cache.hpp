@@ -72,7 +72,6 @@ namespace sdk {
         bool check_db_changed();
 
         const std::string m_network_name;
-        const network_parameters& m_net_params;
         const std::string m_data_dir;
         const bool m_is_liquid;
         uint32_t m_type; // Set on first call to load_db

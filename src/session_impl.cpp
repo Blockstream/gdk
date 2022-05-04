@@ -143,6 +143,35 @@ namespace sdk {
         return result;
     }
 
+    nlohmann::json session_impl::refresh_assets(const nlohmann::json& params)
+    {
+        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
+
+        nlohmann::json p = params;
+
+        nlohmann::json config = nlohmann::json::object();
+        config["proxy"] = get_proxy_settings()["proxy"];
+        config["url"] = m_net_params.get_registry_connection_string();
+        if (m_net_params.is_main_net()) {
+            config["network"] = "liquid";
+        } else if (m_net_params.is_development()) {
+            config["network"] = "elements-regtest";
+        } else {
+            config["network"] = "liquid-testnet";
+        }
+        p["config"] = config;
+
+        nlohmann::json result;
+        try {
+            result = rust_call("refresh_assets", p);
+        } catch (const std::exception& ex) {
+            GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
+            result = { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() },
+                { "error", ex.what() } };
+        }
+        return result;
+    }
+
     std::string session_impl::connect_tor()
     {
         // Our built in tor implementation creates a socks5 proxy, which we

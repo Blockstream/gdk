@@ -36,7 +36,6 @@ namespace sdk {
         nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
 
-        nlohmann::json refresh_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
         std::string get_challenge(const pub_key_t& public_key);

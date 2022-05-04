@@ -11,7 +11,6 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
-#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "signer.hpp"
@@ -72,34 +71,6 @@ namespace sdk {
     {
         GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
         rust_call("disconnect", {}, m_session);
-    }
-
-    nlohmann::json ga_rust::refresh_assets(const nlohmann::json& params)
-    {
-        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
-
-        nlohmann::json p = params;
-
-        nlohmann::json config = nlohmann::json::object();
-        config["proxy"] = get_proxy_settings()["proxy"];
-        config["url"] = m_net_params.get_registry_connection_string();
-        if (m_net_params.is_main_net()) {
-            config["network"] = "liquid";
-        } else if (m_net_params.is_development()) {
-            config["network"] = "elements-regtest";
-        } else {
-            config["network"] = "liquid-testnet";
-        }
-        p["config"] = config;
-
-        nlohmann::json result;
-        try {
-            result = rust_call("refresh_assets", p, m_session);
-        } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
-            result = { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() } };
-        }
-        return result;
     }
 
     nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }

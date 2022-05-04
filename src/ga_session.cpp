@@ -23,7 +23,6 @@
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
 #include "http_client.hpp"
-#include "inbuilt.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "signer.hpp"
@@ -314,115 +313,6 @@ namespace sdk {
                 session_impl::emit_notification(details, false);
             }
         }
-    }
-
-    nlohmann::json ga_session::refresh_http_data(const std::string& page, const std::string& key, bool refresh)
-    {
-        const std::string cache_key = "http_" + key;
-
-        GDK_LOG_SEV(log_level::debug) << "Refreshing " << key;
-
-        // Load our compiled-in base data
-        auto base = get_inbuilt_data(m_net_params, key);
-
-        // Load the cached update to the base data, if we have one
-        nlohmann::json cached = nlohmann::json::object();
-        {
-            locker_t locker(m_mutex);
-            m_cache->get_key_value(cache_key, { [&cached, &key](const auto& db_blob) {
-                if (db_blob) {
-                    try {
-                        auto uncompressed = decompress(db_blob.get());
-                        cached = nlohmann::json::from_msgpack(uncompressed.begin(), uncompressed.end());
-                        GDK_LOG_SEV(log_level::debug) << "Cached " << key << " update found";
-                    } catch (const std::exception& e) {
-                        GDK_LOG_SEV(log_level::warning) << "Error reading " << key << " : " << e.what();
-                    }
-                }
-            } });
-        }
-
-        if (refresh) {
-            // Check the server to see if the data has been updated
-            const std::string last_modified = (cached.empty() ? base : cached).at("headers").at("last-modified");
-            const std::string minimal_page = page == "index" ? "index.minimal" : page;
-            const std::string url = m_net_params.get_registry_connection_string() + "/" + minimal_page + ".json";
-            const nlohmann::json get_params = { { "method", "GET" }, { "urls", { url } }, { "accept", "json" },
-                { "headers", { { "If-Modified-Since", last_modified } } } };
-
-            GDK_LOG_SEV(log_level::debug) << "http_request: " << get_params.dump();
-            nlohmann::json server_data = http_request(get_params);
-
-            const auto error = server_data.value("error", std::string());
-            if (!error.empty()) {
-                throw user_error(std::string("refresh error: ") + error);
-            }
-
-            if (server_data.value("not_modified", false)) {
-                // Our compiled-in data (plus any cached update) is up to date
-                GDK_LOG_SEV(log_level::debug) << "No server update found for " << key;
-            } else {
-                // Server data is newer than our compiled-in data plus any cached update
-                GDK_LOG_SEV(log_level::debug) << "Server update found for " << key;
-                auto& server_body = server_data.at("body");
-                GDK_RUNTIME_ASSERT_MSG(server_body.is_object(), "expected JSON");
-
-                // Compute the diff between our compiled-in data and the updated data
-                auto patch = nlohmann::json::diff(base.at("body"), server_body);
-                cached = nlohmann::json(
-                    { { "headers", std::move(server_data.at("headers")) }, { "body", std::move(patch) } });
-                swap_with_default(server_data); // Free memory
-
-                // Encache the update
-                auto compressed = compress(byte_span_t(), nlohmann::json::to_msgpack(cached));
-                locker_t locker(m_mutex);
-                m_cache->upsert_key_value(cache_key, compressed);
-            }
-        }
-
-        nlohmann::json result;
-        if (!cached.empty()) {
-            // We have an update to the base data, return it
-            result = base.at("body").patch(cached.at("body"));
-            // Filter the result in case our cached update contained a bad asset id
-            json_filter_bad_asset_ids(result, key);
-        } else {
-            // Return the unchanged base data
-            result = std::move(base.at("body"));
-        }
-        if (page == "index") {
-            json_expand_asset_info(result);
-        }
-        return result;
-    }
-
-    nlohmann::json ga_session::refresh_assets(const nlohmann::json& params)
-    {
-        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
-
-        const bool refresh = params.value("refresh", true);
-        const std::array<const char*, 2> keys = { "assets", "icons" };
-        const std::array<const char*, 2> pages = { "index", "icons" };
-
-        nlohmann::json result;
-        bool found_key = false;
-
-        for (size_t i = 0; i < pages.size(); ++i) {
-            if (params.value(keys[i], false)) {
-                found_key = true;
-                auto body = refresh_http_data(pages[i], keys[i], refresh);
-                if (i == 0) {
-                    // Add the policy asset to asset data
-                    const auto policy_asset = m_net_params.policy_asset();
-                    body[policy_asset] = { { "asset_id", policy_asset }, { "name", "btc" } };
-                }
-                result.emplace(keys[i], std::move(body));
-            }
-        }
-        GDK_RUNTIME_ASSERT_MSG(found_key, "Either assets or icons must be requested");
-        locker_t locker(m_mutex);
-        m_cache->save_db(); // Save any updated cached data
-        return result;
     }
 
     std::shared_ptr<ga_session::nlocktime_t> ga_session::update_nlocktime_info(session_impl::locker_t& locker)
