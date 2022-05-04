@@ -21,7 +21,7 @@ if [ \( "$1" = "--ndk" \) ]; then
     ./configure --static --prefix="${MESON_BUILD_ROOT}/zlib/build"
     ARFLAGS=""
     if [ "$(uname)" = "Darwin" ]; then
-        ARFLAGS="cr"
+        ARFLAGS="rc"
     fi
     sed -ie "s!^AR=.*!AR=$AR $ARFLAGS!" "Makefile"
     make -o configure install -j${NUM_JOBS}
