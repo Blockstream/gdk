@@ -233,6 +233,7 @@ test_osx_clang_ndk_armeabi-v7a:
     refs:
       - master
   extends: .osx_test
+  when: manual
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
@@ -244,6 +245,7 @@ test_osx_clang_ndk_arm64-v8a:
     refs:
       - master
   extends: .osx_test
+  when: manual
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
@@ -255,6 +257,7 @@ test_osx_clang_ndk_x86:
     refs:
       - master
   extends: .osx_test
+  when: manual
   script:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
@@ -265,6 +268,7 @@ test_osx_clang_ndk_x86_64:
   only:
     refs:
       - master
+  when: manual
   extends: .osx_test
   script:
     - cd $CI_PROJECT_DIR
