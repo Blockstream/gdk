@@ -1564,6 +1564,13 @@ namespace sdk {
     // Idempotent
     bool ga_session::set_watch_only(const std::string& username, const std::string& password)
     {
+        GDK_RUNTIME_ASSERT(username.empty() == password.empty());
+        if (!username.empty() && username.size() < 8u) {
+            throw user_error("Watch-only username must be at least 8 characters long");
+        }
+        if (!password.empty() && password.size() < 8u) {
+            throw user_error("Watch-only password must be at least 8 characters long");
+        }
         std::string wo_blob_key_hex;
         {
             locker_t locker(m_mutex);
