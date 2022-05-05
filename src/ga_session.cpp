@@ -2736,12 +2736,13 @@ namespace sdk {
 
     void ga_session::update_address_info(nlohmann::json& address, bool is_historic)
     {
-        bool watch_only;
+        bool old_watch_only;
         uint32_t csv_blocks;
         std::vector<uint32_t> csv_buckets;
         {
             locker_t locker(m_mutex);
-            watch_only = m_watch_only;
+            // Old (non client blob) watch only sessions cannot validate addrs
+            old_watch_only = m_watch_only && m_blob_aes_key == boost::none;
             csv_blocks = m_csv_blocks;
             csv_buckets = is_historic ? m_csv_buckets : std::vector<uint32_t>();
         }
@@ -2753,24 +2754,24 @@ namespace sdk {
         const std::string addr_type = address["address_type"];
         const script_type addr_script_type = set_addr_script_type(address, addr_type);
 
-        if (!address.contains("script") && !watch_only) {
-            // FIXME: get_my_addresses doesn't return script yet. This is
-            // inefficient until the server is updated.
-            address["script"] = b2h(output_script_from_utxo(address));
-        }
-        const auto server_script = h2b(address["script"]);
+        // Compute the address from the script the server returned
+        const auto server_script = h2b(address.at("script"));
         const auto server_address = get_address_from_script(m_net_params, server_script, addr_type);
 
-        if (!watch_only) {
-            // Compute the address locally to verify the servers data
-            const auto script = output_script_from_utxo(address);
-            const auto user_address = get_address_from_script(m_net_params, script, addr_type);
-            GDK_RUNTIME_ASSERT(server_address == user_address);
-            if (address.contains("address")) {
-                GDK_RUNTIME_ASSERT(user_address == address["address"]);
-            }
+        if (!old_watch_only) {
+            // Verify the server returned script matches what we generate
+            // locally from the UTXO details (and thus that the address
+            // is valid)
+            GDK_RUNTIME_ASSERT(server_script == output_script_from_utxo(address));
         }
-        address["address"] = server_address;
+
+        if (!address.contains("address")) {
+            address["address"] = server_address;
+        } else {
+            // The server returned an address; It must match the address
+            // generated from the script (which we verified above)
+            GDK_RUNTIME_ASSERT(address["address"] == server_address);
+        }
 
         address["user_path"] = get_subaccount_full_path(address["subaccount"], address["pointer"], false);
 
