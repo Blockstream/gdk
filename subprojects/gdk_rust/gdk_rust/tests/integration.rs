@@ -960,6 +960,79 @@ fn coinbase(is_liquid: bool) {
 }
 
 #[test]
+fn spend_unsynced_bitcoin() {
+    spend_unsynced(false);
+}
+
+#[test]
+fn spend_unsynced_liquid() {
+    spend_unsynced(true);
+}
+
+fn spend_unsynced(is_liquid: bool) {
+    let mut test_session = setup_session(is_liquid, |_| ());
+
+    // Fund the wallet
+    let sat1 = 10_000;
+    let address1 = test_session.get_receive_address(0).address;
+    let txid1 = test_session.node_sendtoaddress(&address1, sat1, None);
+    test_session.wait_tx(vec![0], &txid1, Some(sat1), Some(TransactionType::Incoming));
+
+    // Send a transcation, which will spend the only utxo we have.
+    let sat2 = 1_000;
+    let address2 = test_session.node_getnewaddress(None);
+    let utxos = test_session.utxos(0);
+    let mut create_opt = CreateTransaction::default();
+    create_opt.addressees.push(AddressAmount {
+        address: address2.to_string(),
+        satoshi: sat2,
+        asset_id: test_session.asset_id(),
+    });
+    create_opt.utxos = convertutxos(&utxos);
+    let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
+    let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
+    let fee = signed_tx.fee;
+    let txid2 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
+
+    // Attempt to create a new transaction before we received the transaction notification and
+    // the db is updated with the sent transaction.
+    let events = test_session.session.filter_events("transaction");
+    assert!(events.iter().all(|e| e["transaction"]["txhash"].as_str().unwrap() != txid2));
+
+    let btc_key = test_session.btc_key();
+    let utxos = test_session.utxos(0);
+    let utxos_btc = utxos.0.get(&btc_key).unwrap();
+    assert_eq!(utxos_btc.len(), 1);
+    assert!(utxos_btc.iter().any(|u| u.txhash == txid1));
+
+    // We are reusing the utxo spend by txid2 and create tx does not fail.
+    // If we attempt to broadcast this transaction we will get a
+    // "bad-txns-inputs-missingorspent"
+    let mut create_opt = CreateTransaction::default();
+    create_opt.addressees.push(AddressAmount {
+        address: address2.to_string(),
+        satoshi: sat2,
+        asset_id: test_session.asset_id(),
+    });
+    create_opt.utxos = convertutxos(&utxos);
+    let res = test_session.session.create_transaction(&mut create_opt);
+    assert!(res.is_ok());
+
+    // No notification yet
+    let events = test_session.session.filter_events("transaction");
+    assert!(events.iter().all(|e| e["transaction"]["txhash"].as_str().unwrap() != txid2));
+
+    // Now wait for notification
+    test_session.wait_tx(vec![0], &txid2, Some(sat2 + fee), Some(TransactionType::Outgoing));
+
+    // Now that the db is synced, the utxo spent by txid2 is not included
+    let utxos = test_session.utxos(0);
+    let utxos_btc = utxos.0.get(&btc_key).unwrap();
+    assert_eq!(utxos_btc.len(), 1);
+    assert!(utxos_btc.iter().all(|u| u.txhash != txid1));
+}
+
+#[test]
 fn not_unblindable_liquid() {
     let test_session = setup_session(true, |_| ());
 
