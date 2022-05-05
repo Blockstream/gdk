@@ -68,7 +68,6 @@ rust_sources = [
   'gdk_registry/src/lib.rs',
   'gdk_registry/src/param.rs',
   'gdk_registry/src/result.rs',
-  'gdk_registry/src/bin/make_hard_coded.rs',
   'gdk_registry/src/hard/mod.rs',
 ]
 
