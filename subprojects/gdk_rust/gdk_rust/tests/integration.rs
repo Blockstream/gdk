@@ -1005,8 +1005,8 @@ fn spend_unsynced(is_liquid: bool) {
     assert_eq!(utxos_btc.len(), 1);
     assert!(utxos_btc.iter().any(|u| u.txhash == txid1));
 
-    // We are reusing the utxo spend by txid2 and create tx does not fail.
-    // If we attempt to broadcast this transaction we will get a
+    // We are reusing the utxo spend by txid2 and create tx fails.
+    // If we allowed to broadcast this transaction we would get a
     // "bad-txns-inputs-missingorspent"
     let mut create_opt = CreateTransaction::default();
     create_opt.addressees.push(AddressAmount {
@@ -1016,7 +1016,7 @@ fn spend_unsynced(is_liquid: bool) {
     });
     create_opt.utxos = convertutxos(&utxos);
     let res = test_session.session.create_transaction(&mut create_opt);
-    assert!(res.is_ok());
+    assert!(res.is_err()); // insufficient funds
 
     // No notification yet
     let events = test_session.session.filter_events("transaction");

@@ -977,12 +977,24 @@ impl ElectrumSession {
         Ok(())
     }
 
+    fn remove_recent_spent_utxos(&self, tx_req: &mut CreateTransaction) -> Result<(), Error> {
+        let id = self.network.id();
+        let recent_spent_utxos = self.recent_spent_utxos.read()?;
+        for asset_utxos in tx_req.utxos.values_mut() {
+            asset_utxos.retain(|u| {
+                u.outpoint(id).ok().map(|o| !(*recent_spent_utxos).contains(&o)).unwrap_or(false)
+            });
+        }
+        Ok(())
+    }
+
     pub fn create_transaction(
         &mut self,
         tx_req: &mut CreateTransaction,
     ) -> Result<TransactionMeta, Error> {
         info!("electrum create_transaction {:?}", tx_req);
 
+        self.remove_recent_spent_utxos(tx_req)?;
         self.get_account(tx_req.subaccount)?.create_tx(tx_req)
     }
 
