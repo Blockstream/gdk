@@ -996,6 +996,12 @@ impl ElectrumSession {
         self.get_account(account_num)?.sign(create_tx)
     }
 
+    fn set_recent_spent_utxos(&self, tx: &BETransaction) -> Result<(), Error> {
+        let mut recent_spent_utxos = self.recent_spent_utxos.write()?;
+        (*recent_spent_utxos).extend(tx.previous_outputs());
+        Ok(())
+    }
+
     pub fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum send_transaction {:#?}", tx);
         let client = self.url.build_client(self.proxy.as_deref(), None)?;
@@ -1007,6 +1013,8 @@ impl ElectrumSession {
         let mut tx = tx.clone();
         // If sign transaction happens externally txid might not have been updated
         tx.txid = txid.to_string();
+        let betx = BETransaction::deserialize(&tx_bytes[..], self.network.id())?;
+        self.set_recent_spent_utxos(&betx)?;
         Ok(tx)
     }
 
@@ -1017,6 +1025,7 @@ impl ElectrumSession {
         let client = self.url.build_client(self.proxy.as_deref(), None)?;
         let hex = Vec::<u8>::from_hex(tx_hex)?;
         let txid = client.transaction_broadcast_raw(&hex)?;
+        self.set_recent_spent_utxos(&transaction)?;
         Ok(format!("{}", txid))
     }
 
