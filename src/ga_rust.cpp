@@ -291,6 +291,9 @@ namespace sdk {
 
     bool ga_rust::is_rbf_enabled() const { throw std::runtime_error("is_rbf_enabled not implemented"); }
     bool ga_rust::is_watch_only() const { return false; }
+    void ga_rust::ensure_full_session()
+    { /* TODO: Implement when watch only is implemented */
+    }
 
     nlohmann::json ga_rust::get_settings() { return rust_call("get_settings", nlohmann::json({}), m_session); }
 

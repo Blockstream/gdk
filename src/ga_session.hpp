@@ -70,6 +70,7 @@ namespace sdk {
         nlohmann::json get_available_currencies() const;
         bool is_rbf_enabled() const;
         bool is_watch_only() const;
+        void ensure_full_session();
 
         nlohmann::json get_twofactor_config(bool reset_cached);
         nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false);

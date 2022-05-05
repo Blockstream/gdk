@@ -1118,6 +1118,8 @@ namespace sdk {
     {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_blob_aes_key != boost::none);
+        GDK_RUNTIME_ASSERT(m_blob_hmac_key != boost::none);
 
         const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
         auto blob_b64{ base64_string_from_bytes(saved.first) };
@@ -1561,9 +1563,18 @@ namespace sdk {
         return amount::convert_fiat_cents(fiat_cents, m_fiat_currency, m_fiat_rate);
     }
 
+    void ga_session::ensure_full_session()
+    {
+        if (is_watch_only()) {
+            // TODO: have a better error, and map this error when returned from the server
+            throw user_error("Authentication required");
+        }
+    }
+
     // Idempotent
     bool ga_session::set_watch_only(const std::string& username, const std::string& password)
     {
+        ensure_full_session();
         GDK_RUNTIME_ASSERT(username.empty() == password.empty());
         if (!username.empty() && username.size() < 8u) {
             throw user_error("Watch-only username must be at least 8 characters long");
@@ -1780,6 +1791,8 @@ namespace sdk {
     void ga_session::update_blob(locker_t& locker, std::function<bool()> update_fn)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(!m_watch_only);
+
         while (true) {
             if (!m_blob_outdated) {
                 // Our blob is current with the server; try to update
@@ -2895,6 +2908,8 @@ namespace sdk {
 
     nlohmann::json ga_session::get_twofactor_config(bool reset_cached)
     {
+        ensure_full_session();
+
         locker_t locker(m_mutex);
         return get_twofactor_config(locker, reset_cached);
     }
@@ -3132,6 +3147,8 @@ namespace sdk {
     nlohmann::json ga_session::set_pin(
         const std::string& mnemonic, const std::string& pin, const std::string& device_id)
     {
+        ensure_full_session();
+
         GDK_RUNTIME_ASSERT(pin.length() >= 4);
         GDK_RUNTIME_ASSERT(!device_id.empty() && device_id.length() <= 100);
 
@@ -3162,8 +3179,10 @@ namespace sdk {
             { "encrypted_data", aes_cbc_encrypt(key, json) } };
     }
 
+    // Idempotent
     void ga_session::disable_all_pin_logins()
     {
+        ensure_full_session();
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(m_wamp->call("pin.remove_all_pin_logins")));
     }
 
@@ -3423,7 +3442,11 @@ namespace sdk {
     }
 
     // Idempotent
-    void ga_session::send_nlocktimes() { GDK_RUNTIME_ASSERT(wamp_cast<bool>(m_wamp->call("txs.send_nlocktime"))); }
+    void ga_session::send_nlocktimes()
+    {
+        ensure_full_session();
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(m_wamp->call("txs.send_nlocktime")));
+    }
 
     void ga_session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
@@ -3450,6 +3473,7 @@ namespace sdk {
 
     void ga_session::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
     {
+        ensure_full_session();
         check_tx_memo(memo);
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");

@@ -477,6 +477,8 @@ namespace sdk {
 
     void create_subaccount_call::initialize()
     {
+        m_session->ensure_full_session();
+
         const std::string type = m_details.at("type");
         m_subaccount = m_session->get_next_subaccount(type);
 
@@ -557,6 +559,8 @@ namespace sdk {
 
     void ack_system_message_call::initialize()
     {
+        m_session->ensure_full_session();
+
         m_message_info = m_session->get_system_message_info(m_msg);
 
         signal_hw_request(hw_request::sign_message);
@@ -1285,6 +1289,8 @@ namespace sdk {
 
     void set_unspent_outputs_status_call::initialize()
     {
+        m_session->ensure_full_session();
+
         GDK_RUNTIME_ASSERT(m_details.at("list").is_array());
         bool seen_frozen = false;
 
@@ -1331,6 +1337,8 @@ namespace sdk {
 
     void change_settings_call::initialize()
     {
+        m_session->ensure_full_session();
+
         if (m_net_params.is_electrum()) {
             return; // Ignore nlocktime for singlesig
         }
@@ -1377,6 +1385,8 @@ namespace sdk {
 
     void change_settings_twofactor_call::initialize()
     {
+        m_session->ensure_full_session();
+
         m_current_config = m_session->get_twofactor_config();
         const auto& current_subconfig = m_current_config.at(m_method_to_update);
 
@@ -1511,6 +1521,8 @@ namespace sdk {
 
     auth_handler::state_type update_subaccount_call::call_impl()
     {
+        m_session->ensure_full_session();
+
         nlohmann::json::const_iterator p;
         const uint32_t subaccount = m_details.value("subaccount", 0);
         if ((p = m_details.find("name")) != m_details.end()) {
@@ -1574,6 +1586,7 @@ namespace sdk {
     auth_handler::state_type remove_account_call::call_impl()
     {
         if (!m_initialized) {
+            m_session->ensure_full_session();
             signal_2fa_request("remove_account");
             m_initialized = true;
             return m_state;
