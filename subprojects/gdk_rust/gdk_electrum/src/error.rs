@@ -1,10 +1,10 @@
 use crate::store::StoreMeta;
-use crate::{Account, BETxid, State};
+use crate::{Account, BEOutPoint, BETxid, State};
 use aes_gcm_siv::aead;
 use bitcoin::util::bip32::ExtendedPubKey;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::From;
 use std::fmt::Display;
 use std::sync::{MutexGuard, PoisonError, RwLockReadGuard, RwLockWriteGuard};
@@ -303,6 +303,18 @@ impl From<PoisonError<RwLockReadGuard<'_, HashMap<u32, Account>>>> for Error {
 
 impl From<PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>> for Error {
     fn from(err: PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockReadGuard<'_, HashSet<BEOutPoint>>>> for Error {
+    fn from(err: PoisonError<RwLockReadGuard<'_, HashSet<BEOutPoint>>>) -> Self {
+        Error::Generic(err.to_string())
+    }
+}
+
+impl From<PoisonError<RwLockWriteGuard<'_, HashSet<BEOutPoint>>>> for Error {
+    fn from(err: PoisonError<RwLockWriteGuard<'_, HashSet<BEOutPoint>>>) -> Self {
         Error::Generic(err.to_string())
     }
 }

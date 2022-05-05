@@ -94,6 +94,7 @@ struct Syncer {
     store: Store,
     master_blinding: Option<MasterBlindingKey>,
     network: NetworkParameters,
+    recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
 }
 
 pub struct Tipper {
@@ -135,6 +136,14 @@ pub struct ElectrumSession {
     ///
     /// FIXME: remove this once we have fully migrated to the hw signer interface
     pub master_xprv: Option<ExtendedPrivKey>,
+
+    /// Spent utxos
+    ///
+    /// Remember the spent utxos to avoid using them in transaction that are created after
+    /// the previous send/broadcast tx, but before the next sync.
+    ///
+    /// This set it emptied after every sync.
+    pub recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -263,6 +272,7 @@ impl ElectrumSession {
             store: None,
             master_xpub: None,
             master_xprv: None,
+            recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
         }
     }
 
@@ -664,6 +674,7 @@ impl ElectrumSession {
             store: self.store()?,
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
+            recent_spent_utxos: self.recent_spent_utxos.clone(),
         };
 
         let tipper = Tipper {
@@ -1421,7 +1432,14 @@ impl Syncer {
             );
         }
 
+        self.empty_recent_spent_utxos()?;
         Ok(updated_txs.into_values().collect())
+    }
+
+    fn empty_recent_spent_utxos(&self) -> Result<(), Error> {
+        let mut recent_spent_utxos = self.recent_spent_utxos.write()?;
+        *recent_spent_utxos = HashSet::new();
+        Ok(())
     }
 
     fn ntf_satoshi_type(
