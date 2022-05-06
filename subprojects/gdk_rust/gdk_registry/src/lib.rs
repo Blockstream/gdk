@@ -115,7 +115,6 @@ mod test {
     use serde_json::Value;
     use tempfile::TempDir;
 
-    #[ignore]
     #[test]
     fn test_registry_prod() {
         let _ = env_logger::try_init();
@@ -146,7 +145,7 @@ mod test {
         // refresh false, asset true (no cache), icons true (no cache)
         let value = r(false, true, true).unwrap();
         assert_eq!(value.assets.len(), hard_coded_values.len());
-        assert!(value.icons.is_empty());
+        assert_eq!(value.icons.len(), 1);
 
         // refresh false, asset true (no cache), icons false (no cache)
         let value = r(false, true, false).unwrap();
@@ -156,7 +155,7 @@ mod test {
         // refresh false, asset false (no cache), icons true (no cache)
         let value = r(false, false, true).unwrap();
         assert!(value.assets.is_empty());
-        assert!(value.icons.is_empty());
+        assert_eq!(value.icons.len(), 1);
 
         // refresh true, asset true, icons false (no cache)
         let value = r(true, true, false).unwrap();
@@ -166,7 +165,7 @@ mod test {
         // refresh false, asset false, icons true (no cache)
         let value = r(false, false, true).unwrap();
         assert!(value.assets.is_empty());
-        assert!(value.icons.is_empty());
+        assert_eq!(value.icons.len(), 1);
 
         // refresh true, asset true, icons true (no cache)
         // {"asset": data, "icons": data}
@@ -189,6 +188,7 @@ mod test {
         println!("cache read {:?}", now.elapsed());
 
         // concurrent access
+        // TODO: interleaved write
         let mut handles = vec![];
         for _ in 0..5 {
             let handle = std::thread::spawn(move || r(false, true, true).unwrap());

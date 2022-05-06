@@ -36,7 +36,7 @@ fn new_policy(asset_id: AssetId, name: &str, ticker: &str) -> AssetEntry {
 fn make_liquid_hard_coded() {
     let RefreshAssetsResult {
         mut assets,
-        icons,
+        mut icons,
     } = refresh_assets(&RefreshAssetsParam {
         assets: true,
         icons: true,
@@ -50,17 +50,22 @@ fn make_liquid_hard_coded() {
     println!("Kept {} assets information with icons and after verification", assets.len());
 
     let policy_asset_id = policy_asset_id(ElementsNetwork::Liquid);
-    assets.insert(policy_asset_id, new_policy(policy_asset_id, "Liquid Bitcoin", "L-BTC"));
+    assets.insert(policy_asset_id, new_policy(policy_asset_id, "btc", "L-BTC"));
     println!("After inserting policy asset: {}", assets.len());
 
     let assets_ord = BTreeMap::from_iter(assets.into_iter());
     let mut file = File::create("src/hard/liquid_assets.json").unwrap();
     file.write_all(serde_json::to_string_pretty(&assets_ord).unwrap().as_bytes()).unwrap();
+
+    let mut file = File::create("src/hard/liquid_icons.json").unwrap();
+    icons.retain(|k, _| k == &policy_asset_id);
+    file.write_all(serde_json::to_string_pretty(&icons).unwrap().as_bytes()).unwrap();
+
     println!("wrote {:?}", file);
 }
 
 fn make_testnet_regtest_hard_coded() {
-    // At the momente there are no icons at https://assets-testnet.blockstream.info, so we can skip
+    // At the moment there are no icons at https://assets-testnet.blockstream.info, so we can skip
     // the call, this could change in the future.
 
     for (t, name, ticker) in [

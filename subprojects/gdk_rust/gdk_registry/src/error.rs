@@ -34,6 +34,9 @@ pub enum Error {
 
     /// Wraps hex parsing error
     Hex(elements::bitcoin::hashes::hex::Error),
+
+    /// Wrap a poison error as string to avoid pollute with lifetimes
+    Poison(String),
 }
 
 impl From<io::Error> for Error {
@@ -67,7 +70,7 @@ impl From<elements::bitcoin::hashes::hex::Error> for Error {
 }
 
 impl From<PoisonError<MutexGuard<'_, File>>> for Error {
-    fn from(_: PoisonError<MutexGuard<'_, File>>) -> Self {
-        todo!()
+    fn from(e: PoisonError<MutexGuard<'_, File>>) -> Self {
+        Error::Poison(e.to_string())
     }
 }

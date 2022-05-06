@@ -394,7 +394,7 @@
     },
     "version": 0,
     "issuer_pubkey": "",
-    "name": "Liquid Bitcoin",
+    "name": "btc",
     "ticker": "L-BTC",
     "precision": 8,
     "entity": null

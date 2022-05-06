@@ -13,6 +13,7 @@
 - Update openssl to 1.1.1n
 - Update libwally to latest
 - Rust is now mandatory for building
+- Singlesig: Registry: Only Liquid-BTC icon is hardcoded, only assets metadata having icons are hardcoded (38 assets).
 
 ### Fixed
 
