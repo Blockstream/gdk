@@ -58,13 +58,6 @@ pub struct Account {
     // elements only
     master_blinding: Option<MasterBlindingKey>,
 
-    /// When an account is discovered this value must be set to true, this is needed so
-    /// that `bip44_discovered` in [`AccountInfo`] could be initialized correctly without needing the first sync.
-    ///
-    /// Note that this is set to true when the account is discovered, but this value is not persisted,
-    /// thus at following logins it will be false.
-    discovered: bool,
-
     path: DerivationPath,
 }
 
@@ -112,7 +105,7 @@ impl Account {
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];
 
-        store.write().unwrap().make_account(account_num, xpub.clone())?;
+        store.write().unwrap().make_account(account_num, xpub.clone(), discovered)?;
 
         info!("initialized account #{} path={} type={:?}", account_num, path, script_type);
 
@@ -126,7 +119,6 @@ impl Account {
             store,
             master_blinding,
             path,
-            discovered,
         })
     }
 
@@ -153,7 +145,7 @@ impl Account {
             settings: settings.unwrap_or_default(),
             required_ca: 0,
             receiving_id: "".to_string(),
-            bip44_discovered: self.has_transactions(),
+            bip44_discovered: self.has_transactions()?,
         })
     }
 
@@ -572,13 +564,13 @@ impl Account {
         Ok(relevant_outputs.difference(&inputs).cloned().collect())
     }
 
-    pub fn has_transactions(&self) -> bool {
-        if self.discovered {
-            return true;
-        }
-        let store_read = self.store.read().unwrap();
-        let acc_store = store_read.account_cache(self.account_num).unwrap();
-        !acc_store.heights.is_empty()
+    pub fn has_transactions(&self) -> Result<bool, Error> {
+        let store_read = self.store.read()?;
+        let acc_store = store_read.account_cache(self.account_num)?;
+        Ok(match acc_store.bip44_discovered {
+            Some(true) => true,
+            _ => !acc_store.heights.is_empty(),
+        })
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {

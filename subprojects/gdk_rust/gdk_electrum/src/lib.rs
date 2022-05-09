@@ -864,7 +864,7 @@ impl ElectrumSession {
             let account = accounts
                 .get(&last_account)
                 .ok_or_else(|| Error::InvalidSubaccount(last_account))?;
-            if !account.has_transactions() {
+            if !account.has_transactions()? {
                 bail!(Error::AccountGapsDisallowed);
             }
         }

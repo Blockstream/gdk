@@ -97,6 +97,14 @@ pub struct RawAccountCache {
     /// This field is optional to avoid breaking the cache,
     /// but it should always be set.
     pub xpub: Option<ExtendedPubKey>,
+
+    /// Whether the subaccount was discovered through bip44 subaccount discovery
+    ///
+    /// If an account is discovered through bip44, then it has at least one transaction. This is
+    /// used to establish if an account has some transactions without waiting for the syncer to
+    /// download transactions.
+    /// If None, the account was created before the addition of this field.
+    pub bip44_discovered: Option<bool>,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
@@ -366,6 +374,7 @@ impl StoreMeta {
         &mut self,
         account_num: u32,
         account_xpub: ExtendedPubKey,
+        discovered: bool,
     ) -> Result<(), Error> {
         self.store
             .accounts_settings
@@ -376,6 +385,7 @@ impl StoreMeta {
             Entry::Vacant(entry) => {
                 let mut account = RawAccountCache::default();
                 account.xpub = Some(account_xpub);
+                account.bip44_discovered = Some(discovered);
                 entry.insert(account);
             }
             Entry::Occupied(mut entry) => {
@@ -546,7 +556,7 @@ mod tests {
 
         {
             let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
-            store.make_account(0, xpub).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
+            store.make_account(0, xpub, true).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
