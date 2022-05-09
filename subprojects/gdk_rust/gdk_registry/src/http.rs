@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::{io::BufReader, time::Duration};
 
 pub fn call(url: &str, agent: &ureq::Agent, last_modified: &str) -> Result<ValueModified, Error> {
+    let now = std::time::Instant::now();
     info!("START call {}", &url);
     let response = agent
         .get(&url)
@@ -11,7 +12,7 @@ pub fn call(url: &str, agent: &ureq::Agent, last_modified: &str) -> Result<Value
         .set("If-Modified-Since", last_modified)
         .call()?;
     let status = response.status();
-    info!("call {} returns {}", url, status);
+    info!("call {} returns {} took:{:?}", url, status, now.elapsed());
     if status == 304 {
         return Ok(ValueModified {
             last_modified: last_modified.to_string(),
@@ -33,7 +34,7 @@ pub fn call(url: &str, agent: &ureq::Agent, last_modified: &str) -> Result<Value
         last_modified,
     };
 
-    info!("END call {} {}", &url, status);
+    info!("END call {} {} took: {:?}", &url, status, now.elapsed());
 
     Ok(value_modified)
 }

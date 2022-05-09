@@ -24,7 +24,7 @@
 //!
 
 use hard::{hard_coded_assets, hard_coded_icons};
-use log::{debug, warn};
+use log::{debug, info, warn};
 
 pub use error::Error;
 pub use file::ValueModified;
@@ -51,6 +51,7 @@ mod result;
 /// the `details.config` parameter.
 ///
 pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResult, Error> {
+    let now = std::time::Instant::now();
     let network = details.network();
     let mut return_value = RefreshAssetsResult::default();
     let agent = details.agent()?;
@@ -103,6 +104,7 @@ pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResul
             AssetsOrIcons::Icons => return_value.icons = serde_json::from_value(value.value)?,
         }
     }
+    info!("refresh_assets took: {:?}", now.elapsed());
     Ok(return_value)
 }
 
