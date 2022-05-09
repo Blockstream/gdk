@@ -93,17 +93,20 @@ namespace sdk {
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
 
-    // Compute watch only username and password for client blob watch only login
-    std::pair<std::string, std::string> get_watch_only_credentials(
-        const std::string& username, const std::string& password);
+    // Compute base entropy for a client blob watch only login
+    std::vector<unsigned char> get_watch_only_entropy(const std::string& username, const std::string& password);
 
-    // Encrypt the client blob key to the watch only username and password, return as hex
-    std::string encrypt_wo_blob_key(
-        const pbkdf2_hmac256_t& blob_key, const std::string& username, const std::string& password);
+    // Compute username and password for a client blob watch only login
+    std::pair<std::string, std::string> get_watch_only_credentials(byte_span_t entropy);
 
-    // Decrypt the encrypted client blob key with the watch only username and password
-    pbkdf2_hmac256_t decrypt_wo_blob_key(
-        const std::string& wo_blob_key_hex, const std::string& username, const std::string& password);
+    // Compute a local cache password for a client blob watch only login
+    pub_key_t get_wo_local_encryption_key(byte_span_t entropy, const std::string& server_entropy);
+
+    // Encrypt the client blob key to the watch only entropy, return as hex
+    std::string encrypt_wo_blob_key(byte_span_t entropy, const pbkdf2_hmac256_t& blob_key);
+
+    // Decrypt the encrypted client blob key with the watch only entropy
+    pbkdf2_hmac256_t decrypt_wo_blob_key(byte_span_t entropy, const std::string& wo_blob_key_hex);
 
     // Encryption
     std::string aes_cbc_decrypt(const pbkdf2_hmac256_t& key, const std::string& ciphertext);

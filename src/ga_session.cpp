@@ -1361,7 +1361,8 @@ namespace sdk {
         const auto user_agent = get_user_agent(true, m_user_agent);
 
         // First, try using client blob
-        const auto u_p = get_watch_only_credentials(username, password);
+        const auto entropy = get_watch_only_entropy(username, password);
+        const auto u_p = get_watch_only_credentials(entropy);
         auto login_data = auth_watch_only(locker, u_p.first, u_p.second, user_agent, true);
         if (login_data.empty()) {
             // Client blob login failed: try a non-blob watch only login
@@ -1377,20 +1378,12 @@ namespace sdk {
             reset_cached_session_data(locker);
         }
 
-        pub_key_t encryption_key;
-        {
-            // Generate a cache encryption key from the username and password
-            const std::string usr_pwd = username + password;
-            auto key_bytes = sha256(ustring_span(usr_pwd));
-            std::copy(key_bytes.begin(), key_bytes.end(), encryption_key.begin() + 1);
-            encryption_key[0] = 2;
-            // FIXME: Check for valid pubkey
-        }
+        const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
 
         set_local_encryption_keys_impl(locker, encryption_key, signer);
         const std::string wo_blob_key_hex = json_get_value(login_data, "wo_blob_key");
         if (!wo_blob_key_hex.empty()) {
-            auto decrypted_key = decrypt_wo_blob_key(wo_blob_key_hex, username, password);
+            auto decrypted_key = decrypt_wo_blob_key(entropy, wo_blob_key_hex);
             set_optional_member(m_blob_aes_key, std::move(decrypted_key));
         }
 
@@ -1582,6 +1575,7 @@ namespace sdk {
         if (!password.empty() && password.size() < 8u) {
             throw user_error("Watch-only password must be at least 8 characters long");
         }
+        const auto entropy = get_watch_only_entropy(username, password);
         std::string wo_blob_key_hex;
         {
             locker_t locker(m_mutex);
@@ -1601,12 +1595,12 @@ namespace sdk {
                 update_blob(locker, std::bind(&client_blob::set_watch_only_data, &m_blob, username, xpubs));
 
                 // Enable client blob watch only
-                wo_blob_key_hex = encrypt_wo_blob_key(m_blob_aes_key.get(), username, password);
+                wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.get());
             }
         }
         std::pair<std::string, std::string> u_p{ username, password };
-        if (!wo_blob_key_hex.empty()) {
-            u_p = get_watch_only_credentials(username, password);
+        if (!wo_blob_key_hex.empty() && !username.empty()) {
+            u_p = get_watch_only_credentials(entropy);
         }
         return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
     }

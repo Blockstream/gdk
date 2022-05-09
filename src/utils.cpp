@@ -372,9 +372,9 @@ namespace sdk {
         return bip39_mnemonic_from_bytes(ciphertext);
     }
 
-    static std::vector<unsigned char> get_wo_entropy(const std::string& username, const std::string& password)
+    std::vector<unsigned char> get_watch_only_entropy(const std::string& username, const std::string& password)
     {
-        // Initial entropy is scrypt(len(username) + username + password, salt)
+        // Initial entropy is scrypt(len(username) + username + password, "_wo_salt")
         const std::string u_p = username + password;
         std::vector<unsigned char> entropy;
         entropy.resize(sizeof(uint32_t) + u_p.size());
@@ -383,39 +383,41 @@ namespace sdk {
         return scrypt(entropy, signer::WATCH_ONLY_SALT);
     }
 
-    std::pair<std::string, std::string> get_watch_only_credentials(
-        const std::string& username, const std::string& password)
+    std::pair<std::string, std::string> get_watch_only_credentials(byte_span_t entropy)
     {
-        if (username.empty() && password.empty()) {
-            return { std::string{}, std::string{} };
-        }
         // Generate the watch only server username/password. Unlike non-blob
         // watch only logins, we don't want the server to know the original
         // username/password, since we use these to encrypt the client blob
         // decryption key.
-        const auto entropy = get_wo_entropy(username, password);
         const auto u_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_U);
         const auto p_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_P);
         return { b2h(u_blob), b2h(p_blob) };
     }
 
-    static pbkdf2_hmac256_t get_wo_blob_aes_key(const std::string& username, const std::string& password)
+    static pbkdf2_hmac256_t get_wo_blob_aes_key(byte_span_t entropy)
     {
-        const auto entropy = get_wo_entropy(username, password);
         return pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_K);
     }
 
-    std::string encrypt_wo_blob_key(
-        const pbkdf2_hmac256_t& blob_key, const std::string& username, const std::string& password)
+    std::string encrypt_wo_blob_key(byte_span_t entropy, const pbkdf2_hmac256_t& blob_key)
     {
-        return aes_cbc_encrypt(get_wo_blob_aes_key(username, password), b2h(blob_key));
+        return aes_cbc_encrypt(get_wo_blob_aes_key(entropy), b2h(blob_key));
     }
 
-    pbkdf2_hmac256_t decrypt_wo_blob_key(
-        const std::string& wo_blob_key_hex, const std::string& username, const std::string& password)
+    pbkdf2_hmac256_t decrypt_wo_blob_key(byte_span_t entropy, const std::string& wo_blob_key_hex)
     {
         constexpr size_t size = std::tuple_size<pbkdf2_hmac256_t>::value;
-        return h2b_array<size>(aes_cbc_decrypt(get_wo_blob_aes_key(username, password), wo_blob_key_hex));
+        return h2b_array<size>(aes_cbc_decrypt(get_wo_blob_aes_key(entropy), wo_blob_key_hex));
+    }
+
+    pub_key_t get_wo_local_encryption_key(byte_span_t entropy, const std::string& server_entropy)
+    {
+        GDK_RUNTIME_ASSERT(!server_entropy.empty());
+        pub_key_t encryption_key;
+        const auto key_bytes = pbkdf2_hmac_sha512(entropy, ustring_span(server_entropy));
+        std::copy(key_bytes.begin(), key_bytes.begin() + sizeof(pub_key_t), encryption_key.begin());
+        // Note that the pubkey data we return does not have to be valid
+        return encryption_key;
     }
 
     // Parse a bitcoin uri as described in bip21/72 and return the components
