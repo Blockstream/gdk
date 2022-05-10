@@ -18,7 +18,9 @@
 ### Fixed
 
 - Singlesig: In GA_get_transactions "inputs" and "outputs" elements, set "address" and "address_type" correctly; do not set Liquid fields if not Liquid or not unblindable.
-- Singlesig: align transaction notification with multisig.
+- Singlesig: align transaction and block notifications with multisig.
+- Singlesig: temporary lock spent utxos in the interval between send/broadcast and the next sync.
+- Singlesig: fix an error causing "restore" to fail.
 
 
 ## Release 0.0.52 - 2022-04-22
