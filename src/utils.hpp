@@ -109,8 +109,10 @@ namespace sdk {
     pbkdf2_hmac256_t decrypt_wo_blob_key(byte_span_t entropy, const std::string& wo_blob_key_hex);
 
     // Encryption
-    std::string aes_cbc_decrypt(const pbkdf2_hmac256_t& key, const std::string& ciphertext);
-    std::string aes_cbc_encrypt(const pbkdf2_hmac256_t& key, const std::string& plaintext);
+    std::vector<unsigned char> aes_cbc_decrypt(const pbkdf2_hmac256_t& key, byte_span_t ciphertext);
+    std::vector<unsigned char> aes_cbc_decrypt_from_hex(const pbkdf2_hmac256_t& key, const std::string& ciphertext_hex);
+    std::vector<unsigned char> aes_cbc_encrypt(const pbkdf2_hmac256_t& key, byte_span_t plaintext);
+    std::string aes_cbc_encrypt_to_hex(const pbkdf2_hmac256_t& key, byte_span_t plaintext);
 
     size_t aes_gcm_decrypt_get_length(byte_span_t cyphertext);
     size_t aes_gcm_decrypt(byte_span_t key, byte_span_t cyphertext, gsl::span<unsigned char> plaintext);

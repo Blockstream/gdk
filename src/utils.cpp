@@ -401,13 +401,16 @@ namespace sdk {
 
     std::string encrypt_wo_blob_key(byte_span_t entropy, const pbkdf2_hmac256_t& blob_key)
     {
-        return aes_cbc_encrypt(get_wo_blob_aes_key(entropy), b2h(blob_key));
+        return aes_cbc_encrypt_to_hex(get_wo_blob_aes_key(entropy), blob_key);
     }
 
     pbkdf2_hmac256_t decrypt_wo_blob_key(byte_span_t entropy, const std::string& wo_blob_key_hex)
     {
-        constexpr size_t size = std::tuple_size<pbkdf2_hmac256_t>::value;
-        return h2b_array<size>(aes_cbc_decrypt(get_wo_blob_aes_key(entropy), wo_blob_key_hex));
+        const auto decrypted = aes_cbc_decrypt_from_hex(get_wo_blob_aes_key(entropy), wo_blob_key_hex);
+        pbkdf2_hmac256_t encryption_key;
+        GDK_RUNTIME_ASSERT(decrypted.size() == encryption_key.size());
+        std::copy(decrypted.begin(), decrypted.end(), encryption_key.begin());
+        return encryption_key;
     }
 
     pub_key_t get_wo_local_encryption_key(byte_span_t entropy, const std::string& server_entropy)
@@ -482,26 +485,36 @@ namespace sdk {
         return p == json.end() ? f() : h2b(p->get<std::string>());
     }
 
-    std::string aes_cbc_decrypt(const pbkdf2_hmac256_t& key, const std::string& ciphertext)
+    std::vector<unsigned char> aes_cbc_decrypt(const pbkdf2_hmac256_t& key, byte_span_t ciphertext)
     {
-        const auto ciphertext_bytes = h2b(ciphertext);
-        const auto iv = gsl::make_span(ciphertext_bytes).first(AES_BLOCK_LEN);
-        const auto encrypted = gsl::make_span(ciphertext_bytes).subspan(AES_BLOCK_LEN);
+        const auto iv = ciphertext.first(AES_BLOCK_LEN);
+        const auto encrypted = ciphertext.subspan(AES_BLOCK_LEN);
         std::vector<unsigned char> plaintext(encrypted.size());
         aes_cbc(key, iv, encrypted, AES_FLAG_DECRYPT, plaintext);
         GDK_RUNTIME_ASSERT(plaintext.size() <= static_cast<size_t>(encrypted.size()));
-        return std::string(plaintext.begin(), plaintext.end());
+        return plaintext;
     }
 
-    std::string aes_cbc_encrypt(const pbkdf2_hmac256_t& key, const std::string& plaintext)
+    std::vector<unsigned char> aes_cbc_decrypt_from_hex(const pbkdf2_hmac256_t& key, const std::string& ciphertext_hex)
+    {
+        const auto ciphertext = h2b(ciphertext_hex);
+        return aes_cbc_decrypt(key, ciphertext);
+    }
+
+    std::vector<unsigned char> aes_cbc_encrypt(const pbkdf2_hmac256_t& key, byte_span_t plaintext)
     {
         const auto iv = get_random_bytes<AES_BLOCK_LEN>();
         const size_t plaintext_padded_size = (plaintext.size() / AES_BLOCK_LEN + 1) * AES_BLOCK_LEN;
         std::vector<unsigned char> encrypted(AES_BLOCK_LEN + plaintext_padded_size);
-        aes_cbc(key, iv, ustring_span(plaintext), AES_FLAG_ENCRYPT, encrypted);
+        aes_cbc(key, iv, plaintext, AES_FLAG_ENCRYPT, encrypted);
         GDK_RUNTIME_ASSERT(encrypted.size() == plaintext_padded_size);
         encrypted.insert(std::begin(encrypted), iv.begin(), iv.end());
-        return b2h(encrypted);
+        return encrypted;
+    }
+
+    std::string aes_cbc_encrypt_to_hex(const pbkdf2_hmac256_t& key, byte_span_t plaintext)
+    {
+        return b2h(aes_cbc_encrypt(key, plaintext));
     }
 
     // Given a set of urls select the most appropriate

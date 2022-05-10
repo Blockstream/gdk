@@ -1320,7 +1320,8 @@ namespace sdk {
             const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt));
 
             // FIXME: clear data after use
-            const auto decrypted = nlohmann::json::parse(aes_cbc_decrypt(key, data.at("encrypted_data")));
+            const auto plaintext = aes_cbc_decrypt_from_hex(key, data.at("encrypted_data"));
+            const auto decrypted = nlohmann::json::parse(plaintext.begin(), plaintext.end());
             return decrypted.at("mnemonic");
         } catch (const autobahn::call_error& e) {
             GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
@@ -3170,7 +3171,7 @@ namespace sdk {
         const std::string json = nlohmann::json({ { "mnemonic", mnemonic }, { "seed", b2h(seed) } }).dump();
 
         return { { "pin_identifier", id_and_password.front() }, { "salt", salt_b64 },
-            { "encrypted_data", aes_cbc_encrypt(key, json) } };
+            { "encrypted_data", aes_cbc_encrypt_to_hex(key, ustring_span(json)) } };
     }
 
     // Idempotent
