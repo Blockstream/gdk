@@ -86,7 +86,7 @@ namespace sdk {
         // By default, ignore the async flag
         if (m_notify && m_notification_handler) {
             // We use 'new' here as it is the handlers responsibility to 'delete'
-            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(details));
+            const auto details_p = reinterpret_cast<GA_json*>(new nlohmann::json(std::move(details)));
             m_notification_handler(m_notification_context, details_p);
         }
     }
