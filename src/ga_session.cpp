@@ -2506,12 +2506,10 @@ namespace sdk {
             locker_t locker(m_mutex);
             final_last_pointer = m_cache->get_latest_scriptpubkey_pointer(subaccount);
         }
-        const uint32_t block_height = get_block_height();
         do {
             const nlohmann::json result = get_previous_addresses(subaccount, current_last_pointer);
             for (auto& address : result.at("list")) {
-                const auto scriptpubkey
-                    = scriptpubkey_from_address(m_net_params, block_height, address.at("address"), false);
+                const auto scriptpubkey = scriptpubkey_from_address(m_net_params, address.at("address"), false);
                 const uint32_t branch = json_get_value(address, "branch", 1);
                 const uint32_t pointer = address.at("pointer");
                 const uint32_t subtype = json_get_value(address, "subtype", 0);

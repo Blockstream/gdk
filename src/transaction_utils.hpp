@@ -69,15 +69,15 @@ namespace sdk {
     amount get_tx_fee(const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate);
 
     // Get scriptpubkey from address (address is expected to be valid)
-    std::vector<unsigned char> scriptpubkey_from_address(const network_parameters& net_params, uint32_t block_height,
-        const std::string& address, bool confidential = true);
+    std::vector<unsigned char> scriptpubkey_from_address(
+        const network_parameters& net_params, const std::string& address, bool confidential = true);
 
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error);
 
     // Add an output to a tx given its address
-    amount add_tx_output(const network_parameters& net_params, uint32_t block_height, nlohmann::json& result,
-        wally_tx_ptr& tx, const std::string& address, amount::value_type satoshi = 0, const std::string& asset_id = {});
+    amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
+        const std::string& address, amount::value_type satoshi = 0, const std::string& asset_id = {});
 
     // Add a fee output to a tx, returns the index in tx->outputs
     size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi);
