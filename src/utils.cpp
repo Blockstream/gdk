@@ -372,7 +372,7 @@ namespace sdk {
         return bip39_mnemonic_from_bytes(ciphertext);
     }
 
-    std::vector<unsigned char> get_watch_only_entropy(const std::string& username, const std::string& password)
+    std::vector<unsigned char> get_wo_entropy(const std::string& username, const std::string& password)
     {
         // Initial entropy is scrypt(len(username) + username + password, "_wo_salt")
         const std::string u_p = username + password;
@@ -383,7 +383,7 @@ namespace sdk {
         return scrypt(entropy, signer::WATCH_ONLY_SALT);
     }
 
-    std::pair<std::string, std::string> get_watch_only_credentials(byte_span_t entropy)
+    std::pair<std::string, std::string> get_wo_credentials(byte_span_t entropy)
     {
         // Generate the watch only server username/password. Unlike non-blob
         // watch only logins, we don't want the server to know the original

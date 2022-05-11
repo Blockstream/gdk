@@ -23,9 +23,9 @@ namespace sdk {
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs);
         nlohmann::json login(std::shared_ptr<signer> signer);
         std::string mnemonic_from_pin_data(const nlohmann::json& pin_data);
-        nlohmann::json login_watch_only(std::shared_ptr<signer> signer);
-        bool set_watch_only(const std::string& username, const std::string& password);
-        std::string get_watch_only_username();
+        nlohmann::json login_wo(std::shared_ptr<signer> signer);
+        bool set_wo_credentials(const std::string& username, const std::string& password);
+        std::string get_wo_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
         bool discover_subaccount(const std::string& xpub, const std::string& type);

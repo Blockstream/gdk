@@ -317,7 +317,7 @@ namespace sdk {
             }
 
             if (new_signer->is_watch_only()) {
-                m_result = m_session->login_watch_only(new_signer);
+                m_result = m_session->login_wo(new_signer);
                 m_signer = new_signer;
                 return state_type::done;
             }

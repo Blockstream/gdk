@@ -42,8 +42,8 @@ namespace sdk {
         std::string get_master_blinding_key() const;
         bool is_master_blinding_key_denied() const;
 
-        bool set_watch_only_data(const std::string& username, const nlohmann::json& xpubs);
-        std::string get_watch_only_username() const;
+        bool set_wo_data(const std::string& username, const nlohmann::json& xpubs);
+        std::string get_wo_username() const;
         nlohmann::json get_xpubs() const;
 
         void load(byte_span_t key, byte_span_t data);

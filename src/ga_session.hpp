@@ -46,10 +46,10 @@ namespace sdk {
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs);
 
         std::string mnemonic_from_pin_data(const nlohmann::json& pin_data);
-        nlohmann::json login_watch_only(std::shared_ptr<signer> signer);
+        nlohmann::json login_wo(std::shared_ptr<signer> signer);
 
-        bool set_watch_only(const std::string& username, const std::string& password);
-        std::string get_watch_only_username();
+        bool set_wo_credentials(const std::string& username, const std::string& password);
+        std::string get_wo_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
         template <typename T>
@@ -199,7 +199,7 @@ namespace sdk {
         bool is_twofactor_reset_active(session_impl::locker_t& locker);
         nlohmann::json set_twofactor_reset_config(const nlohmann::json& config);
         void set_enabled_twofactor_methods(locker_t& locker);
-        nlohmann::json auth_watch_only(locker_t& locker, const std::string& username, const std::string& password,
+        nlohmann::json authenticate_wo(locker_t& locker, const std::string& username, const std::string& password,
             const std::string& user_agent, bool with_blob);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_initial_login);

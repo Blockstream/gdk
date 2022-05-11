@@ -129,16 +129,16 @@ namespace sdk {
     {
         return rust_call("mnemonic_from_pin_data", pin_data, m_session);
     }
-    nlohmann::json ga_rust::login_watch_only(std::shared_ptr<signer> signer)
+    nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
-        throw std::runtime_error("login_watch_only not implemented");
+        throw std::runtime_error("login_wo not implemented");
         __builtin_unreachable();
     }
-    bool ga_rust::set_watch_only(const std::string& username, const std::string& password)
+    bool ga_rust::set_wo_credentials(const std::string& username, const std::string& password)
     {
-        throw std::runtime_error("set_watch_only not implemented");
+        throw std::runtime_error("set_wo_credentials not implemented");
     }
-    std::string ga_rust::get_watch_only_username()
+    std::string ga_rust::get_wo_username()
     {
         // TODO
         return std::string{};

@@ -89,9 +89,9 @@ namespace sdk {
             = 0;
         virtual nlohmann::json login(std::shared_ptr<signer> signer);
         virtual std::string mnemonic_from_pin_data(const nlohmann::json& pin_data) = 0;
-        virtual nlohmann::json login_watch_only(std::shared_ptr<signer> signer) = 0;
-        virtual bool set_watch_only(const std::string& username, const std::string& password) = 0;
-        virtual std::string get_watch_only_username() = 0;
+        virtual nlohmann::json login_wo(std::shared_ptr<signer> signer) = 0;
+        virtual bool set_wo_credentials(const std::string& username, const std::string& password) = 0;
+        virtual std::string get_wo_username() = 0;
         virtual bool remove_account(const nlohmann::json& twofactor_data) = 0;
 
         // Returns true if the subaccount was discovered

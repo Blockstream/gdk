@@ -94,10 +94,10 @@ namespace sdk {
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
 
     // Compute base entropy for a client blob watch only login
-    std::vector<unsigned char> get_watch_only_entropy(const std::string& username, const std::string& password);
+    std::vector<unsigned char> get_wo_entropy(const std::string& username, const std::string& password);
 
     // Compute username and password for a client blob watch only login
-    std::pair<std::string, std::string> get_watch_only_credentials(byte_span_t entropy);
+    std::pair<std::string, std::string> get_wo_credentials(byte_span_t entropy);
 
     // Compute a local cache password for a client blob watch only login
     pub_key_t get_wo_local_encryption_key(byte_span_t entropy, const std::string& server_entropy);

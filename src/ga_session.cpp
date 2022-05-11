@@ -1351,7 +1351,7 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::auth_watch_only(session_impl::locker_t& locker, const std::string& username,
+    nlohmann::json ga_session::authenticate_wo(session_impl::locker_t& locker, const std::string& username,
         const std::string& password, const std::string& user_agent, bool with_blob)
     {
         try {
@@ -1368,7 +1368,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::login_watch_only(std::shared_ptr<signer> signer)
+    nlohmann::json ga_session::login_wo(std::shared_ptr<signer> signer)
     {
         const bool is_initial_login = set_signer(signer);
 
@@ -1382,16 +1382,16 @@ namespace sdk {
         const auto user_agent = get_user_agent(true, m_user_agent);
 
         // First, try using client blob
-        const auto entropy = get_watch_only_entropy(username, password);
-        const auto u_p = get_watch_only_credentials(entropy);
-        auto login_data = auth_watch_only(locker, u_p.first, u_p.second, user_agent, true);
+        const auto entropy = get_wo_entropy(username, password);
+        const auto u_p = get_wo_credentials(entropy);
+        auto login_data = authenticate_wo(locker, u_p.first, u_p.second, user_agent, true);
         if (login_data.empty()) {
             // Client blob login failed: try a non-blob watch only login
             if (is_liquid) {
                 // Liquid doesn't support non-blob watch only
                 throw user_error(res::id_user_not_found_or_invalid);
             }
-            login_data = auth_watch_only(locker, username, password, user_agent, false);
+            login_data = authenticate_wo(locker, username, password, user_agent, false);
         }
 
         if (!is_initial_login) {
@@ -1588,8 +1588,7 @@ namespace sdk {
         }
     }
 
-    // Idempotent
-    bool ga_session::set_watch_only(const std::string& username, const std::string& password)
+    bool ga_session::set_wo_credentials(const std::string& username, const std::string& password)
     {
         ensure_full_session();
         GDK_RUNTIME_ASSERT(username.empty() == password.empty());
@@ -1599,7 +1598,7 @@ namespace sdk {
         if (!password.empty() && password.size() < 8u) {
             throw user_error("Watch-only password must be at least 8 characters long");
         }
-        const auto entropy = get_watch_only_entropy(username, password);
+        const auto entropy = get_wo_entropy(username, password);
         std::string wo_blob_key_hex;
         {
             locker_t locker(m_mutex);
@@ -1616,7 +1615,7 @@ namespace sdk {
             if (m_blob_aes_key != boost::none) {
                 // Set watch only data
                 const auto xpubs = get_signer_xpubs_json(m_signer);
-                update_blob(locker, std::bind(&client_blob::set_watch_only_data, &m_blob, username, xpubs));
+                update_blob(locker, std::bind(&client_blob::set_wo_data, &m_blob, username, xpubs));
 
                 // Enable client blob watch only
                 wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.get());
@@ -1624,19 +1623,19 @@ namespace sdk {
         }
         std::pair<std::string, std::string> u_p{ username, password };
         if (!wo_blob_key_hex.empty() && !username.empty()) {
-            u_p = get_watch_only_credentials(entropy);
+            u_p = get_wo_credentials(entropy);
         }
         return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
     }
 
-    std::string ga_session::get_watch_only_username()
+    std::string ga_session::get_wo_username()
     {
         {
             locker_t locker(m_mutex);
             if (m_blob_aes_key != boost::none) {
                 // Client blob watch only; return from the client blob,
                 // since the server doesn't know our real username.
-                const auto username = m_blob.get_watch_only_username();
+                const auto username = m_blob.get_wo_username();
                 if (m_watch_only || !username.empty()) {
                     return username;
                 }

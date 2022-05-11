@@ -132,7 +132,7 @@ namespace sdk {
         return json_get_value(m_data[SLIP77KEY], "denied", false); // False if not explicitly denied
     }
 
-    bool client_blob::set_watch_only_data(const std::string& username, const nlohmann::json& xpubs)
+    bool client_blob::set_wo_data(const std::string& username, const nlohmann::json& xpubs)
     {
         auto& wo = m_data[WATCHONLY];
         json_add_non_default(wo, "username", username);
@@ -140,7 +140,7 @@ namespace sdk {
         return increment_version(m_data);
     }
 
-    std::string client_blob::get_watch_only_username() const
+    std::string client_blob::get_wo_username() const
     {
         return json_get_value(m_data[WATCHONLY], "username"); // Blank if unset
     }

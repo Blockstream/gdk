@@ -241,19 +241,19 @@ namespace sdk {
         });
     }
 
-    bool session::set_watch_only(const std::string& username, const std::string& password)
+    bool session::set_wo_credentials(const std::string& username, const std::string& password)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->set_watch_only(username, password);
+            return p->set_wo_credentials(username, password);
         });
     }
 
-    std::string session::get_watch_only_username()
+    std::string session::get_wo_username()
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_watch_only_username();
+            return p->get_wo_username();
         });
     }
 

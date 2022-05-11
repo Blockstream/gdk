@@ -278,10 +278,10 @@ GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, const GA_jso
     { *call = make_call(new ga::sdk::login_user_call(*session, *json_cast(hw_device), *json_cast(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_set_watch_only, struct GA_session*, session, const char*, username, const char*, password,
-    { session->set_watch_only(username, password); })
+    { session->set_wo_credentials(username, password); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_watch_only_username, struct GA_session*, session, char**, username,
-    { *username = to_c_string(session->get_watch_only_username()); })
+    { *username = to_c_string(session->get_wo_username()); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_fee_estimates, struct GA_session*, session, GA_json**, estimates,
     { *json_cast(estimates) = new nlohmann::json(session->get_fee_estimates()); })
