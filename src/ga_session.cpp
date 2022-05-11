@@ -1019,19 +1019,7 @@ namespace sdk {
             }
         }
 
-        if (m_blob_hmac.empty()) {
-            // Load our client blob from from the cache if we have one
-            m_cache->get_key_value("client_blob", { [this, &server_hmac](const auto& db_blob) {
-                if (db_blob) {
-                    const std::string db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
-                    if (db_hmac == server_hmac) {
-                        // Cached blob is current, load it
-                        m_blob.load(*m_blob_aes_key, *db_blob);
-                        m_blob_hmac = server_hmac;
-                    }
-                }
-            } });
-        }
+        get_cached_client_blob(server_hmac);
 
         if (is_blob_on_server) {
             // The server has a blob for this wallet. If we havent got an
@@ -1093,6 +1081,34 @@ namespace sdk {
         m_wamp->subscribe("com.greenaddress.blocks", [this](nlohmann::json event) { on_new_block(event, false); });
     }
 
+    void ga_session::get_cached_client_blob(const std::string& server_hmac)
+    {
+        if (m_blob_hmac.empty()) {
+            // Load our client blob from from the cache if we have one
+            std::string db_hmac;
+            if (m_watch_only) {
+                m_cache->get_key_value("client_blob_hmac", { [&db_hmac](const auto& db_blob) {
+                    if (db_blob) {
+                        db_hmac.assign(db_blob->begin(), db_blob->end());
+                    }
+                } });
+            }
+            m_cache->get_key_value("client_blob", { [this, &db_hmac, &server_hmac](const auto& db_blob) {
+                if (db_blob) {
+                    GDK_RUNTIME_ASSERT(m_watch_only || m_blob_hmac_key != boost::none);
+                    if (!m_watch_only) {
+                        db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
+                    }
+                    if (db_hmac == server_hmac) {
+                        // Cached blob is current, load it
+                        m_blob.load(*m_blob_aes_key, *db_blob);
+                        m_blob_hmac = server_hmac;
+                    }
+                }
+            } });
+        }
+    }
+
     void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)
     {
         // Load the latest blob from the server
@@ -1108,7 +1124,7 @@ namespace sdk {
         m_blob.load(*m_blob_aes_key, server_blob);
 
         if (encache) {
-            encache_client_blob(locker, server_blob);
+            encache_client_blob(locker, server_blob, ret["hmac"]);
         }
         m_blob_hmac = ret["hmac"];
         m_blob_outdated = false; // Blob is now current with the servers view
@@ -1132,16 +1148,20 @@ namespace sdk {
             return false;
         }
         // Blob has been saved on the server, cache it locally
-        encache_client_blob(locker, saved.first);
+        encache_client_blob(locker, saved.first, saved.second);
         m_blob_hmac = saved.second;
         m_blob_outdated = false; // Blob is now current with the servers view
         return true;
     }
 
-    void ga_session::encache_client_blob(session_impl::locker_t& locker, const std::vector<unsigned char>& data)
+    void ga_session::encache_client_blob(
+        session_impl::locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         m_cache->upsert_key_value("client_blob", data);
+        if (m_watch_only) {
+            m_cache->upsert_key_value("client_blob_hmac", ustring_span(hmac));
+        }
         m_cache->save_db();
     }
 
@@ -1389,7 +1409,10 @@ namespace sdk {
         }
 
         const std::string server_hmac = login_data["client_blob_hmac"];
-        bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+        const bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+        if (is_blob_on_server) {
+            get_cached_client_blob(server_hmac);
+        }
 
         if (is_blob_on_server && m_blob_aes_key != boost::none) {
             // The server has a blob for this wallet. If we havent got an
