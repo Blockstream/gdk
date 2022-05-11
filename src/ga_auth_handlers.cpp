@@ -684,7 +684,7 @@ namespace sdk {
         }
 
         if (!json_get_value(m_result, "user_signed", false)) {
-            // We havent signed the users inputs yet, do so now
+            // We haven't signed the users inputs yet, do so now
             sign_user_inputs(signer);
         }
         return state_type::done;

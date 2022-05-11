@@ -717,7 +717,7 @@ namespace sdk {
             delete_block_txs(subaccount, existing_tx_block);
             // Fall through to delete mempool txs
         }
-        // Otherwise, we havent seen this tx yet, or we've been re-notified of a mempool tx.
+        // Otherwise, we haven't seen this tx yet, or we've been re-notified of a mempool tx.
         // Remove any mempool txs this tx could be double spending/replacing
         delete_mempool_txs(subaccount);
     }

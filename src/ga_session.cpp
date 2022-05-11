@@ -1022,7 +1022,7 @@ namespace sdk {
         get_cached_client_blob(server_hmac);
 
         if (is_blob_on_server) {
-            // The server has a blob for this wallet. If we havent got an
+            // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
             if (!is_initial_login && m_blob_hmac != server_hmac) {
                 // Re-login, and our blob has been updated on the server: re-load below
@@ -1415,7 +1415,7 @@ namespace sdk {
         }
 
         if (is_blob_on_server && m_blob_aes_key != boost::none) {
-            // The server has a blob for this wallet. If we havent got an
+            // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
             if (!is_initial_login && m_blob_hmac != server_hmac) {
                 // Re-login, and our blob has been updated on the server: re-load below
