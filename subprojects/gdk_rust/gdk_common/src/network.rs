@@ -36,7 +36,6 @@ pub struct NetworkParameters {
 
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
-    pub taproot_enabled_at: Option<u32>,
 
     pub proxy: Option<String>,
     pub use_tor: Option<bool>,
