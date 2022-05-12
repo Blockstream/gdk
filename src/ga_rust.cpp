@@ -228,9 +228,14 @@ namespace sdk {
         return rust_call("get_receive_address", details, m_session);
     }
 
-    nlohmann::json ga_rust::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
+    nlohmann::json ga_rust::get_previous_addresses(const nlohmann::json& details)
     {
-        throw std::runtime_error("get_previous_addresses not implemented");
+        nlohmann::json actual_details = details;
+
+        // Same pagination as multisig
+        actual_details["count"] = 10;
+
+        return rust_call("get_previous_addresses", actual_details, m_session);
     }
 
     nlohmann::json ga_rust::get_subaccounts() { return rust_call("get_subaccounts", {}, m_session); }

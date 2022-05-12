@@ -778,6 +778,13 @@ impl ElectrumSession {
         Ok(address)
     }
 
+    pub fn get_previous_addresses(
+        &self,
+        opt: &GetPreviousAddressesOpt,
+    ) -> Result<PreviousAddresses, Error> {
+        self.get_account(opt.subaccount)?.get_previous_addresses(opt)
+    }
+
     pub fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(

@@ -63,7 +63,7 @@ namespace sdk {
         nlohmann::json get_transactions(const nlohmann::json& details);
 
         nlohmann::json get_receive_address(const nlohmann::json& details);
-        nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer);
+        nlohmann::json get_previous_addresses(const nlohmann::json& details);
         nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);

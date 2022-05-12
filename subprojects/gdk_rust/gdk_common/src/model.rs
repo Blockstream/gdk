@@ -941,6 +941,65 @@ impl From<&BETransactionEntry> for TransactionDetails {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GetPreviousAddressesOpt {
+    /// The subaccount to get the addresses for.
+    pub subaccount: u32,
+
+    /// The last pointer returned by a previous call.
+    ///
+    /// Use None to get the newest generated addresses.
+    pub last_pointer: Option<u32>,
+
+    /// Whether to get the addresses belonging to the internal chain or the external one.
+    #[serde(default)]
+    pub is_internal: bool,
+
+    /// The number of addresses to return at most.
+    ///
+    /// This is needed for pagination.
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct PreviousAddress {
+    /// The address.
+    ///
+    /// For Liquid is blinded.
+    pub address: String,
+    pub address_type: String,
+    pub subaccount: u32,
+    pub is_internal: bool,
+
+    /// The last child number in bip32 terminology.
+    pub pointer: u32,
+
+    #[serde(rename = "script")]
+    pub script_pubkey: String,
+
+    /// The full path from the master key
+    pub user_path: Vec<ChildNumber>,
+
+    /// The number of transactions where either an input or an output has a script pubkey matching
+    /// this address.
+    pub tx_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct PreviousAddresses {
+    pub subaccount: u32,
+
+    /// The last pointer returned by this call.
+    ///
+    /// None if all addresses have been fetched.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_pointer: Option<u32>,
+    pub is_internal: bool,
+
+    /// The previous addresses
+    pub list: Vec<PreviousAddress>,
+}
+
 #[cfg(test)]
 mod test {
     use crate::model::{parse_path, CreateTxUtxos, GetUnspentOutputs};

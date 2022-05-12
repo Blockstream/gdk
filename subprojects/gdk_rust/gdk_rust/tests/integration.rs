@@ -4,8 +4,9 @@ use gdk_common::be::BETransaction;
 use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
     AddressAmount, CreateAccountOpt, CreateTransaction, CreateTxUtxos, GetBalanceOpt,
-    GetNextAccountOpt, GetTransactionsOpt, GetUnspentOutputs, RenameAccountOpt, SPVCommonParams,
-    SPVDownloadHeadersParams, SPVVerifyTxResult, TransactionType, UpdateAccountOpt, UtxoStrategy,
+    GetNextAccountOpt, GetPreviousAddressesOpt, GetTransactionsOpt, GetUnspentOutputs,
+    RenameAccountOpt, SPVCommonParams, SPVDownloadHeadersParams, SPVVerifyTxResult,
+    TransactionType, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
 use gdk_common::{NetworkId, NetworkParameters};
@@ -1030,6 +1031,84 @@ fn spend_unsynced(is_liquid: bool) {
     let utxos_btc = utxos.0.get(&btc_key).unwrap();
     assert_eq!(utxos_btc.len(), 1);
     assert!(utxos_btc.iter().all(|u| u.txhash != txid1));
+}
+
+#[test]
+fn addresses_bitcoin() {
+    addresses(false);
+}
+
+#[test]
+fn addresses_liquid() {
+    addresses(true);
+}
+
+fn addresses(is_liquid: bool) {
+    let mut test_session = setup_session(is_liquid, |_| ());
+
+    // We send some coins to each address to ensure a new address is generated.
+    let sat = 1000;
+    for i in 1..12 {
+        let ap = test_session.get_receive_address(0);
+        assert_eq!(ap.pointer, i);
+        let txid = test_session.node_sendtoaddress(&ap.address, sat, None);
+        test_session.wait_tx(vec![0], &txid, Some(sat), Some(TransactionType::Incoming));
+    }
+
+    // last_pointer None returns the newest generated addresses
+    let mut opt = GetPreviousAddressesOpt {
+        subaccount: 0,
+        last_pointer: None,
+        is_internal: false,
+        count: 10,
+    };
+
+    let previous_addresses = test_session.session.get_previous_addresses(&opt).unwrap();
+    assert_eq!(previous_addresses.list.len(), 10);
+    assert_eq!(previous_addresses.list[0].pointer, 11);
+    assert_eq!(previous_addresses.list[9].pointer, 2);
+    assert_eq!(previous_addresses.last_pointer, Some(2));
+    assert!(!previous_addresses.is_internal);
+
+    opt.last_pointer = Some(100);
+    let previous_addresses_100 = test_session.session.get_previous_addresses(&opt).unwrap();
+    opt.last_pointer = Some(12);
+    let previous_addresses_12 = test_session.session.get_previous_addresses(&opt).unwrap();
+    assert_eq!(previous_addresses, previous_addresses_100);
+    assert_eq!(previous_addresses, previous_addresses_12);
+
+    opt.last_pointer = previous_addresses.last_pointer;
+    let previous_addresses = test_session.session.get_previous_addresses(&opt).unwrap();
+    assert_eq!(previous_addresses.list.len(), 2);
+    assert_eq!(previous_addresses.list[0].pointer, 1);
+    assert_eq!(previous_addresses.list[1].pointer, 0);
+    assert_eq!(previous_addresses.last_pointer, None);
+
+    opt.is_internal = true;
+    let previous_addresses_int = test_session.session.get_previous_addresses(&opt).unwrap();
+    assert!(previous_addresses_int.is_internal);
+    assert_eq!(previous_addresses_int.list.len(), 1);
+    assert_eq!(previous_addresses_int.list[0].pointer, 0);
+    assert_eq!(previous_addresses_int.last_pointer, None);
+
+    // Create a new account
+    let opt = CreateAccountOpt {
+        name: "p2sh-p2wpkh-2".into(),
+        subaccount: 16,
+        ..Default::default()
+    };
+    test_session.session.create_subaccount(opt).unwrap();
+    let opt = GetPreviousAddressesOpt {
+        subaccount: 16,
+        last_pointer: None,
+        is_internal: false,
+        count: 10,
+    };
+
+    let previous_addresses = test_session.session.get_previous_addresses(&opt).unwrap();
+    assert_eq!(previous_addresses.list.len(), 1);
+    assert_eq!(previous_addresses_int.list[0].pointer, 0);
+    assert_eq!(previous_addresses_int.last_pointer, None);
 }
 
 #[test]

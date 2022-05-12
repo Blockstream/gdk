@@ -2503,12 +2503,13 @@ namespace sdk {
     {
         uint32_t current_last_pointer = 0;
         uint32_t final_last_pointer = 1;
+        auto details = nlohmann::json({ { "subaccount", subaccount } });
         {
             locker_t locker(m_mutex);
             final_last_pointer = m_cache->get_latest_scriptpubkey_pointer(subaccount);
         }
         do {
-            const nlohmann::json result = get_previous_addresses(subaccount, current_last_pointer);
+            const nlohmann::json result = get_previous_addresses(details);
             for (auto& address : result.at("list")) {
                 const auto scriptpubkey = scriptpubkey_from_address(m_net_params, address.at("address"), false);
                 const uint32_t branch = json_get_value(address, "branch", 1);
@@ -2517,7 +2518,12 @@ namespace sdk {
                 const uint32_t script_type = address.at("script_type");
                 encache_scriptpubkey_data(scriptpubkey, subaccount, branch, pointer, subtype, script_type);
             }
-            current_last_pointer = result.at("last_pointer");
+            if (result.contains("last_pointer")) {
+                details["last_pointer"] = result.at("last_pointer");
+                current_last_pointer = details["last_pointer"];
+            } else {
+                current_last_pointer = 0;
+            }
         } while (current_last_pointer > final_last_pointer);
 
         locker_t locker(m_mutex);
@@ -2832,8 +2838,17 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::get_previous_addresses(uint32_t subaccount, uint32_t last_pointer)
+    nlohmann::json ga_session::get_previous_addresses(const nlohmann::json& details)
     {
+        const uint32_t subaccount = json_get_value(details, "subaccount", 0);
+        const bool get_newest = !details.contains("last_pointer") || details["last_pointer"].is_null();
+        const uint32_t last_pointer = json_get_value(details, "last_pointer", 0);
+        if (!get_newest && last_pointer < 2) {
+            // Prevent a server call if the user iterates until empty results
+            return { { "subaccount", subaccount }, { "list", nlohmann::json::array() } };
+        }
+
+        // Fetch the list of previous addresses from the server
         auto addresses = wamp_cast_json(m_wamp->call("addressbook.get_my_addresses", subaccount, last_pointer));
         uint32_t seen_pointer = 0;
 
@@ -2843,6 +2858,7 @@ namespace sdk {
             json_rename_key(address, "num_tx", "tx_count");
             seen_pointer = address["pointer"];
         }
+
         if (seen_pointer < 2) {
             return nlohmann::json{ { "subaccount", subaccount }, { "list", addresses } };
         }

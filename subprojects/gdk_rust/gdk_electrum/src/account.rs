@@ -21,9 +21,10 @@ use gdk_common::be::{
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
-    parse_path, AccountInfo, AddressAmount, AddressPointer, CreateTransaction, GetTransactionsOpt,
-    GetTxInOut, SPVVerifyTxResult, TransactionMeta, TransactionOutput, TxListItem, Txo,
-    UnspentOutput, UpdateAccountOpt, UtxoStrategy,
+    parse_path, AccountInfo, AddressAmount, AddressPointer, CreateTransaction,
+    GetPreviousAddressesOpt, GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses,
+    SPVVerifyTxResult, TransactionMeta, TransactionOutput, TxListItem, Txo, UnspentOutput,
+    UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
 use gdk_common::util::{now, weight_to_vsize};
@@ -195,6 +196,53 @@ impl Account {
             address,
             pointer,
             user_path: user_path.into(),
+        })
+    }
+
+    pub fn get_previous_addresses(
+        &self,
+        opt: &GetPreviousAddressesOpt,
+    ) -> Result<PreviousAddresses, Error> {
+        let subaccount = self.account_num;
+        let is_internal = opt.is_internal;
+        let store = self.store.read()?;
+        let acc_store = store.account_cache(subaccount)?;
+        let wallet_last_pointer = if is_internal {
+            acc_store.indexes.internal
+        } else {
+            acc_store.indexes.external
+        } + 1;
+        let before_pointer = match opt.last_pointer {
+            None => wallet_last_pointer,
+            Some(p) => std::cmp::min(p, wallet_last_pointer),
+        };
+        let end = before_pointer.saturating_sub(opt.count);
+        let mut previous_addresses = vec![];
+        for index in (end..before_pointer).rev() {
+            let address = self.derive_address(is_internal, index)?;
+            let script_pubkey = address.script_pubkey();
+            let account_path =
+                DerivationPath::from(&[(is_internal as u32).into(), index.into()][..]);
+            previous_addresses.push(PreviousAddress {
+                address: address.to_string(),
+                address_type: self.script_type.to_string(),
+                subaccount,
+                is_internal,
+                pointer: index,
+                script_pubkey: script_pubkey.to_hex(),
+                user_path: self.get_full_path(&account_path).into(),
+                tx_count: 0, // TODO: compute this value
+            });
+        }
+        let ret_last_pointer = match end {
+            0 => None,
+            n => Some(n),
+        };
+        Ok(PreviousAddresses {
+            subaccount,
+            is_internal,
+            last_pointer: ret_last_pointer,
+            list: previous_addresses,
         })
     }
 

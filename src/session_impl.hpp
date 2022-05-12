@@ -112,7 +112,7 @@ namespace sdk {
         bool set_signer(std::shared_ptr<signer> signer);
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
-        virtual nlohmann::json get_previous_addresses(uint32_t subaccount, uint32_t last_pointer) = 0;
+        virtual nlohmann::json get_previous_addresses(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_subaccounts() = 0;
         virtual nlohmann::json get_subaccount(uint32_t subaccount) = 0;
         virtual void rename_subaccount(uint32_t subaccount, const std::string& new_name) = 0;

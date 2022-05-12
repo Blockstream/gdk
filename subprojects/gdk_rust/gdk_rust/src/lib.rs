@@ -411,6 +411,10 @@ fn handle_session_call(
             info!("gdk_rust get_receive_address returning {:?}", a);
             a
         }
+        "get_previous_addresses" => session
+            .get_previous_addresses(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
 
         "get_fee_estimates" => {
             session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
