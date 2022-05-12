@@ -874,10 +874,13 @@ namespace sdk {
     void get_previous_addresses_call::initialize()
     {
         const uint32_t subaccount = json_get_value(m_details, "subaccount", 0);
-        const uint32_t last_pointer = json_get_value(m_details, "last_pointer", 0);
+        uint32_t last_pointer = 0;
+        if (m_details.contains("last_pointer") && !m_details["last_pointer"].is_null()) {
+            last_pointer = m_details["last_pointer"];
+        }
         if (last_pointer == 1) {
             // Prevent a server call if the user iterates until empty results
-            m_result = { { "subaccount", subaccount }, { "list", nlohmann::json::array() }, { "last_pointer", 1 } };
+            m_result = { { "subaccount", subaccount }, { "list", nlohmann::json::array() } };
             m_state = state_type::done;
             return; // Nothing further to do
         }
@@ -886,7 +889,7 @@ namespace sdk {
         if (!m_net_params.is_liquid() || m_result["list"].empty()) {
             if (m_result["list"].empty()) {
                 // FIXME: The server returns 0 if there are no addresses generated
-                m_result["last_pointer"] = 1;
+                m_result.erase("last_pointer");
             }
             m_state = state_type::done;
             return; // Nothing further to do

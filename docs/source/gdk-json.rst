@@ -891,10 +891,10 @@ Contains the query parameters for requesting previously generated addresses usin
   }
 
 :subaccount: The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to fetch addresses for. Default 0.
-:last_pointer: The address pointer from which results should be returned. Passing 0 (the default) returns
-               the newest generated addresses. The "last_pointer" value from the resulting :ref:`previous-addresses`
-               should then be given, until sufficient pages have been fetched or the "last_pointer" value
-               is 1 indicating all addresses have been fetched.
+:last_pointer: The address pointer from which results should be returned. If this key is not present, the
+               newest generated addresses are returned. If present, the "last_pointer" value from the
+               resulting :ref:`previous-addresses` should then be given, until sufficient pages have been
+               fetched or the "last_pointer" key is not present indicating all addresses have been fetched.
 
 
 
@@ -908,7 +908,7 @@ Contains a page of previously generated addresses, from newest to oldest.
 .. code-block:: json
 
   {
-    "last_pointer": 1,
+    "last_pointer": 2,
     "list": [
       {
         "address": "2N52RVsChsCi439PpJ1Hn8fHCiTrRjcAEiL",
@@ -936,9 +936,10 @@ Contains a page of previously generated addresses, from newest to oldest.
     "subaccount": 0
   }
 
-:last_pointer: Contains the next_pointer value to pass in :ref:`previous-addresses-request` in a
-               subsequent call to `GA_get_previous_addresses` in order to fetch the next page.
-               Will be 1 when all addresses have been fetched.
+:last_pointer: If present indicates that there are more addresses to be fetched, and the caller
+               to get the next page should call again `GA_get_previous_addresses` passing this
+               value in :ref:`previous-addresses-request`.
+               If not present there are no more addresses to fetch.
 :list: Contains the current page of addresses in :ref:`receive-address-details` format.
 :subaccount: The subaccount which the generated addresses belong to.
 

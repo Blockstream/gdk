@@ -2843,6 +2843,9 @@ namespace sdk {
             json_rename_key(address, "num_tx", "tx_count");
             seen_pointer = address["pointer"];
         }
+        if (seen_pointer < 2) {
+            return nlohmann::json{ { "subaccount", subaccount }, { "list", addresses } };
+        }
         return nlohmann::json{ { "subaccount", subaccount }, { "last_pointer", seen_pointer }, { "list", addresses } };
     }
 
