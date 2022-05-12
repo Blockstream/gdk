@@ -895,6 +895,7 @@ Contains the query parameters for requesting previously generated addresses usin
                newest generated addresses are returned. If present, the "last_pointer" value from the
                resulting :ref:`previous-addresses` should then be given, until sufficient pages have been
                fetched or the "last_pointer" key is not present indicating all addresses have been fetched.
+:is_internal: Singlesig only. Whether or not the user key belongs to the internal chain.
 
 
 
@@ -914,6 +915,7 @@ Contains a page of previously generated addresses, from newest to oldest.
         "address": "2N52RVsChsCi439PpJ1Hn8fHCiTrRjcAEiL",
         "address_type": "csv",
         "branch": 1,
+        "is_internal": false,
         "pointer": 2,
         "script": "2102df992d7fa8f012d61048349e366f710aa0168a1c08606d7bebb65f980ccf2616ad2102a503dfc70ad1f1a510f7e3c79ffeebc608f27c6670edfb7b420bd32fdb044b73ac73640380ca00b268",
         "script_type": 15,
@@ -929,6 +931,7 @@ Contains a page of previously generated addresses, from newest to oldest.
         "address": "2MzyxeSfodsJkj4YYAyyNpGwqpvdze7qLSf",
         "address_type": "csv",
         "branch": 1,
+        "is_internal": false,
         "pointer": 1,
         "script": "2102815c7ba597b1e0f08357ddb346dab3952b2a76e189efc9ebde51ec005df0b41cad210328154df2714de6b15e740330b3509ce26bc0a3e21bf77ce0eaefeea0e9e77b59ac73640380ca00b268",
         "script_type": 15,
@@ -941,7 +944,8 @@ Contains a page of previously generated addresses, from newest to oldest.
         ],
       }
     ],
-    "subaccount": 0
+    "subaccount": 0,
+    "is_internal": false
   }
 
 :last_pointer: If present indicates that there are more addresses to be fetched, and the caller
@@ -950,6 +954,7 @@ Contains a page of previously generated addresses, from newest to oldest.
                If not present there are no more addresses to fetch.
 :list: Contains the current page of addresses in :ref:`receive-address-details` format.
 :subaccount: The subaccount which the generated addresses belong to.
+:is_internal: Singlesig only. Whether or not the user key belongs to the internal chain.
 
 
 
