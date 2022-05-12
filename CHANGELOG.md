@@ -1,5 +1,26 @@
 # Changelog
 
+## Release 0.0.54
+
+### Added
+
+- Watch only: Support Liquid multisig watch-only logins
+- Watch only: Allow deleting watch only accounts
+- Watch only: Enable local caching for significantly faster performance
+- Watch only: Support trust-on-first-use validation for xpubs and address generation
+- Watch only: Initial support for transaction proposals (watch only tx creation)
+
+### Changed
+
+- Watch only: Re-enable viewing user metadata (account names, tx notes, hidden accounts) via client blob
+- Watch only: Require usernames and passwords to each be at least 8 characters long
+- Multisig: Remap non auth_handler call errors to support i18n
+
+### Fixed
+
+- Liquid: Fix unblinding when initially populating the local cache
+
+
 ## Release 0.0.53 - 2022-05-10
 
 ### Added
@@ -8,19 +29,19 @@
 
 ### Changed
 
-- Changed transcation type from "unblindable" to "not unblindable" to reflect its actual meaning.
+- Changed transaction type from "unblindable" to "not unblindable" to reflect its actual meaning
 - Move to Android ndk r23b LTS release
 - Update openssl to 1.1.1n
 - Update libwally to latest
 - Rust is now mandatory for building
-- Registry: Switched to unified implemenetation with full assets data. Only Liquid-BTC icon is hardcoded, only assets metadata having icons are hardcoded (38 assets).
+- Registry: Switched to unified implementation with full asset data. Only Liquid-BTC icon is hardcoded, only asset metadata having icons are hardcoded (38 assets)
 
 ### Fixed
 
-- Singlesig: In GA_get_transactions "inputs" and "outputs" elements, set "address" and "address_type" correctly; do not set Liquid fields if not Liquid or not unblindable.
-- Singlesig: align transaction and block notifications with multisig.
-- Singlesig: temporary lock spent utxos in the interval between send/broadcast and the next sync.
-- Singlesig: fix an error causing "restore" to fail.
+- Singlesig: In GA_get_transactions "inputs" and "outputs" elements, set "address" and "address_type" correctly; do not set Liquid fields if not Liquid or not unblindable
+- Singlesig: align transaction and block notifications with multisig
+- Singlesig: temporarily lock spent utxos in the interval between send/broadcast and the next sync
+- Singlesig: fix an error causing "restore" to fail
 
 
 ## Release 0.0.52 - 2022-04-22
