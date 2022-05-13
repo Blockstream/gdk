@@ -1632,21 +1632,20 @@ namespace sdk {
 
     std::string ga_session::get_wo_username()
     {
-        {
-            locker_t locker(m_mutex);
-            if (m_blob_aes_key != boost::none) {
-                // Client blob watch only; return from the client blob,
-                // since the server doesn't know our real username.
-                const auto username = m_blob.get_wo_username();
-                if (m_watch_only || !username.empty()) {
-                    return username;
-                }
-                // If the username is blank, attempt to fetch from the
-                // server, we have a non-client blob watch only (or no
-                // watch only set up).
+        locker_t locker(m_mutex);
+        if (m_blob_aes_key != boost::none) {
+            // Client blob watch only; return from the client blob,
+            // since the server doesn't know our real username.
+            const auto username = m_blob.get_wo_username();
+            if (m_watch_only || m_net_params.is_liquid() || !username.empty()) {
+                return username;
             }
+            // If the username is blank, attempt to fetch from the
+            // server, we have a non-client blob watch only (or no
+            // watch only set up).
         }
-        auto result = wamp_cast_json(m_wamp->call("addressbook.get_sync_status"));
+        locker.unlock();
+        const auto result = wamp_cast_json(m_wamp->call("addressbook.get_sync_status"));
         return json_get_value(result, "username");
     }
 
