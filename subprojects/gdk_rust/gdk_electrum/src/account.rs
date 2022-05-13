@@ -223,6 +223,13 @@ impl Account {
             let script_pubkey = address.script_pubkey();
             let account_path =
                 DerivationPath::from(&[(is_internal as u32).into(), index.into()][..]);
+            let (is_blinded, unblinded_address, blinding_key) = match address {
+                BEAddress::Elements(ref a) => {
+                    let blinding_key = a.blinding_pubkey.map(|p| p.to_hex());
+                    (Some(a.is_blinded()), Some(a.to_unconfidential().to_string()), blinding_key)
+                }
+                _ => (None, None, None),
+            };
             previous_addresses.push(PreviousAddress {
                 address: address.to_string(),
                 address_type: self.script_type.to_string(),
@@ -232,6 +239,9 @@ impl Account {
                 script_pubkey: script_pubkey.to_hex(),
                 user_path: self.get_full_path(&account_path).into(),
                 tx_count: 0, // TODO: compute this value
+                is_blinded,
+                unblinded_address,
+                blinding_key,
             });
         }
         let ret_last_pointer = match end {

@@ -1070,6 +1070,10 @@ fn addresses(is_liquid: bool) {
     assert_eq!(previous_addresses.last_pointer, Some(2));
     assert!(!previous_addresses.is_internal);
 
+    if is_liquid {
+        assert!(previous_addresses.list.iter().all(|e| e.is_blinded.unwrap()));
+    }
+
     opt.last_pointer = Some(100);
     let previous_addresses_100 = test_session.session.get_previous_addresses(&opt).unwrap();
     opt.last_pointer = Some(12);
