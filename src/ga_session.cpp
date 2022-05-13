@@ -994,8 +994,9 @@ namespace sdk {
             // No client blob: create one, save it to the server and cache it,
             // but only if the wallet isn't locked for a two factor reset.
             // Subaccount names
+            const auto signer_xpubs = get_signer_xpubs_json(m_signer);
             for (const auto& sa : login_data["subaccounts"]) {
-                m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"));
+                m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), signer_xpubs);
             }
             // Tx memos
             nlohmann::json tx_memos = wamp_cast_json(m_wamp->call(locker, "txs.get_memos"));
@@ -1613,8 +1614,8 @@ namespace sdk {
         }
 
         // Set watch only data in the client blob. Blanks the username if disabling.
-        const auto xpubs = get_signer_xpubs_json(m_signer);
-        update_blob(locker, std::bind(&client_blob::set_wo_data, &m_blob, username, xpubs));
+        const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+        update_blob(locker, std::bind(&client_blob::set_wo_data, &m_blob, username, signer_xpubs));
 
         std::pair<std::string, std::string> u_p{ username, password };
         std::string wo_blob_key_hex;
@@ -1696,7 +1697,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         const std::string old_name = json_get_value(p->second, "name");
         if (old_name != new_name) {
-            update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name));
+            nlohmann::json empty;
+            update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name, empty));
             // Look up our subaccount again as iterators may have been invalidated
             m_subaccounts.find(subaccount)->second["name"] = new_name;
         }
@@ -1800,9 +1802,8 @@ namespace sdk {
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
-        if (!name.empty()) {
-            update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, name));
-        }
+        const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+        update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, name, signer_xpubs));
         return subaccount_details;
     }
 
@@ -1846,8 +1847,8 @@ namespace sdk {
     void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
-        const auto cached_xpubs = get_signer_xpubs_json(signer);
-        m_cache->upsert_key_value("xpubs", nlohmann::json::to_msgpack(cached_xpubs));
+        const auto signer_xpubs = get_signer_xpubs_json(signer);
+        m_cache->upsert_key_value("xpubs", nlohmann::json::to_msgpack(signer_xpubs));
         m_cache->save_db();
     }
 

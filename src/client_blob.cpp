@@ -64,14 +64,19 @@ namespace sdk {
 
     uint64_t client_blob::get_user_version() const { return m_data[USER_VERSION]; }
 
-    bool client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name)
+    bool client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name, const nlohmann::json& xpubs)
     {
         if (is_key_encrypted(SA_NAMES)) {
             // This gdk version does not support encrypted subaccount names
             throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
         }
         const std::string subaccount_str(std::to_string(subaccount));
-        const bool changed = json_add_non_default(m_data[SA_NAMES], subaccount_str, name);
+        bool changed = json_add_non_default(m_data[SA_NAMES], subaccount_str, name);
+        if (!xpubs.empty() && m_data[WATCHONLY].contains("username")) {
+            // Client blob watch only is enabled, update the subaccount xpubs
+            json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
+            changed = true;
+        }
         return changed ? increment_version(m_data) : changed;
     }
 

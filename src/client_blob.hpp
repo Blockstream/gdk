@@ -29,7 +29,7 @@ namespace sdk {
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
 
-        bool set_subaccount_name(uint32_t subaccount, const std::string& name);
+        bool set_subaccount_name(uint32_t subaccount, const std::string& name, const nlohmann::json& xpubs);
         std::string get_subaccount_name(uint32_t subaccount) const;
 
         bool set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
