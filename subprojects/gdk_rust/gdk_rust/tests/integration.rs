@@ -1066,6 +1066,7 @@ fn addresses(is_liquid: bool) {
     let previous_addresses = test_session.session.get_previous_addresses(&opt).unwrap();
     assert_eq!(previous_addresses.list.len(), 10);
     assert_eq!(previous_addresses.list[0].pointer, 11);
+    assert_eq!(previous_addresses.list[0].tx_count, 1);
     assert_eq!(previous_addresses.list[9].pointer, 2);
     assert_eq!(previous_addresses.last_pointer, Some(2));
     assert!(!previous_addresses.is_internal);

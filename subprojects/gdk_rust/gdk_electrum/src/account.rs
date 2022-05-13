@@ -230,6 +230,7 @@ impl Account {
                 }
                 _ => (None, None, None),
             };
+            let tx_count = acc_store.all_txs.tx_count(&script_pubkey);
             previous_addresses.push(PreviousAddress {
                 address: address.to_string(),
                 address_type: self.script_type.to_string(),
@@ -238,7 +239,7 @@ impl Account {
                 pointer: index,
                 script_pubkey: script_pubkey.to_hex(),
                 user_path: self.get_full_path(&account_path).into(),
-                tx_count: 0, // TODO: compute this value
+                tx_count,
                 is_blinded,
                 unblinded_address,
                 blinding_key,

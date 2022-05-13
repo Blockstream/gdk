@@ -909,6 +909,21 @@ impl BETransaction {
         secp.verify(&message, &Signature::from_der(&sig)?, &public_key.key)?;
         Ok(())
     }
+
+    pub fn creates_script_pubkey(&self, script_pubkey: &BEScript) -> bool {
+        (0..self.output_len() as u32).any(|vout| &self.output_script(vout) == script_pubkey)
+    }
+
+    pub fn spends_script_pubkey(&self, script_pubkey: &BEScript, all_txs: &BETransactions) -> bool {
+        for (_, outpoint) in self.previous_sequence_and_outpoints() {
+            if let Some(s) = all_txs.get_previous_output_script_pubkey(&outpoint) {
+                if &s == script_pubkey {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 fn mock_pubkey() -> secp256k1::PublicKey {
@@ -1020,6 +1035,20 @@ impl BETransactions {
             None => None,
             Some(txe) => txe.tx.output_amountblinder_hex(outpoint.vout, &all_unblinded),
         }
+    }
+
+    /// Get the number of transactions where at least one input or output has a certain script
+    /// pubkey.
+    pub fn tx_count(&self, script_pubkey: &BEScript) -> u32 {
+        let mut tot = 0;
+        for txe in self.values() {
+            if txe.tx.creates_script_pubkey(&script_pubkey)
+                || txe.tx.spends_script_pubkey(&script_pubkey, &self)
+            {
+                tot += 1;
+            }
+        }
+        tot
     }
 }
 
