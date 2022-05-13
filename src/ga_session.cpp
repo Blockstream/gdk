@@ -1598,33 +1598,35 @@ namespace sdk {
         if (!password.empty() && password.size() < 8u) {
             throw user_error("Watch-only password must be at least 8 characters long");
         }
-        const auto entropy = get_wo_entropy(username, password);
-        std::string wo_blob_key_hex;
-        {
-            locker_t locker(m_mutex);
-            if (m_net_params.is_liquid()) {
-                GDK_RUNTIME_ASSERT_MSG(
-                    m_signer->has_master_blinding_key(), "Master blinding key must be exported to enable watch-only");
-                if (m_blob_aes_key == boost::none) {
-                    // The wallet doesn't have a client blob: can only happen
-                    // when a 2FA reset is in progress and the wallet was
-                    // created before client blobs were enabled.
-                    throw user_error(res::id_twofactor_reset_in_progress);
-                }
-            }
-            if (m_blob_aes_key != boost::none) {
-                // Set watch only data
-                const auto xpubs = get_signer_xpubs_json(m_signer);
-                update_blob(locker, std::bind(&client_blob::set_wo_data, &m_blob, username, xpubs));
 
-                // Enable client blob watch only
-                wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.get());
-            }
+        locker_t locker(m_mutex);
+        if (m_blob_aes_key == boost::none) {
+            // The wallet doesn't have a client blob: can only happen
+            // when a 2FA reset is in progress and the wallet was
+            // created before client blobs were enabled.
+            throw user_error(res::id_twofactor_reset_in_progress);
         }
+
+        if (m_net_params.is_liquid()) {
+            GDK_RUNTIME_ASSERT_MSG(
+                m_signer->has_master_blinding_key(), "Master blinding key must be exported to enable watch-only");
+        }
+
+        // Set watch only data in the client blob. Blanks the username if disabling.
+        const auto xpubs = get_signer_xpubs_json(m_signer);
+        update_blob(locker, std::bind(&client_blob::set_wo_data, &m_blob, username, xpubs));
+
         std::pair<std::string, std::string> u_p{ username, password };
-        if (!wo_blob_key_hex.empty() && !username.empty()) {
+        std::string wo_blob_key_hex;
+
+        if (!username.empty()) {
+            // Enabling watch only login.
+            // Derive the username/password to use, encrypt the client blob key for upload
+            const auto entropy = get_wo_entropy(username, password);
             u_p = get_wo_credentials(entropy);
+            wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.get());
         }
+        locker.unlock();
         return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
     }
 
