@@ -919,7 +919,11 @@ Contains a page of previously generated addresses, from newest to oldest.
         "script_type": 15,
         "subaccount": 0,
         "subtype": 51840,
-        "tx_count": 0
+        "tx_count": 0,
+        "user_path": [
+          1,
+          2
+        ],
       },
       {
         "address": "2MzyxeSfodsJkj4YYAyyNpGwqpvdze7qLSf",
@@ -930,7 +934,11 @@ Contains a page of previously generated addresses, from newest to oldest.
         "script_type": 15,
         "subaccount": 0,
         "subtype": 51840,
-        "tx_count": 0
+        "tx_count": 0,
+        "user_path": [
+          1,
+          1
+        ],
       }
     ],
     "subaccount": 0
