@@ -994,9 +994,9 @@ namespace sdk {
             // No client blob: create one, save it to the server and cache it,
             // but only if the wallet isn't locked for a two factor reset.
             // Subaccount names
-            const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+            const nlohmann::json empty;
             for (const auto& sa : login_data["subaccounts"]) {
-                m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), signer_xpubs);
+                m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), empty);
             }
             // Tx memos
             nlohmann::json tx_memos = wamp_cast_json(m_wamp->call(locker, "txs.get_memos"));
