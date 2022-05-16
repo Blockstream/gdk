@@ -294,7 +294,11 @@ namespace sdk {
         return rust_call("get_available_currencies", nlohmann::json({}), m_session);
     }
 
-    bool ga_rust::is_rbf_enabled() const { throw std::runtime_error("is_rbf_enabled not implemented"); }
+    bool ga_rust::is_rbf_enabled() const
+    {
+        return !m_net_params.is_liquid(); // Not supported on liquid
+    }
+
     bool ga_rust::is_watch_only() const { return false; }
     void ga_rust::ensure_full_session()
     { /* TODO: Implement when watch only is implemented */
