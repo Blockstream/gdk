@@ -140,11 +140,16 @@ namespace sdk {
 
     uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script);
 
+    ecdsa_sig_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig);
+
     std::vector<ecdsa_sig_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig);
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 
+    std::vector<unsigned char> script_push_from_bytes(byte_span_t data);
+
     std::vector<unsigned char> scriptpubkey_p2pkh_from_hash160(byte_span_t hash);
+    std::vector<unsigned char> scriptpubkey_p2pkh_from_public_key(byte_span_t public_key);
 
     std::vector<unsigned char> scriptpubkey_p2sh_from_hash160(byte_span_t hash);
 
@@ -220,6 +225,8 @@ namespace sdk {
     std::vector<unsigned char> addr_segwit_to_bytes(const std::string& addr, const std::string& family);
 
     size_t addr_segwit_get_version(const std::string& addr, const std::string& family);
+
+    std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family);
 
     std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key);
 
@@ -297,7 +304,7 @@ namespace sdk {
 
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix);
     std::string confidential_addr_to_addr_segwit(
-        const std::string& address, const std::string& confidential_prefix, const std::string& prefix);
+        const std::string& address, const std::string& confidential_prefix, const std::string& family);
 
     pub_key_t confidential_addr_to_ec_public_key(const std::string& address, uint32_t prefix);
     pub_key_t confidential_addr_segwit_to_ec_public_key(
@@ -305,6 +312,8 @@ namespace sdk {
 
     std::string confidential_addr_from_addr(
         const std::string& address, uint32_t prefix, const std::string blinding_pubkey_hex);
+    std::string confidential_addr_from_addr_segwit(const std::string& address, const std::string& family,
+        const std::string& confidential_prefix, const std::string blinding_pubkey_hex);
 
     blinding_key_t asset_blinding_key_from_seed(byte_span_t seed);
 

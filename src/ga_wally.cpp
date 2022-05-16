@@ -240,6 +240,16 @@ namespace sdk {
         return csv_blocks;
     }
 
+    ecdsa_sig_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig)
+    {
+        // <user_sig> <pubkey>
+        constexpr bool has_sighash = true;
+        size_t push_len = script_sig.at(0);
+        GDK_RUNTIME_ASSERT(push_len && push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
+        GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= push_len + 2);
+        return ec_sig_from_der(script_sig.subspan(1, push_len), has_sighash);
+    }
+
     std::vector<ecdsa_sig_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
     {
         constexpr bool has_sighash = true;
@@ -277,6 +287,17 @@ namespace sdk {
         out.resize(written);
     }
 
+    std::vector<unsigned char> script_push_from_bytes(byte_span_t data)
+    {
+        std::vector<unsigned char> ret(data.size() + 5); // 5 = OP_PUSHDATA4 + 4 byte size
+        const uint32_t flags = 0;
+        size_t written;
+        GDK_VERIFY(wally_script_push_from_bytes(data.data(), data.size(), flags, &ret[0], ret.size(), &written));
+        GDK_RUNTIME_ASSERT(written <= ret.size());
+        ret.resize(written);
+        return ret;
+    }
+
     std::vector<unsigned char> scriptpubkey_p2pkh_from_hash160(byte_span_t hash)
     {
         GDK_RUNTIME_ASSERT(hash.size() == HASH160_LEN);
@@ -285,6 +306,12 @@ namespace sdk {
         GDK_VERIFY(wally_scriptpubkey_p2pkh_from_bytes(hash.data(), hash.size(), 0, &ret[0], ret.size(), &written));
         GDK_RUNTIME_ASSERT(written == WALLY_SCRIPTPUBKEY_P2PKH_LEN);
         return ret;
+    }
+
+    std::vector<unsigned char> scriptpubkey_p2pkh_from_public_key(byte_span_t public_key)
+    {
+        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
+        return scriptpubkey_p2pkh_from_hash160(hash160(public_key));
     }
 
     std::vector<unsigned char> scriptpubkey_p2sh_from_hash160(byte_span_t hash)
@@ -467,6 +494,14 @@ namespace sdk {
         GDK_VERIFY(wally_addr_segwit_get_version(addr.c_str(), family.c_str(), flags, &segwit_version));
         GDK_RUNTIME_ASSERT(segwit_version <= 16);
         return segwit_version;
+    }
+
+    std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family)
+    {
+        const uint32_t flags = 0;
+        char* ret = 0;
+        GDK_VERIFY(wally_addr_segwit_from_bytes(bytes.data(), bytes.size(), family.c_str(), flags, &ret));
+        return make_string(ret);
     }
 
     std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key)
@@ -767,11 +802,11 @@ namespace sdk {
     }
 
     std::string confidential_addr_to_addr_segwit(
-        const std::string& address, const std::string& confidential_prefix, const std::string& prefix)
+        const std::string& address, const std::string& confidential_prefix, const std::string& family)
     {
         char* ret;
         GDK_VERIFY(
-            wally_confidential_addr_to_addr_segwit(address.c_str(), confidential_prefix.c_str(), prefix.c_str(), &ret));
+            wally_confidential_addr_to_addr_segwit(address.c_str(), confidential_prefix.c_str(), family.c_str(), &ret));
         return make_string(ret);
     }
 
@@ -797,6 +832,16 @@ namespace sdk {
         const auto pubkey = h2b(blinding_pubkey_hex);
         char* ret;
         GDK_VERIFY(wally_confidential_addr_from_addr(address.c_str(), prefix, pubkey.data(), pubkey.size(), &ret));
+        return make_string(ret);
+    }
+
+    std::string confidential_addr_from_addr_segwit(const std::string& address, const std::string& family,
+        const std::string& confidential_prefix, const std::string blinding_pubkey_hex)
+    {
+        const auto pubkey = h2b(blinding_pubkey_hex);
+        char* ret;
+        GDK_VERIFY(wally_confidential_addr_from_addr_segwit(
+            address.c_str(), family.c_str(), confidential_prefix.c_str(), pubkey.data(), pubkey.size(), &ret));
         return make_string(ret);
     }
 
