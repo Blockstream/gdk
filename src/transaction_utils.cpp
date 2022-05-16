@@ -95,6 +95,8 @@ namespace ga {
 namespace sdk {
     namespace address_type {
         const std::string p2pkh("p2pkh");
+        const std::string p2wpkh("p2wpkh");
+        const std::string p2sh_p2wpkh("p2sh-p2wpkh");
         const std::string p2sh("p2sh");
         const std::string p2wsh("p2wsh");
         const std::string csv("csv");

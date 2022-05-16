@@ -991,13 +991,13 @@ namespace sdk {
 
         if (address_type == address_type::p2pkh) {
             tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
-        } else if (address_type == "p2sh-p2wpkh" || address_type == "p2wpkh") {
+        } else if (address_type == address_type::p2sh_p2wpkh || address_type == address_type::p2wpkh) {
             const auto public_key = h2b(u.at("public_key"));
             auto wit = tx_witness_stack_init(2);
             tx_witness_stack_add(wit, der);
             tx_witness_stack_add(wit, public_key);
             tx_set_input_witness(tx, index, wit);
-            if (address_type == "p2sh-p2wpkh") {
+            if (address_type == address_type::p2sh_p2wpkh) {
                 tx_set_input_script(tx, index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
             } else {
                 // for native segwit ensure the scriptsig is empty

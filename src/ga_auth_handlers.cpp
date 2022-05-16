@@ -975,7 +975,7 @@ namespace sdk {
     //
     get_subaccounts_call::get_subaccounts_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "get_subaccounts")
-        , m_subaccount_type("p2sh-p2wpkh")
+        , m_subaccount_type(address_type::p2sh_p2wpkh)
         , m_subaccount(0)
         , m_details(details)
     {
@@ -1003,11 +1003,11 @@ namespace sdk {
             } else {
                 // Found an empty subaccount for the current subaccount type,
                 // step to the next subaccount type.
-                if (m_subaccount_type == "p2sh-p2wpkh") {
-                    m_subaccount_type = "p2wpkh";
-                } else if (m_subaccount_type == "p2wpkh") {
-                    m_subaccount_type = "p2pkh";
-                } else if (m_subaccount_type == "p2pkh") {
+                if (m_subaccount_type == address_type::p2sh_p2wpkh) {
+                    m_subaccount_type = address_type::p2wpkh;
+                } else if (m_subaccount_type == address_type::p2wpkh) {
+                    m_subaccount_type = address_type::p2pkh;
+                } else if (m_subaccount_type == address_type::p2pkh) {
                     m_subaccount_type.clear();
                     // No more subaccount types, ready to return
                     return m_state;
