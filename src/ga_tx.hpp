@@ -7,7 +7,7 @@
 
 namespace ga {
 namespace sdk {
-    class ga_session;
+    class session_impl;
     class network_parameters;
     class session_impl;
 
@@ -16,7 +16,7 @@ namespace sdk {
 
     void blind_address(nlohmann::json& addr, uint32_t prefix, const std::string& blinding_pubkey_hex);
 
-    nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details);
+    nlohmann::json create_ga_transaction(session_impl& session, const nlohmann::json& details);
 
     void add_input_signature(
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r);
@@ -34,7 +34,7 @@ namespace sdk {
         session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs);
     nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details);
 
-    nlohmann::json blind_ga_transaction(ga_session& session, const nlohmann::json& details);
+    nlohmann::json blind_ga_transaction(session_impl& session, const nlohmann::json& details);
 
 } // namespace sdk
 } // namespace ga

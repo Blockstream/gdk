@@ -7,10 +7,10 @@
 #include "amount.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
-#include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
 #include "logging.hpp"
+#include "session_impl.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
@@ -39,7 +39,7 @@ namespace sdk {
                 && output.nonce_len == WALLY_TX_ASSET_CT_NONCE_LEN && output.rangeproof_len > 0;
         }
 
-        static void add_paths(ga_session& session, nlohmann::json& utxo)
+        static void add_paths(session_impl& session, nlohmann::json& utxo)
         {
             const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
             const uint32_t pointer = utxo.at("pointer");
@@ -62,7 +62,7 @@ namespace sdk {
         }
 
         // Add a UTXO to a transaction. Returns the amount added
-        static amount add_utxo(ga_session& session, const wally_tx_ptr& tx, nlohmann::json& utxo)
+        static amount add_utxo(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& utxo)
         {
             const std::string txhash = utxo.at("txhash");
             const auto txid = h2b_rev(txhash);
@@ -196,7 +196,7 @@ namespace sdk {
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
-        static std::pair<bool, bool> check_bump_tx(ga_session& session, nlohmann::json& result, uint32_t subaccount)
+        static std::pair<bool, bool> check_bump_tx(session_impl& session, nlohmann::json& result, uint32_t subaccount)
         {
             const std::string policy_asset("btc"); // FIXME: Bump/CPFP for liquid
 
@@ -397,7 +397,7 @@ namespace sdk {
             return { is_rbf, is_cpfp };
         }
 
-        static void create_send_to_self(ga_session& session, uint32_t subaccount, nlohmann::json& result)
+        static void create_send_to_self(session_impl& session, uint32_t subaccount, nlohmann::json& result)
         {
             // Set addressees to a wallet address from the given subaccount
             const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
@@ -407,7 +407,7 @@ namespace sdk {
             result["addressees"] = addressees;
         }
 
-        static void create_ga_transaction_impl(ga_session& session, nlohmann::json& result)
+        static void create_ga_transaction_impl(session_impl& session, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
             const bool is_liquid = net_params.is_liquid();
@@ -962,7 +962,7 @@ namespace sdk {
         addr["is_blinded"] = true;
     }
 
-    nlohmann::json create_ga_transaction(ga_session& session, const nlohmann::json& details)
+    nlohmann::json create_ga_transaction(session_impl& session, const nlohmann::json& details)
     {
         // Copy all inputs into our result (they will be overridden below as needed)
         nlohmann::json result(details);
@@ -1072,7 +1072,7 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json blind_ga_transaction(ga_session& session, const nlohmann::json& details)
+    nlohmann::json blind_ga_transaction(session_impl& session, const nlohmann::json& details)
     {
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
