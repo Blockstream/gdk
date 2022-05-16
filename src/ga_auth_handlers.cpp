@@ -920,7 +920,6 @@ namespace sdk {
         }
 
         // Otherwise, we have been called after resolving our blinding keys
-        const auto prefix = m_net_params.blinded_prefix();
         const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
 
         // Blind any unblinded change addresseses
@@ -928,8 +927,7 @@ namespace sdk {
         for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
             if (!addr.value("is_blinded", false)) {
-                auto& address = addr.at("address");
-                address = confidential_addr_to_addr(address, prefix); // Remove fake blinding
+                unblind_address(m_net_params, addr); // Remove fake blinding
                 blind_address(m_net_params, addr, public_keys.at(i));
                 ++i;
             }
