@@ -198,6 +198,8 @@ namespace sdk {
         // Check if a tx to bump is present, and if so add the details required to bump it
         static std::pair<bool, bool> check_bump_tx(session_impl& session, nlohmann::json& result, uint32_t subaccount)
         {
+            const auto& net_params = session.get_network_parameters();
+            const bool is_electrum = net_params.is_electrum();
             const std::string policy_asset("btc"); // FIXME: Bump/CPFP for liquid
 
             if (result.find("previous_transaction") == result.end()) {
@@ -260,7 +262,6 @@ namespace sdk {
                 addressees.reserve(outputs.size());
                 uint32_t i = 0, change_index = NO_CHANGE_INDEX;
 
-                const auto& net_params = session.get_network_parameters();
                 for (const auto& output : outputs) {
                     const std::string output_addr = output.at("address");
                     if (!output_addr.empty()) {
@@ -280,7 +281,10 @@ namespace sdk {
                             = get_address_from_script(net_params, output_script, output.at("address_type"));
                         GDK_RUNTIME_ASSERT(output_addr == address);
                     }
-                    if (is_relevant && change_index == NO_CHANGE_INDEX) {
+                    // For singlesig, only consider internal addresses as change candidates
+                    const bool is_internal = json_get_value(output, "is_internal", false);
+                    const bool is_possible_change = is_relevant && (!is_electrum || is_internal);
+                    if (is_possible_change && change_index == NO_CHANGE_INDEX) {
                         // Change output.
                         change_index = i;
                     } else {
