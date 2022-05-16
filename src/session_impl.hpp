@@ -227,6 +227,12 @@ namespace sdk {
         virtual std::pair<std::string, bool> get_cached_master_blinding_key() = 0;
         virtual void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
+        virtual bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
+        virtual std::string get_service_xpub(uint32_t subaccount);
+        virtual std::string get_recovery_xpub(uint32_t subaccount);
+        virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
+        virtual std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
+
     protected:
         // Locking per-session assumes the following thread safety model:
         // 1) Implementations noted "idempotent" can be called from multiple

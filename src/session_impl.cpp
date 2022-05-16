@@ -404,5 +404,30 @@ namespace sdk {
         // Overriden for multisig
     }
 
+    bool session_impl::has_recovery_pubkeys_subaccount(uint32_t /*subaccount*/) { return false; }
+
+    std::string session_impl::get_service_xpub(uint32_t /*subaccount*/) { return std::string(); }
+
+    std::string session_impl::get_recovery_xpub(uint32_t /*subaccount*/) { return std::string(); }
+
+    std::vector<unsigned char> session_impl::output_script_from_utxo(const nlohmann::json& utxo)
+    {
+        const std::string addr_type = utxo.at("address_type");
+        const auto pubkeys = pubkeys_from_utxo(utxo);
+
+        GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh
+            || addr_type == address_type::p2pkh);
+        return scriptpubkey_p2pkh_from_public_key(pubkeys.at(0));
+    }
+
+    std::vector<pub_key_t> session_impl::pubkeys_from_utxo(const nlohmann::json& utxo)
+    {
+        const uint32_t subaccount = utxo.at("subaccount");
+        const uint32_t pointer = utxo.at("pointer");
+        const bool is_internal = utxo.at("is_internal");
+        locker_t locker(m_mutex);
+        return std::vector<pub_key_t>({ get_user_pubkeys().derive(subaccount, pointer, is_internal) });
+    }
+
 } // namespace sdk
 } // namespace ga
