@@ -17,11 +17,9 @@
 
 #include "boost_wrapper.hpp"
 
+#include "../subprojects/gdk_rust/gdk_rust.h"
 #include "assertion.hpp"
 #include "exception.hpp"
-#ifdef BUILD_GDK_RUST
-#include "../subprojects/gdk_rust/gdk_rust.h"
-#endif
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
@@ -125,7 +123,6 @@ namespace sdk {
             return true;
         }
 
-#ifdef BUILD_GDK_RUST
         static std::pair<std::string, std::string> get_rust_exception_details(const nlohmann::json& details)
         {
             std::pair<std::string, std::string> ret;
@@ -180,14 +177,6 @@ namespace sdk {
             check_rust_return_code(ret, cppjson);
             return cppjson;
         }
-#else // BUILD_GDK_RUST
-        static nlohmann::json rust_call_impl(
-            const std::string& method, const nlohmann::json& /*input*/, void* /*session*/)
-        {
-            GDK_RUNTIME_ASSERT_MSG(false, method + " not implemented");
-            return nlohmann::json();
-        }
-#endif // BUILD_GDK_RUST
     } // namespace
 
     // use the same strategy as bitcoin core
@@ -238,15 +227,7 @@ namespace sdk {
         return rust_call_impl(method, details, session);
     }
 
-    void init_rust(const nlohmann::json& details)
-    {
-        // No-op if rust isn't enabled
-#ifdef BUILD_GDK_RUST
-        rust_call("init", details);
-#else
-        (void)details;
-#endif
-    }
+    void init_rust(const nlohmann::json& details) { rust_call("init", details); }
 
     namespace {
         static const std::array<const char*, 6> SPV_STATUS_NAMES

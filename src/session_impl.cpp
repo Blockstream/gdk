@@ -29,11 +29,9 @@ namespace sdk {
         auto defaults = network_parameters::get(net_params.value("name", std::string()));
         network_parameters np{ net_params, defaults };
 
-#ifdef BUILD_GDK_RUST
         if (np.is_electrum()) {
             return std::make_shared<ga_rust>(std::move(np));
         }
-#endif
         return std::make_shared<ga_session>(std::move(np));
     }
 

@@ -136,7 +136,6 @@ if debug
 else
     add_project_arguments(['-DNDEBUG'], language : ['c', 'cpp'])
 endif
-add_project_arguments(['-DBUILD_GDK_RUST'], language : ['c', 'cpp'])
 
 if meson.is_cross_build()
     archs = meson.get_cross_property('archs')

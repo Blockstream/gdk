@@ -383,7 +383,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_url", "wss://green-bitcoin-testnet.blockstream.com/v2/ws" }
         })) },
 
-#ifdef BUILD_GDK_RUST
     { "electrum-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquid/address/" },
@@ -602,7 +601,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() }
         })) },
-#endif
 };
 // clang-format on
 
