@@ -504,16 +504,6 @@ namespace sdk {
         return make_string(ret);
     }
 
-    std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key)
-    {
-        std::array<unsigned char, HASH160_LEN + 1> addr;
-        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
-        const auto hash = hash160(public_key);
-        addr[0] = btc_version;
-        std::copy(hash.begin(), hash.end(), addr.begin() + 1);
-        return base58check_from_bytes(addr);
-    }
-
     std::string base58check_from_bytes(byte_span_t data)
     {
         char* ret;

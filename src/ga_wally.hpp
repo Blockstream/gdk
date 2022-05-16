@@ -228,8 +228,6 @@ namespace sdk {
 
     std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family);
 
-    std::string public_key_to_p2pkh_addr(unsigned char btc_version, byte_span_t public_key);
-
     std::string base58check_from_bytes(byte_span_t data);
 
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58);

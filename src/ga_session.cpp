@@ -449,7 +449,7 @@ namespace sdk {
 
     std::string ga_session::get_challenge(const pub_key_t& public_key)
     {
-        const std::string address = public_key_to_p2pkh_addr(m_net_params.btc_version(), public_key);
+        const auto address = get_address_from_public_key(m_net_params, public_key, address_type::p2pkh);
         const bool nlocktime_support = true;
         return wamp_cast(m_wamp->call("login.get_trezor_challenge", address, nlocktime_support));
     }
