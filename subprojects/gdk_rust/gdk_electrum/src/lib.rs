@@ -803,7 +803,11 @@ impl ElectrumSession {
         let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
         let iv = thread_rng().gen::<[u8; 16]>();
         let cipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
-        let encrypted = cipher.encrypt_vec(details.mnemonic.as_bytes());
+        let credentials = Credentials {
+            mnemonic: details.mnemonic.clone(),
+        };
+        let plaintext = serde_json::to_vec(&credentials)?;
+        let encrypted = cipher.encrypt_vec(&plaintext);
 
         let result = PinData {
             salt: iv.to_hex(),
