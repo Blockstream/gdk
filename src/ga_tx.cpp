@@ -70,37 +70,31 @@ namespace sdk {
             const auto is_segwit = utxo.value(
                 "is_segwit", is_segwit_script_type(utxo.value("script_type", script_type::ga_pubkey_hash_out)));
             const bool low_r = session.get_nonnull_signer()->supports_low_r();
-            const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
-            const bool external = !json_get_value(utxo, "private_key").empty();
+            const bool is_external = !json_get_value(utxo, "private_key").empty();
             const uint32_t sequence = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
 
             utxo["sequence"] = sequence;
 
-            if (external) {
-                tx_add_raw_input(
-                    tx, txid, index, sequence, dummy_external_input_script(low_r, h2b(utxo.at("public_key"))));
+            if (is_external) {
+                const auto script = dummy_external_input_script(low_r, h2b(utxo.at("public_key")));
+                tx_add_raw_input(tx, txid, index, sequence, script);
             } else {
                 // Populate the prevout script if missing so signing can use it later
                 if (utxo.find("prevout_script") == utxo.end()) {
                     const auto script = session.output_script_from_utxo(utxo);
                     utxo["prevout_script"] = b2h(script);
                 }
-                const auto script = h2b(utxo["prevout_script"]);
-
+                const auto script = h2b(utxo.at("prevout_script"));
                 add_paths(session, utxo);
-
-                wally_tx_witness_stack_ptr wit;
 
                 if (is_segwit) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
-                    wit = tx_witness_stack_init(4);
+                    const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
+                    auto wit = tx_witness_stack_init(4);
                     tx_witness_stack_add_dummy(wit, WALLY_TX_DUMMY_NULL);
                     tx_witness_stack_add_dummy(wit, dummy_sig_type);
                     tx_witness_stack_add_dummy(wit, dummy_sig_type);
                     tx_witness_stack_add(wit, script);
-                }
-
-                if (wit) {
                     tx_add_raw_input(tx, txid, index, sequence, DUMMY_WITNESS_SCRIPT, wit);
                 } else {
                     tx_add_raw_input(tx, txid, index, sequence, dummy_input_script(low_r, script));
@@ -890,32 +884,27 @@ namespace sdk {
         static std::string sign_input(
             session_impl& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u)
         {
-            const auto txhash = u.at("txhash");
-            const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
-            const uint32_t pointer = json_get_value(u, "pointer", 0u);
-            const bool is_internal = json_get_value(u, "is_internal", false);
-            const auto is_segwit
-                = u.value("is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
-            const auto script = h2b(u.at("prevout_script"));
-            const std::string private_key = json_get_value(u, "private_key");
-            auto signer = session.get_nonnull_signer();
-            const bool low_r = signer->supports_low_r();
-
-            std::array<unsigned char, SHA256_LEN> tx_hash;
             const auto& net_params = session.get_network_parameters();
-            tx_hash = get_script_hash(net_params, u, tx, index);
+            const auto script_hash = get_script_hash(net_params, u, tx, index);
+            const std::string private_key_hex = json_get_value(u, "private_key");
 
-            if (!private_key.empty()) {
-                const auto private_key_bytes = h2b(private_key);
-                const auto user_sig = ec_sig_from_bytes(private_key_bytes, tx_hash);
+            if (!private_key_hex.empty()) {
+                const auto user_sig = ec_sig_from_bytes(h2b(private_key_hex), script_hash);
                 const auto der = ec_sig_to_der(user_sig, true);
                 tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
                 return b2h(der);
             } else {
+                const auto script = h2b(u.at("prevout_script"));
+                const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
+                const uint32_t pointer = json_get_value(u, "pointer", 0u);
+                const bool is_internal = json_get_value(u, "is_internal", false);
                 const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
-                const auto user_sig = signer->sign_hash(path, tx_hash);
+                auto signer = session.get_nonnull_signer();
+                const auto user_sig = signer->sign_hash(path, script_hash);
                 const auto der = ec_sig_to_der(user_sig, true);
 
+                const auto is_segwit = u.value(
+                    "is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
                 if (is_segwit) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     // Note that this requires setting the inputs sequence number to the CSV time too
@@ -925,7 +914,8 @@ namespace sdk {
                     const uint32_t witness_ver = 0;
                     tx_set_input_script(tx, index, witness_script(script, witness_ver));
                 } else {
-                    tx_set_input_script(tx, index, input_script(low_r, script, user_sig));
+                    const bool is_low_r = signer->supports_low_r();
+                    tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig));
                 }
                 return b2h(der);
             }
