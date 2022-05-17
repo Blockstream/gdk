@@ -336,3 +336,9 @@ impl From<ureq::Error> for Error {
         Error::Generic(err.to_string())
     }
 }
+
+impl From<std::str::Utf8Error> for Error {
+    fn from(err: std::str::Utf8Error) -> Self {
+        Error::Generic(err.to_string())
+    }
+}

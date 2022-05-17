@@ -386,13 +386,17 @@ impl ElectrumSession {
         let decipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         // If the pin is wrong, pinserver returns a random key and decryption fails, return a
         // specific error to signal the caller to update its pin counter.
-        let mnemonic = decipher
+        let decrypted = decipher
             .decrypt_vec(&Vec::<u8>::from_hex(&details.pin_data.encrypted_data)?)
             .map_err(|_| Error::InvalidPin)?;
-        let mnemonic = std::str::from_utf8(&mnemonic).unwrap().to_string();
-        Ok(Credentials {
-            mnemonic,
-        })
+        if let Ok(credentials) = serde_json::from_slice(&decrypted[..]) {
+            Ok(credentials)
+        } else {
+            // Some pin_data encrypt the bare mnemonic, not a json
+            Ok(Credentials {
+                mnemonic: std::str::from_utf8(&decrypted)?.to_string(),
+            })
+        }
     }
 
     /// Load store and cache from disk.
