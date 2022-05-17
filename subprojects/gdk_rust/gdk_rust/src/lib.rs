@@ -202,7 +202,7 @@ pub extern "C" fn GDKRUST_call_session(
 
     // Redact inputs containing private data
     let methods_to_redact_in =
-        vec!["login", "register_user", "set_pin", "create_subaccount", "mnemonic_from_pin_data"];
+        vec!["login", "register_user", "set_pin", "create_subaccount", "credentials_from_pin_data"];
     let input_str = format!("{:?}", &input);
     let input_redacted = if methods_to_redact_in.contains(&method.as_str())
         || input_str.contains("pin")
@@ -220,7 +220,7 @@ pub extern "C" fn GDKRUST_call_session(
         // GdkSession::Rpc(ref s) => handle_call(s, method),
     };
 
-    let methods_to_redact_out = vec!["mnemonic_from_pin_data"];
+    let methods_to_redact_out = vec!["credentials_from_pin_data"];
     let mut output_redacted = if methods_to_redact_out.contains(&method.as_str()) {
         "redacted".to_string()
     } else {
@@ -314,9 +314,10 @@ fn handle_session_call(
         "disconnect" => session.disconnect().map(|v| json!(v)).map_err(Into::into),
 
         "login" => login(session, input).map(|v| json!(v)),
-        "mnemonic_from_pin_data" => {
-            mnemonic_from_pin_data(session, input).map(|v| json!(v)).map_err(Into::into)
-        }
+        "credentials_from_pin_data" => session
+            .credentials_from_pin_data(serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "set_pin" => session
             .set_pin(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))

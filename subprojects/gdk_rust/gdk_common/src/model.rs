@@ -620,9 +620,20 @@ pub struct PinSetDetails {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PinGetDetails {
+    pub pin: String,
+    pub pin_data: PinData,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PinData {
     pub salt: String,
     pub encrypted_data: String,
     pub pin_identifier: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Credentials {
+    pub mnemonic: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

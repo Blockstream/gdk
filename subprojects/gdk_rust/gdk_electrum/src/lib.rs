@@ -369,28 +369,30 @@ impl ElectrumSession {
         Ok(())
     }
 
-    pub fn mnemonic_from_pin_data(
+    pub fn credentials_from_pin_data(
         &mut self,
-        pin: String,
         details: PinGetDetails,
-    ) -> Result<String, Error> {
+    ) -> Result<Credentials, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(
             agent,
             self.network.pin_server_url(),
             &self.network.pin_manager_public_key()?,
         )?;
-        let client_key = SecretKey::from_slice(&Vec::<u8>::from_hex(&details.pin_identifier)?)?;
-        let server_key = manager.get_pin(pin.as_bytes(), &client_key)?;
-        let iv = Vec::<u8>::from_hex(&details.salt)?;
+        let client_key =
+            SecretKey::from_slice(&Vec::<u8>::from_hex(&details.pin_data.pin_identifier)?)?;
+        let server_key = manager.get_pin(details.pin.as_bytes(), &client_key)?;
+        let iv = Vec::<u8>::from_hex(&details.pin_data.salt)?;
         let decipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         // If the pin is wrong, pinserver returns a random key and decryption fails, return a
         // specific error to signal the caller to update its pin counter.
         let mnemonic = decipher
-            .decrypt_vec(&Vec::<u8>::from_hex(&details.encrypted_data)?)
+            .decrypt_vec(&Vec::<u8>::from_hex(&details.pin_data.encrypted_data)?)
             .map_err(|_| Error::InvalidPin)?;
         let mnemonic = std::str::from_utf8(&mnemonic).unwrap().to_string();
-        Ok(mnemonic)
+        Ok(Credentials {
+            mnemonic,
+        })
     }
 
     /// Load store and cache from disk.
@@ -786,7 +788,7 @@ impl ElectrumSession {
         self.get_account(opt.subaccount)?.get_previous_addresses(opt)
     }
 
-    pub fn set_pin(&self, details: &PinSetDetails) -> Result<PinGetDetails, Error> {
+    pub fn set_pin(&self, details: &PinSetDetails) -> Result<PinData, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(
             agent,
@@ -799,7 +801,7 @@ impl ElectrumSession {
         let cipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         let encrypted = cipher.encrypt_vec(details.mnemonic.as_bytes());
 
-        let result = PinGetDetails {
+        let result = PinData {
             salt: iv.to_hex(),
             encrypted_data: encrypted.to_hex(),
             pin_identifier: client_key.to_hex(),

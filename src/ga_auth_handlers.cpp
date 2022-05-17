@@ -290,7 +290,7 @@ namespace sdk {
         if (!m_signer) {
             if (m_credential_data.contains("pin")) {
                 // Login with PIN. Fetch the mnemonic from the pin and pin data
-                m_credential_data = { { "mnemonic", m_session->mnemonic_from_pin_data(m_credential_data) } };
+                m_credential_data = m_session->credentials_from_pin_data(m_credential_data);
             }
 
             // Create our signer

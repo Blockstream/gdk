@@ -72,9 +72,9 @@ namespace sdk {
     {
         throw std::runtime_error("login not implemented");
     }
-    std::string ga_lightning::mnemonic_from_pin_data(const nlohmann::json& pin_data)
+    nlohmann::json ga_lightning::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
-        throw std::runtime_error("mnemonic_from_pin_data not implemented");
+        throw std::runtime_error("credentials_from_pin_data not implemented");
     }
     nlohmann::json ga_lightning::login_wo(std::shared_ptr<signer> signer)
     {

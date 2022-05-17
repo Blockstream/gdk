@@ -125,9 +125,9 @@ namespace sdk {
         auto mnemonic = signer->get_mnemonic(empty);
         return rust_call("login", { { "mnemonic", std::move(mnemonic) }, { "password", empty } }, m_session);
     }
-    std::string ga_rust::mnemonic_from_pin_data(const nlohmann::json& pin_data)
+    nlohmann::json ga_rust::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
-        return rust_call("mnemonic_from_pin_data", pin_data, m_session);
+        return rust_call("credentials_from_pin_data", pin_data, m_session);
     }
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {

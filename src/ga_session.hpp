@@ -45,7 +45,7 @@ namespace sdk {
         void register_subaccount_xpubs(
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs);
 
-        std::string mnemonic_from_pin_data(const nlohmann::json& pin_data);
+        nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data);
         nlohmann::json login_wo(std::shared_ptr<signer> signer);
 
         bool set_wo_credentials(const std::string& username, const std::string& password);

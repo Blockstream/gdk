@@ -1330,7 +1330,7 @@ namespace sdk {
         remap_appearance_setting("required_num_blocks", "required_num_blocks");
     }
 
-    std::string ga_session::mnemonic_from_pin_data(const nlohmann::json& pin_data)
+    nlohmann::json ga_session::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
         try {
             // FIXME: clear password after use
@@ -1342,8 +1342,7 @@ namespace sdk {
 
             // FIXME: clear data after use
             const auto plaintext = aes_cbc_decrypt_from_hex(key, data.at("encrypted_data"));
-            const auto decrypted = nlohmann::json::parse(plaintext.begin(), plaintext.end());
-            return decrypted.at("mnemonic");
+            return nlohmann::json::parse(plaintext.begin(), plaintext.end());
         } catch (const autobahn::call_error& e) {
             GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
             reset_all_session_data(false);

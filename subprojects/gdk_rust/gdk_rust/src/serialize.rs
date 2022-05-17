@@ -22,21 +22,6 @@ pub fn login(session: &mut ElectrumSession, input: &Value) -> Result<Value, Erro
         .map_err(Into::into)
 }
 
-pub fn mnemonic_from_pin_data(
-    session: &mut ElectrumSession,
-    input: &Value,
-) -> Result<Value, Error> {
-    let pin = input["pin"]
-        .as_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| Error::Other("login_with_pin: missing pin argument".into()))?;
-    let pin_data: PinGetDetails = serde_json::from_value(input["pin_data"].clone())?;
-    session
-        .mnemonic_from_pin_data(pin, pin_data)
-        .map(|x| serde_json::to_value(&x).unwrap())
-        .map_err(Into::into)
-}
-
 pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
     let index = input["subaccount"]
         .as_u64()
