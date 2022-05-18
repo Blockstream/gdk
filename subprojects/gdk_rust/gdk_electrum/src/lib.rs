@@ -910,6 +910,10 @@ impl ElectrumSession {
         Ok(next_account)
     }
 
+    pub fn get_block_height(&self) -> Result<u32, Error> {
+        Ok(self.store()?.read()?.cache.tip_height())
+    }
+
     pub fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<(), Error> {
         self.get_account(opt.subaccount)?.set_settings(UpdateAccountOpt {
             subaccount: opt.subaccount,

@@ -322,6 +322,10 @@ fn handle_session_call(
             .map(|v| json!(v))
             .map_err(Into::into),
 
+        "get_block_height" => {
+            session.get_block_height().map(|block_height| json!(block_height)).map_err(Into::into)
+        }
+
         "get_subaccount_nums" => {
             session.get_subaccount_nums().map(|v| json!(v)).map_err(Into::into)
         }

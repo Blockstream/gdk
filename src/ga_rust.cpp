@@ -541,7 +541,7 @@ namespace sdk {
         // TODO: Implement using a user block default setting when we have one
         return get_min_fee_rate();
     }
-    uint32_t ga_rust::get_block_height() const { throw std::runtime_error("get_block_height not implemented"); }
+    uint32_t ga_rust::get_block_height() const { return rust_call("get_block_height", {}, m_session); }
     amount ga_rust::get_dust_threshold() const { return amount(546); }
 
     nlohmann::json ga_rust::get_spending_limits() const
