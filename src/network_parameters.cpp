@@ -194,7 +194,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
-            { "wamp_url", "ws://localhost:8080/v2/ws" }
+            { "wamp_url", "ws://localhost:8080/v2/ws" },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "liquid",
@@ -234,7 +236,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", wamp_cert_pins },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://liquidbtcgecscpokecnr5uwg2de55shdq7dnvlpzeju7tnefbekicqd.onion/v2/ws" },
-            { "wamp_url", "wss://green-liquid-mainnet.blockstream.com/v2/ws" }
+            { "wamp_url", "wss://green-liquid-mainnet.blockstream.com/v2/ws" },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "localtest-liquid",
@@ -274,7 +278,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
-            { "wamp_url", "ws://localhost:8080/v2/ws" }
+            { "wamp_url", "ws://localhost:8080/v2/ws" },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "testnet-liquid",
@@ -314,7 +320,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://liqtestulh46kwla3mgenugrcogvjjvzr2qdto663hujwnbaewzpkoad.onion/v2/ws" },
-            { "wamp_url", "wss://green-liquid-testnet.blockstream.com/v2/ws" }
+            { "wamp_url", "wss://green-liquid-testnet.blockstream.com/v2/ws" },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "mainnet",
@@ -347,7 +355,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", wamp_cert_pins },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://greenv3gx6c2gpsjzl6dkutrc7ruf36x44rbtmemw3pqia76elphbbad.onion:88/v2/ws" },
-            { "wamp_url", "wss://prodwss.greenaddress.it/v2/ws" }
+            { "wamp_url", "wss://prodwss.greenaddress.it/v2/ws" },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "testnet",
@@ -380,7 +390,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", "ws://greent5yfxruca52pkqjtgo2qdxijscqlastnv3jwzpmavvffdldm2yd.onion:80/v2/ws" },
-            { "wamp_url", "wss://green-bitcoin-testnet.blockstream.com/v2/ws" }
+            { "wamp_url", "wss://green-bitcoin-testnet.blockstream.com/v2/ws" },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "electrum-liquid",
@@ -420,7 +432,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
-            { "wamp_url", std::string() }
+            { "wamp_url", std::string() },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "electrum-localtest-liquid",
@@ -460,7 +474,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
-            { "wamp_url", std::string() }
+            { "wamp_url", std::string() },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "electrum-mainnet",
@@ -494,6 +510,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "electrum-testnet",
@@ -527,6 +545,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "electrum-localtest",
@@ -560,6 +580,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 
     { "electrum-testnet-liquid",
@@ -599,7 +621,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", wamp_cert_roots },
             { "wamp_onion_url", std::string() },
-            { "wamp_url", std::string() }
+            { "wamp_url", std::string() },
+            { "greenlight_url", std::string() },
+            { "lightning", false },
         })) },
 };
 // clang-format on
@@ -740,6 +764,7 @@ namespace sdk {
     bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
     bool network_parameters::is_development() const { return m_details.at("development"); }
     bool network_parameters::is_electrum() const { return m_details.value("server_type", std::string()) == "electrum"; }
+    bool network_parameters::is_lightning() const { return m_details.at("lightning"); }
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
     bool network_parameters::is_spv_enabled() const { return m_details.at("spv_enabled"); }
     std::string network_parameters::user_agent() const { return m_details.value("user_agent", std::string()); }
