@@ -683,9 +683,24 @@ namespace sdk {
             return m_state;
         }
 
-        if (!json_get_value(m_result, "user_signed", false)) {
+        const std::vector<std::string> sign_with = json_get_value<decltype(sign_with)>(m_tx_details, "sign_with");
+        const bool user_sign
+            = sign_with.empty() || std::find(sign_with.begin(), sign_with.end(), "user") != sign_with.end();
+        const bool server_sign = std::find(sign_with.begin(), sign_with.end(), "green-backend") != sign_with.end();
+
+        if (user_sign && !json_get_value(m_result, "user_signed", false)) {
             // We haven't signed the users inputs yet, do so now
             sign_user_inputs(signer);
+        } else {
+            // Set the transaction details in the result
+            m_result.swap(m_twofactor_data["transaction"]);
+        }
+
+        if (server_sign && !json_get_value(m_result, "server_signed", false)) {
+            GDK_RUNTIME_ASSERT_MSG(
+                json_get_value(m_result, "user_signed", false), "Sign with user before signing with server");
+            constexpr bool sign_only = true;
+            add_next_handler(new send_transaction_call(m_session_parent, m_result, sign_only));
         }
         return state_type::done;
     }
@@ -759,6 +774,13 @@ namespace sdk {
         m_result["user_signed"] = true;
         m_result["blinded"] = true;
         update_tx_size_info(m_net_params, tx, m_result);
+    }
+
+    bool sign_transaction_call::on_next_handler_complete(auth_handler* next_handler)
+    {
+        // We have completed server signing, copy the result into our result
+        m_result = std::move(next_handler->move_result());
+        return false; // Don't continue through the auto auth handler, we are done
     }
 
     //

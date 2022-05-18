@@ -73,6 +73,7 @@ namespace sdk {
         void initialize();
         void set_signer_data(const std::shared_ptr<signer>& signer);
         void sign_user_inputs(const std::shared_ptr<signer>& signer);
+        bool on_next_handler_complete(auth_handler* next_handler) override;
 
         nlohmann::json m_tx_details;
         bool m_initialized;
