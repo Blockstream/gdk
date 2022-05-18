@@ -535,10 +535,15 @@ namespace sdk {
         return amount::convert(amount_json, currency, rate);
     }
 
-    amount ga_rust::get_min_fee_rate() const { throw std::runtime_error("get_min_fee_rate not implemented"); }
-    amount ga_rust::get_default_fee_rate() const { throw std::runtime_error("get_default_fee_rate not implemented"); }
+    amount ga_rust::get_min_fee_rate() const { return amount(m_net_params.is_liquid() ? 100 : 1000); }
+    amount ga_rust::get_default_fee_rate() const
+    {
+        // TODO: Implement using a user block default setting when we have one
+        return get_min_fee_rate();
+    }
     uint32_t ga_rust::get_block_height() const { throw std::runtime_error("get_block_height not implemented"); }
-    amount ga_rust::get_dust_threshold() const { throw std::runtime_error("get_dust_threshold not implemented"); }
+    amount ga_rust::get_dust_threshold() const { return amount(546); }
+
     nlohmann::json ga_rust::get_spending_limits() const
     {
         throw std::runtime_error("get_spending_limits not implemented");
