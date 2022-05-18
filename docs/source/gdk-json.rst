@@ -944,8 +944,6 @@ Contains a page of previously generated addresses, from newest to oldest.
         ],
       }
     ],
-    "subaccount": 0,
-    "is_internal": false
   }
 
 :last_pointer: If present indicates that there are more addresses to be fetched, and the caller
@@ -953,8 +951,6 @@ Contains a page of previously generated addresses, from newest to oldest.
                value in :ref:`previous-addresses-request`.
                If not present there are no more addresses to fetch.
 :list: Contains the current page of addresses in :ref:`receive-address-details` format.
-:subaccount: The subaccount which the generated addresses belong to.
-:is_internal: Singlesig only. Whether or not the user key belongs to the internal chain.
 
 
 

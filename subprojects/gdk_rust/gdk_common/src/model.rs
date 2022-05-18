@@ -997,14 +997,11 @@ pub struct PreviousAddress {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct PreviousAddresses {
-    pub subaccount: u32,
-
     /// The last pointer returned by this call.
     ///
     /// None if all addresses have been fetched.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_pointer: Option<u32>,
-    pub is_internal: bool,
 
     /// The previous addresses
     pub list: Vec<PreviousAddress>,

@@ -250,8 +250,6 @@ impl Account {
             n => Some(n),
         };
         Ok(PreviousAddresses {
-            subaccount,
-            is_internal,
             last_pointer: ret_last_pointer,
             list: previous_addresses,
         })

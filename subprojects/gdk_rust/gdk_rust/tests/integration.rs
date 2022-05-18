@@ -1069,7 +1069,7 @@ fn addresses(is_liquid: bool) {
     assert_eq!(previous_addresses.list[0].tx_count, 1);
     assert_eq!(previous_addresses.list[9].pointer, 2);
     assert_eq!(previous_addresses.last_pointer, Some(2));
-    assert!(!previous_addresses.is_internal);
+    assert!(previous_addresses.list.iter().all(|e| !e.is_internal));
 
     if is_liquid {
         assert!(previous_addresses.list.iter().all(|e| e.is_blinded.unwrap()));
@@ -1091,7 +1091,7 @@ fn addresses(is_liquid: bool) {
 
     opt.is_internal = true;
     let previous_addresses_int = test_session.session.get_previous_addresses(&opt).unwrap();
-    assert!(previous_addresses_int.is_internal);
+    assert!(previous_addresses_int.list.iter().all(|e| e.is_internal));
     assert_eq!(previous_addresses_int.list.len(), 1);
     assert_eq!(previous_addresses_int.list[0].pointer, 0);
     assert_eq!(previous_addresses_int.last_pointer, None);

@@ -2845,7 +2845,7 @@ namespace sdk {
         const uint32_t last_pointer = json_get_value(details, "last_pointer", 0);
         if (!get_newest && last_pointer < 2) {
             // Prevent a server call if the user iterates until empty results
-            return { { "subaccount", subaccount }, { "list", nlohmann::json::array() } };
+            return { { "list", nlohmann::json::array() } };
         }
 
         // Fetch the list of previous addresses from the server
@@ -2860,9 +2860,9 @@ namespace sdk {
         }
 
         if (seen_pointer < 2) {
-            return nlohmann::json{ { "subaccount", subaccount }, { "list", addresses } };
+            return nlohmann::json{ { "list", addresses } };
         }
-        return nlohmann::json{ { "subaccount", subaccount }, { "last_pointer", seen_pointer }, { "list", addresses } };
+        return nlohmann::json{ { "last_pointer", seen_pointer }, { "list", addresses } };
     }
 
     nlohmann::json ga_session::get_receive_address(const nlohmann::json& details)
