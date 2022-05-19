@@ -36,12 +36,7 @@ namespace sdk {
 
     const uint32_t NO_CHANGE_INDEX = 0xffffffff;
 
-    inline bool is_segwit_script_type(script_type type)
-    {
-        return type == script_type::ga_p2sh_p2wsh_fortified_out || type == script_type::ga_p2sh_p2wsh_csv_fortified_out
-            || type == script_type::ga_redeem_p2sh_p2wsh_fortified
-            || type == script_type::ga_redeem_p2sh_p2wsh_csv_fortified;
-    }
+    bool is_segwit_address_type(const nlohmann::json& utxo);
 
     std::string get_address_from_public_key(
         const network_parameters& net_params, byte_span_t public_key, const std::string& addr_type);

@@ -67,8 +67,6 @@ namespace sdk {
             const std::string txhash = utxo.at("txhash");
             const auto txid = h2b_rev(txhash);
             const uint32_t index = utxo.at("pt_idx");
-            const auto is_segwit = utxo.value(
-                "is_segwit", is_segwit_script_type(utxo.value("script_type", script_type::ga_pubkey_hash_out)));
             const bool low_r = session.get_nonnull_signer()->supports_low_r();
             const bool is_external = !json_get_value(utxo, "private_key").empty();
             const uint32_t sequence = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
@@ -87,7 +85,7 @@ namespace sdk {
                 const auto script = h2b(utxo.at("prevout_script"));
                 add_paths(session, utxo);
 
-                if (is_segwit) {
+                if (is_segwit_address_type(utxo)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
                     auto wit = tx_witness_stack_init(4);
@@ -122,9 +120,7 @@ namespace sdk {
             // - 2of3 p2sh, backup key signing
             // - 2of3 p2wsh, backup key signing
             // - 2of2 csv, csv path
-            const auto type = script_type(utxo.at("script_type"));
-            const auto is_segwit = utxo.value("is_segwit", is_segwit_script_type(type));
-            if (!is_segwit) {
+            if (!is_segwit_address_type(utxo)) {
                 // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
                 // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
                 const auto& input = tx->inputs[index];
@@ -142,7 +138,7 @@ namespace sdk {
             // Liquid outputs:
             // 2of2 csv:   witness stack: <user_sig> <ga_sig> <redeem_script> (not optimized)
             // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script> (no recovery)
-            if (is_liquid && type == script_type::ga_redeem_p2sh_p2wsh_csv_fortified) {
+            if (is_liquid && utxo.at("address_type") == address_type::csv) {
                 std::swap(user_sig, ga_sig);
             }
 
@@ -903,9 +899,7 @@ namespace sdk {
                 const auto user_sig = signer->sign_hash(path, script_hash);
                 const auto der = ec_sig_to_der(user_sig, true);
 
-                const auto is_segwit = u.value(
-                    "is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
-                if (is_segwit) {
+                if (is_segwit_address_type(u)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     // Note that this requires setting the inputs sequence number to the CSV time too
                     auto wit = tx_witness_stack_init(1);
@@ -926,11 +920,8 @@ namespace sdk {
         const network_parameters& net_params, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
     {
         const amount::value_type v = utxo.at("satoshi");
-        const auto is_segwit = utxo.value(
-            "is_segwit", is_segwit_script_type(utxo.value("script_type", script_type::ga_pubkey_hash_out)));
         const auto script = h2b(utxo.at("prevout_script"));
-
-        const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
+        const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
         if (!net_params.is_liquid()) {
             const amount satoshi{ v };
@@ -998,34 +989,36 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(json_get_value(u, "private_key").empty());
 
-        const auto is_segwit
-            = u.value("is_segwit", is_segwit_script_type(u.value("script_type", script_type::ga_pubkey_hash_out)));
         const auto script = h2b(u.at("prevout_script"));
         auto der = h2b(der_hex);
-        const auto address_type = u.at("address_type");
+        const auto addr_type = u.at("address_type");
 
-        if (address_type == address_type::p2pkh) {
+        if (addr_type == address_type::p2pkh) {
+            // Singlesig pre-segwit
             tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
-        } else if (address_type == address_type::p2sh_p2wpkh || address_type == address_type::p2wpkh) {
+        } else if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
+            // Singlesig segwit
             const auto public_key = h2b(u.at("public_key"));
             auto wit = tx_witness_stack_init(2);
             tx_witness_stack_add(wit, der);
             tx_witness_stack_add(wit, public_key);
             tx_set_input_witness(tx, index, wit);
-            if (address_type == address_type::p2sh_p2wpkh) {
+            if (addr_type == address_type::p2sh_p2wpkh) {
                 tx_set_input_script(tx, index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
             } else {
                 // for native segwit ensure the scriptsig is empty
                 tx_set_input_script(tx, index, byte_span_t());
             }
-        } else if (is_segwit) {
-            // Multisig cases
+        } else if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
+            // Multisig segwit
             auto wit = tx_witness_stack_init(1);
             tx_witness_stack_add(wit, der);
             tx_set_input_witness(tx, index, wit);
             const uint32_t witness_ver = 0;
             tx_set_input_script(tx, index, witness_script(script, witness_ver));
         } else {
+            // Multisig pre-segwit
+            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
             constexpr bool has_sighash = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash);
             tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig));
