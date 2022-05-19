@@ -1,5 +1,6 @@
 #include "session_impl.hpp"
 #include "exception.hpp"
+#include "ga_lightning.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "ga_tor.hpp"
@@ -31,6 +32,9 @@ namespace sdk {
 
         if (np.is_electrum()) {
             return std::make_shared<ga_rust>(std::move(np));
+        }
+        if (np.is_lightning()) {
+            return std::make_shared<ga_lightning>(std::move(np));
         }
         return std::make_shared<ga_session>(std::move(np));
     }
