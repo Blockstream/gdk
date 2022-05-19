@@ -2,14 +2,14 @@
 
 ## Release 0.0.55
 
+### Added
+
+- Singlesig: implement GA_get_previous_addresses
+
 ### Changed
 
 - GA_get_previous_addresses: to get the newest generated addresses, caller should not include "last_pointer" key (instead of passing "last_pointer" 0). If the returned json does not have the "last_pointer" key, it indicates that all addresses have been fetched (previously it had "last_pointer" 1).
 - GA_get_previous_addresses: removed "subaccount" from returned keys.
-
-### Added
-
-- Singlesig: implement GA_get_previous_addresses
 
 
 ## Release 0.0.54 - 2022-05-13
