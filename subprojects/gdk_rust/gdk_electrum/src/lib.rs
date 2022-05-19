@@ -773,7 +773,8 @@ impl ElectrumSession {
 
     pub fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
         debug!("get_receive_address {:?}", opt);
-        let address = self.get_account(opt.subaccount)?.get_next_address()?;
+        let address =
+            self.get_account(opt.subaccount)?.get_next_address(opt.is_internal.unwrap_or(false))?;
         debug!("get_address {:?}", address);
         Ok(address)
     }
@@ -1317,9 +1318,10 @@ impl Syncer {
             let mut wallet_chains = vec![0, 1];
             wallet_chains.shuffle(&mut thread_rng());
             for i in wallet_chains {
+                let is_internal = i == 1;
                 let mut batch_count = 0;
                 loop {
-                    let batch = account.get_script_batch(i == 1, batch_count)?;
+                    let batch = account.get_script_batch(is_internal, batch_count)?;
                     // convert the BEScript into bitcoin::Script for electrum-client
                     let b_scripts =
                         batch.value.iter().map(|e| e.0.clone().into_bitcoin()).collect::<Vec<_>>();
@@ -1335,10 +1337,10 @@ impl Syncer {
                         .map(|(i, _)| i as u32)
                         .max();
                     if let Some(max) = max {
-                        if i == 0 {
-                            last_used.external = max + batch_count * BATCH_SIZE;
-                        } else {
+                        if is_internal {
                             last_used.internal = max + batch_count * BATCH_SIZE;
+                        } else {
+                            last_used.external = max + batch_count * BATCH_SIZE;
                         }
                     };
 

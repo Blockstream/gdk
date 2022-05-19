@@ -558,6 +558,7 @@ impl TestSession {
         let addr_opt = GetAddressOpt {
             subaccount,
             address_type: None,
+            is_internal: None,
         };
         self.session.get_receive_address(&addr_opt).unwrap()
     }

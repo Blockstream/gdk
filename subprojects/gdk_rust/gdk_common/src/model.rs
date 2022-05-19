@@ -192,6 +192,7 @@ pub struct SetMasterBlindingKeyOpt {
 pub struct GetAddressOpt {
     pub subaccount: u32,
     pub address_type: Option<String>, // unused
+    pub is_internal: Option<bool>,    // true = get an internal change address
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -626,9 +627,17 @@ pub struct PinGetDetails {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddressPointer {
+    pub subaccount: u32,
+    pub address_type: String,
     pub address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "blinding_script")]
+    pub script_pubkey: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blinding_key: Option<String>,
     pub pointer: u32, // child_number in bip32 terminology
     pub user_path: Vec<ChildNumber>,
+    pub is_internal: bool,
 }
 
 // This one is simple enough to derive a serializer

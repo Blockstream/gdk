@@ -171,9 +171,9 @@ impl Account {
         })
     }
 
-    pub fn derive_address(&self, is_change: bool, index: u32) -> Result<BEAddress, Error> {
+    pub fn derive_address(&self, is_internal: bool, index: u32) -> Result<BEAddress, Error> {
         derive_address(
-            &self.chains[is_change as usize],
+            &self.chains[is_internal as usize],
             index,
             self.script_type,
             self.network.id(),
@@ -181,21 +181,39 @@ impl Account {
         )
     }
 
-    pub fn get_next_address(&self) -> Result<AddressPointer, Error> {
+    pub fn get_next_address(&self, is_internal: bool) -> Result<AddressPointer, Error> {
         let pointer = {
             let store = &mut self.store.write()?;
             let acc_store = store.account_cache_mut(self.account_num)?;
-
-            acc_store.indexes.external += 1;
-            acc_store.indexes.external
+            if is_internal {
+                acc_store.indexes.internal += 1;
+                acc_store.indexes.internal
+            } else {
+                acc_store.indexes.external += 1;
+                acc_store.indexes.external
+            }
         };
-        let account_path = DerivationPath::from(&[0.into(), pointer.into()][..]); // 0 is external
+        let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
-        let address = self.derive_address(false, pointer)?.to_string();
+        let address = self.derive_address(is_internal, pointer)?;
+        let script_pubkey = &address.script_pubkey();
+        let script_pubkey_hex: Option<String> = match &address.blinding_pubkey() {
+            None => None,
+            Some(_pubkey) => Some(script_pubkey.to_hex()),
+        };
+        let blinding_key_hex: Option<String> = match &address.blinding_pubkey() {
+            None => None,
+            Some(pubkey) => Some(pubkey.to_string()),
+        };
         Ok(AddressPointer {
-            address,
-            pointer,
+            subaccount: self.account_num,
+            address_type: self.script_type.to_string(),
+            address: address.to_string(),
+            script_pubkey: script_pubkey_hex,
+            blinding_key: blinding_key_hex,
+            pointer: pointer,
             user_path: user_path.into(),
+            is_internal: is_internal,
         })
     }
 
@@ -749,7 +767,7 @@ impl Account {
         Ok(betx)
     }
 
-    pub fn get_script_batch(&self, is_change: bool, batch: u32) -> Result<ScriptBatch, Error> {
+    pub fn get_script_batch(&self, is_internal: bool, batch: u32) -> Result<ScriptBatch, Error> {
         let store = self.store.read()?;
         let acc_store = store.account_cache(self.account_num)?;
 
@@ -759,11 +777,11 @@ impl Account {
         let start = batch * BATCH_SIZE;
         let end = start + BATCH_SIZE;
         for j in start..end {
-            let path = DerivationPath::from(&[(is_change as u32).into(), j.into()][..]);
+            let path = DerivationPath::from(&[(is_internal as u32).into(), j.into()][..]);
             let script = acc_store.scripts.get(&path).cloned().map_or_else(
                 || -> Result<BEScript, Error> {
                     result.cached = false;
-                    Ok(self.derive_address(is_change, j)?.script_pubkey())
+                    Ok(self.derive_address(is_internal, j)?.script_pubkey())
                 },
                 Ok,
             )?;
