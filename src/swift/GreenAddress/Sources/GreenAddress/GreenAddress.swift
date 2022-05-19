@@ -5,26 +5,27 @@ import ga.sdk
 import ga.wally
 
 public enum GaError: Error {
-    case GenericError
-    case ReconnectError
-    case SessionLost
-    case TimeoutError
-    case NotAuthorizedError
+    case GenericError(_ localizedDescription: String? = nil)
+    case ReconnectError(_ localizedDescription: String? = nil)
+    case SessionLost(_ localizedDescription: String? = nil)
+    case TimeoutError(_ localizedDescription: String? = nil)
+    case NotAuthorizedError(_ localizedDescription: String? = nil)
 }
 
 fileprivate func errorWrapper(_ r: Int32) throws {
     guard r == GA_OK else {
+        let msg = try? getThreadErrorDetails()
         switch r {
             case GA_RECONNECT:
-                throw GaError.ReconnectError
+            throw GaError.ReconnectError(msg)
             case GA_SESSION_LOST:
-                throw GaError.SessionLost
+                throw GaError.SessionLost(msg)
             case GA_TIMEOUT:
-                throw GaError.TimeoutError
+                throw GaError.TimeoutError(msg)
             case GA_NOT_AUTHORIZED:
-                throw GaError.NotAuthorizedError
+                throw GaError.NotAuthorizedError(msg)
             default:
-                throw GaError.GenericError
+                throw GaError.GenericError(msg)
         }
     }
 }
@@ -72,6 +73,27 @@ fileprivate func convertOpaqueJsonToDict(o: OpaquePointer) throws -> [String: An
     return convertJSONBytesToDict(buff!)
 }
 
+fileprivate func convertOpaqueJsonValueToString(o: OpaquePointer, path: String) throws -> String? {
+    var buff: UnsafeMutablePointer<Int8>? = nil
+    defer {
+        GA_destroy_string(buff)
+    }
+    try callWrapper(fun: GA_convert_json_value_to_string(o, path, &buff))
+    if let buff = buff {
+        return String(cString: buff)
+    }
+    return nil
+}
+
+public func getThreadErrorDetails() throws -> String? {
+    var details: OpaquePointer? = nil
+    defer {
+        GA_destroy_json(details)
+    }
+    GA_get_thread_error_details(&details)
+    return try convertOpaqueJsonValueToString(o: details!, path: "details")
+}
+
 // Dummy resolver for Hardware calls
 public func DummyResolve(call: TwoFactorCall) throws -> [String : Any] {
     while true {
@@ -82,8 +104,8 @@ public func DummyResolve(call: TwoFactorCall) throws -> [String : Any] {
         } else if status == "done" {
             return json!
         } else {
-            // FIXME: if status == "error", return the error message in "error"
-            throw GaError.GenericError
+            let err = json?["error"] as? String
+            throw GaError.GenericError(err)
         }
     }
 }
@@ -496,9 +518,7 @@ public class Session {
 
 public func generateMnemonic() throws -> String {
     var buff : UnsafeMutablePointer<Int8>? = nil
-    guard GA_generate_mnemonic(&buff) == GA_OK else {
-        throw GaError.GenericError
-    }
+    try callWrapper(fun: GA_generate_mnemonic(&buff))
     defer {
         GA_destroy_string(buff)
     }
@@ -507,9 +527,7 @@ public func generateMnemonic() throws -> String {
 
 public func generateMnemonic12() throws -> String {
     var buff : UnsafeMutablePointer<Int8>? = nil
-    guard GA_generate_mnemonic_12(&buff) == GA_OK else {
-        throw GaError.GenericError
-    }
+    try callWrapper(fun: GA_generate_mnemonic_12(&buff))
     defer {
         GA_destroy_string(buff)
     }
@@ -561,15 +579,15 @@ func compressPublicKey(_ publicKey: [UInt8]) throws -> [UInt8] {
     switch publicKey[0] {
     case 0x04:
         if publicKey.count != 65 {
-            throw GaError.GenericError
+            throw GaError.GenericError()
         }
     case 0x02, 0x03:
         if publicKey.count != 33 {
-            throw GaError.GenericError
+            throw GaError.GenericError()
         }
         return publicKey
     default:
-        throw GaError.GenericError
+        throw GaError.GenericError()
     }
     let type = publicKey[64] & 1 != 0 ? 0x03 : 0x02
     return [UInt8(type)] + publicKey[1..<32+1]
@@ -587,10 +605,10 @@ public func bip32KeyToBase58(isMainnet: Bool = true, pubKey: [UInt8], chainCode:
     }
     if (bip32_key_init_alloc(UInt32(version), UInt32(1), UInt32(0), chainCode_, chainCode.count,
                              pubKey_, pubKey.count, nil, 0, nil, 0, nil, 0, &extkey) != WALLY_OK) {
-        throw GaError.GenericError
+        throw GaError.GenericError()
     }
     if (bip32_key_to_base58(extkey, UInt32(BIP32_FLAG_KEY_PUBLIC), &base58) != WALLY_OK) {
-        throw GaError.GenericError
+        throw GaError.GenericError()
     }
     return String(cString: base58!)
 }
