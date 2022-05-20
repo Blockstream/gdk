@@ -248,6 +248,10 @@ impl Account {
                 }
                 _ => (None, None, None),
             };
+            let blinding_script_hex: Option<String> = match &address.blinding_pubkey() {
+                None => None,
+                Some(_pubkey) => Some(script_pubkey.to_hex()),
+            };
             let tx_count = acc_store.all_txs.tx_count(&script_pubkey);
             previous_addresses.push(PreviousAddress {
                 address: address.to_string(),
@@ -260,6 +264,7 @@ impl Account {
                 tx_count,
                 is_blinded,
                 unblinded_address,
+                blinding_script: blinding_script_hex,
                 blinding_key,
             });
         }

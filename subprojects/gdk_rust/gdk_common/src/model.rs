@@ -1001,6 +1001,9 @@ pub struct PreviousAddress {
     pub unblinded_address: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub blinding_script: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub blinding_key: Option<String>,
 }
 
