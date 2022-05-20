@@ -657,7 +657,8 @@ namespace sdk {
                     // Find out where to send any change
                     const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
                     result["change_subaccount"] = change_subaccount;
-                    auto change_address = session.get_receive_address({ { "subaccount", change_subaccount } });
+                    nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
+                    auto change_address = session.get_receive_address(details);
 
                     if (is_liquid && !is_electrum) {
                         // set a temporary blinding key, will be changed later through the resolvers. we need
