@@ -224,8 +224,6 @@ namespace sdk {
 
     std::vector<unsigned char> addr_segwit_to_bytes(const std::string& addr, const std::string& family);
 
-    size_t addr_segwit_get_version(const std::string& addr, const std::string& family);
-
     std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family);
 
     std::string base58check_from_bytes(byte_span_t data);

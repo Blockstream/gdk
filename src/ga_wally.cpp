@@ -487,15 +487,6 @@ namespace sdk {
         return ret;
     }
 
-    size_t addr_segwit_get_version(const std::string& addr, const std::string& family)
-    {
-        const uint32_t flags = 0;
-        size_t segwit_version;
-        GDK_VERIFY(wally_addr_segwit_get_version(addr.c_str(), family.c_str(), flags, &segwit_version));
-        GDK_RUNTIME_ASSERT(segwit_version <= 16);
-        return segwit_version;
-    }
-
     std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family)
     {
         const uint32_t flags = 0;
