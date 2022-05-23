@@ -50,6 +50,11 @@ namespace sdk {
                 utxo["user_path"] = session.get_subaccount_full_path(subaccount, pointer, is_internal);
             }
 
+            if (session.get_network_parameters().is_electrum()) {
+                // Electrum sessions currently only support single sig
+                return;
+            }
+
             if (utxo.find("service_xpub") == utxo.end()) {
                 // Populate the service xpub for h/w signing
                 utxo["service_xpub"] = session.get_service_xpub(subaccount);
