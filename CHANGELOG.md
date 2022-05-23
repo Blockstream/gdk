@@ -12,6 +12,7 @@
 - GA_get_previous_addresses: To get the newest generated addresses, caller should not include "last_pointer" key (instead of passing "last_pointer" 0). If the returned json does not have the "last_pointer" key, it indicates that all addresses have been fetched (previously it had "last_pointer" 1)
 - GA_get_previous_addresses: Removed "subaccount" from returned keys.
 - Singlesig: Add some missing fields to GA_get_receive_address returned json.
+- Singlesig: Remove is_segwit from GA_get_unspent_outputs returned json
 
 
 ## Release 0.0.54 - 2022-05-13

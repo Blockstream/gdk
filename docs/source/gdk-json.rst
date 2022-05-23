@@ -1008,7 +1008,6 @@ Contains the filtered unspent outputs.
             1,
             474
           ],
-          "is_segwit": true,
           "public_key": "0279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e",
           "expiry_height": 1458369,
           "script_type": 14,
@@ -1032,7 +1031,6 @@ Contains the filtered unspent outputs.
              Matches ``"pointer"`` from :ref:`subaccount-list` or :ref:`subaccount-detail`.
 :prevout_script: The script being signed, the script code.
 :user_path: The BIP32 path for the user key.
-:is_segwit: Singlesig only. Whether or not the output is segwit.
 :public_key: Singlesig only. The user public key.
 :expiry_height: Multisig only.
                 The block height when two-factor authentication expires.

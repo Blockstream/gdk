@@ -1485,9 +1485,8 @@ impl TestSigner {
                 let script_code =
                     Address::p2pkh(&public_key, Bip32Network::Regtest).script_pubkey();
                 assert_eq!(utxo.script_code, script_code.to_hex());
-                assert_eq!(utxo.is_segwit, utxo.address_type != "p2pkh");
 
-                let signature_hash = if utxo.is_segwit {
+                let signature_hash = if utxo.address_type != "p2pkh" {
                     SigHashCache::new(&tx).signature_hash(
                         i,
                         &script_code,

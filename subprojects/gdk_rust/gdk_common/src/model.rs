@@ -820,7 +820,6 @@ pub struct UnspentOutput {
     pub pt_idx: u32,
     pub satoshi: u64,
     pub subaccount: u32,
-    pub is_segwit: bool,
     pub txhash: String,
     /// `true` iff belongs to internal chain, i.e. is change
     pub is_internal: bool,
@@ -880,7 +879,6 @@ impl TryFrom<Txo> for UnspentOutput {
             scriptpubkey: txo.script_pubkey,
             script_code: txo.script_code.to_hex(),
             subaccount: txo.subaccount,
-            is_segwit: txo.script_type.is_segwit(),
             address_type: txo.script_type.to_string(),
             user_path: txo.user_path,
             is_internal,
@@ -1034,7 +1032,7 @@ mod test {
 
     #[test]
     fn test_unspent() {
-        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 1], "prevout_script": "51", "is_segwit": true, "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 2], "prevout_script": "51", "is_segwit": true, "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 3], "prevout_script": "51", "is_segwit": true, "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}]}"#;
+        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 1], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 2], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 3], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}]}"#;
         let _json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
         let _json: CreateTxUtxos = serde_json::from_str(json_str).unwrap();
     }
