@@ -141,8 +141,8 @@ class gdk_wallet:
         self.mnemonic = mnemonic or gdk.generate_mnemonic()
         # Session network name options are: testnet, mainnet.
         self.session = gdk.Session({'name': 'testnet'})
-        self.session.register_user({}, self.mnemonic).resolve()
-        credentials = {'mnemonic': self.mnemonic, 'password': ''}
+        credentials = {'mnemonic': self.mnemonic}
+        self.session.register_user({}, credentials).resolve()
         self.session.login_user({}, credentials).resolve()
         self.fetch_block_height()
         if create_with_2fa_enabled:

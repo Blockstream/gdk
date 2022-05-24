@@ -257,12 +257,14 @@ public class Session {
         return try convertOpaqueJsonToDict(o: result!)
     }
 
-    public func registerUser(mnemonic: String, hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
+    public func registerUser(details: [String: Any], hw_device: [String: Any] = [:]) throws -> TwoFactorCall {
         var optr: OpaquePointer? = nil;
         var hw_device_json: OpaquePointer = try convertDictToJSON(dict: hw_device)
-        try callWrapper(fun: GA_register_user(session, hw_device_json, mnemonic, &optr))
+        var details_json: OpaquePointer = try convertDictToJSON(dict: details)
+        try callWrapper(fun: GA_register_user(session, hw_device_json, details_json, &optr))
         defer {
             GA_destroy_json(hw_device_json)
+            GA_destroy_json(details_json)
         }
         return TwoFactorCall(optr: optr!);
     }

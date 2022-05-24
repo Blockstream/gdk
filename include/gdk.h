@@ -205,12 +205,12 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
  *
  * :param session: The session to use.
  * :param hw_device: :ref:`hw-device` or empty JSON for software wallet registration.
- * :param mnemonic: The user's mnemonic passphrase for software wallet registration.
+ * :param details: The :ref:`login-credentials` for software wallet registration.
  * :param call: Destination for the resulting GA_auth_handler to perform the registration.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  */
 GDK_API int GA_register_user(
-    struct GA_session* session, const GA_json* hw_device, const char* mnemonic, struct GA_auth_handler** call);
+    struct GA_session* session, const GA_json* hw_device, const GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Authenticate to a user's wallet.

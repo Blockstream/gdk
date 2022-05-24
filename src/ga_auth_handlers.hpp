@@ -8,7 +8,7 @@ namespace ga {
 namespace sdk {
     class register_call : public auth_handler_impl {
     public:
-        register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic);
+        register_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
 
     private:
         state_type call_impl() override;

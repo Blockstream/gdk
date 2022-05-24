@@ -13,6 +13,7 @@
 - GA_get_previous_addresses: Removed "subaccount" from returned keys.
 - Singlesig: Add some missing fields to GA_get_receive_address returned json.
 - Singlesig: Remove is_segwit from GA_get_unspent_outputs returned json
+- GA_register_user: Change interface to match GA_login_user.
 
 
 ## Release 0.0.54 - 2022-05-13

@@ -147,8 +147,8 @@ class Session(object):
     def get_wallet_identifier(net_params, params):
         return json.loads(get_wallet_identifier(Session._to_json(net_params), Session._to_json(params)))
 
-    def register_user(self, hw_device, mnemonic):
-        return Call(register_user(self.session_obj, self._to_json(hw_device), mnemonic))
+    def register_user(self, hw_device, details):
+        return Call(register_user(self.session_obj, self._to_json(hw_device), self._to_json(details)))
 
     def login_user(self, hw_device, details):
         return Call(login_user(self.session_obj, self._to_json(hw_device), self._to_json(details)))

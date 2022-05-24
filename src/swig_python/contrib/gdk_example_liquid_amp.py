@@ -171,8 +171,8 @@ class gdk_wallet:
         # There is currently no test Liquid network.
         self.session = gdk.Session({'name': self.NETWORK_NAME})
         
-        self.session.register_user({}, self.mnemonic).resolve()
-        credentials = {'mnemonic': self.mnemonic, 'password': ''}
+        credentials = {'mnemonic': self.mnemonic}
+        self.session.register_user({}, credentials).resolve()
         self.session.login_user({}, credentials).resolve()
         self.session.create_subaccount({'name': self.SUBACCOUNT_NAME, 'type': self.AMP_ACCOUNT_TYPE}).resolve()
         if create_with_2fa_enabled:

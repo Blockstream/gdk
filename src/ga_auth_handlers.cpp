@@ -226,10 +226,11 @@ namespace sdk {
     //
     // Register
     //
-    register_call::register_call(session& session, const nlohmann::json& hw_device, const std::string& mnemonic)
+    register_call::register_call(
+        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
         : auth_handler_impl(session, "register_user", std::shared_ptr<signer>())
         , m_hw_device(hw_device)
-        , m_credential_data(mnemonic.empty() ? nlohmann::json() : nlohmann::json({ { "mnemonic", mnemonic } }))
+        , m_credential_data(credential_data)
     {
     }
 
