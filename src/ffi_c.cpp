@@ -286,6 +286,10 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_watch_only_username, struct GA_session*, session,
 GDK_DEFINE_C_FUNCTION_2(GA_get_fee_estimates, struct GA_session*, session, GA_json**, estimates,
     { *json_cast(estimates) = new nlohmann::json(session->get_fee_estimates()); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_get_credentials, struct GA_session*, session, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::get_credentials_call(*session, *json_cast(details))); })
+
 GDK_DEFINE_C_FUNCTION_3(GA_get_mnemonic_passphrase, struct GA_session*, session, const char*, password, char**,
     mnemonic, { *mnemonic = to_c_string(session->get_mnemonic_passphrase(password ? password : std::string())); })
 

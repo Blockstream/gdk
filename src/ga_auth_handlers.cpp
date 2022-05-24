@@ -1787,5 +1787,30 @@ namespace sdk {
         }
         return state_type::done;
     }
+
+    //
+    // Get credentials
+    //
+    get_credentials_call::get_credentials_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "get_credentials")
+        , m_details(details)
+    {
+    }
+
+    auth_handler::state_type get_credentials_call::call_impl()
+    {
+        const auto password = json_get_value(m_details, "password");
+        const auto signer = get_signer();
+        m_result = signer->get_credentials();
+        if (!password.empty()) {
+            GDK_RUNTIME_ASSERT(m_result.contains("mnemonic"));
+            m_result["mnemonic"] = signer->get_mnemonic(password);
+            m_result["password"] = password;
+        }
+        if (m_result.contains("username")) {
+            m_result.erase("password");
+        }
+        return state_type::done;
+    }
 } // namespace sdk
 } // namespace ga

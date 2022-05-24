@@ -595,6 +595,17 @@ GDK_API int GA_set_transaction_memo(
 GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates);
 
 /**
+ * Get the user's credentials.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`get-credentials-details` to get the credentials.
+ * :param call: Destination for the resulting GA_auth_handler to get the user's credentials.
+ *|     The call handlers result is :ref:`login-credentials`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_get_credentials(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Get the user's mnemonic passphrase.
  *
  * :param session: The session to use.

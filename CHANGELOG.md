@@ -6,6 +6,7 @@
 
 - Singlesig: Implement GA_get_previous_addresses
 - Singlesig: Allow fetching internal addresses in GA_get_receive_address using "is_internal"=true
+- Added new function GA_get_credentials, candidate to replace GA_get_mnemonic_passphrase.
 
 ### Changed
 

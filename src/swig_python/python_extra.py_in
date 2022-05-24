@@ -256,6 +256,9 @@ class Session(object):
     def get_mnemonic_passphrase(self, password):
         return get_mnemonic_passphrase(self.session_obj, password)
 
+    def get_credentials(self, details):
+        return Call(get_credentials(self.session_obj, self._to_json(details)))
+
     def get_system_message(self):
         return get_system_message(self.session_obj)
 

@@ -493,6 +493,10 @@ public class Session {
         return String(cString: buff!)
     }
 
+    public func getCredentials(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_credentials)
+    }
+
     public func getWalletIdentifier(net_params: [String: Any], details: [String: Any]) throws -> [String: Any]? {
         var result: OpaquePointer? = nil
         let net_params_: OpaquePointer = try convertDictToJSON(dict: net_params)

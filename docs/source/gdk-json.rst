@@ -185,6 +185,20 @@ otherwise, pass the wallets master xpub as follows:
 :master_xpub: The base58-encoded BIP32 extended master public key of the wallet.
 
 
+ .. _get-credentials-details:
+
+Get credentials JSON
+----------------------
+
+Accepts an optional password to encrypt the mnemonic.
+
+.. code-block:: json
+
+   {
+      "password": ""
+   }
+
+
 .. _subaccount-detail:
 
 Subaccount JSON

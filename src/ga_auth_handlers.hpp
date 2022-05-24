@@ -321,6 +321,16 @@ namespace sdk {
         nlohmann::json m_params;
         bool m_initialized;
     };
+
+    class get_credentials_call : public auth_handler_impl {
+    public:
+        get_credentials_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+    };
 } // namespace sdk
 } // namespace ga
 #endif
