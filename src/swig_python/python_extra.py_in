@@ -148,6 +148,8 @@ class Session(object):
         return json.loads(get_wallet_identifier(Session._to_json(net_params), Session._to_json(params)))
 
     def register_user(self, hw_device, details):
+        if isinstance(details, basestring):
+            raise RuntimeError('credentials details must be a dict')
         return Call(register_user(self.session_obj, self._to_json(hw_device), self._to_json(details)))
 
     def login_user(self, hw_device, details):
