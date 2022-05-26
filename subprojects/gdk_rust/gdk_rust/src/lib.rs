@@ -322,6 +322,10 @@ fn handle_session_call(
             .set_pin(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
+        "encrypt_with_pin" => session
+            .encrypt_with_pin(&serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
 
         "get_block_height" => {
             session.get_block_height().map(|block_height| json!(block_height)).map_err(Into::into)

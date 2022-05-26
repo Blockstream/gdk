@@ -3179,16 +3179,16 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::set_pin(
-        const std::string& mnemonic, const std::string& pin, const std::string& device_id)
+    nlohmann::json ga_session::encrypt_with_pin(const nlohmann::json& details)
     {
         ensure_full_session();
 
+        const std::string pin = details.at("pin");
+        const nlohmann::json& plaintext = details.at("plaintext");
+        const std::string device_id = json_get_value(details, "device_id", b2h(get_random_bytes<8>()));
+
         GDK_RUNTIME_ASSERT(pin.length() >= 4);
         GDK_RUNTIME_ASSERT(!device_id.empty() && device_id.length() <= 100);
-
-        // FIXME: secure_array
-        const auto seed = bip39_mnemonic_to_seed(mnemonic);
 
         // Ask the server to create a new PIN identifier and PIN password
         constexpr bool return_password = true;
@@ -3208,10 +3208,21 @@ namespace sdk {
         const auto key = pbkdf2_hmac_sha512_256(ustring_span(password), ustring_span(salt_b64));
 
         // FIXME: secure string
-        const std::string json = nlohmann::json({ { "mnemonic", mnemonic }, { "seed", b2h(seed) } }).dump();
+        const std::string json = plaintext.dump();
 
         return { { "pin_identifier", id_and_password.front() }, { "salt", salt_b64 },
             { "encrypted_data", aes_cbc_encrypt_to_hex(key, ustring_span(json)) } };
+    }
+
+    // Idempotent
+    nlohmann::json ga_session::set_pin(
+        const std::string& mnemonic, const std::string& pin, const std::string& device_id)
+    {
+        // FIXME: secure_array
+        const auto seed = bip39_mnemonic_to_seed(mnemonic);
+        const auto plaintext = nlohmann::json({ { "mnemonic", mnemonic }, { "seed", b2h(seed) } });
+        const auto details = nlohmann::json({ { "pin", pin }, { "device_id", device_id }, { "plaintext", plaintext } });
+        return encrypt_with_pin(details);
     }
 
     // Idempotent

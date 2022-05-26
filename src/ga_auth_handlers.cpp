@@ -1812,5 +1812,20 @@ namespace sdk {
         }
         return state_type::done;
     }
+
+    //
+    // Encrypt with PIN
+    //
+    encrypt_with_pin_call::encrypt_with_pin_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "encrypt_with_pin")
+        , m_details(details)
+    {
+    }
+
+    auth_handler::state_type encrypt_with_pin_call::call_impl()
+    {
+        m_result["pin_data"] = m_session->encrypt_with_pin(m_details);
+        return state_type::done;
+    }
 } // namespace sdk
 } // namespace ga

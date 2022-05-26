@@ -411,6 +411,10 @@ GDK_DEFINE_C_FUNCTION_5(GA_set_pin, struct GA_session*, session, const char*, mn
     device_id, GA_json**, pin_data,
     { *json_cast(pin_data) = new nlohmann::json(session->set_pin(mnemonic, pin, device_id)); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_encrypt_with_pin, struct GA_session*, session, const GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::encrypt_with_pin_call(*session, *json_cast(details))); });
+
 GDK_DEFINE_C_FUNCTION_1(GA_disable_all_pin_logins, struct GA_session*, session, { session->disable_all_pin_logins(); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_convert_string_to_json, const char*, input, GA_json**, output,

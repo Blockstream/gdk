@@ -370,6 +370,11 @@ namespace sdk {
         return rust_call("set_pin", details, m_session);
     }
 
+    nlohmann::json ga_rust::encrypt_with_pin(const nlohmann::json& details)
+    {
+        return rust_call("encrypt_with_pin", details, m_session);
+    }
+
     nlohmann::json ga_rust::get_unspent_outputs(
         const nlohmann::json& details, unique_pubkeys_and_scripts_t& /*missing*/)
     {

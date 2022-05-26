@@ -619,6 +619,15 @@ pub struct PinSetDetails {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct EncryptWithPinDetails {
+    /// The PIN to protect the server provided encryption key with.
+    pub pin: String,
+
+    /// The plaintext to encrypt.
+    pub plaintext: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PinGetDetails {
     pub pin: String,
     pub pin_data: PinData,

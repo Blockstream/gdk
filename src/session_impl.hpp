@@ -164,6 +164,8 @@ namespace sdk {
             const std::string& mnemonic, const std::string& pin, const std::string& device_id)
             = 0;
 
+        virtual nlohmann::json encrypt_with_pin(const nlohmann::json& details) = 0;
+
         virtual bool encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,
             const std::string& nonce_hex, const std::string& blinding_pubkey_hex);
         virtual void encache_scriptpubkey_data(byte_span_t scriptpubkey, const uint32_t subaccount,

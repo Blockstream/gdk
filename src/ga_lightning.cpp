@@ -286,6 +286,11 @@ namespace sdk {
         throw std::runtime_error("set_pin not implemented");
     }
 
+    nlohmann::json ga_lightning::encrypt_with_pin(const nlohmann::json& details)
+    {
+        throw std::runtime_error("encrypt_with_pin not implemented");
+    }
+
     nlohmann::json ga_lightning::get_unspent_outputs(
         const nlohmann::json& details, unique_pubkeys_and_scripts_t& /*missing*/)
     {

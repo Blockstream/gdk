@@ -315,6 +315,14 @@ namespace sdk {
         });
     }
 
+    nlohmann::json session::encrypt_with_pin(const nlohmann::json& details)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->encrypt_with_pin(details);
+        });
+    }
+
     void session::disable_all_pin_logins()
     {
         return exception_wrapper([&] {

@@ -166,6 +166,36 @@ allow a PIN login.
    }
 
 
+.. _encrypt-with-pin-details:
+
+Encrypt with PIN JSON
+---------------------
+
+.. code-block:: json
+
+   {
+      "pin": "...",
+      "plaintext": {}
+   }
+
+:pin: The PIN to protect the server provided key.
+:plaintext: The json to encrypt. For instance it can be the :ref:`login-credentials` with the mnemonic.
+
+
+.. _encrypt-with-pin-result:
+
+Encrypt with PIN Result JSON
+----------------------------
+
+.. code-block:: json
+
+   {
+      "pin_data": "...",
+   }
+
+:pin_data: See :ref:`pin-data`.
+
+
 .. _wallet-id-request:
 
 Wallet identifier request JSON

@@ -101,6 +101,7 @@ namespace sdk {
         nlohmann::json cancel_twofactor_reset(const nlohmann::json& twofactor_data);
 
         nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
+        nlohmann::json encrypt_with_pin(const nlohmann::json& details);
         void disable_all_pin_logins();
 
         nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing);

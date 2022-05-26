@@ -817,6 +817,28 @@ impl ElectrumSession {
         Ok(result)
     }
 
+    pub fn encrypt_with_pin(&self, details: &EncryptWithPinDetails) -> Result<PinData, Error> {
+        let agent = self.build_request_agent()?;
+        let manager = PinManager::new(
+            agent,
+            self.network.pin_server_url(),
+            &self.network.pin_manager_public_key()?,
+        )?;
+        let client_key = SecretKey::new(&mut thread_rng());
+        let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
+        let iv = thread_rng().gen::<[u8; 16]>();
+        let cipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
+        let plaintext = serde_json::to_vec(&details.plaintext)?;
+        let encrypted = cipher.encrypt_vec(&plaintext);
+
+        let result = PinData {
+            salt: iv.to_hex(),
+            encrypted_data: encrypted.to_hex(),
+            pin_identifier: client_key.to_hex(),
+        };
+        Ok(result)
+    }
+
     /// Get the subaccount pointers/numbers from the store
     ///
     /// Multisig sessions receive the subaccount pointer from the server

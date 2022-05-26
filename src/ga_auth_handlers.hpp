@@ -331,6 +331,16 @@ namespace sdk {
 
         const nlohmann::json m_details;
     };
+
+    class encrypt_with_pin_call : public auth_handler_impl {
+    public:
+        encrypt_with_pin_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        const nlohmann::json m_details;
+    };
 } // namespace sdk
 } // namespace ga
 #endif
