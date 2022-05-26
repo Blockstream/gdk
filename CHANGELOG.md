@@ -6,7 +6,7 @@
 
 - Singlesig: Implement GA_get_previous_addresses
 - Singlesig: Allow fetching internal addresses in GA_get_receive_address using "is_internal"=true
-- Added new function GA_get_credentials, candidate to replace GA_get_mnemonic_passphrase.
+- Added new function GA_get_credentials, to replace GA_get_mnemonic_passphrase.
 
 ### Changed
 
@@ -15,6 +15,10 @@
 - Singlesig: Add some missing fields to GA_get_receive_address returned json.
 - Singlesig: Remove is_segwit from GA_get_unspent_outputs returned json
 - GA_register_user: Change interface to match GA_login_user.
+
+### Removed
+
+- Removed GA_get_mnemonic_passphrase, callers should use GA_get_credentials.
 
 
 ## Release 0.0.54 - 2022-05-13

@@ -606,18 +606,6 @@ GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates
 GDK_API int GA_get_credentials(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Get the user's mnemonic passphrase.
- *
- * :param session: The session to use.
- * :param password: Optional password to encrypt the user's mnemonic passphrase with.
- * :param mnemonic: Destination for the user's 24 word mnemonic passphrase. if a
- *|     non-empty password is given, the returned mnemonic passphrase will be
- *|     27 words long and will require the password to use for logging in.
- *|     Returned string should be freed using `GA_destroy_string`.
- */
-GDK_API int GA_get_mnemonic_passphrase(struct GA_session* session, const char* password, char** mnemonic);
-
-/**
  * Get the latest un-acknowledged system message.
  *
  * :param session: The session to use.

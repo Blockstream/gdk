@@ -484,15 +484,6 @@ public class Session {
         return try voidFuncToJsonWrapper(fun: GA_get_fee_estimates)
     }
 
-    public func getMnemonicPassphrase(password: String) throws -> String {
-        var buff: UnsafeMutablePointer<Int8>? = nil
-        try callWrapper(fun: GA_get_mnemonic_passphrase(session, password, &buff))
-        defer {
-            GA_destroy_string(buff)
-        }
-        return String(cString: buff!)
-    }
-
     public func getCredentials(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_credentials)
     }

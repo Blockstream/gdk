@@ -253,9 +253,6 @@ class Session(object):
     def get_fee_estimates(self):
         return json.loads(get_fee_estimates(self.session_obj))
 
-    def get_mnemonic_passphrase(self, password):
-        return get_mnemonic_passphrase(self.session_obj, password)
-
     def get_credentials(self, details):
         return Call(get_credentials(self.session_obj, self._to_json(details)))
 

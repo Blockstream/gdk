@@ -380,11 +380,6 @@ namespace sdk {
         });
     }
 
-    std::string session::get_mnemonic_passphrase(const std::string& password)
-    {
-        return exception_wrapper([&] { return get_nonnull_impl()->get_nonnull_signer()->get_mnemonic(password); });
-    }
-
     nlohmann::json session::convert_amount(const nlohmann::json& amount_json)
     {
         return exception_wrapper([&] {

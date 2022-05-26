@@ -290,9 +290,6 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_credentials, struct GA_session*, session, const G
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::get_credentials_call(*session, *json_cast(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_mnemonic_passphrase, struct GA_session*, session, const char*, password, char**,
-    mnemonic, { *mnemonic = to_c_string(session->get_mnemonic_passphrase(password ? password : std::string())); })
-
 GDK_DEFINE_C_FUNCTION_2(GA_get_system_message, struct GA_session*, session, char**, message_text,
     { *message_text = to_c_string(session->get_system_message()); })
 
