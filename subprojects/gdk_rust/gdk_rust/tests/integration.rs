@@ -854,6 +854,7 @@ fn subaccounts(is_liquid: bool) {
 
     let credentials = Credentials {
         mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
+        bip39_passphrase: "".to_string(),
     };
     auth_handler_login(&mut new_session, &credentials);
 
@@ -1569,6 +1570,7 @@ fn test_tor() {
 
     let credentials = Credentials {
         mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
+        bip39_passphrase: "".to_string(),
     };
     auth_handler_login(&mut session, &credentials);
 

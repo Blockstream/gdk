@@ -643,6 +643,8 @@ pub struct PinData {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials {
     pub mnemonic: String,
+    #[serde(default)]
+    pub bip39_passphrase: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

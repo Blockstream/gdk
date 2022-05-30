@@ -184,6 +184,7 @@ pub fn setup(
     let mnemonic_str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string();
     let credentials = Credentials {
         mnemonic: mnemonic_str.clone(),
+        bip39_passphrase: "".to_string(),
     };
     info!("logging in gdk session");
     let login_data = session.login(credentials.clone()).unwrap();

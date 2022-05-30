@@ -393,6 +393,7 @@ impl ElectrumSession {
             // Some pin_data encrypt the bare mnemonic, not a json
             Ok(Credentials {
                 mnemonic: std::str::from_utf8(&decrypted)?.to_string(),
+                bip39_passphrase: "".to_string(),
             })
         }
     }
@@ -1146,8 +1147,8 @@ pub fn keys_from_credentials(
     credentials: &Credentials,
     network: bitcoin::Network,
 ) -> Result<(ExtendedPrivKey, ExtendedPubKey, MasterBlindingKey), Error> {
-    let seed =
-        wally::bip39_mnemonic_to_seed(&credentials.mnemonic, "").ok_or(Error::InvalidMnemonic)?;
+    let seed = wally::bip39_mnemonic_to_seed(&credentials.mnemonic, &credentials.bip39_passphrase)
+        .ok_or(Error::InvalidMnemonic)?;
     let master_xprv = ExtendedPrivKey::new_master(network, &seed)?;
     let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
     let master_blinding = asset_blinding_key_from_seed(&seed);
@@ -1662,5 +1663,22 @@ fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
 impl ElectrumSession {
     pub fn filter_events(&self, event: &str) -> Vec<Value> {
         self.notify.filter_events(event)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_passphrase() {
+        // From bip39 passphrase
+        let credentials = Credentials {
+            mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
+            bip39_passphrase: "TREZOR".to_string(),
+        };
+        let (master_xprv, _, _) =
+            keys_from_credentials(&credentials, bitcoin::Network::Bitcoin).unwrap();
+        assert_eq!(master_xprv.to_string(), "xprv9s21ZrQH143K3h3fDYiay8mocZ3afhfULfb5GX8kCBdno77K4HiA15Tg23wpbeF1pLfs1c5SPmYHrEpTuuRhxMwvKDwqdKiGJS9XFKzUsAF");
     }
 }
