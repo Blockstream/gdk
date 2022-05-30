@@ -1804,6 +1804,7 @@ namespace sdk {
         m_result = signer->get_credentials();
         if (!password.empty()) {
             GDK_RUNTIME_ASSERT(m_result.contains("mnemonic"));
+            GDK_RUNTIME_ASSERT_MSG(!m_result.contains("bip39_passphrase"), "cannot use password and bip39_passphrase");
             m_result["mnemonic"] = signer->get_mnemonic(password);
             m_result["password"] = password;
         }

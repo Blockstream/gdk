@@ -93,6 +93,15 @@ To authenticate with a mnemonic and optional password:
       "password": ""
    }
 
+Or, with a mnemonic and optional BIP39 passphrase:
+
+.. code-block:: json
+
+   {
+      "mnemonic": "moral lonely ability sail balance simple kid girl inhale master dismiss round about aerobic purpose shiver silly happy kitten track kind pattern nose noise",
+      "bip39_passphrase": ""
+   }
+
 To authenticate with a PIN:
 
 .. code-block:: json

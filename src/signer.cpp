@@ -43,12 +43,22 @@ namespace sdk {
                     // Mnemonic, possibly encrypted
                     const auto password_p = credentials.find("password");
                     if (password_p != credentials.end()) {
+                        GDK_RUNTIME_ASSERT_MSG(
+                            !credentials.contains("bip39_passphrase"), "cannot use bip39_passphrase and password");
                         // Encrypted; decrypt it
                         mnemonic = decrypt_mnemonic(mnemonic, *password_p);
                     }
-                    return { { "mnemonic", mnemonic }, { "seed", b2h(bip39_mnemonic_to_seed(mnemonic)) } };
+                    const std::string passphrase = json_get_value(credentials, "bip39_passphrase");
+                    nlohmann::json ret
+                        = { { "mnemonic", mnemonic }, { "seed", b2h(bip39_mnemonic_to_seed(mnemonic, passphrase)) } };
+                    if (!passphrase.empty()) {
+                        ret["bip39_passphrase"] = passphrase;
+                    }
+                    return ret;
                 }
                 if (mnemonic.size() == 129u && mnemonic.back() == 'X') {
+                    GDK_RUNTIME_ASSERT_MSG(
+                        !credentials.contains("bip39_passphrase"), "cannot use bip39_passphrase and hex seed");
                     // Hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
                     mnemonic.pop_back();
                     return { { "seed", mnemonic } };
