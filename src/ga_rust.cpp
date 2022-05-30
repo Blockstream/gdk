@@ -359,17 +359,6 @@ namespace sdk {
 
     nlohmann::json ga_rust::cancel_twofactor_reset(const nlohmann::json& twofactor_data) { return nlohmann::json{}; }
 
-    nlohmann::json ga_rust::set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id)
-    {
-        auto details = nlohmann::json({
-            { "pin", pin },
-            { "mnemonic", mnemonic },
-            { "device_id", device_id },
-        });
-
-        return rust_call("set_pin", details, m_session);
-    }
-
     nlohmann::json ga_rust::encrypt_with_pin(const nlohmann::json& details)
     {
         return rust_call("encrypt_with_pin", details, m_session);

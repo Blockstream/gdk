@@ -52,7 +52,6 @@ namespace sdk {
         nlohmann::json get_settings();
         nlohmann::json get_twofactor_config(bool reset_cached = false);
 
-        nlohmann::json set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id);
         nlohmann::json encrypt_with_pin(const nlohmann::json& details);
         void disable_all_pin_logins();
 

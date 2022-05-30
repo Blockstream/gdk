@@ -356,12 +356,6 @@ public class Session {
         return try voidFuncToJsonWrapper(fun: GA_get_available_currencies)
     }
 
-    public func setPin(mnemonic: String, pin: String, device: String) throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_set_pin(session, mnemonic, pin, device, &result))
-        return try convertOpaqueJsonToDict(o: result!)
-    }
-
     public func encryptWithPin(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_encrypt_with_pin)
     }

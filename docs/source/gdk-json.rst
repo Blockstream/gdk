@@ -153,7 +153,7 @@ The default for any value not provided is false or 0.
 PIN data JSON
 -------------
 
-Contains the data returned by `GA_set_pin`. The caller must persist this
+Contains the data returned by `GA_encrypt_with_pin`. The caller must persist this
 data and pass it to `GA_login_user` along with the users PIN in order to
 allow a PIN login.
 

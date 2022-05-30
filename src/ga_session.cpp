@@ -3215,17 +3215,6 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::set_pin(
-        const std::string& mnemonic, const std::string& pin, const std::string& device_id)
-    {
-        // FIXME: secure_array
-        const auto seed = bip39_mnemonic_to_seed(mnemonic);
-        const auto plaintext = nlohmann::json({ { "mnemonic", mnemonic }, { "seed", b2h(seed) } });
-        const auto details = nlohmann::json({ { "pin", pin }, { "device_id", device_id }, { "plaintext", plaintext } });
-        return encrypt_with_pin(details);
-    }
-
-    // Idempotent
     void ga_session::disable_all_pin_logins()
     {
         ensure_full_session();

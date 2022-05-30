@@ -201,8 +201,13 @@ pub extern "C" fn GDKRUST_call_session(
     }
 
     // Redact inputs containing private data
-    let methods_to_redact_in =
-        vec!["login", "register_user", "set_pin", "create_subaccount", "credentials_from_pin_data"];
+    let methods_to_redact_in = vec![
+        "login",
+        "register_user",
+        "encrypt_with_pin",
+        "create_subaccount",
+        "credentials_from_pin_data",
+    ];
     let input_str = format!("{:?}", &input);
     let input_redacted = if methods_to_redact_in.contains(&method.as_str())
         || input_str.contains("pin")
@@ -316,10 +321,6 @@ fn handle_session_call(
         "login" => login(session, input).map(|v| json!(v)),
         "credentials_from_pin_data" => session
             .credentials_from_pin_data(serde_json::from_value(input.clone())?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "set_pin" => session
-            .set_pin(&serde_json::from_value(input.clone())?)
             .map(|v| json!(v))
             .map_err(Into::into),
         "encrypt_with_pin" => session

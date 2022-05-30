@@ -407,10 +407,6 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_available_currencies, struct GA_session*, session
 GDK_DEFINE_C_FUNCTION_3(GA_convert_amount, struct GA_session*, session, const GA_json*, value_details, GA_json**,
     output, { *json_cast(output) = new nlohmann::json(session->convert_amount(*json_cast(value_details))); })
 
-GDK_DEFINE_C_FUNCTION_5(GA_set_pin, struct GA_session*, session, const char*, mnemonic, const char*, pin, const char*,
-    device_id, GA_json**, pin_data,
-    { *json_cast(pin_data) = new nlohmann::json(session->set_pin(mnemonic, pin, device_id)); })
-
 GDK_DEFINE_C_FUNCTION_3(GA_encrypt_with_pin, struct GA_session*, session, const GA_json*, details,
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::encrypt_with_pin_call(*session, *json_cast(details))); });

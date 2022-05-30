@@ -307,14 +307,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::set_pin(const std::string& mnemonic, const std::string& pin, const std::string& device_id)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->set_pin(mnemonic, pin, device_id);
-        });
-    }
-
     nlohmann::json session::encrypt_with_pin(const nlohmann::json& details)
     {
         return exception_wrapper([&] {

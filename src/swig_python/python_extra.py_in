@@ -165,9 +165,6 @@ class Session(object):
     def remove_account(self):
         return Call(remove_account(self.session_obj))
 
-    def set_pin(self, mnemonic, pin, device_id):
-        return json.loads(set_pin(self.session_obj, mnemonic, pin, device_id))
-
     def encrypt_with_pin(self, details):
         return Call(encrypt_with_pin(self.session_obj, self._to_json(details)))
 

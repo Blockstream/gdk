@@ -226,8 +226,9 @@ class gdk_wallet:
         self.last_block_height = 0
 
     def set_pin(self, mnemonic, pin):
-        pin_data = gdk.set_pin(self.session.session_obj, mnemonic, str(pin), str('device_id_1'))
-        open(self.PIN_DATA_FILENAME, 'w').write(pin_data)
+        details = {'pin': str(pin), 'plaintext': {'mnemonic': mnemonic}}
+        pin_data = self.session.encrypt_with_pin(details).resolve()
+        open(self.PIN_DATA_FILENAME, 'w').write(json.dumps(pin_data))
         return pin_data
 
     def get_balance(self):

@@ -280,12 +280,6 @@ namespace sdk {
         throw std::runtime_error("cancel_twofactor_reset not implemented");
     }
 
-    nlohmann::json ga_lightning::set_pin(
-        const std::string& mnemonic, const std::string& pin, const std::string& device_id)
-    {
-        throw std::runtime_error("set_pin not implemented");
-    }
-
     nlohmann::json ga_lightning::encrypt_with_pin(const nlohmann::json& details)
     {
         throw std::runtime_error("encrypt_with_pin not implemented");

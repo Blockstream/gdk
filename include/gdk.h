@@ -445,19 +445,6 @@ GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** cu
 GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_details, GA_json** output);
 
 /**
- * Set a PIN for the user wallet.
- *
- * :param session: The session to use.
- * :param mnemonic: The user's mnemonic passphrase.
- * :param pin: The user PIN.
- * :param device_id: The user device identifier.
- * :param pin_data: The returned :ref:`pin-data` containing the user's encrypted mnemonic passphrase.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
- */
-GDK_API int GA_set_pin(
-    struct GA_session* session, const char* mnemonic, const char* pin, const char* device_id, GA_json** pin_data);
-
-/**
  * Encrypt json with server provided key protected by a PIN.
  *
  * :param session: The session to use.
@@ -472,7 +459,7 @@ GDK_API int GA_encrypt_with_pin(struct GA_session* session, const GA_json* detai
  * Disable all PIN logins previously set.
  *
  * After calling this method, the user will not be able to login with PIN
- *| from any device that was previously enabled using `GA_set_pin`.
+ *| from any device that was previously enabled using `GA_encrypt_with_pin`.
  *
  * :param session: The session to use.
  */
