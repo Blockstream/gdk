@@ -382,13 +382,13 @@ namespace sdk {
         GDK_VERIFY(::bip39_mnemonic_validate(nullptr, mnemonic.c_str()));
     }
 
-    std::vector<unsigned char> bip39_mnemonic_to_seed(const std::string& mnemonic, const std::string& password)
+    std::vector<unsigned char> bip39_mnemonic_to_seed(const std::string& mnemonic, const std::string& passphrase)
     {
         VERIFY_MNEMONIC(::bip39_mnemonic_validate(nullptr, mnemonic.c_str()));
         size_t written;
         std::vector<unsigned char> ret(BIP39_SEED_LEN_512); // FIXME: secure_array
         VERIFY_MNEMONIC(::bip39_mnemonic_to_seed(
-            mnemonic.c_str(), password.empty() ? nullptr : password.c_str(), &ret[0], ret.size(), &written));
+            mnemonic.c_str(), passphrase.empty() ? nullptr : passphrase.c_str(), &ret[0], ret.size(), &written));
         return ret;
     }
 

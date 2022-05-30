@@ -169,7 +169,7 @@ namespace sdk {
     void bip39_mnemonic_validate(const std::string& mnemonic);
 
     std::vector<unsigned char> bip39_mnemonic_to_seed(
-        const std::string& mnemonic, const std::string& password = std::string());
+        const std::string& mnemonic, const std::string& passphrase = std::string());
 
     std::vector<unsigned char> bip39_mnemonic_to_bytes(const std::string& mnemonic);
 
