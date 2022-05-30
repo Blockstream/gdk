@@ -640,7 +640,7 @@ pub struct PinData {
     pub pin_identifier: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials {
     pub mnemonic: String,
 }

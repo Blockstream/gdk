@@ -8,20 +8,6 @@ pub fn txs_result_value(txs: &TxsResult) -> Value {
     json!(txs.0.clone())
 }
 
-pub fn login(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
-    let mnemonic_str = input["mnemonic"]
-        .as_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| Error::Other("login: missing mnemonic argument".into()))?;
-
-    let pass_str = input["password"].as_str().map(|x| x.to_string());
-
-    session
-        .login(&mnemonic_str.into(), pass_str.map(Into::into))
-        .map(|x| serde_json::to_value(&x).unwrap())
-        .map_err(Into::into)
-}
-
 pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
     let index = input["subaccount"]
         .as_u64()

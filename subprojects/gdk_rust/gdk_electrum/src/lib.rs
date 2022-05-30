@@ -36,10 +36,8 @@ use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
 use electrum_client::GetHistoryRes;
 use gdk_common::be::*;
-use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::*;
 use gdk_common::network::NetworkParameters;
-use gdk_common::password::Password;
 use gdk_common::wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, MasterBlindingKey,
 };
@@ -447,11 +445,7 @@ impl ElectrumSession {
         Ok(self.store.as_ref().ok_or_else(|| Error::StoreNotLoaded)?.clone())
     }
 
-    pub fn login(
-        &mut self,
-        mnemonic: &Mnemonic,
-        password: Option<Password>,
-    ) -> Result<LoginData, Error> {
+    pub fn login(&mut self, credentials: Credentials) -> Result<LoginData, Error> {
         info!(
             "login {:?} last network call succeeded {:?}",
             self.network, self.last_network_call_succeeded
@@ -464,7 +458,7 @@ impl ElectrumSession {
         }
 
         let (master_xprv, master_xpub, master_blinding_key) =
-            keys_from_mnemonic(mnemonic, password, self.network.bip32_network())?;
+            keys_from_credentials(&credentials, self.network.bip32_network())?;
 
         self.load_store(&LoadStoreOpt {
             master_xpub: master_xpub.clone(),
@@ -1148,14 +1142,12 @@ impl ElectrumSession {
     }
 }
 
-pub fn keys_from_mnemonic(
-    mnemonic: &Mnemonic,
-    password: Option<Password>,
+pub fn keys_from_credentials(
+    credentials: &Credentials,
     network: bitcoin::Network,
 ) -> Result<(ExtendedPrivKey, ExtendedPubKey, MasterBlindingKey), Error> {
-    let mnem_str = mnemonic.clone().get_mnemonic_str();
-    let password = password.as_ref().map(|p| p.clone().get_password_str()).unwrap_or_default();
-    let seed = wally::bip39_mnemonic_to_seed(&mnem_str, &password).ok_or(Error::InvalidMnemonic)?;
+    let seed =
+        wally::bip39_mnemonic_to_seed(&credentials.mnemonic, "").ok_or(Error::InvalidMnemonic)?;
     let master_xprv = ExtendedPrivKey::new_master(network, &seed)?;
     let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
     let master_blinding = asset_blinding_key_from_seed(&seed);

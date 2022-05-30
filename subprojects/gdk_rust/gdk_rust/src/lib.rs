@@ -318,7 +318,10 @@ fn handle_session_call(
 
         "disconnect" => session.disconnect().map(|v| json!(v)).map_err(Into::into),
 
-        "login" => login(session, input).map(|v| json!(v)),
+        "login" => session
+            .login(serde_json::from_value(input.clone())?)
+            .map(|v| json!(v))
+            .map_err(Into::into),
         "credentials_from_pin_data" => session
             .credentials_from_pin_data(serde_json::from_value(input.clone())?)
             .map(|v| json!(v))

@@ -1,9 +1,8 @@
 use bitcoin::util::bip32::DerivationPath;
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
-use gdk_common::mnemonic::Mnemonic;
 use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, CreateTxUtxos, GetBalanceOpt,
+    AddressAmount, CreateAccountOpt, CreateTransaction, CreateTxUtxos, Credentials, GetBalanceOpt,
     GetNextAccountOpt, GetPreviousAddressesOpt, GetTransactionsOpt, GetUnspentOutputs,
     RenameAccountOpt, SPVCommonParams, SPVDownloadHeadersParams, SPVVerifyTxResult,
     TransactionType, UpdateAccountOpt, UtxoStrategy,
@@ -853,14 +852,16 @@ fn subaccounts(is_liquid: bool) {
         ElectrumSession::create_session(network, proxy, url)
     };
 
-    let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
-    auth_handler_login(&mut new_session, mnemonic.clone());
+    let credentials = Credentials {
+        mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
+    };
+    auth_handler_login(&mut new_session, &credentials);
 
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), 1);
     assert!(new_session.get_subaccount(0).is_ok());
 
-    discover_subaccounts(&mut new_session, mnemonic.clone());
+    discover_subaccounts(&mut new_session, &credentials);
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), balances.len());
     assert_eq!(new_session.get_subaccount(0).unwrap().bip44_discovered, true);
@@ -885,7 +886,7 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(new_account).or_insert(0) += sat;
 
     assert!(new_session.get_subaccount(new_account).is_err());
-    discover_subaccounts(&mut new_session, mnemonic.clone());
+    discover_subaccounts(&mut new_session, &credentials);
     new_session.get_subaccounts().unwrap();
     assert!(new_session.get_subaccount(new_account).is_ok());
 
@@ -1566,8 +1567,10 @@ fn test_tor() {
         ElectrumSession::create_session(network.clone(), network.proxy.as_deref(), url);
     session.connect(&serde_json::to_value(&network).unwrap()).unwrap();
 
-    let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
-    auth_handler_login(&mut session, mnemonic);
+    let credentials = Credentials {
+        mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
+    };
+    auth_handler_login(&mut session, &credentials);
 
     assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
 

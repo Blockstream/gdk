@@ -7,7 +7,6 @@ use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
 use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
-use gdk_common::mnemonic::Mnemonic;
 use gdk_common::scripts::ScriptType;
 use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::NetworkParameters;
@@ -46,7 +45,7 @@ pub struct TestSession {
     pub node: electrsd::bitcoind::BitcoinD,
     pub electrs: electrsd::ElectrsD,
     pub session: ElectrumSession,
-    pub mnemonic: Mnemonic,
+    pub credentials: Credentials,
     tx_status: u64,
     block_status: (u32, BEBlockHash),
     state_dir: TempDir,
@@ -182,9 +181,12 @@ pub fn setup(
     );
     assert_eq!(session.filter_events("network").len(), ntf_len + 1);
 
-    let mnemonic: Mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string().into();
+    let mnemonic_str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string();
+    let credentials = Credentials {
+        mnemonic: mnemonic_str.clone(),
+    };
     info!("logging in gdk session");
-    let login_data = session.login(&mnemonic, None).unwrap();
+    let login_data = session.login(credentials.clone()).unwrap();
     assert!(session.filter_events("settings").last().is_some());
 
     assert_eq!(network.name, ""); // network name contributes to wallet hash id
@@ -231,7 +233,7 @@ pub fn setup(
         node,
         electrs,
         session,
-        mnemonic,
+        credentials,
         state_dir,
         network_id,
         network,
@@ -1168,7 +1170,7 @@ impl TestSession {
 
     pub fn test_signer(&self) -> TestSigner {
         TestSigner::new(
-            &self.mnemonic.clone().get_mnemonic_str(),
+            &self.credentials,
             self.session.network.bip32_network(),
             self.session.network.liquid,
         )
@@ -1260,12 +1262,9 @@ pub fn wait_account_n_txs(session: &ElectrumSession, subaccount: u32, n: usize) 
 }
 
 // Perform BIP44 account discovery as it is performed in the resolver
-pub fn discover_subaccounts(session: &mut ElectrumSession, mnemonic: Mnemonic) {
-    let signer = TestSigner::new(
-        &mnemonic.clone().get_mnemonic_str(),
-        session.network.bip32_network(),
-        session.network.liquid,
-    );
+pub fn discover_subaccounts(session: &mut ElectrumSession, credentials: &Credentials) {
+    let signer =
+        TestSigner::new(credentials, session.network.bip32_network(), session.network.liquid);
 
     for script_type in ScriptType::types() {
         loop {
@@ -1356,12 +1355,9 @@ pub fn spv_verify_tx(
 }
 
 // Simulate login through the auth handler
-pub fn auth_handler_login(session: &mut ElectrumSession, mnemonic: Mnemonic) {
-    let signer = TestSigner::new(
-        &mnemonic.clone().get_mnemonic_str(),
-        session.network.bip32_network(),
-        session.network.liquid,
-    );
+pub fn auth_handler_login(session: &mut ElectrumSession, credentials: &Credentials) {
+    let signer =
+        TestSigner::new(credentials, session.network.bip32_network(), session.network.liquid);
 
     // Connect must be done before login
     session.connect(&serde_json::to_value(session.network.clone()).unwrap()).unwrap();
@@ -1423,23 +1419,23 @@ pub fn ntf_transaction(ntf: &TransactionNotification) -> Value {
 
 /// Struct that holds the secret, so that we can replicate the resolver behavior
 pub struct TestSigner {
-    pub mnemonic: String,
+    pub credentials: Credentials,
     pub network: Bip32Network,
     is_liquid: bool,
     secp: Secp256k1<All>,
 }
 
 impl TestSigner {
-    pub fn new(mnemonic: &str, network: Bip32Network, is_liquid: bool) -> Self {
+    pub fn new(credentials: &Credentials, network: Bip32Network, is_liquid: bool) -> Self {
         TestSigner {
-            mnemonic: mnemonic.into(),
+            credentials: credentials.clone(),
             network,
             is_liquid,
             secp: bitcoin::secp256k1::Secp256k1::new(),
         }
     }
     fn seed(&self) -> [u8; 64] {
-        wally::bip39_mnemonic_to_seed(&self.mnemonic, "").unwrap()
+        wally::bip39_mnemonic_to_seed(&self.credentials.mnemonic, "").unwrap()
     }
 
     fn master_xprv(&self) -> ExtendedPrivKey {
