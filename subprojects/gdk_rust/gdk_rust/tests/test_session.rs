@@ -1,3 +1,4 @@
+use bitcoin::blockdata::transaction::SigHashType;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::network::constants::Network as Bip32Network;
 use bitcoin::secp256k1::{All, Secp256k1};
@@ -25,7 +26,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
 
 use bitcoin::blockdata::script::Builder as ScriptBuilder;
-use bitcoin::blockdata::transaction::SigHashType;
 use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::Message;
@@ -1475,6 +1475,8 @@ impl TestSigner {
                 let path: DerivationPath = utxo.user_path.clone().into();
                 let private_key =
                     self.master_xprv().derive_priv(&self.secp, &path).unwrap().private_key;
+                let sighash = utxo.sighash.unwrap_or(SigHashType::All as u32);
+                let sighash = SigHashType::from_u32_standard(sighash).unwrap();
 
                 // Optional sanity checks
                 let public_key = private_key.public_key(&self.secp);
@@ -1484,21 +1486,16 @@ impl TestSigner {
                 assert_eq!(utxo.script_code, script_code.to_hex());
 
                 let signature_hash = if utxo.address_type != "p2pkh" {
-                    SigHashCache::new(&tx).signature_hash(
-                        i,
-                        &script_code,
-                        utxo.satoshi,
-                        SigHashType::All,
-                    )
+                    SigHashCache::new(&tx).signature_hash(i, &script_code, utxo.satoshi, sighash)
                 } else {
-                    tx.signature_hash(i, &script_code, SigHashType::All as u32)
+                    tx.signature_hash(i, &script_code, sighash.as_u32())
                 };
 
                 let message = Message::from_slice(&signature_hash.into_inner()[..]).unwrap();
                 let signature = self.secp.sign(&message, &private_key.key);
 
                 let mut der = signature.serialize_der().to_vec();
-                der.push(SigHashType::All as u8);
+                der.push(sighash as u8);
 
                 let pk = public_key.to_bytes();
                 let (script_sig, witness) = match utxo.address_type.as_str() {

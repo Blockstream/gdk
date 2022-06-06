@@ -3,15 +3,15 @@ use crate::error::Error;
 use crate::model::{Balances, TransactionType};
 use crate::scripts::{p2pkh_script, ScriptType};
 use crate::NetworkId;
-use crate::{bail, ensure};
 use bitcoin::blockdata::script::Instruction;
+use bitcoin::blockdata::transaction::SigHashType as BitcoinSigHashType;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
 use bitcoin::util::bip143::SigHashCache;
-use bitcoin::{PublicKey, SigHashType};
+use bitcoin::PublicKey;
 use elements::confidential;
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
@@ -885,14 +885,6 @@ impl BETransaction {
             // Signature verification is currently only used on Bitcoin
             unimplemented!();
         };
-        let script_code = p2pkh_script(public_key);
-        let hash = if script_type.is_segwit() {
-            let hashcache = hashcache.get_or_insert_with(|| SigHashCache::new(tx));
-            hashcache.signature_hash(inv, &script_code, value, SigHashType::All)
-        } else {
-            tx.signature_hash(inv, &script_code, SigHashType::All as u32)
-        };
-        let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
         let mut sig = match script_type {
             ScriptType::P2wpkh | ScriptType::P2shP2wpkh => {
                 tx.input[inv].witness.get(0).cloned().ok_or(Error::InputValidationFailed)
@@ -903,8 +895,17 @@ impl BETransaction {
             },
         }?;
 
-        // We only ever create SIGHASH_ALL transactions
-        ensure!(sig.pop() == Some(SigHashType::All as u8), Error::InputValidationFailed);
+        let sighash = sig.pop().ok_or_else(|| Error::InputValidationFailed)?;
+        let sighash = BitcoinSigHashType::from_u32_standard(sighash as u32)?;
+
+        let script_code = p2pkh_script(public_key);
+        let hash = if script_type.is_segwit() {
+            let hashcache = hashcache.get_or_insert_with(|| SigHashCache::new(tx));
+            hashcache.signature_hash(inv, &script_code, value, sighash)
+        } else {
+            tx.signature_hash(inv, &script_code, sighash.as_u32())
+        };
+        let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
 
         secp.verify(&message, &Signature::from_der(&sig)?, &public_key.key)?;
         Ok(())

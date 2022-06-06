@@ -12,12 +12,12 @@ use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
 use bitcoin::util::bip143::SigHashCache;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{PublicKey, SigHashType};
+use bitcoin::PublicKey;
 use elements::confidential::Value;
 
 use gdk_common::be::{
-    BEAddress, BEOutPoint, BEScript, BEScriptConvert, BETransaction, BETxid, ScriptBatch,
-    DUST_VALUE,
+    BEAddress, BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETxid,
+    ScriptBatch, DUST_VALUE,
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
@@ -677,6 +677,16 @@ impl Account {
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
 
+        let sighashes = request
+            .used_utxos
+            .iter()
+            .map(|u| u.sighash())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| Error::InvalidSigHash)?;
+        if sighashes.len() != be_tx.input_len() {
+            return Err(Error::Generic("Mismatching used_utxos and transaction".into()));
+        }
+
         let mut betx: TransactionMeta = match be_tx {
             BETransaction::Bitcoin(tx) => {
                 let mut out_tx = tx.clone();
@@ -699,7 +709,8 @@ impl Account {
                         &derivation_path,
                         out.value,
                         self.script_type,
-                    );
+                        &sighashes[i],
+                    )?;
 
                     out_tx.input[i].script_sig = script_sig;
                     out_tx.input[i].witness = witness;
@@ -730,7 +741,8 @@ impl Account {
                         &derivation_path,
                         out.value,
                         self.script_type,
-                    );
+                        &sighashes[i],
+                    )?;
 
                     tx.input[i].script_sig = script_sig;
                     tx.input[i].witness.script_witness = witness;
@@ -1402,25 +1414,27 @@ fn internal_sign_bitcoin(
     path: &DerivationPath,
     value: u64,
     script_type: ScriptType,
-) -> (bitcoin::Script, Vec<Vec<u8>>) {
+    sighash: &BESigHashType,
+) -> Result<(bitcoin::Script, Vec<Vec<u8>>), Error> {
     let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
     let private_key = &xprv.private_key;
     let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
     let script_code = p2pkh_script(public_key);
 
+    let sighash = sighash.into_bitcoin()?;
     let hash = if script_type.is_segwit() {
-        SigHashCache::new(tx).signature_hash(input_index, &script_code, value, SigHashType::All)
+        SigHashCache::new(tx).signature_hash(input_index, &script_code, value, sighash)
     } else {
-        tx.signature_hash(input_index, &script_code, SigHashType::All as u32)
+        tx.signature_hash(input_index, &script_code, sighash.as_u32())
     };
 
     let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
     let signature = crate::EC.sign(&message, &private_key.key);
 
     let mut signature = signature.serialize_der().to_vec();
-    signature.push(SigHashType::All as u8);
+    signature.push(sighash as u8);
 
-    prepare_input(&public_key, signature, script_type)
+    Ok(prepare_input(&public_key, signature, script_type))
 }
 
 fn internal_sign_elements(
@@ -1430,33 +1444,31 @@ fn internal_sign_elements(
     path: &DerivationPath,
     value: Value,
     script_type: ScriptType,
-) -> (elements::Script, Vec<Vec<u8>>) {
+    sighash: &BESigHashType,
+) -> Result<(elements::Script, Vec<Vec<u8>>), Error> {
     let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
     let private_key = &xprv.private_key;
     let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
 
     let script_code = p2pkh_script(public_key).into_elements();
-    let sighash = if script_type.is_segwit() {
+    let sighash = sighash.into_elements()?;
+    let hash = if script_type.is_segwit() {
         elements::sighash::SigHashCache::new(tx).segwitv0_sighash(
             input_index,
             &script_code,
             value,
-            elements::SigHashType::All,
+            sighash,
         )
     } else {
-        elements::sighash::SigHashCache::new(tx).legacy_sighash(
-            input_index,
-            &script_code,
-            elements::SigHashType::All,
-        )
+        elements::sighash::SigHashCache::new(tx).legacy_sighash(input_index, &script_code, sighash)
     };
-    let message = secp256k1::Message::from_slice(&sighash[..]).unwrap();
+    let message = secp256k1::Message::from_slice(&hash[..]).unwrap();
     let signature = crate::EC.sign(&message, &private_key.key);
     let mut signature = signature.serialize_der().to_vec();
-    signature.push(SigHashType::All as u8);
+    signature.push(sighash as u8);
 
     let (script_sig, witness) = prepare_input(&public_key, signature, script_type);
-    (script_sig.into_elements(), witness)
+    Ok((script_sig.into_elements(), witness))
 }
 
 // Get the input's script sig and witness data

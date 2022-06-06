@@ -95,6 +95,9 @@ pub enum Error {
     #[error("invalid replacement request fields")]
     InvalidReplacementRequest,
 
+    #[error("invalid sighash")]
+    InvalidSigHash,
+
     #[error(transparent)]
     InvalidStringUtf8(#[from] std::string::FromUtf8Error),
 

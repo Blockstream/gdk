@@ -1,4 +1,5 @@
 use bitcoin::util::bip32::DerivationPath;
+use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
 use gdk_common::model::{
@@ -1116,6 +1117,74 @@ fn addresses(is_liquid: bool) {
     assert_eq!(previous_addresses.list.len(), 1);
     assert_eq!(previous_addresses_int.list[0].pointer, 0);
     assert_eq!(previous_addresses_int.last_pointer, None);
+}
+
+#[test]
+fn sighash_bitcoin() {
+    sighash(false);
+}
+
+#[test]
+fn sighash_liquid() {
+    sighash(true);
+}
+
+fn sighash(is_liquid: bool) {
+    let mut test_session = setup_session(is_liquid, |_| ());
+
+    let sat = 10000;
+    let txid =
+        test_session.node_sendtoaddress(&test_session.get_receive_address(0).address, sat, None);
+    test_session.wait_tx(vec![0], &txid, Some(sat), Some(TransactionType::Incoming));
+
+    let sighashes = [
+        0x01, // SIGHASH_ALL
+        0x02, // SIGHASH_NONE
+        0x03, // SIGHASH_SINGLE
+        0x81, // SIGHASH_ALL | SIGHASH_ANYONECANPAY
+        0x82, // SIGHASH_NONE | SIGHASH_ANYONECANPAY
+        0x83, // SIGHASH_SINGLE | SIGHASH_ANYONECANPAY
+    ];
+    for sighash in sighashes {
+        // Create transaction for replacement
+        let mut create_opt = CreateTransaction::default();
+        let dest_address = test_session.get_receive_address(0).address;
+        create_opt.subaccount = 0;
+        create_opt.addressees.push(AddressAmount {
+            address: dest_address,
+            satoshi: 5000,
+            asset_id: test_session.asset_id(),
+        });
+        create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+        let mut txc = test_session.session.create_transaction(&mut create_opt).unwrap();
+        if is_liquid {
+            // SIGHASH_RANGEPROOF is not supported yet upstream
+            let sighash_rangeproof = 0x40;
+            for u in txc.used_utxos.iter_mut() {
+                u.sighash = Some(sighash | sighash_rangeproof);
+            }
+            assert!(test_session.session.sign_transaction(&txc).is_err());
+        }
+        for u in txc.used_utxos.iter_mut() {
+            u.sighash = Some(sighash);
+        }
+        let txs = test_session.session.sign_transaction(&txc).unwrap();
+        let tx_decoded = test_session
+            .node
+            .client
+            .call::<Value>("decoderawtransaction", &[txs.hex.clone().into()])
+            .unwrap();
+        for inp in tx_decoded["vin"].as_array().unwrap().iter() {
+            let sig = inp["txinwitness"].as_array().unwrap()[0].as_str().unwrap();
+            let sighash_hex = &sig[sig.len() - 2..];
+            assert_eq!(sighash_hex, format!("{:01$x}", sighash, 2));
+        }
+
+        // Broadcast the tx and get it from the tx list to verify the signature
+        let txid = test_session.session.broadcast_transaction(&txs.hex).unwrap();
+        test_session.wait_tx(vec![0], &txid, Some(txs.fee), Some(TransactionType::Redeposit));
+        test_session.get_tx_from_list(0, &txid);
+    }
 }
 
 #[test]

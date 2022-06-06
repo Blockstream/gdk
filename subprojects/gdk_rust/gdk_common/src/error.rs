@@ -24,6 +24,9 @@ pub enum Error {
     BtcKeyError(#[from] bitcoin::util::key::Error),
 
     #[error(transparent)]
+    BtcNonStandardSigHashType(#[from] bitcoin::blockdata::transaction::NonStandardSigHashType),
+
+    #[error(transparent)]
     BtcSecp256k1Error(#[from] bitcoin::secp256k1::Error),
 
     #[error(transparent)]
@@ -40,6 +43,9 @@ pub enum Error {
 
     #[error("Invalid address")]
     InvalidAddress,
+
+    #[error("Invalid sighash")]
+    InvalidSigHash,
 
     #[error("Generic({0})")]
     Generic(String),

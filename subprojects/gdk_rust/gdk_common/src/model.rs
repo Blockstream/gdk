@@ -1,4 +1,4 @@
-use crate::be::{BEOutPoint, BEScript, BETransaction, BETransactionEntry, BETxid};
+use crate::be::{BEOutPoint, BEScript, BESigHashType, BETransaction, BETransactionEntry, BETxid};
 use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize};
 use crate::NetworkId;
 use bitcoin::Network;
@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use crate::error::Error;
 use crate::scripts::ScriptType;
 use crate::wally::MasterBlindingKey;
+use bitcoin::blockdata::transaction::SigHashType as BitcoinSigHashType;
 use bitcoin::hashes::hex::ToHex;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use std::convert::TryFrom;
@@ -853,6 +854,10 @@ pub struct UnspentOutput {
     /// This can be Some only when this describes an input
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sequence: Option<u32>,
+    /// This can be Some only when this describes an input
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "user_sighash")]
+    pub sighash: Option<u32>,
     #[serde(rename = "prevout_script")]
     pub script_code: String,
     pub public_key: String,
@@ -876,6 +881,14 @@ pub struct UnspentOutput {
     pub value_commitment: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce_commitment: Option<String>,
+}
+
+impl UnspentOutput {
+    pub fn sighash(&self) -> Result<BESigHashType, Error> {
+        let is_elements = self.asset_id.is_some();
+        let sighash = self.sighash.unwrap_or(BitcoinSigHashType::All as u32);
+        BESigHashType::from_u32(sighash, is_elements)
+    }
 }
 
 impl TryFrom<Txo> for UnspentOutput {
@@ -909,6 +922,7 @@ impl TryFrom<Txo> for UnspentOutput {
             pointer,
             satoshi: txo.satoshi,
             sequence: txo.sequence,
+            sighash: None,
             confidential,
             asset_id,
             asset_blinder,
