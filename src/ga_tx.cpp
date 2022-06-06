@@ -107,17 +107,20 @@ namespace sdk {
             return amount(utxo.at("satoshi"));
         }
 
-        static ecdsa_sig_t ec_sig_from_witness(const wally_tx_ptr& tx, size_t input_index, size_t item_index)
+        static std::pair<ecdsa_sig_t, uint32_t> ec_sig_from_witness(
+            const wally_tx_ptr& tx, size_t input_index, size_t item_index)
         {
             constexpr bool has_sighash = true;
             const auto& witness = tx->inputs[input_index].witness;
             const auto& witness_item = witness->items[item_index];
             GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
             const auto der_sig = gsl::make_span(witness_item.witness, witness_item.witness_len);
-            return ec_sig_from_der(der_sig, has_sighash);
+            const uint32_t sighash = der_sig[witness_item.witness_len - 1];
+            const ecdsa_sig_t sig = ec_sig_from_der(der_sig, has_sighash);
+            return std::make_pair(sig, sighash);
         }
 
-        std::vector<ecdsa_sig_t> get_signatures_from_input(
+        std::vector<std::pair<ecdsa_sig_t, uint32_t>> get_signatures_from_input(
             const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, bool is_liquid)
         {
             GDK_RUNTIME_ASSERT(index < tx->num_inputs);
@@ -147,7 +150,7 @@ namespace sdk {
                 std::swap(user_sig, ga_sig);
             }
 
-            return std::vector<ecdsa_sig_t>({ ga_sig, user_sig });
+            return std::vector<std::pair<ecdsa_sig_t, uint32_t>>({ ga_sig, user_sig });
         }
 
         static void calculate_input_subtype(nlohmann::json& utxo, const wally_tx_ptr& tx, size_t i)
@@ -369,12 +372,15 @@ namespace sdk {
                 // Verify the transaction signatures to prevent outputs
                 // from being modified.
                 uint32_t vin = 0;
-                for (const auto& input : result["old_used_utxos"]) {
+                for (auto& input : result["old_used_utxos"]) {
                     const auto sigs = get_signatures_from_input(input, tx, vin, net_params.is_liquid());
                     const auto pubkeys = session.pubkeys_from_utxo(input);
-                    const auto script_hash = get_script_hash(net_params, input, tx, vin);
-                    GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(0), script_hash, sigs.at(0))); // ga
-                    GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(1), script_hash, sigs.at(1))); // user
+                    for (i = 0; i < sigs.size(); ++i) {
+                        const auto sighash = sigs.at(i).second;
+                        input["user_sighash"] = sighash;
+                        const auto script_hash = get_script_hash(net_params, input, tx, vin, sighash);
+                        GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), script_hash, sigs.at(i).first));
+                    }
                     ++vin;
                 }
             } else {
@@ -890,15 +896,15 @@ namespace sdk {
         }
 
         static std::string sign_input(
-            session_impl& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u)
+            session_impl& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, uint32_t sighash)
         {
             const auto& net_params = session.get_network_parameters();
-            const auto script_hash = get_script_hash(net_params, u, tx, index);
+            const auto script_hash = get_script_hash(net_params, u, tx, index, sighash);
             const std::string private_key_hex = json_get_value(u, "private_key");
 
             if (!private_key_hex.empty()) {
                 const auto user_sig = ec_sig_from_bytes(h2b(private_key_hex), script_hash);
-                const auto der = ec_sig_to_der(user_sig, true);
+                const auto der = ec_sig_to_der(user_sig, sighash);
                 tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
                 return b2h(der);
             } else {
@@ -909,7 +915,7 @@ namespace sdk {
                 const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
                 auto signer = session.get_nonnull_signer();
                 const auto user_sig = signer->sign_hash(path, script_hash);
-                const auto der = ec_sig_to_der(user_sig, true);
+                const auto der = ec_sig_to_der(user_sig, sighash);
 
                 if (is_segwit_address_type(u)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
@@ -921,15 +927,15 @@ namespace sdk {
                     tx_set_input_script(tx, index, witness_script(script, witness_ver));
                 } else {
                     const bool is_low_r = signer->supports_low_r();
-                    tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig));
+                    tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig, sighash));
                 }
                 return b2h(der);
             }
         }
     } // namespace
 
-    std::array<unsigned char, SHA256_LEN> get_script_hash(
-        const network_parameters& net_params, const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index)
+    std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
+        const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, uint32_t sighash)
     {
         const amount::value_type v = utxo.at("satoshi");
         const auto script = h2b(utxo.at("prevout_script"));
@@ -937,7 +943,7 @@ namespace sdk {
 
         if (!net_params.is_liquid()) {
             const amount satoshi{ v };
-            return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), WALLY_SIGHASH_ALL, flags);
+            return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), sighash, flags);
         }
 
         // Liquid case - has a value-commitment in place of a satoshi value
@@ -948,7 +954,7 @@ namespace sdk {
             const auto value = tx_confidential_value_from_satoshi(v);
             ct_value.assign(std::begin(value), std::end(value));
         }
-        return tx_get_elements_signature_hash(tx, index, script, ct_value, WALLY_SIGHASH_ALL, flags);
+        return tx_get_elements_signature_hash(tx, index, script, ct_value, sighash, flags);
     }
 
     void blind_address(
@@ -1033,7 +1039,8 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
             constexpr bool has_sighash = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash);
-            tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig));
+            const uint32_t user_sighash = der.back();
+            tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig, user_sighash));
         }
     }
 
@@ -1074,7 +1081,8 @@ namespace sdk {
 
         size_t i = 0;
         for (const auto& utxo : inputs) {
-            sigs.emplace_back(utxo.empty() ? std::string() : sign_input(session, tx, i, utxo));
+            const uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
+            sigs.emplace_back(utxo.empty() ? std::string() : sign_input(session, tx, i, utxo, sighash));
             ++i;
         }
         return std::make_pair(sigs, std::move(tx));

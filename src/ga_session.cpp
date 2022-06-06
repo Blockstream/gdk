@@ -383,7 +383,7 @@ namespace sdk {
 
         const auto challenge_hash = uint256_to_base256(challenge);
 
-        return { sig_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
+        return { sig_only_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
     }
 
     void ga_session::set_fee_estimates(session_impl::locker_t& locker, const nlohmann::json& fee_estimates)

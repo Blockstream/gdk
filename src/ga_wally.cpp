@@ -250,7 +250,7 @@ namespace sdk {
         return ec_sig_from_der(script_sig.subspan(1, push_len), has_sighash);
     }
 
-    std::vector<ecdsa_sig_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
+    std::vector<std::pair<ecdsa_sig_t, uint32_t>> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
     {
         constexpr bool has_sighash = true;
         size_t offset = 0;
@@ -264,16 +264,22 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
         ++offset;
         GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
-        const ecdsa_sig_t ga_sig = ec_sig_from_der(script_sig.subspan(offset, push_len), has_sighash);
+        const auto ga_der_sig = script_sig.subspan(offset, push_len);
+        const uint32_t ga_sighash = ga_der_sig[push_len - 1];
+        const ecdsa_sig_t ga_sig = ec_sig_from_der(ga_der_sig, has_sighash);
+        const auto ga_pair = std::make_pair(ga_sig, ga_sighash);
         offset += push_len;
 
         push_len = script_sig.at(offset);
         GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
         ++offset;
         GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
-        const ecdsa_sig_t user_sig = ec_sig_from_der(script_sig.subspan(offset, push_len), has_sighash);
+        const auto user_der_sig = script_sig.subspan(offset, push_len);
+        const uint32_t user_sighash = user_der_sig[push_len - 1];
+        const ecdsa_sig_t user_sig = ec_sig_from_der(user_der_sig, has_sighash);
+        const auto user_pair = std::make_pair(user_sig, user_sighash);
 
-        return std::vector<ecdsa_sig_t>({ ga_sig, user_sig });
+        return std::vector<std::pair<ecdsa_sig_t, uint32_t>>({ ga_pair, user_pair });
     }
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out)
@@ -564,17 +570,23 @@ namespace sdk {
         return ret;
     }
 
-    std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, bool sighash)
+    std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash)
     {
-        std::vector<unsigned char> der(EC_SIGNATURE_DER_MAX_LEN + (sighash ? 1 : 0));
+        std::vector<unsigned char> der(EC_SIGNATURE_DER_MAX_LEN + 1);
         size_t written;
         GDK_VERIFY(wally_ec_sig_to_der(sig.data(), sig.size(), der.data(), der.size(), &written));
         GDK_RUNTIME_ASSERT(written <= der.size());
         der.resize(written);
-        if (sighash) {
-            der.push_back(WALLY_SIGHASH_ALL);
-        }
+        der.push_back(sighash);
         return der;
+    }
+
+    std::string sig_only_to_der_hex(const ecdsa_sig_t& signature)
+    {
+        std::vector<unsigned char> der = ec_sig_to_der(signature);
+        // Remove sighash byte
+        der.pop_back();
+        return b2h(der);
     }
 
     ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool sighash)

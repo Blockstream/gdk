@@ -259,9 +259,9 @@ namespace sdk {
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig)
+        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash, uint32_t ga_sighash)
     {
-        const std::array<uint32_t, 2> sighashes = { { WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL } };
+        const std::array<uint32_t, 2> sighashes = { { ga_sighash, user_sighash } };
         std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
         init_container(sigs, ga_sig, user_sig);
         const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LEN : EC_SIGNATURE_DER_MAX_LOW_R_LEN;
@@ -301,13 +301,14 @@ namespace sdk {
         }
     }
 
-    std::vector<unsigned char> input_script(
-        bool low_r, const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig)
+    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
+        const ecdsa_sig_t& user_sig, uint32_t user_sighash)
     {
         const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
         const std::vector<unsigned char>& dummy_push = low_r ? DUMMY_GA_SIG_DER_PUSH_LOW_R : DUMMY_GA_SIG_DER_PUSH;
 
-        std::vector<unsigned char> full_script = input_script(low_r, prevout_script, user_sig, dummy_sig);
+        std::vector<unsigned char> full_script
+            = input_script(low_r, prevout_script, user_sig, dummy_sig, user_sighash, WALLY_SIGHASH_ALL);
         // Replace the dummy sig with PUSH(0)
         GDK_RUNTIME_ASSERT(std::search(full_script.begin(), full_script.end(), dummy_push.begin(), dummy_push.end())
             == full_script.begin());
@@ -321,13 +322,13 @@ namespace sdk {
     std::vector<unsigned char> dummy_input_script(bool low_r, const std::vector<unsigned char>& prevout_script)
     {
         const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
-        return input_script(low_r, prevout_script, dummy_sig, dummy_sig);
+        return input_script(low_r, prevout_script, dummy_sig, dummy_sig, WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL);
     }
 
     std::vector<unsigned char> dummy_external_input_script(bool low_r, byte_span_t pub_key)
     {
         const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
-        return scriptsig_p2pkh_from_der(pub_key, ec_sig_to_der(dummy_sig, true));
+        return scriptsig_p2pkh_from_der(pub_key, ec_sig_to_der(dummy_sig, WALLY_SIGHASH_ALL));
     }
 
     std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver)

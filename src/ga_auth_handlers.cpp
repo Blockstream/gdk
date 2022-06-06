@@ -748,6 +748,7 @@ namespace sdk {
             for (const auto& utxo : inputs) {
                 const uint32_t subaccount = utxo.at("subaccount");
                 const uint32_t pointer = utxo.at("pointer");
+                const uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
 
                 pub_key_t pubkey;
                 if (!is_electrum) {
@@ -755,7 +756,7 @@ namespace sdk {
                 } else {
                     pubkey = user_pubkeys.derive(subaccount, pointer, utxo.value("is_internal", false));
                 }
-                const auto script_hash = get_script_hash(m_net_params, utxo, tx, i);
+                const auto script_hash = get_script_hash(m_net_params, utxo, tx, i, sighash);
                 constexpr bool has_sighash = true;
                 verify_ae_signature(
                     pubkey, script_hash, utxo.at("ae_host_entropy"), signer_commitments[i], signatures[i], has_sighash);

@@ -142,7 +142,7 @@ namespace sdk {
 
     ecdsa_sig_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig);
 
-    std::vector<ecdsa_sig_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig);
+    std::vector<std::pair<ecdsa_sig_t, uint32_t>> get_sigs_from_multisig_script_sig(byte_span_t script_sig);
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 
@@ -246,13 +246,13 @@ namespace sdk {
     ecdsa_sig_t ec_sig_from_bytes(
         byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_GRIND_R);
 
-    std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, bool sighash = false);
+    std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash = WALLY_SIGHASH_ALL);
     ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool sighash = false);
 
     bool ec_sig_verify(
         byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);
 
-    inline auto sig_to_der_hex(const ecdsa_sig_t& signature) { return b2h(ec_sig_to_der(signature)); }
+    std::string sig_only_to_der_hex(const ecdsa_sig_t& signature);
 
     std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key);
 
