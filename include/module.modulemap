@@ -1,6 +1,6 @@
 module ga [extern_c] {
     module sdk {
-        header "gdk.h"
+        header "greenlight.h"
         export *
     }
 

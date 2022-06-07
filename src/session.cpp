@@ -399,6 +399,12 @@ namespace sdk {
         return p->get_network_parameters(); // Note no exception_wrapper
     }
 
+    nlohmann::json session::gl_call(const char* /*method*/, const nlohmann::json& params)
+    {
+        // TODO implement
+        return nlohmann::json(params);
+    }
+
     session::impl_ptr session::get_nonnull_impl() const
     {
         auto impl = get_impl();

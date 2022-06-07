@@ -74,6 +74,9 @@ namespace sdk {
 
         const network_parameters& get_network_parameters() const;
 
+        // Greenlight methods
+        nlohmann::json gl_call(const char* method, const nlohmann::json& params);
+
         impl_ptr get_nonnull_impl() const;
 
         void exception_handler(std::exception_ptr ex_p);

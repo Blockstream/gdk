@@ -61,6 +61,7 @@ cpp_sources = [
            'xpub_hdkey.cpp']
 
 headers = ['../include/gdk.h',
+           '../include/greenlight.h',
            '../include/wally_wrapper.h']
 
 sources = cpp_headers + cpp_sources + headers

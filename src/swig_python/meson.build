@@ -5,7 +5,10 @@ swig_py_target = custom_target('swig-python',
                                 sed, '@OUTDIR@/gasdk_py_wrap.c', '@OUTDIR@', '@INPUT0@', '@INPUT1@'],
                      input : ['swig_gasdk.i', 'python_extra.py_in'],
                      output : ['gasdk_py_wrap.c'],
-                     depend_files : files(join_paths('..', '..', 'include', 'gdk.h')))
+                     depend_files :
+                         files(join_paths('..', '..', 'include', 'gdk.h'),
+                               join_paths('..', '..', 'include', 'greenlight.h'),
+                           ))
 
 python_inc_dir = python_installation.get_variable('INCLUDEPY')
 

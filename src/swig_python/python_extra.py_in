@@ -295,6 +295,8 @@ class Session(object):
     def validate_asset_domain_name(self, params):
         return json.loads(validate_asset_domain_name(self.session_obj, self._to_json(params)))
 
+    def gl_call(self, method, params):
+        return json.loads(gl_call(self.session_obj, method, self._to_json(params)))
 
 _old_get_networks = get_networks
 def get_networks():

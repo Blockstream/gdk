@@ -5,7 +5,10 @@ swig_target = custom_target('swig',
                                 java_target],
                      input : ['swig_gasdk.i', 'jni_extra.java_in'],
                      output : ['gasdk_wrap.c'],
-                     depend_files : files(join_paths('..', '..', 'include', 'gdk.h')))
+                     depend_files : files(
+                       join_paths('..', '..', 'include', 'gdk.h'),
+                       join_paths('..', '..', 'include', 'greenlight.h'),
+                       ))
 
 java_inc_dir = include_directories(join_paths(java_home, 'include'),
                                    join_paths(java_home, 'include', build_machine.system()))

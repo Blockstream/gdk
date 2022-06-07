@@ -1,6 +1,7 @@
 %module GDK
 %{
 #include "../../include/gdk.h"
+#include "../../include/greenlight.h"
 #include <limits.h>
 
 /* Make local functions visible to the O/S for better JVM stack traces */
@@ -552,6 +553,8 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_void__(GA_auth_handler_request_code)
 %returns_void__(GA_auth_handler_resolve_code)
 %returns_uint32(GA_validate_mnemonic)
+
+%returns_struct(GA_gl_call, GA_json)
 
 /* TODO
 GA_convert_json_value_to_bool
