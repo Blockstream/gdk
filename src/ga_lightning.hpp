@@ -130,11 +130,13 @@ namespace sdk {
 
         void disable_all_pin_logins();
 
+        nlohmann::json gl_call(const char* method, const nlohmann::json& params);
+
     private:
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
 
-        // void* m_session;
+        void* m_session;
     };
 
 } // namespace sdk

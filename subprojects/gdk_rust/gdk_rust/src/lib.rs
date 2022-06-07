@@ -43,7 +43,10 @@ pub struct GdkSession {
 pub enum GdkBackend {
     // Rpc(RpcSession),
     Electrum(ElectrumSession),
+    Greenlight(GreenlightSession),
 }
+
+pub struct GreenlightSession {}
 
 //
 // Session & account management
@@ -120,25 +123,25 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let proxy = network["proxy"].as_str();
 
-    match network["server_type"].as_str() {
+    let backend = match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
+        Some("greenlight") => GdkBackend::Greenlight(GreenlightSession {}),
         Some("electrum") => {
             let url = determine_electrum_url(&parsed_network).map_err(|x| json!(x))?;
 
             let session = ElectrumSession::create_session(parsed_network, proxy, url);
-            let backend = GdkBackend::Electrum(session);
-
-            // some time in the past
-            let last_xr_fetch = SystemTime::now() - Duration::from_secs(1000);
-            let gdk_session = GdkSession {
-                backend,
-                last_xr_fetch,
-                last_xr: None,
-            };
-            Ok(gdk_session)
+            GdkBackend::Electrum(session)
         }
-        _ => Err(json!("server_type invalid")),
-    }
+        _ => return Err(json!("server_type invalid")),
+    };
+    // some time in the past
+    let last_xr_fetch = SystemTime::now() - Duration::from_secs(1000);
+    let gdk_session = GdkSession {
+        backend,
+        last_xr_fetch,
+        last_xr: None,
+    };
+    Ok(gdk_session)
 }
 
 fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
@@ -148,6 +151,12 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         info!("missed exchange rate cache");
         let (agent, is_mainnet) = match sess.backend {
             GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.mainnet),
+            GdkBackend::Greenlight(ref _s) => (
+                Err(gdk_electrum::error::Error::Generic(
+                    "build_request_agent not yet implemented".to_string(),
+                )),
+                false,
+            ),
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
@@ -222,7 +231,7 @@ pub extern "C" fn GDKRUST_call_session(
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
     let res = match sess.backend {
         GdkBackend::Electrum(ref mut s) => handle_session_call(s, &method, input),
-        // GdkSession::Rpc(ref s) => handle_call(s, method),
+        GdkBackend::Greenlight(ref mut s) => handle_gl_call(s, &method, input),
     };
 
     let methods_to_redact_out = vec!["credentials_from_pin_data"];
@@ -266,6 +275,7 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 
     match backend {
         GdkBackend::Electrum(ref mut s) => s.notify.set_native((handler, self_context)),
+        GdkBackend::Greenlight(ref mut _s) => (), // TODO,
     };
 
     info!("set notification handler");
@@ -303,6 +313,16 @@ fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
     }));
 
     json!({ "currencies": currency_map })
+}
+
+fn handle_gl_call(
+    _session: &mut GreenlightSession,
+    method: &str,
+    _input: Value,
+) -> Result<Value, Error> {
+    match method {
+        _ => Err(Error::GreenlightMethodNotFound(method.to_string())),
+    }
 }
 
 // dynamic dispatch shenanigans

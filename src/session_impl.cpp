@@ -429,5 +429,11 @@ namespace sdk {
         return std::vector<pub_key_t>({ get_user_pubkeys().derive(subaccount, pointer, is_internal) });
     }
 
+    nlohmann::json session_impl::gl_call(const char* /*method*/, const nlohmann::json& /*params*/)
+    {
+        // Overriden for ga_lightning
+        return nlohmann::json();
+    }
+
 } // namespace sdk
 } // namespace ga

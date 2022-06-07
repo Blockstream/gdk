@@ -30,6 +30,9 @@ pub enum Error {
         method: String,
         in_session: bool,
     },
+
+    #[error("Greenlight method not found {0}")]
+    GreenlightMethodNotFound(String),
 }
 
 impl Error {

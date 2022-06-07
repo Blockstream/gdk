@@ -23,12 +23,21 @@ namespace sdk {
     ga_lightning::ga_lightning(network_parameters&& net_params)
         : session_impl(std::move(net_params))
     {
-        throw std::runtime_error("ga_lightning constructor not implemented");
+        auto np = m_net_params.get_json();
+        const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
+        GDK_RUNTIME_ASSERT(res == GA_OK && m_session);
     }
 
-    ga_lightning::~ga_lightning() {}
+    ga_lightning::~ga_lightning()
+    {
+        GDKRUST_destroy_session(m_session);
+        // gdk_rust cleanup
+    }
 
-    void ga_lightning::connect() { throw std::runtime_error("connect not implemented"); }
+    void ga_lightning::connect()
+    {
+        // TODO
+    }
 
     void ga_lightning::reconnect() { throw std::runtime_error("reconnect not implemented"); }
 
@@ -133,7 +142,8 @@ namespace sdk {
 
     void ga_lightning::set_notification_handler(GA_notification_handler handler, void* context)
     {
-        throw std::runtime_error("set_notification_handler not implemented");
+        session_impl::set_notification_handler(handler, context);
+        GDKRUST_set_notification_handler(m_session, GDKRUST_notif_handler, this);
     }
 
     nlohmann::json ga_lightning::get_receive_address(const nlohmann::json& details)
@@ -411,6 +421,11 @@ namespace sdk {
     void ga_lightning::disable_all_pin_logins()
     {
         throw std::runtime_error("disable_all_pin_logins not yet implemented");
+    }
+
+    nlohmann::json ga_lightning::gl_call(const char* method, const nlohmann::json& params)
+    {
+        return rust_call(method, params, m_session);
     }
 
 } // namespace sdk
