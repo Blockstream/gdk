@@ -47,6 +47,8 @@ impl Display for ExchangeRateError {
     }
 }
 
+impl std::error::Error for ExchangeRateError {}
+
 impl Display for ExchangeRateErrorType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)

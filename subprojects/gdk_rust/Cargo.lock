@@ -642,6 +642,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -682,6 +683,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "tempfile",
+ "thiserror",
  "ureq 2.4.0",
 ]
 
@@ -705,6 +707,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror",
  "ureq 2.4.0",
  "url 1.7.2",
 ]

@@ -494,7 +494,7 @@ struct JsonError {
 }
 
 fn build_error(_method: &str, error: &Error) -> String {
-    let message = format!("{}", error.gdk_display());
+    let message = error.to_string();
     let error = error.to_gdk_code();
     let json_error = JsonError {
         message,

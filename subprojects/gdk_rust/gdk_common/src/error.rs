@@ -1,9 +1,14 @@
 use std::string::ToString;
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("Generic({0})")]
     Generic(String),
+
+    #[error("Invalid address")]
     InvalidAddress,
+
+    #[error("Invalid input")]
     InputValidationFailed,
 }
 

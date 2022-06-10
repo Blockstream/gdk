@@ -8,6 +8,7 @@ serde = { version = "1.0", features = ["derive"] }
 ureq = { version = "2", features = ["json", "socks-proxy", "gzip", "brotli"] }
 serde_json = "1.0"
 serde_cbor = "0.11.1"
+thiserror = "1.0"
 log = "0.4.8"
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0edddf730ff8fd441d3af28bc600b8bc8a8df5a9", features = ["serde-feature"] }
 tempfile = "3.2.0"

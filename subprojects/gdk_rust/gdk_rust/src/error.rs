@@ -2,14 +2,30 @@ use gdk_common::error::Error as CommonError;
 use gdk_common::model::ExchangeRateError;
 use gdk_electrum as electrum;
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("{0}")]
     Other(String),
-    JsonFrom(serde_json::Error),
-    Electrum(electrum::error::Error),
-    Rates(ExchangeRateError),
-    Common(CommonError),
-    Registry(gdk_registry::Error),
+
+    #[error(transparent)]
+    JsonFrom(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    Electrum(#[from] electrum::error::Error),
+
+    #[error(transparent)]
+    Rates(#[from] ExchangeRateError),
+
+    #[error(transparent)]
+    Common(#[from] CommonError),
+
+    #[error(transparent)]
+    Registry(#[from] gdk_registry::Error),
+
+    #[error(
+        "{}method not found: {method:?}",
+        if *.in_session { "session " } else {""}
+    )]
     MethodNotFound {
         method: String,
         in_session: bool,
@@ -48,56 +64,10 @@ impl Error {
             _ => "id_unknown".to_string(),
         }
     }
-
-    pub fn gdk_display(&self) -> String {
-        match self {
-            Error::Other(s) => s.clone(),
-            Error::JsonFrom(ref json) => format!("{}", json),
-            Error::Electrum(ref electrum) => format!("{}", electrum),
-            Error::Rates(ref rates_err) => format!("{:?}", rates_err),
-            Error::Common(ref err) => format!("{:?}", err),
-            Error::Registry(ref err) => format!("{:?}", err),
-            Error::MethodNotFound {
-                in_session,
-                method,
-            } => {
-                let s = if *in_session {
-                    "session"
-                } else {
-                    ""
-                };
-                format!("{} method not found: {:?}", s, method)
-            }
-        }
-    }
 }
 
 impl From<String> for Error {
     fn from(e: String) -> Error {
         Error::Other(e)
-    }
-}
-
-impl From<electrum::error::Error> for Error {
-    fn from(e: electrum::error::Error) -> Error {
-        Error::Electrum(e)
-    }
-}
-
-impl From<ExchangeRateError> for Error {
-    fn from(e: ExchangeRateError) -> Error {
-        Error::Rates(e)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Error {
-        Error::JsonFrom(e)
-    }
-}
-
-impl From<gdk_registry::Error> for Error {
-    fn from(e: gdk_registry::Error) -> Error {
-        Error::Registry(e)
     }
 }

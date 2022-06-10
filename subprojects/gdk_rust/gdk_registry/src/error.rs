@@ -5,68 +5,48 @@ use std::{
 };
 
 /// Contains all the error variants possibly happening in this library
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// Thrown when neither assets nor icons are requested in [`crate::RefreshAssetsParam`]
+    #[error("Neither assets nor icons were requested")]
     BothAssetsIconsFalse,
 
     /// Thrown when calling `crate::init` more than once
+    #[error("Cannot call `init` more than once")]
     AlreadyInitialized,
 
     /// Thrown when the method requires the registry to be initialized (via the `crate::init` call)
     /// but it wasn't initialized
+    #[error("Registry has not been initialized")]
     RegistryUninitialized,
 
     /// An invalid network as been specified
+    #[error("InvalidNetwork({0})")]
     InvalidNetwork(String),
 
     /// Wraps IO errors
-    Io(io::Error),
+    #[error(transparent)]
+    Io(#[from] io::Error),
 
     /// Wraps errors happened when serializing or deserializing JSONs
-    SerdeJson(serde_json::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 
     /// Wraps errors happened when serializing or deserializing JSONs
-    SerdeCbor(serde_cbor::Error),
+    #[error(transparent)]
+    SerdeCbor(#[from] serde_cbor::Error),
 
     /// Wraps http errors
-    Ureq(ureq::Error),
+    #[error(transparent)]
+    Ureq(#[from] ureq::Error),
 
     /// Wraps hex parsing error
-    Hex(elements::bitcoin::hashes::hex::Error),
+    #[error(transparent)]
+    Hex(#[from] elements::bitcoin::hashes::hex::Error),
 
     /// Wrap a poison error as string to avoid pollute with lifetimes
+    #[error("{0}")]
     Poison(String),
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Error::Io(e)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Error::SerdeJson(e)
-    }
-}
-
-impl From<serde_cbor::Error> for Error {
-    fn from(e: serde_cbor::Error) -> Self {
-        Error::SerdeCbor(e)
-    }
-}
-
-impl From<ureq::Error> for Error {
-    fn from(e: ureq::Error) -> Self {
-        Error::Ureq(e)
-    }
-}
-
-impl From<elements::bitcoin::hashes::hex::Error> for Error {
-    fn from(e: elements::bitcoin::hashes::hex::Error) -> Self {
-        Error::Hex(e)
-    }
 }
 
 impl From<PoisonError<MutexGuard<'_, File>>> for Error {

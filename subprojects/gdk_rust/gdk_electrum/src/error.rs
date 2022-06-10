@@ -121,6 +121,8 @@ impl Display for Error {
     }
 }
 
+impl std::error::Error for Error {}
+
 pub fn fn_err(str: &str) -> impl Fn() -> Error + '_ {
     move || Error::Generic(str.into())
 }

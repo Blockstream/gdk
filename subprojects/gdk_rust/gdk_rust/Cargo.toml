@@ -16,6 +16,7 @@ gdk-common = { path = "../gdk_common" }
 gdk-registry = { path = "../gdk_registry" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+thiserror = "1.0"
 libc = "0.2"
 log = "0.4.8"
 url = "1.7.2"
