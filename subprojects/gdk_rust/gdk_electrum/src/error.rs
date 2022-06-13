@@ -167,6 +167,9 @@ pub enum Error {
     #[error("unknown call")]
     UnknownCall,
 
+    #[error("unsupported sighash")]
+    UnsupportedSigHash,
+
     #[error(transparent)]
     UreqError(#[from] ureq::Error),
 

@@ -47,6 +47,9 @@ pub enum Error {
     #[error("Invalid sighash")]
     InvalidSigHash,
 
+    #[error("Unsupported sighash")]
+    UnsupportedSigHash,
+
     #[error("Generic({0})")]
     Generic(String),
 }

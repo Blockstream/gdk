@@ -1145,6 +1145,10 @@ fn sighash(is_liquid: bool) {
         0x82, // SIGHASH_NONE | SIGHASH_ANYONECANPAY
         0x83, // SIGHASH_SINGLE | SIGHASH_ANYONECANPAY
     ];
+    let mut allowed_sighashes = vec![0x01];
+    if is_liquid {
+        allowed_sighashes.push(0x83);
+    }
     for sighash in sighashes {
         // Create transaction for replacement
         let mut create_opt = CreateTransaction::default();
@@ -1168,7 +1172,12 @@ fn sighash(is_liquid: bool) {
         for u in txc.used_utxos.iter_mut() {
             u.sighash = Some(sighash);
         }
-        let txs = test_session.session.sign_transaction(&txc).unwrap();
+        let res = test_session.session.sign_transaction(&txc);
+        if !allowed_sighashes.contains(&sighash) {
+            assert!(res.is_err());
+            continue;
+        }
+        let txs = res.unwrap();
         let tx_decoded = test_session
             .node
             .client

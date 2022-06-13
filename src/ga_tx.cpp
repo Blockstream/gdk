@@ -932,6 +932,14 @@ namespace sdk {
                 return b2h(der);
             }
         }
+
+        static void validate_sighash(uint32_t sighash, bool is_liquid)
+        {
+            if (sighash != WALLY_SIGHASH_ALL) {
+                const bool is_valid = is_liquid && sighash == SIGHASH_SINGLE_ANYONECANPAY;
+                GDK_RUNTIME_ASSERT_MSG(is_valid, "Unsupported sighash");
+            }
+        }
     } // namespace
 
     std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
@@ -940,8 +948,11 @@ namespace sdk {
         const amount::value_type v = utxo.at("satoshi");
         const auto script = h2b(utxo.at("prevout_script"));
         const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
+        const bool is_liquid = net_params.is_liquid();
 
-        if (!net_params.is_liquid()) {
+        validate_sighash(sighash, is_liquid);
+
+        if (!is_liquid) {
             const amount satoshi{ v };
             return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), sighash, flags);
         }

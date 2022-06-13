@@ -14,14 +14,18 @@ impl BESigHashType {
         if is_elements {
             let sighash = ElementsSigHashType::from_u32(n);
             if sighash.as_u32() == n {
-                Ok(BESigHashType::Elements(sighash))
+                let sighash = BESigHashType::Elements(sighash);
+                sighash.is_allowed()?;
+                Ok(sighash)
             } else {
                 Err(Error::InvalidSigHash)
             }
         } else {
             let sighash =
                 BitcoinSigHashType::from_u32_standard(n).map_err(|_| Error::InvalidSigHash)?;
-            Ok(BESigHashType::Bitcoin(sighash))
+            let sighash = BESigHashType::Bitcoin(sighash);
+            sighash.is_allowed()?;
+            Ok(sighash)
         }
     }
 
@@ -36,6 +40,15 @@ impl BESigHashType {
         match self {
             BESigHashType::Bitcoin(_) => Err(Error::InvalidSigHash),
             BESigHashType::Elements(sighash) => Ok(sighash.clone()),
+        }
+    }
+
+    fn is_allowed(&self) -> Result<(), Error> {
+        match self {
+            BESigHashType::Bitcoin(BitcoinSigHashType::All)
+            | BESigHashType::Elements(ElementsSigHashType::All)
+            | BESigHashType::Elements(ElementsSigHashType::SinglePlusAnyoneCanPay) => Ok(()),
+            _ => Err(Error::UnsupportedSigHash),
         }
     }
 }

@@ -13,6 +13,8 @@
 
 #include "assertion.hpp"
 
+#define SIGHASH_SINGLE_ANYONECANPAY (WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY)
+
 namespace std {
 template <> struct default_delete<struct ext_key> {
     void operator()(struct ext_key* ptr) const { ::bip32_key_free(ptr); }
