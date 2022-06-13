@@ -1027,7 +1027,7 @@ pub fn create_tx(
     };
     let fee_rate_sat_kb = request.fee_rate.get_or_insert(default_min_fee_rate);
     if *fee_rate_sat_kb < default_min_fee_rate {
-        return Err(Error::FeeRateBelowMinimum);
+        return Err(Error::FeeRateBelowMinimum(default_min_fee_rate));
     }
 
     // convert from satoshi/kbyte to satoshi/byte

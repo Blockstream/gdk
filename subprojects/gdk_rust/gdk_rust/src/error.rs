@@ -56,7 +56,7 @@ impl Error {
             Error::Electrum(electrum::error::Error::InvalidAssetId) => {
                 "id_invalid_asset_id".to_string()
             }
-            Error::Electrum(electrum::error::Error::FeeRateBelowMinimum) => {
+            Error::Electrum(electrum::error::Error::FeeRateBelowMinimum(_)) => {
                 "id_fee_rate_is_below_minimum".to_string()
             }
             Error::Electrum(electrum::error::Error::PinError) => "id_connection_failed".to_string(),

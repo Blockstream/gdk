@@ -667,6 +667,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "tempfile",
+ "thiserror",
  "ureq 2.4.0",
  "zeroize",
 ]

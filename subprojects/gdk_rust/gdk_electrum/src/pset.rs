@@ -109,8 +109,10 @@ fn compare_except_script_sig_sequence(tx1: &Transaction, tx2: &Transaction) -> R
         inp.sequence = 0;
         inp.script_sig = elements::Script::default();
     }
-    if tx1.txid() != tx2.txid() {
-        Err(Error::PsetAndTxMismatch)
+
+    let (tx1_id, tx2_id) = (tx1.txid(), tx2.txid());
+    if tx1_id != tx2_id {
+        Err(Error::PsetAndTxMismatch(tx1_id, tx2_id))
     } else {
         Ok(())
     }

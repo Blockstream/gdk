@@ -245,7 +245,7 @@ fn create_tx_err(is_liquid: bool) {
     );
     assert!(matches!(
         test_session.session.create_transaction(&mut create_opt),
-        Err(Error::FeeRateBelowMinimum)
+        Err(Error::FeeRateBelowMinimum(_))
     ));
 
     // Not an address
