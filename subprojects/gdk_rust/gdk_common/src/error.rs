@@ -2,14 +2,47 @@ use std::string::ToString;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Generic({0})")]
-    Generic(String),
+    #[error(transparent)]
+    BtcAddressError(#[from] bitcoin::util::address::Error),
+
+    #[error(transparent)]
+    BtcBase58DecodingError(#[from] bitcoin::util::base58::Error),
+
+    #[error(transparent)]
+    BtcBip32Error(#[from] bitcoin::util::bip32::Error),
+
+    #[error(transparent)]
+    BtcEncodingError(#[from] bitcoin::consensus::encode::Error),
+
+    #[error(transparent)]
+    BtcHashesError(#[from] bitcoin::hashes::error::Error),
+
+    #[error(transparent)]
+    BtcHexDecodingError(#[from] bitcoin::hashes::hex::Error),
+
+    #[error(transparent)]
+    BtcKeyError(#[from] bitcoin::util::key::Error),
+
+    #[error(transparent)]
+    BtcSecp256k1Error(#[from] bitcoin::secp256k1::Error),
+
+    #[error(transparent)]
+    ElementsAddressError(#[from] elements::address::AddressError),
+
+    #[error(transparent)]
+    ElementsEncodingError(#[from] elements::encode::Error),
+
+    #[error(transparent)]
+    FromSliceError(#[from] std::array::TryFromSliceError),
+
+    #[error("Invalid input")]
+    InputValidationFailed,
 
     #[error("Invalid address")]
     InvalidAddress,
 
-    #[error("Invalid input")]
-    InputValidationFailed,
+    #[error("Generic({0})")]
+    Generic(String),
 }
 
 pub fn err<R>(str: &str) -> Result<R, Error> {
@@ -30,29 +63,11 @@ impl From<String> for Error {
     }
 }
 
-macro_rules! impl_error {
-    ( $from:ty ) => {
-        impl std::convert::From<$from> for Error {
-            fn from(err: $from) -> Self {
-                Error::Generic(err.to_string())
-            }
-        }
-    };
+impl From<&str> for Error {
+    fn from(e: &str) -> Error {
+        Error::Generic(e.to_owned())
+    }
 }
-
-impl_error!(&str);
-impl_error!(bitcoin::util::base58::Error);
-//impl_error!(sled::Error);
-impl_error!(bitcoin::hashes::error::Error);
-impl_error!(bitcoin::hashes::hex::Error);
-impl_error!(bitcoin::consensus::encode::Error);
-impl_error!(bitcoin::util::bip32::Error);
-impl_error!(std::array::TryFromSliceError);
-impl_error!(elements::encode::Error);
-impl_error!(elements::address::AddressError);
-impl_error!(bitcoin::util::address::Error);
-impl_error!(bitcoin::secp256k1::Error);
-impl_error!(bitcoin::util::key::Error);
 
 #[macro_export]
 macro_rules! bail {
