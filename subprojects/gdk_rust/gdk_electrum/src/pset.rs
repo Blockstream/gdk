@@ -148,7 +148,7 @@ mod test {
             .to_string()
         );
         assert_eq!(
-            "el_err: a Bitcoin type encoding error: I/O error: failed to fill whole buffer",
+            "a Bitcoin type encoding error: I/O error: failed to fill whole buffer",
             extract_tx(&ExtractTxParam {
                 psbt_hex: "aa".to_string()
             })
@@ -204,15 +204,13 @@ mod test {
             asset_issuance: Default::default(),
             witness: Default::default(),
         });
-        assert_eq!(
-            "PSET and Tx mismatch",
-            merge_tx(&MergeTxParam {
-                psbt_hex,
-                transaction: serialize(&incorrect_tx).to_hex()
-            })
-            .unwrap_err()
-            .to_string()
-        );
+        assert!(merge_tx(&MergeTxParam {
+            psbt_hex,
+            transaction: serialize(&incorrect_tx).to_hex()
+        })
+        .unwrap_err()
+        .to_string()
+        .starts_with("PSET and Tx mismatch"));
     }
 
     #[test]
