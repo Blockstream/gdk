@@ -286,7 +286,7 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
         export AR=ar
         export CC=${XCODE_DEFAULT_PATH}/clang
         export CXX=${XCODE_DEFAULT_PATH}/clang++
-        export CFLAGS="${SDK_CFLAGS} -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 -O3 ${EXTRA_FLAGS} -fembed-bitcode"
+        export CFLAGS="${SDK_CFLAGS} -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 -O3 ${EXTRA_FLAGS}"
         export LDFLAGS="${SDK_LDFLAGS} -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 ${EXTRA_FLAGS}"
         if [ \( $BUILD = "--iphonesim" \)  -a \( "$(sw_vers -productVersion)" = "10.15" \) ]; then
             export DYLD_ROOT_PATH=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk

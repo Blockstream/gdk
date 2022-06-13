@@ -192,7 +192,7 @@ test_osx_clang:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --clang --lto=true
+    - NUM_JOBS=16 ./tools/build.sh --clang --lto=false
 
 release_osx_ios:
   extends: .ios_release
@@ -200,7 +200,7 @@ release_osx_ios:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphone static --lto=true --install $PWD/gdk-iphone
+    - NUM_JOBS=16 ./tools/build.sh --iphone static --lto=false --install $PWD/gdk-iphone
 
 release_osx_ios_sim:
   extends: .ios_sim_release
@@ -208,7 +208,7 @@ release_osx_ios_sim:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --lto=true --install $PWD/gdk-iphone-sim
+    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --lto=false --install $PWD/gdk-iphone-sim
 
 release_osx_ios_debug:
   extends: .ios_release
