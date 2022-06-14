@@ -25,7 +25,7 @@ pub fn get_transaction_hex(session: &ElectrumSession, input: &Value) -> Result<S
     session.get_transaction_hex(txid).map_err(Into::into)
 }
 
-pub fn create_transaction(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
+pub fn create_transaction(session: &mut ElectrumSession, input: Value) -> Result<Value, Error> {
     let mut create_tx: CreateTransaction = serde_json::from_value(input.clone())?;
 
     let res = session
@@ -36,9 +36,9 @@ pub fn create_transaction(session: &mut ElectrumSession, input: &Value) -> Resul
     Ok(match res {
         Err(ref err) => {
             warn!("err {:?}", err);
-            let mut input_cloned = input.clone();
-            input_cloned["error"] = err.to_gdk_code().into();
-            input_cloned
+            let mut input = input;
+            input["error"] = err.to_gdk_code().into();
+            input
         }
 
         Ok(v) => v,
