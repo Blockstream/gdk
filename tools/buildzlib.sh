@@ -28,8 +28,8 @@ if [ \( "$1" = "--ndk" \) ]; then
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
 
-    export CFLAGS="$SDK_CFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 -O3 $EXTRA_FLAGS"
-    export LDFLAGS="$SDK_LDFLAGS -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=11.0 $EXTRA_FLAGS"
+    export CFLAGS="$IOS_CFLAGS $EXTRA_FLAGS"
+    export LDFLAGS="$IOS_LDFLAGS $EXTRA_FLAGS"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
     ./configure --static --prefix="${MESON_BUILD_ROOT}/zlib/build"

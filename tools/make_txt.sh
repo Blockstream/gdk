@@ -17,10 +17,10 @@ if [ \( "$3" = "android" \) ]; then
 elif [ \( "$3" = "iphone" \) -o \( "$3" = "iphonesim" \) ]; then
     C_COMPILER="clang"
     CXX_COMPILER="clang++"
-    CFLAGS=$(comma_separate "-isysroot $IOS_SDK_PATH" "-stdlib=libc++" $SDK_CFLAGS_NO_ARCH "-miphoneos-version-min=11.0")
-    LDFLAGS=$(comma_separate "-isysroot $IOS_SDK_PATH" "-stdlib=libc++" $SDK_LDFLAGS "-miphoneos-version-min=11.0")
+    CFLAGS=$(comma_separate $IOS_CFLAGS "-stdlib=libc++")
+    LDFLAGS=$(comma_separate $IOS_LDFLAGS "-stdlib=libc++")
     if [ "$LTO" = "true" ]; then
-        CFLAGS=$(comma_separate $CFLAGS "-fembed-bitcode")
+        CFLAGS=$(comma_separate $IOS_CFLAGS "-stdlib=libc++" "-fembed-bitcode")
     fi
     ARCHS=$(comma_separate $ARCHS)
     HOST_SYSTEM="darwin"
