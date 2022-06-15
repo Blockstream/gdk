@@ -19,9 +19,6 @@ elif [ \( "$3" = "iphone" \) -o \( "$3" = "iphonesim" \) ]; then
     CXX_COMPILER="clang++"
     CFLAGS=$(comma_separate $IOS_CFLAGS "-stdlib=libc++")
     LDFLAGS=$(comma_separate $IOS_LDFLAGS "-stdlib=libc++")
-    if [ "$LTO" = "true" ]; then
-        CFLAGS=$(comma_separate $IOS_CFLAGS "-stdlib=libc++" "-fembed-bitcode")
-    fi
     ARCHS=$(comma_separate $ARCHS)
     HOST_SYSTEM="darwin"
 elif [ \( "$3" = "windows" \) ]; then

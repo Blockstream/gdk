@@ -23,11 +23,6 @@ if (($# > 0)); then
     shift
 fi
 
-if [ "$LTO" = "true" ]; then
-    EXTRA_COMPILE_FLAGS="<compileflags>-flto"
-    EXTRA_LINK_FLAGS="<linkflags>-flto"
-fi
-
 if [ ! -d "${MESON_BUILD_ROOT}/boost" ]; then
     cp -r "${MESON_SOURCE_ROOT}/subprojects/${BOOST_NAME}" "${MESON_BUILD_ROOT}/boost"
 fi
@@ -119,10 +114,6 @@ else
 
     EXTRAFLAGS=""
     LINKFLAGS=""
-    if [ "$LTO" = "true" ]; then
-        EXTRAFLAGS="-flto"
-        LINKFLAGS="linkflags=-flto"
-    fi
 
     cxxflags="$SDK_CFLAGS $EXTRAFLAGS -DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread --with-toolset=${TOOLSET}

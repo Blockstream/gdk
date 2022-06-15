@@ -14,7 +14,6 @@ freebsd_requires_gold = is_freebsd and is_clang
 use_gold = (build_machine.system() == 'linux' or freebsd_requires_gold) and not cross_win_build and not cross_android_build
 debug_optimized = get_option('buildtype') == 'debugoptimized'
 debug = debug_optimized or get_option('buildtype') == 'debug'
-lto = get_option('lto')
 
 # header checks (must be architecture independent)
 check_headers = [
@@ -38,11 +37,6 @@ add_project_arguments(['-Wno-deprecated-declarations', '-funsigned-char'], langu
 static_libstdc = compiler.has_link_argument('-static-libstdc++')
 
 # language related arguments
-if lto
-    add_project_arguments(['-flto'], language : 'cpp')
-    add_project_link_arguments(['-flto'], language : 'cpp')
-endif
-
 if use_gold
     if is_clang and not is_freebsd and compiler.has_link_argument('-fuse-ld=lld')
         add_project_link_arguments(['-fuse-ld=lld', '-ldl'], language : 'cpp')

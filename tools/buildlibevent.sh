@@ -9,10 +9,6 @@ fi
 
 cd "${MESON_BUILD_ROOT}/libevent"
 
-if [ "$LTO" = "true" ]; then
-    EXTRA_FLAGS="-flto"
-fi
-
 CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/libevent/build --enable-static --disable-samples --disable-openssl --disable-shared --disable-libevent-regress --disable-debug-mode --disable-dependency-tracking"
 sh autogen.sh
 

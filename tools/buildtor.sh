@@ -19,10 +19,6 @@ CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/tor/build --disable-system-torrc --
                 ac_cv_c_bigendian=no --disable-unittests --disable-tool-name-check --disable-module-dirauth \
                 --disable-libscrypt --disable-rust"
 
-if [ "$LTO" = "true" ]; then
-    EXTRA_FLAGS="-flto"
-fi
-
 # patch for autoconf >= 2.70
 sed -ie "s!^AC_PROG_CC_C99!!" configure.ac
 

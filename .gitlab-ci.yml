@@ -132,32 +132,32 @@ gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --lto=false
+    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=false
+    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
 
 gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --lto=false
+    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --lto=false
+    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --lto=false
+    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
 
 test_rust:
   tags:
@@ -192,7 +192,7 @@ test_osx_clang:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --clang --lto=false
+    - NUM_JOBS=16 ./tools/build.sh --clang
 
 release_osx_ios:
   extends: .ios_release
@@ -200,7 +200,7 @@ release_osx_ios:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphone static --lto=false --install $PWD/gdk-iphone
+    - NUM_JOBS=16 ./tools/build.sh --iphone static --install $PWD/gdk-iphone
 
 release_osx_ios_sim:
   extends: .ios_sim_release
@@ -208,7 +208,7 @@ release_osx_ios_sim:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --lto=false --install $PWD/gdk-iphone-sim
+    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --install $PWD/gdk-iphone-sim
 
 release_osx_ios_debug:
   extends: .ios_release
@@ -217,7 +217,7 @@ release_osx_ios_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphone static --lto=false --buildtype=debug --install $PWD/gdk-iphone
+    - NUM_JOBS=16 ./tools/build.sh --iphone static --buildtype=debug --install $PWD/gdk-iphone
 
 release_osx_ios_sim_debug:
   extends: .ios_sim_release
@@ -226,7 +226,7 @@ release_osx_ios_sim_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --lto=false --buildtype=debug --install $PWD/gdk-iphone-sim
+    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --buildtype=debug --install $PWD/gdk-iphone-sim
 
 test_osx_clang_ndk_armeabi-v7a:
   only:

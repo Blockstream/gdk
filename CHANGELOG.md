@@ -26,6 +26,7 @@
 
 - Removed GA_get_mnemonic_passphrase, callers should use GA_get_credentials.
 - Removed GA_set_pin, callers should use GA_encrypt_with_pin.
+- Removed LTO and bitcode building flags.
 
 
 ## Release 0.0.54 - 2022-05-13

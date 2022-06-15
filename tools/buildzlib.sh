@@ -9,10 +9,6 @@ fi
 
 cd "${MESON_BUILD_ROOT}/zlib"
 
-if [ "$LTO" = "true" ]; then
-    EXTRA_FLAGS="-flto"
-fi
-
 if [ \( "$1" = "--ndk" \) ]; then
     . ${MESON_SOURCE_ROOT}/tools/env.sh
 

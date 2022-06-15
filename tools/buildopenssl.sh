@@ -19,10 +19,6 @@ OPENSSL_NAME="openssl-OpenSSL_1_1_1n"
 OPENSSL_OPTIONS="enable-ec_nistp_64_gcc_128 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
 OPENSSL_MOBILE="no-hw no-engine"
 
-if [ "$LTO" = "true" ]; then
-    OPENSSL_OPTIONS="$OPENSSL_OPTIONS -flto"
-fi
-
 if [ ! -d "${MESON_BUILD_ROOT}/openssl" ]; then
     cp -r "${MESON_SOURCE_ROOT}/subprojects/${OPENSSL_NAME}" "${MESON_BUILD_ROOT}/openssl"
 fi
@@ -58,9 +54,6 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     else
         CONFIG_TARGET="ios64-cross"
         NOASM=
-    fi
-    if [ "$LTO" = "true" ]; then
-        OPENSSL_OPTIONS="$OPENSSL_OPTIONS -fembed-bitcode"
     fi
     KERNEL_BITS=64 ./Configure $CONFIG_TARGET $NOASM --prefix=$openssl_prefix $OPENSSL_OPTIONS $OPENSSL_MOBILE
     make depend

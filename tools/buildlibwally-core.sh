@@ -49,10 +49,6 @@ if [ "${BUILDTYPE}" = "debug" ]; then
     CONFIGURE_ARGS="${CONFIGURE_ARGS} --enable-debug"
 fi
 
-if [ "{$LTO}" = "true" ]; then
-    EXTRA_FLAGS="-flto"
-fi
-
 if [ "$2" = "--asan" ]; then
     EXTRA_FLAGS="${EXTRA_FLAGS} -fsanitize=address"
 fi

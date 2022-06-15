@@ -22,7 +22,6 @@ COMPILER_VERSION=""
 BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
-LTO="false"
 CCACHE="$(which ccache)" || CCACHE=""
 
 GETOPT='getopt'
@@ -69,7 +68,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,lto:,clang-tidy-version:,disableccache,python-version: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,clang-tidy-version:,disableccache,python-version: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -82,7 +81,6 @@ while true; do
         --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
         --compiler-version) COMPILER_VERSION="-$2"; shift 2 ;;
-        --lto) MESON_OPTIONS="$MESON_OPTIONS -Db_lto=$2"; LTO="$2"; shift 2 ;;
         --clang-tidy-version) MESON_OPTIONS="$MESON_OPTIONS -Dclang-tidy-version=-$2"; NINJA_TARGET="src/clang-tidy"; shift 2 ;;
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
         --disableccache) CCACHE="" ; shift ;;
@@ -288,9 +286,6 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
         export CXX=${XCODE_DEFAULT_PATH}/clang++
         export CFLAGS="${IOS_CFLAGS} ${EXTRA_FLAGS}"
         export LDFLAGS="${IOS_LDFLAGS} ${EXTRA_FLAGS}"
-        if [ "$LTO" = "true" ]; then
-            export CFLAGS="$CFLAGS -fembed-bitcode"
-        fi
         if [ ! -f "build-clang-$1-$2/build.ninja" ]; then
             rm -rf build-clang-$1-$2/meson-private
             mkdir -p build-clang-$1-$2
