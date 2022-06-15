@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.0.54.post1
+
+- Singlesig: GA_get_unspent_outputs: fix bug returning utxos from replaced transactions.
+
+
 ## Release 0.0.54 - 2022-05-13
 
 ### Added
