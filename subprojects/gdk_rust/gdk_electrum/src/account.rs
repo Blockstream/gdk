@@ -625,7 +625,11 @@ impl Account {
         let mut inputs = HashSet::new();
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
-        for txe in acc_store.all_txs.values() {
+        for (txid, txe) in acc_store.all_txs.iter() {
+            if !acc_store.heights.contains_key(&txid) {
+                // transaction has been replaced or dropped out of mempool
+                continue;
+            }
             inputs.extend(txe.tx.previous_outputs());
             for vout in 0..(txe.tx.output_len() as u32) {
                 let script_pubkey = txe.tx.output_script(vout);

@@ -18,6 +18,10 @@
 - Singlesig: Remove is_segwit from GA_get_unspent_outputs returned json
 - GA_register_user: Change interface to match GA_login_user.
 
+### Fixed
+
+- GA_get_unspent_outputs: fix bug returning utxos from replaced transactions.
+
 ### Removed
 
 - Removed GA_get_mnemonic_passphrase, callers should use GA_get_credentials.

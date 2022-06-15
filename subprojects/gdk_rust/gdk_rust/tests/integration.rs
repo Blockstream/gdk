@@ -1258,6 +1258,9 @@ fn rbf() {
     let txid1 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
     test_session.wait_tx(vec![1], &txid1, Some(signed_tx.fee), Some(TransactionType::Redeposit));
     let txitem = test_session.get_tx_from_list(1, &txid1);
+    assert!(test_session.utxos(1).0.get("btc").unwrap().iter().any(|e| e.txhash == txid1));
+    assert_eq!(test_session.balance_account(1, None, None), sat - txitem.fee);
+
     assert_eq!(txitem.fee_rate / 1000, 25);
 
     // Replace it
@@ -1279,6 +1282,8 @@ fn rbf() {
     for i in 0..60 {
         std::thread::sleep(std::time::Duration::from_secs(1));
         if test_session.get_tx_list(1).iter().all(|e| e.txhash != txid1) {
+            assert!(test_session.utxos(1).0.get("btc").unwrap().iter().all(|e| e.txhash != txid1));
+            assert_eq!(test_session.balance_account(1, None, None), sat - txitem.fee);
             break;
         }
         assert!(i < 59, "timeout waiting for replaced transaction to disappear");
