@@ -132,3 +132,16 @@ pub fn get_file(network: ElementsNetwork, t: AssetsOrIcons) -> Result<MutexGuard
         }
     }
 }
+
+/// Get access to the cache file relative to a specific network.
+pub fn get_cache(network: ElementsNetwork) -> Result<MutexGuard<'static, File>> {
+    unsafe {
+        match CACHE_FILES.as_ref() {
+            Some(files) => {
+                Ok(files.get(&network).expect("all cache files are initialized").lock()?)
+            }
+
+            None => Err(Error::RegistryUninitialized),
+        }
+    }
+}
