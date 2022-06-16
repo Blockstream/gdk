@@ -2,12 +2,6 @@
 
 # Updating Hardcoded data
 
-rename the bin directory
-
-```
-mv src/bin_ src/bin
-```
-
 launch the executable
 
 ```
