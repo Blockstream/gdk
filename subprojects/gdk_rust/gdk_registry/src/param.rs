@@ -93,6 +93,15 @@ impl RefreshAssetsParam {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct GetAssetsInfoParams {
     assets_id: Vec<AssetId>,
+
+    // TODO: implement this
+    #[serde(default)]
+    /// A key used to access the encrypted asset's cache.
+    encription_key: String,
+
+    /// Optional configuration for network used and registry connection
+    #[serde(default)]
+    pub config: Config,
 }
 
 /// Discriminate the elements network

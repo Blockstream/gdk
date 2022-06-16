@@ -25,8 +25,9 @@
 
 use hard::{hard_coded_assets, hard_coded_icons};
 use log::{debug, info, warn};
+use std::time::Instant;
 
-pub use error::Error;
+pub use error::{Error, Result};
 pub use file::ValueModified;
 pub use hard::policy_asset_id;
 pub use inner::init;
@@ -50,8 +51,8 @@ mod result;
 /// and no proxy is used to access it. This default configuration could be overridden by providing
 /// the `details.config` parameter.
 ///
-pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResult, Error> {
-    let now = std::time::Instant::now();
+pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResult> {
+    let now = Instant::now();
     let network = details.network();
     let mut return_value = RefreshAssetsResult::default();
     let agent = details.agent()?;
@@ -108,10 +109,17 @@ pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResul
     Ok(return_value)
 }
 
-///
-/// TODO: docs
-///
-pub fn get_assets_info(_params: &GetAssetsInfoParams) -> Result<RefreshAssetsResult, Error> {
+pub fn get_assets_info(_params: &GetAssetsInfoParams) -> Result<RefreshAssetsResult> {
+    // TODO: time measurements should be done at the root of the call in
+    // `gdk_rust`, not here.
+    let start = Instant::now();
+
+    //
+    //
+    //
+
+    info!("`get_assets_info` took {:?}", start.elapsed());
+
     Ok(RefreshAssetsResult::default())
 }
 

@@ -4,6 +4,9 @@ use std::{
     sync::{MutexGuard, PoisonError},
 };
 
+/// Custom `Result`.
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// Contains all the error variants possibly happening in this library
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
