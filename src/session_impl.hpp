@@ -68,6 +68,7 @@ namespace sdk {
         virtual void reconnect_hint(const nlohmann::json& hint);
         // Get the tor or user connection proxy address
         nlohmann::json get_proxy_settings() const;
+        nlohmann::json get_registry_config() const;
 
         virtual void connect() = 0;
         virtual void disconnect() = 0;

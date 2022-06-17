@@ -145,12 +145,8 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json session_impl::refresh_assets(const nlohmann::json& params)
+    nlohmann::json session_impl::get_registry_config() const
     {
-        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
-
-        nlohmann::json p = params;
-
         nlohmann::json config = nlohmann::json::object();
         config["proxy"] = get_proxy_settings()["proxy"];
         config["url"] = m_net_params.get_registry_connection_string();
@@ -161,7 +157,16 @@ namespace sdk {
         } else {
             config["network"] = "liquid-testnet";
         }
-        p["config"] = config;
+        return config;
+    }
+
+    nlohmann::json session_impl::refresh_assets(const nlohmann::json& params)
+    {
+        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
+
+        nlohmann::json p = params;
+
+        p["config"] = get_registry_config();
 
         nlohmann::json result;
         try {
@@ -180,7 +185,8 @@ namespace sdk {
 
         nlohmann::json p = params;
 
-        // Add `config` field?
+        p["xpub"] = get_nonnull_signer()->get_bip32_xpub(std::vector<uint32_t>());
+        p["config"] = get_registry_config();
 
         try {
             return rust_call("get_assets", p);
