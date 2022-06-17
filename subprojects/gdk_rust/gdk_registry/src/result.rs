@@ -18,6 +18,38 @@ pub struct RefreshAssetsResult {
     pub icons: HashMap<AssetId, String>,
 }
 
+impl RefreshAssetsResult {
+    /// TODO: better docs
+    /// Filters `self` against a vector of `AssetId`s, only keeping the
+    /// `assets` and `icons` that match an `AssetId`. Returns a vector
+    /// containing all the `AssetId`s that were not found??
+    pub fn filter(&mut self, mut query: Vec<AssetId>) -> Vec<AssetId> {
+        // TODO: use this once `drain_filter` is stable.
+        // let not_found = query.drain_filter(|id| !self.assets.contains_key(id)).collect::<Vec<_>>();
+
+        let mut not_found = Vec::with_capacity(query.len());
+        let mut i = 0;
+        while i < query.len() {
+            if !self.assets.contains_key(&query[i]) {
+                not_found.push(query.swap_remove(i));
+            } else {
+                i += 1;
+            }
+        }
+
+        self.assets.retain(|id, _| query.contains(&id));
+        self.icons.retain(|id, _| query.contains(&id));
+
+        not_found
+    }
+
+    /// TODO: docs
+    pub fn extend(&mut self, other: Self) {
+        self.assets.extend(other.assets);
+        self.icons.extend(other.icons);
+    }
+}
+
 /// Contains information about an asset, including its asset id, the contract defining its
 /// property, and information about the transaction that issued the asset.
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]

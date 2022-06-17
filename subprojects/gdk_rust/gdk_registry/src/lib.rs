@@ -51,14 +51,14 @@ mod result;
 /// and no proxy is used to access it. This default configuration could be overridden by providing
 /// the `details.config` parameter.
 ///
-pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResult> {
+pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RefreshAssetsResult> {
     let now = Instant::now();
     let network = details.network();
     let mut return_value = RefreshAssetsResult::default();
     let agent = details.agent()?;
     for what in details.asked()? {
         let mut file = inner::get_file(network, what)?;
-        let file_value = file::read(&mut file)?;
+        let file_value = file::read::<ValueModified>(&mut file)?;
         let value = match agent.as_ref() {
             Some(agent) => {
                 let response_value =
@@ -109,18 +109,53 @@ pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResul
     Ok(return_value)
 }
 
-pub fn get_assets_info(_params: &GetAssetsInfoParams) -> Result<RefreshAssetsResult> {
+///
+/// TODO: docs
+///
+pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RefreshAssetsResult> {
     // TODO: time measurements should be done at the root of the call in
     // `gdk_rust`, not here.
     let start = Instant::now();
 
-    //
-    //
-    //
+    let mut file = inner::get_cache(params.config.network)?;
+    let mut cache = file::read::<RefreshAssetsResult>(&mut file)?;
+
+    debug!("`get_assets_info` received cache {:?}", cache);
+
+    let GetAssetsInfoParams {
+        assets_id,
+        encryption_key: _,
+        config,
+    } = params;
+
+    let not_found = cache.filter(assets_id);
+
+    if !not_found.is_empty() {
+        debug!("the following assets were not found in the cache: {:?}", not_found);
+
+        let params = RefreshAssetsParam {
+            assets: true,
+            icons: true,
+            refresh: false,
+            config,
+        };
+
+        let mut full_registry = refresh_assets(params)?;
+        let still_not_found = full_registry.filter(not_found);
+
+        if !still_not_found.is_empty() {
+            debug!("the following assets were not found in the registry: {:?}", still_not_found);
+        }
+
+        debug!("adding new entries to cache: {:?}", full_registry);
+        cache.extend(full_registry);
+
+        file::write(&cache, &mut file)?;
+    }
 
     info!("`get_assets_info` took {:?}", start.elapsed());
 
-    Ok(RefreshAssetsResult::default())
+    Ok(cache)
 }
 
 #[cfg(test)]
@@ -142,7 +177,7 @@ mod test {
         init(&temp_dir).unwrap();
 
         let r = |refresh, assets, icons| {
-            refresh_assets(&RefreshAssetsParam {
+            refresh_assets(RefreshAssetsParam {
                 assets,
                 icons,
                 refresh,

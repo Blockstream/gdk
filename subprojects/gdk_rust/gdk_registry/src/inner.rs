@@ -99,14 +99,15 @@ fn init_cache<P: AsRef<Path>>(registry_dir: P) -> Result<()> {
             .map(|network| {
                 // TODO: create one cache file per wallet.
                 // TODO: encrypt cache.
-                let path = registry_dir.as_ref().join(network.to_string()).join("users-cache.json");
-                let file = OpenOptions::new().write(true).read(true).create(true).open(&path)?;
+                let path = registry_dir.as_ref().join(network.to_string()).join("user");
+                let exists = path.exists();
+                let mut file =
+                    OpenOptions::new().write(true).read(true).create(true).open(&path)?;
 
-                if !path.exists() {
-                    serde_json::to_writer(&file, &RefreshAssetsResult::default())?;
-                    // let contents = serde_json::to_string(&RefreshAssetsResult::default())?;
-                    // std::fs::write(path, contents)?;
+                if !exists {
+                    file::write(&RefreshAssetsResult::default(), &mut file)?;
                 }
+
                 Ok((network, Mutex::new(file)))
             })
             .collect::<Result<HashMap<ElementsNetwork, Mutex<File>>>>()?;

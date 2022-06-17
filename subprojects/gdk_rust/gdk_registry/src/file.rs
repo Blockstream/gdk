@@ -1,7 +1,7 @@
 use crate::{AssetEntry, Error};
 use elements::AssetId;
 use log::{info, log_enabled, Level};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::{
@@ -22,7 +22,7 @@ pub struct ValueModified {
     pub value: Value,
 }
 
-pub(crate) fn read(file: &mut File) -> Result<ValueModified, Error> {
+pub(crate) fn read<V: DeserializeOwned>(file: &mut File) -> Result<V, Error> {
     file.seek(std::io::SeekFrom::Start(0))?;
     if log_enabled!(Level::Info) {
         info!("file {:?} size {}", &file, file.metadata()?.len());
@@ -31,10 +31,10 @@ pub(crate) fn read(file: &mut File) -> Result<ValueModified, Error> {
     Ok(serde_cbor::from_reader(buffered)?)
 }
 
-pub(crate) fn write(value: &ValueModified, file: &mut File) -> Result<(), Error> {
+pub(crate) fn write<V: Serialize>(value: &V, file: &mut File) -> Result<(), Error> {
     file.seek(std::io::SeekFrom::Start(0))?;
     let buffered = BufWriter::new(file);
-    Ok(serde_cbor::to_writer(buffered, &value)?)
+    Ok(serde_cbor::to_writer(buffered, value)?)
 }
 
 impl ValueModified {
