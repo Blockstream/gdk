@@ -19,31 +19,27 @@ pub struct RefreshAssetsResult {
 }
 
 impl RefreshAssetsResult {
-    /// TODO: better docs
-    /// Filters `self` against a vector of `AssetId`s, only keeping the
-    /// `assets` and `icons` that match an `AssetId`. Returns a vector
-    /// containing all the `AssetId`s that were not found??
-    pub fn filter(&mut self, mut query: Vec<AssetId>) -> Vec<AssetId> {
-        // TODO: use this once `drain_filter` is stable.
-        // let not_found = query.drain_filter(|id| !self.assets.contains_key(id)).collect::<Vec<_>>();
-
-        let mut not_found = Vec::with_capacity(query.len());
-        let mut i = 0;
-        while i < query.len() {
-            if !self.assets.contains_key(&query[i]) {
-                not_found.push(query.swap_remove(i));
-            } else {
-                i += 1;
-            }
-        }
-
-        self.assets.retain(|id, _| query.contains(&id));
-        self.icons.retain(|id, _| query.contains(&id));
-
-        not_found
+    /// TODO: docs
+    pub fn split_present<Q>(&self, assets: Q) -> (Vec<AssetId>, Vec<AssetId>)
+    where
+        Q: IntoIterator<Item = AssetId>,
+    {
+        assets.into_iter().partition(|id| self.contains(id))
     }
 
-    /// TODO: docs
+    /// Filters `self` against a group of `AssetId`s, only keeping the
+    /// `assets` and `icons` that match an `AssetId`.
+    pub fn filter(&mut self, query: &[AssetId]) {
+        self.assets.retain(|id, _| query.contains(&id));
+        self.icons.retain(|id, _| query.contains(&id));
+    }
+
+    /// Returns whether the assets contain a certain `AssetId`.
+    pub fn contains(&self, asset: &AssetId) -> bool {
+        self.assets.contains_key(asset)
+    }
+
+    /// Extends `self` with the contents of another ??
     pub fn extend(&mut self, other: Self) {
         self.assets.extend(other.assets);
         self.icons.extend(other.icons);

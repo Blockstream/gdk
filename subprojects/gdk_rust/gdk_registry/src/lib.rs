@@ -128,30 +128,45 @@ pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RefreshAssetsResul
         config,
     } = params;
 
-    let not_found = cache.filter(assets_id);
+    // Split the asset id's based on whether they are already contained in the
+    // cache.
+    let (mut found, not_found) = cache.split_present(assets_id);
 
-    if !not_found.is_empty() {
-        debug!("the following assets were not found in the cache: {:?}", not_found);
-
-        let params = RefreshAssetsParam {
-            assets: true,
-            icons: true,
-            refresh: false,
-            config,
-        };
-
-        let mut full_registry = refresh_assets(params)?;
-        let still_not_found = full_registry.filter(not_found);
-
-        if !still_not_found.is_empty() {
-            debug!("the following assets were not found in the registry: {:?}", still_not_found);
-        }
-
-        debug!("adding new entries to cache: {:?}", full_registry);
-        cache.extend(full_registry);
-
-        file::write(&cache, &mut file)?;
+    if not_found.is_empty() {
+        cache.filter(&found);
+        return Ok(cache);
     }
+
+    debug!("the following assets were not found in the cache: {:?}", not_found);
+
+    let params = RefreshAssetsParam {
+        assets: true,
+        icons: true,
+        refresh: false,
+        config,
+    };
+
+    let mut registry = refresh_assets(params)?;
+    let (found_in_registry, still_not_found) = registry.split_present(not_found);
+
+    if !still_not_found.is_empty() {
+        debug!("the following assets were not found in the registry: {:?}", still_not_found);
+        // TODO: add `still_not_found` to the cache under a `missing` key to
+        // avoid retriggering a full registry read if asked for that same asset
+        // again.
+    }
+
+    if !found_in_registry.is_empty() {
+        registry.filter(&found_in_registry);
+
+        debug!("adding these new entries to the cache: {:?}", registry);
+        cache.extend(registry);
+        file::write(&cache, &mut file)?;
+
+        found.extend(found_in_registry);
+    }
+
+    cache.filter(&found);
 
     info!("`get_assets_info` took {:?}", start.elapsed());
 
