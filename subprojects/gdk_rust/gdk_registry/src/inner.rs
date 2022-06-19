@@ -121,7 +121,10 @@ fn init_cache<P: AsRef<Path>>(registry_dir: P) -> Result<()> {
 }
 
 /// Only way to access `File`s containing the global registry information.
-pub fn get_file(network: ElementsNetwork, t: AssetsOrIcons) -> Result<MutexGuard<'static, File>> {
+pub fn get_full_registry(
+    network: ElementsNetwork,
+    t: AssetsOrIcons,
+) -> Result<MutexGuard<'static, File>> {
     unsafe {
         match REGISTRY_FILES.as_ref() {
             Some(registry_files) => Ok(registry_files

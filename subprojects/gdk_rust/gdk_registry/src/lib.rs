@@ -57,7 +57,7 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
     let mut return_value = RegistryResult::default();
     let agent = details.agent()?;
     for what in details.asked()? {
-        let mut file = inner::get_file(network, what)?;
+        let mut file = inner::get_full_registry(network, what)?;
         let file_value = file::read::<ValueModified>(&mut file)?;
         let value = match agent.as_ref() {
             Some(agent) => {
