@@ -506,6 +506,10 @@ public class Session {
         return try jsonFuncToJsonWrapper(input: params, fun: GA_refresh_assets)
     }
 
+    public func getAssetsInfo(params: [String: Any]) throws -> [String: Any]? {
+        return try jsonFuncToJsonWrapper(input: params, fun: GA_get_assets_info)
+    }
+
     public func validateAssetDomainName(params: [String: Any]) throws -> [String: Any]? {
         return try jsonFuncToJsonWrapper(input: params, fun: GA_validate_asset_domain_name)
     }

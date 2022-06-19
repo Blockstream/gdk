@@ -233,6 +233,14 @@ namespace sdk {
         });
     }
 
+    nlohmann::json session::get_assets_info(const nlohmann::json& params)
+    {
+        return exception_wrapper([&] {
+            auto p = get_nonnull_impl();
+            return p->get_assets_info(params);
+        });
+    }
+
     nlohmann::json session::validate_asset_domain_name(const nlohmann::json& params)
     {
         return exception_wrapper([&] {

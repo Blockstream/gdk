@@ -30,7 +30,7 @@ pub use error::Error;
 pub use file::ValueModified;
 pub use hard::policy_asset_id;
 pub use inner::init;
-pub use param::{AssetsOrIcons, ElementsNetwork, RefreshAssetsParam};
+pub use param::{AssetsOrIcons, ElementsNetwork, GetAssetsInfoParams, RefreshAssetsParam};
 pub use result::{AssetEntry, RefreshAssetsResult};
 
 mod error;
@@ -106,6 +106,13 @@ pub fn refresh_assets(details: &RefreshAssetsParam) -> Result<RefreshAssetsResul
     }
     info!("refresh_assets took: {:?}", now.elapsed());
     Ok(return_value)
+}
+
+///
+/// TODO: docs
+///
+pub fn get_assets_info(_params: &GetAssetsInfoParams) -> Result<RefreshAssetsResult, Error> {
+    Ok(RefreshAssetsResult::default())
 }
 
 #[cfg(test)]

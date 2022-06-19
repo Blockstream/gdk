@@ -459,9 +459,12 @@ fn handle_session_call(
             .map(|v| json!(v))
             .map_err(Into::into),
 
+        // Why is `refresh_assets` defined here if it doesn't depend on the
+        // current `session`?
         "refresh_assets" => gdk_registry::refresh_assets(&serde_json::from_value(input)?)
             .map(|v| json!(v))
             .map_err(Into::into),
+
         "get_unspent_outputs" => session
             .get_unspent_outputs(&serde_json::from_value(input)?)
             .map(|v| json!(v))
@@ -582,6 +585,11 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             let param: gdk_registry::RefreshAssetsParam = serde_json::from_str(input)?;
             Ok(to_string(&gdk_registry::refresh_assets(&param)?))
         }
+        "get_assets_info" => {
+            let params: gdk_registry::GetAssetsInfoParams = serde_json::from_str(input)?;
+            Ok(to_string(&gdk_registry::get_assets_info(&params)?))
+        }
+
         _ => Err(Error::MethodNotFound {
             method: method.to_string(),
             in_session: false,

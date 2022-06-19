@@ -1,4 +1,5 @@
 use crate::Error;
+use elements::AssetId;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
@@ -88,6 +89,12 @@ impl RefreshAssetsParam {
     }
 }
 
+/// TODO: docs
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct GetAssetsInfoParams {
+    assets_id: Vec<AssetId>,
+}
+
 /// Discriminate the elements network
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ElementsNetwork {
@@ -103,6 +110,7 @@ pub enum ElementsNetwork {
     #[serde(rename = "elements-regtest")]
     ElementsRegtest,
 }
+
 impl Display for ElementsNetwork {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ElementsNetwork::*;
@@ -113,6 +121,7 @@ impl Display for ElementsNetwork {
         }
     }
 }
+
 impl FromStr for ElementsNetwork {
     type Err = Error;
 
@@ -126,6 +135,7 @@ impl FromStr for ElementsNetwork {
         }
     }
 }
+
 impl ElementsNetwork {
     /// Iterate over all variants of this enum
     pub fn iter() -> impl Iterator<Item = Self> {

@@ -194,6 +194,19 @@ GDK_API int GA_http_request(struct GA_session* session, const GA_json* params, G
 GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
+ *
+ * TODO
+ *
+ * :param session: The session to use.
+ * :param params: TODO
+ * :param output: TODO
+ *|     Returned GA_json should be freed using `GA_destroy_json`.
+ *
+ * TODO
+ */
+GDK_API int GA_get_assets_info(struct GA_session* session, const GA_json* params, GA_json** output);
+
+/**
  * Validate asset domain name.
  * (This is a interface stub)
  *
