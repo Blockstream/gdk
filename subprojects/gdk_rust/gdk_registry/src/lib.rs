@@ -32,7 +32,7 @@ pub use file::ValueModified;
 pub use hard::policy_asset_id;
 pub use inner::init;
 pub use param::{AssetsOrIcons, ElementsNetwork, GetAssetsInfoParams, RefreshAssetsParam};
-pub use result::{AssetEntry, RefreshAssetsResult};
+pub use result::{AssetEntry, RegistryResult};
 
 mod error;
 mod file;
@@ -51,10 +51,10 @@ mod result;
 /// and no proxy is used to access it. This default configuration could be overridden by providing
 /// the `details.config` parameter.
 ///
-pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RefreshAssetsResult> {
+pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
     let now = Instant::now();
     let network = details.network();
-    let mut return_value = RefreshAssetsResult::default();
+    let mut return_value = RegistryResult::default();
     let agent = details.agent()?;
     for what in details.asked()? {
         let mut file = inner::get_file(network, what)?;
@@ -112,13 +112,13 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RefreshAssetsResult
 ///
 /// TODO: docs
 ///
-pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RefreshAssetsResult> {
+pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     // TODO: time measurements should be done at the root of the call in
     // `gdk_rust`, not here.
     let start = Instant::now();
 
     let mut file = inner::get_cache(params.config.network)?;
-    let mut cache = file::read::<RefreshAssetsResult>(&mut file)?;
+    let mut cache = file::read::<RegistryResult>(&mut file)?;
 
     debug!("`get_assets_info` received cache {:?}", cache);
 

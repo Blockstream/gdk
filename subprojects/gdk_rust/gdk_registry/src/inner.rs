@@ -3,7 +3,7 @@
 //! by a `Mutex`
 
 use crate::hard::hard_coded_values;
-use crate::result::RefreshAssetsResult;
+use crate::result::RegistryResult;
 use crate::{file, AssetsOrIcons, ElementsNetwork, Error, Result, ValueModified};
 use std::fs::OpenOptions;
 use std::path::Path;
@@ -105,7 +105,7 @@ fn init_cache<P: AsRef<Path>>(registry_dir: P) -> Result<()> {
                     OpenOptions::new().write(true).read(true).create(true).open(&path)?;
 
                 if !exists {
-                    file::write(&RefreshAssetsResult::default(), &mut file)?;
+                    file::write(&RegistryResult::default(), &mut file)?;
                 }
 
                 Ok((network, Mutex::new(file)))

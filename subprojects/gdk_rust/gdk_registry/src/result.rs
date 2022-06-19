@@ -10,7 +10,7 @@ use crate::Error;
 /// If `refresh` field in the param is `true` this information is the most
 /// up-to-date for the asset registry used.
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
-pub struct RefreshAssetsResult {
+pub struct RegistryResult {
     /// Assets metadata
     pub assets: HashMap<AssetId, AssetEntry>,
 
@@ -18,7 +18,7 @@ pub struct RefreshAssetsResult {
     pub icons: HashMap<AssetId, String>,
 }
 
-impl RefreshAssetsResult {
+impl RegistryResult {
     /// TODO: docs
     pub fn split_present<Q>(&self, assets: Q) -> (Vec<AssetId>, Vec<AssetId>)
     where
@@ -195,7 +195,7 @@ mod test {
             icons.insert(AssetId::default(), "BASE64".into());
             icons
         };
-        let mut r = RefreshAssetsResult {
+        let mut r = RegistryResult {
             assets,
             icons,
         };
