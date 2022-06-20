@@ -579,14 +579,20 @@ namespace sdk {
 
                 // Add all outputs and compute the total amount of satoshi to be sent
                 amount required_total{ 0 };
+                uint32_t greedy_index = NO_CHANGE_INDEX;
 
                 if (num_addressees) {
+                    int addressee_index = 0;
                     for (auto& addressee : *addressees_p) {
                         const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
                         if (addressee_asset_id == asset_id) {
                             required_total += add_tx_addressee(session, net_params, result, tx, addressee);
                             reordered_addressees.push_back(addressee);
+                            if (addressee.value("is_greedy", false)) {
+                                greedy_index = addressee_index;
+                            }
                         }
+                        ++addressee_index;
                     }
                 }
 
@@ -723,11 +729,7 @@ namespace sdk {
                             // so compute what we can send (everything minus the
                             // fee) and exit the loop
                             required_total = available_total - fee;
-                            if (is_liquid) {
-                                set_tx_output_commitment(tx, 0, asset_id, required_total.value());
-                            } else {
-                                tx->outputs[0].satoshi = required_total.value();
-                            }
+                            set_tx_output_value(net_params, tx, 0, asset_id, required_total.value());
                             if (num_addressees == 1u) {
                                 addressees_p->at(0)["satoshi"] = required_total.value();
                             }
@@ -755,6 +757,14 @@ namespace sdk {
                     }
 
                     change = total - required_with_fee;
+
+                    if (change != 0 && greedy_index != NO_CHANGE_INDEX) {
+                        // If a 'greedy' addressee exists send change there
+                        set_tx_output_value(net_params, tx, greedy_index, asset_id, change.value());
+                        addressees_p->at(greedy_index)["satoshi"] = change.value();
+                        required_total += change;
+                        continue;
+                    }
 
                     if ((!have_change_output && change < dust_threshold)
                         || (have_change_output && change >= dust_threshold)) {

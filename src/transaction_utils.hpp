@@ -92,6 +92,9 @@ namespace sdk {
     amount add_tx_addressee(session_impl& session, const network_parameters& net_params, nlohmann::json& result,
         wally_tx_ptr& tx, nlohmann::json& addressee);
 
+    void set_tx_output_value(const network_parameters& net_params, wally_tx_ptr& tx, uint32_t index,
+        const std::string& asset_id, amount::value_type satoshi);
+
     vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,
         const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs);
 
