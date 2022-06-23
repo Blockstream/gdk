@@ -16,108 +16,122 @@ const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
-macro_rules! initialize {
-    ($body:expr) => {{
-        /// By having the static `STATE` inside the function, it cannot be
-        /// accessed out of this fn.
-        static STATE: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
-
-        let old_state = match STATE.compare_exchange(
-            UNINITIALIZED,
-            INITIALIZING,
-            Ordering::SeqCst,
-            Ordering::SeqCst,
-        ) {
-            Ok(s) | Err(s) => s,
-        };
-
-        match old_state {
-            UNINITIALIZED => {
-                let res: Result<()> = $body;
-                res?;
-                STATE.store(INITIALIZED, Ordering::SeqCst);
-                Ok(())
-            }
-            INITIALIZING => {
-                while STATE.load(Ordering::SeqCst) == INITIALIZING {
-                    // Giving time to the thread entered the UNINITIALIZED case
-                    // to finish his job. When this loop finishes even this
-                    // thread is sure to be INITIALIZED.
-                    hint::spin_loop();
-                }
-                Err(Error::AlreadyInitialized)
-            }
-            _ => Err(Error::AlreadyInitialized),
-        }
-    }};
-}
-
 type RegistryFiles = Option<HashMap<(ElementsNetwork, AssetsOrIcons), Mutex<File>>>;
 static mut REGISTRY_FILES: RegistryFiles = None;
 
 /// Initialize the library by giving the root directory `dir`, where will be
 /// persisted cached data.
 pub fn init<P: AsRef<Path>>(dir: P) -> Result<()> {
-    initialize!({
-        let mut files = HashMap::new();
-        for b in AssetsOrIcons::iter() {
-            for n in ElementsNetwork::iter() {
-                let mut file_path = dir.as_ref().to_path_buf();
-                file_path.push(n.to_string());
-                fs::create_dir_all(&file_path)?;
-                file_path.push(b.to_string());
-                let file_exists = file_path.exists();
+    /// By having the static `STATE` inside the function, it cannot be
+    /// accessed out of this fn.
+    static STATE: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
-                let mut file =
-                    OpenOptions::new().write(true).read(true).create(true).open(file_path)?;
+    let old_state = match STATE.compare_exchange(
+        UNINITIALIZED,
+        INITIALIZING,
+        Ordering::SeqCst,
+        Ordering::SeqCst,
+    ) {
+        Ok(s) | Err(s) => s,
+    };
 
-                if !file_exists {
-                    let hard_coded_values = hard_coded_values(n, b);
-                    let value_modified = ValueModified {
-                        value: hard_coded_values,
-                        last_modified: "".to_string(),
-                    };
-                    file::write(&value_modified, &mut file)?;
+    match old_state {
+        UNINITIALIZED => {
+            let mut files = HashMap::new();
+            for b in AssetsOrIcons::iter() {
+                for n in ElementsNetwork::iter() {
+                    let mut file_path = dir.as_ref().to_path_buf();
+                    file_path.push(n.to_string());
+                    fs::create_dir_all(&file_path)?;
+                    file_path.push(b.to_string());
+                    let file_exists = file_path.exists();
+
+                    let mut file =
+                        OpenOptions::new().write(true).read(true).create(true).open(file_path)?;
+
+                    if !file_exists {
+                        let hard_coded_values = hard_coded_values(n, b);
+                        let value_modified = ValueModified {
+                            value: hard_coded_values,
+                            last_modified: "".to_string(),
+                        };
+                        file::write(&value_modified, &mut file)?;
+                    }
+
+                    files.insert((n, b), Mutex::new(file));
                 }
-
-                files.insert((n, b), Mutex::new(file));
             }
+            unsafe {
+                REGISTRY_FILES = Some(files);
+            }
+            STATE.store(INITIALIZED, Ordering::SeqCst);
+            init_cache(dir)
         }
-        unsafe {
-            REGISTRY_FILES = Some(files);
+
+        INITIALIZING => {
+            while STATE.load(Ordering::SeqCst) == INITIALIZING {
+                // Giving time to the thread entered the UNINITIALIZED case
+                // to finish his job. When this loop finishes even this
+                // thread is sure to be INITIALIZED.
+                hint::spin_loop();
+            }
+            Err(Error::AlreadyInitialized)
         }
-        init_cache(dir)
-    })
+
+        _ => Err(Error::AlreadyInitialized),
+    }
 }
 
 type CacheFiles = Option<HashMap<ElementsNetwork, Mutex<File>>>;
 static mut CACHE_FILES: CacheFiles = None;
 
 fn init_cache<P: AsRef<Path>>(registry_dir: P) -> Result<()> {
-    initialize!({
-        let files = ElementsNetwork::iter()
-            .map(|network| {
-                // TODO: create one cache file per wallet.
-                // TODO: encrypt cache.
-                let path = registry_dir.as_ref().join(network.to_string()).join("user");
-                let exists = path.exists();
-                let mut file =
-                    OpenOptions::new().write(true).read(true).create(true).open(&path)?;
+    static STATE: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
-                if !exists {
-                    file::write(&RegistryResult::default(), &mut file)?;
-                }
+    let old_state = match STATE.compare_exchange(
+        UNINITIALIZED,
+        INITIALIZING,
+        Ordering::SeqCst,
+        Ordering::SeqCst,
+    ) {
+        Ok(s) | Err(s) => s,
+    };
 
-                Ok((network, Mutex::new(file)))
-            })
-            .collect::<Result<HashMap<ElementsNetwork, Mutex<File>>>>()?;
+    match old_state {
+        UNINITIALIZED => {
+            let files = ElementsNetwork::iter()
+                .map(|network| {
+                    // TODO: create one cache file per wallet.
+                    // TODO: encrypt cache.
+                    let path = registry_dir.as_ref().join(network.to_string()).join("user");
+                    let exists = path.exists();
+                    let mut file =
+                        OpenOptions::new().write(true).read(true).create(true).open(&path)?;
 
-        unsafe {
-            CACHE_FILES = Some(files);
+                    if !exists {
+                        file::write(&RegistryResult::default(), &mut file)?;
+                    }
+
+                    Ok((network, Mutex::new(file)))
+                })
+                .collect::<Result<HashMap<ElementsNetwork, Mutex<File>>>>()?;
+
+            unsafe {
+                CACHE_FILES = Some(files);
+            }
+            STATE.store(INITIALIZED, Ordering::SeqCst);
+            Ok(())
         }
 
-        Ok(())
-    })
+        INITIALIZING => {
+            while STATE.load(Ordering::SeqCst) == INITIALIZING {
+                hint::spin_loop();
+            }
+            Err(Error::AlreadyInitialized)
+        }
+
+        _ => Err(Error::AlreadyInitialized),
+    }
 }
 
 /// Only way to access `File`s containing the global registry information.
