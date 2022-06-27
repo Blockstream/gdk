@@ -3,7 +3,6 @@
 //! by a `Mutex`
 
 use crate::hard::hard_coded_values;
-use crate::result::RegistryResult;
 use crate::{file, AssetsOrIcons, ElementsNetwork, Error, Result, ValueModified};
 use std::fs::OpenOptions;
 use std::path::Path;
@@ -65,7 +64,7 @@ pub fn init<P: AsRef<Path>>(dir: P) -> Result<()> {
                 REGISTRY_FILES = Some(files);
             }
             STATE.store(INITIALIZED, Ordering::SeqCst);
-            init_cache(dir)
+            crate::registry_cache::init_dir(dir)
         }
 
         INITIALIZING => {
@@ -73,58 +72,6 @@ pub fn init<P: AsRef<Path>>(dir: P) -> Result<()> {
                 // Giving time to the thread entered the UNINITIALIZED case
                 // to finish his job. When this loop finishes even this
                 // thread is sure to be INITIALIZED.
-                hint::spin_loop();
-            }
-            Err(Error::AlreadyInitialized)
-        }
-
-        _ => Err(Error::AlreadyInitialized),
-    }
-}
-
-type CacheFiles = Option<HashMap<ElementsNetwork, Mutex<File>>>;
-static mut CACHE_FILES: CacheFiles = None;
-
-fn init_cache<P: AsRef<Path>>(registry_dir: P) -> Result<()> {
-    static STATE: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
-
-    let old_state = match STATE.compare_exchange(
-        UNINITIALIZED,
-        INITIALIZING,
-        Ordering::SeqCst,
-        Ordering::SeqCst,
-    ) {
-        Ok(s) | Err(s) => s,
-    };
-
-    match old_state {
-        UNINITIALIZED => {
-            let files = ElementsNetwork::iter()
-                .map(|network| {
-                    // TODO: create one cache file per wallet.
-                    // TODO: encrypt cache.
-                    let path = registry_dir.as_ref().join(network.to_string()).join("user");
-                    let exists = path.exists();
-                    let mut file =
-                        OpenOptions::new().write(true).read(true).create(true).open(&path)?;
-
-                    if !exists {
-                        file::write(&RegistryResult::default(), &mut file)?;
-                    }
-
-                    Ok((network, Mutex::new(file)))
-                })
-                .collect::<Result<HashMap<ElementsNetwork, Mutex<File>>>>()?;
-
-            unsafe {
-                CACHE_FILES = Some(files);
-            }
-            STATE.store(INITIALIZED, Ordering::SeqCst);
-            Ok(())
-        }
-
-        INITIALIZING => {
-            while STATE.load(Ordering::SeqCst) == INITIALIZING {
                 hint::spin_loop();
             }
             Err(Error::AlreadyInitialized)
@@ -145,19 +92,6 @@ pub fn get_full_registry(
                 .get(&(network, t))
                 .expect("any combination is initialized")
                 .lock()?),
-
-            None => Err(Error::RegistryUninitialized),
-        }
-    }
-}
-
-/// Get access to the cache file relative to a specific network.
-pub fn get_cache(network: ElementsNetwork) -> Result<MutexGuard<'static, File>> {
-    unsafe {
-        match CACHE_FILES.as_ref() {
-            Some(files) => {
-                Ok(files.get(&network).expect("all cache files are initialized").lock()?)
-            }
 
             None => Err(Error::RegistryUninitialized),
         }

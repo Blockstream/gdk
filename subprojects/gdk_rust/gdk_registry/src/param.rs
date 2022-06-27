@@ -94,10 +94,8 @@ impl RefreshAssetsParam {
 pub struct GetAssetsInfoParams {
     pub(crate) assets_id: Vec<AssetId>,
 
-    // TODO: implement this
-    #[serde(default)]
     /// A key used to access the encrypted asset's cache.
-    pub(crate) encryption_key: String,
+    pub(crate) xpub: String,
 
     /// Optional configuration for network used and registry connection
     #[serde(default)]

@@ -13,6 +13,10 @@ thiserror = "1.0"
 log = "0.4.8"
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0edddf730ff8fd441d3af28bc600b8bc8a8df5a9", features = ["serde-feature"] }
 tempfile = "3.2.0"
+aes-gcm-siv = "0.10.0"
+bitcoin = { version = "0.27", features = [ "use-serde" ] }
+once_cell = "1.12"
+rand = "0.6.5"
 
 [dev-dependencies]
 httptest = "0.15.4"

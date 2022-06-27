@@ -27,12 +27,15 @@ use hard::{hard_coded_assets, hard_coded_icons};
 use log::{debug, info, warn};
 use std::time::Instant;
 
+use bitcoin::util::bip32::ExtendedPubKey;
 pub use error::{Error, Result};
 pub use file::ValueModified;
 pub use hard::policy_asset_id;
 pub use inner::init;
 pub use param::{AssetsOrIcons, ElementsNetwork, GetAssetsInfoParams, RefreshAssetsParam};
+use registry_cache as cache;
 pub use result::{AssetEntry, RegistryResult};
+use std::str::FromStr;
 
 mod error;
 mod file;
@@ -40,6 +43,7 @@ mod hard;
 mod http;
 mod inner;
 mod param;
+mod registry_cache;
 mod result;
 
 ///
@@ -112,19 +116,26 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
 ///
 /// TODO: docs
 ///
+/// TODO:
+///
+/// 1. encrypt/decrypt cache file w/ xpub
+/// 2. create more than one cache file per wallet
 pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     // TODO: time measurements should be done at the root of the call in
     // `gdk_rust`, not here.
     let start = Instant::now();
 
-    let mut file = inner::get_cache(params.config.network)?;
-    let mut cache = file::read::<RegistryResult>(&mut file)?;
+    let xpub = ExtendedPubKey::from_str(&params.xpub)?;
+    let mut cache = cache::get(&xpub)?;
+
+    // let mut file = inner::get_cache(params.config.network)?;
+    // let mut cache = file::read::<RegistryResult>(&mut file)?;
 
     debug!("`get_assets_info` received cache {:?}", cache);
 
     let GetAssetsInfoParams {
         assets_id,
-        encryption_key: _,
+        xpub: _,
         config,
     } = params;
 
@@ -161,8 +172,12 @@ pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
 
         debug!("adding these new entries to the cache: {:?}", registry);
         cache.extend(registry);
-        file::write(&cache, &mut file)?;
 
+        cache::set(&xpub, &cache)?;
+        // file::write(&cache, &mut file)?;
+
+        // Add the asset ids that were found in the full registry to the ones
+        // already present in the cache.
         found.extend(found_in_registry);
     }
 

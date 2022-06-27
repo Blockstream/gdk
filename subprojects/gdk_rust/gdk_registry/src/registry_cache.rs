@@ -1,0 +1,117 @@
+use rand::Rng;
+use std::collections::HashMap;
+use std::fs::{self, File, OpenOptions};
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+
+use aes_gcm_siv::aead::{AeadInPlace, NewAead};
+use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
+use bitcoin::hashes::{sha256, Hash};
+use bitcoin::util::bip32::ExtendedPubKey;
+use once_cell::sync::{Lazy, OnceCell};
+
+use crate::result::RegistryResult;
+use crate::{Error, Result};
+
+const REGISTRY_CACHE_BASENAME: &str = "cached";
+
+/// The directory where the wallets' registry cache files are stored. It's
+/// written to only once at initialization.
+static REGISTRY_CACHE_DIR: OnceCell<PathBuf> = OnceCell::new();
+
+/// Mapping from sha256(xpub) to the corresponding cache file.
+type CacheFiles = HashMap<ExtendedPubKey, Mutex<File>>;
+
+static REGISTRY_CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new({
+    // TODO: list all files in REGISTRY_CACHE_DIR, populate the cache.
+    Mutex::default
+});
+
+/// Creates the registry cache directory if not already present.
+pub fn init_dir<D>(registry_dir: D) -> Result<()>
+where
+    D: AsRef<Path>,
+{
+    let dir = registry_dir.as_ref().join(REGISTRY_CACHE_BASENAME);
+
+    if !dir.exists() {
+        return fs::create_dir(dir).map_err(Error::from);
+    }
+
+    Ok(())
+}
+
+/// Returns the cache file relative to a specific wallet if it exists, or
+/// `None` otherwise.
+pub fn get(xpub: &ExtendedPubKey) -> Result<RegistryResult> {
+    let cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
+
+    let mut file = match cache_files.get(xpub) {
+        Some(file) => file.lock().map_err(Error::from),
+        None => Err(Error::RegistryCacheNotCreated),
+    }?;
+
+    let decrypted = decrypt(&mut file, xpub)?;
+    serde_cbor::from_slice(&decrypted).map_err(Error::from)
+}
+
+/// TODO: docs
+pub fn set(xpub: &ExtendedPubKey, contents: &RegistryResult) -> Result<()> {
+    let plain_text = serde_cbor::to_vec(contents)?;
+    let encrypted = encrypt(plain_text, xpub)?;
+
+    let cache_path = REGISTRY_CACHE_DIR
+        .get()
+        .expect("cache directory has been initialized ")
+        .join(sha256::Hash::hash(xpub.to_string().as_bytes()).to_string());
+
+    let mut file = OpenOptions::new().write(true).read(true).create(true).open(cache_path)?;
+
+    // Write the file to disk.
+    crate::file::write(&encrypted, &mut file)?;
+
+    // Update the cache files.
+    let mut cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
+    cache_files.insert(xpub.clone(), Mutex::new(file));
+
+    todo!()
+}
+
+/// TODO: docs
+fn decrypt(file: &mut File, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
+    let mut nonce_bytes = [0u8; 12];
+    file.read_exact(&mut nonce_bytes)?;
+    let nonce = Nonce::from_slice(&nonce_bytes);
+
+    let mut data = Vec::<u8>::new();
+    file.read_to_end(&mut data)?;
+
+    let cipher = to_cipher(xpub);
+    // TODO: add error variant
+    let _ = cipher.decrypt_in_place(nonce, b"", &mut data);
+    Ok(data)
+}
+
+/// TODO: docs
+fn encrypt(mut data: Vec<u8>, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
+    let mut nonce_bytes = [0u8; 12];
+    rand::thread_rng().fill(&mut nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
+
+    let cipher = to_cipher(xpub);
+    // TODO: add error variant
+    let _ = cipher.encrypt_in_place(nonce, b"", &mut data);
+    Ok(data)
+}
+
+/// Gets a cipher from an xpub. Taken from `gdk_electrum::store::get_cipher`.
+fn to_cipher(xpub: &ExtendedPubKey) -> Aes256GcmSiv {
+    let mut enc_key_data = vec![];
+    enc_key_data.extend(&xpub.public_key.to_bytes());
+    enc_key_data.extend(&xpub.chain_code.to_bytes());
+    enc_key_data.extend(&xpub.network.magic().to_be_bytes());
+    let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
+    let key = Key::from_slice(&key_bytes);
+    Aes256GcmSiv::new(&key)
+}

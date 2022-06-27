@@ -18,6 +18,15 @@ pub enum Error {
     #[error("Cannot call `init` more than once")]
     AlreadyInitialized,
 
+    /// Returned when calling `ExtendedPubKey::from_str` with an invalid
+    /// string.
+    #[error(transparent)]
+    BtcBip32Error(#[from] bitcoin::util::bip32::Error),
+
+    /// Returned when a registry cache file has yet to be created.
+    #[error("Registry cache for this wallet has not been created")]
+    RegistryCacheNotCreated,
+
     /// Thrown when the method requires the registry to be initialized (via the `crate::init` call)
     /// but it wasn't initialized
     #[error("Registry has not been initialized")]
