@@ -1,7 +1,7 @@
 use rand::Rng;
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::Read;
+use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -103,6 +103,8 @@ pub fn set(xpub: &ExtendedPubKey, contents: &RegistryResult) -> Result<()> {
 
 /// TODO: docs
 fn decrypt(file: &mut File, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
+    file.seek(std::io::SeekFrom::Start(0))?;
+
     let mut nonce_bytes = [0u8; 12];
     file.read_exact(&mut nonce_bytes)?;
     let nonce = Nonce::from_slice(&nonce_bytes);
