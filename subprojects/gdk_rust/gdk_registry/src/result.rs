@@ -18,20 +18,15 @@ pub struct RegistryResult {
     pub(crate) icons: HashMap<AssetId, String>,
 }
 
+// TODO: avoid code duplication in `CacheResult`.
 impl RegistryResult {
-    /// TODO: docs
-    pub(crate) fn split_present<Q>(&self, assets: Q) -> (Vec<AssetId>, Vec<AssetId>)
+    /// Splits the asset ids based on whether they are already contained in the
+    /// cache.
+    pub(crate) fn split_present<I>(&self, ids: I) -> (Vec<AssetId>, Vec<AssetId>)
     where
-        Q: IntoIterator<Item = AssetId>,
+        I: IntoIterator<Item = AssetId>,
     {
-        assets.into_iter().partition(|id| self.contains(id))
-    }
-
-    /// Filters `self` against a group of `AssetId`s, only keeping the
-    /// `assets` and `icons` that match an `AssetId`.
-    pub(crate) fn filter(&mut self, query: &[AssetId]) {
-        self.assets.retain(|id, _| query.contains(&id));
-        self.icons.retain(|id, _| query.contains(&id));
+        ids.into_iter().partition(|id| self.contains(id))
     }
 
     /// Returns whether the assets contain a certain `AssetId`.
@@ -39,10 +34,11 @@ impl RegistryResult {
         self.assets.contains_key(asset)
     }
 
-    /// Extends `self` with the contents of another ??
-    pub(crate) fn extend(&mut self, other: Self) {
-        self.assets.extend(other.assets);
-        self.icons.extend(other.icons);
+    /// Filters the registry against a group of `AssetId`s, only keeping the
+    /// `assets` and `icons` that match an `AssetId`.
+    pub(crate) fn filter(&mut self, query: &[AssetId]) {
+        self.assets.retain(|id, _| query.contains(&id));
+        self.icons.retain(|id, _| query.contains(&id));
     }
 }
 

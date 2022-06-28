@@ -37,6 +37,7 @@ use registry_cache as cache;
 pub use result::{AssetEntry, RegistryResult};
 use std::str::FromStr;
 
+mod cache_result;
 mod error;
 mod file;
 mod hard;
@@ -45,6 +46,8 @@ mod inner;
 mod param;
 mod registry_cache;
 mod result;
+
+use cache_result::CacheResult;
 
 ///
 /// Returns information about assets and related icons.
@@ -122,10 +125,11 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     let start = Instant::now();
 
     let xpub = ExtendedPubKey::from_str(&params.xpub)?;
+    // TODO: rename to `read`
     let mut cache = match cache::get(&xpub) {
         Ok(cache) => cache,
         Err(err) => match err {
-            Error::RegistryCacheNotCreated => RegistryResult::default(),
+            Error::RegistryCacheNotCreated => CacheResult::default(),
             _ => return Err(err),
         },
     };
@@ -138,13 +142,15 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
         config,
     } = params;
 
-    // Split the asset id's based on whether they are already contained in the
-    // cache.
-    let (mut found, not_found) = cache.split_present(assets_id);
+    let (mut found, mut not_found) = cache.split_present(assets_id);
+
+    // Remove all the previous cache misses from `not_found` to possibly avoid
+    // retriggering a registry read.
+    not_found.retain(|id| !cache.missing_assets().contains(id));
 
     if not_found.is_empty() {
         cache.filter(&found);
-        return Ok(cache);
+        return Ok(cache.into());
     }
 
     debug!("the following assets were not found in the cache: {:?}", not_found);
@@ -161,20 +167,29 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
 
     if !still_not_found.is_empty() {
         debug!("the following assets were not found in the registry: {:?}", still_not_found);
-        // TODO: add `still_not_found` to the cache under a `missing` key to
-        // avoid retriggering a full registry read if asked for that same asset
-        // again.
+
+        cache.register_missing(still_not_found);
+        cache::set(&xpub, &cache)?;
     }
 
     if !found_in_registry.is_empty() {
         registry.filter(&found_in_registry);
+        let filtered_registry = registry;
 
-        debug!("adding these new entries to the cache: {:?}", registry);
-        cache.extend(registry);
+        debug!("adding these new entries to the cache: {:?}", filtered_registry);
 
+        let RegistryResult {
+            assets,
+            icons,
+        } = filtered_registry;
+
+        cache.extend_assets(assets);
+        cache.extend_icons(icons);
+
+        // TODO: rename to `write`
         cache::set(&xpub, &cache)?;
 
-        // Add the asset ids that were found in the full registry to the ones
+        // Add the asset ids that were found in the registry to the ones
         // already present in the cache.
         found.extend(found_in_registry);
     }
@@ -183,7 +198,7 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
 
     info!("`get_assets` took {:?}", start.elapsed());
 
-    Ok(cache)
+    Ok(cache.into())
 }
 
 #[cfg(test)]
