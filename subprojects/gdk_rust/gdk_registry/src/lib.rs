@@ -125,8 +125,7 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     let start = Instant::now();
 
     let xpub = ExtendedPubKey::from_str(&params.xpub)?;
-    // TODO: rename to `read`
-    let mut cache = match cache::get(&xpub) {
+    let mut cache = match cache::read(&xpub) {
         Ok(cache) => cache,
         Err(err) => match err {
             Error::RegistryCacheNotCreated => CacheResult::default(),
@@ -169,7 +168,7 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
         debug!("the following assets were not found in the registry: {:?}", still_not_found);
 
         cache.register_missing(still_not_found);
-        cache::set(&xpub, &cache)?;
+        cache::write(&xpub, &cache)?;
     }
 
     if !found_in_registry.is_empty() {
@@ -186,8 +185,7 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
         cache.extend_assets(assets);
         cache.extend_icons(icons);
 
-        // TODO: rename to `write`
-        cache::set(&xpub, &cache)?;
+        cache::write(&xpub, &cache)?;
 
         // Add the asset ids that were found in the registry to the ones
         // already present in the cache.

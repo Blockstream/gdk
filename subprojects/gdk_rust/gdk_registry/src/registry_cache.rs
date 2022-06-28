@@ -67,7 +67,7 @@ where
 
 /// Returns the cache file relative to a specific wallet if it exists, or
 /// an error otherwise.
-pub fn get(xpub: &ExtendedPubKey) -> Result<CacheResult> {
+pub fn read(xpub: &ExtendedPubKey) -> Result<CacheResult> {
     let cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
 
     let mut file = match cache_files.get(&hash_xpub(xpub)) {
@@ -80,7 +80,7 @@ pub fn get(xpub: &ExtendedPubKey) -> Result<CacheResult> {
 }
 
 /// TODO: docs
-pub fn set(xpub: &ExtendedPubKey, contents: &CacheResult) -> Result<()> {
+pub fn write(xpub: &ExtendedPubKey, contents: &CacheResult) -> Result<()> {
     let plain_text = serde_cbor::to_vec(contents)?;
     let (nonce, rest) = encrypt(plain_text, xpub)?;
 
