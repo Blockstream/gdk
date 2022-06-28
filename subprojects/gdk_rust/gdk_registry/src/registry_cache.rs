@@ -1,7 +1,7 @@
 use rand::Rng;
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -66,7 +66,7 @@ where
 }
 
 /// Returns the cache file relative to a specific wallet if it exists, or
-/// `None` otherwise.
+/// an error otherwise.
 pub fn get(xpub: &ExtendedPubKey) -> Result<RegistryResult> {
     let cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
 
@@ -82,7 +82,7 @@ pub fn get(xpub: &ExtendedPubKey) -> Result<RegistryResult> {
 /// TODO: docs
 pub fn set(xpub: &ExtendedPubKey, contents: &RegistryResult) -> Result<()> {
     let plain_text = serde_cbor::to_vec(contents)?;
-    let encrypted = encrypt(plain_text, xpub)?;
+    let (nonce, rest) = encrypt(plain_text, xpub)?;
 
     let cache_path = REGISTRY_CACHE_DIR
         .get()
@@ -92,7 +92,9 @@ pub fn set(xpub: &ExtendedPubKey, contents: &RegistryResult) -> Result<()> {
     let mut file = OpenOptions::new().write(true).read(true).create(true).open(cache_path)?;
 
     // Write the file to disk.
-    crate::file::write(&encrypted, &mut file)?;
+    file.seek(std::io::SeekFrom::Start(0))?;
+    file.write(&nonce)?;
+    file.write(&rest)?;
 
     // Update the cache files.
     let mut cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
@@ -119,7 +121,7 @@ fn decrypt(file: &mut File, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
 }
 
 /// TODO: docs
-fn encrypt(mut data: Vec<u8>, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
+fn encrypt(mut data: Vec<u8>, xpub: &ExtendedPubKey) -> Result<(Vec<u8>, Vec<u8>)> {
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -127,7 +129,7 @@ fn encrypt(mut data: Vec<u8>, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
     let cipher = to_cipher(xpub);
     cipher.encrypt_in_place(nonce, b"", &mut data)?;
 
-    Ok(data)
+    Ok((nonce_bytes.to_vec(), data))
 }
 
 /// Gets a cipher from an xpub. Taken from `gdk_electrum::store::get_cipher`.
