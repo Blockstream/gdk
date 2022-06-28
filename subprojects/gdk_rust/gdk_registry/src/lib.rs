@@ -116,20 +116,19 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
 ///
 /// TODO: docs
 ///
-/// TODO:
-///
-/// 1. encrypt/decrypt cache file w/ xpub
-/// 2. create more than one cache file per wallet
 pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     // TODO: time measurements should be done at the root of the call in
     // `gdk_rust`, not here.
     let start = Instant::now();
 
     let xpub = ExtendedPubKey::from_str(&params.xpub)?;
-    let mut cache = cache::get(&xpub)?;
-
-    // let mut file = inner::get_cache(params.config.network)?;
-    // let mut cache = file::read::<RegistryResult>(&mut file)?;
+    let mut cache = match cache::get(&xpub) {
+        Ok(cache) => cache,
+        Err(err) => match err {
+            Error::RegistryCacheNotCreated => RegistryResult::default(),
+            _ => return Err(err),
+        },
+    };
 
     debug!("`get_assets_info` received cache {:?}", cache);
 
@@ -174,7 +173,6 @@ pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
         cache.extend(registry);
 
         cache::set(&xpub, &cache)?;
-        // file::write(&cache, &mut file)?;
 
         // Add the asset ids that were found in the full registry to the ones
         // already present in the cache.

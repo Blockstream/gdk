@@ -9,6 +9,7 @@ use aes_gcm_siv::aead::{AeadInPlace, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::ExtendedPubKey;
+use log::debug;
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::result::RegistryResult;
@@ -21,11 +22,29 @@ const REGISTRY_CACHE_BASENAME: &str = "cached";
 static REGISTRY_CACHE_DIR: OnceCell<PathBuf> = OnceCell::new();
 
 /// Mapping from sha256(xpub) to the corresponding cache file.
-type CacheFiles = HashMap<ExtendedPubKey, Mutex<File>>;
+type CacheFiles = HashMap<String, Mutex<File>>;
 
-static REGISTRY_CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new({
-    // TODO: list all files in REGISTRY_CACHE_DIR, populate the cache.
-    Mutex::default
+static REGISTRY_CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new(|| {
+    // Populate the cache by listing all the files in `REGISTRY_CACHE_DIR`.
+
+    let cache_dir = REGISTRY_CACHE_DIR.get().expect("cache directory has already been initialized");
+
+    let cache_files = fs::read_dir(cache_dir)
+        .expect("couldn't read cache directory")
+        .map(|file| {
+            file.unwrap().file_name().into_string().expect("all cache filenames are valid UTF-8")
+        })
+        .map(|filename| {
+            let file_path = cache_dir.join(&filename);
+            let file =
+                OpenOptions::new().write(true).read(true).create(true).open(file_path).unwrap();
+            (filename, Mutex::new(file))
+        })
+        .collect::<CacheFiles>();
+
+    debug!("populated the cache with {} files", cache_files.len());
+
+    Mutex::new(cache_files)
 });
 
 /// Creates the registry cache directory if not already present.
@@ -36,8 +55,12 @@ where
     let dir = registry_dir.as_ref().join(REGISTRY_CACHE_BASENAME);
 
     if !dir.exists() {
-        return fs::create_dir(dir).map_err(Error::from);
+        debug!("creating registry cache directory at {:?}", dir);
+        fs::create_dir(&dir)?;
     }
+
+    REGISTRY_CACHE_DIR.set(dir).map_err(|_err| Error::AlreadyInitialized)?;
+    debug!("loading {} cache files", REGISTRY_CACHE_FILES.lock().unwrap().len());
 
     Ok(())
 }
@@ -47,7 +70,7 @@ where
 pub fn get(xpub: &ExtendedPubKey) -> Result<RegistryResult> {
     let cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
 
-    let mut file = match cache_files.get(xpub) {
+    let mut file = match cache_files.get(&hash_xpub(xpub)) {
         Some(file) => file.lock().map_err(Error::from),
         None => Err(Error::RegistryCacheNotCreated),
     }?;
@@ -64,7 +87,7 @@ pub fn set(xpub: &ExtendedPubKey, contents: &RegistryResult) -> Result<()> {
     let cache_path = REGISTRY_CACHE_DIR
         .get()
         .expect("cache directory has been initialized ")
-        .join(sha256::Hash::hash(xpub.to_string().as_bytes()).to_string());
+        .join(hash_xpub(xpub));
 
     let mut file = OpenOptions::new().write(true).read(true).create(true).open(cache_path)?;
 
@@ -73,9 +96,9 @@ pub fn set(xpub: &ExtendedPubKey, contents: &RegistryResult) -> Result<()> {
 
     // Update the cache files.
     let mut cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
-    cache_files.insert(xpub.clone(), Mutex::new(file));
+    cache_files.insert(hash_xpub(xpub), Mutex::new(file));
 
-    todo!()
+    Ok(())
 }
 
 /// TODO: docs
@@ -114,4 +137,9 @@ fn to_cipher(xpub: &ExtendedPubKey) -> Aes256GcmSiv {
     let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
     let key = Key::from_slice(&key_bytes);
     Aes256GcmSiv::new(&key)
+}
+
+/// TODO: docs
+fn hash_xpub(xpub: &ExtendedPubKey) -> String {
+    sha256::Hash::hash(xpub.to_string().as_bytes()).to_string()
 }
