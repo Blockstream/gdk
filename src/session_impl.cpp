@@ -174,7 +174,7 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json session_impl::get_assets_info(const nlohmann::json& params)
+    nlohmann::json session_impl::get_assets(const nlohmann::json& params)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 

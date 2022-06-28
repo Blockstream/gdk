@@ -38,7 +38,7 @@ namespace sdk {
 
         nlohmann::json http_request(const nlohmann::json& params);
         nlohmann::json refresh_assets(const nlohmann::json& params);
-        nlohmann::json get_assets_info(const nlohmann::json& params);
+        nlohmann::json get_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
         bool set_wo_credentials(const std::string& username, const std::string& password);

@@ -204,7 +204,7 @@ GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params,
  *
  * TODO
  */
-GDK_API int GA_get_assets_info(struct GA_session* session, const GA_json* params, GA_json** output);
+GDK_API int GA_get_assets(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
  * Validate asset domain name.

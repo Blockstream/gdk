@@ -233,11 +233,11 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_assets_info(const nlohmann::json& params)
+    nlohmann::json session::get_assets(const nlohmann::json& params)
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_assets_info(params);
+            return p->get_assets(params);
         });
     }
 

@@ -579,9 +579,9 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             let param: gdk_registry::RefreshAssetsParam = serde_json::from_str(input)?;
             Ok(to_string(&gdk_registry::refresh_assets(param)?))
         }
-        "get_assets_info" => {
+        "get_assets" => {
             let params: gdk_registry::GetAssetsInfoParams = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_registry::get_assets_info(params)?))
+            Ok(to_string(&gdk_registry::get_assets(params)?))
         }
 
         _ => Err(Error::MethodNotFound {

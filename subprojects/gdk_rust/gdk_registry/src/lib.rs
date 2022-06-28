@@ -116,7 +116,7 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
 ///
 /// TODO: docs
 ///
-pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
+pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     // TODO: time measurements should be done at the root of the call in
     // `gdk_rust`, not here.
     let start = Instant::now();
@@ -130,7 +130,7 @@ pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
         },
     };
 
-    debug!("`get_assets_info` received cache {:?}", cache);
+    debug!("`get_assets` received cache {:?}", cache);
 
     let GetAssetsInfoParams {
         assets_id,
@@ -181,7 +181,7 @@ pub fn get_assets_info(params: GetAssetsInfoParams) -> Result<RegistryResult> {
 
     cache.filter(&found);
 
-    info!("`get_assets_info` took {:?}", start.elapsed());
+    info!("`get_assets` took {:?}", start.elapsed());
 
     Ok(cache)
 }

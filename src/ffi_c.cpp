@@ -267,8 +267,8 @@ GDK_DEFINE_C_FUNCTION_3(GA_http_request, struct GA_session*, session, const GA_j
 GDK_DEFINE_C_FUNCTION_3(GA_refresh_assets, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->refresh_assets(*json_cast(params))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_assets_info, struct GA_session*, session, const GA_json*, params, GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->get_assets_info(*json_cast(params))); });
+GDK_DEFINE_C_FUNCTION_3(GA_get_assets, struct GA_session*, session, const GA_json*, params, GA_json**, output,
+    { *json_cast(output) = new nlohmann::json(session->get_assets(*json_cast(params))); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_validate_asset_domain_name, struct GA_session*, session, const GA_json*, params, GA_json**,
     output, { *json_cast(output) = new nlohmann::json(session->validate_asset_domain_name(*json_cast(params))); });

@@ -292,8 +292,8 @@ class Session(object):
     def refresh_assets(self, params):
         return json.loads(refresh_assets(self.session_obj, self._to_json(params)))
 
-    def get_assets_info(self, params):
-        return json.loads(get_assets_info(self.session_obj, self._to_json(params)))
+    def get_assets(self, params):
+        return json.loads(get_assets(self.session_obj, self._to_json(params)))
 
     def validate_asset_domain_name(self, params):
         return json.loads(validate_asset_domain_name(self.session_obj, self._to_json(params)))
