@@ -12,15 +12,15 @@ use crate::Error;
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
 pub struct RegistryResult {
     /// Assets metadata
-    pub assets: HashMap<AssetId, AssetEntry>,
+    pub(crate) assets: HashMap<AssetId, AssetEntry>,
 
     /// Assets icons: the hashmap value is a Base64 encoded image
-    pub icons: HashMap<AssetId, String>,
+    pub(crate) icons: HashMap<AssetId, String>,
 }
 
 impl RegistryResult {
     /// TODO: docs
-    pub fn split_present<Q>(&self, assets: Q) -> (Vec<AssetId>, Vec<AssetId>)
+    pub(crate) fn split_present<Q>(&self, assets: Q) -> (Vec<AssetId>, Vec<AssetId>)
     where
         Q: IntoIterator<Item = AssetId>,
     {
@@ -29,18 +29,18 @@ impl RegistryResult {
 
     /// Filters `self` against a group of `AssetId`s, only keeping the
     /// `assets` and `icons` that match an `AssetId`.
-    pub fn filter(&mut self, query: &[AssetId]) {
+    pub(crate) fn filter(&mut self, query: &[AssetId]) {
         self.assets.retain(|id, _| query.contains(&id));
         self.icons.retain(|id, _| query.contains(&id));
     }
 
     /// Returns whether the assets contain a certain `AssetId`.
-    pub fn contains(&self, asset: &AssetId) -> bool {
+    pub(crate) fn contains(&self, asset: &AssetId) -> bool {
         self.assets.contains_key(asset)
     }
 
     /// Extends `self` with the contents of another ??
-    pub fn extend(&mut self, other: Self) {
+    pub(crate) fn extend(&mut self, other: Self) {
         self.assets.extend(other.assets);
         self.icons.extend(other.icons);
     }
@@ -51,56 +51,56 @@ impl RegistryResult {
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
 pub struct AssetEntry {
     /// The identifier of the asset, it is a midstate of a `sha256` thus it's 32 supposedly random bytes.
-    pub asset_id: AssetId,
+    pub(crate) asset_id: AssetId,
 
     /// Contains assets metadata provided by the issuer. This information is commited in the
     /// `asset_id` so it's verifiable by third parties. Some fields in the contract are repeated at
     /// this level such as `version`, `issuer_pubkey`, `name`, `ticker`, `precision` and `entity`.
     /// Other fields could be custom values created by the issuer.
     #[serde(default)]
-    pub contract: Value,
+    pub(crate) contract: Value,
 
     /// The transaction input containing this issuance.
     #[serde(default)]
-    pub issuance_txin: Txin,
+    pub(crate) issuance_txin: Txin,
 
     /// The previous output that is spent to create this issuance.
     #[serde(default)]
-    pub issuance_prevout: Prevout,
+    pub(crate) issuance_prevout: Prevout,
 
     /// The version of the registry protocol.
     #[serde(default)]
-    pub version: u8,
+    pub(crate) version: u8,
 
     /// A public key owned by the issuer used for authentication.
     #[serde(default)]
-    pub issuer_pubkey: String,
+    pub(crate) issuer_pubkey: String,
 
     /// Name of the asset.
     #[serde(default)]
-    pub name: String,
+    pub(crate) name: String,
 
     /// Ticker of the asset.
-    pub ticker: Option<String>,
+    pub(crate) ticker: Option<String>,
 
     /// Precision of the asset as the number of digits after the decimal separator.
     /// Eg. bitcoin use 8 as precision.
     #[serde(default)]
-    pub precision: u8,
+    pub(crate) precision: u8,
 
     /// Contains information regarding the internet domain of the asset issuer.
     #[serde(default)]
-    pub entity: Value,
+    pub(crate) entity: Value,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
-pub struct Prevout {
+pub(crate) struct Prevout {
     txid: Txid,
     vout: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
-pub struct Txin {
+pub(crate) struct Txin {
     txid: Txid,
     vin: u32,
 }
@@ -117,7 +117,7 @@ impl AssetEntry {
     /// Verify information in `self.contract` commits in `self.asset_id` ensuring the validity of the
     /// Contract data. Moreover information in the first level like `self.name` is verified to be the
     /// same of the one in the contract `self.contract.name`
-    pub fn verify(&self) -> Result<bool, Error> {
+    pub(crate) fn verify(&self) -> Result<bool, Error> {
         let contract_hash = ContractHash::from_json_contract(&self.contract_string()?)?;
         let entropy = AssetId::generate_asset_entropy(self.issuance_prevout(), contract_hash);
         let asset_id = AssetId::from_entropy(entropy);
