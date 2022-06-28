@@ -4,6 +4,8 @@ use std::{
     sync::{MutexGuard, PoisonError},
 };
 
+use aes_gcm_siv::aead;
+
 /// Custom `Result`.
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -59,6 +61,17 @@ pub enum Error {
     /// Wrap a poison error as string to avoid pollute with lifetimes
     #[error("{0}")]
     Poison(String),
+
+    /// A generic error.
+    #[error("{0}")]
+    Generic(String),
+}
+
+// `aead::Error` doesn't implement `std::error::Error`.
+impl From<aead::Error> for Error {
+    fn from(err: aead::Error) -> Self {
+        Error::Generic(err.to_string())
+    }
 }
 
 impl From<PoisonError<MutexGuard<'_, File>>> for Error {

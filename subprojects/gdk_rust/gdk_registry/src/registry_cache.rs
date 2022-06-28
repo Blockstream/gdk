@@ -113,8 +113,8 @@ fn decrypt(file: &mut File, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
     file.read_to_end(&mut data)?;
 
     let cipher = to_cipher(xpub);
-    // TODO: add error variant
-    let _ = cipher.decrypt_in_place(nonce, b"", &mut data);
+    cipher.decrypt_in_place(nonce, b"", &mut data)?;
+
     Ok(data)
 }
 
@@ -125,8 +125,8 @@ fn encrypt(mut data: Vec<u8>, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let cipher = to_cipher(xpub);
-    // TODO: add error variant
-    let _ = cipher.encrypt_in_place(nonce, b"", &mut data);
+    cipher.encrypt_in_place(nonce, b"", &mut data)?;
+
     Ok(data)
 }
 
