@@ -8,6 +8,8 @@
 - Singlesig: Allow fetching internal addresses in GA_get_receive_address using "is_internal"=true
 - Added new function GA_get_credentials, to replace GA_get_mnemonic_passphrase.
 - Added new function GA_encrypt_with_pin, to replace GA_set_pin.
+- Added new function GA_get_assets to query data related to a set of Liquid
+  assets.
 - Added bip39 passphrase support.
 
 ### Changed
@@ -112,7 +114,7 @@
 
 - Singlesig: Improved account discovery
 - Multisig: Don't send connection notifications for user-initiated session disconnect/destroy
-- Multisig: Remove old support for passing addressee asset_id as asset_tag 
+- Multisig: Remove old support for passing addressee asset_id as asset_tag
 - Multisig: Standardise address subtype as always 0 instead of null
 - Multisig: Remove range and surjection proofs from returned UTXO data
 - Multisig: Fix spending from very old version 0 addresses
@@ -327,8 +329,8 @@ updates let's encrypt CA certs
 ## Release 0.0.32 - 2020-06-12
 
 - Replace GA_http_get with GA_http_request, which can perform POST as well as
-  GET. Urls are specified as a set from which the gdk will choose the most 
-  appropriate, e.g. if the session is running tor and an onion url is present it 
+  GET. Urls are specified as a set from which the gdk will choose the most
+  appropriate, e.g. if the session is running tor and an onion url is present it
   will get preference over a non-onion url.
 - Add GA_generate_mnemonic_12
 - Enable ccache by default if ccache is found
@@ -362,8 +364,8 @@ Increase rangeproof ct bits from 36 to 52
 
 ## Release 0.0.28 - 2020-02-27
 
-- represent missing fiat rate as null in amount json 
-- gracefully handle invalid value for fiat rate 
+- represent missing fiat rate as null in amount json
+- gracefully handle invalid value for fiat rate
 - asset Id validation on bip21 uri
 
 
