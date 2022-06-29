@@ -15,7 +15,7 @@ use std::ffi::CString;
 use std::fmt;
 use std::os::raw::c_char;
 use std::sync::Once;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{
     CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, InitParam, RenameAccountOpt,
@@ -547,48 +547,56 @@ pub extern "C" fn GDKRUST_call(
 }
 
 fn handle_call(method: &str, input: &str) -> Result<String, Error> {
-    match method {
+    let start = Instant::now();
+
+    let res = match method {
         "init" => {
             let param: InitParam = serde_json::from_str(input)?;
             init_logging(LevelFilter::from_str(&param.log_level).unwrap_or(LevelFilter::Off));
             gdk_registry::init(&param.registry_dir)?;
             // TODO: read more initialization params
-            Ok(to_string(&json!("".to_string())))
+            to_string(&json!("".to_string()))
         }
         "psbt_extract_tx" => {
             let param: ExtractTxParam = serde_json::from_str(input)?;
-            Ok(to_string(&pset::extract_tx(&param)?))
+            to_string(&pset::extract_tx(&param)?)
         }
         "psbt_from_tx" => {
             let param: FromTxParam = serde_json::from_str(input)?;
-            Ok(to_string(&pset::from_tx(&param)?))
+            to_string(&pset::from_tx(&param)?)
         }
         "psbt_merge_tx" => {
             let param: MergeTxParam = serde_json::from_str(input)?;
-            Ok(to_string(&pset::merge_tx(&param)?))
+            to_string(&pset::merge_tx(&param)?)
         }
         "spv_verify_tx" => {
             let param: SPVVerifyTxParams = serde_json::from_str(input)?;
-            Ok(to_string(&headers::spv_verify_tx(&param)?.as_i32()))
+            to_string(&headers::spv_verify_tx(&param)?.as_i32())
         }
         "spv_download_headers" => {
             let param: SPVDownloadHeadersParams = serde_json::from_str(input)?;
-            Ok(to_string(&headers::download_headers(&param)?))
+            to_string(&headers::download_headers(&param)?)
         }
         "refresh_assets" => {
             let param: gdk_registry::RefreshAssetsParam = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_registry::refresh_assets(param)?))
+            to_string(&gdk_registry::refresh_assets(param)?)
         }
         "get_assets" => {
             let params: gdk_registry::GetAssetsParams = serde_json::from_str(input)?;
-            Ok(to_string(&gdk_registry::get_assets(params)?))
+            to_string(&gdk_registry::get_assets(params)?)
         }
 
-        _ => Err(Error::MethodNotFound {
-            method: method.to_string(),
-            in_session: false,
-        }),
-    }
+        _ => {
+            return Err(Error::MethodNotFound {
+                method: method.to_string(),
+                in_session: false,
+            })
+        }
+    };
+
+    info!("`{}` took {:?}", method, start.elapsed());
+
+    Ok(res)
 }
 
 #[cfg(not(target_os = "android"))]

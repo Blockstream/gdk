@@ -24,8 +24,7 @@
 //!
 
 use hard::{hard_coded_assets, hard_coded_icons};
-use log::{debug, info, warn};
-use std::time::Instant;
+use log::{debug, warn};
 
 pub use error::{Error, Result};
 pub use file::ValueModified;
@@ -57,7 +56,6 @@ use cache_result::CacheResult;
 /// the `details.config` parameter.
 ///
 pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
-    let now = Instant::now();
     let network = details.network();
     let mut return_value = RegistryResult::default();
     let agent = details.agent()?;
@@ -110,7 +108,6 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
             AssetsOrIcons::Icons => return_value.icons = serde_json::from_value(value.value)?,
         }
     }
-    info!("refresh_assets took: {:?}", now.elapsed());
     Ok(return_value)
 }
 
@@ -122,10 +119,6 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
 /// and it's encrypted with the wallet's xpub key.
 ///
 pub fn get_assets(params: GetAssetsParams) -> Result<RegistryResult> {
-    // TODO: time measurements should be done at the root of the call in
-    // `gdk_rust`, not here.
-    let start = Instant::now();
-
     let xpub = &params.xpub;
     let mut cache = match cache::read(xpub) {
         Ok(cache) => cache,
@@ -195,8 +188,6 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryResult> {
     }
 
     cache.filter(&found);
-
-    info!("`get_assets` took {:?}", start.elapsed());
 
     Ok(cache.into())
 }
