@@ -27,7 +27,6 @@ use hard::{hard_coded_assets, hard_coded_icons};
 use log::{debug, info, warn};
 use std::time::Instant;
 
-use bitcoin::util::bip32::ExtendedPubKey;
 pub use error::{Error, Result};
 pub use file::ValueModified;
 pub use hard::policy_asset_id;
@@ -35,7 +34,6 @@ pub use inner::init;
 pub use param::{AssetsOrIcons, ElementsNetwork, GetAssetsParams, RefreshAssetsParam};
 use registry_cache as cache;
 pub use result::{AssetEntry, RegistryResult};
-use std::str::FromStr;
 
 mod cache_result;
 mod error;
@@ -128,8 +126,8 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryResult> {
     // `gdk_rust`, not here.
     let start = Instant::now();
 
-    let xpub = ExtendedPubKey::from_str(&params.xpub)?;
-    let mut cache = match cache::read(&xpub) {
+    let xpub = &params.xpub;
+    let mut cache = match cache::read(xpub) {
         Ok(cache) => cache,
         Err(err) => match err {
             Error::RegistryCacheNotCreated => CacheResult::default(),
@@ -208,9 +206,11 @@ mod test {
 
     use super::*;
     use crate::hard::hard_coded_values;
+    use bitcoin::util::bip32::ExtendedPubKey;
     use log::info;
     use serde_json::Value;
     use std::path::Path;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     /// Shadows `crate::inner::init`, mapping `Error::AlreadyInitialized` to
@@ -331,12 +331,12 @@ mod test {
                 .flat_map(AssetId::from_str)
                 .collect::<Vec<_>>();
 
-            let xpub = xpub.unwrap_or(DFLT_XPUB).to_owned();
+            let xpub = ExtendedPubKey::from_str(xpub.unwrap_or(DFLT_XPUB))?;
 
             get_assets(GetAssetsParams {
                 assets_id,
                 xpub,
-                ..Default::default()
+                config: crate::param::Config::default(),
             })
         }
 

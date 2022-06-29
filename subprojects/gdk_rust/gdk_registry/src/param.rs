@@ -1,4 +1,5 @@
 use crate::Error;
+use bitcoin::util::bip32::ExtendedPubKey;
 use elements::AssetId;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
@@ -90,12 +91,12 @@ impl RefreshAssetsParam {
 }
 
 /// The parameters given to the [`crate::get_assets`].
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GetAssetsParams {
     pub(crate) assets_id: Vec<AssetId>,
 
-    /// A key used to access the encrypted asset's cache.
-    pub(crate) xpub: String,
+    /// The wallet's xpub key used to access the encrypted asset's cache.
+    pub(crate) xpub: ExtendedPubKey,
 
     /// Optional configuration for network used and registry connection
     #[serde(default)]
