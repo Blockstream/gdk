@@ -79,7 +79,7 @@ pub fn read(xpub: &ExtendedPubKey) -> Result<CacheResult> {
     serde_cbor::from_slice(&decrypted).map_err(Error::from)
 }
 
-/// TODO: docs
+/// Updates the cache file corresponding to a given xpub key.
 pub fn write(xpub: &ExtendedPubKey, contents: &CacheResult) -> Result<()> {
     let plain_text = serde_cbor::to_vec(contents)?;
     let (nonce, rest) = encrypt(plain_text, xpub)?;
@@ -103,7 +103,8 @@ pub fn write(xpub: &ExtendedPubKey, contents: &CacheResult) -> Result<()> {
     Ok(())
 }
 
-/// TODO: docs
+/// Decrypts the contents of a file using a cipher derived from the provided
+/// xpub.
 fn decrypt(file: &mut File, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
     file.seek(std::io::SeekFrom::Start(0))?;
 
@@ -120,7 +121,7 @@ fn decrypt(file: &mut File, xpub: &ExtendedPubKey) -> Result<Vec<u8>> {
     Ok(data)
 }
 
-/// TODO: docs
+/// Encrypts the given data using a cipher derived from the provided xpub.
 fn encrypt(mut data: Vec<u8>, xpub: &ExtendedPubKey) -> Result<(Vec<u8>, Vec<u8>)> {
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill(&mut nonce_bytes);
@@ -143,7 +144,7 @@ fn to_cipher(xpub: &ExtendedPubKey) -> Aes256GcmSiv {
     Aes256GcmSiv::new(&key)
 }
 
-/// TODO: docs
+/// Returns the string representation of sha256(xpub).
 fn hash_xpub(xpub: &ExtendedPubKey) -> String {
     sha256::Hash::hash(xpub.to_string().as_bytes()).to_string()
 }

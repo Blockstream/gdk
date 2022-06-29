@@ -117,7 +117,11 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
 }
 
 ///
-/// TODO: docs
+/// Returns informations about a specific set of assets and related icons.
+///
+/// Unlike `refresh_assets`, this function caches the queried assets to avoid
+/// performing a full registry read on every call. The cache is stored on disk
+/// and it's encrypted with the wallet's xpub key.
 ///
 pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
     // TODO: time measurements should be done at the root of the call in

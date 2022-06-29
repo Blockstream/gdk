@@ -89,7 +89,7 @@ impl RefreshAssetsParam {
     }
 }
 
-/// TODO: docs
+/// The parameters given to the [`crate::get_assets`].
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct GetAssetsInfoParams {
     pub(crate) assets_id: Vec<AssetId>,
