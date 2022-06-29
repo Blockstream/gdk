@@ -32,7 +32,7 @@ pub use error::{Error, Result};
 pub use file::ValueModified;
 pub use hard::policy_asset_id;
 pub use inner::init;
-pub use param::{AssetsOrIcons, ElementsNetwork, GetAssetsInfoParams, RefreshAssetsParam};
+pub use param::{AssetsOrIcons, ElementsNetwork, GetAssetsParams, RefreshAssetsParam};
 use registry_cache as cache;
 pub use result::{AssetEntry, RegistryResult};
 use std::str::FromStr;
@@ -123,7 +123,7 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
 /// performing a full registry read on every call. The cache is stored on disk
 /// and it's encrypted with the wallet's xpub key.
 ///
-pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
+pub fn get_assets(params: GetAssetsParams) -> Result<RegistryResult> {
     // TODO: time measurements should be done at the root of the call in
     // `gdk_rust`, not here.
     let start = Instant::now();
@@ -139,7 +139,7 @@ pub fn get_assets(params: GetAssetsInfoParams) -> Result<RegistryResult> {
 
     debug!("`get_assets` received cache {:?}", cache);
 
-    let GetAssetsInfoParams {
+    let GetAssetsParams {
         assets_id,
         xpub: _,
         config,
@@ -210,7 +210,18 @@ mod test {
     use crate::hard::hard_coded_values;
     use log::info;
     use serde_json::Value;
+    use std::path::Path;
     use tempfile::TempDir;
+
+    /// Shadows `crate::inner::init`, mapping `Error::AlreadyInitialized` to
+    /// `Ok(())` to avoid having a test fail only because some other test has
+    /// already called the init function.
+    fn init(dir: impl AsRef<Path>) -> Result<()> {
+        match super::init(dir) {
+            Err(Error::AlreadyInitialized) => Ok(()),
+            other => other,
+        }
+    }
 
     #[test]
     fn test_registry_prod() {
@@ -294,5 +305,69 @@ mod test {
         while let Some(handle) = handles.pop() {
             assert_eq!(handle.join().unwrap(), value);
         }
+    }
+
+    #[test]
+    fn test_get_assets() {
+        use elements::AssetId;
+
+        const DFLT_ASSETS: [&str; 2] = [
+            "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
+            "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49",
+        ];
+
+        const DFLT_XPUB: &str = "tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm";
+
+        let _ = env_logger::try_init();
+
+        let registry_dir = TempDir::new().unwrap();
+        info!("creating registry dir at {:?}", registry_dir);
+        init(&registry_dir).unwrap();
+
+        fn get(assets: Option<Vec<&str>>, xpub: Option<&str>) -> Result<RegistryResult> {
+            let assets_id = assets
+                .unwrap_or(DFLT_ASSETS.to_vec())
+                .into_iter()
+                .flat_map(AssetId::from_str)
+                .collect::<Vec<_>>();
+
+            let xpub = xpub.unwrap_or(DFLT_XPUB).to_owned();
+
+            get_assets(GetAssetsParams {
+                assets_id,
+                xpub,
+                ..Default::default()
+            })
+        }
+
+        // empty query
+        let res = get(Some(vec![]), None).unwrap();
+        assert!(res.assets.is_empty());
+        assert!(res.icons.is_empty());
+
+        // invalid query
+        let res = get(Some(vec!["foo"]), None).unwrap();
+        assert!(res.assets.is_empty());
+        assert!(res.icons.is_empty());
+
+        // invalid xpub
+        let res = get(None, Some("foo"));
+        assert!(res.is_err(), "{:?}", res);
+
+        // asset id not present in registry
+        let res = get(
+            Some(vec!["144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"]),
+            None,
+        )
+        .unwrap();
+        assert!(res.assets.is_empty());
+        assert!(res.icons.is_empty());
+
+        // default query, 2 assets queried, only 1 is present in registry
+        let now = std::time::Instant::now();
+        let res = get(None, None).unwrap();
+        assert_eq!(1, res.assets.len());
+        assert_eq!(1, res.icons.len());
+        println!("cache read took {:?}", now.elapsed());
     }
 }

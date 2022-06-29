@@ -91,7 +91,7 @@ impl RefreshAssetsParam {
 
 /// The parameters given to the [`crate::get_assets`].
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct GetAssetsInfoParams {
+pub struct GetAssetsParams {
     pub(crate) assets_id: Vec<AssetId>,
 
     /// A key used to access the encrypted asset's cache.
