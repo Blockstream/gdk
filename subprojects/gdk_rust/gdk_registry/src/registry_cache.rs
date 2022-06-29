@@ -93,8 +93,8 @@ pub fn write(xpub: &ExtendedPubKey, contents: &CacheResult) -> Result<()> {
 
     // Write the file to disk.
     file.seek(std::io::SeekFrom::Start(0))?;
-    file.write(&nonce)?;
-    file.write(&rest)?;
+    file.write_all(&nonce)?;
+    file.write_all(&rest)?;
 
     // Update the cache files.
     let mut cache_files = REGISTRY_CACHE_FILES.lock().unwrap();
