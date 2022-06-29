@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-ZLIB_NAME="zlib-1.2.11"
+ZLIB_NAME="zlib-1.2.12"
 
 if [ ! -d "${MESON_BUILD_ROOT}/zlib" ]; then
     cp -r "${MESON_SOURCE_ROOT}/subprojects/${ZLIB_NAME}" "${MESON_BUILD_ROOT}/zlib"
