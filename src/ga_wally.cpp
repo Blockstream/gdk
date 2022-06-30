@@ -210,15 +210,14 @@ namespace sdk {
     {
         size_t csv_blocks_offset;
 
-        if (redeem_script.at(0) == OP_DEPTH && redeem_script.at(1) == OP_1SUB && redeem_script.at(2) == OP_IF) {
+        if (redeem_script[0] == OP_DEPTH && redeem_script[1] == OP_1SUB && redeem_script[2] == OP_IF) {
             // 2of2 redeem script, with csv_blocks at:
             // OP_DEPTH OP_1SUB OP_IF <main_pubkey> OP_CHECKSIGVERIFY OP_ELSE <csv_blocks>
             csv_blocks_offset = 1 + 1 + 1 + (EC_PUBLIC_KEY_LEN + 1) + 1 + 1;
-        } else if (redeem_script.at(0) == EC_PUBLIC_KEY_LEN
-            && redeem_script.at(EC_PUBLIC_KEY_LEN + 1) == OP_CHECKSIGVERIFY
-            && redeem_script.at(EC_PUBLIC_KEY_LEN + 2) == EC_PUBLIC_KEY_LEN
-            && redeem_script.at(EC_PUBLIC_KEY_LEN * 2 + 3) == OP_CHECKSIG
-            && redeem_script.at(EC_PUBLIC_KEY_LEN * 2 + 4) == OP_IFDUP) {
+        } else if (redeem_script[0] == EC_PUBLIC_KEY_LEN && redeem_script[EC_PUBLIC_KEY_LEN + 1] == OP_CHECKSIGVERIFY
+            && redeem_script[EC_PUBLIC_KEY_LEN + 2] == EC_PUBLIC_KEY_LEN
+            && redeem_script[EC_PUBLIC_KEY_LEN * 2 + 3] == OP_CHECKSIG
+            && redeem_script[EC_PUBLIC_KEY_LEN * 2 + 4] == OP_IFDUP) {
             // 2of2 optimized redeem script, with csv_blocks at:
             // <recovery_pubkey> OP_CHECKSIGVERIFY <main_pubkey> OP_CHECKSIG OP_IFDUP OP_NOTIF <csv_blocks>
             csv_blocks_offset = (EC_PUBLIC_KEY_LEN + 1) + 1 + (EC_PUBLIC_KEY_LEN + 1) + 1 + 1 + 1;
@@ -227,14 +226,14 @@ namespace sdk {
             __builtin_unreachable();
         }
         // TODO: Move script integer parsing to wally and generalize
-        size_t len = redeem_script.at(csv_blocks_offset);
+        size_t len = redeem_script[csv_blocks_offset];
         GDK_RUNTIME_ASSERT(len <= 4);
         // Negative CSV blocks are not allowed
-        GDK_RUNTIME_ASSERT((redeem_script.at(csv_blocks_offset + len) & 0x80) == 0);
+        GDK_RUNTIME_ASSERT((redeem_script[csv_blocks_offset + len] & 0x80) == 0);
 
         uint32_t csv_blocks = 0;
         for (size_t i = 0; i < len; ++i) {
-            uint32_t b = redeem_script.at(csv_blocks_offset + 1 + i);
+            uint32_t b = redeem_script[csv_blocks_offset + 1 + i];
             csv_blocks |= (b << (8 * i));
         }
         return csv_blocks;
@@ -244,7 +243,7 @@ namespace sdk {
     {
         // <user_sig> <pubkey>
         constexpr bool has_sighash = true;
-        size_t push_len = script_sig.at(0);
+        size_t push_len = script_sig[0];
         GDK_RUNTIME_ASSERT(push_len && push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
         GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= push_len + 2);
         return ec_sig_from_der(script_sig.subspan(1, push_len), has_sighash);
@@ -257,10 +256,10 @@ namespace sdk {
         size_t push_len = 0;
         // OP_0 <ga_sig> <user_sig> <redeem_script>
 
-        GDK_RUNTIME_ASSERT(script_sig.at(offset) == OP_0);
+        GDK_RUNTIME_ASSERT(script_sig[offset] == OP_0);
         ++offset;
 
-        push_len = script_sig.at(offset);
+        push_len = script_sig[offset];
         GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
         ++offset;
         GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
@@ -270,7 +269,7 @@ namespace sdk {
         const auto ga_pair = std::make_pair(ga_sig, ga_sighash);
         offset += push_len;
 
-        push_len = script_sig.at(offset);
+        push_len = script_sig[offset];
         GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
         ++offset;
         GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);

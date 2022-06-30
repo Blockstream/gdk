@@ -520,7 +520,7 @@ namespace sdk {
         uint32_t ver = 0;
         get_key_value("minor_version", { [&ver](const auto& db_blob) {
             if (db_blob) {
-                ver = (db_blob->at(0) << 8) | db_blob->at(1);
+                ver = ((*db_blob)[0] << 8) | (*db_blob)[1];
             }
         } });
         if (ver < MINOR_VERSION) {

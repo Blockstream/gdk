@@ -9,6 +9,7 @@
 #endif
 #endif
 
+#include <gsl/narrow>
 #include <gsl/pointers>
 #include <gsl/span>
 
