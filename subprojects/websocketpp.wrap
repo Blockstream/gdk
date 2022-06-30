@@ -1,7 +1,7 @@
 [wrap-file]
 directory = websocketpp-1026e877449aeee27e0bb51746a96ab42d133652
 
-source_url = https://github.com/glslang/websocketpp/archive/1026e877449aeee27e0bb51746a96ab42d133652.tar.gz
+source_url = https://github.com/blockstream/websocketpp/archive/1026e877449aeee27e0bb51746a96ab42d133652.tar.gz
 source_filename = websocketpp-1026e877449aeee27e0bb51746a96ab42d133652.tar.gz
 source_hash = 82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb
 
