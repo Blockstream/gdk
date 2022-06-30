@@ -250,6 +250,8 @@ namespace sdk {
         return ret;
     }
 
+    std::string signer::get_master_bip32_xpub() { return get_bip32_xpub(std::vector<uint32_t>()); }
+
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {
         std::unique_lock<std::mutex> locker{ m_mutex };

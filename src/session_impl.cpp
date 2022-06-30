@@ -185,7 +185,7 @@ namespace sdk {
 
         nlohmann::json p = params;
 
-        p["xpub"] = get_nonnull_signer()->get_bip32_xpub(std::vector<uint32_t>());
+        p["xpub"] = get_nonnull_signer()->get_master_bip32_xpub();
         p["config"] = get_registry_config();
 
         try {

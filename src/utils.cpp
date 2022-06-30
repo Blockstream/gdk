@@ -733,7 +733,7 @@ namespace sdk {
                 // Create a software signer to derive the master xpub
                 signer tmp_signer{ np, nlohmann::json(), params };
                 GDK_RUNTIME_ASSERT(!tmp_signer.is_watch_only());
-                bip32_xpub = tmp_signer.get_bip32_xpub(std::vector<uint32_t>());
+                bip32_xpub = tmp_signer.get_master_bip32_xpub();
             } else {
                 bip32_xpub = params.value("master_xpub", std::string());
             }

@@ -77,7 +77,7 @@ namespace sdk {
 
     void ga_rust::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> signer)
     {
-        auto master_xpub = signer->get_bip32_xpub(std::vector<uint32_t>());
+        auto master_xpub = signer->get_master_bip32_xpub();
         rust_call("load_store", { { "master_xpub", std::move(master_xpub) } }, m_session);
         if (!signer->has_master_blinding_key()) {
             // Load the cached master blinding key, if we have it
@@ -306,7 +306,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_post_login_data()
     {
-        auto master_xpub = get_nonnull_signer()->get_bip32_xpub(std::vector<uint32_t>());
+        auto master_xpub = get_nonnull_signer()->get_master_bip32_xpub();
         return get_wallet_hash_id(
             { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
     }
