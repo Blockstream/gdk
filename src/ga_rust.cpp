@@ -521,8 +521,13 @@ namespace sdk {
         auto currency = amount_json.value("fiat_currency", "USD");
         auto fallback_rate = amount_json.value("fiat_rate", "");
         auto currency_query = nlohmann::json({ { "currencies", currency } });
-        auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
-        auto fetched_rate = xrates.value(currency, "");
+        std::string fetched_rate = "";
+        try {
+            auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
+            fetched_rate = xrates.value(currency, "");
+        } catch (const std::exception& ex) {
+            GDK_LOG_SEV(log_level::warning) << "cannot fetch exchange rate " << ex.what();
+        }
         auto rate = fetched_rate.empty() ? fallback_rate : fetched_rate;
         return amount::convert(amount_json, currency, rate);
     }
