@@ -23,11 +23,15 @@
 //! way that user interest in a particular asset is not revealed to preserve
 //! users' privacy.
 
+mod error;
+
 use std::path::Path;
+
+pub use error::{Error, Result};
 
 /// Initialize the library by specifying a root directory where all the cached
 /// data will be persisted across sessions.
-pub fn init(_dir: impl AsRef<Path>) -> Result<(), ()> {
+pub fn init(_dir: impl AsRef<Path>) -> Result<()> {
     todo!()
 }
 
@@ -36,7 +40,7 @@ pub fn init(_dir: impl AsRef<Path>) -> Result<(), ()> {
 /// Unlike [`refresh_assets`], this function will cache the queried assets to
 /// avoid performing a full registry read on evey call. The cache file stored
 /// on disk is encrypted via the wallet's xpub key.
-pub fn get_assets(_params: ()) -> Result<(), ()> {
+pub fn get_assets(_params: ()) -> Result<()> {
     todo!()
 }
 
@@ -48,7 +52,7 @@ pub fn get_assets(_params: ()) -> Result<(), ()> {
 /// managed by Blockstream and no proxy is used to access it. This default
 /// configuration could be overridden by providing the `params.config`
 /// parameter.
-pub fn refresh_assets(_params: ()) -> Result<(), ()> {
+pub fn refresh_assets(_params: ()) -> Result<()> {
     todo!()
 }
 
