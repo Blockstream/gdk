@@ -24,10 +24,12 @@
 //! users' privacy.
 
 mod error;
+mod params;
 
 use std::path::Path;
 
 pub use error::{Error, Result};
+pub use params::RefreshAssetsParams;
 
 /// Initialize the library by specifying a root directory where all the cached
 /// data will be persisted across sessions.
@@ -52,7 +54,7 @@ pub fn get_assets(_params: ()) -> Result<()> {
 /// managed by Blockstream and no proxy is used to access it. This default
 /// configuration could be overridden by providing the `params.config`
 /// parameter.
-pub fn refresh_assets(_params: ()) -> Result<()> {
+pub fn refresh_assets(_params: RefreshAssetsParams) -> Result<()> {
     todo!()
 }
 
