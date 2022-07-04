@@ -26,7 +26,7 @@ pub struct RefreshAssetsParams {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Config {
+pub(super) struct Config {
     /// Optional proxy to use.
     proxy: Option<String>,
 
@@ -76,7 +76,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_assets_deserialization() {
+    fn test_deserialization() {
         let str = r#"{"assets":true,"refresh":true}"#;
         let res = serde_json::from_str::<RefreshAssetsParams>(str);
         assert!(res.is_ok(), "{res:?}");
