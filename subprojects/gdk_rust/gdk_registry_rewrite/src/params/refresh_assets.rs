@@ -1,5 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
+
+use crate::assets_or_icons::AssetsOrIcons;
+use crate::Result;
 
 const BASE_URL: &str = "http://assets.blockstream.info";
 
@@ -25,23 +29,60 @@ pub struct RefreshAssetsParams {
     config: Config,
 }
 
+impl RefreshAssetsParams {
+    pub(crate) fn agent(&self) -> Result<ureq::Agent> {
+        match &self.config.proxy {
+            Some(proxy) if !proxy.is_empty() => {
+                let proxy = ureq::Proxy::new(&proxy)?;
+                Ok(ureq::AgentBuilder::new().proxy(proxy).build())
+            },
+
+            _ => Ok(ureq::agent()),
+        }
+    }
+
+    pub(crate) const fn network(&self) -> ElementsNetwork {
+        self.config.network
+    }
+
+    pub(crate) const fn should_refresh(&self) -> bool {
+        self.refresh
+    }
+
+    pub(crate) fn url(&self, what: AssetsOrIcons) -> String {
+        format!("{}/{}", self.config.url, what.endpoint())
+    }
+
+    pub(crate) const fn wants_something(&self) -> bool {
+        self.assets | self.icons
+    }
+
+    pub(crate) const fn wants_assets(&self) -> bool {
+        self.assets
+    }
+
+    pub(crate) const fn wants_icons(&self) -> bool {
+        self.icons
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct Config {
+    /// Defaults to Liquid mainnet.
+    network: ElementsNetwork,
+
     /// Optional proxy to use.
     proxy: Option<String>,
 
     url: String,
-
-    /// Default to Liquid mainnet.
-    network: ElementsNetwork,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
+            network: ElementsNetwork::Liquid,
             proxy: None,
             url: BASE_URL.to_owned(),
-            network: ElementsNetwork::Liquid,
         }
     }
 }

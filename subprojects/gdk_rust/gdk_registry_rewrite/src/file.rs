@@ -6,7 +6,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::Result;
 
-pub(crate) fn _read<V: DeserializeOwned>(file: &mut File) -> Result<V> {
+pub(crate) fn read<V: DeserializeOwned>(file: &mut File) -> Result<V> {
     file.seek(io::SeekFrom::Start(0))?;
     if log_enabled!(Level::Info) {
         info!("file {:?} size {}", &file, file.metadata()?.len());

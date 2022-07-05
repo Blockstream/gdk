@@ -1,5 +1,8 @@
-use elements::{AssetId, Txid};
+use elements::{AssetId, ContractHash, OutPoint, Txid};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::Result;
 
 /// Contains informations about an asset, including its asset id, the contract
 /// defining its property, and the transaction that issued the asset.
@@ -60,4 +63,45 @@ struct Prevout {
 struct Txin {
     txid: Txid,
     vin: u32,
+}
+
+impl AssetEntry {
+    fn contract_string(&self) -> Result<String> {
+        serde_json::to_string(&self.contract).map_err(Into::into)
+    }
+
+    fn issuance_prevout(&self) -> OutPoint {
+        OutPoint::new(self.issuance_prevout.txid, self.issuance_prevout.vout)
+    }
+
+    /// Verify information in `self.contract` commits in `self.asset_id`
+    /// ensuring the validity of the Contract data. Moreover information in the
+    /// first level like `self.name` is verified to be the same of the one in
+    /// the contract `self.contract.name`
+    pub(crate) fn verifies(&self) -> Result<bool> {
+        let contract_hash =
+            ContractHash::from_json_contract(&self.contract_string()?)?;
+
+        let entropy = AssetId::generate_asset_entropy(
+            self.issuance_prevout(),
+            contract_hash,
+        );
+
+        let asset_id = AssetId::from_entropy(entropy);
+
+        let ticker = match self.ticker.clone() {
+            Some(val) => Value::String(val),
+            None => Value::Null,
+        };
+
+        Ok(asset_id == self.asset_id
+            && Some(self.version as u64) == self.contract["version"].as_u64()
+            && Some(self.issuer_pubkey.as_str())
+                == self.contract["issuer_pubkey"].as_str()
+            && Some(self.name.as_str()) == self.contract["name"].as_str()
+            && ticker == self.contract["ticker"]
+            && Some(self.precision as u64)
+                == self.contract["precision"].as_u64()
+            && self.entity == self.contract["entity"])
+    }
 }

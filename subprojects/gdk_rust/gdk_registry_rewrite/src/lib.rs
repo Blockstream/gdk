@@ -29,6 +29,7 @@ mod cache;
 mod error;
 mod file;
 mod hard_coded;
+mod http;
 mod params;
 mod registry;
 mod registry_infos;
@@ -36,9 +37,10 @@ mod value_modified;
 
 use std::path::Path;
 
+use registry_infos::{RegistryAssets, RegistryInfos};
+
 pub use error::{Error, Result};
 pub use params::{GetAssetsParams, RefreshAssetsParams};
-use registry_infos::RegistryInfos;
 
 /// Initialize the library by specifying the root directory where the cached
 /// data is persisted across sessions.
@@ -64,8 +66,40 @@ pub fn get_assets(_params: GetAssetsParams) -> Result<RegistryInfos> {
 /// managed by Blockstream and no proxy is used to access it. This default
 /// configuration could be overridden by providing the `params.config`
 /// parameter.
-pub fn refresh_assets(_params: RefreshAssetsParams) -> Result<RegistryInfos> {
-    todo!()
+pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
+    if !params.wants_something() {
+        return Err(Error::BothAssetsIconsFalse);
+    }
+
+    let assets = params
+        .wants_assets()
+        .then(|| {
+            let assets = registry::get_assets(&params)?;
+
+            let (ok, wrong): (RegistryAssets, _) = assets
+                .into_iter()
+                .partition(|(_, entry)| entry.verifies().unwrap_or(false));
+
+            if !wrong.is_empty() {
+                log::warn!("{} assets didn't verify!", wrong.len());
+            }
+
+            if params.should_refresh() {
+                // TODO: update cache misses
+            }
+
+            Ok::<_, Error>(ok)
+        })
+        .transpose()?
+        .unwrap_or_default();
+
+    let icons = params
+        .wants_icons()
+        .then(|| registry::get_icons(&params))
+        .transpose()?
+        .unwrap_or_default();
+
+    Ok(RegistryInfos::new(assets, icons))
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 use crate::assets_or_icons::AssetsOrIcons;
 use crate::params::ElementsNetwork;
+use crate::registry_infos::{RegistryAssets, RegistryIcons};
 
 const ASSETS: [&str; ElementsNetwork::len()] = [
     include_str!("../../gdk_registry/src/hard/liquid_assets.json"),
@@ -12,6 +13,16 @@ const ICONS: [&str; ElementsNetwork::len()] = [
     include_str!("../../gdk_registry/src/hard/liquid-testnet_icons.json"),
     include_str!("../../gdk_registry/src/hard/elements-regtest_icons.json"),
 ];
+
+pub(crate) fn assets(network: ElementsNetwork) -> RegistryAssets {
+    serde_json::from_value(self::value(network, AssetsOrIcons::Assets))
+        .expect("checked at test time")
+}
+
+pub(crate) fn icons(network: ElementsNetwork) -> RegistryIcons {
+    serde_json::from_value(self::value(network, AssetsOrIcons::Icons))
+        .expect("checked at test time")
+}
 
 pub(crate) fn value(
     network: ElementsNetwork,
