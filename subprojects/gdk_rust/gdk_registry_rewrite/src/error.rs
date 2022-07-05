@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    sync::{MutexGuard, PoisonError},
+    sync::{MutexGuard, PoisonError, TryLockError},
 };
 
 /// Result type alias of the `gdk_registry` crate.
@@ -34,6 +34,10 @@ pub enum Error {
     /// Wraps IO errors.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+
+    /// Returned when trying to lock a Mutex while another thread has the lock.
+    #[error("Another thread is holding the Mutex's lock")]
+    MutexBusy,
 
     /// Wrap a poison error as string to avoid pollute with lifetimes.
     #[error("{0}")]
@@ -75,5 +79,14 @@ impl From<aes_gcm_siv::aead::Error> for Error {
 impl From<PoisonError<MutexGuard<'_, File>>> for Error {
     fn from(e: PoisonError<MutexGuard<'_, File>>) -> Self {
         Error::Poison(e.to_string())
+    }
+}
+
+impl From<TryLockError<MutexGuard<'_, File>>> for Error {
+    fn from(err: TryLockError<MutexGuard<'_, File>>) -> Self {
+        match err {
+            TryLockError::Poisoned(p) => p.into(),
+            TryLockError::WouldBlock => Self::MutexBusy,
+        }
     }
 }

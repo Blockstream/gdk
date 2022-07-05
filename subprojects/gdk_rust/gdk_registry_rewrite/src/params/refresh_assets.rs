@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-// use std::fmt;
+use std::fmt;
 
 const BASE_URL: &str = "http://assets.blockstream.info";
 
@@ -48,28 +48,41 @@ impl Default for Config {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-enum ElementsNetwork {
+#[repr(usize)]
+pub(crate) enum ElementsNetwork {
     /// Liquid mainnet.
-    Liquid,
+    Liquid = 0,
 
     /// Liquid testnet.
-    LiquidTestnet,
+    LiquidTestnet = 1,
 
     /// Elements regtest.
-    ElementsRegtest,
+    ElementsRegtest = 2,
 }
 
-// impl fmt::Display for ElementsNetwork {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         use ElementsNetwork::*;
+impl fmt::Display for ElementsNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ElementsNetwork::*;
 
-//         f.write_str(match self {
-//             Liquid => "liquid",
-//             LiquidTestnet => "liquid-testnet",
-//             ElementsRegtest => "elements-regtest",
-//         })
-//     }
-// }
+        f.write_str(match self {
+            Liquid => "liquid",
+            LiquidTestnet => "liquid-testnet",
+            ElementsRegtest => "elements-regtest",
+        })
+    }
+}
+
+impl ElementsNetwork {
+    /// Returns the number of possible networks.
+    pub(crate) const fn len() -> usize {
+        3
+    }
+
+    /// Returns an iterator over all the possible networks.
+    pub(crate) fn iter() -> impl ExactSizeIterator<Item = Self> {
+        [Self::Liquid, Self::LiquidTestnet, Self::ElementsRegtest].into_iter()
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -93,5 +106,10 @@ mod test {
         }"#;
         let res = serde_json::from_str::<RefreshAssetsParams>(str);
         assert!(res.is_ok(), "{res:?}");
+    }
+
+    #[test]
+    fn networks_iter_len_in_sync() {
+        assert_eq!(ElementsNetwork::len(), ElementsNetwork::iter().len())
     }
 }

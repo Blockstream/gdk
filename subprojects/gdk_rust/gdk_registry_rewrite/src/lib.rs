@@ -24,9 +24,14 @@
 //! users' privacy.
 
 mod asset_entry;
+mod assets_or_icons;
 mod error;
+mod file;
+mod hard_coded;
 mod params;
+mod registry;
 mod registry_infos;
+mod value_modified;
 
 use std::path::Path;
 
@@ -36,8 +41,8 @@ use registry_infos::RegistryInfos;
 
 /// Initialize the library by specifying the root directory where the cached
 /// data is persisted across sessions.
-pub fn init(_dir: impl AsRef<Path>) -> Result<()> {
-    todo!()
+pub fn init(dir: impl AsRef<Path>) -> Result<()> {
+    registry::init(dir)
 }
 
 /// Returns informations about a set of assets and related icons.
