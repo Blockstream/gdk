@@ -25,6 +25,7 @@
 
 mod asset_entry;
 mod assets_or_icons;
+mod cache;
 mod error;
 mod file;
 mod hard_coded;
@@ -42,7 +43,8 @@ use registry_infos::RegistryInfos;
 /// Initialize the library by specifying the root directory where the cached
 /// data is persisted across sessions.
 pub fn init(dir: impl AsRef<Path>) -> Result<()> {
-    registry::init(dir)
+    registry::init(&dir)?;
+    cache::init(&dir)
 }
 
 /// Returns informations about a set of assets and related icons.

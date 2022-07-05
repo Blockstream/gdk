@@ -1,10 +1,9 @@
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[repr(usize)]
 pub(crate) enum AssetsOrIcons {
-    Assets = 0,
-    Icons = 1,
+    Assets,
+    Icons,
 }
 
 impl fmt::Display for AssetsOrIcons {
@@ -23,5 +22,15 @@ impl AssetsOrIcons {
 
     pub(crate) fn iter() -> impl ExactSizeIterator<Item = Self> {
         [Self::Assets, Self::Icons].into_iter()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn networks_iter_len_in_sync() {
+        assert_eq!(AssetsOrIcons::len(), AssetsOrIcons::iter().len())
     }
 }
