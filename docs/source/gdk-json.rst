@@ -450,116 +450,141 @@ Sign transaction JSON
   {
   "addressees": [
     {
-      "address": "2MtcMpWnde3tf5vfwnHXKBaWuAUS8j89771",
-      "bip21-params": null,
-      "satoshi": 100000
+      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
+      "satoshi": 5000
     }
   ],
+  "addressees_have_assets": false,
   "addressees_read_only": false,
   "amount_read_only": false,
-  "available_total": 4999794,
+  "available_total": 50000,
   "calculated_fee_rate": 1000,
   "change_address": {
-    "address": "2NAvvWUygud1YSdsqTZbnntMRjsbx4RxP3Z",
-    "address_type": "p2wsh",
-    "branch": 1,
-    "pointer": 492,
-    "script": "522102da0e5f74219dadbd392dc3157c43c3636e237005e7f3976a338e519901fdf9e32103326c44e51893994677bb43e5d272af11aea967a4ca3f1c431fe41e6a7851a35152ae",
-    "script_type": 14,
-    "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
-    "subaccount": 0,
-    "subtype": null,
-    "user_path": [
-      1,
-      492
-    ]
+    "btc": {
+      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
+      "address_type": "csv",
+      "branch": 1,
+      "pointer": 3,
+      "script": "2103bff5afb55b115068c2f5d906fc97a41ec3b81446f616a31d2304d2cf18c87db9ad2103eaf7e8cf60e89cfb9fe8cabf141b041b0eb6ade361f9ec84943445bd0abdfe29ac73640380ca00b268",
+      "script_type": 15,
+      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
+      "subaccount": 0,
+      "subtype": 51840,
+      "user_path": [
+        1,
+        3
+      ]
+    }
   },
-  "change_amount": 4889588,
-  "change_index": 0,
+  "change_amount": {
+    "btc": 44792
+  },
+  "change_index": {
+    "btc": 0
+  },
   "change_subaccount": 0,
   "error": "",
-  "fee": 206,
+  "fee": 208,
   "fee_rate": 1000,
-  "have_change": true,
+  "have_change": {
+    "btc": true
+  },
   "is_redeposit": false,
   "is_sweep": false,
   "network_fee": 0,
   "satoshi": {
-    "btc": 100000
+    "btc": 5000
   },
   "send_all": false,
   "server_signed": false,
   "subaccount": 0,
-  "transaction": "02000000000101c01365291a12d995d7afc3234f4e86d3e064f175ab5a7d47e631de7f293a930901000000230000000000000000000000000000000000000000000000000000000000000000000000fdffffff02f49b4a000000000017a914c1fc2f90044f58698bf9c51f3283e25c809ac17d87a08601000000000017a9140ef7660003133f69023f0436dc8bcf427941dcf5870400480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000047522103bad7ac76143368781c4ac3e7afbb63cd6b52f2a923c715576804aa1046cabc1a210264f5fa70969907861ebdb2b2d53beb125523bb5140b90194481e2415ade1787452ae4ca21600",
-  "transaction_locktime": 1483340,
+  "subaccount_type": "2of2",
+  "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed4300000000230000000000000000000000000000000000000000000000000000000000000000000000fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87040048000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268c9000000",
+  "transaction_locktime": 201,
   "transaction_outputs": [
     {
-      "address": "2NAvvWUygud1YSdsqTZbnntMRjsbx4RxP3Z",
-      "address_type": "p2wsh",
+      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
+      "address_type": "csv",
+      "asset_id": "btc",
       "branch": 1,
       "is_change": true,
-      "pointer": 492,
-      "satoshi": 4889588,
-      "script": "a914c1fc2f90044f58698bf9c51f3283e25c809ac17d87",
-      "script_type": 14,
-      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "is_fee": false,
+      "pointer": 3,
+      "satoshi": 44792,
+      "script": "a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87",
+      "script_type": 15,
+      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
       "subaccount": 0,
-      "subtype": null,
+      "subtype": 51840,
       "user_path": [
         1,
-        492
+        3
       ]
     },
     {
-      "address": "2MtcMpWnde3tf5vfwnHXKBaWuAUS8j89771",
+      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
+      "asset_id": "btc",
       "is_change": false,
-      "satoshi": 100000,
-      "script": "a9140ef7660003133f69023f0436dc8bcf427941dcf587"
+      "is_fee": false,
+      "satoshi": 5000,
+      "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
     }
   ],
-  "transaction_size": 372,
+  "transaction_size": 379,
   "transaction_version": 2,
-  "transaction_vsize": 206,
-  "transaction_weight": 822,
+  "transaction_vsize": 208,
+  "transaction_weight": 829,
   "used_utxos": [
-    0
+    {
+      "address_type": "csv",
+      "block_height": 201,
+      "expiry_height": 52041,
+      "is_internal": false,
+      "pointer": 1,
+      "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
+      "pt_idx": 0,
+      "satoshi": 50000,
+      "script_type": 15,
+      "sequence": 4294967293,
+      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
+      "subaccount": 0,
+      "subtype": 51840,
+      "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
+      "user_path": [
+        1,
+        1
+      ],
+      "user_status": 0
+    }
   ],
   "user_signed": false,
   "utxo_strategy": "default",
-  "utxos": [
-    {
-      "address_type": "p2wsh",
-      "block_height": 1448369,
-      "pointer": 475,
-      "prevout_script": "522103bad7ac76143368781c4ac3e7afbb63cd6b52f2a923c715576804aa1046cabc1a210264f5fa70969907861ebdb2b2d53beb125523bb5140b90194481e2415ade1787452ae",
-      "pt_idx": 1,
-      "satoshi": 4989794,
-      "script_type": 14,
-      "sequence": 4294967293,
-      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
-      "subaccount": 0,
-      "subtype": 0,
-      "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
-      "user_path": [
-        1,
-        475
-      ]
-    },
-    {
-      "address_type": "p2wsh",
-      "block_height": 1448369,
-      "pointer": 474,
-      "pt_idx": 0,
-      "satoshi": 10000,
-      "script_type": 14,
-      "subaccount": 0,
-      "subtype": 0,
-      "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0"
-    }
-  ],
-  "memo": ""
+  "utxos": {
+    "btc": [
+      {
+        "address_type": "csv",
+        "block_height": 201,
+        "expiry_height": 52041,
+        "is_internal": false,
+        "pointer": 1,
+        "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
+        "pt_idx": 0,
+        "satoshi": 50000,
+        "script_type": 15,
+        "sequence": 4294967293,
+        "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
+        "subaccount": 0,
+        "subtype": 51840,
+        "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
+        "user_path": [
+          1,
+          1
+        ],
+        "user_status": 0
+      }
+    ]
   }
-
+  }
 
 
 .. _send-tx-details:
@@ -572,133 +597,142 @@ Send transaction JSON
   {
   "addressees": [
     {
-      "address": "2NDwUefHRbbHuGsumAWMbRZUzigrtBYkwrq",
-      "bip21-params": null,
-      "satoshi": 100000
+      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
+      "satoshi": 5000
     }
   ],
+  "addressees_have_assets": false,
   "addressees_read_only": false,
   "amount_read_only": false,
-  "available_total": 4999588,
-  "calculated_fee_rate": 1281,
+  "available_total": 50000,
+  "blinded": true,
+  "calculated_fee_rate": 1230,
   "change_address": {
-    "address": "2Mtpg961bP6WH9cQvY2qS4rnuceoRBrnutn",
-    "address_type": "p2wsh",
-    "branch": 1,
-    "pointer": 497,
-    "script": "52210350683b20cc33983f818c9b50606909622dbc4387a17699e5ae09b9d5d1b3111c21028598a36a99fbda64ff1d942afef40b1ad80050c2f8d7191f2ac302a58d9db40252ae",
-    "script_type": 14,
-    "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
-    "subaccount": 0,
-    "subtype": null,
-    "user_path": [
-      1,
-      497
-    ]
+    "btc": {
+      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
+      "address_type": "csv",
+      "branch": 1,
+      "pointer": 3,
+      "script": "2103bff5afb55b115068c2f5d906fc97a41ec3b81446f616a31d2304d2cf18c87db9ad2103eaf7e8cf60e89cfb9fe8cabf141b041b0eb6ade361f9ec84943445bd0abdfe29ac73640380ca00b268",
+      "script_type": 15,
+      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
+      "subaccount": 0,
+      "subtype": 51840,
+      "user_path": [
+        1,
+        3
+      ]
+    }
   },
-  "change_amount": 109663,
-  "change_index": 1,
+  "change_amount": {
+    "btc": 44792
+  },
+  "change_index": {
+    "btc": 0
+  },
   "change_subaccount": 0,
   "error": "",
-  "fee": 337,
+  "fee": 208,
   "fee_rate": 1000,
-  "have_change": true,
+  "have_change": {
+    "btc": true
+  },
   "is_redeposit": false,
   "is_sweep": false,
-  "memo": "",
   "network_fee": 0,
-  "satoshi": 100000,
+  "satoshi": {
+    "btc": 5000
+  },
   "send_all": false,
   "server_signed": false,
   "subaccount": 0,
-  "transaction": "020000000001027ff3490a29a2fe73f07e3d3f8740249d61c0025fdc0819586dd9443bc6a00bd30100000023220020ed1761c2b0035dd221ec0f7f78ad88b44f7575884daa668def774bf4db97696afdffffffc01365291a12d995d7afc3234f4e86d3e064f175ab5a7d47e631de7f293a9309000000002322002012ba0847af1dcfb9a3d112224d6ed60f361cfdce243f98867aa85836f84bf808fdffffff02a08601000000000017a914e2ff64a1ca976947d47b6b2d214af96d5942e1b2875fac01000000000017a914114baed477ca8fb65f856b96f860acc52619a6fc870147304402200333910d9c37f5749298dbf8017e4f9932df2e727eeae907e65e102d267045e40220636500d1db9d92b7ff9f1fe1662d9445acfc322d19575ca1aefc98de9b37967a01014730440220731c09346ddff84673c7eeb64003339bc86a03eee04f49f6f1730884e2a772b002207e6a88797e9e0a76b0d85f55a1de52fcc70f80b9647028cca68b7790c83a6bd5014ea21600",
-  "transaction_locktime": 1483342,
+  "subaccount_type": "2of2",
+  "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed430000000023220020babaa86eeaec7ae0f438218b993c7518e81efe6c8c64e9500648f861ccd590b3fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b870147304402206aa051d8f6b373e9e73ea91967d3d574262a56f66b134804133893bc8b6a797f022069802eccea8174daadee65a6288f23434ed646d328bf184060e2517bd9c5aa3801c9000000",
+  "transaction_locktime": 201,
   "transaction_outputs": [
     {
-      "address": "2NDwUefHRbbHuGsumAWMbRZUzigrtBYkwrq",
-      "is_change": false,
-      "satoshi": 100000,
-      "script": "a914e2ff64a1ca976947d47b6b2d214af96d5942e1b287"
-    },
-    {
-      "address": "2Mtpg961bP6WH9cQvY2qS4rnuceoRBrnutn",
-      "address_type": "p2wsh",
+      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
+      "address_type": "csv",
+      "asset_id": "btc",
       "branch": 1,
       "is_change": true,
-      "pointer": 497,
-      "satoshi": 109663,
-      "script": "a914114baed477ca8fb65f856b96f860acc52619a6fc87",
-      "script_type": 14,
-      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
+      "is_fee": false,
+      "pointer": 3,
+      "satoshi": 44792,
+      "script": "a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87",
+      "script_type": 15,
+      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
       "subaccount": 0,
-      "subtype": null,
+      "subtype": 51840,
       "user_path": [
         1,
-        497
+        3
       ]
+    },
+    {
+      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
+      "asset_id": "btc",
+      "is_change": false,
+      "is_fee": false,
+      "satoshi": 5000,
+      "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
     }
   ],
-  "transaction_size": 374,
+  "transaction_size": 225,
   "transaction_version": 2,
-  "transaction_vsize": 263,
-  "transaction_weight": 1052,
+  "transaction_vsize": 169,
+  "transaction_weight": 675,
   "used_utxos": [
-    1,
-    0
+    {
+      "address_type": "csv",
+      "block_height": 201,
+      "expiry_height": 52041,
+      "is_internal": false,
+      "pointer": 1,
+      "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
+      "pt_idx": 0,
+      "satoshi": 50000,
+      "script_type": 15,
+      "sequence": 4294967293,
+      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
+      "subaccount": 0,
+      "subtype": 51840,
+      "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
+      "user_path": [
+        1,
+        1
+      ],
+      "user_status": 0
+    }
   ],
   "user_signed": true,
   "utxo_strategy": "default",
-  "utxos": [
-    {
-      "address_type": "p2wsh",
-      "block_height": 1448369,
-      "pointer": 474,
-      "prevout_script": "522102ff54a17dc6efe168673dbf679fe97e06b5cdcaf7dea8ab83dc6732350cd1b4e4210279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e52ae",
-      "pt_idx": 0,
-      "satoshi": 10000,
-      "script_type": 14,
-      "sequence": 4294967293,
-      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
-      "subaccount": 0,
-      "subtype": 0,
-      "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
-      "user_path": [
-        1,
-        474
-      ]
-    },
-    {
-      "address_type": "p2wsh",
-      "block_height": 0,
-      "pointer": 493,
-      "prevout_script": "522102c9465e8b6e98848428b90f21291a19c62fcb20d2dbff76217068219cada5f7a921022e831b15a4faa339ed9a09a6f1bc01da9001f86130e010a397603b4b4230a22552ae",
-      "pt_idx": 1,
-      "satoshi": 200000,
-      "script_type": 14,
-      "sequence": 4294967293,
-      "service_xpub": "tpubEAUTpVqYYmDxumXSPwZEgCRC5HZXagbsATdv3wUMweyDrJY4fVDt89ogtpBxa9ynpXB3AyGen3Ko4S8ewpWkkvQsvYP86oEc8z9B6crQ5gn",
-      "subaccount": 0,
-      "subtype": 0,
-      "txhash": "d30ba0c63b44d96d581908dc5f02c0619d2440873f3d7ef073fea2290a49f37f",
-      "user_path": [
-        1,
-        493
-      ]
-    },
-    {
-      "address_type": "p2wsh",
-      "block_height": 0,
-      "pointer": 494,
-      "pt_idx": 0,
-      "satoshi": 4789588,
-      "script_type": 14,
-      "subaccount": 0,
-      "subtype": 0,
-      "txhash": "d30ba0c63b44d96d581908dc5f02c0619d2440873f3d7ef073fea2290a49f37f"
-    }
-  ]
+  "utxos": {
+    "btc": [
+      {
+        "address_type": "csv",
+        "block_height": 201,
+        "expiry_height": 52041,
+        "is_internal": false,
+        "pointer": 1,
+        "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
+        "pt_idx": 0,
+        "satoshi": 50000,
+        "script_type": 15,
+        "sequence": 4294967293,
+        "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
+        "subaccount": 0,
+        "subtype": 51840,
+        "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
+        "user_path": [
+          1,
+          1
+        ],
+        "user_status": 0
+      }
+    ]
   }
-
+  }
 
 
 .. _sign-psbt-details:
