@@ -13,10 +13,10 @@ pub(crate) type RegistryIcons = HashMap<AssetId, String>;
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RegistryInfos {
     /// Assets metadata.
-    pub(crate) assets: RegistryAssets,
+    pub assets: RegistryAssets,
 
     /// Assets icons: the hashmap value is a Base64 encoded image.
-    pub(crate) icons: RegistryIcons,
+    pub icons: RegistryIcons,
 }
 
 impl RegistryInfos {
@@ -34,11 +34,11 @@ impl RegistryInfos {
         self.icons.extend(other.icons);
     }
 
-    pub(crate) const fn new(
-        assets: RegistryAssets,
-        icons: RegistryIcons,
-    ) -> Self {
-        Self { assets, icons }
+    pub(crate) const fn new(assets: RegistryAssets, icons: RegistryIcons) -> Self {
+        Self {
+            assets,
+            icons,
+        }
     }
 }
 
@@ -53,29 +53,23 @@ mod test {
     #[test]
     fn test_policy() {
         let policy = json!({"asset_id": "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d", "name": "Liquid Bitcoin", "ticker": "L-BTC"});
-        let _policy_value: AssetEntry =
-            serde_json::from_value(policy).unwrap();
+        let _policy_value: AssetEntry = serde_json::from_value(policy).unwrap();
     }
 
     #[test]
     fn test_asset_commitment() {
         let tether_entry = r#"{"asset_id":"ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2","contract":{"entity":{"domain":"tether.to"},"issuer_pubkey":"0337cceec0beea0232ebe14cba0197a9fbd45fcf2ec946749de920e71434c2b904","name":"Tether USD","precision":8,"ticker":"USDt","version":0},"issuance_txin":{"txid":"abb4080d91849e933ee2ed65da6b436f7c385cf363fb4aa08399f1e27c58ff3d","vin":0},"issuance_prevout":{"txid":"9596d259270ef5bac0020435e6d859aea633409483ba64e232b8ba04ce288668","vout":0},"name":"Tether USD","ticker":"USDt","precision":8,"entity":{"domain":"tether.to"},"version":0,"issuer_pubkey":"0337cceec0beea0232ebe14cba0197a9fbd45fcf2ec946749de920e71434c2b904"}"#;
-        let tether_parsed: AssetEntry =
-            serde_json::from_str(tether_entry).unwrap();
+        let tether_parsed: AssetEntry = serde_json::from_str(tether_entry).unwrap();
         let expected_contract_hash = ContractHash::from_hex(
             "3c7f0a53c2ff5b99590620d7f6604a7a3a7bfbaaa6aa61f7bfc7833ca03cde82",
         )
         .unwrap();
-        let tether_contract_hash = ContractHash::from_json_contract(
-            &tether_parsed.contract_string().unwrap(),
-        )
-        .unwrap();
+        let tether_contract_hash =
+            ContractHash::from_json_contract(&tether_parsed.contract_string().unwrap()).unwrap();
         assert_eq!(expected_contract_hash, tether_contract_hash);
 
-        let entropy = AssetId::generate_asset_entropy(
-            tether_parsed.issuance_prevout(),
-            tether_contract_hash,
-        );
+        let entropy =
+            AssetId::generate_asset_entropy(tether_parsed.issuance_prevout(), tether_contract_hash);
         let asset_id = AssetId::from_entropy(entropy);
 
         assert_eq!(asset_id, tether_parsed.asset_id);
@@ -90,8 +84,7 @@ mod test {
         assert!(parsed.verifies().unwrap());
 
         let mut parsed_wrong_contract = parsed.clone();
-        *parsed_wrong_contract.contract.get_mut("precision").unwrap() =
-            5.into();
+        *parsed_wrong_contract.contract.get_mut("precision").unwrap() = 5.into();
         assert!(!parsed_wrong_contract.verifies().unwrap());
     }
 
@@ -107,17 +100,16 @@ mod test {
             icons.insert(AssetId::default(), "BASE64".into());
             icons
         };
-        let mut r = RegistryInfos { assets, icons };
-        let expected: Value = serde_json::from_str(include_str!(
-            "../../gdk_registry/src/data/test/result.json"
-        ))
-        .unwrap();
+        let mut r = RegistryInfos {
+            assets,
+            icons,
+        };
+        let expected: Value =
+            serde_json::from_str(include_str!("../../gdk_registry/src/data/test/result.json"))
+                .unwrap();
         assert_eq!(serde_json::to_value(&r).unwrap(), expected);
         r.icons.clear();
         r.assets.clear();
-        assert_eq!(
-            serde_json::to_value(&r).unwrap(),
-            json!({"assets":{}, "icons":{}})
-        );
+        assert_eq!(serde_json::to_value(&r).unwrap(), json!({"assets":{}, "icons":{}}));
     }
 }

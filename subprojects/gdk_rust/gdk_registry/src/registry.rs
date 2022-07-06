@@ -89,14 +89,14 @@ fn fetch<T: DeserializeOwned>(
         .and_then(|mut file| crate::file::read::<ValueModified>(&mut file))?;
 
     if !params.should_refresh() {
-        return Ok((current.deserialize_into()?, false));
+        return Ok((current.deserialize_into()?, true));
     }
 
     let response = crate::http::call(&params.url(what), &params.agent()?, current.last_modified())?;
 
     if response.last_modified() == current.last_modified() {
         debug!("local {} are up to date", what);
-        return Ok((current.deserialize_into()?, false));
+        return Ok((current.deserialize_into()?, true));
     }
 
     debug!("fetched {} were last modified {}", what, response.last_modified());
@@ -106,7 +106,7 @@ fn fetch<T: DeserializeOwned>(
 
     let downloaded = response.deserialize_into()?;
 
-    Ok((downloaded, true))
+    Ok((downloaded, false))
 }
 
 /// Returns either the assets or icons file corresponding to a given network,

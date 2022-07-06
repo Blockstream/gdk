@@ -6,8 +6,8 @@
 
 use elements::AssetId;
 use gdk_registry::{
-    init, policy_asset_id, refresh_assets, AssetEntry, ElementsNetwork, RefreshAssetsParam,
-    RefreshAssetsResult,
+    init, policy_asset_id, refresh_assets, AssetEntry, Config, ElementsNetwork,
+    RefreshAssetsParams, RegistryInfos,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -34,19 +34,14 @@ fn new_policy(asset_id: AssetId, name: &str, ticker: &str) -> AssetEntry {
 }
 
 fn make_liquid_hard_coded() {
-    let RefreshAssetsResult {
+    let RegistryInfos {
         mut assets,
         mut icons,
-    } = refresh_assets(&RefreshAssetsParam {
-        assets: true,
-        icons: true,
-        refresh: true,
-        ..Default::default()
-    })
-    .unwrap();
+    } = refresh_assets(RefreshAssetsParams::new(true, true, true, Config::default())).unwrap();
+
     println!("Downloaded {} assets information", assets.len());
     println!("Downloaded {} assets icons", icons.len());
-    assets.retain(|k, v| icons.contains_key(k) && v.verify().unwrap_or(false));
+    assets.retain(|k, v| icons.contains_key(k) && v.verifies().unwrap_or(false));
     println!("Kept {} assets information with icons and after verification", assets.len());
 
     let policy_asset_id = policy_asset_id(ElementsNetwork::Liquid);
@@ -54,10 +49,10 @@ fn make_liquid_hard_coded() {
     println!("After inserting policy asset: {}", assets.len());
 
     let assets_ord = BTreeMap::from_iter(assets.into_iter());
-    let mut file = File::create("src/hard/liquid_assets.json").unwrap();
+    let mut file = File::create("src/hard_coded/liquid_assets.json").unwrap();
     file.write_all(serde_json::to_string_pretty(&assets_ord).unwrap().as_bytes()).unwrap();
 
-    let mut file = File::create("src/hard/liquid_icons.json").unwrap();
+    let mut file = File::create("src/hard_coded/liquid_icons.json").unwrap();
     icons.retain(|k, _| k == &policy_asset_id);
     file.write_all(serde_json::to_string_pretty(&icons).unwrap().as_bytes()).unwrap();
 
@@ -75,7 +70,7 @@ fn make_testnet_regtest_hard_coded() {
         let mut assets = HashMap::new();
         let policy_asset_id = policy_asset_id(t);
         assets.insert(policy_asset_id, new_policy(policy_asset_id, name, ticker));
-        let mut file = File::create(format!("src/hard/{}_assets.json", t)).unwrap();
+        let mut file = File::create(format!("src/hard_coded/{}_assets.json", t)).unwrap();
 
         file.write_all(serde_json::to_string_pretty(&assets).unwrap().as_bytes()).unwrap();
         println!("wrote {:?}", file);

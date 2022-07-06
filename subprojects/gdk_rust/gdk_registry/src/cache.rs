@@ -32,18 +32,13 @@ static CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new(|| {
     // The cache files are initialized by listing all the files inside
     // `CACHE_DIR`.
 
-    let cache_dir = CACHE_DIR
-        .get()
-        .expect("the cache directory has already been initialized");
+    let cache_dir = CACHE_DIR.get().expect("the cache directory has already been initialized");
 
     let cache_files = fs::read_dir(cache_dir)
         .expect("couldn't read the cache directory")
         .filter_map(|entry| {
-            let filename = entry
-                .ok()?
-                .file_name()
-                .into_string()
-                .expect("all cache filenames are valid UTF-8");
+            let filename =
+                entry.ok()?.file_name().into_string().expect("all cache filenames are valid UTF-8");
 
             let file = OpenOptions::new()
                 .write(true)
@@ -69,9 +64,7 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
         fs::create_dir(&cache_dir)?;
     }
 
-    CACHE_DIR
-        .set(cache_dir)
-        .map_err(|_err| Error::AlreadyInitialized)?;
+    CACHE_DIR.set(cache_dir).map_err(|_err| Error::AlreadyInitialized)?;
 
     if let Ok(files) = CACHE_FILES.lock() {
         debug!("loading {} cache files", files.len());
@@ -95,19 +88,12 @@ pub(crate) struct Cache {
 // Custom impl of `Debug` to avoid leaking `xpub` in log messages.
 impl fmt::Debug for Cache {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Cache")
-            .field("cache", &self.cache)
-            .field("missing", &self.missing)
-            .finish()
+        f.debug_struct("Cache").field("cache", &self.cache).field("missing", &self.missing).finish()
     }
 }
 
 impl Cache {
-    pub(crate) fn extend_from_registry(
-        &mut self,
-        mut registry: RegistryInfos,
-        choose: &[AssetId],
-    ) {
+    pub(crate) fn extend_from_registry(&mut self, mut registry: RegistryInfos, choose: &[AssetId]) {
         registry.filter(choose);
         self.cache.merge(registry);
     }
@@ -124,7 +110,7 @@ impl Cache {
                 let mut file = file.lock()?;
                 let decrypted = self::decrypt(&mut file, xpub)?;
                 serde_cbor::from_slice::<Self>(&decrypted)
-            },
+            }
 
             _ => Ok(Self::default()),
         }?;
@@ -151,16 +137,10 @@ impl Cache {
         let plain_text = serde_cbor::to_vec(self)?;
         let (nonce, rest) = encrypt(plain_text, xpub)?;
 
-        let cache_path = CACHE_DIR
-            .get()
-            .expect("cache directory has been initialized ")
-            .join(hash_xpub(xpub));
+        let cache_path =
+            CACHE_DIR.get().expect("cache directory has been initialized ").join(hash_xpub(xpub));
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .create(true)
-            .open(cache_path)?;
+        let mut file = OpenOptions::new().write(true).read(true).create(true).open(cache_path)?;
 
         // Write the file to disk.
         file.seek(std::io::SeekFrom::Start(0))?;
@@ -200,10 +180,7 @@ fn decrypt(file: &mut File, xpub: ExtendedPubKey) -> Result<Vec<u8>> {
 }
 
 /// Encrypts the given data using a cipher derived from the provided xpub.
-fn encrypt(
-    mut data: Vec<u8>,
-    xpub: ExtendedPubKey,
-) -> Result<(Vec<u8>, Vec<u8>)> {
+fn encrypt(mut data: Vec<u8>, xpub: ExtendedPubKey) -> Result<(Vec<u8>, Vec<u8>)> {
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);

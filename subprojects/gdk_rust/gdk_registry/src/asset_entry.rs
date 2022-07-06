@@ -7,10 +7,10 @@ use crate::Result;
 /// Contains informations about an asset, including its asset id, the contract
 /// defining its property, and the transaction that issued the asset.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct AssetEntry {
+pub struct AssetEntry {
     /// The identifier of the asset. It's a midstate of a `sha256`, thus it's
     /// 32 supposedly random bytes.
-    pub(crate) asset_id: AssetId,
+    pub asset_id: AssetId,
 
     /// Contains assets metadata provided by the issuer. This information is
     /// commited in the `asset_id` so it's verifiable by third parties. Some
@@ -18,49 +18,49 @@ pub(crate) struct AssetEntry {
     /// `issuer_pubkey`, `name`, `ticker`, `precision` and `entity`. Other
     /// fields could be custom values created by the issuer.
     #[serde(default)]
-    pub(crate) contract: serde_json::Value,
+    pub contract: serde_json::Value,
 
     /// Contains information regarding the internet domain of the asset issuer.
     #[serde(default)]
-    entity: serde_json::Value,
+    pub entity: serde_json::Value,
 
     /// The previous output that is spent to create this issuance.
     #[serde(default)]
-    issuance_prevout: Prevout,
+    pub issuance_prevout: Prevout,
 
     /// The transaction input containing this issuance.
     #[serde(default)]
-    issuance_txin: Txin,
+    pub issuance_txin: Txin,
 
     /// A public key owned by the issuer used for authentication.
     #[serde(default)]
-    issuer_pubkey: String,
+    pub issuer_pubkey: String,
 
     /// Name of the asset.
     #[serde(default)]
-    name: String,
+    pub name: String,
 
     /// Precision of the asset as the number of digits after the decimal
     /// separator. Eg. bitcoin use 8 as precision.
     #[serde(default)]
-    precision: u8,
+    pub precision: u8,
 
     /// Ticker of the asset.
-    ticker: Option<String>,
+    pub ticker: Option<String>,
 
     /// The version of the registry protocol.
     #[serde(default)]
-    version: u8,
+    pub version: u8,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-struct Prevout {
+pub struct Prevout {
     txid: Txid,
     vout: u32,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-struct Txin {
+pub struct Txin {
     txid: Txid,
     vin: u32,
 }
@@ -78,14 +78,10 @@ impl AssetEntry {
     /// ensuring the validity of the Contract data. Moreover information in the
     /// first level like `self.name` is verified to be the same of the one in
     /// the contract `self.contract.name`
-    pub(crate) fn verifies(&self) -> Result<bool> {
-        let contract_hash =
-            ContractHash::from_json_contract(&self.contract_string()?)?;
+    pub fn verifies(&self) -> Result<bool> {
+        let contract_hash = ContractHash::from_json_contract(&self.contract_string()?)?;
 
-        let entropy = AssetId::generate_asset_entropy(
-            self.issuance_prevout(),
-            contract_hash,
-        );
+        let entropy = AssetId::generate_asset_entropy(self.issuance_prevout(), contract_hash);
 
         let asset_id = AssetId::from_entropy(entropy);
 
@@ -96,12 +92,10 @@ impl AssetEntry {
 
         Ok(asset_id == self.asset_id
             && Some(self.version as u64) == self.contract["version"].as_u64()
-            && Some(self.issuer_pubkey.as_str())
-                == self.contract["issuer_pubkey"].as_str()
+            && Some(self.issuer_pubkey.as_str()) == self.contract["issuer_pubkey"].as_str()
             && Some(self.name.as_str()) == self.contract["name"].as_str()
             && ticker == self.contract["ticker"]
-            && Some(self.precision as u64)
-                == self.contract["precision"].as_u64()
+            && Some(self.precision as u64) == self.contract["precision"].as_u64()
             && self.entity == self.contract["entity"])
     }
 }

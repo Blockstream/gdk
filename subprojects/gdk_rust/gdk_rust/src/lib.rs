@@ -578,7 +578,7 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             to_string(&headers::download_headers(&param)?)
         }
         "refresh_assets" => {
-            let param: gdk_registry::RefreshAssetsParam = serde_json::from_str(input)?;
+            let param: gdk_registry::RefreshAssetsParams = serde_json::from_str(input)?;
             to_string(&gdk_registry::refresh_assets(param)?)
         }
         "get_assets" => {

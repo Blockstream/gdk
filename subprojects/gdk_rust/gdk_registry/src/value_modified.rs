@@ -16,20 +16,14 @@ pub(crate) struct ValueModified {
 }
 
 impl ValueModified {
-    pub(crate) const fn new(
-        value: serde_json::Value,
-        last_modified: String,
-    ) -> Self {
+    pub(crate) const fn new(value: serde_json::Value, last_modified: String) -> Self {
         Self {
             value,
             last_modified,
         }
     }
 
-    pub(crate) fn from_hard_coded(
-        network: ElementsNetwork,
-        what: AssetsOrIcons,
-    ) -> Self {
+    pub(crate) fn from_hard_coded(network: ElementsNetwork, what: AssetsOrIcons) -> Self {
         Self {
             value: hard_coded::value(network, what),
             ..Default::default()
