@@ -137,19 +137,30 @@ impl Cache {
         let plain_text = serde_cbor::to_vec(self)?;
         let (nonce, rest) = encrypt(plain_text, xpub)?;
 
-        let cache_path =
-            CACHE_DIR.get().expect("cache directory has been initialized ").join(hash_xpub(xpub));
+        let mut cache_files = CACHE_FILES.lock()?;
 
-        let mut file = OpenOptions::new().write(true).read(true).create(true).open(cache_path)?;
+        let file = cache_files
+            .entry(hash_xpub(xpub))
+            .or_insert_with_key(|hash| {
+                let cache_path =
+                    CACHE_DIR.get().expect("cache directory has been initialized ").join(hash);
+
+                let file = OpenOptions::new()
+                    .write(true)
+                    .read(true)
+                    .create(true)
+                    .open(cache_path)
+                    .expect("couldn't create new cache file");
+
+                Mutex::new(file)
+            })
+            .get_mut()
+            .unwrap();
 
         // Write the file to disk.
         file.seek(std::io::SeekFrom::Start(0))?;
         file.write_all(&nonce)?;
         file.write_all(&rest)?;
-
-        // Update the cache files.
-        let mut cache_files = CACHE_FILES.lock().unwrap();
-        cache_files.insert(hash_xpub(xpub), Mutex::new(file));
 
         Ok(())
     }
