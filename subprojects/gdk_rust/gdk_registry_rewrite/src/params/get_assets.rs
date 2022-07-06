@@ -7,13 +7,13 @@ use super::Config;
 /// Parameters passed to [`crate::get_assets`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetAssetsParams {
-    assets_id: Vec<AssetId>,
+    pub(crate) assets_id: Vec<AssetId>,
 
-    xpub: ExtendedPubKey,
+    pub(crate) xpub: ExtendedPubKey,
 
     /// Options to configure network used and registry connection.
     #[serde(default)]
-    config: Config,
+    pub(crate) config: Config,
 }
 
 impl GetAssetsParams {

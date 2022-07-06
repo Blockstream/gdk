@@ -18,8 +18,8 @@ impl fmt::Display for AssetsOrIcons {
 impl AssetsOrIcons {
     pub(crate) const fn endpoint(&self) -> &'static str {
         match self {
-            Self::Assets => "index.json",
-            Self::Icons => "icons.json",
+            Self::Assets => "/index.json",
+            Self::Icons => "/icons.json",
         }
     }
 

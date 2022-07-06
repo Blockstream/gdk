@@ -64,7 +64,12 @@ pub(crate) fn get_assets(
         fetch::<RegistryAssets>(AssetsOrIcons::Assets, params)?;
 
     if !from_local_cache {
+        let len = assets.len();
         debug!("downloaded {} assets", assets.len());
+        assets.retain(|_, entry| entry.verifies().unwrap_or(false));
+        if assets.len() != len {
+            log::warn!("{} assets didn't verify!", len - assets.len());
+        }
     }
 
     assets.extend(hard_coded::assets(params.network()));
@@ -136,6 +141,6 @@ fn get_file(
         .ok_or(Error::RegistryUninitialized)?
         .get(&(network, ty))
         .expect("all (network, {assets|icons}) combinations are initialized")
-        .try_lock()
+        .lock()
         .map_err(Into::into)
 }

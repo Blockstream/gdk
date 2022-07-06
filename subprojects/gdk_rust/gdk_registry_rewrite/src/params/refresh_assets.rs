@@ -64,7 +64,7 @@ impl RefreshAssetsParams {
     }
 
     pub(crate) fn url(&self, what: AssetsOrIcons) -> String {
-        format!("{}/{}", self.config.url, what.endpoint())
+        format!("{}{}", self.config.url, what.endpoint())
     }
 
     pub(crate) const fn wants_something(&self) -> bool {

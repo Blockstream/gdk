@@ -9,10 +9,10 @@ use crate::Result;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct ValueModified {
     /// The JSON containing the assets and icons infos.
-    value: serde_json::Value,
+    pub(crate) value: serde_json::Value,
 
     /// TODO: docs
-    last_modified: String,
+    pub(crate) last_modified: String,
 }
 
 impl ValueModified {

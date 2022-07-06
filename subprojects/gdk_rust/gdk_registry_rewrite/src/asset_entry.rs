@@ -10,7 +10,7 @@ use crate::Result;
 pub(crate) struct AssetEntry {
     /// The identifier of the asset. It's a midstate of a `sha256`, thus it's
     /// 32 supposedly random bytes.
-    asset_id: AssetId,
+    pub(crate) asset_id: AssetId,
 
     /// Contains assets metadata provided by the issuer. This information is
     /// commited in the `asset_id` so it's verifiable by third parties. Some
@@ -18,7 +18,7 @@ pub(crate) struct AssetEntry {
     /// `issuer_pubkey`, `name`, `ticker`, `precision` and `entity`. Other
     /// fields could be custom values created by the issuer.
     #[serde(default)]
-    contract: serde_json::Value,
+    pub(crate) contract: serde_json::Value,
 
     /// Contains information regarding the internet domain of the asset issuer.
     #[serde(default)]
@@ -66,11 +66,11 @@ struct Txin {
 }
 
 impl AssetEntry {
-    fn contract_string(&self) -> Result<String> {
+    pub(crate) fn contract_string(&self) -> Result<String> {
         serde_json::to_string(&self.contract).map_err(Into::into)
     }
 
-    fn issuance_prevout(&self) -> OutPoint {
+    pub(crate) fn issuance_prevout(&self) -> OutPoint {
         OutPoint::new(self.issuance_prevout.txid, self.issuance_prevout.vout)
     }
 
