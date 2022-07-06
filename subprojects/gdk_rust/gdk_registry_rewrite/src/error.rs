@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    sync::{MutexGuard, PoisonError, TryLockError},
-};
+use std::sync::{MutexGuard, PoisonError, TryLockError};
 
 /// Result type alias of the `gdk_registry` crate.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -45,7 +42,7 @@ pub enum Error {
 
     /// Returned when a registry cache file has yet to be created.
     #[error("Registry cache for this wallet has not been created")]
-    RegistryCacheNotCreated,
+    CacheNotCreated,
 
     /// Thrown when a method requires the registry to be initialized (via the
     /// [`crate::init`] call) but it wasn't initialized.
@@ -76,14 +73,14 @@ impl From<aes_gcm_siv::aead::Error> for Error {
     }
 }
 
-impl From<PoisonError<MutexGuard<'_, File>>> for Error {
-    fn from(e: PoisonError<MutexGuard<'_, File>>) -> Self {
+impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
+    fn from(e: PoisonError<MutexGuard<'_, T>>) -> Self {
         Error::Poison(e.to_string())
     }
 }
 
-impl From<TryLockError<MutexGuard<'_, File>>> for Error {
-    fn from(err: TryLockError<MutexGuard<'_, File>>) -> Self {
+impl<T> From<TryLockError<MutexGuard<'_, T>>> for Error {
+    fn from(err: TryLockError<MutexGuard<'_, T>>) -> Self {
         match err {
             TryLockError::Poisoned(p) => p.into(),
             TryLockError::WouldBlock => Self::MutexBusy,

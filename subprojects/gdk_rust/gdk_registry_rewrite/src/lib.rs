@@ -37,6 +37,7 @@ mod value_modified;
 
 use std::path::Path;
 
+use cache::Cache;
 use registry_infos::{RegistryAssets, RegistryInfos};
 
 pub use error::{Error, Result};
@@ -54,8 +55,49 @@ pub fn init(dir: impl AsRef<Path>) -> Result<()> {
 /// Unlike [`refresh_assets`], this function will cache the queried assets to
 /// avoid performing a full registry read on evey call. The cache file stored
 /// on disk is encrypted via the wallet's xpub key.
-pub fn get_assets(_params: GetAssetsParams) -> Result<RegistryInfos> {
-    todo!()
+pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
+    let (assets_id, xpub, config) = params.explode();
+
+    let mut cache = Cache::from_xpub(xpub)?;
+
+    log::debug!("`get_assets` using cache {:?}", cache);
+
+    let (mut cached, mut not_cached): (Vec<_>, Vec<_>) =
+        assets_id.into_iter().partition(|id| cache.is_cached(id));
+
+    // Remove all the ids known not to be in the registry to avoid retriggering
+    // a registry read.
+    not_cached.retain(|id| !cache.is_missing(id));
+
+    if not_cached.is_empty() {
+        cache.filter(&cached);
+        return Ok(cache.into());
+    }
+
+    log::debug!("{:?} are not already cached", not_cached);
+
+    let params = RefreshAssetsParams::new(true, true, false, config);
+    let registry = self::refresh_assets(params)?;
+
+    let (in_registry, not_on_disk): (Vec<_>, Vec<_>) = not_cached
+        .into_iter()
+        .partition(|id| registry.contains(&id));
+
+    if !in_registry.is_empty() {
+        log::debug!("{:?} found in the local asset registry", in_registry);
+        cache.extend_from_registry(registry, &in_registry);
+        cache.update()?;
+        cached.extend(in_registry);
+    }
+
+    if !not_on_disk.is_empty() {
+        log::debug!("{:?} are not in the local asset registry", not_on_disk);
+        cache.register_missing(not_on_disk);
+        cache.update()?;
+    }
+
+    cache.filter(&cached);
+    Ok(cache.into())
 }
 
 /// Returns informations about a set of assets and related icons.

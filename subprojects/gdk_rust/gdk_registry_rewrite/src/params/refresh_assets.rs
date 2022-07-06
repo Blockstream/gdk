@@ -45,6 +45,20 @@ impl RefreshAssetsParams {
         self.config.network
     }
 
+    pub(crate) const fn new(
+        assets: bool,
+        icons: bool,
+        refresh: bool,
+        config: Config,
+    ) -> Self {
+        Self {
+            assets,
+            icons,
+            refresh,
+            config,
+        }
+    }
+
     pub(crate) const fn should_refresh(&self) -> bool {
         self.refresh
     }
@@ -67,7 +81,7 @@ impl RefreshAssetsParams {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) struct Config {
+pub(crate) struct Config {
     /// Defaults to Liquid mainnet.
     network: ElementsNetwork,
 
