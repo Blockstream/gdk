@@ -75,8 +75,8 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Cache {
-    #[serde(flatten)]
-    cache: RegistryInfos,
+    assets: crate::registry_infos::RegistryAssets,
+    icons: crate::registry_infos::RegistryIcons,
 
     /// Ids of queried assets missing from the registry.
     missing: Vec<AssetId>,
@@ -88,18 +88,33 @@ pub(crate) struct Cache {
 // Custom impl of `Debug` to avoid leaking `xpub` in log messages.
 impl fmt::Debug for Cache {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Cache").field("cache", &self.cache).field("missing", &self.missing).finish()
+        f.debug_struct("Cache")
+            .field("assets", &self.assets)
+            .field("icons", &self.icons)
+            .field("missing", &self.missing)
+            .finish()
     }
 }
 
 impl Cache {
-    pub(crate) fn extend_from_registry(&mut self, mut registry: RegistryInfos, choose: &[AssetId]) {
-        registry.filter(choose);
-        self.cache.merge(registry);
+    /// Filters the registry agains the ids in `choose`, then extends `self`
+    /// with the values from the filtered registry.
+    pub(crate) fn extend_from_registry(&mut self, registry: RegistryInfos, choose: &[AssetId]) {
+        let RegistryInfos {
+            mut assets,
+            mut icons,
+        } = registry;
+
+        assets.retain(|id, _| choose.contains(id));
+        icons.retain(|id, _| choose.contains(id));
+
+        self.assets.extend(assets);
+        self.icons.extend(icons);
     }
 
     pub(crate) fn filter(&mut self, ids: &[AssetId]) {
-        self.cache.filter(ids)
+        self.assets.retain(|id, _| ids.contains(id));
+        self.icons.retain(|id, _| ids.contains(id));
     }
 
     pub(crate) fn from_xpub(xpub: ExtendedPubKey) -> Result<Self> {
@@ -120,7 +135,7 @@ impl Cache {
     }
 
     pub(crate) fn is_cached(&self, id: &AssetId) -> bool {
-        self.cache.contains(id)
+        self.assets.contains_key(id)
     }
 
     pub(crate) fn is_missing(&self, id: &AssetId) -> bool {
@@ -168,7 +183,7 @@ impl Cache {
 
 impl From<Cache> for RegistryInfos {
     fn from(cache: Cache) -> Self {
-        cache.cache
+        Self::new(cache.assets, cache.icons)
     }
 }
 

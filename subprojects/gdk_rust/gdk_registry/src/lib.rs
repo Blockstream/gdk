@@ -116,15 +116,7 @@ pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
 
     let assets = params
         .wants_assets()
-        .then(|| {
-            let assets = registry::get_assets(&params)?;
-
-            if params.should_refresh() {
-                // TODO: update cache misses
-            }
-
-            Ok::<_, Error>(assets)
-        })
+        .then(|| registry::get_assets(&params))
         .transpose()?
         .unwrap_or_default();
 
@@ -298,5 +290,10 @@ mod tests {
         assert_eq!(1, res.assets.len());
         assert_eq!(1, res.icons.len());
         println!("cache read took {:?}", now.elapsed());
+
+        // same query, now assets should come from cache.
+        let res = get(None, None).unwrap();
+        assert_eq!(1, res.assets.len());
+        assert_eq!(1, res.icons.len());
     }
 }

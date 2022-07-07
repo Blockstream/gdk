@@ -24,16 +24,6 @@ impl RegistryInfos {
         self.assets.contains_key(id)
     }
 
-    pub(crate) fn filter(&mut self, ids: &[AssetId]) {
-        self.assets.retain(|id, _| ids.contains(id));
-        self.icons.retain(|id, _| ids.contains(id));
-    }
-
-    pub(crate) fn merge(&mut self, other: Self) {
-        self.assets.extend(other.assets);
-        self.icons.extend(other.icons);
-    }
-
     pub(crate) const fn new(assets: RegistryAssets, icons: RegistryIcons) -> Self {
         Self {
             assets,
