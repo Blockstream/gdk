@@ -40,6 +40,7 @@ use std::sync::Arc;
 use std::thread;
 
 use cache::Cache;
+use registry_infos::RegistrySource;
 
 pub use asset_entry::AssetEntry;
 pub use error::{Error, Result};
@@ -75,13 +76,17 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 
     if not_cached.is_empty() {
         cache.filter(&cached);
-        return Ok(cache.into());
+        return Ok(cache.to_registry(true));
     }
 
     log::debug!("{:?} are not already cached", not_cached);
 
     let params = RefreshAssetsParams::new(true, true, false, config);
     let registry = self::refresh_assets(params)?;
+
+    // The returned infos are marked as being from the registry if at least one
+    // of the returned assets is from the full asset registry.
+    let mut from_cache = true;
 
     let (in_registry, not_on_disk): (Vec<_>, Vec<_>) =
         not_cached.into_iter().partition(|id| registry.contains(&id));
@@ -91,6 +96,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
         cache.extend_from_registry(registry, &in_registry);
         cache.update()?;
         cached.extend(in_registry);
+        from_cache = false;
     }
 
     if !not_on_disk.is_empty() {
@@ -100,7 +106,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
     }
 
     cache.filter(&cached);
-    Ok(cache.into())
+    Ok(cache.to_registry(from_cache))
 }
 
 /// Returns informations about a set of assets and related icons.
@@ -138,10 +144,15 @@ pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
             .map(Option::unwrap_or_default)
     });
 
-    let assets = assets_handle.join().unwrap()?;
-    let icons = icons_handle.join().unwrap()?;
+    let (assets, ast_from_disk) = assets_handle.join().unwrap()?;
+    let (icons, icn_from_disk) = icons_handle.join().unwrap()?;
 
-    Ok(RegistryInfos::new(assets, icons))
+    let source = match ast_from_disk && icn_from_disk {
+        true => RegistrySource::LocalRegistry,
+        _ => RegistrySource::Downloaded,
+    };
+
+    Ok(RegistryInfos::new_with_source(assets, icons, source))
 }
 
 #[cfg(test)]
@@ -193,6 +204,7 @@ mod tests {
         let value = r(false, true, true).unwrap();
         assert_eq!(value.assets.len(), hard_coded_values.len());
         assert_eq!(value.icons.len(), 1);
+        assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
 
         // refresh false, asset true (no cache), icons false (no cache)
         let value = r(false, true, false).unwrap();
@@ -283,11 +295,13 @@ mod tests {
         let res = get(Some(vec![]), None).unwrap();
         assert!(res.assets.is_empty());
         assert!(res.icons.is_empty());
+        assert_eq!(res.source, Some(RegistrySource::Cache));
 
         // invalid query
         let res = get(Some(vec!["foo"]), None).unwrap();
         assert!(res.assets.is_empty());
         assert!(res.icons.is_empty());
+        assert_eq!(res.source, Some(RegistrySource::Cache));
 
         // invalid xpub
         let res = get(None, Some("foo"));
@@ -301,17 +315,20 @@ mod tests {
         .unwrap();
         assert!(res.assets.is_empty());
         assert!(res.icons.is_empty());
+        assert_eq!(res.source, Some(RegistrySource::Cache));
 
         // default query, 2 assets queried, only 1 is present in registry
         let now = std::time::Instant::now();
         let res = get(None, None).unwrap();
         assert_eq!(1, res.assets.len());
         assert_eq!(1, res.icons.len());
+        assert_eq!(res.source, Some(RegistrySource::LocalRegistry));
         println!("cache read took {:?}", now.elapsed());
 
-        // same query, now assets should come from cache.
+        // same query, now infos should come from cache.
         let res = get(None, None).unwrap();
         assert_eq!(1, res.assets.len());
         assert_eq!(1, res.icons.len());
+        assert_eq!(res.source, Some(RegistrySource::Cache));
     }
 }

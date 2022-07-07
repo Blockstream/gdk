@@ -15,8 +15,8 @@ use once_cell::sync::{Lazy, OnceCell};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-use crate::RegistryInfos;
 use crate::{Error, Result};
+use crate::{RegistryInfos, RegistrySource};
 
 /// The name of the toplevel cache directory *inside* the registry directory.
 const CACHE_DIRNAME: &str = "cached";
@@ -103,6 +103,7 @@ impl Cache {
         let RegistryInfos {
             mut assets,
             mut icons,
+            ..
         } = registry;
 
         assets.retain(|id, _| choose.contains(id));
@@ -143,6 +144,16 @@ impl Cache {
 
     pub(crate) fn register_missing(&mut self, ids: Vec<AssetId>) {
         self.missing.extend(ids);
+    }
+
+    pub(crate) fn to_registry(self, from_cache: bool) -> RegistryInfos {
+        let source = if from_cache {
+            RegistrySource::Cache
+        } else {
+            RegistrySource::LocalRegistry
+        };
+
+        RegistryInfos::new_with_source(self.assets, self.icons, source)
     }
 
     pub(crate) fn update(&self) -> Result<()> {

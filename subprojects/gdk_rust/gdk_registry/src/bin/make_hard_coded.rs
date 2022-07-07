@@ -37,6 +37,7 @@ fn make_liquid_hard_coded() {
     let RegistryInfos {
         mut assets,
         mut icons,
+        ..
     } = refresh_assets(RefreshAssetsParams::new(true, true, true, Config::default())).unwrap();
 
     println!("Downloaded {} assets information", assets.len());

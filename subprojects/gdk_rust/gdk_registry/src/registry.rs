@@ -51,10 +51,10 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
     REGISTRY_FILES.set(registry_files).map_err(|_err| Error::AlreadyInitialized)
 }
 
-pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<RegistryAssets> {
-    let (mut assets, from_local_cache) = fetch::<RegistryAssets>(AssetsOrIcons::Assets, params)?;
+pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets, bool)> {
+    let (mut assets, from_disk) = fetch::<RegistryAssets>(AssetsOrIcons::Assets, params)?;
 
-    if !from_local_cache {
+    if !from_disk {
         let len = assets.len();
         debug!("downloaded {} assets", assets.len());
         assets.retain(|_, entry| entry.verifies().unwrap_or(false));
@@ -65,19 +65,19 @@ pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<RegistryAssets>
 
     assets.extend(hard_coded::assets(params.network()));
 
-    Ok(assets)
+    Ok((assets, from_disk))
 }
 
-pub(crate) fn get_icons(params: &RefreshAssetsParams) -> Result<RegistryIcons> {
-    let (mut icons, from_local_cache) = fetch::<RegistryIcons>(AssetsOrIcons::Icons, params)?;
+pub(crate) fn get_icons(params: &RefreshAssetsParams) -> Result<(RegistryIcons, bool)> {
+    let (mut icons, from_disk) = fetch::<RegistryIcons>(AssetsOrIcons::Icons, params)?;
 
-    if !from_local_cache {
+    if !from_disk {
         debug!("downloaded {} icons", icons.len());
     }
 
     icons.extend(hard_coded::icons(params.network()));
 
-    Ok(icons)
+    Ok((icons, from_disk))
 }
 
 /// TODO: docs

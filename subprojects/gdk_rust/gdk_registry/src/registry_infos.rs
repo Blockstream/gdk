@@ -17,6 +17,16 @@ pub struct RegistryInfos {
 
     /// Assets icons: the hashmap value is a Base64 encoded image.
     pub icons: RegistryIcons,
+
+    #[serde(default, skip_serializing)]
+    pub(crate) source: Option<RegistrySource>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) enum RegistrySource {
+    LocalRegistry,
+    Cache,
+    Downloaded,
 }
 
 impl RegistryInfos {
@@ -28,6 +38,19 @@ impl RegistryInfos {
         Self {
             assets,
             icons,
+            source: None,
+        }
+    }
+
+    pub(crate) const fn new_with_source(
+        assets: RegistryAssets,
+        icons: RegistryIcons,
+        source: RegistrySource,
+    ) -> Self {
+        Self {
+            assets,
+            icons,
+            source: Some(source),
         }
     }
 }
@@ -90,10 +113,7 @@ mod test {
             icons.insert(AssetId::default(), "BASE64".into());
             icons
         };
-        let mut r = RegistryInfos {
-            assets,
-            icons,
-        };
+        let mut r = RegistryInfos::new(assets, icons);
         let expected: Value =
             serde_json::from_str(include_str!("../../gdk_registry/src/data/test/result.json"))
                 .unwrap();
