@@ -24,7 +24,7 @@ use gdk_common::model::{
 
 use crate::error::Error;
 use gdk_electrum::error::Error as ElectrumError;
-use gdk_electrum::pset::{self, ExtractTxParam, FromTxParam, MergeTxParam};
+use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{determine_electrum_url, headers, ElectrumSession};
 use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
@@ -557,9 +557,9 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             // TODO: read more initialization params
             to_string(&json!("".to_string()))
         }
-        "psbt_extract_tx" => {
-            let param: ExtractTxParam = serde_json::from_str(input)?;
-            to_string(&pset::extract_tx(&param)?)
+        "psbt_extract" => {
+            let param: ExtractParam = serde_json::from_str(input)?;
+            to_string(&pset::extract(&param)?)
         }
         "psbt_from_tx" => {
             let param: FromTxParam = serde_json::from_str(input)?;

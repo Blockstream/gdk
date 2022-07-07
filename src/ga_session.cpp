@@ -2538,7 +2538,7 @@ namespace sdk {
     nlohmann::json ga_session::psbt_get_details(const nlohmann::json& details)
     {
         const bool is_liquid = m_net_params.is_liquid();
-        const std::string tx_hex = psbt_extract_tx(details.at("psbt"));
+        const std::string tx_hex = psbt_extract(details.at("psbt")).at("transaction");
         const auto flags = tx_flags(is_liquid);
         wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
 
@@ -3318,10 +3318,13 @@ namespace sdk {
     nlohmann::json ga_session::psbt_sign(const nlohmann::json& details)
     {
         nlohmann::json result = details;
-        std::string tx_hex = psbt_extract_tx(details.at("psbt"));
+        const nlohmann::json psbt_details = psbt_extract(details.at("psbt"));
+        std::string tx_hex = psbt_details.at("transaction");
+        std::vector<uint32_t> sighashes = psbt_details.at("sighashes");
         const auto flags = tx_flags(m_net_params.is_liquid());
         wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
         const nlohmann::json tx_details = { { "transaction", std::move(tx_hex) } };
+        GDK_RUNTIME_ASSERT(sighashes.size() == tx->num_inputs);
 
         // Clear utxos and fill it with the ones that will be signed
         std::vector<nlohmann::json> inputs;
@@ -3336,6 +3339,7 @@ namespace sdk {
                     // TODO: remove this once get_unspent_outputs populates prevout_script
                     utxo["prevout_script"] = b2h(output_script_from_utxo(utxo));
                     input_utxo = std::move(utxo);
+                    input_utxo["user_sighash"] = sighashes.at(i);
                     requires_signatures = true;
                     break;
                 }

@@ -8,19 +8,22 @@ use elements::Transaction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-pub struct ExtractTxParam {
+pub struct ExtractParam {
     psbt_hex: String,
 }
 #[derive(Debug, Serialize)]
-pub struct ExtractTxResult {
+pub struct ExtractResult {
     transaction: String,
+    sighashes: Vec<u32>,
 }
 /// Return the raw tx hex extracted from the given PSET encoded in hex
-pub fn extract_tx(param: &ExtractTxParam) -> Result<ExtractTxResult, Error> {
+pub fn extract(param: &ExtractParam) -> Result<ExtractResult, Error> {
     let mut pset = pset_from_hex(&param.psbt_hex)?;
     let tx = extract_tx_inner(&mut pset)?;
-    Ok(ExtractTxResult {
+    let sighashes = extract_sighashes(&pset);
+    Ok(ExtractResult {
         transaction: serialize(&tx).to_hex(),
+        sighashes,
     })
 }
 
@@ -98,6 +101,10 @@ fn extract_tx_inner(pset: &mut pset::PartiallySignedTransaction) -> Result<Trans
     Ok(tx)
 }
 
+fn extract_sighashes(pset: &pset::PartiallySignedTransaction) -> Vec<u32> {
+    pset.inputs().iter().map(|i| i.sighash_type.map_or(1, |s| s.as_u32())).collect()
+}
+
 fn compare_except_script_sig_sequence(tx1: &Transaction, tx2: &Transaction) -> Result<(), Error> {
     let mut tx1 = tx1.clone();
     let mut tx2 = tx2.clone();
@@ -129,11 +136,11 @@ mod test {
     const ONE_INPUT_TX: &str = "02000000000100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff0000000000";
 
     #[test]
-    fn test_extract_tx() {
+    fn test_extract() {
         //INVALID
         assert_eq!(
             "odd hex string length 1",
-            extract_tx(&ExtractTxParam {
+            extract(&ExtractParam {
                 psbt_hex: "X".to_string()
             })
             .unwrap_err()
@@ -141,7 +148,7 @@ mod test {
         );
         assert_eq!(
             "invalid hex character 88",
-            extract_tx(&ExtractTxParam {
+            extract(&ExtractParam {
                 psbt_hex: "XC".to_string()
             })
             .unwrap_err()
@@ -149,7 +156,7 @@ mod test {
         );
         assert_eq!(
             "a Bitcoin type encoding error: I/O error: failed to fill whole buffer",
-            extract_tx(&ExtractTxParam {
+            extract(&ExtractParam {
                 psbt_hex: "aa".to_string()
             })
             .unwrap_err()
@@ -157,14 +164,13 @@ mod test {
         );
 
         //VALID
-        assert_eq!(
-            EMPTY_TX,
-            extract_tx(&ExtractTxParam {
-                psbt_hex: EMPTY_PSET.to_string()
-            })
-            .unwrap()
-            .transaction
-        );
+        let psbt_details = extract(&ExtractParam {
+            psbt_hex: EMPTY_PSET.to_string(),
+        })
+        .unwrap();
+        assert_eq!(EMPTY_TX, psbt_details.transaction);
+        let sighashes: Vec<u32> = vec![];
+        assert_eq!(psbt_details.sighashes, sighashes);
     }
 
     #[test]
@@ -174,11 +180,12 @@ mod test {
         assert_eq!(pset.inputs()[0].final_script_witness, None);
         let psbt_hex = serialize(&pset).to_hex();
         assert_eq!(psbt_hex, ONE_INPUT_PSET);
-        let tx_hex = extract_tx(&ExtractTxParam {
+        let psbt_details = extract(&ExtractParam {
             psbt_hex: psbt_hex.clone(),
         })
-        .unwrap()
-        .transaction;
+        .unwrap();
+        let tx_hex = psbt_details.transaction;
+        assert_eq!(psbt_details.sighashes, vec![1]);
         assert_eq!(tx_hex, ONE_INPUT_TX);
 
         let mut signed_tx: Transaction =
@@ -220,7 +227,7 @@ mod test {
                 transaction: tx.to_string(),
             })
             .unwrap();
-            let extract = extract_tx(&ExtractTxParam {
+            let extract = extract(&ExtractParam {
                 psbt_hex: pset.psbt_hex,
             })
             .unwrap();
