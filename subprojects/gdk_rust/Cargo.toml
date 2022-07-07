@@ -7,6 +7,10 @@ members = [
     "gdk_rust",
 ]
 
+exclude = [
+  "gdk_registry_rewrite"
+]
+
 
 [profile.release]
 lto = true

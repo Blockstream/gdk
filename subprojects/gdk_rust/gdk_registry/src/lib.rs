@@ -79,6 +79,11 @@ pub fn refresh_assets(details: RefreshAssetsParam) -> Result<RegistryResult> {
                             if downloaded.len() != len {
                                 warn!("Some assets didn't verify!");
                             }
+                            // Here we update all the cache files by removing
+                            // the newly fetched asset ids from their `missing`
+                            // field and adding them to `assets`.
+                            let _downloaded_asset_ids = downloaded.keys().collect::<Vec<_>>();
+
                             downloaded.extend(hard);
                             serde_json::to_value(downloaded)?
                         }
