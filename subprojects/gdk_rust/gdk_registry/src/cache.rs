@@ -26,7 +26,7 @@ const CACHE_DIRNAME: &str = "cached";
 static CACHE_DIR: OnceCell<PathBuf> = OnceCell::new();
 
 /// Mapping from sha256(xpub) to the corresponding cache file.
-type CacheFiles = HashMap<String, Mutex<File>>;
+type CacheFiles = HashMap<String, File>;
 
 static CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new(|| {
     // The cache files are initialized by listing all the files inside
@@ -47,7 +47,7 @@ static CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new(|| {
                 .open(cache_dir.join(&filename))
                 .ok()?;
 
-            Some((filename, Mutex::new(file)))
+            Some((filename, file))
         })
         .collect::<CacheFiles>();
 
@@ -118,12 +118,11 @@ impl Cache {
     }
 
     pub(crate) fn from_xpub(xpub: ExtendedPubKey) -> Result<Self> {
-        let cache_files = CACHE_FILES.lock().map_err(Error::from)?;
+        let mut cache_files = CACHE_FILES.lock()?;
 
-        let mut cache = match cache_files.get(&hash_xpub(xpub)) {
+        let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
             Some(file) => {
-                let mut file = file.lock()?;
-                let decrypted = self::decrypt(&mut file, xpub)?;
+                let decrypted = self::decrypt(file, xpub)?;
                 serde_cbor::from_slice::<Self>(&decrypted)
             }
 
@@ -154,23 +153,17 @@ impl Cache {
 
         let mut cache_files = CACHE_FILES.lock()?;
 
-        let file = cache_files
-            .entry(hash_xpub(xpub))
-            .or_insert_with_key(|hash| {
-                let cache_path =
-                    CACHE_DIR.get().expect("cache directory has been initialized ").join(hash);
+        let file = cache_files.entry(hash_xpub(xpub)).or_insert_with_key(|hash| {
+            let cache_path =
+                CACHE_DIR.get().expect("cache directory has been initialized ").join(hash);
 
-                let file = OpenOptions::new()
-                    .write(true)
-                    .read(true)
-                    .create(true)
-                    .open(cache_path)
-                    .expect("couldn't create new cache file");
-
-                Mutex::new(file)
-            })
-            .get_mut()
-            .unwrap();
+            OpenOptions::new()
+                .write(true)
+                .read(true)
+                .create(true)
+                .open(cache_path)
+                .expect("couldn't create new cache file")
+        });
 
         // Write the file to disk.
         file.seek(std::io::SeekFrom::Start(0))?;
