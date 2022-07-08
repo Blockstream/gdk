@@ -436,6 +436,8 @@ namespace sdk {
             const uint32_t subaccount = *p_subaccount;
             result["subaccount_type"] = session.get_subaccount(subaccount)["type"];
 
+            const bool is_partial = json_get_value(result, "is_partial", false);
+
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
             std::tie(is_rbf, is_cpfp) = check_bump_tx(session, result, subaccount);
@@ -567,7 +569,7 @@ namespace sdk {
             std::vector<nlohmann::json> reordered_addressees;
 
             auto create_tx_outputs = [&](const std::string& asset_id) {
-                const bool include_fee = asset_id == policy_asset;
+                const bool include_fee = asset_id == policy_asset && !is_partial;
 
                 std::vector<nlohmann::json> current_used_utxos;
                 amount available_total, total, fee, v;
@@ -664,7 +666,7 @@ namespace sdk {
                         = result.at("change_address").value(asset_id, nlohmann::json::object());
                     have_change_addr = !asset_change_address.empty();
                 }
-                if (!have_change_addr) {
+                if (!have_change_addr && !is_partial) {
                     // No previously generated change address found, so generate one.
                     // Find out where to send any change
                     const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
@@ -690,6 +692,9 @@ namespace sdk {
                 size_t loop_iterations;
 
                 for (loop_iterations = 0; loop_iterations < max_loop_iterations; ++loop_iterations) {
+                    if (is_partial) {
+                        break;
+                    }
                     amount change, required_with_fee;
 
                     if (include_fee) {
@@ -881,8 +886,10 @@ namespace sdk {
                     }
                 });
             }
-            // do fee output + L-BTC outputs
-            create_tx_outputs(policy_asset);
+            if (!is_partial || asset_ids.find(policy_asset) != asset_ids.end()) {
+                // do fee output + L-BTC outputs
+                create_tx_outputs(policy_asset);
+            }
 
             result["addressees"] = reordered_addressees;
 
@@ -1221,6 +1228,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
         GDK_RUNTIME_ASSERT(!output.at("is_fee"));
 
+        const bool is_partial = json_get_value(details, "is_partial", false);
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
             GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
@@ -1251,8 +1259,11 @@ namespace sdk {
         const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf, vbf, value_commitment,
             script, generator, 1, std::min(std::max(net_params.ct_exponent(), -1), 18), net_params.ct_bits());
 
-        const auto surjectionproof = asset_surjectionproof(
-            asset_id, abf, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+        std::vector<unsigned char> surjectionproof;
+        if (!is_partial) {
+            surjectionproof = asset_surjectionproof(
+                asset_id, abf, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+        }
 
         tx_elements_output_commitment_set(
             tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
