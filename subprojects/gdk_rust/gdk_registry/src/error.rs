@@ -62,14 +62,14 @@ pub enum Error {
     Ureq(#[from] ureq::Error),
 
     /// A generic error.
-    #[error("{0:?}")]
-    Generic(Box<dyn std::fmt::Debug>),
+    #[error("{0}")]
+    Generic(String),
 }
 
 // This error type doesn't implement `std::error::Error`.
 impl From<aes_gcm_siv::aead::Error> for Error {
     fn from(err: aes_gcm_siv::aead::Error) -> Self {
-        Self::Generic(Box::new(err))
+        Self::Generic(err.to_string())
     }
 }
 

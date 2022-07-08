@@ -36,6 +36,8 @@ mod registry_infos;
 mod value_modified;
 
 use std::path::Path;
+use std::sync::Arc;
+use std::thread;
 
 use cache::Cache;
 
@@ -114,14 +116,30 @@ pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
         return Err(Error::BothAssetsIconsFalse);
     }
 
-    let assets = params
-        .wants_assets()
-        .then(|| registry::get_assets(&params))
-        .transpose()?
-        .unwrap_or_default();
+    let params = Arc::new(params);
 
-    let icons =
-        params.wants_icons().then(|| registry::get_icons(&params)).transpose()?.unwrap_or_default();
+    let assets_handle = {
+        let params = Arc::clone(&params);
+        thread::spawn(move || {
+            params
+                .wants_assets()
+                .then(|| registry::get_assets(&params))
+                .transpose()
+                .map(Option::unwrap_or_default)
+        })
+    };
+
+    let icons_handle = thread::spawn(move || {
+        params
+            .wants_icons()
+            // forces multiline formatting
+            .then(|| registry::get_icons(&params))
+            .transpose()
+            .map(Option::unwrap_or_default)
+    });
+
+    let assets = assets_handle.join().unwrap()?;
+    let icons = icons_handle.join().unwrap()?;
 
     Ok(RegistryInfos::new(assets, icons))
 }

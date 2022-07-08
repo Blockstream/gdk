@@ -85,8 +85,9 @@ fn fetch<T: DeserializeOwned>(
     what: AssetsOrIcons,
     params: &RefreshAssetsParams,
 ) -> Result<(T, bool)> {
-    let current = get_file(params.network(), what)
-        .and_then(|mut file| crate::file::read::<ValueModified>(&mut file))?;
+    let mut file = get_file(params.network(), what)?;
+
+    let current = crate::file::read::<ValueModified>(&mut file)?;
 
     if !params.should_refresh() {
         return Ok((current.deserialize_into()?, true));
@@ -101,7 +102,6 @@ fn fetch<T: DeserializeOwned>(
 
     debug!("fetched {} were last modified {}", what, response.last_modified());
 
-    let mut file = get_file(params.network(), what)?;
     crate::file::write(&response, &mut file)?;
 
     let downloaded = response.deserialize_into()?;
