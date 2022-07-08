@@ -2,6 +2,10 @@
 name = "gdk-registry"
 version = "0.1.0"
 edition = "2021"
+autobins = false
+
+# [[bin]]
+# name = "make_hard_coded"
 
 [dependencies]
 aes-gcm-siv = "0.10"
