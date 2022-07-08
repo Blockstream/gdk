@@ -1,6 +1,14 @@
 # Changelog
 
-## Release 0.0.55
+## Release 0.0.56
+
+### Added
+
+### Changed
+
+### Fixed
+
+## Release 0.0.55 - 2022-07-08
 
 ### Added
 
@@ -19,6 +27,7 @@
 - Singlesig: Add some missing fields to GA_get_receive_address returned json.
 - Singlesig: Remove is_segwit from GA_get_unspent_outputs returned json
 - GA_register_user: Change interface to match GA_login_user.
+- Update endpoints for new bitcoin multisig backend.
 
 ### Fixed
 
