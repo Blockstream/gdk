@@ -1,3 +1,4 @@
+use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
@@ -15,6 +16,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+use crate::registry_infos::{RegistryAssets, RegistryIcons};
 use crate::{Error, Result};
 use crate::{RegistryInfos, RegistrySource};
 
@@ -75,8 +77,8 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Cache {
-    assets: crate::registry_infos::RegistryAssets,
-    icons: crate::registry_infos::RegistryIcons,
+    assets: RegistryAssets,
+    icons: RegistryIcons,
 
     /// Ids of queried assets missing from the registry.
     missing: Vec<AssetId>,
@@ -183,6 +185,20 @@ impl Cache {
 
         Ok(())
     }
+
+    pub(crate) fn update_missing(&mut self, present: &RegistryAssets) {
+        let mut to_remove: Vec<&AssetId> =
+            Vec::with_capacity(cmp::min(self.missing.len(), present.len()));
+
+        for (id, entry) in present {
+            if self.missing.contains(&id) {
+                self.assets.insert(id.clone(), entry.clone());
+                to_remove.push(id);
+            }
+        }
+
+        self.missing.retain(|id| !to_remove.contains(&id));
+    }
 }
 
 impl From<Cache> for RegistryInfos {
@@ -193,10 +209,16 @@ impl From<Cache> for RegistryInfos {
 
 /// Removes the asset ids specified in `ids` from the [`Cache::missing`]
 /// section of each cache file associated to an xpub contained in `xpubs`.
-pub(crate) fn unmark_missing<'a, Ids>(_xpubs: &[ExtendedPubKey], _ids: Ids) -> Result<()>
-where
-    Ids: IntoIterator<Item = &'a AssetId>,
-{
+pub(crate) fn update_missing(xpubs: &[ExtendedPubKey], assets: &RegistryAssets) -> Result<()> {
+    // TODO: 1.63 introduces scoped threads. Once we update the compiler
+    // version we can do this in parallel w/o cloning `xpub` or `assets`.
+
+    for xpub in xpubs {
+        let mut cache = Cache::from_xpub(*xpub)?;
+        cache.update_missing(assets);
+        cache.update()?;
+    }
+
     Ok(())
 }
 

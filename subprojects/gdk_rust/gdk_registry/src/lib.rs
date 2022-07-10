@@ -177,6 +177,7 @@ mod tests {
     }
 
     #[test]
+    // TODO: use httptest
     fn test_registry_prod() {
         let _ = env_logger::try_init();
 
