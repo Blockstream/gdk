@@ -7,6 +7,7 @@ use bitcoin::blockdata::constants::{max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_
 use bitcoin::BlockHash;
 use bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
 use electrum_client::{Client as ElectrumClient, ElectrumApi};
+use once_cell::sync::Lazy;
 
 use gdk_common::network::NetworkParameters;
 
@@ -390,12 +391,12 @@ impl CrossValidationResult {
     }
 }
 
-lazy_static! {
-    static ref SERVER_LIST_MAINNET: Vec<ElectrumUrl> =
-        parse_server_file(include_str!("servers-mainnet.txt"));
-    static ref SERVER_LIST_TESTNET: Vec<ElectrumUrl> =
-        parse_server_file(include_str!("servers-testnet.txt"));
-}
+static SERVER_LIST_MAINNET: Lazy<Vec<ElectrumUrl>> =
+    Lazy::new(|| parse_server_file(include_str!("servers-mainnet.txt")));
+
+static SERVER_LIST_TESTNET: Lazy<Vec<ElectrumUrl>> =
+    Lazy::new(|| parse_server_file(include_str!("servers-testnet.txt")));
+
 fn parse_server_file(sl: &str) -> Vec<ElectrumUrl> {
     sl.lines().map(FromStr::from_str).collect::<Result<_, _>>().unwrap()
 }

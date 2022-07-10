@@ -4,9 +4,6 @@ mod store;
 extern crate serde_json;
 
 #[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
 extern crate gdk_common;
 
 use headers::bitcoin::HEADERS_FILE_MUTEX;
@@ -64,6 +61,7 @@ use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
 use electrum_client::{Client, ElectrumApi};
+use once_cell::sync::Lazy;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
@@ -76,14 +74,12 @@ use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 
-lazy_static! {
-    static ref EC: secp256k1::Secp256k1<secp256k1::All> = {
-        let mut ctx = secp256k1::Secp256k1::new();
-        let mut rng = rand::thread_rng();
-        ctx.randomize(&mut rng);
-        ctx
-    };
-}
+static EC: Lazy<secp256k1::Secp256k1<secp256k1::All>> = Lazy::new(|| {
+    let mut ctx = secp256k1::Secp256k1::new();
+    let mut rng = rand::thread_rng();
+    ctx.randomize(&mut rng);
+    ctx
+});
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 

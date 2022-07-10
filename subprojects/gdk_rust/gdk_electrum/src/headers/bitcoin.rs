@@ -8,22 +8,22 @@ use bitcoin::{BlockHash, Txid};
 use bitcoin::{BlockHeader, Network};
 use electrum_client::GetMerkleRes;
 use log::{info, warn};
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-lazy_static! {
-    pub static ref HEADERS_FILE_MUTEX: HashMap<Network, Mutex<()>> = {
-        let mut m = HashMap::new();
-        m.insert(Network::Bitcoin, Mutex::new(()));
-        m.insert(Network::Testnet, Mutex::new(()));
-        m.insert(Network::Regtest, Mutex::new(()));
-        m.insert(Network::Signet, Mutex::new(()));  // unused
-        m
-    };
-}
+pub static HEADERS_FILE_MUTEX: Lazy<HashMap<Network, Mutex<()>>> = Lazy::new(|| {
+    HashMap::from_iter([
+        (Network::Bitcoin, Mutex::new(())),
+        (Network::Testnet, Mutex::new(())),
+        (Network::Regtest, Mutex::new(())),
+        (Network::Signet, Mutex::new(())), // unused
+    ])
+});
 
 #[derive(Debug)]
 pub struct HeadersChain {
