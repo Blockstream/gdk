@@ -1,5 +1,6 @@
 use std::fmt;
 
+use bitcoin::util::bip32::ExtendedPubKey;
 use serde::{Deserialize, Serialize};
 
 use crate::assets_or_icons::AssetsOrIcons;
@@ -27,6 +28,12 @@ pub struct RefreshAssetsParams {
     /// Options to configure network used and registry connection.
     #[serde(default)]
     config: Config,
+
+    /// When `refresh` is set to `true`, all the cache files related to these
+    /// xpubs will be updated to remove the newly downloaded assets from the
+    /// `missing` section.
+    #[serde(default)]
+    pub(crate) xpubs: Vec<ExtendedPubKey>,
 }
 
 impl RefreshAssetsParams {
@@ -46,12 +53,13 @@ impl RefreshAssetsParams {
     }
 
     /// Creates a new [`crate::RefreshAssetsParams`].
-    pub const fn new(assets: bool, icons: bool, refresh: bool, config: Config) -> Self {
+    pub fn new(assets: bool, icons: bool, refresh: bool, config: Config) -> Self {
         Self {
             assets,
             icons,
             refresh,
             config,
+            ..Default::default()
         }
     }
 

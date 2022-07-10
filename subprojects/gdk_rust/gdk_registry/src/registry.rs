@@ -8,6 +8,7 @@ use once_cell::sync::OnceCell;
 use serde::de::DeserializeOwned;
 
 use crate::assets_or_icons::AssetsOrIcons;
+use crate::cache;
 use crate::hard_coded;
 use crate::params::{ElementsNetwork, RefreshAssetsParams};
 use crate::registry_infos::{RegistryAssets, RegistryIcons, RegistrySource};
@@ -61,6 +62,7 @@ pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets
         if assets.len() != len {
             log::warn!("{} assets didn't verify!", len - assets.len());
         }
+        cache::unmark_missing(&params.xpubs, assets.keys())?;
     }
 
     assets.extend(hard_coded::assets(params.network()));

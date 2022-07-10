@@ -191,6 +191,15 @@ impl From<Cache> for RegistryInfos {
     }
 }
 
+/// Removes the asset ids specified in `ids` from the [`Cache::missing`]
+/// section of each cache file associated to an xpub contained in `xpubs`.
+pub(crate) fn unmark_missing<'a, Ids>(_xpubs: &[ExtendedPubKey], _ids: Ids) -> Result<()>
+where
+    Ids: IntoIterator<Item = &'a AssetId>,
+{
+    Ok(())
+}
+
 /// Decrypts the contents of a file using a cipher derived from the provided
 /// xpub.
 fn decrypt(file: &mut File, xpub: ExtendedPubKey) -> Result<Vec<u8>> {

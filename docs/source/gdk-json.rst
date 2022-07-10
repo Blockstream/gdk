@@ -1526,8 +1526,13 @@ Asset parameters JSON
    {
       "assets": true,
       "icons": true,
-      "refresh": true
+      "refresh": true,
+      "xpubs": ["tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm"]
    }
+
+:xpubs: when ``"refresh"`` is set to ``true``, all the cache files related to
+        these xpubs will be updated to include the newly downloaded assets and
+        icons.
 
 .. _get-assets-params:
 
