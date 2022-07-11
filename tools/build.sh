@@ -90,7 +90,6 @@ while true; do
     esac
 done
 
-export LTO
 export CCACHE
 
 if have_cmd ninja-build; then

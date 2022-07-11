@@ -99,12 +99,6 @@ or
 
 for a debug optimized build.
 
-#### Disable LTO
-
-By default builds use link time optimisation. It can be disabled when invoking build.sh. For example
-
-`tools/build.sh --clang`
-
 #### Clang Analyzer
 
 To build using clang-analyzer use
@@ -139,11 +133,11 @@ which allows for multiple side by side installs of compilers in common linux dis
 
 ### Build examples
 
-Use clang-5.0, no LTO, enable clang-tidy and debug build
+Use clang-5.0, enable clang-tidy and debug build
 
 `./tools/build.sh --compiler-version=5.0 --buildtype=debug --clang-tidy-version=5.0 --clang`
 
-Use address sanitizer with gcc-7, no LTO, enable clang-tidy and debug build
+Use address sanitizer with gcc-7, enable clang-tidy and debug build
 
 `./tools/build.sh --compiler-version=7 --buildtype=debug --sanitizer=address --clang-tidy-version=5.0 --gcc`
 
