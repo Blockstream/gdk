@@ -10,7 +10,7 @@ use serde::de::DeserializeOwned;
 use crate::assets_or_icons::AssetsOrIcons;
 use crate::hard_coded;
 use crate::params::{ElementsNetwork, RefreshAssetsParams};
-use crate::registry_infos::{RegistryAssets, RegistryIcons};
+use crate::registry_infos::{RegistryAssets, RegistryIcons, RegistrySource};
 use crate::value_modified::ValueModified;
 use crate::{Error, Result};
 
@@ -51,10 +51,10 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
     REGISTRY_FILES.set(registry_files).map_err(|_err| Error::AlreadyInitialized)
 }
 
-pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets, bool)> {
-    let (mut assets, from_disk) = fetch::<RegistryAssets>(AssetsOrIcons::Assets, params)?;
+pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets, RegistrySource)> {
+    let (mut assets, source) = fetch::<RegistryAssets>(AssetsOrIcons::Assets, params)?;
 
-    if !from_disk {
+    if matches!(source, RegistrySource::Downloaded) {
         let len = assets.len();
         debug!("downloaded {} assets", assets.len());
         assets.retain(|_, entry| entry.verifies().unwrap_or(false));
@@ -65,39 +65,39 @@ pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets
 
     assets.extend(hard_coded::assets(params.network()));
 
-    Ok((assets, from_disk))
+    Ok((assets, source))
 }
 
-pub(crate) fn get_icons(params: &RefreshAssetsParams) -> Result<(RegistryIcons, bool)> {
-    let (mut icons, from_disk) = fetch::<RegistryIcons>(AssetsOrIcons::Icons, params)?;
+pub(crate) fn get_icons(params: &RefreshAssetsParams) -> Result<(RegistryIcons, RegistrySource)> {
+    let (mut icons, source) = fetch::<RegistryIcons>(AssetsOrIcons::Icons, params)?;
 
-    if !from_disk {
+    if matches!(source, RegistrySource::Downloaded) {
         debug!("downloaded {} icons", icons.len());
     }
 
     icons.extend(hard_coded::icons(params.network()));
 
-    Ok((icons, from_disk))
+    Ok((icons, source))
 }
 
 /// TODO: docs
 fn fetch<T: DeserializeOwned>(
     what: AssetsOrIcons,
     params: &RefreshAssetsParams,
-) -> Result<(T, bool)> {
+) -> Result<(T, RegistrySource)> {
     let mut file = get_file(params.network(), what)?;
 
     let current = crate::file::read::<ValueModified>(&mut file)?;
 
     if !params.should_refresh() {
-        return Ok((current.deserialize_into()?, true));
+        return Ok((current.deserialize_into()?, RegistrySource::LocalRegistry));
     }
 
     let response = crate::http::call(&params.url(what), &params.agent()?, current.last_modified())?;
 
     if response.last_modified() == current.last_modified() {
         debug!("local {} are up to date", what);
-        return Ok((current.deserialize_into()?, true));
+        return Ok((current.deserialize_into()?, RegistrySource::NotModified));
     }
 
     debug!("fetched {} were last modified {}", what, response.last_modified());
@@ -106,7 +106,7 @@ fn fetch<T: DeserializeOwned>(
 
     let downloaded = response.deserialize_into()?;
 
-    Ok((downloaded, false))
+    Ok((downloaded, RegistrySource::Downloaded))
 }
 
 /// Returns either the assets or icons file corresponding to a given network,

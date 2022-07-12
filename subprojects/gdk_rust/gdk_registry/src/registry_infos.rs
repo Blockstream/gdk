@@ -24,9 +24,16 @@ pub struct RegistryInfos {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) enum RegistrySource {
-    LocalRegistry,
     Cache,
     Downloaded,
+    LocalRegistry,
+    NotModified,
+}
+
+impl Default for RegistrySource {
+    fn default() -> Self {
+        Self::LocalRegistry
+    }
 }
 
 impl RegistryInfos {
@@ -51,6 +58,18 @@ impl RegistryInfos {
             assets,
             icons,
             source: Some(source),
+        }
+    }
+}
+
+impl RegistrySource {
+    pub(crate) fn merge(self, other: Self) -> Self {
+        use RegistrySource::*;
+        match (self, other) {
+            (Cache, source) | (source, Cache) => source,
+            (Downloaded, _) | (_, Downloaded) => Downloaded,
+            (LocalRegistry, source) | (source, LocalRegistry) => source,
+            (NotModified, NotModified) => NotModified,
         }
     }
 }

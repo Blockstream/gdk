@@ -135,19 +135,16 @@ pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
         })
     };
 
-    let (icons, icn_from_disk) = params
+    let (icons, icons_source) = params
         .wants_icons()
         // forces multiline formatting
         .then(|| registry::get_icons(&params))
         .transpose()?
         .unwrap_or_default();
 
-    let (assets, ast_from_disk) = assets_handle.join().unwrap()?;
+    let (assets, assets_source) = assets_handle.join().unwrap()?;
 
-    let source = match ast_from_disk && icn_from_disk {
-        true => RegistrySource::LocalRegistry,
-        _ => RegistrySource::Downloaded,
-    };
+    let source = assets_source.merge(icons_source);
 
     Ok(RegistryInfos::new_with_source(assets, icons, source))
 }
@@ -207,33 +204,45 @@ mod tests {
         let value = r(false, true, false).unwrap();
         assert_eq!(value.assets.len(), hard_coded_values.len());
         assert!(value.icons.is_empty());
+        assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
 
         // refresh false, asset false (no cache), icons true (no cache)
         let value = r(false, false, true).unwrap();
         assert!(value.assets.is_empty());
         assert_eq!(value.icons.len(), 1);
+        assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
 
         // refresh true, asset true, icons false (no cache)
         let value = r(true, true, false).unwrap();
         assert!(value.assets.get(&policy_asset).is_some());
         assert!(value.icons.is_empty());
+        assert!(matches!(
+            value.source,
+            Some(RegistrySource::NotModified | RegistrySource::Downloaded)
+        ));
 
         // refresh false, asset false, icons true (no cache)
         let value = r(false, false, true).unwrap();
         assert!(value.assets.is_empty());
         assert_eq!(value.icons.len(), 1);
+        assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
 
         // refresh true, asset true, icons true (no cache)
         // {"asset": data, "icons": data}
         let value = r(true, true, true).unwrap();
         assert!(value.assets.get(&policy_asset).is_some());
         assert!(!value.icons.is_empty());
+        assert!(matches!(
+            value.source,
+            Some(RegistrySource::NotModified | RegistrySource::Downloaded)
+        ));
 
         let now = std::time::Instant::now();
         // check 304
         let value = r(true, true, true).unwrap();
         assert!(value.assets.get(&policy_asset).is_some());
         assert!(!value.icons.is_empty());
+        assert_eq!(value.source, Some(RegistrySource::NotModified));
         println!("not modified took {:?}", now.elapsed());
 
         let now = std::time::Instant::now();
@@ -241,6 +250,7 @@ mod tests {
         let value = r(false, true, true).unwrap();
         assert!(value.assets.get(&policy_asset).is_some());
         assert!(!value.icons.is_empty());
+        assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
         println!("cache read {:?}", now.elapsed());
 
         // concurrent access
