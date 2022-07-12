@@ -135,17 +135,14 @@ pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
         })
     };
 
-    let icons_handle = thread::spawn(move || {
-        params
-            .wants_icons()
-            // forces multiline formatting
-            .then(|| registry::get_icons(&params))
-            .transpose()
-            .map(Option::unwrap_or_default)
-    });
+    let (icons, icn_from_disk) = params
+        .wants_icons()
+        // forces multiline formatting
+        .then(|| registry::get_icons(&params))
+        .transpose()?
+        .unwrap_or_default();
 
     let (assets, ast_from_disk) = assets_handle.join().unwrap()?;
-    let (icons, icn_from_disk) = icons_handle.join().unwrap()?;
 
     let source = match ast_from_disk && icn_from_disk {
         true => RegistrySource::LocalRegistry,
