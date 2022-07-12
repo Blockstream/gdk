@@ -16,12 +16,6 @@ pub struct GetAssetsParams {
     pub(crate) config: Config,
 }
 
-impl GetAssetsParams {
-    pub(crate) fn explode(self) -> (Vec<AssetId>, ExtendedPubKey, Config) {
-        (self.assets_id, self.xpub, self.config)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

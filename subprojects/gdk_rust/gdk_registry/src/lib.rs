@@ -61,7 +61,11 @@ pub fn init(dir: impl AsRef<Path>) -> Result<()> {
 /// avoid performing a full registry read on evey call. The cache file stored
 /// on disk is encrypted via the wallet's xpub key.
 pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
-    let (assets_id, xpub, config) = params.explode();
+    let GetAssetsParams {
+        assets_id,
+        xpub,
+        config,
+    } = params;
 
     let mut cache = Cache::from_xpub(xpub)?;
 
