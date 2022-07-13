@@ -89,7 +89,26 @@ fn fetch<T: DeserializeOwned>(
 ) -> Result<(T, RegistrySource)> {
     let mut file = get_file(params.network(), what)?;
 
-    let current = crate::file::read::<ValueModified>(&mut file)?;
+    let current = match crate::file::read::<ValueModified>(&mut file) {
+        Ok(current) => current,
+
+        // If the cached file couldn't be deserialized (e.g. because it's
+        // corrupted) we either return an empty default value or download the
+        // latest version if `params.refresh` is `true`.
+        Err(err) => {
+            log::warn!("couldn't deserialize local {} due to {}", what, err);
+            let (value, source) = if params.should_refresh() {
+                Ok::<_, Error>((
+                    crate::http::call(&params.url(what), &params.agent()?, "")?,
+                    RegistrySource::Downloaded,
+                ))
+            } else {
+                Ok((ValueModified::new_empty_map(), RegistrySource::LocalRegistry))
+            }?;
+            crate::file::write(&value, &mut file)?;
+            return Ok((value.deserialize_into()?, source));
+        }
+    };
 
     if !params.should_refresh() {
         return Ok((current.deserialize_into()?, RegistrySource::LocalRegistry));
@@ -121,4 +140,23 @@ fn get_file(network: ElementsNetwork, ty: AssetsOrIcons) -> Result<MutexGuard<'s
         .expect("all (network, {assets|icons}) combinations are initialized")
         .lock()
         .map_err(Into::into)
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+    use rand::Rng;
+    use std::io::{Seek, Write};
+
+    /// Writes 16 random bytes to the beginning of the file specified by
+    /// `network` and `what`.
+    pub(crate) fn corrupt_file(network: ElementsNetwork, what: AssetsOrIcons) -> Result<()> {
+        let mut file = get_file(network, what)?;
+
+        let mut noise = [0u8; 16];
+        rand::thread_rng().fill(&mut noise);
+
+        file.seek(std::io::SeekFrom::Start(0))?;
+        file.write_all(&noise).map_err(Into::into)
+    }
 }

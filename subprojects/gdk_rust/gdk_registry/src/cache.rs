@@ -124,10 +124,17 @@ impl Cache {
         let mut cache_files = CACHE_FILES.lock()?;
 
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
-            Some(file) => {
+            Some(file) => match {
                 let decrypted = self::decrypt(file, xpub)?;
                 serde_cbor::from_slice::<Self>(&decrypted)
-            }
+            } {
+                Ok(cache) => Ok::<_, Error>(cache),
+
+                Err(err) => {
+                    log::warn!("couldn't deserialize cached file due to {}", err);
+                    Ok(Self::default())
+                }
+            },
 
             _ => Ok(Self::default()),
         }?;

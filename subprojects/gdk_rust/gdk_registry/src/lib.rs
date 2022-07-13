@@ -166,14 +166,18 @@ mod tests {
     use std::str::FromStr;
     use tempfile::TempDir;
 
-    /// Shadows `crate::inner::init`, mapping `Error::AlreadyInitialized` to
+    /// Shadows `crate::init`, mapping `Error::AlreadyInitialized` to
     /// `Ok(())` to avoid having a test fail only because some other test has
-    /// already called the init function.
+    /// already initialized.
     fn init(dir: impl AsRef<Path>) -> Result<()> {
         match super::init(dir) {
             Err(Error::AlreadyInitialized) => Ok(()),
             other => other,
         }
+    }
+
+    fn r(refresh: bool, assets: bool, icons: bool) -> Result<RegistryInfos> {
+        super::refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, Config::default()))
     }
 
     #[test]
@@ -185,10 +189,6 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         info!("{:?}", temp_dir);
         init(&temp_dir).unwrap();
-
-        let r = |refresh, assets, icons| {
-            refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, Default::default()))
-        };
 
         let hard_coded_values =
             match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Assets) {
@@ -342,5 +342,42 @@ mod tests {
         assert_eq!(1, res.assets.len());
         assert_eq!(1, res.icons.len());
         assert_eq!(res.source, Some(RegistrySource::Cache));
+    }
+
+    #[test]
+    fn test_corrupted_registry() {
+        let _ = env_logger::try_init();
+
+        let registry_dir = TempDir::new().unwrap();
+        init(&registry_dir).unwrap();
+
+        let hard_coded_assets = hard_coded::assets(ElementsNetwork::Liquid);
+        let hard_coded_icons = hard_coded::icons(ElementsNetwork::Liquid);
+
+        let res = r(true, true, true).unwrap();
+        assert_eq!(res.source, Some(RegistrySource::Downloaded));
+        assert!(res.assets.len() > hard_coded_assets.len());
+        assert!(res.icons.len() > hard_coded_icons.len());
+
+        // Corrupt local assets and icons files after downloading updated
+        // registry infos. With `refresh` set to `true` they should both get
+        // reset to the hard coded values.
+        registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Assets).unwrap();
+        registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Icons).unwrap();
+
+        let res = r(false, true, true).unwrap();
+        assert_eq!(res.assets.len(), hard_coded_assets.len());
+        assert_eq!(res.icons.len(), hard_coded_icons.len());
+
+        registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Assets).unwrap();
+        registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Icons).unwrap();
+
+        let res = r(true, true, true).unwrap();
+        assert_eq!(res.source, Some(RegistrySource::Downloaded));
+        assert!(res.assets.len() > hard_coded_assets.len());
+        assert!(res.icons.len() > hard_coded_icons.len());
+
+        let res = r(true, true, true).unwrap();
+        assert_eq!(res.source, Some(RegistrySource::NotModified));
     }
 }

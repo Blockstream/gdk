@@ -23,6 +23,13 @@ impl ValueModified {
         }
     }
 
+    pub(crate) fn new_empty_map() -> Self {
+        Self {
+            value: serde_json::Value::Object(serde_json::Map::new()),
+            ..Default::default()
+        }
+    }
+
     pub(crate) fn from_hard_coded(network: ElementsNetwork, what: AssetsOrIcons) -> Self {
         Self {
             value: hard_coded::value(network, what),
