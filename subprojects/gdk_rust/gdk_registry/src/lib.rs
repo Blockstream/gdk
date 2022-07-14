@@ -160,6 +160,7 @@ mod tests {
     use crate::hard_coded;
     use crate::params::ElementsNetwork;
     use bitcoin::util::bip32::ExtendedPubKey;
+    use httptest::{matchers::*, responders::*, Expectation, Server};
     use log::info;
     use rusty_fork::rusty_fork_test;
     use serde_json::Value;
@@ -178,11 +179,42 @@ mod tests {
     }
 
     fn r(refresh: bool, assets: bool, icons: bool) -> Result<RegistryInfos> {
-        super::refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, Config::default()))
+        let server = Server::run();
+
+        let config = refresh
+            .then(|| {
+                let test_endpoint = |what: AssetsOrIcons| {
+                    server.expect(
+                        Expectation::matching(all_of![
+                            request::method_path("GET", what.endpoint()),
+                            request::headers(contains(key("if-modified-since"))),
+                        ])
+                        .respond_with(
+                            status_code(200)
+                                .body(what.liquid_data())
+                                .append_header("last-modified", "Thu, 14 Jul 2022 06:05:26 GMT"),
+                        ),
+                    );
+                };
+
+                if assets {
+                    test_endpoint(AssetsOrIcons::Assets);
+                }
+                if icons {
+                    test_endpoint(AssetsOrIcons::Icons);
+                }
+
+                Config {
+                    url: format!("http://localhost:{}", server.addr().port()),
+                    ..Default::default()
+                }
+            })
+            .unwrap_or_default();
+
+        super::refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, config))
     }
 
     rusty_fork_test! {
-        // TODO: use httptest
         #[test]
         fn test_registry_prod() {
             let _ = env_logger::try_init();
@@ -224,10 +256,7 @@ mod tests {
             let value = r(true, true, false).unwrap();
             assert!(value.assets.get(&policy_asset).is_some());
             assert!(value.icons.is_empty());
-            assert!(matches!(
-                    value.source,
-                    Some(RegistrySource::NotModified | RegistrySource::Downloaded)
-            ));
+            assert_eq!(value.source, Some(RegistrySource::Downloaded));
 
             // refresh false, asset false, icons true (no cache)
             let value = r(false, false, true).unwrap();
@@ -240,10 +269,7 @@ mod tests {
             let value = r(true, true, true).unwrap();
             assert!(value.assets.get(&policy_asset).is_some());
             assert!(!value.icons.is_empty());
-            assert!(matches!(
-                    value.source,
-                    Some(RegistrySource::NotModified | RegistrySource::Downloaded)
-            ));
+            assert_eq!(value.source, Some(RegistrySource::Downloaded));
 
             let now = std::time::Instant::now();
             // check 304

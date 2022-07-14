@@ -56,7 +56,7 @@ mod test {
             let expected_last_modified = "date";
             server.expect(
                 Expectation::matching(all_of![
-                    request::method_path("GET", what.endpoint().to_string()),
+                    request::method_path("GET", what.endpoint()),
                     request::headers(contains(key("if-modified-since"))), // HTTP headers are case insensitive, and ureq it's downcasing them
                     request::headers(contains(("accept-encoding", "gzip, br"))),
                 ])
@@ -66,7 +66,7 @@ mod test {
                         .append_header("last-modified", expected_last_modified),
                 ),
             );
-            let value = call(&server.url_str(what.endpoint()), &agent, "".into()).unwrap();
+            let value = call(&server.url_str(what.endpoint()), &agent, "").unwrap();
             assert_eq!(expected_last_modified, value.last_modified());
         }
     }

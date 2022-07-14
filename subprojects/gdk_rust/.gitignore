@@ -1,4 +1,5 @@
 /target
-test
+*/test
+!data/test
 /bld
 /tests/c-test

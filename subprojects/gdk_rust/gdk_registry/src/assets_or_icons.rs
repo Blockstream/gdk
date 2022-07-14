@@ -35,9 +35,42 @@ impl AssetsOrIcons {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::hard_coded;
+    use crate::registry_infos::{RegistryAssets, RegistryIcons};
+    use crate::ElementsNetwork;
+    use serde_json::Map;
 
     #[test]
     fn networks_iter_len_in_sync() {
         assert_eq!(AssetsOrIcons::len(), AssetsOrIcons::iter().len())
+    }
+
+    impl AssetsOrIcons {
+        pub(crate) fn liquid_data(&self) -> String {
+            let mut hard = hard_coded::value(ElementsNetwork::Liquid, *self);
+            let data = hard.as_object_mut().unwrap();
+            let other = serde_json::from_str::<Map<_, _>>(match self {
+                // adds 4 more assets
+                Self::Assets => include_str!("./data/test/assets.json"),
+
+                // adds 2 more icons
+                Self::Icons => include_str!("./data/test/icons.json"),
+            })
+            .unwrap();
+
+            data.extend(other);
+            serde_json::to_string(&data).unwrap()
+        }
+    }
+
+    #[test]
+    fn test_local_liquid_data() {
+        let data = AssetsOrIcons::Assets.liquid_data();
+        let res = serde_json::from_str::<RegistryAssets>(&data);
+        assert!(res.is_ok(), "{:?}", res);
+
+        let data = AssetsOrIcons::Icons.liquid_data();
+        let res = serde_json::from_str::<RegistryIcons>(&data);
+        assert!(res.is_ok(), "{:?}", res);
     }
 }

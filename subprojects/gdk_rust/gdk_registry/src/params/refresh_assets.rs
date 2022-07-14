@@ -88,12 +88,12 @@ impl RefreshAssetsParams {
 /// Network configurations used when fetching assets via HTTP.
 pub struct Config {
     /// Defaults to Liquid mainnet.
-    network: ElementsNetwork,
+    pub(crate) network: ElementsNetwork,
 
     /// Optional proxy to use.
-    proxy: Option<String>,
+    pub(crate) proxy: Option<String>,
 
-    url: String,
+    pub(crate) url: String,
 }
 
 impl Default for Config {
