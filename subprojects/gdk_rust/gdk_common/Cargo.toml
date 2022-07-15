@@ -16,3 +16,4 @@ bitcoin = { version = "0.27", features = ["use-serde"] }
 #elements = { version = "0.18", features = ["serde-feature"] }
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0edddf730ff8fd441d3af28bc600b8bc8a8df5a9", features = ["serde-feature"] }
 secp256k1-sys = "=0.4.1" # 0.4.2 has compatibility issues with secp256k1-zkp-sys v0.4.0
+ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
