@@ -160,12 +160,14 @@ mod tests {
     use crate::hard_coded;
     use crate::params::ElementsNetwork;
     use bitcoin::util::bip32::ExtendedPubKey;
+    use elements::AssetId;
     use httptest::{matchers::*, responders::*, Expectation, Server};
     use log::info;
     use rusty_fork::rusty_fork_test;
     use serde_json::Value;
     use std::path::Path;
     use std::str::FromStr;
+
     use tempfile::TempDir;
 
     /// Shadows `crate::init`, mapping `Error::AlreadyInitialized` to
@@ -178,40 +180,78 @@ mod tests {
         }
     }
 
+    fn local_server_config(server: &Server, assets: bool, icons: bool) -> Config {
+        let test_endpoint = |what: AssetsOrIcons| {
+            server.expect(
+                Expectation::matching(all_of![
+                    request::method_path("GET", what.endpoint()),
+                    request::headers(contains(key("if-modified-since"))),
+                ])
+                .respond_with(
+                    status_code(200)
+                        .body(what.liquid_data())
+                        .append_header("last-modified", "Thu, 14 Jul 2022 06:05:26 GMT"),
+                ),
+            );
+        };
+
+        if assets {
+            test_endpoint(AssetsOrIcons::Assets);
+        }
+
+        if icons {
+            test_endpoint(AssetsOrIcons::Icons);
+        }
+
+        Config {
+            url: format!("http://localhost:{}", server.addr().port()),
+            ..Default::default()
+        }
+    }
+
     fn r(refresh: bool, assets: bool, icons: bool) -> Result<RegistryInfos> {
         let server = Server::run();
 
-        let config = refresh
-            .then(|| {
-                let test_endpoint = |what: AssetsOrIcons| {
-                    server.expect(
-                        Expectation::matching(all_of![
-                            request::method_path("GET", what.endpoint()),
-                            request::headers(contains(key("if-modified-since"))),
-                        ])
-                        .respond_with(
-                            status_code(200)
-                                .body(what.liquid_data())
-                                .append_header("last-modified", "Thu, 14 Jul 2022 06:05:26 GMT"),
-                        ),
-                    );
-                };
+        let config =
+            refresh.then(|| local_server_config(&server, assets, icons)).unwrap_or_default();
 
-                if assets {
-                    test_endpoint(AssetsOrIcons::Assets);
-                }
-                if icons {
-                    test_endpoint(AssetsOrIcons::Icons);
-                }
+        refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, config))
+    }
 
-                Config {
-                    url: format!("http://localhost:{}", server.addr().port()),
-                    ..Default::default()
-                }
-            })
-            .unwrap_or_default();
+    fn r_with_xpubs<'a, I>(assets: bool, icons: bool, xpubs: I) -> Result<RegistryInfos>
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let server = Server::run();
 
-        super::refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, config))
+        let config = local_server_config(&server, assets, icons);
+
+        let mut params = RefreshAssetsParams::new(true, assets, icons, config);
+        params.extend_xpubs(xpubs);
+        refresh_assets(params)
+    }
+
+    const DEFAULT_ASSETS: [&str; 2] = [
+        "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
+        "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49",
+    ];
+
+    const DEFAULT_XPUB: &str = "tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm";
+
+    fn g(assets: Option<&[&str]>, xpub: Option<&str>) -> Result<RegistryInfos> {
+        let assets_id = assets
+            .unwrap_or(&DEFAULT_ASSETS)
+            .into_iter()
+            .flat_map(|s| AssetId::from_str(*s))
+            .collect::<Vec<_>>();
+
+        let xpub = ExtendedPubKey::from_str(xpub.unwrap_or(DEFAULT_XPUB))?;
+
+        get_assets(GetAssetsParams {
+            assets_id,
+            xpub,
+            config: Config::default(),
+        })
     }
 
     rusty_fork_test! {
@@ -307,50 +347,25 @@ mod tests {
             info!("{:?}", temp_dir);
             init(&temp_dir).unwrap();
 
-            use elements::AssetId;
-
-            const DFLT_ASSETS: [&str; 2] = [
-                "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
-                "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49",
-            ];
-
-            const DFLT_XPUB: &str = "tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm";
-
-            fn get(assets: Option<Vec<&str>>, xpub: Option<&str>) -> Result<RegistryInfos> {
-                let assets_id = assets
-                    .unwrap_or(DFLT_ASSETS.to_vec())
-                    .into_iter()
-                    .flat_map(AssetId::from_str)
-                    .collect::<Vec<_>>();
-
-                let xpub = ExtendedPubKey::from_str(xpub.unwrap_or(DFLT_XPUB))?;
-
-                get_assets(GetAssetsParams {
-                    assets_id,
-                    xpub,
-                    config: crate::params::Config::default(),
-                })
-            }
-
             // empty query
-            let res = get(Some(vec![]), None).unwrap();
+            let res = g(Some(&[]), None).unwrap();
             assert!(res.assets.is_empty());
             assert!(res.icons.is_empty());
             assert_eq!(res.source, Some(RegistrySource::Cache));
 
             // invalid query
-            let res = get(Some(vec!["foo"]), None).unwrap();
+            let res = g(Some(&["foo"]), None).unwrap();
             assert!(res.assets.is_empty());
             assert!(res.icons.is_empty());
             assert_eq!(res.source, Some(RegistrySource::Cache));
 
             // invalid xpub
-            let res = get(None, Some("foo"));
+            let res = g(None, Some("foo"));
             assert!(res.is_err(), "{:?}", res);
 
             // asset id not present in registry
-            let res = get(
-                Some(vec!["144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"]),
+            let res = g(
+                Some(&["144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"]),
                 None,
                 )
                 .unwrap();
@@ -360,14 +375,14 @@ mod tests {
 
             // default query, 2 assets queried, only 1 is present in registry
             let now = std::time::Instant::now();
-            let res = get(None, None).unwrap();
+            let res = g(None, None).unwrap();
             assert_eq!(1, res.assets.len());
             assert_eq!(1, res.icons.len());
             assert_eq!(res.source, Some(RegistrySource::LocalRegistry));
             println!("cache read took {:?}", now.elapsed());
 
             // same query, now infos should come from cache.
-            let res = get(None, None).unwrap();
+            let res = g(None, None).unwrap();
             assert_eq!(1, res.assets.len());
             assert_eq!(1, res.icons.len());
             assert_eq!(res.source, Some(RegistrySource::Cache));
@@ -409,6 +424,27 @@ mod tests {
 
             let res = r(true, true, true).unwrap();
             assert_eq!(res.source, Some(RegistrySource::NotModified));
+        }
+
+        #[test]
+        fn test_update_missing() {
+            let _ = env_logger::try_init();
+
+            let temp_dir = TempDir::new().unwrap();
+            info!("{:?}", temp_dir);
+            init(&temp_dir).unwrap();
+
+            // both assets not present in the hard coded values
+            let res = g(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
+            assert_eq!(res.assets.len(), 0);
+
+            // updating the local registry, now those assets should be added to
+            // the cache.
+            let _ =  r_with_xpubs(true, true, [DEFAULT_XPUB]).unwrap();
+
+            let res = g(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
+            assert_eq!(res.assets.len(), 2);
+            assert_eq!(res.source, Some(RegistrySource::Cache));
         }
     }
 }

@@ -148,6 +148,16 @@ impl ElementsNetwork {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::str::FromStr;
+
+    impl RefreshAssetsParams {
+        pub(crate) fn extend_xpubs<'a, I>(&mut self, xpubs: I)
+        where
+            I: IntoIterator<Item = &'a str>,
+        {
+            self.xpubs.extend(xpubs.into_iter().filter_map(|x| ExtendedPubKey::from_str(x).ok()))
+        }
+    }
 
     #[test]
     fn test_deserialization() {
