@@ -18,8 +18,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
-use gdk_common::session::Session;
-use gdk_electrum::error::Error as ElectrumError;
+use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{determine_electrum_url, headers, ElectrumSession};
 use log::{LevelFilter, Metadata, Record};
@@ -43,6 +42,33 @@ pub enum GdkBackend {
 }
 
 pub struct GreenlightSession {}
+
+impl Session for GreenlightSession {
+    fn new(_network_parameters: gdk_common::NetworkParameters) -> Self {
+        todo!()
+    }
+
+    fn native_notification(&mut self) -> &mut gdk_common::session::NativeNotif {
+        todo!()
+    }
+
+    fn network_parameters(&self) -> &gdk_common::NetworkParameters {
+        todo!()
+    }
+
+    fn handle_call(&mut self, method: &str, _input: Value) -> Result<Value, JsonError> {
+        Err(Error::GreenlightMethodNotFound(method.to_string()).into())
+    }
+}
+
+impl From<Error> for JsonError {
+    fn from(e: Error) -> Self {
+        JsonError {
+            message: e.to_string(),
+            error: e.to_gdk_code(),
+        }
+    }
+}
 
 //
 // Session & account management
@@ -227,7 +253,7 @@ pub extern "C" fn GDKRUST_call_session(
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
     let res = match sess.backend {
         GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input).map_err(Into::into),
-        GdkBackend::Greenlight(ref mut s) => handle_gl_call(s, &method, input),
+        GdkBackend::Greenlight(ref mut s) => s.handle_call(&method, input),
     };
 
     let methods_to_redact_out = vec!["credentials_from_pin_data"];
@@ -241,13 +267,13 @@ pub extern "C" fn GDKRUST_call_session(
 
     let (s, ret) = match res {
         Ok(ref val) => (val.to_string(), GA_OK),
-        Err(ref e) => {
-            let ret_val = match e {
-                Error::Electrum(ElectrumError::InvalidPin) => GA_NOT_AUTHORIZED,
-                _ => GA_ERROR,
+        Err(ref json_error) => {
+            let ret_val = if "id_invalid_pin" == json_error.error {
+                GA_NOT_AUTHORIZED
+            } else {
+                GA_ERROR
             };
-            let json_error = build_error(&method, e);
-            (json_error, ret_val)
+            (to_string(&json_error), ret_val)
         }
     };
     let s = make_str(s);
@@ -311,16 +337,6 @@ fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
     json!({ "currencies": currency_map })
 }
 
-fn handle_gl_call(
-    _session: &mut GreenlightSession,
-    method: &str,
-    _input: Value,
-) -> Result<Value, Error> {
-    match method {
-        _ => Err(Error::GreenlightMethodNotFound(method.to_string())),
-    }
-}
-
 #[no_mangle]
 pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) {
     unsafe {
@@ -335,12 +351,6 @@ pub extern "C" fn GDKRUST_destroy_session(ptr: *mut libc::c_void) {
         // retake pointer and drop
         let _ = Box::from_raw(ptr as *mut GdkSession);
     }
-}
-
-#[derive(serde::Serialize)]
-struct JsonError {
-    message: String,
-    error: String,
 }
 
 fn build_error(_method: &str, error: &Error) -> String {
