@@ -17,6 +17,7 @@ pub mod interface;
 mod notification;
 pub mod pin;
 pub mod pset;
+pub mod session;
 pub mod spv;
 
 use crate::account::{

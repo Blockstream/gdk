@@ -38,32 +38,8 @@ pub enum Error {
 impl Error {
     /// Convert the error to a GDK-compatible code.
     pub fn to_gdk_code(&self) -> String {
-        // Unhandles error codes:
-        // id_no_amount_specified
-        // id_invalid_replacement_fee_rate
-        // id_send_all_requires_a_single_output
-
-        match *self {
-            Error::Electrum(electrum::error::Error::InsufficientFunds) => {
-                "id_insufficient_funds".to_string()
-            }
-            Error::Electrum(electrum::error::Error::InvalidAddress) => {
-                "id_invalid_address".to_string()
-            }
-            Error::Electrum(electrum::error::Error::NonConfidentialAddress) => {
-                "id_nonconfidential_addresses_not".to_string()
-            }
-            Error::Electrum(electrum::error::Error::InvalidAmount) => {
-                "id_invalid_amount".to_string()
-            }
-            Error::Electrum(electrum::error::Error::InvalidAssetId) => {
-                "id_invalid_asset_id".to_string()
-            }
-            Error::Electrum(electrum::error::Error::FeeRateBelowMinimum(_)) => {
-                "id_fee_rate_is_below_minimum".to_string()
-            }
-            Error::Electrum(electrum::error::Error::PinError) => "id_connection_failed".to_string(),
-            Error::Electrum(electrum::error::Error::InvalidPin) => "id_invalid_pin".to_string(),
+        match self {
+            Error::Electrum(err) => err.to_gdk_code(),
             _ => "id_unknown".to_string(),
         }
     }

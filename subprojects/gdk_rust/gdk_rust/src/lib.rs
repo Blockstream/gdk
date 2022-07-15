@@ -5,9 +5,7 @@ extern crate serde_json;
 extern crate log;
 
 pub mod error;
-mod serialize;
 
-use crate::serialize::*;
 use gdk_common::wally::{make_str, read_str};
 use serde_json::Value;
 
@@ -17,10 +15,7 @@ use std::os::raw::c_char;
 use std::sync::Once;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use gdk_common::model::{
-    CreateAccountOpt, GetNextAccountOpt, GetTransactionsOpt, InitParam, RenameAccountOpt,
-    SPVDownloadHeadersParams, SPVVerifyTxParams, SetAccountHiddenOpt, UpdateAccountOpt,
-};
+use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
 use gdk_electrum::error::Error as ElectrumError;
@@ -230,7 +225,7 @@ pub extern "C" fn GDKRUST_call_session(
 
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
     let res = match sess.backend {
-        GdkBackend::Electrum(ref mut s) => handle_session_call(s, &method, input),
+        GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input).map_err(Into::into),
         GdkBackend::Greenlight(ref mut s) => handle_gl_call(s, &method, input),
     };
 
@@ -322,168 +317,6 @@ fn handle_gl_call(
 ) -> Result<Value, Error> {
     match method {
         _ => Err(Error::GreenlightMethodNotFound(method.to_string())),
-    }
-}
-
-// dynamic dispatch shenanigans
-fn handle_session_call(
-    session: &mut ElectrumSession,
-    method: &str,
-    input: Value,
-) -> Result<Value, Error> {
-    match method {
-        "poll_session" => session.poll_session().map(|v| json!(v)).map_err(Into::into),
-
-        "connect" => session.connect(&input).map(|v| json!(v)).map_err(Into::into),
-
-        "disconnect" => session.disconnect().map(|v| json!(v)).map_err(Into::into),
-
-        "login" => {
-            session.login(serde_json::from_value(input)?).map(|v| json!(v)).map_err(Into::into)
-        }
-        "credentials_from_pin_data" => session
-            .credentials_from_pin_data(serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "encrypt_with_pin" => session
-            .encrypt_with_pin(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-
-        "get_block_height" => {
-            session.get_block_height().map(|block_height| json!(block_height)).map_err(Into::into)
-        }
-
-        "get_subaccount_nums" => {
-            session.get_subaccount_nums().map(|v| json!(v)).map_err(Into::into)
-        }
-
-        "get_subaccounts" => session.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
-
-        "get_subaccount" => get_subaccount(session, &input),
-
-        "discover_subaccount" => session
-            .discover_subaccount(serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "get_subaccount_root_path" => session
-            .get_subaccount_root_path(serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "get_subaccount_xpub" => session
-            .get_subaccount_xpub(serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "create_subaccount" => {
-            let opt: CreateAccountOpt = serde_json::from_value(input)?;
-            session.create_subaccount(opt).map(|v| json!(v)).map_err(Into::into)
-        }
-        "get_next_subaccount" => {
-            let opt: GetNextAccountOpt = serde_json::from_value(input)?;
-            session
-                .get_next_subaccount(opt)
-                .map(|next_subaccount| json!(next_subaccount))
-                .map_err(Into::into)
-        }
-        "rename_subaccount" => {
-            let opt: RenameAccountOpt = serde_json::from_value(input)?;
-            session.rename_subaccount(opt).map(|_| json!(true)).map_err(Into::into)
-        }
-        "set_subaccount_hidden" => {
-            let opt: SetAccountHiddenOpt = serde_json::from_value(input)?;
-            session.set_subaccount_hidden(opt).map(|_| json!(true)).map_err(Into::into)
-        }
-        "update_subaccount" => {
-            let opt: UpdateAccountOpt = serde_json::from_value(input)?;
-            session.update_subaccount(opt).map(|_| json!(true)).map_err(Into::into)
-        }
-
-        "get_transactions" => {
-            let opt: GetTransactionsOpt = serde_json::from_value(input)?;
-            session.get_transactions(&opt).map(|x| txs_result_value(&x)).map_err(Into::into)
-        }
-
-        "get_transaction_hex" => {
-            get_transaction_hex(session, &input).map(|v| json!(v)).map_err(Into::into)
-        }
-        "get_transaction_details" => session
-            .get_transaction_details(input.as_str().ok_or_else(|| {
-                Error::Other("get_transaction_details: input is not a string".into())
-            })?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "get_balance" => session
-            .get_balance(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "set_transaction_memo" => set_transaction_memo(session, &input),
-        "create_transaction" => serialize::create_transaction(session, input),
-        "sign_transaction" => session
-            .sign_transaction(&serde_json::from_value(input)?)
-            .map_err(Into::into)
-            .map(|v| json!(v)),
-        "send_transaction" => session
-            .send_transaction(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "broadcast_transaction" => {
-            session
-                .broadcast_transaction(input.as_str().ok_or_else(|| {
-                    Error::Other("broadcast_transaction: input not a string".into())
-                })?)
-                .map(|v| json!(v))
-                .map_err(Into::into)
-        }
-
-        "get_receive_address" => {
-            let a = session
-                .get_receive_address(&serde_json::from_value(input)?)
-                .map(|x| serde_json::to_value(&x).unwrap())
-                .map_err(Into::into);
-            info!("gdk_rust get_receive_address returning {:?}", a);
-            a
-        }
-        "get_previous_addresses" => session
-            .get_previous_addresses(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-
-        "get_fee_estimates" => {
-            session.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
-        }
-
-        "get_settings" => session.get_settings().map_err(Into::into).map(|s| json!(s)),
-        "get_available_currencies" => session.get_available_currencies().map_err(Into::into),
-        "change_settings" => session
-            .change_settings(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-
-        "get_unspent_outputs" => session
-            .get_unspent_outputs(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "load_store" => session
-            .load_store(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "get_master_blinding_key" => {
-            session.get_master_blinding_key().map_err(Into::into).map(|s| json!(s))
-        }
-        "set_master_blinding_key" => session
-            .set_master_blinding_key(&serde_json::from_value(input)?)
-            .map(|v| json!(v))
-            .map_err(Into::into),
-        "start_threads" => session.start_threads().map_err(Into::into).map(|s| json!(s)),
-        "get_wallet_hash_id" => session.get_wallet_hash_id().map_err(Into::into).map(|s| json!(s)),
-
-        "remove_account" => session.remove_account().map_err(Into::into).map(|s| json!(s)),
-
-        // "auth_handler_get_status" => Ok(auth_handler.to_json()),
-        _ => Err(Error::MethodNotFound {
-            method: method.to_string(),
-            in_session: true,
-        }),
     }
 }
 

@@ -32,7 +32,6 @@ rust_sources = [
   'gdk_rust/Cargo.toml',
   'gdk_rust/src/error.rs',
   'gdk_rust/src/lib.rs',
-  'gdk_rust/src/serialize.rs',
 
   'gdk_common/Cargo.toml',
   'gdk_common/src/be/mod.rs',
@@ -75,6 +74,8 @@ rust_sources = [
   'gdk_registry/src/registry.rs',
   'gdk_registry/src/registry_infos.rs',
   'gdk_registry/src/value_modified.rs',
+  'gdk_registry/src/session.rs',
+
 ]
 
 gdk_rust_target = custom_target('libgdk_rust',

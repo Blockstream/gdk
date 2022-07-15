@@ -176,6 +176,15 @@ pub enum Error {
     #[error("wallet is not initialized")]
     WalletNotInitialized,
 
+    #[error(
+        "{}method not found: {method:?}",
+        if *.in_session { "session " } else {""}
+    )]
+    MethodNotFound {
+        method: String,
+        in_session: bool,
+    },
+
     #[error("{0}")]
     Generic(String),
 }
@@ -263,5 +272,28 @@ impl From<PoisonError<RwLockWriteGuard<'_, HashSet<BEOutPoint>>>> for Error {
 impl From<PoisonError<MutexGuard<'_, ()>>> for Error {
     fn from(err: PoisonError<MutexGuard<'_, ()>>) -> Self {
         Error::MutexPoisonError(err.to_string())
+    }
+}
+
+impl Error {
+    /// Convert the error to a GDK-compatible code.
+    pub fn to_gdk_code(&self) -> String {
+        // Unhandled error codes:
+        // id_no_amount_specified
+        // id_invalid_replacement_fee_rate
+        // id_send_all_requires_a_single_output
+
+        use super::Error::*;
+        match *self {
+            InsufficientFunds => "id_insufficient_funds".to_string(),
+            InvalidAddress => "id_invalid_address".to_string(),
+            NonConfidentialAddress => "id_nonconfidential_addresses_not".to_string(),
+            InvalidAmount => "id_invalid_amount".to_string(),
+            InvalidAssetId => "id_invalid_asset_id".to_string(),
+            FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum".to_string(),
+            PinError => "id_connection_failed".to_string(),
+            InvalidPin => "id_invalid_pin".to_string(),
+            _ => "id_unknown".to_string(),
+        }
     }
 }
