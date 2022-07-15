@@ -1,11 +1,26 @@
-use gdk_common::model::*;
+use gdk_common::{
+    model::*,
+    session::{JsonError, Session},
+    NetworkParameters,
+};
 use serde_json::Value;
 
 use crate::{error::Error, ElectrumSession};
 
-impl ElectrumSession {
-    // dynamic dispatch shenanigans
-    pub fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, Error> {
+impl Session for ElectrumSession {
+    fn new(_network_parameters: NetworkParameters) -> Self {
+        todo!()
+    }
+
+    fn native_notification(&mut self) -> &mut gdk_common::session::NativeNotif {
+        todo!()
+    }
+
+    fn network_parameters(&self) -> &NetworkParameters {
+        todo!()
+    }
+
+    fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, JsonError> {
         match method {
             "poll_session" => self.poll_session().map(|v| json!(v)).map_err(Into::into),
 
@@ -35,7 +50,7 @@ impl ElectrumSession {
 
             "get_subaccounts" => self.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
 
-            "get_subaccount" => get_subaccount(self, &input),
+            "get_subaccount" => get_subaccount(self, &input).map_err(Into::into),
 
             "discover_subaccount" => self
                 .discover_subaccount(serde_json::from_value(input)?)
@@ -91,7 +106,7 @@ impl ElectrumSession {
                 .map(|v| json!(v))
                 .map_err(Into::into),
             "set_transaction_memo" => set_transaction_memo(self, &input),
-            "create_transaction" => create_transaction(self, input),
+            "create_transaction" => create_transaction(self, input).map_err(Into::into),
             "sign_transaction" => self
                 .sign_transaction(&serde_json::from_value(input)?)
                 .map_err(Into::into)
@@ -155,11 +170,20 @@ impl ElectrumSession {
             _ => Err(Error::MethodNotFound {
                 method: method.to_string(),
                 in_session: true,
-            }),
+            })
+            .map_err(Into::into),
         }
     }
 }
 
+impl From<Error> for JsonError {
+    fn from(e: Error) -> Self {
+        JsonError {
+            message: e.to_string(),
+            error: e.to_gdk_code(),
+        }
+    }
+}
 pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
     let index = input["subaccount"]
         .as_u64()
@@ -198,23 +222,23 @@ pub fn create_transaction(session: &mut ElectrumSession, input: Value) -> Result
     })
 }
 
-pub fn set_transaction_memo(session: &ElectrumSession, input: &Value) -> Result<Value, Error> {
+pub fn set_transaction_memo(session: &ElectrumSession, input: &Value) -> Result<Value, JsonError> {
     // TODO: parse txid?.
     let txid = input["txid"]
         .as_str()
-        .ok_or_else(|| Error::Generic("set_transaction_memo: missing txid".into()))?;
+        .ok_or_else(|| JsonError::new("set_transaction_memo: missing txid"))?;
 
     let memo = input["memo"]
         .as_str()
-        .ok_or_else(|| Error::Generic("set_transaction_memo: missing memo".into()))?;
+        .ok_or_else(|| JsonError::new("set_transaction_memo: missing memo"))?;
 
     session.set_transaction_memo(txid, memo).map(|v| json!(v)).map_err(Into::into)
 }
 
-pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, Error> {
+pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, JsonError> {
     if estimates.is_empty() {
         // Current apps depend on this length
-        return Err(Error::Generic("Expected at least one feerate".into()));
+        return Err(JsonError::new("Expected at least one feerate"));
     }
 
     Ok(json!({ "fees": estimates }))
