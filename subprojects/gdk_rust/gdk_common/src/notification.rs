@@ -1,12 +1,12 @@
-use crate::State;
-use gdk_common::be::BEBlockHeader;
-use gdk_common::wally::make_str;
-use gdk_common::{be::BEBlockHash, model::Settings, model::TransactionType};
+use crate::be::BEBlockHeader;
+use crate::wally::make_str;
+use crate::{be::BEBlockHash, model::Settings, model::TransactionType, State};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 
-type NativeType = (extern "C" fn(*const libc::c_void, *const libc::c_char), *const libc::c_void);
+pub type NativeType =
+    (extern "C" fn(*const libc::c_void, *const libc::c_char), *const libc::c_void);
 #[derive(Clone)]
 pub struct NativeNotif {
     pub native: Option<NativeType>,

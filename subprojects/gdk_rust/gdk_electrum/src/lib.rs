@@ -14,7 +14,6 @@ pub mod account;
 pub mod error;
 pub mod headers;
 pub mod interface;
-mod notification;
 pub mod pin;
 pub mod pset;
 pub mod session;
@@ -33,16 +32,15 @@ use bitcoin::secp256k1::{self, SecretKey};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
 use electrum_client::GetHistoryRes;
-use gdk_common::be::*;
 use gdk_common::model::*;
 use gdk_common::network::NetworkParameters;
 use gdk_common::wally::{
     self, asset_blinding_key_from_seed, asset_blinding_key_to_ec_private_key, MasterBlindingKey,
 };
+use gdk_common::{be::*, State};
 
 use elements::confidential::{self, Asset, Nonce};
 use gdk_common::NetworkId;
-use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -53,7 +51,6 @@ use std::{iter, thread};
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
-pub use crate::notification::{NativeNotif, Notification, TransactionNotification};
 use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
 use aes::Aes256;
@@ -62,12 +59,12 @@ use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
 use electrum_client::{Client, ElectrumApi};
+pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
 use once_cell::sync::Lazy;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
-use std::fmt;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
@@ -139,41 +136,6 @@ pub struct ElectrumSession {
     ///
     /// This set it emptied after every sync.
     pub recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum State {
-    Disconnected,
-    Connected,
-}
-
-impl From<bool> for State {
-    fn from(b: bool) -> Self {
-        if b {
-            State::Connected
-        } else {
-            State::Disconnected
-        }
-    }
-}
-
-impl From<State> for bool {
-    fn from(s: State) -> Self {
-        match s {
-            State::Connected => true,
-            State::Disconnected => false,
-        }
-    }
-}
-
-impl fmt::Display for State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            State::Disconnected => write!(f, "disconnected"),
-            State::Connected => write!(f, "connected"),
-        }
-    }
 }
 
 #[derive(Clone)]

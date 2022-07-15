@@ -9,11 +9,11 @@ use gdk_common::model::{
     TransactionType, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
-use gdk_common::{NetworkId, NetworkParameters};
+use gdk_common::{NetworkId, NetworkParameters, State};
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{determine_electrum_url, headers, spv, ElectrumSession, State};
+use gdk_electrum::{determine_electrum_url, headers, spv, ElectrumSession};
 
 use log::info;
 use serde_json::Value;

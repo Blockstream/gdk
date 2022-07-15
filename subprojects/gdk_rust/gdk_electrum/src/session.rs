@@ -1,5 +1,6 @@
 use gdk_common::{
     model::*,
+    notification::NativeNotif,
     session::{JsonError, Session},
     NetworkParameters,
 };
@@ -12,7 +13,7 @@ impl Session for ElectrumSession {
         todo!()
     }
 
-    fn native_notification(&mut self) -> &mut gdk_common::session::NativeNotif {
+    fn native_notification(&mut self) -> &mut NativeNotif {
         todo!()
     }
 

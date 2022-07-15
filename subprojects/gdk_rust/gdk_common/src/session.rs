@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-use crate::NetworkParameters;
+use crate::{
+    notification::{NativeNotif, NativeType},
+    NetworkParameters,
+};
 
 pub trait Session {
     fn new(network_parameters: NetworkParameters) -> Self;
@@ -20,14 +23,6 @@ pub trait Session {
     fn set_native_notification(&mut self, native_type: NativeType) {
         self.native_notification().set_native(native_type)
     }
-}
-
-// TODO move NativeNotif and NativeType in gdk_common
-pub struct NativeNotif;
-pub struct NativeType;
-
-impl NativeNotif {
-    fn set_native(&mut self, _native_type: NativeType) {}
 }
 
 #[derive(serde::Serialize, Debug)]

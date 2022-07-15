@@ -20,7 +20,7 @@ use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 use crate::error::Error;
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
-use gdk_electrum::{determine_electrum_url, headers, ElectrumSession};
+use gdk_electrum::{determine_electrum_url, headers, ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
 use std::str::FromStr;
@@ -48,7 +48,7 @@ impl Session for GreenlightSession {
         todo!()
     }
 
-    fn native_notification(&mut self) -> &mut gdk_common::session::NativeNotif {
+    fn native_notification(&mut self) -> &mut NativeNotif {
         todo!()
     }
 
