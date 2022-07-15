@@ -1211,6 +1211,10 @@ namespace sdk {
         }
 
         nlohmann::json result(details);
+        for (size_t i = 0; i < num_outputs; ++i) {
+            result["transaction_outputs"][i]["assetblinder"] = b2h_rev(output_abfs.at(i));
+            result["transaction_outputs"][i]["amountblinder"] = b2h_rev(output_vbfs.at(i));
+        }
         result["blinded"] = true;
         if (authorized_assets) {
             result["blinding_nonces"] = blinding_nonces;
