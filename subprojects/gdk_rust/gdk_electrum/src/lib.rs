@@ -157,29 +157,6 @@ impl StateUpdater {
     }
 }
 
-pub fn determine_electrum_url(network: &NetworkParameters) -> Result<ElectrumUrl, Error> {
-    if let Some(true) = network.use_tor {
-        if let Some(electrum_onion_url) = network.electrum_onion_url.as_ref() {
-            if !electrum_onion_url.is_empty() {
-                return Ok(ElectrumUrl::Plaintext(electrum_onion_url.into()));
-            }
-        }
-    }
-    let electrum_url = network
-        .electrum_url
-        .as_ref()
-        .ok_or_else(|| Error::Generic("network url is missing".into()))?;
-    if electrum_url == "" {
-        return Err(Error::Generic("network url is empty".into()));
-    }
-
-    if network.electrum_tls.unwrap_or(false) {
-        Ok(ElectrumUrl::Tls(electrum_url.into(), network.validate_domain.unwrap_or(false)))
-    } else {
-        Ok(ElectrumUrl::Plaintext(electrum_url.into()))
-    }
-}
-
 fn socksify(proxy: Option<&str>) -> Option<String> {
     const SOCKS5: &str = "socks5://";
     if let Some(proxy) = proxy {
@@ -211,28 +188,6 @@ fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
 }
 
 impl ElectrumSession {
-    pub fn create_session(
-        network: NetworkParameters,
-        proxy: Option<&str>,
-        url: ElectrumUrl,
-    ) -> Self {
-        Self {
-            proxy: socksify(proxy),
-            network,
-            url,
-            accounts: Arc::new(RwLock::new(HashMap::<u32, Account>::new())),
-            notify: NativeNotif::new(),
-            handles: vec![],
-            user_wants_to_sync: Arc::new(AtomicBool::new(false)),
-            last_network_call_succeeded: Arc::new(AtomicBool::new(false)),
-            timeout: None,
-            store: None,
-            master_xpub: None,
-            master_xprv: None,
-            recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
-        }
-    }
-
     pub fn get_accounts(&self) -> Result<Vec<Account>, Error> {
         // The Account struct is immutable and we don't allow account deletion.
         // Thus we can clone without the risk of having inconsistent data.

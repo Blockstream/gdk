@@ -14,6 +14,7 @@ use gdk_common::network::NetworkParameters;
 use crate::error::Error;
 use crate::headers::bitcoin::HeadersChain;
 use crate::interface::ElectrumUrl;
+use crate::session::determine_electrum_url;
 
 const INIT_CHUNK_SIZE: u32 = 5;
 const MAX_CHUNK_SIZE: u32 = 200;
@@ -425,7 +426,7 @@ pub fn get_cross_servers(network: &NetworkParameters) -> Result<Vec<ElectrumUrl>
     }?;
 
     // Don't cross validation against the primary server
-    let primary_server = super::determine_electrum_url(network)?;
+    let primary_server = determine_electrum_url(network)?;
     let primary_url = primary_server.url();
     Ok(servers.into_iter().filter(|s| s.url() != primary_url).collect())
 }

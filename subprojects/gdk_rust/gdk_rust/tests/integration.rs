@@ -9,11 +9,12 @@ use gdk_common::model::{
     TransactionType, UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::ScriptType;
+use gdk_common::session::Session;
 use gdk_common::{NetworkId, NetworkParameters, State};
 use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
-use gdk_electrum::{determine_electrum_url, headers, spv, ElectrumSession};
+use gdk_electrum::{headers, spv, ElectrumSession};
 
 use log::info;
 use serde_json::Value;
@@ -848,9 +849,7 @@ fn subaccounts(is_liquid: bool) {
         let mut network = test_session.network_parameters().clone();
         let temp_dir = TempDir::new().unwrap();
         network.state_dir = format!("{}", temp_dir.path().display());
-        let url = determine_electrum_url(&network).unwrap();
-        let proxy = Some("");
-        ElectrumSession::create_session(network, proxy, url)
+        ElectrumSession::new(network).unwrap()
     };
 
     let credentials = Credentials {
@@ -1422,9 +1421,7 @@ fn test_electrum_disconnect() {
     // Attempt to connect with another session but Electrs is still down
     let mut new_session = {
         let network = test_session.network_parameters().clone();
-        let url = determine_electrum_url(&network).unwrap();
-        let proxy = Some("");
-        ElectrumSession::create_session(network, proxy, url)
+        ElectrumSession::new(network).unwrap()
     };
     new_session.connect(&Value::Null).unwrap();
 
@@ -1644,11 +1641,8 @@ fn test_tor() {
     network.proxy = Some("127.0.0.1:9050".into());
     network.spv_enabled = Some(false);
 
-    let url = determine_electrum_url(&network).unwrap();
-    info!("url: {:?}", url);
     info!("creating gdk session");
-    let mut session =
-        ElectrumSession::create_session(network.clone(), network.proxy.as_deref(), url);
+    let mut session = ElectrumSession::new(network.clone()).unwrap();
     session.connect(&serde_json::to_value(&network).unwrap()).unwrap();
 
     let credentials = Credentials {

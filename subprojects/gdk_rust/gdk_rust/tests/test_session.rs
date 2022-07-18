@@ -9,13 +9,14 @@ use electrum_client::ElectrumApi;
 use elements;
 use gdk_common::be::{BEAddress, BEBlockHash, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::scripts::ScriptType;
+use gdk_common::session::Session;
 use gdk_common::wally::{asset_blinding_key_from_seed, MasterBlindingKey};
 use gdk_common::{model::*, wally};
 use gdk_common::{ElementsNetwork, NetworkId};
 use gdk_common::{NetworkParameters, State};
 use gdk_electrum::error::Error;
-use gdk_electrum::{determine_electrum_url, spv, ElectrumSession};
 use gdk_electrum::{headers, Notification, TransactionNotification};
+use gdk_electrum::{spv, ElectrumSession};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -168,11 +169,8 @@ pub fn setup(
     let state_dir_str = format!("{}", state_dir.path().display());
     network.state_dir = state_dir_str;
 
-    let proxy = Some("");
-    let url = determine_electrum_url(&network).unwrap();
-
     info!("creating gdk session");
-    let mut session = ElectrumSession::create_session(network.clone(), proxy, url);
+    let mut session = ElectrumSession::new(network.clone()).unwrap();
     let ntf_len = session.filter_events("network").len();
     session.connect(&serde_json::to_value(network.clone()).unwrap()).unwrap();
     assert_eq!(

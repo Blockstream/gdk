@@ -1,4 +1,10 @@
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{atomic::AtomicBool, Arc, RwLock},
+};
+
 use gdk_common::{
+    be::BEOutPoint,
     model::*,
     notification::NativeNotif,
     session::{JsonError, Session},
@@ -6,19 +12,35 @@ use gdk_common::{
 };
 use serde_json::Value;
 
-use crate::{error::Error, ElectrumSession};
+use crate::{account::Account, error::Error, interface::ElectrumUrl, socksify, ElectrumSession};
 
 impl Session for ElectrumSession {
-    fn new(_network_parameters: NetworkParameters) -> Self {
-        todo!()
+    fn new(network_parameters: NetworkParameters) -> Result<Self, JsonError> {
+        let url = determine_electrum_url(&network_parameters)?;
+
+        Ok(Self {
+            proxy: socksify(network_parameters.proxy.as_deref()),
+            network: network_parameters,
+            url,
+            accounts: Arc::new(RwLock::new(HashMap::<u32, Account>::new())),
+            notify: NativeNotif::new(),
+            handles: vec![],
+            user_wants_to_sync: Arc::new(AtomicBool::new(false)),
+            last_network_call_succeeded: Arc::new(AtomicBool::new(false)),
+            timeout: None,
+            store: None,
+            master_xpub: None,
+            master_xprv: None,
+            recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
+        })
     }
 
     fn native_notification(&mut self) -> &mut NativeNotif {
-        todo!()
+        &mut self.notify
     }
 
     fn network_parameters(&self) -> &NetworkParameters {
-        todo!()
+        &self.network
     }
 
     fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, JsonError> {
@@ -174,6 +196,29 @@ impl Session for ElectrumSession {
             })
             .map_err(Into::into),
         }
+    }
+}
+
+pub fn determine_electrum_url(network: &NetworkParameters) -> Result<ElectrumUrl, Error> {
+    if let Some(true) = network.use_tor {
+        if let Some(electrum_onion_url) = network.electrum_onion_url.as_ref() {
+            if !electrum_onion_url.is_empty() {
+                return Ok(ElectrumUrl::Plaintext(electrum_onion_url.into()));
+            }
+        }
+    }
+    let electrum_url = network
+        .electrum_url
+        .as_ref()
+        .ok_or_else(|| Error::Generic("network url is missing".into()))?;
+    if electrum_url == "" {
+        return Err(Error::Generic("network url is empty".into()));
+    }
+
+    if network.electrum_tls.unwrap_or(false) {
+        Ok(ElectrumUrl::Tls(electrum_url.into(), network.validate_domain.unwrap_or(false)))
+    } else {
+        Ok(ElectrumUrl::Plaintext(electrum_url.into()))
     }
 }
 

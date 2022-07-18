@@ -20,7 +20,7 @@ use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 use crate::error::Error;
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
-use gdk_electrum::{determine_electrum_url, headers, ElectrumSession, NativeNotif};
+use gdk_electrum::{headers, ElectrumSession, NativeNotif};
 use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
 use std::str::FromStr;
@@ -44,7 +44,7 @@ pub enum GdkBackend {
 pub struct GreenlightSession {}
 
 impl Session for GreenlightSession {
-    fn new(_network_parameters: gdk_common::NetworkParameters) -> Self {
+    fn new(_network_parameters: gdk_common::NetworkParameters) -> Result<Self, JsonError> {
         todo!()
     }
 
@@ -143,15 +143,11 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let parsed_network = parsed_network.unwrap();
 
-    let proxy = network["proxy"].as_str();
-
     let backend = match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
         Some("greenlight") => GdkBackend::Greenlight(GreenlightSession {}),
         Some("electrum") => {
-            let url = determine_electrum_url(&parsed_network).map_err(|x| json!(x))?;
-
-            let session = ElectrumSession::create_session(parsed_network, proxy, url);
+            let session = ElectrumSession::new(parsed_network)?;
             GdkBackend::Electrum(session)
         }
         _ => return Err(json!("server_type invalid")),

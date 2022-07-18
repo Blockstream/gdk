@@ -1,7 +1,7 @@
-use crate::determine_electrum_url;
 use crate::error::Error;
 use crate::headers::bitcoin::{HeadersChain, HEADERS_FILE_MUTEX};
 use crate::headers::liquid::Verifier;
+use crate::session::determine_electrum_url;
 use ::bitcoin::hashes::hex::ToHex;
 use ::bitcoin::hashes::{sha256, sha256d, Hash};
 use aes_gcm_siv::aead::{Aead, NewAead};
