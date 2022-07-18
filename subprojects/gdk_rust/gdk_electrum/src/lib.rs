@@ -1220,7 +1220,7 @@ struct DownloadTxResult {
 impl Syncer {
     /// Sync the wallet, return the set of updated accounts
     pub fn sync(&self, client: &Client) -> Result<Vec<TransactionNotification>, Error> {
-        debug!("start sync");
+        trace!("start sync");
         let start = Instant::now();
 
         let accounts = self.accounts.read().unwrap();
