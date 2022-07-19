@@ -690,6 +690,9 @@ impl Account {
                 let mut out_tx = tx.clone();
 
                 for i in 0..tx.input.len() {
+                    if request.used_utxos[i].skip_signing {
+                        continue;
+                    }
                     let prev_output = tx.input[i].previous_output;
                     info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = acc_store.get_bitcoin_tx(&prev_output.txid)?;
@@ -726,6 +729,9 @@ impl Account {
                 let mut tx = blind_tx(self, &tx)?;
 
                 for i in 0..tx.input.len() {
+                    if request.used_utxos[i].skip_signing {
+                        continue;
+                    }
                     let prev_output = tx.input[i].previous_output;
                     info!("input#{} prev_output:{:?}", i, prev_output);
                     let prev_tx = acc_store.get_liquid_tx(&prev_output.txid)?;
@@ -762,6 +768,7 @@ impl Account {
 
         betx.fee = request.fee;
         betx.create_transaction = request.create_transaction.clone();
+        betx.used_utxos = request.used_utxos.clone();
 
         drop(acc_store);
         drop(store_read);
@@ -1490,6 +1497,16 @@ fn prepare_input(
 
 fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::Transaction, Error> {
     info!("blind_tx {}", tx.txid());
+    let is_already_blinded = tx.output.iter().all(|o| {
+        o.is_fee()
+            || (o.asset.is_confidential()
+                && o.value.is_confidential()
+                && o.nonce.is_confidential()
+                && !o.witness.is_empty())
+    });
+    if is_already_blinded {
+        return Ok(tx.clone());
+    }
 
     let store_read = account.store.read()?;
     let acc_store = store_read.account_cache(account.num())?;

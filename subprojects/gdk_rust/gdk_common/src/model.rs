@@ -855,6 +855,8 @@ pub struct UnspentOutput {
     #[serde(rename = "prevout_script")]
     pub script_code: String,
     pub public_key: String,
+    #[serde(default)]
+    pub skip_signing: bool,
 
     // liquid fields
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -917,6 +919,7 @@ impl TryFrom<Txo> for UnspentOutput {
             satoshi: txo.satoshi,
             sequence: txo.sequence,
             sighash: None,
+            skip_signing: false,
             confidential,
             asset_id,
             asset_blinder,

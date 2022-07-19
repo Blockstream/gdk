@@ -1196,6 +1196,75 @@ fn sighash(is_liquid: bool) {
 }
 
 #[test]
+fn skip_signing_bitcoin() {
+    skip_signing(false);
+}
+
+#[test]
+fn skip_signing_liquid() {
+    skip_signing(true);
+}
+
+fn skip_signing(is_liquid: bool) {
+    let mut test_session = setup_session(is_liquid, |_| ());
+
+    let sat = 10000;
+    let txid1 =
+        test_session.node_sendtoaddress(&test_session.get_receive_address(0).address, sat, None);
+    let txid2 =
+        test_session.node_sendtoaddress(&test_session.get_receive_address(0).address, sat, None);
+    test_session.wait_tx(vec![0], &txid1, Some(sat), Some(TransactionType::Incoming));
+    test_session.wait_tx(vec![0], &txid2, Some(sat), Some(TransactionType::Incoming));
+
+    let mut create_opt = CreateTransaction::default();
+    let dest_address = test_session.get_receive_address(0).address;
+    create_opt.subaccount = 0;
+    create_opt.addressees.push(AddressAmount {
+        address: dest_address,
+        satoshi: 15000,
+        asset_id: test_session.asset_id(),
+    });
+    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+    let mut txc = test_session.session.create_transaction(&mut create_opt).unwrap();
+    // sign the 2nd input
+    txc.used_utxos[0].skip_signing = true;
+    let mut txs1 = test_session.session.sign_transaction(&txc).unwrap();
+    // sign the all inputs
+    txs1.used_utxos[0].skip_signing = false;
+    let txs2 = test_session.session.sign_transaction(&txs1).unwrap();
+
+    // Broadcast the tx and get it from the tx list to verify the signature
+    let txid = test_session.session.broadcast_transaction(&txs2.hex).unwrap();
+    test_session.wait_tx(vec![0], &txid, Some(txs2.fee), Some(TransactionType::Redeposit));
+    test_session.get_tx_from_list(0, &txid);
+
+    let txc_decoded = test_session
+        .node
+        .client
+        .call::<Value>("decoderawtransaction", &[txc.hex.clone().into()])
+        .unwrap();
+    let txc_vin_decoded = txc_decoded["vin"].as_array().unwrap();
+    let txs1_decoded = test_session
+        .node
+        .client
+        .call::<Value>("decoderawtransaction", &[txs1.hex.clone().into()])
+        .unwrap();
+    let txs1_vin_decoded = txs1_decoded["vin"].as_array().unwrap();
+    let txs2_decoded = test_session
+        .node
+        .client
+        .call::<Value>("decoderawtransaction", &[txs2.hex.clone().into()])
+        .unwrap();
+    let txs2_vin_decoded = txs2_decoded["vin"].as_array().unwrap();
+
+    assert!(txc_vin_decoded[0] == txs1_vin_decoded[0]);
+    assert!(txc_vin_decoded[1] != txs1_vin_decoded[1]);
+    assert!(txc_vin_decoded[0] != txs2_vin_decoded[0]);
+    assert!(txc_vin_decoded[1] != txs2_vin_decoded[1]);
+    assert!(txs1_vin_decoded[1] == txs2_vin_decoded[1]);
+}
+
+#[test]
 fn not_unblindable_liquid() {
     let test_session = setup_session(true, |_| ());
 

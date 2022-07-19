@@ -1465,6 +1465,9 @@ impl TestSigner {
             assert_eq!(details.used_utxos.len(), num_inputs);
 
             for i in 0..num_inputs {
+                if details.used_utxos[i].skip_signing {
+                    continue;
+                }
                 let utxo = &details.used_utxos[i];
 
                 let path: DerivationPath = utxo.user_path.clone().into();
@@ -1521,6 +1524,7 @@ impl TestSigner {
         // FIXME: set more fields
         details_out.fee = details.fee;
         details_out.create_transaction = details.create_transaction.clone();
+        details_out.used_utxos = details.used_utxos.clone();
         details_out
     }
 }
