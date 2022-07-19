@@ -1092,14 +1092,14 @@ namespace sdk {
     {
         const bool is_liquid = session.get_network_parameters().is_liquid();
         wally_tx_ptr tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
-        std::vector<std::string> sigs;
-        sigs.reserve(inputs.size());
+        std::vector<std::string> sigs(inputs.size());
 
-        size_t i = 0;
-        for (const auto& utxo : inputs) {
-            const uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
-            sigs.emplace_back(utxo.empty() ? std::string() : sign_input(session, tx, i, utxo, sighash));
-            ++i;
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            const auto& utxo = inputs.at(i);
+            if (!utxo.value("skip_signing", false)) {
+                uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
+                sigs[i] = sign_input(session, tx, i, utxo, sighash);
+            }
         }
         return std::make_pair(sigs, std::move(tx));
     }

@@ -3331,7 +3331,7 @@ namespace sdk {
         for (size_t i = 0; i < tx->num_inputs; ++i) {
             const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
             const uint32_t vout = tx->inputs[i].index;
-            auto input_utxo = nlohmann::json::object();
+            nlohmann::json input_utxo({ { "skip_signing", true } });
             for (auto& utxo : result.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
                     // TODO: remove this once get_unspent_outputs populates prevout_script
@@ -3353,13 +3353,15 @@ namespace sdk {
         // FIXME: refactor to use HWW path
         const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
 
-        size_t i = 0;
         const bool is_low_r = get_signer()->supports_low_r();
-        for (const auto& utxo : inputs) {
-            if (!utxo.empty()) {
-                add_input_signature(tx, i, utxo, signatures.at(i), is_low_r);
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            const auto& utxo = inputs.at(i);
+            const std::string& signature = signatures.at(i);
+            if (utxo.value("skip_signing", false)) {
+                GDK_RUNTIME_ASSERT(signature.empty());
+                continue;
             }
-            ++i;
+            add_input_signature(tx, i, utxo, signature, is_low_r);
         }
 
         // FIXME: handle existing 2FA
@@ -3376,9 +3378,10 @@ namespace sdk {
 
         result["psbt"] = psbt_merge_tx(details.at("psbt"), ret.at("tx"));
         for (const auto& utxo : inputs) {
-            if (!utxo.empty()) {
-                result["utxos"].emplace_back(std::move(utxo));
+            if (utxo.value("skip_signing", false)) {
+                continue;
             }
+            result["utxos"].emplace_back(std::move(utxo));
         }
         return result;
     }
