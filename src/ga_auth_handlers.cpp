@@ -607,9 +607,10 @@ namespace sdk {
             // We need the inputs, augmented with types, scripts and paths
             auto signing_inputs = get_ga_signing_inputs(m_tx_details);
             for (auto& input : signing_inputs) {
+                if (input.value("skip_signing", false)) {
+                    continue;
+                }
                 const auto& addr_type = input.at("address_type");
-                // FIXME: Allow including inputs that are not spendable by us,
-                // and that include sweep outouts
                 GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
                 // TODO: Support mixed/batched sweep transactions with non-sweep inputs
                 GDK_RUNTIME_ASSERT(!input.contains("private_key"));
@@ -628,6 +629,9 @@ namespace sdk {
         m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
 
         for (auto& input : m_twofactor_data["signing_inputs"]) {
+            if (input.value("skip_signing", false)) {
+                continue;
+            }
             const auto& addr_type = input.at("address_type");
             GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
             // TODO: Support mixed/batched sweep transactions with non-sweep inputs
@@ -742,9 +746,12 @@ namespace sdk {
             // at the same time (this cant happen yet but should be allowed
             // in the future).
             auto& user_pubkeys = m_session->get_user_pubkeys();
-            size_t i = 0;
             const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
-            for (const auto& utxo : inputs) {
+            for (size_t i = 0; i < inputs.size(); ++i) {
+                const auto& utxo = inputs.at(i);
+                if (utxo.value("skip_signing", false)) {
+                    continue;
+                }
                 const uint32_t subaccount = utxo.at("subaccount");
                 const uint32_t pointer = utxo.at("pointer");
                 const uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
@@ -759,15 +766,18 @@ namespace sdk {
                 constexpr bool has_sighash = true;
                 verify_ae_signature(
                     pubkey, script_hash, utxo.at("ae_host_entropy"), signer_commitments[i], signatures[i], has_sighash);
-                ++i;
             }
         }
 
         const bool is_low_r = signer->supports_low_r();
-        size_t i = 0;
-        for (const auto& utxo : inputs) {
-            add_input_signature(tx, i, utxo, signatures[i], is_low_r);
-            ++i;
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            const auto& utxo = inputs.at(i);
+            const std::string& signature = signatures.at(i);
+            if (utxo.value("skip_signing", false)) {
+                GDK_RUNTIME_ASSERT(signature.empty());
+                continue;
+            }
+            add_input_signature(tx, i, utxo, signature, is_low_r);
         }
 
         m_result.swap(m_twofactor_data["transaction"]);

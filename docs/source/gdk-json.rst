@@ -552,6 +552,7 @@ Sign transaction JSON
         1
       ],
       "user_sighash": 1,
+      "skip_signing": false,
       "user_status": 0
     }
   ],
@@ -587,6 +588,9 @@ Sign transaction JSON
 To sign with a specific sighash, set ``"user_sighash"`` for the elements of
 ``"used_utxos"`` you wish to sign with a certain sighash, otherwise
 ``SIGHASH_ALL`` (``1``) will be used.
+
+Set ``"skip_signing"`` to ``true`` for any input in ``"used_utxos"`` you do
+not wish to have signed.
 
 
 .. _send-tx-details:
