@@ -2170,8 +2170,6 @@ namespace sdk {
             tx["transaction_weight"] = tx_vsize * 4;
             // fee_rate is in satoshi/kb, with the best integer accuracy we have
             tx["fee_rate"] = tx.at("fee").get<amount::value_type>() * 1000 / tx_vsize;
-            tx["user_signed"] = true;
-            tx["server_signed"] = true;
 
             // Clean up and categorize the endpoints. For liquid, this populates
             // 'missing' if any UTXOs require blinding nonces from the signer to unblind.
@@ -3402,9 +3400,8 @@ namespace sdk {
         const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send)
     {
         GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
-        // We must have a tx and it must be signed by the user
+        // We must have a tx, the server will ensure it has been signed by the user
         GDK_RUNTIME_ASSERT(details.find("transaction") != details.end());
-        GDK_RUNTIME_ASSERT_MSG(json_get_value(details, "user_signed", false), "Tx must be signed before sending");
 
         nlohmann::json result = details;
 
@@ -3446,7 +3443,6 @@ namespace sdk {
         // may be a slightly different size once signed
         const auto tx = tx_from_hex(tx_details["tx"], flags);
         update_tx_size_info(m_net_params, tx, result);
-        result["server_signed"] = true;
 
         std::vector<uint32_t> subaccounts; // TODO: Handle multi-account spends
         subaccounts.push_back(details.at("subaccount"));

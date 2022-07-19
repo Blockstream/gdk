@@ -8,6 +8,11 @@
 
 ### Fixed
 
+### Removed
+
+- JSON: remove "server_signed" from create/sign/send transaction JSON.
+- JSON: remove "user_signed" from create/sign/send transaction JSON.
+
 ## Release 0.0.55 - 2022-07-08
 
 ### Added

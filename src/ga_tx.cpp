@@ -427,8 +427,6 @@ namespace sdk {
             const auto policy_asset = is_liquid ? net_params.policy_asset() : std::string("btc");
 
             result["error"] = std::string(); // Clear any previous error
-            result["user_signed"] = false;
-            result["server_signed"] = false;
 
             // Must specify subaccount to use
             const auto p_subaccount = result.find("subaccount");
@@ -1112,7 +1110,6 @@ namespace sdk {
         auto tx = sign_ga_transaction(session, details, get_ga_signing_inputs(details)).second;
         nlohmann::json result(details);
         result.erase("utxos");
-        result["user_signed"] = true;
         const auto& net_params = session.get_network_parameters();
         update_tx_size_info(net_params, tx, result);
         return result;

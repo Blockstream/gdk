@@ -688,7 +688,7 @@ namespace sdk {
             = sign_with.empty() || std::find(sign_with.begin(), sign_with.end(), "user") != sign_with.end();
         const bool server_sign = std::find(sign_with.begin(), sign_with.end(), "green-backend") != sign_with.end();
 
-        if (user_sign && !json_get_value(m_result, "user_signed", false)) {
+        if (user_sign) {
             // We haven't signed the users inputs yet, do so now
             sign_user_inputs(signer);
         } else {
@@ -696,9 +696,8 @@ namespace sdk {
             m_result.swap(m_twofactor_data["transaction"]);
         }
 
-        if (server_sign && !json_get_value(m_result, "server_signed", false)) {
-            GDK_RUNTIME_ASSERT_MSG(
-                json_get_value(m_result, "user_signed", false), "Sign with user before signing with server");
+        if (server_sign) {
+            // Note that the server will fail to sign if the user hasn't signed first
             constexpr bool sign_only = true;
             add_next_handler(new send_transaction_call(m_session_parent, m_result, sign_only));
         }
@@ -772,7 +771,6 @@ namespace sdk {
         }
 
         m_result.swap(m_twofactor_data["transaction"]);
-        m_result["user_signed"] = true;
         m_result["blinded"] = true;
         update_tx_size_info(m_net_params, tx, m_result);
     }

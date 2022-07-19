@@ -379,13 +379,11 @@ Transaction list JSON
         ],
         "rbf_optin": true,
         "satoshi": 200000,
-        "server_signed": true,
         "transaction_size": 370,
         "transaction_vsize": 205,
         "transaction_weight": 820,
         "txhash": "fe50531d94fae597d9e209582a401e62b1f705ace93eca94fe2e42f187456e4a",
         "type": "incoming",
-        "user_signed": true,
         "vsize": 205,
         "spv_verified": "disabled"
       }
@@ -496,7 +494,6 @@ Sign transaction JSON
     "btc": 5000
   },
   "send_all": false,
-  "server_signed": false,
   "subaccount": 0,
   "subaccount_type": "2of2",
   "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed4300000000230000000000000000000000000000000000000000000000000000000000000000000000fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87040048000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268c9000000",
@@ -558,7 +555,6 @@ Sign transaction JSON
       "user_status": 0
     }
   ],
-  "user_signed": false,
   "utxo_strategy": "default",
   "utxos": {
     "btc": [
@@ -650,7 +646,6 @@ Send transaction JSON
     "btc": 5000
   },
   "send_all": false,
-  "server_signed": false,
   "subaccount": 0,
   "subaccount_type": "2of2",
   "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed430000000023220020babaa86eeaec7ae0f438218b993c7518e81efe6c8c64e9500648f861ccd590b3fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b870147304402206aa051d8f6b373e9e73ea91967d3d574262a56f66b134804133893bc8b6a797f022069802eccea8174daadee65a6288f23434ed646d328bf184060e2517bd9c5aa3801c9000000",
@@ -711,7 +706,6 @@ Send transaction JSON
       "user_status": 0
     }
   ],
-  "user_signed": true,
   "utxo_strategy": "default",
   "utxos": {
     "btc": [
