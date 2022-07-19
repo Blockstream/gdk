@@ -1346,9 +1346,7 @@ fn rbf() {
     create_opt.previous_transaction = Some(txitem);
     create_opt.fee_rate = Some(43000);
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
-    assert!(!tx.user_signed, "tx is marked as user_signed");
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
-    assert!(signed_tx.user_signed, "tx is not marked as user_signed");
     let txid2 = test_session.session.broadcast_transaction(&signed_tx.hex).unwrap();
     test_session.wait_tx(vec![1], &txid2, Some(signed_tx.fee), Some(TransactionType::Redeposit));
     let txitem = test_session.get_tx_from_list(1, &txid2);

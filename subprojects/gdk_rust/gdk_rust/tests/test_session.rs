@@ -284,7 +284,7 @@ impl TestSession {
         let ap = self.get_receive_address(0);
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
         self.wait_tx(vec![0], &funding_tx, Some(satoshi), Some(TransactionType::Incoming));
-        self.list_tx_contains(&funding_tx, &vec![], false);
+        self.list_tx_contains(&funding_tx, &vec![]);
         let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
@@ -396,7 +396,6 @@ impl TestSession {
             create_opt.utxo_strategy = strategy;
         }
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
-        assert!(!tx.user_signed, "tx is marked as user_signed");
         match self.network.id() {
             NetworkId::Elements(_) => assert!(!tx.rbf_optin),
             NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
@@ -408,7 +407,6 @@ impl TestSession {
             UtxoStrategy::Default => assert!(num_used_utxos > 0 && num_used_utxos <= num_utxos),
         }
         let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        assert!(signed_tx.user_signed, "tx is not marked as user_signed");
         self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
         let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
         self.wait_tx(
@@ -449,7 +447,7 @@ impl TestSession {
             "send_all in signed_tx is true but should be false"
         );
 
-        self.list_tx_contains(&txid, &vec![address.to_string()], true);
+        self.list_tx_contains(&txid, &vec![address.to_string()]);
 
         txid
     }
@@ -513,7 +511,7 @@ impl TestSession {
 
         let address = self.node_getnewaddress(None);
         let txid = self.send_tx(&address, 1000, None, None, None, None, None);
-        self.list_tx_contains(&txid, &[address], true);
+        self.list_tx_contains(&txid, &[address]);
     }
 
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
@@ -531,7 +529,7 @@ impl TestSession {
         filtered_list.first().unwrap().clone()
     }
 
-    fn list_tx_contains(&mut self, txid: &str, addressees: &[String], user_signed: bool) {
+    fn list_tx_contains(&mut self, txid: &str, addressees: &[String]) {
         let tx = self.get_tx_from_list(0, txid);
         if !addressees.is_empty() {
             let recipients = match self.network_id {
@@ -552,7 +550,6 @@ impl TestSession {
             let b: HashSet<String> = HashSet::from_iter(tx.addressees.iter().cloned());
             assert_eq!(a, b, "tx does not contain recipient addresses");
         }
-        assert_eq!(tx.user_signed, user_signed);
     }
 
     pub fn get_receive_address(&self, subaccount: u32) -> AddressPointer {
@@ -619,7 +616,7 @@ impl TestSession {
             }
         }
         //TODO check node balance
-        self.list_tx_contains(&txid, &addressees, true);
+        self.list_tx_contains(&txid, &addressees);
     }
 
     pub fn receive_unconfidential(&mut self) {
@@ -675,7 +672,7 @@ impl TestSession {
         let balance_node_before = self.balance_node(None);
         let sat = 1_000;
         let txid = self.send_tx(&node_address, sat, None, None, None, Some(true), None);
-        self.list_tx_contains(&txid, &[node_address], true);
+        self.list_tx_contains(&txid, &[node_address]);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
 
         // Spend a unconfidential utxos
@@ -697,7 +694,7 @@ impl TestSession {
             .all(|u| !u.confidential.unwrap_or(false)));
         let sat = unconf_sat / 2;
         let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
-        self.list_tx_contains(&txid, &[node_address], true);
+        self.list_tx_contains(&txid, &[node_address]);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
     }
 
@@ -1524,7 +1521,6 @@ impl TestSigner {
         // FIXME: set more fields
         details_out.fee = details.fee;
         details_out.create_transaction = details.create_transaction.clone();
-        details_out.user_signed = true;
         details_out
     }
 }

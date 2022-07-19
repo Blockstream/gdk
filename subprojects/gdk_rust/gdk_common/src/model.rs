@@ -332,7 +332,6 @@ pub struct TransactionMeta {
     pub type_: String, // incoming or outgoing
     pub changes_used: Option<u32>,
     pub rbf_optin: bool,
-    pub user_signed: bool,
     pub spv_verified: SPVVerifyTxResult,
     #[serde(rename = "transaction_weight")]
     pub weight: usize,
@@ -373,7 +372,6 @@ impl From<BETransaction> for TransactionMeta {
             network: None,
             type_: "unknown".to_string(),
             changes_used: None,
-            user_signed: false,
             spv_verified: SPVVerifyTxResult::InProgress,
             rbf_optin,
             weight,
@@ -408,7 +406,6 @@ impl TransactionMeta {
         network: Network,
         type_: String,
         create_transaction: CreateTransaction,
-        user_signed: bool,
         spv_verified: SPVVerifyTxResult,
     ) -> Self {
         let mut wgtx: TransactionMeta = transaction.into();
@@ -421,7 +418,6 @@ impl TransactionMeta {
         wgtx.network = Some(network);
         wgtx.fee = fee;
         wgtx.type_ = type_;
-        wgtx.user_signed = user_signed;
         wgtx.spv_verified = spv_verified;
         wgtx
     }
@@ -574,8 +570,6 @@ pub struct TxListItem {
     pub rbf_optin: bool,
     pub can_cpfp: bool,
     pub can_rbf: bool,
-    pub server_signed: bool,
-    pub user_signed: bool,
     pub spv_verified: String,
     pub fee: u64,
     pub fee_rate: u64,
