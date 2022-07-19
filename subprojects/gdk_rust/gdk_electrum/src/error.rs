@@ -1,10 +1,8 @@
-use crate::store::StoreMeta;
-use crate::{Account, BEOutPoint, BETxid, State};
+use crate::BETxid;
 use bitcoin::util::bip32::ExtendedPubKey;
 use elements::hash_types::Txid;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
-use std::collections::{HashMap, HashSet};
 use std::convert::From;
 use std::sync::{MutexGuard, PoisonError, RwLockReadGuard, RwLockWriteGuard};
 
@@ -213,56 +211,20 @@ impl From<String> for Error {
     }
 }
 
-impl From<PoisonError<RwLockReadGuard<'_, StoreMeta>>> for Error {
-    fn from(err: PoisonError<RwLockReadGuard<'_, StoreMeta>>) -> Self {
+impl<T> From<PoisonError<RwLockReadGuard<'_, T>>> for Error {
+    fn from(err: PoisonError<RwLockReadGuard<'_, T>>) -> Self {
         Error::RwLockPoisonError(err.to_string())
     }
 }
 
-impl From<PoisonError<RwLockWriteGuard<'_, StoreMeta>>> for Error {
-    fn from(err: PoisonError<RwLockWriteGuard<'_, StoreMeta>>) -> Self {
+impl<T> From<PoisonError<RwLockWriteGuard<'_, T>>> for Error {
+    fn from(err: PoisonError<RwLockWriteGuard<'_, T>>) -> Self {
         Error::RwLockPoisonError(err.to_string())
     }
 }
 
-impl From<PoisonError<RwLockReadGuard<'_, State>>> for Error {
-    fn from(err: PoisonError<RwLockReadGuard<'_, State>>) -> Self {
-        Error::RwLockPoisonError(err.to_string())
-    }
-}
-
-impl From<PoisonError<RwLockWriteGuard<'_, State>>> for Error {
-    fn from(err: PoisonError<RwLockWriteGuard<'_, State>>) -> Self {
-        Error::RwLockPoisonError(err.to_string())
-    }
-}
-
-impl From<PoisonError<RwLockReadGuard<'_, HashMap<u32, Account>>>> for Error {
-    fn from(err: PoisonError<RwLockReadGuard<'_, HashMap<u32, Account>>>) -> Self {
-        Error::RwLockPoisonError(err.to_string())
-    }
-}
-
-impl From<PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>> for Error {
-    fn from(err: PoisonError<RwLockWriteGuard<'_, HashMap<u32, Account>>>) -> Self {
-        Error::RwLockPoisonError(err.to_string())
-    }
-}
-
-impl From<PoisonError<RwLockReadGuard<'_, HashSet<BEOutPoint>>>> for Error {
-    fn from(err: PoisonError<RwLockReadGuard<'_, HashSet<BEOutPoint>>>) -> Self {
-        Error::RwLockPoisonError(err.to_string())
-    }
-}
-
-impl From<PoisonError<RwLockWriteGuard<'_, HashSet<BEOutPoint>>>> for Error {
-    fn from(err: PoisonError<RwLockWriteGuard<'_, HashSet<BEOutPoint>>>) -> Self {
-        Error::RwLockPoisonError(err.to_string())
-    }
-}
-
-impl From<PoisonError<MutexGuard<'_, ()>>> for Error {
-    fn from(err: PoisonError<MutexGuard<'_, ()>>) -> Self {
+impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
+    fn from(err: PoisonError<MutexGuard<'_, T>>) -> Self {
         Error::MutexPoisonError(err.to_string())
     }
 }
