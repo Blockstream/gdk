@@ -1,6 +1,5 @@
 use crate::store::StoreMeta;
 use crate::{Account, BEOutPoint, BETxid, State};
-use aes_gcm_siv::aead;
 use bitcoin::util::bip32::ExtendedPubKey;
 use elements::hash_types::Txid;
 use gdk_common::error::Error as CommonError;
@@ -211,13 +210,6 @@ impl From<std::net::AddrParseError> for Error {
 impl From<String> for Error {
     fn from(err: String) -> Self {
         Error::Generic(err)
-    }
-}
-
-// `aead::Error` doesn't implement `std::error::Error`.
-impl From<aead::Error> for Error {
-    fn from(err: aead::Error) -> Self {
-        Error::Generic(err.to_string())
     }
 }
 

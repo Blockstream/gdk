@@ -1,8 +1,7 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
 use crate::Error;
-use aes_gcm_siv::aead::{AeadInPlace, NewAead};
-use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
+use aes_gcm_siv::Aes256GcmSiv;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use bitcoin::Transaction;
@@ -12,15 +11,15 @@ use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
 };
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
+use gdk_common::store::{to_cipher, Decryptable, Encryptable};
 use gdk_common::wally::MasterBlindingKey;
 use gdk_common::NetworkId;
 use log::{info, warn};
-use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
@@ -236,27 +235,11 @@ fn load_decrypt<P: AsRef<Path>>(
         return Err(Error::Generic(format!("{:?} do not exist", store_path)));
     }
     let mut file = File::open(&store_path)?;
-    let mut nonce_bytes = [0u8; 12];
-    file.read_exact(&mut nonce_bytes)?;
-    let nonce = Nonce::from_slice(&nonce_bytes);
-    let mut ciphertext = vec![];
-    file.read_to_end(&mut ciphertext)?;
 
-    cipher.decrypt_in_place(nonce, b"", &mut ciphertext)?;
-    let plaintext = ciphertext;
+    let plaintext = file.decrypt(cipher)?;
 
     info!("loading {:?} took {}ms", &store_path, now.elapsed().as_millis());
     Ok(plaintext)
-}
-
-fn get_cipher(xpub: &ExtendedPubKey) -> Aes256GcmSiv {
-    let mut enc_key_data = vec![];
-    enc_key_data.extend(&xpub.public_key.to_bytes());
-    enc_key_data.extend(&xpub.chain_code.to_bytes());
-    enc_key_data.extend(&xpub.network.magic().to_be_bytes());
-    let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
-    let key = Key::from_slice(&key_bytes);
-    Aes256GcmSiv::new(&key)
 }
 
 impl StoreMeta {
@@ -265,7 +248,7 @@ impl StoreMeta {
         xpub: &ExtendedPubKey,
         id: NetworkId,
     ) -> Result<StoreMeta, Error> {
-        let cipher = get_cipher(xpub);
+        let cipher = to_cipher(*xpub);
         let cache = RawCache::new(path.as_ref(), &cipher);
 
         let mut store = RawStore::new(path.as_ref(), &cipher);
@@ -306,25 +289,24 @@ impl StoreMeta {
 
     fn flush_serializable(&mut self, kind: Kind) -> Result<(), Error> {
         let now = Instant::now();
-        let mut nonce_bytes = [0u8; 12];
-        thread_rng().fill(&mut nonce_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
-        let mut plaintext = match kind {
+
+        let plaintext = match kind {
             Kind::Store => serde_cbor::to_vec(&self.store),
             Kind::Cache => serde_cbor::to_vec(&self.cache),
         }?;
 
         let hash = sha256::Hash::hash(&plaintext);
+
         if let Some(last_hash) = self.last.get(&kind) {
             if last_hash == &hash {
                 info!("latest serialization hash matches, no need to flush");
                 return Ok(());
             }
         }
+
         self.last.insert(kind, hash);
 
-        self.cipher.encrypt_in_place(nonce, b"", &mut plaintext)?;
-        let ciphertext = plaintext;
+        let (nonce_bytes, ciphertext) = plaintext.encrypt(&self.cipher)?;
 
         let store_path = self.file_path(kind);
         //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)

@@ -20,6 +20,10 @@ pub enum Error {
     #[error(transparent)]
     BtcBip32Error(#[from] bitcoin::util::bip32::Error),
 
+    /// Wraps errors coming from the `gdk_common` crate.
+    #[error(transparent)]
+    Common(#[from] gdk_common::Error),
+
     /// Wraps hex parsing error
     #[error(transparent)]
     Hex(#[from] elements::bitcoin::hashes::hex::Error),
@@ -64,13 +68,6 @@ pub enum Error {
     /// A generic error.
     #[error("{0}")]
     Generic(String),
-}
-
-// This error type doesn't implement `std::error::Error`.
-impl From<aes_gcm_siv::aead::Error> for Error {
-    fn from(err: aes_gcm_siv::aead::Error) -> Self {
-        Self::Generic(err.to_string())
-    }
 }
 
 impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {

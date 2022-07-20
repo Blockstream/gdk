@@ -8,8 +8,10 @@ pub mod password;
 pub mod scripts;
 pub mod session;
 pub mod state;
+pub mod store;
 pub mod util;
 pub mod wally;
 
+pub use error::*;
 pub use network::*;
 pub use state::State;

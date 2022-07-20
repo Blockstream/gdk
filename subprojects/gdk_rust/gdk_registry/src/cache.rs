@@ -2,18 +2,16 @@ use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Seek, Write};
+use std::io::{Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use aes_gcm_siv::aead::{AeadInPlace, NewAead};
-use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::ExtendedPubKey;
 use elements::AssetId;
+use gdk_common::store::{to_cipher, Decryptable, Encryptable};
 use log::debug;
 use once_cell::sync::{Lazy, OnceCell};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::registry_infos::{RegistryAssets, RegistryIcons};
@@ -125,7 +123,8 @@ impl Cache {
 
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
             Some(file) => match {
-                let decrypted = self::decrypt(file, xpub)?;
+                let cipher = to_cipher(xpub);
+                let decrypted = file.decrypt(&cipher)?;
                 serde_cbor::from_slice::<Self>(&decrypted)
             } {
                 Ok(cache) => Ok::<_, Error>(cache),
@@ -140,6 +139,7 @@ impl Cache {
         }?;
 
         cache.xpub = Some(xpub);
+
         Ok(cache)
     }
 
@@ -169,7 +169,8 @@ impl Cache {
         let xpub = self.xpub.unwrap();
 
         let plain_text = serde_cbor::to_vec(self)?;
-        let (nonce, rest) = encrypt(plain_text, xpub)?;
+        let cipher = to_cipher(xpub);
+        let (nonce, rest) = plain_text.encrypt(&cipher)?;
 
         let mut cache_files = CACHE_FILES.lock()?;
 
@@ -227,47 +228,6 @@ pub(crate) fn update_missing(xpubs: &[ExtendedPubKey], assets: &RegistryAssets) 
     }
 
     Ok(())
-}
-
-/// Decrypts the contents of a file using a cipher derived from the provided
-/// xpub.
-fn decrypt(file: &mut File, xpub: ExtendedPubKey) -> Result<Vec<u8>> {
-    file.seek(std::io::SeekFrom::Start(0))?;
-
-    let mut nonce_bytes = [0u8; 12];
-    file.read_exact(&mut nonce_bytes)?;
-    let nonce = Nonce::from_slice(&nonce_bytes);
-
-    let mut data = Vec::<u8>::new();
-    file.read_to_end(&mut data)?;
-
-    let cipher = to_cipher(xpub);
-    cipher.decrypt_in_place(nonce, b"", &mut data)?;
-
-    Ok(data)
-}
-
-/// Encrypts the given data using a cipher derived from the provided xpub.
-fn encrypt(mut data: Vec<u8>, xpub: ExtendedPubKey) -> Result<(Vec<u8>, Vec<u8>)> {
-    let mut nonce_bytes = [0u8; 12];
-    rand::thread_rng().fill(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
-
-    let cipher = to_cipher(xpub);
-    cipher.encrypt_in_place(nonce, b"", &mut data)?;
-
-    Ok((nonce_bytes.to_vec(), data))
-}
-
-/// Gets a cipher from an xpub. Taken from `gdk_electrum::store::get_cipher`.
-fn to_cipher(xpub: ExtendedPubKey) -> Aes256GcmSiv {
-    let mut enc_key_data = vec![];
-    enc_key_data.extend(&xpub.public_key.to_bytes());
-    enc_key_data.extend(&xpub.chain_code.to_bytes());
-    enc_key_data.extend(&xpub.network.magic().to_be_bytes());
-    let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
-    let key = Key::from_slice(&key_bytes);
-    Aes256GcmSiv::new(&key)
 }
 
 /// Returns the string representation of sha256(xpub).

@@ -1,5 +1,7 @@
 use std::string::ToString;
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -47,6 +49,9 @@ pub enum Error {
     #[error("Invalid sighash")]
     InvalidSigHash,
 
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
     #[error("Unsupported sighash")]
     UnsupportedSigHash,
 
@@ -54,8 +59,14 @@ pub enum Error {
     Generic(String),
 }
 
-pub fn err<R>(str: &str) -> Result<R, Error> {
+pub fn err<R>(str: &str) -> Result<R> {
     Err(Error::Generic(str.into()))
+}
+
+impl From<aes_gcm_siv::aead::Error> for Error {
+    fn from(err: aes_gcm_siv::aead::Error) -> Self {
+        Self::Generic(err.to_string())
+    }
 }
 
 pub fn fn_err(str: &str) -> impl Fn() -> Error + '_ {

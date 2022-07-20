@@ -8,6 +8,7 @@ edition = "2018"
 testing = []
 
 [dependencies]
+aes-gcm-siv = "0.10"
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
