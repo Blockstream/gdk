@@ -107,4 +107,12 @@ mod tests {
         let decrypted = file.decrypt(&cipher).unwrap();
         assert_eq!(data, decrypted)
     }
+
+    #[test]
+    fn test_hardcoded_decryption() {
+        let encrypted = include_bytes!("./data/test/encrypted").to_vec();
+        let cipher = ExtendedPubKey::from_str(XPUB).unwrap().to_cipher().unwrap();
+        let decrypted = encrypted.decrypt(&cipher).unwrap();
+        assert_eq!(b"Chancellor on the Brink of Second Bailout for Banks".to_vec(), decrypted);
+    }
 }
