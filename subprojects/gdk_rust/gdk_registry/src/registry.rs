@@ -62,7 +62,9 @@ pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets
         if assets.len() != len {
             log::warn!("{} assets didn't verify!", len - assets.len());
         }
-        cache::update_missing(&params.xpubs, &assets)?;
+        if let Some(xpub) = params.xpub {
+            cache::update_missing(xpub, &assets)?;
+        }
     }
 
     assets.extend(hard_coded::assets(params.network()));

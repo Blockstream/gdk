@@ -218,16 +218,13 @@ mod tests {
         super::refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, config))
     }
 
-    fn refresh_with_xpubs<'a, I>(assets: bool, icons: bool, xpubs: I) -> Result<RegistryInfos>
-    where
-        I: IntoIterator<Item = &'a str>,
-    {
+    fn refresh_with_xpub(assets: bool, icons: bool, xpub: &str) -> Result<RegistryInfos> {
         let server = Server::run();
 
         let config = local_server_config(&server, assets, icons);
 
         let mut params = RefreshAssetsParams::new(true, assets, icons, config);
-        params.extend_xpubs(xpubs);
+        params.add_xpub(xpub)?;
         super::refresh_assets(params)
     }
 
@@ -440,7 +437,7 @@ mod tests {
 
             // updating the local registry, now those assets should be added to
             // the cache.
-            let _ =  refresh_with_xpubs(true, true, [DEFAULT_XPUB]).unwrap();
+            let _ =  refresh_with_xpub(true, true, DEFAULT_XPUB).unwrap();
 
             let res = get_assts(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
             assert_eq!(res.assets.len(), 2);

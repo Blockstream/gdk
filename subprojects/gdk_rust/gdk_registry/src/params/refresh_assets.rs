@@ -29,11 +29,11 @@ pub struct RefreshAssetsParams {
     #[serde(default)]
     config: Config,
 
-    /// When `refresh` is set to `true`, all the cache files related to these
-    /// xpubs will be updated to remove the newly downloaded assets from the
+    /// When `refresh` is set to `true`, the cache file related to this xpub
+    /// will be updated to remove the newly downloaded assets from the
     /// `missing` section.
     #[serde(default)]
-    pub(crate) xpubs: Vec<ExtendedPubKey>,
+    pub(crate) xpub: Option<ExtendedPubKey>,
 }
 
 impl RefreshAssetsParams {
@@ -151,11 +151,9 @@ mod test {
     use std::str::FromStr;
 
     impl RefreshAssetsParams {
-        pub(crate) fn extend_xpubs<'a, I>(&mut self, xpubs: I)
-        where
-            I: IntoIterator<Item = &'a str>,
-        {
-            self.xpubs.extend(xpubs.into_iter().filter_map(|x| ExtendedPubKey::from_str(x).ok()))
+        pub(crate) fn add_xpub(&mut self, xpub: &str) -> Result<()> {
+            self.xpub = Some(ExtendedPubKey::from_str(xpub)?);
+            Ok(())
         }
     }
 

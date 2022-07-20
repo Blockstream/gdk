@@ -215,19 +215,12 @@ impl From<Cache> for RegistryInfos {
     }
 }
 
-/// Removes the asset ids specified in `ids` from the [`Cache::missing`]
-/// section of each cache file associated to an xpub contained in `xpubs`.
-pub(crate) fn update_missing(xpubs: &[ExtendedPubKey], assets: &RegistryAssets) -> Result<()> {
-    // TODO: 1.63 introduces scoped threads. Once we update the compiler
-    // version we can do this in parallel w/o cloning `xpub` or `assets`.
-
-    for xpub in xpubs {
-        let mut cache = Cache::from_xpub(*xpub)?;
-        cache.update_missing(assets);
-        cache.update()?;
-    }
-
-    Ok(())
+/// Removes the `assets` from the [`Cache::missing`] section of the cache file
+/// associated to `xpub`.
+pub(crate) fn update_missing(xpub: ExtendedPubKey, assets: &RegistryAssets) -> Result<()> {
+    let mut cache = Cache::from_xpub(xpub)?;
+    cache.update_missing(assets);
+    cache.update()
 }
 
 /// Returns the string representation of sha256(xpub).
