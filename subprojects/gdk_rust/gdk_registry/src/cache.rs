@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::ExtendedPubKey;
 use elements::AssetId;
-use gdk_common::store::{to_cipher, Decryptable, Encryptable};
+use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use log::debug;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
@@ -123,7 +123,7 @@ impl Cache {
 
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
             Some(file) => match {
-                let cipher = to_cipher(xpub);
+                let cipher = xpub.to_cipher()?;
                 let decrypted = file.decrypt(&cipher)?;
                 serde_cbor::from_slice::<Self>(&decrypted)
             } {
@@ -169,7 +169,7 @@ impl Cache {
         let xpub = self.xpub.unwrap();
 
         let plain_text = serde_cbor::to_vec(self)?;
-        let cipher = to_cipher(xpub);
+        let cipher = xpub.to_cipher()?;
         let (nonce, rest) = plain_text.encrypt(&cipher)?;
 
         let mut cache_files = CACHE_FILES.lock()?;

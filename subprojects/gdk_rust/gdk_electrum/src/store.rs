@@ -11,7 +11,7 @@ use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
 };
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
-use gdk_common::store::{to_cipher, Decryptable, Encryptable};
+use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use gdk_common::wally::MasterBlindingKey;
 use gdk_common::NetworkId;
 use log::{info, warn};
@@ -248,7 +248,7 @@ impl StoreMeta {
         xpub: &ExtendedPubKey,
         id: NetworkId,
     ) -> Result<StoreMeta, Error> {
-        let cipher = to_cipher(*xpub);
+        let cipher = xpub.to_cipher()?;
         let cache = RawCache::new(path.as_ref(), &cipher);
 
         let mut store = RawStore::new(path.as_ref(), &cipher);

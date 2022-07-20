@@ -50,15 +50,20 @@ impl Encryptable for Vec<u8> {
     }
 }
 
-/// Gets a cipher from an xpub.
-pub fn to_cipher(xpub: ExtendedPubKey) -> Aes256GcmSiv {
-    let mut enc_key_data = vec![];
-    enc_key_data.extend(&xpub.public_key.to_bytes());
-    enc_key_data.extend(&xpub.chain_code.to_bytes());
-    enc_key_data.extend(&xpub.network.magic().to_be_bytes());
-    let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
-    let key = Key::from_slice(&key_bytes);
-    Aes256GcmSiv::new(&key)
+pub trait ToCipher {
+    fn to_cipher(self) -> Result<Aes256GcmSiv>;
+}
+
+impl ToCipher for ExtendedPubKey {
+    fn to_cipher(self) -> Result<Aes256GcmSiv> {
+        let mut enc_key_data = vec![];
+        enc_key_data.extend(&self.public_key.to_bytes());
+        enc_key_data.extend(&self.chain_code.to_bytes());
+        enc_key_data.extend(&self.network.magic().to_be_bytes());
+        let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
+        let key = Key::from_slice(&key_bytes);
+        Ok(Aes256GcmSiv::new(&key))
+    }
 }
 
 #[cfg(test)]
@@ -73,8 +78,7 @@ mod tests {
         let mut data = [0u8; 64];
         rand::thread_rng().fill(&mut data);
 
-        let xpub = ExtendedPubKey::from_str(XPUB).unwrap();
-        let cipher = to_cipher(xpub);
+        let cipher = ExtendedPubKey::from_str(XPUB).unwrap().to_cipher().unwrap();
 
         (data.to_vec(), cipher)
     }
