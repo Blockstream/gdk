@@ -8,16 +8,16 @@ edition = "2018"
 testing = []
 
 [dependencies]
-aes-gcm-siv = "0.10"
-log = "0.4.8"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_cbor = "0.11.1"
-thiserror = "1.0"
-libc = "0.2"
-rand = "0.6.5"
-bitcoin = { version = "0.27", features = ["use-serde"] }
 #elements = { version = "0.18", features = ["serde-feature"] }
+aes-gcm-siv = "0.10"
+bitcoin = { version = "0.27", features = ["use-serde"] }
 elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0edddf730ff8fd441d3af28bc600b8bc8a8df5a9", features = ["serde-feature"] }
+libc = "0.2"
+log = "0.4.8"
+rand = "0.6.5"
 secp256k1-sys = "=0.4.1" # 0.4.2 has compatibility issues with secp256k1-zkp-sys v0.4.0
 ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_cbor = "0.11.1"
+serde_json = "1.0"
+thiserror = "1.0"
