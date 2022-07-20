@@ -594,6 +594,8 @@ namespace sdk {
         : auth_handler_impl(session, "sign_transaction")
         , m_tx_details(tx_details)
         , m_initialized(false)
+        , m_user_signed(false)
+        , m_server_signed(false)
     {
     }
 
@@ -692,18 +694,20 @@ namespace sdk {
             = sign_with.empty() || std::find(sign_with.begin(), sign_with.end(), "user") != sign_with.end();
         const bool server_sign = std::find(sign_with.begin(), sign_with.end(), "green-backend") != sign_with.end();
 
-        if (user_sign) {
+        if (user_sign && !m_user_signed) {
             // We haven't signed the users inputs yet, do so now
             sign_user_inputs(signer);
+            m_user_signed = true;
         } else {
             // Set the transaction details in the result
             m_result.swap(m_twofactor_data["transaction"]);
         }
 
-        if (server_sign) {
+        if (server_sign && !m_server_signed) {
             // Note that the server will fail to sign if the user hasn't signed first
             constexpr bool sign_only = true;
             add_next_handler(new send_transaction_call(m_session_parent, m_result, sign_only));
+            m_server_signed = true;
         }
         return state_type::done;
     }

@@ -77,6 +77,8 @@ namespace sdk {
 
         nlohmann::json m_tx_details;
         bool m_initialized;
+        bool m_user_signed;
+        bool m_server_signed;
     };
 
     class psbt_sign_call : public auth_handler_impl {
