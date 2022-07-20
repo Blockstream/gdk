@@ -150,7 +150,7 @@ impl Account {
         })
     }
 
-    pub fn set_settings(&self, opt: UpdateAccountOpt) -> Result<(), Error> {
+    pub fn set_settings(&self, opt: UpdateAccountOpt) -> Result<bool, Error> {
         let mut store_write = self.store.write()?;
         let mut settings =
             store_write.get_account_settings(self.account_num).cloned().unwrap_or_default();
@@ -161,10 +161,10 @@ impl Account {
             settings.hidden = hidden;
         }
         store_write.set_account_settings(self.account_num, settings);
-        Ok(())
+        Ok(true)
     }
 
-    pub fn set_name(&self, name: &str) -> Result<(), Error> {
+    pub fn set_name(&self, name: &str) -> Result<bool, Error> {
         self.set_settings(UpdateAccountOpt {
             name: Some(name.into()),
             ..Default::default()

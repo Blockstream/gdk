@@ -84,15 +84,15 @@ impl Session for ElectrumSession {
             }
             "rename_subaccount" => {
                 let opt: RenameAccountOpt = serde_json::from_value(input)?;
-                self.rename_subaccount(opt).map(|_| json!(true)).map_err(Into::into)
+                self.rename_subaccount(opt).to_json()
             }
             "set_subaccount_hidden" => {
                 let opt: SetAccountHiddenOpt = serde_json::from_value(input)?;
-                self.set_subaccount_hidden(opt).map(|_| json!(true)).map_err(Into::into)
+                self.set_subaccount_hidden(opt).to_json()
             }
             "update_subaccount" => {
                 let opt: UpdateAccountOpt = serde_json::from_value(input)?;
-                self.update_subaccount(opt).map(|_| json!(true)).map_err(Into::into)
+                self.update_subaccount(opt).to_json()
             }
 
             "get_transactions" => {
