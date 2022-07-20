@@ -45,57 +45,42 @@ impl Session for ElectrumSession {
 
     fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, JsonError> {
         match method {
-            "poll_session" => self.poll_session().map(|v| json!(v)).map_err(Into::into),
+            "poll_session" => self.poll_session().to_json(),
 
-            "connect" => self.connect(&input).map(|v| json!(v)).map_err(Into::into),
+            "connect" => self.connect(&input).to_json(),
 
-            "disconnect" => self.disconnect().map(|v| json!(v)).map_err(Into::into),
+            "disconnect" => self.disconnect().to_json(),
 
-            "login" => {
-                self.login(serde_json::from_value(input)?).map(|v| json!(v)).map_err(Into::into)
+            "login" => self.login(serde_json::from_value(input)?).to_json(),
+            "credentials_from_pin_data" => {
+                self.credentials_from_pin_data(serde_json::from_value(input)?).to_json()
             }
-            "credentials_from_pin_data" => self
-                .credentials_from_pin_data(serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "encrypt_with_pin" => self
-                .encrypt_with_pin(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+            "encrypt_with_pin" => self.encrypt_with_pin(&serde_json::from_value(input)?).to_json(),
 
-            "get_block_height" => {
-                self.get_block_height().map(|block_height| json!(block_height)).map_err(Into::into)
+            "get_block_height" => self.get_block_height().to_json(),
+
+            "get_subaccount_nums" => self.get_subaccount_nums().to_json(),
+
+            "get_subaccounts" => self.get_subaccounts().to_json(),
+
+            "get_subaccount" => get_subaccount(self, &input).to_json(),
+
+            "discover_subaccount" => {
+                self.discover_subaccount(serde_json::from_value(input)?).to_json()
             }
-
-            "get_subaccount_nums" => {
-                self.get_subaccount_nums().map(|v| json!(v)).map_err(Into::into)
+            "get_subaccount_root_path" => {
+                self.get_subaccount_root_path(serde_json::from_value(input)?).to_json()
             }
-
-            "get_subaccounts" => self.get_subaccounts().map(|v| json!(v)).map_err(Into::into),
-
-            "get_subaccount" => get_subaccount(self, &input).map_err(Into::into),
-
-            "discover_subaccount" => self
-                .discover_subaccount(serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "get_subaccount_root_path" => self
-                .get_subaccount_root_path(serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "get_subaccount_xpub" => self
-                .get_subaccount_xpub(serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+            "get_subaccount_xpub" => {
+                self.get_subaccount_xpub(serde_json::from_value(input)?).to_json()
+            }
             "create_subaccount" => {
                 let opt: CreateAccountOpt = serde_json::from_value(input)?;
-                self.create_subaccount(opt).map(|v| json!(v)).map_err(Into::into)
+                self.create_subaccount(opt).to_json()
             }
             "get_next_subaccount" => {
                 let opt: GetNextAccountOpt = serde_json::from_value(input)?;
-                self.get_next_subaccount(opt)
-                    .map(|next_subaccount| json!(next_subaccount))
-                    .map_err(Into::into)
+                self.get_next_subaccount(opt).to_json()
             }
             "rename_subaccount" => {
                 let opt: RenameAccountOpt = serde_json::from_value(input)?;
@@ -115,79 +100,52 @@ impl Session for ElectrumSession {
                 self.get_transactions(&opt).map(|x| txs_result_value(&x)).map_err(Into::into)
             }
 
-            "get_transaction_hex" => {
-                get_transaction_hex(self, &input).map(|v| json!(v)).map_err(Into::into)
-            }
+            "get_transaction_hex" => get_transaction_hex(self, &input).to_json(),
             "get_transaction_details" => self
                 .get_transaction_details(input.as_str().ok_or_else(|| {
                     Error::Generic("get_transaction_details: input is not a string".into())
                 })?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "get_balance" => self
-                .get_balance(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+                .to_json(),
+            "get_balance" => self.get_balance(&serde_json::from_value(input)?).to_json(),
             "set_transaction_memo" => set_transaction_memo(self, &input),
             "create_transaction" => create_transaction(self, input).map_err(Into::into),
-            "sign_transaction" => self
-                .sign_transaction(&serde_json::from_value(input)?)
-                .map_err(Into::into)
-                .map(|v| json!(v)),
-            "send_transaction" => self
-                .send_transaction(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+            "sign_transaction" => self.sign_transaction(&serde_json::from_value(input)?).to_json(),
+            "send_transaction" => self.send_transaction(&serde_json::from_value(input)?).to_json(),
             "broadcast_transaction" => self
                 .broadcast_transaction(input.as_str().ok_or_else(|| {
                     Error::Generic("broadcast_transaction: input not a string".into())
                 })?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+                .to_json(),
 
             "get_receive_address" => {
-                let a = self
-                    .get_receive_address(&serde_json::from_value(input)?)
-                    .map(|x| serde_json::to_value(&x).unwrap())
-                    .map_err(Into::into);
+                let a = self.get_receive_address(&serde_json::from_value(input)?).to_json();
                 log::info!("gdk_rust get_receive_address returning {:?}", a);
                 a
             }
-            "get_previous_addresses" => self
-                .get_previous_addresses(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+            "get_previous_addresses" => {
+                self.get_previous_addresses(&serde_json::from_value(input)?).to_json()
+            }
 
             "get_fee_estimates" => {
                 self.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
             }
 
-            "get_settings" => self.get_settings().map_err(Into::into).map(|s| json!(s)),
+            "get_settings" => self.get_settings().to_json(),
             "get_available_currencies" => self.get_available_currencies().map_err(Into::into),
-            "change_settings" => self
-                .change_settings(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
+            "change_settings" => self.change_settings(&serde_json::from_value(input)?).to_json(),
 
-            "get_unspent_outputs" => self
-                .get_unspent_outputs(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "load_store" => self
-                .load_store(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "get_master_blinding_key" => {
-                self.get_master_blinding_key().map_err(Into::into).map(|s| json!(s))
+            "get_unspent_outputs" => {
+                self.get_unspent_outputs(&serde_json::from_value(input)?).to_json()
             }
-            "set_master_blinding_key" => self
-                .set_master_blinding_key(&serde_json::from_value(input)?)
-                .map(|v| json!(v))
-                .map_err(Into::into),
-            "start_threads" => self.start_threads().map_err(Into::into).map(|s| json!(s)),
-            "get_wallet_hash_id" => self.get_wallet_hash_id().map_err(Into::into).map(|s| json!(s)),
+            "load_store" => self.load_store(&serde_json::from_value(input)?).to_json(),
+            "get_master_blinding_key" => self.get_master_blinding_key().to_json(),
+            "set_master_blinding_key" => {
+                self.set_master_blinding_key(&serde_json::from_value(input)?).to_json()
+            }
+            "start_threads" => self.start_threads().to_json(),
+            "get_wallet_hash_id" => self.get_wallet_hash_id().to_json(),
 
-            "remove_account" => self.remove_account().map_err(Into::into).map(|s| json!(s)),
+            "remove_account" => self.remove_account().to_json(),
 
             // "auth_handler_get_status" => Ok(auth_handler.to_json()),
             _ => Err(Error::MethodNotFound {
@@ -230,12 +188,12 @@ impl From<Error> for JsonError {
         }
     }
 }
-pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<Value, Error> {
+pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<AccountInfo, Error> {
     let index = input["subaccount"]
         .as_u64()
         .ok_or_else(|| Error::Generic("get_subaccount: index argument not found".into()))?;
 
-    session.get_subaccount(index as u32).map(|v| json!(v)).map_err(Into::into)
+    session.get_subaccount(index as u32)
 }
 
 pub fn get_transaction_hex(session: &ElectrumSession, input: &Value) -> Result<String, Error> {
@@ -244,7 +202,7 @@ pub fn get_transaction_hex(session: &ElectrumSession, input: &Value) -> Result<S
         .as_str()
         .ok_or_else(|| Error::Generic("get_transaction_hex: input is not a string".into()))?;
 
-    session.get_transaction_hex(txid).map_err(Into::into)
+    session.get_transaction_hex(txid)
 }
 
 pub fn txs_result_value(txs: &TxsResult) -> Value {
@@ -278,7 +236,7 @@ pub fn set_transaction_memo(session: &ElectrumSession, input: &Value) -> Result<
         .as_str()
         .ok_or_else(|| JsonError::new("set_transaction_memo: missing memo"))?;
 
-    session.set_transaction_memo(txid, memo).map(|v| json!(v)).map_err(Into::into)
+    session.set_transaction_memo(txid, memo).to_json()
 }
 
 pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, JsonError> {
@@ -288,4 +246,17 @@ pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, JsonError
     }
 
     Ok(json!({ "fees": estimates }))
+}
+trait ToJson {
+    fn to_json(self) -> Result<Value, JsonError>;
+}
+
+impl<V, E> ToJson for Result<V, E>
+where
+    V: serde::Serialize,
+    JsonError: From<E>,
+{
+    fn to_json(self) -> Result<Value, JsonError> {
+        Ok(self.map(serde_json::to_value)??)
+    }
 }
