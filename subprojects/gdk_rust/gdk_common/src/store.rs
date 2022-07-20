@@ -60,3 +60,47 @@ pub fn to_cipher(xpub: ExtendedPubKey) -> Aes256GcmSiv {
     let key = Key::from_slice(&key_bytes);
     Aes256GcmSiv::new(&key)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::str::FromStr;
+
+    const XPUB: &str = "tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm";
+
+    fn test_data_with_cipher() -> (Vec<u8>, Aes256GcmSiv) {
+        let mut data = [0u8; 64];
+        rand::thread_rng().fill(&mut data);
+
+        let xpub = ExtendedPubKey::from_str(XPUB).unwrap();
+        let cipher = to_cipher(xpub);
+
+        (data.to_vec(), cipher)
+    }
+
+    #[test]
+    fn test_bytes_encryption() {
+        let (data, cipher) = test_data_with_cipher();
+
+        let (nonce, rest) = data.clone().encrypt(&cipher).unwrap();
+        let encrypted = nonce.iter().map(|byte| *byte).chain(rest.into_iter()).collect::<Vec<_>>();
+
+        let decrypted = encrypted.decrypt(&cipher).unwrap();
+        assert_eq!(data, decrypted);
+    }
+
+    #[test]
+    fn test_file_encryption() {
+        let (data, cipher) = test_data_with_cipher();
+        let mut file = tempfile::tempfile().unwrap();
+
+        let (nonce, rest) = data.clone().encrypt(&cipher).unwrap();
+        let encrypted = nonce.iter().map(|byte| *byte).chain(rest.into_iter()).collect::<Vec<_>>();
+
+        file.write_all(&encrypted).unwrap();
+
+        let decrypted = file.decrypt(&cipher).unwrap();
+        assert_eq!(data, decrypted)
+    }
+}
