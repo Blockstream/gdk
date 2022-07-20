@@ -248,7 +248,7 @@ pub extern "C" fn GDKRUST_call_session(
 
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
     let res = match sess.backend {
-        GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input).map_err(Into::into),
+        GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input),
         GdkBackend::Greenlight(ref mut s) => s.handle_call(&method, input),
     };
 

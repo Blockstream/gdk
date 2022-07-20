@@ -285,15 +285,16 @@ impl Error {
 
         use super::Error::*;
         match *self {
-            InsufficientFunds => "id_insufficient_funds".to_string(),
-            InvalidAddress => "id_invalid_address".to_string(),
-            NonConfidentialAddress => "id_nonconfidential_addresses_not".to_string(),
-            InvalidAmount => "id_invalid_amount".to_string(),
-            InvalidAssetId => "id_invalid_asset_id".to_string(),
-            FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum".to_string(),
-            PinError => "id_connection_failed".to_string(),
-            InvalidPin => "id_invalid_pin".to_string(),
-            _ => "id_unknown".to_string(),
+            InsufficientFunds => "id_insufficient_funds",
+            InvalidAddress => "id_invalid_address",
+            NonConfidentialAddress => "id_nonconfidential_addresses_not",
+            InvalidAmount => "id_invalid_amount",
+            InvalidAssetId => "id_invalid_asset_id",
+            FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum",
+            PinError => "id_connection_failed",
+            InvalidPin => "id_invalid_pin",
+            _ => "id_unknown",
         }
+        .to_string()
     }
 }
