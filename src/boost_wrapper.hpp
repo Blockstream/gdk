@@ -29,19 +29,6 @@
 #define BOOST_ASIO_DISABLE_IOCP
 #define BOOST_ASIO_DISABLE_VISIBILITY
 
-#if defined(__APPLE__) && defined(__MACH__)
-/* Apple OSX and iOS (Darwin). */
-#include <TargetConditionals.h>
-#if TARGET_OS_MAC == 1
-/* macOS */
-#include <AvailabilityVersions.h>
-#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_15
-#define BOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC
-#pragma clang diagnostic ignored "-Wunused-but-set-variable"
-#endif
-#endif
-#endif
-
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
