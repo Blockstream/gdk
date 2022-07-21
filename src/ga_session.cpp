@@ -3377,7 +3377,7 @@ namespace sdk {
             "vault.sign_raw_tx", tx_to_hex(tx, flags), mp_cast(twofactor_data).get(), mp_cast(private_data).get()));
 
         result["psbt"] = psbt_merge_tx(details.at("psbt"), ret.at("tx"));
-        for (const auto& utxo : inputs) {
+        for (auto& utxo : inputs) {
             if (utxo.value("skip_signing", false)) {
                 continue;
             }
