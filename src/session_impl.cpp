@@ -168,6 +168,7 @@ namespace sdk {
 
         auto session_signer = get_signer();
         if (session_signer != nullptr) {
+            GDK_RUNTIME_ASSERT(!p.contains("xpub"));
             p["xpub"] = session_signer->get_master_bip32_xpub();
         }
 
