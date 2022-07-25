@@ -160,7 +160,7 @@ impl Account {
         if let Some(hidden) = opt.hidden {
             settings.hidden = hidden;
         }
-        store_write.set_account_settings(self.account_num, settings);
+        store_write.set_account_settings(self.account_num, settings)?;
         Ok(true)
     }
 

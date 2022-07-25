@@ -453,8 +453,14 @@ impl StoreMeta {
         self.get_account_settings(account_num).map(|s| &s.name)
     }
 
-    pub fn set_account_settings(&mut self, account_num: u32, settings: AccountSettings) {
+    pub fn set_account_settings(
+        &mut self,
+        account_num: u32,
+        settings: AccountSettings,
+    ) -> Result<(), Error> {
         self.store.accounts_settings.as_mut().unwrap().insert(account_num, settings);
+        self.flush_store()?;
+        Ok(())
     }
 
     pub fn spv_verification_status(&self, account_num: u32, txid: &BETxid) -> SPVVerifyTxResult {
