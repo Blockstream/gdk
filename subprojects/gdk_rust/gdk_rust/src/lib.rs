@@ -35,7 +35,7 @@ const XR_API_KEY: &str = "";
 pub struct GdkSession {
     pub backend: GdkBackend,
     pub last_xr_fetch: std::time::SystemTime,
-    pub last_xr: Option<Vec<Ticker>>,
+    pub last_xr: Option<Ticker>,
 }
 
 pub enum GdkBackend {
@@ -165,7 +165,10 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     Ok(gdk_session)
 }
 
-fn fetch_cached_exchange_rates(sess: &mut GdkSession, fiat: Currency) -> Option<&[Ticker]> {
+fn fetch_cached_exchange_rates(
+    sess: &mut GdkSession,
+    fiat: Currency,
+) -> Result<Option<&Ticker>, Error> {
     if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
         debug!("hit exchange rate cache");
     } else {
@@ -181,23 +184,19 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession, fiat: Currency) -> Option<
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
-                fetch_exchange_rates(agent, fiat).unwrap_or_default()
+                fetch_exchange_rates(agent, fiat)?
             } else {
-                vec![Ticker {
+                Ticker {
                     pair: Pair::new(Currency::BTC, Currency::USD),
                     rate: 1.1,
-                }]
+                }
             };
-            // still record time even if we get no results
             sess.last_xr_fetch = SystemTime::now();
-            if !rates.is_empty() {
-                // only set last_xr if we got new non-empty rates
-                sess.last_xr = Some(rates);
-            }
+            sess.last_xr = Some(rates);
         }
     }
 
-    sess.last_xr.as_ref().map(Vec::as_slice)
+    Ok(sess.last_xr.as_ref())
 }
 
 #[no_mangle]
@@ -222,13 +221,15 @@ pub extern "C" fn GDKRUST_call_session(
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
 
     if method == "exchange_rates" {
-        let currency = match Currency::from_str(input.as_str().unwrap()) {
-            Ok(fiat) => fiat,
+        let rates = match Currency::from_str(input.as_str().unwrap())
+            .and_then(|fiat| fetch_cached_exchange_rates(sess, fiat))
+        {
+            Ok(Some(rate)) => vec![rate],
+            Ok(None) => vec![],
             Err(_) => return GA_ERROR,
         };
 
-        let rates = fetch_cached_exchange_rates(sess, currency).unwrap_or_default();
-        let s = make_str(tickers_to_json(rates).to_string());
+        let s = make_str(tickers_to_json(&rates).to_string());
         unsafe {
             *output = s;
         }
@@ -309,7 +310,7 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     GA_OK
 }
 
-fn fetch_exchange_rates(agent: ureq::Agent, fiat: Currency) -> Result<Vec<Ticker>, Error> {
+fn fetch_exchange_rates(agent: ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
     agent
         .get(&Currency::endpoint(&Currency::BTC, &fiat))
         .set("X-API-Key", XR_API_KEY)
@@ -329,11 +330,11 @@ fn fetch_exchange_rates(agent: ureq::Agent, fiat: Currency) -> Result<Vec<Ticker
                 rate,
             };
             info!("got exchange rate {:?}", ticker);
-            vec![ticker]
+            ticker
         })
 }
 
-fn tickers_to_json(tickers: &[Ticker]) -> Value {
+fn tickers_to_json(tickers: &[&Ticker]) -> Value {
     let empty_map = serde_json::map::Map::new();
     let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
         let currency = ticker.pair.second();
@@ -587,6 +588,5 @@ mod tests {
         let res = fetch_exchange_rates(agent, Currency::USD);
 
         assert!(res.is_ok(), "{:?}", res);
-        assert_eq!(1, res.unwrap().len());
     }
 }
