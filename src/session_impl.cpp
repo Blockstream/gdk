@@ -166,7 +166,11 @@ namespace sdk {
 
         nlohmann::json p = params;
 
-        p["xpub"] = get_nonnull_signer()->get_master_bip32_xpub();
+        auto session_signer = get_signer();
+        if (session_signer != nullptr) {
+            p["xpub"] = session_signer->get_master_bip32_xpub();
+        }
+
         p["config"] = get_registry_config();
 
         nlohmann::json result;
