@@ -530,8 +530,10 @@ namespace sdk {
             auto& utxos = result.at("utxos");
             const uint32_t current_block_height = session.get_block_height();
             const uint32_t num_extra_utxos = is_rbf ? result.at("old_used_utxos").size() : 0;
-            wally_tx_ptr tx = tx_init(current_block_height, utxos.size() + num_extra_utxos, num_addressees + 1);
-            if (!is_rbf) {
+            const uint32_t locktime = result.value("transaction_locktime", current_block_height);
+            const uint32_t tx_version = result.value("transaction_version", WALLY_TX_VERSION_2);
+            wally_tx_ptr tx = tx_init(locktime, utxos.size() + num_extra_utxos, num_addressees + 1, tx_version);
+            if (!is_rbf && !result.contains("transaction_locktime")) {
                 set_anti_snipe_locktime(tx, current_block_height);
             }
 
