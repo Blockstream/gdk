@@ -552,3 +552,17 @@ pub struct Ticker {
     pub pair: Pair,
     pub rate: f64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fetch_exchange_rates() {
+        let agent = ureq::agent();
+        let res = fetch_exchange_rates(agent);
+
+        assert!(res.is_ok(), "{:?}", res);
+        assert_eq!(1, res.unwrap().len());
+    }
+}
