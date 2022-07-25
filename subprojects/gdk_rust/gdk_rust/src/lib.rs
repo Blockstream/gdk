@@ -181,7 +181,8 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<&[Ticker]> {
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
-                fetch_exchange_rates(agent).unwrap_or_default()
+                let fiat = Currency::USD;
+                fetch_exchange_rates(agent, fiat).unwrap_or_default()
             } else {
                 vec![Ticker {
                     pair: Pair::new(Currency::BTC, Currency::USD),
@@ -304,9 +305,9 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     GA_OK
 }
 
-fn fetch_exchange_rates(agent: ureq::Agent) -> Result<Vec<Ticker>, Error> {
+fn fetch_exchange_rates(agent: ureq::Agent, fiat: Currency) -> Result<Vec<Ticker>, Error> {
     agent
-        .get(XBTUSD_ENDPOINT)
+        .get(&Currency::endpoint(&Currency::BTC, &fiat))
         .set("X-API-Key", XR_API_KEY)
         .call()?
         .into_json::<serde_json::Map<String, Value>>()?
@@ -318,7 +319,7 @@ fn fetch_exchange_rates(agent: ureq::Agent) -> Result<Vec<Ticker>, Error> {
             expected: "string representing a price",
         })
         .map(|rate| {
-            let pair = Pair::new(Currency::BTC, Currency::USD);
+            let pair = Pair::new(Currency::BTC, fiat);
             let ticker = Ticker {
                 pair,
                 rate,
@@ -485,6 +486,13 @@ pub enum Currency {
     CAD,
     // LBTC,
     Other(String),
+    // TODO: add other fiat currencies.
+}
+
+impl Currency {
+    fn endpoint(a: &Self, b: &Self) -> String {
+        format!("https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}", a, b)
+    }
 }
 
 impl std::str::FromStr for Currency {
@@ -560,7 +568,7 @@ mod tests {
     #[test]
     fn test_fetch_exchange_rates() {
         let agent = ureq::agent();
-        let res = fetch_exchange_rates(agent);
+        let res = fetch_exchange_rates(agent, Currency::USD);
 
         assert!(res.is_ok(), "{:?}", res);
         assert_eq!(1, res.unwrap().len());
