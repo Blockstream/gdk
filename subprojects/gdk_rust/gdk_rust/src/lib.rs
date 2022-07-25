@@ -494,8 +494,20 @@ pub enum Currency {
 }
 
 impl Currency {
+    #[inline]
+    fn endpoint_name(&self) -> String {
+        match self {
+            Currency::BTC => "XBT".to_string(),
+            _ => self.to_string(),
+        }
+    }
+
     fn endpoint(a: &Self, b: &Self) -> String {
-        format!("https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}", a, b)
+        format!(
+            "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}",
+            a.endpoint_name(),
+            b.endpoint_name()
+        )
     }
 }
 
