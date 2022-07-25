@@ -162,7 +162,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     Ok(gdk_session)
 }
 
-fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
+fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<&[Ticker]> {
     if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
         debug!("hit exchange rate cache");
     } else {
@@ -194,7 +194,7 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<Vec<Ticker>> {
         }
     }
 
-    sess.last_xr.clone()
+    sess.last_xr.as_ref().map(Vec::as_slice)
 }
 
 #[no_mangle]
@@ -322,7 +322,7 @@ fn fetch_exchange_rates(agent: ureq::Agent) -> Vec<Ticker> {
     vec![]
 }
 
-fn tickers_to_json(tickers: Vec<Ticker>) -> Value {
+fn tickers_to_json(tickers: &[Ticker]) -> Value {
     let empty_map = serde_json::map::Map::new();
     let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
         let currency = ticker.pair.second();
