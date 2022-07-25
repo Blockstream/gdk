@@ -108,11 +108,20 @@ namespace sdk {
             const uint32_t index = utxo.at("pt_idx");
             const bool low_r = session.get_nonnull_signer()->supports_low_r();
             const bool is_external = !json_get_value(utxo, "private_key").empty();
-            const uint32_t sequence = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
+            const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
+            const uint32_t sequence = utxo.value("sequence", seq_default);
 
             utxo["sequence"] = sequence;
 
-            if (is_external) {
+            if (utxo.contains("script_sig") && utxo.contains("witness")) {
+                const auto script_sig = h2b(utxo.at("script_sig"));
+                const std::vector<std::string> wit_items = utxo.at("witness");
+                auto witness = tx_witness_stack_init(wit_items.size());
+                for (const auto& item : wit_items) {
+                    tx_witness_stack_add(witness, h2b(item));
+                }
+                tx_add_raw_input(tx, txid, index, sequence, script_sig, witness);
+            } else if (is_external) {
                 const auto script = dummy_external_input_script(low_r, h2b(utxo.at("public_key")));
                 tx_add_raw_input(tx, txid, index, sequence, script);
             } else {
