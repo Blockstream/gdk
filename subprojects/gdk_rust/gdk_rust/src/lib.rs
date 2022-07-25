@@ -165,7 +165,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     Ok(gdk_session)
 }
 
-fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<&[Ticker]> {
+fn fetch_cached_exchange_rates(sess: &mut GdkSession, fiat: Currency) -> Option<&[Ticker]> {
     if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
         debug!("hit exchange rate cache");
     } else {
@@ -181,7 +181,6 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<&[Ticker]> {
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
-                let fiat = Currency::USD;
                 fetch_exchange_rates(agent, fiat).unwrap_or_default()
             } else {
                 vec![Ticker {
@@ -223,7 +222,12 @@ pub extern "C" fn GDKRUST_call_session(
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
 
     if method == "exchange_rates" {
-        let rates = fetch_cached_exchange_rates(sess).unwrap_or_default();
+        let currency = match Currency::from_str(input.as_str().unwrap()) {
+            Ok(fiat) => fiat,
+            Err(_) => return GA_ERROR,
+        };
+
+        let rates = fetch_cached_exchange_rates(sess, currency).unwrap_or_default();
         let s = make_str(tickers_to_json(rates).to_string());
         unsafe {
             *output = s;
