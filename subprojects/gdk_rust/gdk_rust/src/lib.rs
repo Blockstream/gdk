@@ -221,9 +221,11 @@ pub extern "C" fn GDKRUST_call_session(
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
 
     if method == "exchange_rates" {
-        let rates = match Currency::from_str(input.as_str().unwrap())
-            .and_then(|fiat| fetch_cached_exchange_rates(sess, fiat))
-        {
+        let fiat = match input.as_str() {
+            Some(str) => Currency::from_str(str),
+            None => Ok(Currency::USD),
+        };
+        let rates = match fiat.and_then(|fiat| fetch_cached_exchange_rates(sess, fiat)) {
             Ok(Some(rate)) => vec![rate],
             Ok(None) => vec![],
             Err(_) => return GA_ERROR,
