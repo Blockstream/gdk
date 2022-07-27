@@ -334,6 +334,9 @@ namespace sdk {
     void tx_add_elements_raw_output(const wally_tx_ptr& tx, byte_span_t script, byte_span_t asset, byte_span_t value,
         byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
 
+    void tx_add_elements_raw_output_at(const wally_tx_ptr& tx, size_t index, byte_span_t script, byte_span_t asset,
+        byte_span_t value, byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
+
     void tx_elements_output_commitment_set(const wally_tx_ptr& tx, size_t index, byte_span_t asset, byte_span_t value,
         byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
 
