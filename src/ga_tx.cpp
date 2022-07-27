@@ -769,7 +769,9 @@ namespace sdk {
                             update_tx_info(net_params, tx, result);
                             std::vector<nlohmann::json> used = json_get_value<decltype(used)>(result, "used_utxos");
                             used.insert(used.end(), current_used_utxos.begin(), current_used_utxos.end());
-                            result["used_utxos"] = used;
+                            if (!manual_selection) {
+                                result["used_utxos"] = used;
+                            }
                             const auto blinded = blind_ga_transaction(session, result);
                             const auto fee_tx = tx_from_hex(blinded["transaction"], tx_flags(is_liquid));
                             fee = get_tx_fee(fee_tx, min_fee_rate, user_fee_rate);
@@ -865,7 +867,9 @@ namespace sdk {
                     result["change_index"][asset_id] = change_index;
                 }
 
-                used_utxos.insert(used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
+                if (!manual_selection) {
+                    used_utxos.insert(used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
+                }
 
                 if (loop_iterations >= max_loop_iterations) {
                     GDK_LOG_SEV(log_level::error) << "Endless tx loop building: " << result.dump();
@@ -914,7 +918,9 @@ namespace sdk {
                         result, res::id_fee_rate_is_below_minimum); // Fee rate is below minimum accepted fee rate
                 }
 
-                result["used_utxos"] = used_utxos;
+                if (!manual_selection) {
+                    result["used_utxos"] = used_utxos;
+                }
                 result["have_change"][asset_id] = have_change_output;
                 result["satoshi"][asset_id] = required_total.value();
 
