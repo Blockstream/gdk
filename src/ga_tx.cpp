@@ -39,6 +39,22 @@ namespace sdk {
                 && output.nonce_len == WALLY_TX_ASSET_CT_NONCE_LEN && output.rangeproof_len > 0;
         }
 
+        template <typename T>
+        static std::vector<T> get_blinding_factors(const nlohmann::json& outputs, size_t n, const std::string name)
+        {
+            std::vector<T> blinding_factors;
+            blinding_factors.reserve(n);
+            for (size_t i = 0; i < n; ++i) {
+                std::string blinder = json_get_value(outputs.at(i), name);
+                if (blinder.empty()) {
+                    blinding_factors.emplace_back(get_random_bytes<32>());
+                } else {
+                    blinding_factors.emplace_back(h2b_rev<32>(blinder));
+                }
+            }
+            return blinding_factors;
+        }
+
         static void add_paths(session_impl& session, nlohmann::json& utxo)
         {
             const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
@@ -1160,17 +1176,10 @@ namespace sdk {
             ++num_outputs;
         }
 
-        std::vector<abf_t> output_abfs;
-        output_abfs.reserve(num_outputs);
-        for (size_t i = 0; i < num_outputs; ++i) {
-            output_abfs.emplace_back(get_random_bytes<32>());
-        }
+        GDK_RUNTIME_ASSERT(num_inputs && num_outputs);
 
-        std::vector<vbf_t> output_vbfs;
-        output_vbfs.reserve(num_outputs - 1);
-        for (size_t i = 0; i < num_outputs - 1; ++i) {
-            output_vbfs.emplace_back(get_random_bytes<32>());
-        }
+        auto output_abfs = get_blinding_factors<abf_t>(transaction_outputs, num_outputs, "assetblinder");
+        auto output_vbfs = get_blinding_factors<vbf_t>(transaction_outputs, num_outputs - 1, "amountblinder");
 
         output_vbfs.emplace_back(
             generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
