@@ -82,9 +82,27 @@ namespace sdk {
             }
         }
 
+        static bool has_utxo(const wally_tx_ptr& tx, nlohmann::json& utxo)
+        {
+            const auto txhash = h2b_rev(utxo.at("txhash"));
+            const std::string txhash_hex = utxo.at("txhash");
+            const uint32_t prevout = utxo.at("pt_idx");
+            for (size_t i = 0; i < tx->num_inputs; ++i) {
+                if (!memcmp(tx->inputs[i].txhash, txhash.data(), txhash.size()) && prevout == tx->inputs[i].index) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // Add a UTXO to a transaction. Returns the amount added
         static amount add_utxo(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& utxo)
         {
+            if (has_utxo(tx, utxo)) {
+                // The transaction has already the input, do not add it.
+                return amount(utxo.at("satoshi"));
+            }
+
             const std::string txhash = utxo.at("txhash");
             const auto txid = h2b_rev(txhash);
             const uint32_t index = utxo.at("pt_idx");
