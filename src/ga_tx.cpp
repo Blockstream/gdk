@@ -634,6 +634,20 @@ namespace sdk {
                         if (addressee_asset_id == asset_id) {
                             required_total += add_tx_addressee(session, net_params, result, tx, addressee);
                             reordered_addressees.push_back(addressee);
+                            // If addressee has an index, we are inserting the addressee in the
+                            // transaction at that index, thus change indexes after the index must
+                            // be incremented.
+                            if (addressee.contains("index")) {
+                                const auto index = addressee.at("index");
+                                if (result.contains("change_index")) {
+                                    auto& change_indexes = result.at("change_index");
+                                    for (auto it = change_indexes.begin(); it != change_indexes.end(); ++it) {
+                                        if (*it >= index) {
+                                            *it = static_cast<uint32_t>(*it) + 1;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

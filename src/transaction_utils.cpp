@@ -425,6 +425,39 @@ namespace sdk {
         wally_tx_ptr& tx, nlohmann::json& addressee)
     {
         std::string address = addressee.at("address"); // Assume its a standard address
+        const bool is_blinded = addressee.value("is_blinded", false);
+
+        if (is_blinded) {
+            // The case of an existing blinded output
+            std::string error;
+            auto script = output_script_for_address(net_params, address, error);
+            GDK_RUNTIME_ASSERT(error.empty() || error == res::id_nonconfidential_addresses_not);
+
+            const auto asset_id = h2b_rev(addressee.at("asset_id"));
+            const uint32_t satoshi = addressee.at("satoshi");
+            const auto abf = h2b_rev(addressee.at("assetblinder"));
+            const auto vbf = h2b_rev(addressee.at("amountblinder"));
+
+            const auto asset_commitment = asset_generator_from_bytes(asset_id, abf);
+            const auto value_commitment = asset_value_commitment(satoshi, vbf, asset_commitment);
+
+            const auto nonce_commitment = h2b(addressee.at("nonce_commitment"));
+
+            std::vector<unsigned char> surjectionproof;
+            if (addressee.contains("surj_proof")) {
+                surjectionproof = h2b(addressee.at("surj_proof"));
+            }
+
+            std::vector<unsigned char> rangeproof;
+            if (addressee.contains("range_proof")) {
+                rangeproof = h2b(addressee.at("range_proof"));
+            }
+
+            const uint32_t index = addressee.at("index");
+            tx_add_elements_raw_output_at(
+                tx, index, script, asset_commitment, value_commitment, nonce_commitment, surjectionproof, rangeproof);
+            return amount(satoshi);
+        }
 
         nlohmann::json uri = parse_bitcoin_uri(address, net_params.bip21_prefix());
         if (!uri.is_null()) {
@@ -535,11 +568,24 @@ namespace sdk {
             size_t addressee_index = 0;
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
-                // TODO: we're only handling assets here when they're still explicit
                 std::string asset_id = "btc";
+                auto addressee = nlohmann::json::object();
+                const bool is_blinded = is_liquid && o.asset && *o.asset != 1 && o.value && *o.value != 1;
+                if (is_blinded) {
+                    // Find the addressee with the same index as the current output
+                    for (const auto& addr : result.at("addressees")) {
+                        if (addr.value("is_blinded", false) && addr.at("index") == i) {
+                            addressee = addr;
+                        }
+                    }
+                    GDK_RUNTIME_ASSERT(!addressee.empty());
+                }
                 if (is_liquid) {
                     if (o.asset && o.asset_len) {
                         asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
+                        if (is_blinded) {
+                            asset_id = addressee.at("asset_id");
+                        }
                     } else {
                         asset_id = net_params.policy_asset();
                     }
@@ -558,6 +604,9 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(o.value);
                     if (*o.value == 1) {
                         satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
+                    } else {
+                        GDK_RUNTIME_ASSERT(is_blinded);
+                        satoshi = addressee.at("satoshi");
                     }
                 }
 
@@ -582,16 +631,34 @@ namespace sdk {
                         output["blinding_key"] = blinding_key_from_addr(change_address.at("address"));
                     }
                 } else {
-                    const auto& addressee = result.at("addressees").at(addressee_index);
+                    if (!is_blinded) {
+                        // Go to the next not blinded addressee
+                        while (addressee_index < result.at("addressees").size()) {
+                            const auto& addr = result.at("addressees").at(addressee_index);
+                            ++addressee_index;
+                            if (!addr.value("is_blinded", false)) {
+                                addressee = addr;
+                                break;
+                            }
+                        }
+                    }
+                    GDK_RUNTIME_ASSERT(!addressee.empty());
                     const auto& address = addressee.at("address");
                     output["address"] = address;
                     if (is_liquid) {
-                        output["blinding_key"] = blinding_key_from_addr(address);
+                        if (is_blinded) {
+                            // The case of an existing blinded output
+                            output["assetblinder"] = addressee.at("assetblinder");
+                            output["amountblinder"] = addressee.at("amountblinder");
+                            output["nonce_commitment"] = addressee.at("nonce_commitment");
+                        } else {
+                            output["blinding_key"] = blinding_key_from_addr(address);
+                        }
                     }
-                    ++addressee_index;
                 }
 
-                if (is_liquid && !is_fee && !output.contains("eph_keypair_sec")) {
+                if (is_liquid && !is_fee && !output.contains("eph_keypair_sec")
+                    && !output.contains("nonce_commitment")) {
                     auto ephemeral_keypair = get_ephemeral_keypair();
                     output["eph_keypair_sec"] = b2h(ephemeral_keypair.first);
                     output["eph_keypair_pub"] = b2h(ephemeral_keypair.second);
