@@ -33,12 +33,63 @@ impl AssetsOrIcons {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use super::*;
     use crate::hard_coded;
     use crate::registry_infos::{RegistryAssets, RegistryIcons};
     use crate::ElementsNetwork;
-    use serde_json::Map;
+    use once_cell::unsync::Lazy;
+    use serde_json::{to_string, Map, Value};
+    use std::cell::RefCell;
+
+    thread_local! {
+        static LIQUID_ASSETS: Lazy<RefCell<Map<String, Value>>> = Lazy::new(|| {
+            let mut hard = match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Assets) {
+                Value::Object(map) => map,
+                _ => unreachable!(),
+            };
+            let other = serde_json::from_str::<Map<_, _>>(include_str!("./data/test/assets.json")).unwrap();
+            hard.extend(other);
+            RefCell::new(hard)
+        });
+
+        static LIQUID_ICONS: Lazy<RefCell<Map<String, Value>>> = Lazy::new(|| {
+            let mut hard = match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Icons) {
+                Value::Object(map) => map,
+                _ => unreachable!(),
+            };
+            let other = serde_json::from_str::<Map<_, _>>(include_str!("./data/test/icons.json")).unwrap();
+            hard.extend(other);
+            RefCell::new(hard)
+        });
+
+        static LAST_MODIFIED: Lazy<RefCell<String>> = Lazy::new(|| RefCell::new(String::from( "Thu, 14 Jul 2022 06:05:26 GMT")));
+    }
+
+    pub(crate) fn update_liquid_data() {
+        let extra_assets =
+            serde_json::from_str::<Map<_, _>>(include_str!("./data/test/extra_assets.json"))
+                .unwrap();
+
+        let extra_icons =
+            serde_json::from_str::<Map<_, _>>(include_str!("./data/test/extra_icons.json"))
+                .unwrap();
+
+        LIQUID_ASSETS.with(move |assets| {
+            let assets = &mut *assets.borrow_mut();
+            assets.extend(extra_assets);
+        });
+
+        LIQUID_ICONS.with(move |icons| {
+            let icons = &mut *icons.borrow_mut();
+            icons.extend(extra_icons);
+        });
+
+        LAST_MODIFIED.with(move |when| {
+            let when = &mut *when.borrow_mut();
+            *when = "Wed, 27 Jul 2022 10:27:47 GMT".into();
+        });
+    }
 
     #[test]
     fn networks_iter_len_in_sync() {
@@ -46,31 +97,27 @@ mod test {
     }
 
     impl AssetsOrIcons {
-        pub(crate) fn liquid_data(&self) -> String {
-            let mut hard = hard_coded::value(ElementsNetwork::Liquid, *self);
-            let data = hard.as_object_mut().unwrap();
-            let other = serde_json::from_str::<Map<_, _>>(match self {
-                // adds 4 more assets
-                Self::Assets => include_str!("./data/test/assets.json"),
-
-                // adds 2 more icons
-                Self::Icons => include_str!("./data/test/icons.json"),
-            })
+        pub(crate) fn liquid_data(&self) -> (String, String) {
+            let data = match self {
+                Self::Assets => LIQUID_ASSETS.with(|map| to_string(&*map.borrow())),
+                Self::Icons => LIQUID_ICONS.with(|map| to_string(&*map.borrow())),
+            }
             .unwrap();
 
-            data.extend(other);
-            serde_json::to_string(&data).unwrap()
+            let last_modified = LAST_MODIFIED.with(|when| when.borrow().clone());
+
+            (data, last_modified)
         }
     }
 
     #[test]
     fn test_local_liquid_data() {
         let data = AssetsOrIcons::Assets.liquid_data();
-        let res = serde_json::from_str::<RegistryAssets>(&data);
+        let res = serde_json::from_str::<RegistryAssets>(&data.0);
         assert!(res.is_ok(), "{:?}", res);
 
         let data = AssetsOrIcons::Icons.liquid_data();
-        let res = serde_json::from_str::<RegistryIcons>(&data);
+        let res = serde_json::from_str::<RegistryIcons>(&data.0);
         assert!(res.is_ok(), "{:?}", res);
     }
 }

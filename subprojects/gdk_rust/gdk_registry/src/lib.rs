@@ -182,15 +182,15 @@ mod tests {
 
     fn local_server_config(server: &Server, assets: bool, icons: bool) -> Config {
         let test_endpoint = |what: AssetsOrIcons| {
+            let (body, last_modified) = what.liquid_data();
+
             server.expect(
                 Expectation::matching(all_of![
                     request::method_path("GET", what.endpoint()),
                     request::headers(contains(key("if-modified-since"))),
                 ])
                 .respond_with(
-                    status_code(200)
-                        .body(what.liquid_data())
-                        .append_header("last-modified", "Thu, 14 Jul 2022 06:05:26 GMT"),
+                    status_code(200).body(body).append_header("last-modified", last_modified),
                 ),
             );
         };
@@ -235,7 +235,7 @@ mod tests {
 
     const DEFAULT_XPUB: &str = "tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm";
 
-    fn get_assts(assets: Option<&[&str]>, xpub: Option<&str>) -> Result<RegistryInfos> {
+    fn get_assets(assets: Option<&[&str]>, xpub: Option<&str>) -> Result<RegistryInfos> {
         let assets_id = assets
             .unwrap_or(&DEFAULT_ASSETS)
             .into_iter()
@@ -345,23 +345,23 @@ mod tests {
             init(&temp_dir).unwrap();
 
             // empty query
-            let res = get_assts(Some(&[]), None).unwrap();
+            let res = get_assets(Some(&[]), None).unwrap();
             assert!(res.assets.is_empty());
             assert!(res.icons.is_empty());
             assert_eq!(res.source, Some(RegistrySource::Cache));
 
             // invalid query
-            let res = get_assts(Some(&["foo"]), None).unwrap();
+            let res = get_assets(Some(&["foo"]), None).unwrap();
             assert!(res.assets.is_empty());
             assert!(res.icons.is_empty());
             assert_eq!(res.source, Some(RegistrySource::Cache));
 
             // invalid xpub
-            let res = get_assts(None, Some("foo"));
+            let res = get_assets(None, Some("foo"));
             assert!(res.is_err(), "{:?}", res);
 
             // asset id not present in registry
-            let res = get_assts(
+            let res = get_assets(
                 Some(&["144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"]),
                 None,
                 )
@@ -372,14 +372,14 @@ mod tests {
 
             // default query, 2 assets queried, only 1 is present in registry
             let now = std::time::Instant::now();
-            let res = get_assts(None, None).unwrap();
+            let res = get_assets(None, None).unwrap();
             assert_eq!(1, res.assets.len());
             assert_eq!(1, res.icons.len());
             assert_eq!(res.source, Some(RegistrySource::LocalRegistry));
             println!("cache read took {:?}", now.elapsed());
 
             // same query, now infos should come from cache.
-            let res = get_assts(None, None).unwrap();
+            let res = get_assets(None, None).unwrap();
             assert_eq!(1, res.assets.len());
             assert_eq!(1, res.icons.len());
             assert_eq!(res.source, Some(RegistrySource::Cache));
@@ -432,16 +432,31 @@ mod tests {
             init(&temp_dir).unwrap();
 
             // both assets not present in the hard coded values
-            let res = get_assts(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
+            let res = get_assets(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
             assert_eq!(res.assets.len(), 0);
 
             // updating the local registry, now those assets should be added to
             // the cache.
             let _ =  refresh_with_xpub(true, true, DEFAULT_XPUB).unwrap();
 
-            let res = get_assts(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
+            let res = get_assets(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
             assert_eq!(res.assets.len(), 2);
             assert_eq!(res.source, Some(RegistrySource::Cache));
+        }
+
+        #[test]
+        fn update_icons_server_side() {
+            let _ = env_logger::try_init();
+
+            let temp_dir = TempDir::new().unwrap();
+            info!("{:?}", temp_dir);
+            init(&temp_dir).unwrap();
+
+            let icons = refresh_assets(true, true, true).unwrap().icons;
+            assets_or_icons::test::update_liquid_data();
+            let new_icons = refresh_assets(true, true, true).unwrap().icons;
+
+            assert!(new_icons.len() > icons.len(), "{} vs {}", new_icons.len(), icons.len());
         }
     }
 }
