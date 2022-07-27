@@ -657,6 +657,9 @@ namespace sdk {
                     // Add all selected utxos
                     for (auto& utxo : result.at("used_utxos")) {
                         v = add_utxo(session, tx, utxo);
+                        if (is_liquid && utxo.at("asset_id") != asset_id) {
+                            continue;
+                        }
                         available_total += v;
                         total += v;
                         current_used_utxos.emplace_back(utxo);
