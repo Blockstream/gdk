@@ -19,7 +19,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
-use exchange_rates::{Currency, Ticker};
+use exchange_rates::Ticker;
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{headers, ElectrumSession, NativeNotif};
@@ -185,11 +185,10 @@ pub extern "C" fn GDKRUST_call_session(
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
 
     if method == "exchange_rates" {
-        let fiat = match input.as_str() {
-            Some(str) => Currency::from_str(str),
-            None => Ok(Currency::USD),
-        };
-        let rates = match fiat.and_then(|fiat| exchange_rates::fetch_cached(sess, fiat)) {
+        let rates = match serde_json::from_value(input)
+            .map_err(Into::into)
+            .and_then(|params| exchange_rates::fetch_cached(sess, params))
+        {
             Ok(Some(rate)) => vec![rate],
             Ok(None) => vec![],
             Err(_) => return GA_ERROR,
@@ -413,17 +412,4 @@ impl log::Log for SimpleLogger {
     }
 
     fn flush(&self) {}
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_fetch_exchange_rates() {
-        let agent = ureq::agent();
-        let res = exchange_rates::fetch(agent, Currency::USD);
-
-        assert!(res.is_ok(), "{:?}", res);
-    }
 }

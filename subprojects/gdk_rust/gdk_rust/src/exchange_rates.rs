@@ -9,7 +9,7 @@ const XR_API_KEY: &str = "";
 
 pub(crate) fn fetch_cached(
     sess: &mut GdkSession,
-    fiat: Currency,
+    params: ConvertAmountParams,
 ) -> Result<Option<&Ticker>, Error> {
     if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
         debug!("hit exchange rate cache");
@@ -26,10 +26,10 @@ pub(crate) fn fetch_cached(
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
-                self::fetch(agent, fiat)?
+                self::fetch(agent, params.currency)?
             } else {
                 Ticker {
-                    pair: Pair::new(Currency::BTC, Currency::USD),
+                    pair: Pair::new(Currency::BTC, params.currency),
                     rate: 1.1,
                 }
             };
@@ -104,6 +104,13 @@ impl Currency {
     }
 }
 
+impl Default for Currency {
+    #[inline]
+    fn default() -> Self {
+        Self::USD
+    }
+}
+
 impl std::str::FromStr for Currency {
     type Err = Error;
 
@@ -168,4 +175,23 @@ impl fmt::Display for Pair {
 pub struct Ticker {
     pub pair: Pair,
     pub rate: f64,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub(crate) struct ConvertAmountParams {
+    #[serde(default, rename(deserialize = "currencies"))]
+    currency: Currency,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fetch_exchange_rates() {
+        let agent = ureq::agent();
+        let res = fetch(agent, Currency::USD);
+
+        assert!(res.is_ok(), "{:?}", res);
+    }
 }
