@@ -159,6 +159,7 @@ mod tests {
     use crate::assets_or_icons::AssetsOrIcons;
     use crate::hard_coded;
     use crate::params::ElementsNetwork;
+    use bitcoin::hashes::hex::FromHex;
     use bitcoin::util::bip32::ExtendedPubKey;
     use elements::AssetId;
     use httptest::{matchers::*, responders::*, Expectation, Server};
@@ -457,6 +458,12 @@ mod tests {
             let new_icons = refresh_assets(true, true, true).unwrap().icons;
 
             assert!(new_icons.len() > icons.len(), "{} vs {}", new_icons.len(), icons.len());
+
+            let asset_id = AssetId::from_hex("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d").unwrap();
+            assert_eq!(icons.get(&asset_id), new_icons.get(&asset_id), "hard coded icon should not get updated");
+
+            let asset_id = AssetId::from_hex("ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2").unwrap();
+            assert_ne!(icons.get(&asset_id), new_icons.get(&asset_id), "non hard coded icon should get updated");
         }
     }
 }
