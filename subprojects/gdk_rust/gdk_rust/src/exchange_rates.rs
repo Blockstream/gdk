@@ -145,23 +145,23 @@ impl fmt::Display for Currency {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Pair((Currency, Currency));
+pub struct Pair(Currency, Currency);
 
 impl Pair {
     pub fn new(c1: Currency, c2: Currency) -> Pair {
-        Pair((c1, c2))
+        Pair(c1, c2)
     }
 
     pub fn new_btc(c: Currency) -> Pair {
-        Pair((Currency::BTC, c))
+        Pair(Currency::BTC, c)
     }
 
     pub fn first(&self) -> &Currency {
-        &(self.0).0
+        &self.0
     }
 
     pub fn second(&self) -> &Currency {
-        &(self.0).1
+        &self.1
     }
 }
 
