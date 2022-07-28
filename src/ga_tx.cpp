@@ -589,9 +589,6 @@ namespace sdk {
             }
 
             if (is_liquid) {
-                if (asset_ids.size() > 1) {
-                    set_tx_error(result, "Multi-asset send not supported");
-                }
                 have_assets = true;
             } else {
                 if (have_assets) {
