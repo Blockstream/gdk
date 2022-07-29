@@ -26,7 +26,7 @@ pub(crate) fn fetch_cached(
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
-                self::fetch(agent, params.currency)?
+                self::fetch(&agent, params.currency)?
             } else {
                 Ticker {
                     pair: Pair::new(Currency::BTC, params.currency),
@@ -41,7 +41,7 @@ pub(crate) fn fetch_cached(
     Ok(sess.last_xr.as_ref())
 }
 
-pub(crate) fn fetch(agent: ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
+pub(crate) fn fetch(agent: &ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
     let (endpoint, price_field) = Currency::endpoint(&Currency::BTC, &fiat);
 
     agent
@@ -218,8 +218,10 @@ mod tests {
     #[test]
     fn test_fetch_exchange_rates() {
         let agent = ureq::agent();
-        let res = fetch(agent, Currency::USD);
 
-        assert!(res.is_ok(), "{:?}", res);
+        for currency in Currency::iter() {
+            let res = fetch(&agent, currency);
+            assert!(res.is_ok(), "{:?}", res);
+        }
     }
 }
