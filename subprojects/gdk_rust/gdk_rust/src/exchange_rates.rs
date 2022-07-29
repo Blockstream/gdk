@@ -82,10 +82,11 @@ pub(crate) fn tickers_to_json(tickers: &[&Ticker]) -> Value {
 pub enum Currency {
     BTC,
     USD,
-    CAD,
+    EUR,
+    GBP,
+    JPY,
     // LBTC,
     Other(String),
-    // TODO: add other fiat currencies.
 }
 
 impl Currency {
@@ -123,7 +124,7 @@ impl Currency {
     }
 
     pub fn iter() -> impl ExactSizeIterator<Item = Self> {
-        vec![Self::USD, Self::CAD, Self::BTC].into_iter()
+        vec![Self::BTC, Self::USD, Self::EUR, Self::GBP, Self::JPY].into_iter()
     }
 }
 
@@ -145,9 +146,11 @@ impl std::str::FromStr for Currency {
 
         // TODO: support harder to parse pairs (LBTC?)
         match s {
-            "USD" => Ok(Currency::USD),
-            "CAD" => Ok(Currency::CAD),
             "BTC" => Ok(Currency::BTC),
+            "USD" => Ok(Currency::USD),
+            "EUR" => Ok(Currency::EUR),
+            "GBP" => Ok(Currency::GBP),
+            "JPY" => Ok(Currency::JPY),
             "" => Err("empty ticker".to_string().into()),
             other => Ok(Currency::Other(other.into())),
         }
@@ -157,9 +160,11 @@ impl std::str::FromStr for Currency {
 impl fmt::Display for Currency {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Currency::USD => "USD",
-            Currency::CAD => "CAD",
             Currency::BTC => "BTC",
+            Currency::USD => "USD",
+            Currency::EUR => "EUR",
+            Currency::GBP => "GBP",
+            Currency::JPY => "JPY",
             // Currency::LBTC => "LBTC",
             Currency::Other(ref s) => s,
         };
