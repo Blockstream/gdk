@@ -123,7 +123,11 @@ impl Currency {
         }
     }
 
-    pub fn iter() -> impl ExactSizeIterator<Item = Self> {
+    pub(crate) fn is_fiat(&self) -> bool {
+        matches!(self, Self::USD | Self::EUR | Self::GBP | Self::JPY)
+    }
+
+    pub(crate) fn iter() -> impl ExactSizeIterator<Item = Self> {
         vec![Self::BTC, Self::USD, Self::EUR, Self::GBP, Self::JPY].into_iter()
     }
 }
@@ -219,7 +223,7 @@ mod tests {
     fn test_fetch_exchange_rates() {
         let agent = ureq::agent();
 
-        for currency in Currency::iter() {
+        for currency in Currency::iter().filter(Currency::is_fiat) {
             let res = fetch(&agent, currency);
             assert!(res.is_ok(), "{:?}", res);
         }
