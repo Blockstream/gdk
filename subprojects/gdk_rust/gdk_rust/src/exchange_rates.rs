@@ -42,13 +42,15 @@ pub(crate) fn fetch_cached(
 }
 
 pub(crate) fn fetch(agent: ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
+    let (endpoint, price_field) = Currency::endpoint(&Currency::BTC, &fiat);
+
     agent
-        .get(&Currency::endpoint(&Currency::BTC, &fiat))
+        .get(&endpoint)
         .set("X-API-Key", XR_API_KEY)
         .call()?
         .into_json::<serde_json::Map<String, Value>>()?
-        .get("price")
-        .expect("`price` field is always set")
+        .get(price_field)
+        .expect(&format!("`{}` field is always set", price_field))
         .as_str()
         .and_then(|str| str.parse::<f64>().ok())
         .ok_or(Error::ExchangeRateBadResponse {
@@ -95,12 +97,33 @@ impl Currency {
         }
     }
 
-    fn endpoint(a: &Self, b: &Self) -> String {
-        format!(
-            "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}",
-            a.endpoint_name(),
-            b.endpoint_name()
-        )
+    /// Returns a `(url, field)` pair where `url` is the endpoint used to fetch
+    /// the rate between the two currencies and `field` is the name of the
+    /// `json` field where the price is defined.
+    fn endpoint(a: &Self, b: &Self) -> (String, &'static str) {
+        match (a, b) {
+            (Currency::BTC, Currency::USD) | (Currency::USD, Currency::BTC) => (
+                format!(
+                    "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}",
+                    a.endpoint_name(),
+                    b.endpoint_name()
+                ),
+                "price",
+            ),
+
+            _ => (
+                format!(
+                    "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/price/{}{}/bitfinex",
+                    a.endpoint_name(),
+                    b.endpoint_name()
+                ),
+                "last-trade",
+            ),
+        }
+    }
+
+    pub fn iter() -> impl ExactSizeIterator<Item = Self> {
+        vec![Self::USD, Self::CAD, Self::BTC].into_iter()
     }
 }
 
