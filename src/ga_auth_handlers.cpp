@@ -724,6 +724,13 @@ namespace sdk {
         const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
 
         if (is_liquid && signer->is_hardware()) {
+            // The hardware signer always recomputes the blinders,
+            // but if we have a blinded addressee it canont work.
+            // FIXME: add support for HWW that allow blinders to be chosen by the host.
+            for (const auto& addressee : transaction_details.at("addressees")) {
+                GDK_RUNTIME_ASSERT_MSG(
+                    !addressee.value("is_blinded", false), "HWW support for blinded addressee is not implemented");
+            }
             // FIMXE: We skip re-blinding for the internal software signer here,
             // since we have already done it. It should be possible to avoid blinding
             // the tx twice in the general HWW case.
