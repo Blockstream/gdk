@@ -949,8 +949,27 @@ namespace sdk {
 
     auth_handler::state_type create_transaction_call::call_impl()
     {
+        const bool is_liquid = m_net_params.is_liquid();
         if (m_result.empty()) {
             // Initial call: Create the transaction from the provided details
+            if (is_liquid && m_details.contains("addressees")) {
+                std::set<std::string> asset_ids;
+                for (const auto& addressee : m_details.at("addressees")) {
+                    if (addressee.contains("asset_id")) {
+                        asset_ids.insert(std::string(addressee.at("asset_id")));
+                    }
+                }
+                if (asset_ids.size()) {
+                    // Erase the change details from previous call to avoid
+                    // blinding being done incorrectly.
+                    // TODO: fix this by splitting out blinding
+                    m_details.erase("change_address");
+                    m_details.erase("change_amount");
+                    m_details.erase("change_index");
+                    m_details.erase("change_subaccount");
+                    m_details.erase("have_change");
+                }
+            }
             m_result = m_session->create_transaction(m_details);
             return check_change_outputs();
         }
@@ -972,7 +991,7 @@ namespace sdk {
         // Update the transaction
         m_result = m_session->create_transaction(m_result);
 
-        if (m_net_params.is_liquid() && m_result.contains("transaction_outputs")) {
+        if (is_liquid && m_result.contains("transaction_outputs")) {
             for (const auto& out : m_result.at("transaction_outputs")) {
                 // Check we have replaced the fake blinding key
                 GDK_RUNTIME_ASSERT(out.value("blinding_key", "") != FAKE_BLINDING_KEY);

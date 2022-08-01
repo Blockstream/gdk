@@ -135,7 +135,7 @@ namespace sdk {
         state_type call_impl() override;
         state_type check_change_outputs();
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
     };
 
     class get_subaccounts_call : public auth_handler_impl {
