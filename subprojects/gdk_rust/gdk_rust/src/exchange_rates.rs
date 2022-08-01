@@ -1,5 +1,4 @@
 use std::fmt;
-use std::time::{Duration, SystemTime};
 
 use crate::{Error, GdkBackend, GdkSession};
 use serde::Deserialize;
@@ -10,40 +9,43 @@ const XR_API_KEY: &str = "";
 pub(crate) fn fetch_cached(
     sess: &mut GdkSession,
     params: ConvertAmountParams,
-) -> Result<Option<&Ticker>, Error> {
-    if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
+) -> Result<Option<Ticker>, Error> {
+    let pair = Pair::new(Currency::BTC, params.currency);
+
+    if let Some(rate) = sess.get_cached_rate(&pair) {
         debug!("hit exchange rate cache");
-    } else {
-        info!("missed exchange rate cache");
-        let (agent, is_mainnet) = match sess.backend {
-            GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.mainnet),
-            GdkBackend::Greenlight(ref _s) => (
-                Err(gdk_electrum::error::Error::Generic(
-                    "build_request_agent not yet implemented".to_string(),
-                )),
-                false,
-            ),
-        };
-        if let Ok(agent) = agent {
-            let rates = if is_mainnet {
-                self::fetch(&agent, params.currency)?
-            } else {
-                Ticker {
-                    pair: Pair::new(Currency::BTC, params.currency),
-                    rate: 1.1,
-                }
-            };
-            sess.last_xr_fetch = SystemTime::now();
-            sess.last_xr = Some(rates);
-        }
+        return Ok(Some(Ticker::new(pair, rate)));
     }
 
-    Ok(sess.last_xr.as_ref())
+    info!("missed exchange rate cache");
+
+    let (agent, is_mainnet) = match sess.backend {
+        GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.mainnet),
+        GdkBackend::Greenlight(ref _s) => (
+            Err(gdk_electrum::error::Error::Generic(
+                "build_request_agent not yet implemented".to_string(),
+            )),
+            false,
+        ),
+    };
+
+    if let Ok(agent) = agent {
+        // TODO: avoid cloning once `Pair` is `Copy`
+        let pair = pair.clone();
+        let ticker = if is_mainnet {
+            self::fetch(&agent, pair)?
+        } else {
+            Ticker::new(pair, 1.1)
+        };
+        sess.cache_ticker(ticker);
+    }
+
+    sess.xr_cache.get(&pair).map(move |(_, rate)| Ticker::new(pair, *rate)).map(Ok).transpose()
 }
 
-pub(crate) fn fetch(agent: &ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
-    let (endpoint, price_field) = Currency::endpoint(&Currency::BTC, &fiat);
-    log::info!("fetching {} price data from {}", fiat, endpoint);
+pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair) -> Result<Ticker, Error> {
+    let (endpoint, price_field) = Currency::endpoint(&pair.0, &pair.1);
+    log::info!("fetching {} price data from {}", pair, endpoint);
 
     agent
         .get(&endpoint)
@@ -58,17 +60,13 @@ pub(crate) fn fetch(agent: &ureq::Agent, fiat: Currency) -> Result<Ticker, Error
             expected: "string representing a price",
         })
         .map(|rate| {
-            let pair = Pair::new(Currency::BTC, fiat);
-            let ticker = Ticker {
-                pair,
-                rate,
-            };
+            let ticker = Ticker::new(pair, rate);
             info!("got exchange rate {:?}", ticker);
             ticker
         })
 }
 
-pub(crate) fn tickers_to_json(tickers: &[&Ticker]) -> Value {
+pub(crate) fn tickers_to_json(tickers: &[Ticker]) -> Value {
     let empty_map = serde_json::map::Map::new();
     let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
         let currency = ticker.pair.second();
@@ -79,7 +77,8 @@ pub(crate) fn tickers_to_json(tickers: &[&Ticker]) -> Value {
     json!({ "currencies": currency_map })
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
+// TODO: derive `Copy` once the `Other` variant is removed.
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize, Hash)]
 pub enum Currency {
     BTC,
     USD,
@@ -177,7 +176,8 @@ impl fmt::Display for Currency {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+// TODO: derive `Copy` once  `Pair` is `Copy`.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Pair(Currency, Currency);
 
 impl Pair {
@@ -210,6 +210,15 @@ pub struct Ticker {
     pub rate: f64,
 }
 
+impl Ticker {
+    fn new(pair: Pair, rate: f64) -> Self {
+        Self {
+            pair,
+            rate,
+        }
+    }
+}
+
 #[derive(Debug, Default, Deserialize)]
 pub(crate) struct ConvertAmountParams {
     #[serde(default, rename(deserialize = "currencies"))]
@@ -225,7 +234,7 @@ mod tests {
         let agent = ureq::agent();
 
         for currency in Currency::iter().filter(Currency::is_fiat) {
-            let res = fetch(&agent, currency);
+            let res = fetch(&agent, Pair::new(Currency::BTC, currency));
             assert!(res.is_ok(), "{:?}", res);
         }
     }

@@ -10,6 +10,7 @@ mod exchange_rates;
 use gdk_common::wally::{make_str, read_str};
 use serde_json::Value;
 
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::str::FromStr;
@@ -19,7 +20,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
-use exchange_rates::Ticker;
+use exchange_rates::{Pair, Ticker};
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{headers, ElectrumSession, NativeNotif};
@@ -32,8 +33,29 @@ pub const GA_NOT_AUTHORIZED: i32 = -5;
 
 pub struct GdkSession {
     pub backend: GdkBackend,
-    pub last_xr_fetch: std::time::SystemTime,
-    pub last_xr: Option<Ticker>,
+
+    /// TODO: docs
+    pub xr_cache: HashMap<Pair, (std::time::SystemTime, f64)>,
+}
+
+impl GdkSession {
+    pub(crate) fn is_cached(&self, pair: &Pair) -> bool {
+        if let Some((last, _)) = self.xr_cache.get(pair) {
+            if *last + Duration::from_secs(60) > SystemTime::now() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub(crate) fn get_cached_rate(&self, pair: &Pair) -> Option<f64> {
+        self.xr_cache.get(pair).and_then(|(_, rate)| self.is_cached(pair).then(|| *rate))
+    }
+
+    pub(crate) fn cache_ticker(&mut self, ticker: Ticker) {
+        self.xr_cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
+    }
 }
 
 pub enum GdkBackend {
@@ -153,12 +175,9 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
         }
         _ => return Err(json!("server_type invalid")),
     };
-    // some time in the past
-    let last_xr_fetch = SystemTime::now() - Duration::from_secs(1000);
     let gdk_session = GdkSession {
         backend,
-        last_xr_fetch,
-        last_xr: None,
+        xr_cache: HashMap::new(),
     };
     Ok(gdk_session)
 }
