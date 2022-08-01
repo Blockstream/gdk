@@ -43,6 +43,7 @@ pub(crate) fn fetch_cached(
 
 pub(crate) fn fetch(agent: &ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
     let (endpoint, price_field) = Currency::endpoint(&Currency::BTC, &fiat);
+    log::info!("fetching {} price data from {}", fiat, endpoint);
 
     agent
         .get(&endpoint)
