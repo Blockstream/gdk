@@ -34,7 +34,10 @@ pub const GA_NOT_AUTHORIZED: i32 = -5;
 pub struct GdkSession {
     pub backend: GdkBackend,
 
-    /// TODO: docs
+    /// The exchange rates cache. The keys are currency pairs (like BTC-USD)
+    /// and the values are a `(time, rate)` tuple, where `time` represents the
+    /// last time the exchange rate was fetched and `rate` is the result of the
+    /// fetching.
     pub xr_cache: HashMap<Pair, (std::time::SystemTime, f64)>,
 }
 
