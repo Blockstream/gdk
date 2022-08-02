@@ -42,6 +42,8 @@ pub struct GdkSession {
 }
 
 impl GdkSession {
+    /// Returns `true` if the given `pair` has a cached exchange rate that
+    /// hasn't expired yet.
     pub(crate) fn is_cached(&self, pair: &Pair) -> bool {
         if let Some((last, _)) = self.xr_cache.get(pair) {
             if *last + Duration::from_secs(60) > SystemTime::now() {
@@ -52,10 +54,12 @@ impl GdkSession {
         false
     }
 
+    /// Returns the exchange rate of `pair` if it's cached, `None` otherwise.
     pub(crate) fn get_cached_rate(&self, pair: &Pair) -> Option<f64> {
         self.xr_cache.get(pair).and_then(|(_, rate)| self.is_cached(pair).then(|| *rate))
     }
 
+    /// Caches `ticker` for future queries.
     pub(crate) fn cache_ticker(&mut self, ticker: Ticker) {
         self.xr_cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
     }
