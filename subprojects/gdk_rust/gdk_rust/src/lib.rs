@@ -211,8 +211,7 @@ pub extern "C" fn GDKRUST_call_session(
             .map_err(Into::into)
             .and_then(|params| exchange_rates::fetch_cached(sess, params))
         {
-            Ok(Some(rate)) => vec![rate],
-            Ok(None) => vec![],
+            Ok(rate) => vec![rate],
             Err(_) => return GA_ERROR,
         };
 

@@ -9,38 +9,34 @@ const XR_API_KEY: &str = "";
 pub(crate) fn fetch_cached(
     sess: &mut GdkSession,
     params: ConvertAmountParams,
-) -> Result<Option<Ticker>, Error> {
+) -> Result<Ticker, Error> {
     let pair = Pair::new(Currency::BTC, params.currency);
 
     if let Some(rate) = sess.get_cached_rate(&pair) {
         debug!("hit exchange rate cache");
-        return Ok(Some(Ticker::new(pair, rate)));
+        return Ok(Ticker::new(pair, rate));
     }
 
     info!("missed exchange rate cache");
 
     let (agent, is_mainnet) = match sess.backend {
-        GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.mainnet),
-        GdkBackend::Greenlight(ref _s) => (
-            Err(gdk_electrum::error::Error::Generic(
-                "build_request_agent not yet implemented".to_string(),
-            )),
-            false,
-        ),
+        GdkBackend::Electrum(ref s) => (s.build_request_agent()?, s.network.mainnet),
+
+        GdkBackend::Greenlight(ref _s) => {
+            return Err(Error::Other("build_request_agent not yet implemented".to_string()))
+        }
     };
 
-    if let Ok(agent) = agent {
-        // TODO: avoid cloning once `Pair` is `Copy`
-        let pair = pair.clone();
-        let ticker = if is_mainnet {
-            self::fetch(&agent, pair)?
-        } else {
-            Ticker::new(pair, 1.1)
-        };
-        sess.cache_ticker(ticker);
-    }
+    let ticker = if is_mainnet {
+        self::fetch(&agent, pair)?
+    } else {
+        Ticker::new(pair, 1.1)
+    };
 
-    sess.xr_cache.get(&pair).map(move |(_, rate)| Ticker::new(pair, *rate)).map(Ok).transpose()
+    // TODO: avoid cloning once `Pair` is `Copy`
+    sess.cache_ticker(ticker.clone());
+
+    Ok(ticker)
 }
 
 pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair) -> Result<Ticker, Error> {
