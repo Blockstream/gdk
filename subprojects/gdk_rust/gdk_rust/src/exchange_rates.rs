@@ -1,8 +1,9 @@
 use std::fmt;
+use std::iter::FromIterator;
 
 use crate::{Error, GdkBackend, GdkSession};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 const XR_API_KEY: &str = "";
 
@@ -62,13 +63,11 @@ pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair) -> Result<Ticker, Error> {
         })
 }
 
-pub(crate) fn tickers_to_json(tickers: &[Ticker]) -> Value {
-    let empty_map = serde_json::map::Map::new();
-    let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
-        let currency = ticker.pair.second();
-        acc.insert(currency.to_string(), format!("{:.8}", ticker.rate).into());
-        acc
-    }));
+pub(crate) fn ticker_to_json(ticker: &Ticker) -> Value {
+    let currency = ticker.pair.second();
+
+    let currency_map =
+        Map::from_iter([(currency.to_string(), format!("{:.8}", ticker.rate).into())]);
 
     json!({ "currencies": currency_map })
 }

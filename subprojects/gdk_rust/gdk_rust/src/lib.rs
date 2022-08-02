@@ -211,19 +211,19 @@ pub extern "C" fn GDKRUST_call_session(
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
 
     if method == "exchange_rates" {
-        let rates = match serde_json::from_value(input)
+        match serde_json::from_value(input)
             .map_err(Into::into)
             .and_then(|params| exchange_rates::fetch_cached(sess, params))
+            .map(|rate| exchange_rates::ticker_to_json(&rate).to_string())
+            .map(make_str)
         {
-            Ok(rate) => vec![rate],
-            Err(_) => return GA_ERROR,
-        };
+            Ok(json) => {
+                unsafe { *output = json };
+                return GA_OK;
+            }
 
-        let s = make_str(exchange_rates::tickers_to_json(&rates).to_string());
-        unsafe {
-            *output = s;
+            Err(_) => return GA_ERROR,
         }
-        return GA_OK;
     }
 
     // Redact inputs containing private data
