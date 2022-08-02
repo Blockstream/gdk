@@ -10,17 +10,16 @@ mod exchange_rates;
 use gdk_common::wally::{make_str, read_str};
 use serde_json::Value;
 
-use std::collections::HashMap;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::str::FromStr;
 use std::sync::Once;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
-use exchange_rates::{Pair, Ticker};
+use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{headers, ElectrumSession, NativeNotif};
@@ -33,36 +32,6 @@ pub const GA_NOT_AUTHORIZED: i32 = -5;
 
 pub struct GdkSession {
     pub backend: GdkBackend,
-
-    /// The exchange rates cache. The keys are currency pairs (like BTC-USD)
-    /// and the values are a `(time, rate)` tuple, where `time` represents the
-    /// last time the exchange rate was fetched and `rate` is the result of the
-    /// fetching.
-    pub xr_cache: HashMap<Pair, (std::time::SystemTime, f64)>,
-}
-
-impl GdkSession {
-    /// Returns `true` if the given `pair` has a cached exchange rate that
-    /// hasn't expired yet.
-    pub(crate) fn is_cached(&self, pair: &Pair) -> bool {
-        if let Some((last, _)) = self.xr_cache.get(pair) {
-            if *last + Duration::from_secs(60) > SystemTime::now() {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Returns the exchange rate of `pair` if it's cached, `None` otherwise.
-    pub(crate) fn get_cached_rate(&self, pair: &Pair) -> Option<f64> {
-        self.xr_cache.get(pair).and_then(|(_, rate)| self.is_cached(pair).then(|| *rate))
-    }
-
-    /// Caches `ticker` for future queries.
-    pub(crate) fn cache_ticker(&mut self, ticker: Ticker) {
-        self.xr_cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
-    }
 }
 
 pub enum GdkBackend {
@@ -71,7 +40,20 @@ pub enum GdkBackend {
     Greenlight(GreenlightSession),
 }
 
-pub struct GreenlightSession {}
+#[derive(Default)]
+pub struct GreenlightSession {
+    xr_cache: ExchangeRatesCache,
+}
+
+impl ExchangeRatesCacher for GreenlightSession {
+    fn xr_cache(&self) -> &ExchangeRatesCache {
+        &self.xr_cache
+    }
+
+    fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache {
+        &mut self.xr_cache
+    }
+}
 
 impl Session for GreenlightSession {
     fn new(_network_parameters: gdk_common::NetworkParameters) -> Result<Self, JsonError> {
@@ -175,7 +157,7 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let backend = match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
-        Some("greenlight") => GdkBackend::Greenlight(GreenlightSession {}),
+        Some("greenlight") => GdkBackend::Greenlight(GreenlightSession::default()),
         Some("electrum") => {
             let session = ElectrumSession::new(parsed_network)?;
             GdkBackend::Electrum(session)
@@ -184,7 +166,6 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
     };
     let gdk_session = GdkSession {
         backend,
-        xr_cache: HashMap::new(),
     };
     Ok(gdk_session)
 }
@@ -213,7 +194,10 @@ pub extern "C" fn GDKRUST_call_session(
     if method == "exchange_rates" {
         match serde_json::from_value(input)
             .map_err(Into::into)
-            .and_then(|params| exchange_rates::fetch_cached(sess, params))
+            .and_then(|params| match sess.backend {
+                GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, params),
+                GdkBackend::Greenlight(ref mut s) => exchange_rates::fetch_cached(s, params),
+            })
             .map(|rate| exchange_rates::ticker_to_json(&rate).to_string())
             .map(make_str)
         {

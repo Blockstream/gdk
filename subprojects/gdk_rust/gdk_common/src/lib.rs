@@ -1,5 +1,6 @@
 pub mod be;
 pub mod error;
+pub mod exchange_rates;
 pub mod mnemonic;
 pub mod model;
 pub mod network;

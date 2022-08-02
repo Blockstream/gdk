@@ -44,6 +44,7 @@ rust_sources = [
   'gdk_common/src/be/transaction.rs',
   'gdk_common/src/be/txid.rs',
   'gdk_common/src/error.rs',
+  'gdk_common/src/exchange_rates.rs',
   'gdk_common/src/lib.rs',
   'gdk_common/src/mnemonic.rs',
   'gdk_common/src/model.rs',

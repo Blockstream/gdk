@@ -1,11 +1,12 @@
 use serde_json::Value;
 
 use crate::{
+    exchange_rates::ExchangeRatesCacher,
     notification::{NativeNotif, NativeType},
     NetworkParameters,
 };
 
-pub trait Session: Sized {
+pub trait Session: Sized + ExchangeRatesCacher {
     fn new(network_parameters: NetworkParameters) -> Result<Self, JsonError>;
     fn handle_call(&mut self, method: &str, params: Value) -> Result<Value, JsonError>;
     fn native_notification(&mut self) -> &mut NativeNotif;
@@ -20,6 +21,7 @@ pub trait Session: Sized {
             _ => Ok(ureq::agent()),
         }
     }
+
     fn set_native_notification(&mut self, native_type: NativeType) {
         self.native_notification().set_native(native_type)
     }

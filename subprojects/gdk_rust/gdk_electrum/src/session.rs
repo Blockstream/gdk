@@ -5,6 +5,7 @@ use std::{
 
 use gdk_common::{
     be::BEOutPoint,
+    exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher},
     model::*,
     notification::NativeNotif,
     session::{JsonError, Session},
@@ -13,6 +14,16 @@ use gdk_common::{
 use serde_json::Value;
 
 use crate::{account::Account, error::Error, interface::ElectrumUrl, socksify, ElectrumSession};
+
+impl ExchangeRatesCacher for ElectrumSession {
+    fn xr_cache(&self) -> &ExchangeRatesCache {
+        &self.xr_cache
+    }
+
+    fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache {
+        &mut self.xr_cache
+    }
+}
 
 impl Session for ElectrumSession {
     fn new(network_parameters: NetworkParameters) -> Result<Self, JsonError> {
@@ -32,6 +43,7 @@ impl Session for ElectrumSession {
             master_xpub: None,
             master_xprv: None,
             recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
+            xr_cache: ExchangeRatesCache::new(),
         })
     }
 

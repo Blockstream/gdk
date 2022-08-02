@@ -40,6 +40,7 @@ use gdk_common::wally::{
 use gdk_common::{be::*, State};
 
 use elements::confidential::{self, Asset, Nonce};
+use gdk_common::exchange_rates::ExchangeRatesCache;
 use gdk_common::NetworkId;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -136,6 +137,8 @@ pub struct ElectrumSession {
     ///
     /// This set it emptied after every sync.
     pub recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
+
+    xr_cache: ExchangeRatesCache,
 }
 
 #[derive(Clone)]
