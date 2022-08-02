@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::error::Error;
 use crate::scripts::ScriptType;
 use crate::wally::MasterBlindingKey;
-use bitcoin::blockdata::transaction::SigHashType as BitcoinSigHashType;
+use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
 use bitcoin::hashes::hex::ToHex;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
 use std::convert::TryFrom;

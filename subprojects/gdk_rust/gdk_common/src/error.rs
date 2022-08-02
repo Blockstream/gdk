@@ -55,6 +55,9 @@ pub enum Error {
     #[error("Unsupported sighash")]
     UnsupportedSigHash,
 
+    #[error(transparent)]
+    Sighash(#[from] bitcoin::util::sighash::Error),
+
     #[error("Generic({0})")]
     Generic(String),
 }

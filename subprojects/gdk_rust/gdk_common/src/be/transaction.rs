@@ -4,13 +4,13 @@ use crate::model::{Balances, TransactionType};
 use crate::scripts::{p2pkh_script, ScriptType};
 use crate::NetworkId;
 use bitcoin::blockdata::script::Instruction;
-use bitcoin::blockdata::transaction::SigHashType as BitcoinSigHashType;
+use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Signature};
-use bitcoin::util::bip143::SigHashCache;
+use bitcoin::secp256k1::{self, ecdsa::Signature, Message, Secp256k1};
+use bitcoin::util::sighash::SighashCache;
 use bitcoin::PublicKey;
 use elements::confidential;
 use elements::confidential::{Asset, Value};
@@ -297,15 +297,15 @@ impl BETransaction {
 
     pub fn get_weight(&self) -> usize {
         match self {
-            Self::Bitcoin(tx) => tx.get_weight(),
-            Self::Elements(tx) => tx.get_weight(),
+            Self::Bitcoin(tx) => tx.weight(),
+            Self::Elements(tx) => tx.weight(),
         }
     }
 
     pub fn get_size(&self) -> usize {
         match self {
-            Self::Bitcoin(tx) => tx.get_size(),
-            Self::Elements(tx) => tx.get_size(),
+            Self::Bitcoin(tx) => tx.size(),
+            Self::Elements(tx) => tx.size(),
         }
     }
 
@@ -376,7 +376,7 @@ impl BETransaction {
                         script_pubkey: script_type.mock_script_pubkey().into(),
                     })
                 }
-                let vbytes = tx.get_weight() as f64 / 4.0;
+                let vbytes = tx.weight() as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee TODO improve fee estimation and lower this
                 info!(
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
@@ -416,7 +416,7 @@ impl BETransaction {
                     0,
                     elements::issuance::AssetId::from_slice(&[0u8; 32]).unwrap(),
                 )); // mockup for the explicit fee output
-                let vbytes = (tx.get_weight() + proofs_size) as f64 / 4.0;
+                let vbytes = (tx.weight() + proofs_size) as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
                 info!(
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
@@ -873,7 +873,7 @@ impl BETransaction {
     pub fn verify_input_sig<'a>(
         &'a self,
         secp: &Secp256k1<impl secp256k1::Verification>,
-        hashcache: &mut Option<SigHashCache<&'a bitcoin::Transaction>>,
+        hashcache: &mut Option<SighashCache<&'a bitcoin::Transaction>>,
         inv: usize,
         public_key: &PublicKey,
         value: u64,
@@ -896,18 +896,18 @@ impl BETransaction {
         }?;
 
         let sighash = sig.pop().ok_or_else(|| Error::InputValidationFailed)?;
-        let sighash = BitcoinSigHashType::from_u32_standard(sighash as u32)?;
+        let sighash = BitcoinSigHashType::from_standard(sighash as u32)?;
 
         let script_code = p2pkh_script(public_key);
         let hash = if script_type.is_segwit() {
-            let hashcache = hashcache.get_or_insert_with(|| SigHashCache::new(tx));
-            hashcache.signature_hash(inv, &script_code, value, sighash)
+            let hashcache = hashcache.get_or_insert_with(|| SighashCache::new(tx));
+            hashcache.segwit_signature_hash(inv, &script_code, value, sighash)?
         } else {
             tx.signature_hash(inv, &script_code, sighash.to_u32())
         };
         let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
 
-        secp.verify(&message, &Signature::from_der(&sig)?, &public_key.inner)?;
+        secp.verify_ecdsa(&message, &Signature::from_der(&sig)?, &public_key.inner)?;
         Ok(())
     }
 

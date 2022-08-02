@@ -1,4 +1,4 @@
-use bitcoin::blockdata::transaction::SigHashType as BitcoinSigHashType;
+use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
 use elements::EcdsaSigHashType as ElementsSigHashType;
 
 use crate::error::Error;
@@ -22,7 +22,7 @@ impl BESigHashType {
             }
         } else {
             let sighash =
-                BitcoinSigHashType::from_u32_standard(n).map_err(|_| Error::InvalidSigHash)?;
+                BitcoinSigHashType::from_standard(n).map_err(|_| Error::InvalidSigHash)?;
             let sighash = BESigHashType::Bitcoin(sighash);
             sighash.is_allowed()?;
             Ok(sighash)

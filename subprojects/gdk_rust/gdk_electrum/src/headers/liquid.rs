@@ -4,7 +4,7 @@ use crate::error::*;
 use crate::headers::compute_merkle_root;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{Message, Signature};
+use bitcoin::secp256k1::{ecdsa::Signature, Message};
 use bitcoin::PublicKey;
 use electrum_client::GetMerkleRes;
 use elements::opcodes::{self, Class, ClassifyContext};
@@ -135,7 +135,7 @@ impl Verifier {
             for signature in signatures.iter() {
                 for pubkey in pubkeys[pubkey_index..].iter() {
                     pubkey_index += 1;
-                    if crate::EC.verify(&msg, signature, &pubkey.inner).is_ok() {
+                    if crate::EC.verify_ecdsa(&msg, signature, &pubkey.inner).is_ok() {
                         verified += 1;
                         break;
                     }

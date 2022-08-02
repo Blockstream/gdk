@@ -396,7 +396,7 @@ impl ElectrumSession {
                 subaccount: account_num,
             })?;
             let xprv = master_xprv.derive_priv(&crate::EC, &path.path).unwrap();
-            let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+            let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
 
             self.create_subaccount(CreateAccountOpt {
                 subaccount: account_num,
@@ -1064,7 +1064,7 @@ pub fn keys_from_credentials(
     let seed = wally::bip39_mnemonic_to_seed(&credentials.mnemonic, &credentials.bip39_passphrase)
         .ok_or(Error::InvalidMnemonic)?;
     let master_xprv = ExtendedPrivKey::new_master(network, &seed)?;
-    let master_xpub = ExtendedPubKey::from_private(&EC, &master_xprv);
+    let master_xpub = ExtendedPubKey::from_priv(&EC, &master_xprv);
     let master_blinding = asset_blinding_key_from_seed(&seed);
     Ok((master_xprv, master_xpub, master_blinding))
 }

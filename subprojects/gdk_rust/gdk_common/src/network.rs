@@ -195,7 +195,7 @@ mod tests {
             "",
         ).unwrap();
         let master_xprv = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
-        let master_xpub = ExtendedPubKey::from_private(&secp, &master_xprv);
+        let master_xpub = ExtendedPubKey::from_priv(&secp, &master_xprv);
         let mut network = crate::NetworkParameters::default();
         network.network = "mainnet".to_string();
         network.mainnet = true;

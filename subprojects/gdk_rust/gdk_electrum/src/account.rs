@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 use std::str::FromStr;
 
+use bitcoin::util::sighash::SighashCache;
 use log::{info, warn};
 
 use bitcoin::blockdata::script;
@@ -10,7 +11,6 @@ use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
-use bitcoin::util::bip143::SigHashCache;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::{PublicKey, Witness};
 use elements::confidential::Value;
@@ -88,7 +88,7 @@ impl Account {
 
         let (xprv, xpub) = if let Some(master_xprv) = master_xprv {
             let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
-            let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+            let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
             if let Some(account_xpub) = account_xpub {
                 xpubs_equivalent(&xpub, account_xpub)?;
             };
@@ -1426,13 +1426,13 @@ fn internal_sign_bitcoin(
 
     let sighash = sighash.into_bitcoin()?;
     let hash = if script_type.is_segwit() {
-        SigHashCache::new(tx).signature_hash(input_index, &script_code, value, sighash)
+        SighashCache::new(tx).segwit_signature_hash(input_index, &script_code, value, sighash)?
     } else {
         tx.signature_hash(input_index, &script_code, sighash.to_u32())
     };
 
     let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
-    let signature = crate::EC.sign(&message, &private_key.inner);
+    let signature = crate::EC.sign_ecdsa(&message, &private_key.inner);
 
     let mut signature = signature.serialize_der().to_vec();
     signature.push(sighash as u8);
@@ -1466,7 +1466,7 @@ fn internal_sign_elements(
         elements::sighash::SigHashCache::new(tx).legacy_sighash(input_index, &script_code, sighash)
     };
     let message = secp256k1::Message::from_slice(&hash[..]).unwrap();
-    let signature = crate::EC.sign(&message, &private_key.inner);
+    let signature = crate::EC.sign_ecdsa(&message, &private_key.inner);
     let mut signature = signature.serialize_der().to_vec();
     signature.push(sighash as u8);
 

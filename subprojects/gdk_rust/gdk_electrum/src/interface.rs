@@ -73,12 +73,12 @@ mod test {
     use bitcoin::hashes::hex::{FromHex, ToHex};
     use bitcoin::hashes::Hash;
     use bitcoin::secp256k1::{Message, SecretKey};
-    use bitcoin::util::bip143::SigHashCache;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use bitcoin::util::key::PrivateKey;
     use bitcoin::util::key::PublicKey;
-    use bitcoin::Script;
-    use bitcoin::{Address, Network, SigHashType, Transaction};
+    use bitcoin::util::sighash::SighashCache;
+    use bitcoin::{Address, Network, Transaction};
+    use bitcoin::{EcdsaSighashType, Script};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
@@ -113,8 +113,9 @@ mod test {
             "76a91479091972186c449eb1ded22b78e40d009bdf008988ac"
         );
         let value = 1_000_000_000;
-        let hash =
-            SigHashCache::new(&tx).signature_hash(0, &witness_script, value, SigHashType::All);
+        let hash = SighashCache::new(&tx)
+            .segwit_signature_hash(0, &witness_script, value, EcdsaSighashType::All)
+            .unwrap();
 
         assert_eq!(
             &hash.into_inner().to_hex(),
@@ -122,7 +123,7 @@ mod test {
         );
 
         let signature =
-            crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
+            crate::EC.sign_ecdsa(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
@@ -139,7 +140,7 @@ mod test {
     #[test]
     fn test_my_tx() {
         let xprv = ExtendedPrivKey::from_str("tprv8jdzkeuCYeH5hi8k2JuZXJWV8sPNK62ashYyUVD9Euv5CPVr2xUbRFEM4yJBB1yBHZuRKWLeWuzH4ptmvSgjLj81AvPc9JhV4i8wEfZYfPb").unwrap();
-        let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
+        let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
         let private_key = xprv.to_priv();
         let public_key = xpub.to_pub();
         let public_key_bytes = public_key.to_bytes();
@@ -163,8 +164,9 @@ mod test {
             "76a9141790ee5e7710a06ce4a9250c8677c1ec2843844f88ac"
         );
         let value = 10_202;
-        let hash =
-            SigHashCache::new(&tx).signature_hash(0, &witness_script, value, SigHashType::All);
+        let hash = SighashCache::new(&tx)
+            .segwit_signature_hash(0, &witness_script, value, EcdsaSighashType::All)
+            .unwrap();
 
         assert_eq!(
             hash.into_inner().to_hex(),
@@ -172,7 +174,7 @@ mod test {
         );
 
         let signature =
-            crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
+            crate::EC.sign_ecdsa(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end

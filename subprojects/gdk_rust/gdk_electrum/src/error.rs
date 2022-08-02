@@ -1,5 +1,6 @@
 use crate::BETxid;
 use bitcoin::util::bip32::ExtendedPubKey;
+use bitcoin::util::sighash;
 use elements::hash_types::Txid;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
@@ -169,6 +170,9 @@ pub enum Error {
 
     #[error(transparent)]
     UreqError(#[from] ureq::Error),
+
+    #[error(transparent)]
+    Sighash(#[from] sighash::Error),
 
     #[error("wallet is not initialized")]
     WalletNotInitialized,

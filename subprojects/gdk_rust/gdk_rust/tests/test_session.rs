@@ -1,9 +1,9 @@
-use bitcoin::blockdata::transaction::SigHashType;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::network::constants::Network as Bip32Network;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{self, Amount, Witness};
+use bitcoin::util::sighash::SighashCache;
+use bitcoin::{self, Amount, EcdsaSighashType, Witness};
 use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
 use electrum_client::ElectrumApi;
 use elements;
@@ -31,7 +31,6 @@ use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::Message;
 use bitcoin::util::address::Address;
-use bitcoin::util::bip143::SigHashCache;
 
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
@@ -1439,7 +1438,7 @@ impl TestSigner {
     }
 
     fn master_xpub(&self) -> ExtendedPubKey {
-        ExtendedPubKey::from_private(&self.secp, &self.master_xprv())
+        ExtendedPubKey::from_priv(&self.secp, &self.master_xprv())
     }
 
     fn master_blinding(&self) -> MasterBlindingKey {
@@ -1448,7 +1447,7 @@ impl TestSigner {
 
     pub fn account_xpub(&self, path: &DerivationPath) -> ExtendedPubKey {
         let xprv = self.master_xprv().derive_priv(&self.secp, path).unwrap();
-        ExtendedPubKey::from_private(&self.secp, &xprv)
+        ExtendedPubKey::from_priv(&self.secp, &xprv)
     }
 
     pub fn sign_tx(&self, details: &TransactionMeta) -> TransactionMeta {
@@ -1473,8 +1472,8 @@ impl TestSigner {
                 let path: DerivationPath = utxo.user_path.clone().into();
                 let private_key =
                     self.master_xprv().derive_priv(&self.secp, &path).unwrap().to_priv();
-                let sighash = utxo.sighash.unwrap_or(SigHashType::All as u32);
-                let sighash = SigHashType::from_u32_standard(sighash).unwrap();
+                let sighash = utxo.sighash.unwrap_or(EcdsaSighashType::All as u32);
+                let sighash = EcdsaSighashType::from_standard(sighash).unwrap();
 
                 // Optional sanity checks
                 let public_key = private_key.public_key(&self.secp);
@@ -1484,13 +1483,15 @@ impl TestSigner {
                 assert_eq!(utxo.script_code, script_code.to_hex());
 
                 let signature_hash = if utxo.address_type != "p2pkh" {
-                    SigHashCache::new(&tx).signature_hash(i, &script_code, utxo.satoshi, sighash)
+                    SighashCache::new(&tx)
+                        .segwit_signature_hash(i, &script_code, utxo.satoshi, sighash)
+                        .unwrap()
                 } else {
                     tx.signature_hash(i, &script_code, sighash.to_u32())
                 };
 
                 let message = Message::from_slice(&signature_hash.into_inner()[..]).unwrap();
-                let signature = self.secp.sign(&message, &private_key.inner);
+                let signature = self.secp.sign_ecdsa(&message, &private_key.inner);
 
                 let mut der = signature.serialize_der().to_vec();
                 der.push(sighash as u8);

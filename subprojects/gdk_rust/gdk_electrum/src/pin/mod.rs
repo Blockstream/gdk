@@ -2,7 +2,7 @@ use crate::Error;
 use aes::Aes256;
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
-use bitcoin::secp256k1::{self, ecdh, Message, SecretKey, Signature};
+use bitcoin::secp256k1::{self, ecdh, ecdsa::Signature, Message, SecretKey};
 use bitcoin::PublicKey;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
@@ -90,7 +90,7 @@ impl PinManager {
         let sig = data.sig()?;
         let (ske, msg) = data.ske()?;
 
-        crate::EC.verify(&msg, &sig, &public_key.inner)?;
+        crate::EC.verify_ecdsa(&msg, &sig, &public_key.inner)?;
 
         let secret_key = SecretKey::new(&mut rng);
         let shared_secret = secp256k1::ecdh::SharedSecret::new(&ske, &secret_key);
@@ -133,7 +133,8 @@ impl PinManager {
 
         let hash = sha256::Hash::hash(&data);
         let msg = Message::from_slice(&hash.into_inner())?;
-        let (rec_id, sig) = crate::EC.sign_recoverable(&msg, &private_key).serialize_compact();
+        let (rec_id, sig) =
+            crate::EC.sign_ecdsa_recoverable(&msg, &private_key).serialize_compact();
         let mut payload = vec![];
         payload.extend(&pin_secret[..]);
         payload.extend(&entropy);
