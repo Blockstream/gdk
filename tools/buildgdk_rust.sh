@@ -42,6 +42,10 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 if [ \( "$1" = "--ndk" \) ]; then
+
+    # https://github.com/rust-windowing/android-ndk-rs/issues/149
+    export RUSTFLAGS="-L$BUILD_ROOT/subprojects/gdk_rust/libgcc/"
+
     if [ "$(uname)" = "Darwin" ]; then
         export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin
         export AR=${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar
