@@ -1,5 +1,5 @@
 use bitcoin::blockdata::transaction::SigHashType as BitcoinSigHashType;
-use elements::SigHashType as ElementsSigHashType;
+use elements::EcdsaSigHashType as ElementsSigHashType;
 
 use crate::error::Error;
 

@@ -1,4 +1,5 @@
 use bitcoin::util::bip32::DerivationPath;
+use bitcoin::Witness;
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrum_client::ElectrumApi;
 use gdk_common::be::BETransaction;
@@ -1437,7 +1438,9 @@ fn rbf() {
     // being tricked into fee-bumping them.
     let mut tx =
         test_session.electrs.client.transaction_get(&txitem.txhash.parse().unwrap()).unwrap();
-    tx.input[0].witness[0][5] = tx.input[0].witness[0][5].wrapping_add(1);
+    let mut witness_vec = tx.input[0].witness.to_vec();
+    witness_vec[0][5] = witness_vec[0][5].wrapping_add(1);
+    tx.input[0].witness = Witness::from_vec(witness_vec);
     let tx = BETransaction::Bitcoin(tx);
 
     let account = test_session.session.get_account(1).unwrap();

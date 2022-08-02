@@ -7,7 +7,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{Message, Signature};
 use bitcoin::PublicKey;
 use electrum_client::GetMerkleRes;
-use elements::opcodes::{self, Class};
+use elements::opcodes::{self, Class, ClassifyContext};
 use elements::script::{self, Instruction};
 use elements::{BlockHash, BlockHeader, Script, TxMerkleNode, Txid};
 use gdk_common::ElementsNetwork;
@@ -111,7 +111,7 @@ impl Verifier {
         hash: &BlockHash,
         stack: &mut Vec<Vec<u8>>,
     ) -> Result<(), Error> {
-        if let Class::PushNum(val) = op.classify() {
+        if let Class::PushNum(val) = op.classify(ClassifyContext::Legacy) {
             return Ok(stack.push(vec![val as u8]));
         } else if *op == opcodes::all::OP_CHECKMULTISIG {
             let total_pubkeys = stack.pop().ok_or_else(|| Error::InvalidHeaders)?[0] as usize;
@@ -135,7 +135,7 @@ impl Verifier {
             for signature in signatures.iter() {
                 for pubkey in pubkeys[pubkey_index..].iter() {
                     pubkey_index += 1;
-                    if crate::EC.verify(&msg, signature, &pubkey.key).is_ok() {
+                    if crate::EC.verify(&msg, signature, &pubkey.inner).is_ok() {
                         verified += 1;
                         break;
                     }

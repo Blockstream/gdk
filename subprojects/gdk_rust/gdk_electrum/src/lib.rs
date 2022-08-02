@@ -718,7 +718,7 @@ impl ElectrumSession {
         let result = PinData {
             salt: iv.to_hex(),
             encrypted_data: encrypted.to_hex(),
-            pin_identifier: client_key.to_hex(),
+            pin_identifier: client_key.secret_bytes().to_hex(),
         };
         Ok(result)
     }

@@ -90,7 +90,7 @@ impl PinManager {
         let sig = data.sig()?;
         let (ske, msg) = data.ske()?;
 
-        crate::EC.verify(&msg, &sig, &public_key.key)?;
+        crate::EC.verify(&msg, &sig, &public_key.inner)?;
 
         let secret_key = SecretKey::new(&mut rng);
         let shared_secret = secp256k1::ecdh::SharedSecret::new(&ske, &secret_key);
@@ -110,7 +110,7 @@ impl PinManager {
     }
 
     fn derive(value: u8, key: &ecdh::SharedSecret) -> ShaHmac {
-        let mut hmac_engine: HmacEngine<sha256::Hash> = HmacEngine::new(key);
+        let mut hmac_engine: HmacEngine<sha256::Hash> = HmacEngine::new(&key.secret_bytes()[..]);
         hmac_engine.input(&[value]);
         Hmac::from_engine(hmac_engine)
     }
@@ -205,7 +205,7 @@ impl Handshake {
     /// returns the ske Public key and its sha256 hash as a `Message`
     fn ske(&self) -> Result<(secp256k1::PublicKey, Message), Error> {
         let ske_bytes = Vec::<u8>::from_hex(&self.ske)?;
-        let ske = PublicKey::from_slice(&ske_bytes)?.key;
+        let ske = PublicKey::from_slice(&ske_bytes)?.inner;
         let hash = sha256::Hash::hash(&ske_bytes);
         let msg = Message::from_slice(&hash.into_inner())?;
         Ok((ske, msg))

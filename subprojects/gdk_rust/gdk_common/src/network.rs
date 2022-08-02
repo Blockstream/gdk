@@ -116,7 +116,7 @@ impl NetworkParameters {
         if let Some(a) = self.policy_asset.as_ref() {
             Ok(a.parse()?)
         } else {
-            Err("no policy asset".into())
+            Err("no policy asset".to_string().into())
         }
     }
 

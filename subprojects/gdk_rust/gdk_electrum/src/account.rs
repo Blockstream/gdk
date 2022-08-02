@@ -12,7 +12,7 @@ use bitcoin::secp256k1::{self, Message};
 use bitcoin::util::address::Payload;
 use bitcoin::util::bip143::SigHashCache;
 use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::PublicKey;
+use bitcoin::{PublicKey, Witness};
 use elements::confidential::Value;
 
 use gdk_common::be::{
@@ -506,7 +506,7 @@ impl Account {
 
     pub fn public_key(&self, path: &DerivationPath) -> PublicKey {
         let xpub = self.xpub.derive_pub(&crate::EC, path).unwrap();
-        xpub.public_key
+        xpub.to_pub()
     }
 
     pub fn script_code(&self, path: &DerivationPath) -> BEScript {
@@ -714,7 +714,7 @@ impl Account {
                     )?;
 
                     out_tx.input[i].script_sig = script_sig;
-                    out_tx.input[i].witness = witness;
+                    out_tx.input[i].witness = Witness::from_vec(witness);
                 }
                 let tx = BETransaction::Bitcoin(out_tx);
                 info!(
@@ -860,7 +860,7 @@ impl Account {
                     // We only need to check wallet-owned inputs
                     None => continue,
                 }
-                .public_key;
+                .to_pub();
                 let value = acc_store
                     .all_txs
                     .get_previous_output_value(&outpoint, &acc_store.unblinded)
@@ -957,12 +957,12 @@ fn derive_address(
     let child_key = xpub.ckd_pub(&crate::EC, index.into())?;
     match network_id {
         NetworkId::Bitcoin(network) => {
-            let address = bitcoin_address(&child_key.public_key, script_type, network);
+            let address = bitcoin_address(&child_key.to_pub(), script_type, network);
             Ok(BEAddress::Bitcoin(address))
         }
         NetworkId::Elements(network) => {
             let address = elements_address(
-                &child_key.public_key,
+                &child_key.to_pub(),
                 master_blinding.expect("we are in elements but master blinding is None"),
                 script_type,
                 network,
@@ -1021,7 +1021,7 @@ pub fn discover_account(
     for index in 0..gap_limit {
         let child_key = external_xpub.ckd_pub(&crate::EC, index.into())?;
         // Every network has the same scriptpubkey
-        let script = bitcoin_address(&child_key.public_key, script_type, bitcoin::Network::Bitcoin)
+        let script = bitcoin_address(&child_key.to_pub(), script_type, bitcoin::Network::Bitcoin)
             .script_pubkey();
 
         if client.script_subscribe(&script)?.is_some() {
@@ -1072,7 +1072,7 @@ pub fn create_tx(
                         } = &address.payload
                         {
                             // Do not support segwit greater than v1 and non-P2TR v1
-                            if v.to_u8() > 1 || (v.to_u8() == 1 && p.len() != 32) {
+                            if v.into_num() > 1 || (v.into_num() == 1 && p.len() != 32) {
                                 return Err(Error::InvalidAddress);
                             }
                         }
@@ -1420,7 +1420,7 @@ fn internal_sign_bitcoin(
     sighash: &BESigHashType,
 ) -> Result<(bitcoin::Script, Vec<Vec<u8>>), Error> {
     let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
-    let private_key = &xprv.private_key;
+    let private_key = &xprv.to_priv();
     let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
     let script_code = p2pkh_script(public_key);
 
@@ -1428,11 +1428,11 @@ fn internal_sign_bitcoin(
     let hash = if script_type.is_segwit() {
         SigHashCache::new(tx).signature_hash(input_index, &script_code, value, sighash)
     } else {
-        tx.signature_hash(input_index, &script_code, sighash.as_u32())
+        tx.signature_hash(input_index, &script_code, sighash.to_u32())
     };
 
     let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
-    let signature = crate::EC.sign(&message, &private_key.key);
+    let signature = crate::EC.sign(&message, &private_key.inner);
 
     let mut signature = signature.serialize_der().to_vec();
     signature.push(sighash as u8);
@@ -1450,7 +1450,7 @@ fn internal_sign_elements(
     sighash: &BESigHashType,
 ) -> Result<(elements::Script, Vec<Vec<u8>>), Error> {
     let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
-    let private_key = &xprv.private_key;
+    let private_key = &xprv.to_priv();
     let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
 
     let script_code = p2pkh_script(public_key).into_elements();
@@ -1466,7 +1466,7 @@ fn internal_sign_elements(
         elements::sighash::SigHashCache::new(tx).legacy_sighash(input_index, &script_code, sighash)
     };
     let message = secp256k1::Message::from_slice(&hash[..]).unwrap();
-    let signature = crate::EC.sign(&message, &private_key.key);
+    let signature = crate::EC.sign(&message, &private_key.inner);
     let mut signature = signature.serialize_der().to_vec();
     signature.push(sighash as u8);
 

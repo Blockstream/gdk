@@ -21,16 +21,14 @@ aes-gcm-siv = "0.10.0"
 gdk-common = { path = "../gdk_common" }
 gdk-registry = { path = "../gdk_registry" }
 libc = "0.2"
-electrum-client = { version = "0.8.0", default-features = false, features = [ "proxy", "use-openssl" ] }
+electrum-client = { version = "0.10", default-features = false, features = [ "proxy", "use-openssl" ] }
 ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
 block-modes = "0.8.0"
 aes = "0.7.0"
 tempfile = "3.2.0"
-secp256k1-sys = "=0.4.1" # 0.4.2 has compatibility issues with secp256k1-zkp-sys v0.4.0
 
-bitcoin = { version = "0.27", features = [ "use-serde", "rand" ] }
-#elements = { version = "0.18", features = ["serde-feature"] }
-elements = { git = "https://github.com/ElementsProject/rust-elements", rev = "0edddf730ff8fd441d3af28bc600b8bc8a8df5a9", features = ["serde-feature"] }
+bitcoin = { version = "0.28", features = [ "use-serde" ] }
+elements = { version = "0.19", features = ["serde-feature"] }
 
 [dev-dependencies]
 env_logger = "0.9.0"

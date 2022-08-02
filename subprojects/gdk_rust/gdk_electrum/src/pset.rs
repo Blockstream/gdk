@@ -102,7 +102,7 @@ fn extract_tx_inner(pset: &mut pset::PartiallySignedTransaction) -> Result<Trans
 }
 
 fn extract_sighashes(pset: &pset::PartiallySignedTransaction) -> Vec<u32> {
-    pset.inputs().iter().map(|i| i.sighash_type.map_or(1, |s| s.as_u32())).collect()
+    pset.inputs().iter().map(|i| i.sighash_type.map_or(1, |s| s.to_u32())).collect()
 }
 
 fn compare_except_script_sig_sequence(tx1: &Transaction, tx2: &Transaction) -> Result<(), Error> {

@@ -26,7 +26,7 @@ pub enum Error {
     BtcKeyError(#[from] bitcoin::util::key::Error),
 
     #[error(transparent)]
-    BtcNonStandardSigHashType(#[from] bitcoin::blockdata::transaction::NonStandardSigHashType),
+    BtcNonStandardSigHashType(#[from] bitcoin::blockdata::transaction::NonStandardSighashType),
 
     #[error(transparent)]
     BtcSecp256k1Error(#[from] bitcoin::secp256k1::Error),
@@ -80,12 +80,6 @@ pub fn _io_err(str: &str) -> std::io::Error {
 impl From<String> for Error {
     fn from(e: String) -> Error {
         Error::Generic(e)
-    }
-}
-
-impl From<&str> for Error {
-    fn from(e: &str) -> Error {
-        Error::Generic(e.to_owned())
     }
 }
 

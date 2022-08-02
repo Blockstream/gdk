@@ -3,7 +3,7 @@ use bitcoin::hashes::hex::FromHex;
 use bitcoin::network::constants::Network as Bip32Network;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{self, Amount};
+use bitcoin::{self, Amount, Witness};
 use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
 use electrum_client::ElectrumApi;
 use elements;
@@ -1472,7 +1472,7 @@ impl TestSigner {
 
                 let path: DerivationPath = utxo.user_path.clone().into();
                 let private_key =
-                    self.master_xprv().derive_priv(&self.secp, &path).unwrap().private_key;
+                    self.master_xprv().derive_priv(&self.secp, &path).unwrap().to_priv();
                 let sighash = utxo.sighash.unwrap_or(SigHashType::All as u32);
                 let sighash = SigHashType::from_u32_standard(sighash).unwrap();
 
@@ -1486,11 +1486,11 @@ impl TestSigner {
                 let signature_hash = if utxo.address_type != "p2pkh" {
                     SigHashCache::new(&tx).signature_hash(i, &script_code, utxo.satoshi, sighash)
                 } else {
-                    tx.signature_hash(i, &script_code, sighash.as_u32())
+                    tx.signature_hash(i, &script_code, sighash.to_u32())
                 };
 
                 let message = Message::from_slice(&signature_hash.into_inner()[..]).unwrap();
-                let signature = self.secp.sign(&message, &private_key.key);
+                let signature = self.secp.sign(&message, &private_key.inner);
 
                 let mut der = signature.serialize_der().to_vec();
                 der.push(sighash as u8);
@@ -1515,7 +1515,7 @@ impl TestSigner {
                 };
 
                 out_tx.input[i].script_sig = script_sig;
-                out_tx.input[i].witness = witness;
+                out_tx.input[i].witness = Witness::from_vec(witness);
             }
             BETransaction::Bitcoin(out_tx)
         };

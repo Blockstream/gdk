@@ -391,7 +391,7 @@ impl BETransaction {
             BETransaction::Elements(mut tx) => {
                 for input in tx.input.iter_mut() {
                     let mut tx_wit = TxInWitness::default();
-                    tx_wit.script_witness = script_type.mock_witness();
+                    tx_wit.script_witness = script_type.mock_witness().to_vec();
                     input.witness = tx_wit;
                     input.script_sig = script_type.mock_script_sig().into();
                 }
@@ -629,7 +629,7 @@ impl BETransaction {
                     previous_output: outpoint,
                     script_sig: bitcoin::Script::default(),
                     sequence: 0xffff_fffd, // nSequence is disabled, nLocktime is enabled, RBF is signaled.
-                    witness: vec![],
+                    witness: bitcoin::Witness::default(),
                 };
                 tx.input.push(new_in);
             }
@@ -887,7 +887,7 @@ impl BETransaction {
         };
         let mut sig = match script_type {
             ScriptType::P2wpkh | ScriptType::P2shP2wpkh => {
-                tx.input[inv].witness.get(0).cloned().ok_or(Error::InputValidationFailed)
+                tx.input[inv].witness.to_vec().get(0).cloned().ok_or(Error::InputValidationFailed)
             }
             ScriptType::P2pkh => match tx.input[inv].script_sig.instructions().next() {
                 Some(Ok(Instruction::PushBytes(sig))) => Ok(sig.to_vec()),
@@ -903,11 +903,11 @@ impl BETransaction {
             let hashcache = hashcache.get_or_insert_with(|| SigHashCache::new(tx));
             hashcache.signature_hash(inv, &script_code, value, sighash)
         } else {
-            tx.signature_hash(inv, &script_code, sighash.as_u32())
+            tx.signature_hash(inv, &script_code, sighash.to_u32())
         };
         let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
 
-        secp.verify(&message, &Signature::from_der(&sig)?, &public_key.key)?;
+        secp.verify(&message, &Signature::from_der(&sig)?, &public_key.inner)?;
         Ok(())
     }
 

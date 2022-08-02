@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use bitcoin::blockdata::script::Builder;
 use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
-use bitcoin::{Address, Network, PublicKey, Script};
+use bitcoin::{Address, Network, PublicKey, Script, Witness};
 
 use std::fmt;
 
@@ -62,13 +62,13 @@ impl ScriptType {
     }
 
     /// Returns a mock witness with the expected size
-    pub fn mock_witness(self) -> Vec<Vec<u8>> {
-        match self {
+    pub fn mock_witness(self) -> Witness {
+        Witness::from_vec(match self {
             // signature (72) + compressed public key (33)
             ScriptType::P2wpkh | ScriptType::P2shP2wpkh => vec![vec![0u8; 72], vec![0u8; 33]],
             // empty for non-witness inputs
             ScriptType::P2pkh => vec![],
-        }
+        })
     }
 
     /// Returns a mock script sig with the expected size

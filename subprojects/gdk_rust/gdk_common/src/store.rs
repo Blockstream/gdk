@@ -57,7 +57,7 @@ pub trait ToCipher {
 impl ToCipher for ExtendedPubKey {
     fn to_cipher(self) -> Result<Aes256GcmSiv> {
         let mut enc_key_data = vec![];
-        enc_key_data.extend(&self.public_key.to_bytes());
+        enc_key_data.extend(&self.to_pub().to_bytes());
         enc_key_data.extend(&self.chain_code.to_bytes());
         enc_key_data.extend(&self.network.magic().to_be_bytes());
         let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();

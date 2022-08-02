@@ -99,11 +99,11 @@ mod test {
             Vec::<u8>::from_hex("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")
                 .unwrap();
 
-        let key = SecretKey::from_slice(&private_key_bytes).unwrap();
+        let inner = SecretKey::from_slice(&private_key_bytes).unwrap();
         let private_key = PrivateKey {
             compressed: true,
             network: Network::Testnet,
-            key,
+            inner,
         };
 
         let (public_key, witness_script) =
@@ -121,7 +121,8 @@ mod test {
             "64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6"
         );
 
-        let signature = crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
+        let signature =
+            crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
@@ -139,8 +140,8 @@ mod test {
     fn test_my_tx() {
         let xprv = ExtendedPrivKey::from_str("tprv8jdzkeuCYeH5hi8k2JuZXJWV8sPNK62ashYyUVD9Euv5CPVr2xUbRFEM4yJBB1yBHZuRKWLeWuzH4ptmvSgjLj81AvPc9JhV4i8wEfZYfPb").unwrap();
         let xpub = ExtendedPubKey::from_private(&crate::EC, &xprv);
-        let private_key = xprv.private_key;
-        let public_key = xpub.public_key;
+        let private_key = xprv.to_priv();
+        let public_key = xpub.to_pub();
         let public_key_bytes = public_key.to_bytes();
         let public_key_str = public_key_bytes.to_hex();
 
@@ -170,15 +171,17 @@ mod test {
             "58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995",
         );
 
-        let signature = crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.key);
+        let signature =
+            crate::EC.sign(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
         let signature = Vec::<u8>::from_hex(&signature_hex).unwrap();
 
         assert_eq!(signature_hex, "304402206675ed5fb86d7665eb1f7950e69828d0aa9b41d866541cedcedf8348563ba69f022077aeabac4bd059148ff41a36d5740d83163f908eb629784841e52e9c79a3dbdb01");
-        assert_eq!(tx.input[0].witness[0], signature);
-        assert_eq!(tx.input[0].witness[1], public_key_bytes);
+        let witness = tx.input[0].witness.to_vec();
+        assert_eq!(witness[0], signature);
+        assert_eq!(witness[1], public_key_bytes);
 
         let script_sig = p2shwpkh_script_sig(&public_key);
         assert_eq!(tx.input[0].script_sig, script_sig);
