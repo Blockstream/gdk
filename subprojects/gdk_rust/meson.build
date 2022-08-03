@@ -88,6 +88,7 @@ rust_sources = [
   'gdk_registry/src/value_modified.rs',
   'gdk_rust/Cargo.toml',
   'gdk_rust/src/error.rs',
+  'gdk_rust/src/exchange_rates.rs',
   'gdk_rust/src/lib.rs',
   'gdk_rust/tests/integration.rs',
   'gdk_rust/tests/test_session.rs'

@@ -1,0 +1,171 @@
+use std::fmt;
+use std::time::{Duration, SystemTime};
+
+use crate::{Error, GdkBackend, GdkSession};
+use serde::Deserialize;
+use serde_json::Value;
+
+const XR_API_KEY: &str = "";
+
+pub(crate) fn fetch_cached(
+    sess: &mut GdkSession,
+    fiat: Currency,
+) -> Result<Option<&Ticker>, Error> {
+    if SystemTime::now() < (sess.last_xr_fetch + Duration::from_secs(60)) {
+        debug!("hit exchange rate cache");
+    } else {
+        info!("missed exchange rate cache");
+        let (agent, is_mainnet) = match sess.backend {
+            GdkBackend::Electrum(ref s) => (s.build_request_agent(), s.network.mainnet),
+            GdkBackend::Greenlight(ref _s) => (
+                Err(gdk_electrum::error::Error::Generic(
+                    "build_request_agent not yet implemented".to_string(),
+                )),
+                false,
+            ),
+        };
+        if let Ok(agent) = agent {
+            let rates = if is_mainnet {
+                self::fetch(agent, fiat)?
+            } else {
+                Ticker {
+                    pair: Pair::new(Currency::BTC, Currency::USD),
+                    rate: 1.1,
+                }
+            };
+            sess.last_xr_fetch = SystemTime::now();
+            sess.last_xr = Some(rates);
+        }
+    }
+
+    Ok(sess.last_xr.as_ref())
+}
+
+pub(crate) fn fetch(agent: ureq::Agent, fiat: Currency) -> Result<Ticker, Error> {
+    agent
+        .get(&Currency::endpoint(&Currency::BTC, &fiat))
+        .set("X-API-Key", XR_API_KEY)
+        .call()?
+        .into_json::<serde_json::Map<String, Value>>()?
+        .get("price")
+        .expect("`price` field is always set")
+        .as_str()
+        .and_then(|str| str.parse::<f64>().ok())
+        .ok_or(Error::ExchangeRateBadResponse {
+            expected: "string representing a price",
+        })
+        .map(|rate| {
+            let pair = Pair::new(Currency::BTC, fiat);
+            let ticker = Ticker {
+                pair,
+                rate,
+            };
+            info!("got exchange rate {:?}", ticker);
+            ticker
+        })
+}
+
+pub(crate) fn tickers_to_json(tickers: &[&Ticker]) -> Value {
+    let empty_map = serde_json::map::Map::new();
+    let currency_map = Value::Object(tickers.iter().fold(empty_map, |mut acc, ticker| {
+        let currency = ticker.pair.second();
+        acc.insert(currency.to_string(), format!("{:.8}", ticker.rate).into());
+        acc
+    }));
+
+    json!({ "currencies": currency_map })
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
+pub enum Currency {
+    BTC,
+    USD,
+    CAD,
+    // LBTC,
+    Other(String),
+    // TODO: add other fiat currencies.
+}
+
+impl Currency {
+    #[inline]
+    fn endpoint_name(&self) -> String {
+        match self {
+            Currency::BTC => "XBT".to_string(),
+            _ => self.to_string(),
+        }
+    }
+
+    fn endpoint(a: &Self, b: &Self) -> String {
+        format!(
+            "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}",
+            a.endpoint_name(),
+            b.endpoint_name()
+        )
+    }
+}
+
+impl std::str::FromStr for Currency {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Error> {
+        // println!("currency from_str {}", s);
+        if s.len() < 3 {
+            return Err("ticker length less than 3".to_string().into());
+        }
+
+        // TODO: support harder to parse pairs (LBTC?)
+        match s {
+            "USD" => Ok(Currency::USD),
+            "CAD" => Ok(Currency::CAD),
+            "BTC" => Ok(Currency::BTC),
+            "" => Err("empty ticker".to_string().into()),
+            other => Ok(Currency::Other(other.into())),
+        }
+    }
+}
+
+impl fmt::Display for Currency {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Currency::USD => "USD",
+            Currency::CAD => "CAD",
+            Currency::BTC => "BTC",
+            // Currency::LBTC => "LBTC",
+            Currency::Other(ref s) => s,
+        };
+        write!(f, "{}", s)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Pair((Currency, Currency));
+
+impl Pair {
+    pub fn new(c1: Currency, c2: Currency) -> Pair {
+        Pair((c1, c2))
+    }
+
+    pub fn new_btc(c: Currency) -> Pair {
+        Pair((Currency::BTC, c))
+    }
+
+    pub fn first(&self) -> &Currency {
+        &(self.0).0
+    }
+
+    pub fn second(&self) -> &Currency {
+        &(self.0).1
+    }
+}
+
+impl fmt::Display for Pair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.first(), self.second())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Ticker {
+    pub pair: Pair,
+    pub rate: f64,
+}
