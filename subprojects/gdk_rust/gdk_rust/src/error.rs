@@ -33,6 +33,17 @@ pub enum Error {
 
     #[error("Greenlight method not found {0}")]
     GreenlightMethodNotFound(String),
+
+    #[error("Expected a {expected}")]
+    ExchangeRateBadResponse {
+        expected: &'static str,
+    },
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Ureq(#[from] ureq::Error),
 }
 
 impl Error {

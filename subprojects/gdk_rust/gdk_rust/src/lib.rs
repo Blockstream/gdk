@@ -29,6 +29,9 @@ pub const GA_OK: i32 = 0;
 pub const GA_ERROR: i32 = -1;
 pub const GA_NOT_AUTHORIZED: i32 = -5;
 
+const XBTUSD_ENDPOINT: &str = "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/XBTUSD";
+const XR_API_KEY: &str = "";
+
 pub struct GdkSession {
     pub backend: GdkBackend,
     pub last_xr_fetch: std::time::SystemTime,
@@ -178,7 +181,7 @@ fn fetch_cached_exchange_rates(sess: &mut GdkSession) -> Option<&[Ticker]> {
         };
         if let Ok(agent) = agent {
             let rates = if is_mainnet {
-                fetch_exchange_rates(agent)
+                fetch_exchange_rates(agent).unwrap_or_default()
             } else {
                 vec![Ticker {
                     pair: Pair::new(Currency::BTC, Currency::USD),
@@ -301,25 +304,28 @@ pub extern "C" fn GDKRUST_set_notification_handler(
     GA_OK
 }
 
-fn fetch_exchange_rates(agent: ureq::Agent) -> Vec<Ticker> {
-    if let Ok(result) = agent.get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD").call()
-    {
-        if let Ok(Value::Array(array)) = result.into_json() {
-            if let Some(Value::Array(array)) = array.get(0) {
-                // using BIDPRICE https://docs.bitfinex.com/reference#rest-public-tickers
-                if let Some(rate) = array.get(1).and_then(|e| e.as_f64()) {
-                    let pair = Pair::new(Currency::BTC, Currency::USD);
-                    let ticker = Ticker {
-                        pair,
-                        rate,
-                    };
-                    info!("got exchange rate {:?}", ticker);
-                    return vec![ticker];
-                }
-            }
-        }
-    }
-    vec![]
+fn fetch_exchange_rates(agent: ureq::Agent) -> Result<Vec<Ticker>, Error> {
+    agent
+        .get(XBTUSD_ENDPOINT)
+        .set("X-API-Key", XR_API_KEY)
+        .call()?
+        .into_json::<serde_json::Map<String, Value>>()?
+        .get("price")
+        .expect("`price` field is always set")
+        .as_str()
+        .and_then(|str| str.parse::<f64>().ok())
+        .ok_or(Error::ExchangeRateBadResponse {
+            expected: "string representing a price",
+        })
+        .map(|rate| {
+            let pair = Pair::new(Currency::BTC, Currency::USD);
+            let ticker = Ticker {
+                pair,
+                rate,
+            };
+            info!("got exchange rate {:?}", ticker);
+            vec![ticker]
+        })
 }
 
 fn tickers_to_json(tickers: &[Ticker]) -> Value {
