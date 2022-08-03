@@ -971,6 +971,14 @@ namespace sdk {
 
         // Update the transaction
         m_result = m_session->create_transaction(m_result);
+
+        if (m_net_params.is_liquid() && m_result.contains("transaction_outputs")) {
+            for (const auto& out : m_result.at("transaction_outputs")) {
+                // Check we have replaced the fake blinding key
+                GDK_RUNTIME_ASSERT(out.value("blinding_key", "") != FAKE_BLINDING_KEY);
+            }
+        }
+
         return check_change_outputs();
     }
 
