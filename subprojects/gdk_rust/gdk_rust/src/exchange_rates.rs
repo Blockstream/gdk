@@ -8,15 +8,24 @@ use serde_json::{Map, Value};
 
 const XR_API_KEY: &str = "";
 
+/// Whether an exchange rate returned by `fetch_cached` came from a previously
+/// cached value of from a network request.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ExchangeRateSource {
+    Cached,
+    Fetched,
+}
+
+// TODO: change name?
 pub(crate) fn fetch_cached<S: Session>(
     sess: &mut S,
     params: ConvertAmountParams,
-) -> Result<Ticker, Error> {
+) -> Result<(Ticker, ExchangeRateSource), Error> {
     let pair = Pair::new(Currency::BTC, params.currency);
 
     if let Some(rate) = sess.get_cached_rate(&pair) {
         debug!("hit exchange rate cache");
-        return Ok(Ticker::new(pair, rate));
+        return Ok((Ticker::new(pair, rate), ExchangeRateSource::Cached));
     }
 
     info!("missed exchange rate cache");
@@ -33,7 +42,7 @@ pub(crate) fn fetch_cached<S: Session>(
     // TODO: avoid cloning once `Pair` is `Copy`
     sess.cache_ticker(ticker.clone());
 
-    Ok(ticker)
+    Ok((ticker, ExchangeRateSource::Fetched))
 }
 
 pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair) -> Result<Ticker, Error> {
@@ -68,7 +77,7 @@ pub(crate) fn ticker_to_json(ticker: &Ticker) -> Value {
     json!({ "currencies": currency_map })
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub(crate) struct ConvertAmountParams {
     #[serde(default, rename(deserialize = "currencies"))]
     currency: Currency,
@@ -77,14 +86,66 @@ pub(crate) struct ConvertAmountParams {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
+    use gdk_common::network::NetworkParameters;
+    use gdk_common::notification::NativeNotif;
+
+    #[derive(Default)]
+    struct TestSession {
+        xr_cache: ExchangeRatesCache,
+    }
+
+    impl ExchangeRatesCacher for TestSession {
+        fn xr_cache(&self) -> &ExchangeRatesCache {
+            &self.xr_cache
+        }
+        fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache {
+            &mut self.xr_cache
+        }
+    }
+
+    impl Session for TestSession {
+        fn new(_: NetworkParameters) -> Result<Self, gdk_common::session::JsonError> {
+            todo!()
+        }
+
+        fn handle_call(
+            &mut self,
+            _: &str,
+            _: Value,
+        ) -> Result<Value, gdk_common::session::JsonError> {
+            todo!()
+        }
+
+        fn native_notification(&mut self) -> &mut NativeNotif {
+            todo!()
+        }
+
+        fn network_parameters(&self) -> &NetworkParameters {
+            todo!()
+        }
+
+        fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
+            Ok(ureq::agent())
+        }
+    }
 
     #[test]
     fn test_fetch_exchange_rates() {
-        let agent = ureq::agent();
+        let mut session = TestSession::default();
 
         for currency in Currency::iter().filter(Currency::is_fiat) {
-            let res = fetch(&agent, Pair::new(Currency::BTC, currency));
+            let params = ConvertAmountParams {
+                currency,
+            };
+
+            let res = fetch_cached(&mut session, params.clone());
             assert!(res.is_ok(), "{:?}", res);
+            assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
+
+            let res = fetch_cached(&mut session, params);
+            assert!(res.is_ok(), "{:?}", res);
+            assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
         }
     }
 }

@@ -198,7 +198,7 @@ pub extern "C" fn GDKRUST_call_session(
                 GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, params),
                 GdkBackend::Greenlight(ref mut s) => exchange_rates::fetch_cached(s, params),
             })
-            .map(|rate| exchange_rates::ticker_to_json(&rate).to_string())
+            .map(|(rate, _source)| exchange_rates::ticker_to_json(&rate).to_string())
             .map(make_str)
         {
             Ok(json) => {
