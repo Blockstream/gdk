@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
 use crate::Error;
@@ -40,6 +41,7 @@ pub trait ExchangeRatesCacher {
 
 // TODO: derive `Copy` once the `Other` variant is removed.
 #[derive(PartialEq, Eq, Debug, Clone, Deserialize, Hash)]
+#[cfg_attr(test, derive(strum_macros::EnumIter))]
 pub enum Currency {
     BTC,
     USD,
@@ -85,7 +87,7 @@ impl Currency {
     }
 
     pub fn is_fiat(&self) -> bool {
-        matches!(self, Self::USD | Self::EUR | Self::GBP | Self::JPY)
+        !matches!(self, Self::BTC | Self::Other(_))
     }
 
     pub fn iter() -> impl ExactSizeIterator<Item = Self> {
@@ -100,7 +102,7 @@ impl Default for Currency {
     }
 }
 
-impl std::str::FromStr for Currency {
+impl FromStr for Currency {
     type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Error> {
@@ -176,6 +178,20 @@ impl Ticker {
         Self {
             pair,
             rate,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_str_currency_roundtrip() {
+        for currency in <Currency as strum::IntoEnumIterator>::iter() {
+            let str = currency.to_string();
+            let res = Currency::from_str(&str);
+            assert_eq!(currency, res.unwrap());
         }
     }
 }
