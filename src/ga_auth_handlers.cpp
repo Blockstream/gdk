@@ -1871,5 +1871,20 @@ namespace sdk {
         m_result["pin_data"] = m_session->encrypt_with_pin(m_details);
         return state_type::done;
     }
+
+    //
+    // Decrypt with PIN
+    //
+    decrypt_with_pin_call::decrypt_with_pin_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "decrypt_with_pin", std::shared_ptr<signer>())
+        , m_details(details)
+    {
+    }
+
+    auth_handler::state_type decrypt_with_pin_call::call_impl()
+    {
+        m_result = m_session->decrypt_with_pin(m_details);
+        return state_type::done;
+    }
 } // namespace sdk
 } // namespace ga

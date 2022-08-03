@@ -205,6 +205,22 @@ Encrypt with PIN Result JSON
 :pin_data: See :ref:`pin-data`.
 
 
+.. _decrypt-with-pin-details:
+
+Decrypt with PIN JSON
+---------------------
+
+.. code-block:: json
+
+   {
+      "pin": "...",
+      "pin_data": "...",
+   }
+
+:pin: The PIN that protects the server provided key.
+:pin_data: See :ref:`pin-data`.
+
+
 .. _wallet-id-request:
 
 Wallet identifier request JSON

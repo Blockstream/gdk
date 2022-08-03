@@ -1330,12 +1330,12 @@ namespace sdk {
         remap_appearance_setting("required_num_blocks", "required_num_blocks");
     }
 
-    nlohmann::json ga_session::credentials_from_pin_data(const nlohmann::json& pin_data)
+    nlohmann::json ga_session::decrypt_with_pin_impl(const nlohmann::json& details, bool is_login)
     {
         try {
             // FIXME: clear password after use
-            const auto& pin = pin_data.at("pin");
-            const auto& data = pin_data.at("pin_data");
+            const auto& pin = details.at("pin");
+            const auto& data = details.at("pin_data");
             const auto password = get_pin_password(pin, data.at("pin_identifier"));
             const std::string salt = data.at("salt");
             const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt));
@@ -1344,10 +1344,18 @@ namespace sdk {
             const auto plaintext = aes_cbc_decrypt_from_hex(key, data.at("encrypted_data"));
             return nlohmann::json::parse(plaintext.begin(), plaintext.end());
         } catch (const autobahn::call_error& e) {
-            GDK_LOG_SEV(log_level::warning) << "pin login failed:" << e.what();
-            reset_all_session_data(false);
+            GDK_LOG_SEV(log_level::warning) << "pin " << (is_login ? "login " : "") << "failed: " << e.what();
+            if (is_login) {
+                reset_all_session_data(false);
+            }
             throw login_error(res::id_invalid_pin);
         }
+    }
+
+    nlohmann::json ga_session::credentials_from_pin_data(const nlohmann::json& details)
+    {
+        constexpr bool is_login = true;
+        return decrypt_with_pin_impl(details, is_login);
     }
 
     // Idempotent
@@ -3210,6 +3218,13 @@ namespace sdk {
 
         return { { "pin_identifier", id_and_password.front() }, { "salt", salt_b64 },
             { "encrypted_data", aes_cbc_encrypt_to_hex(key, ustring_span(json)) } };
+    }
+
+    // Idempotent
+    nlohmann::json ga_session::decrypt_with_pin(const nlohmann::json& details)
+    {
+        constexpr bool is_login = false;
+        return decrypt_with_pin_impl(details, is_login);
     }
 
     // Idempotent

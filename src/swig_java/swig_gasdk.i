@@ -494,6 +494,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_create_session, GA_session)
 %returns_struct(GA_create_transaction, GA_auth_handler)
 %returns_struct(GA_create_subaccount, GA_auth_handler)
+%returns_struct(GA_decrypt_with_pin, GA_auth_handler)
 %returns_void__(GA_destroy_session)
 %returns_void__(GA_destroy_auth_handler)
 %returns_void__(GA_destroy_json)

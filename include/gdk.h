@@ -470,6 +470,17 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
 GDK_API int GA_encrypt_with_pin(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 
 /**
+ * Decrypt json with server provided key protected by a PIN.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`decrypt-with-pin-details` to decrypt.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is the decrypted json.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_decrypt_with_pin(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Disable all PIN logins previously set.
  *
  * After calling this method, the user will not be able to login with PIN

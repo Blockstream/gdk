@@ -54,6 +54,7 @@ namespace sdk {
         nlohmann::json get_twofactor_config(bool reset_cached = false);
 
         nlohmann::json encrypt_with_pin(const nlohmann::json& details);
+        nlohmann::json decrypt_with_pin(const nlohmann::json& details);
         void disable_all_pin_logins();
 
         nlohmann::json get_unspent_outputs_for_private_key(

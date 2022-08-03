@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added new function GA_decrypt_with_pin
+
 ### Changed
 
 ### Fixed

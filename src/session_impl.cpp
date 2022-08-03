@@ -458,6 +458,12 @@ namespace sdk {
         return std::vector<pub_key_t>({ get_user_pubkeys().derive(subaccount, pointer, is_internal) });
     }
 
+    nlohmann::json session_impl::decrypt_with_pin(const nlohmann::json& /*details*/)
+    {
+        GDK_RUNTIME_ASSERT(false);
+        return nlohmann::json();
+    }
+
     nlohmann::json session_impl::gl_call(const char* /*method*/, const nlohmann::json& /*params*/)
     {
         // Overriden for ga_lightning
