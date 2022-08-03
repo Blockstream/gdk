@@ -215,6 +215,7 @@ pub extern "C" fn GDKRUST_call_session(
         "login",
         "register_user",
         "encrypt_with_pin",
+        "decrypt_with_pin",
         "create_subaccount",
         "credentials_from_pin_data",
     ];

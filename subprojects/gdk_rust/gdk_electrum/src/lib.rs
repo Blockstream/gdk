@@ -284,10 +284,7 @@ impl ElectrumSession {
         Ok(())
     }
 
-    pub fn credentials_from_pin_data(
-        &mut self,
-        details: PinGetDetails,
-    ) -> Result<Credentials, Error> {
+    fn inner_decrypt_with_pin(&mut self, details: PinGetDetails) -> Result<Vec<u8>, Error> {
         let agent = self.build_request_agent()?;
         let manager = PinManager::new(
             agent,
@@ -301,9 +298,21 @@ impl ElectrumSession {
         let decipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
         // If the pin is wrong, pinserver returns a random key and decryption fails, return a
         // specific error to signal the caller to update its pin counter.
-        let decrypted = decipher
+        decipher
             .decrypt_vec(&Vec::<u8>::from_hex(&details.pin_data.encrypted_data)?)
-            .map_err(|_| Error::InvalidPin)?;
+            .map_err(|_| Error::InvalidPin)
+    }
+
+    pub fn decrypt_with_pin(&mut self, details: PinGetDetails) -> Result<Value, Error> {
+        let decrypted = self.inner_decrypt_with_pin(details)?;
+        Ok(serde_json::from_slice(&decrypted[..])?)
+    }
+
+    pub fn credentials_from_pin_data(
+        &mut self,
+        details: PinGetDetails,
+    ) -> Result<Credentials, Error> {
+        let decrypted = self.inner_decrypt_with_pin(details)?;
         if let Ok(credentials) = serde_json::from_slice(&decrypted[..]) {
             Ok(credentials)
         } else {
