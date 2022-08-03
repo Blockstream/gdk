@@ -676,8 +676,7 @@ namespace sdk {
                         // set a temporary blinding key, will be changed later through the resolvers. we need
                         // to have one because all our create_transaction logic relies on being able to blind
                         // the tx for a few things (fee estimation for instance).
-                        const char* pubkey_hex = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
-                        blind_address(net_params, change_address, pubkey_hex);
+                        blind_address(net_params, change_address, FAKE_BLINDING_KEY);
                         change_address["is_blinded"] = false;
                     }
 
