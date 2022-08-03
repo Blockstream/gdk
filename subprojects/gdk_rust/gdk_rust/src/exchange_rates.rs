@@ -39,8 +39,7 @@ pub(crate) fn fetch_cached<S: Session>(
         Ticker::new(pair, 1.1)
     };
 
-    // TODO: avoid cloning once `Pair` is `Copy`
-    sess.cache_ticker(ticker.clone());
+    sess.cache_ticker(ticker);
 
     Ok((ticker, ExchangeRateSource::Fetched))
 }

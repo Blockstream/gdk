@@ -39,8 +39,7 @@ pub trait ExchangeRatesCacher {
     }
 }
 
-// TODO: derive `Copy` once the `Other` variant is removed.
-#[derive(PartialEq, Eq, Debug, Clone, Deserialize, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Deserialize, Hash)]
 #[cfg_attr(test, derive(strum_macros::EnumIter))]
 pub enum Currency {
     BTC,
@@ -49,7 +48,6 @@ pub enum Currency {
     GBP,
     JPY,
     // LBTC,
-    Other(String),
 }
 
 impl Currency {
@@ -87,7 +85,7 @@ impl Currency {
     }
 
     pub fn is_fiat(&self) -> bool {
-        !matches!(self, Self::BTC | Self::Other(_))
+        !matches!(self, Self::BTC)
     }
 
     pub fn iter() -> impl ExactSizeIterator<Item = Self> {
@@ -119,7 +117,7 @@ impl FromStr for Currency {
             "GBP" => Ok(Currency::GBP),
             "JPY" => Ok(Currency::JPY),
             "" => Err("empty ticker".to_string().into()),
-            other => Ok(Currency::Other(other.into())),
+            other => Err(format!("unknown currency {}", other).into()),
         }
     }
 }
@@ -133,14 +131,12 @@ impl fmt::Display for Currency {
             Currency::GBP => "GBP",
             Currency::JPY => "JPY",
             // Currency::LBTC => "LBTC",
-            Currency::Other(ref s) => s,
         };
         write!(f, "{}", s)
     }
 }
 
-// TODO: derive `Copy` once  `Pair` is `Copy`.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct Pair(Currency, Currency);
 
 impl Pair {
@@ -167,7 +163,7 @@ impl fmt::Display for Pair {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Ticker {
     pub pair: Pair,
     pub rate: f64,
