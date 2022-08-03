@@ -1657,6 +1657,8 @@ fn spv_cross_validation_session() {
 
 #[test]
 fn test_spv_timeout() {
+    let _ = env_logger::try_init();
+
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap(); // 0 means the OS choose a free port
     let mut network = NetworkParameters::default();
     let tempdir = TempDir::new().unwrap();
