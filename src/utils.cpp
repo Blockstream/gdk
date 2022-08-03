@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <nlohmann/json.hpp>
 
 #ifdef __x86_64
 #include <x86intrin.h>
@@ -770,6 +771,17 @@ namespace sdk {
     // For use in gdb as
     // printf "%s", gdb_dump_json(<json_variable>).c_str()
     std::string gdb_dump_json(const nlohmann::json& json) { return json.dump(4); }
+
+    bool is_valid_utf8(const std::string& str)
+    {
+        try {
+            // using nlohmann::json::dump() as shortcut for utf-8 validity check
+            (void)nlohmann::json(str).dump();
+            return true;
+        } catch (const std::exception&) {
+        }
+        return false;
+    }
 
 } // namespace sdk
 } // namespace ga

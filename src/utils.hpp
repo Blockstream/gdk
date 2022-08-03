@@ -151,6 +151,9 @@ namespace sdk {
     std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex);
 
     std::string gdb_dump_json(const nlohmann::json& json);
+
+    // Check if str represents a valid utf-8 string
+    bool is_valid_utf8(const std::string& str);
 } // namespace sdk
 } // namespace ga
 

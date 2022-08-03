@@ -70,6 +70,8 @@ namespace sdk {
             // This gdk version does not support encrypted subaccount names
             throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
         }
+        GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(name), "Subaccount name is not a valid utf-8 string");
+
         const std::string subaccount_str(std::to_string(subaccount));
         bool changed = json_add_non_default(m_data[SA_NAMES], subaccount_str, name);
         if (!xpubs.empty() && m_data[WATCHONLY].contains("username")) {

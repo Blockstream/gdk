@@ -228,6 +228,7 @@ namespace sdk {
         static inline void check_tx_memo(const std::string& memo)
         {
             GDK_RUNTIME_ASSERT_MSG(memo.size() <= 1024, "Transaction memo too long");
+            GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(memo), "Transaction memo not a valid utf-8 string");
         }
 
         static nlohmann::json get_spv_params(const network_parameters& net_params, const nlohmann::json& proxy_settings)
