@@ -31,9 +31,8 @@ pub(crate) fn fetch_cached<S: Session>(
     info!("missed exchange rate cache");
 
     let agent = sess.build_request_agent()?;
-    let is_mainnet = true; // TODO: what is this for?
 
-    let ticker = if is_mainnet {
+    let ticker = if sess.is_mainnet() {
         self::fetch(&agent, pair)?
     } else {
         Ticker::new(pair, 1.1)
@@ -126,6 +125,10 @@ mod tests {
 
         fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
             Ok(ureq::agent())
+        }
+
+        fn is_mainnet(&self) -> bool {
+            true
         }
     }
 

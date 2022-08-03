@@ -25,6 +25,10 @@ pub trait Session: Sized + ExchangeRatesCacher {
     fn set_native_notification(&mut self, native_type: NativeType) {
         self.native_notification().set_native(native_type)
     }
+
+    fn is_mainnet(&self) -> bool {
+        self.network_parameters().mainnet
+    }
 }
 
 #[derive(serde::Serialize, Debug)]
