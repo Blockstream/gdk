@@ -6,8 +6,6 @@ use gdk_common::session::Session;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-const XR_API_KEY: &str = "";
-
 /// Whether an exchange rate returned by `fetch_cached` came from a previously
 /// cached value of from a network request.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -43,23 +41,22 @@ pub(crate) fn fetch_cached<S: Session>(
     Ok((ticker, ExchangeRateSource::Fetched))
 }
 
-pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair) -> Result<Ticker, Error> {
-    let (endpoint, price_field) = Currency::endpoint(pair.first(), pair.second());
-    log::info!("fetching {} price data from {}", pair, endpoint);
-
+pub(crate) fn fetch(agent: &ureq::Agent, _pair: Pair) -> Result<Ticker, Error> {
     agent
-        .get(&endpoint)
-        .set("X-API-Key", XR_API_KEY)
+        .get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD")
         .call()?
-        .into_json::<serde_json::Map<String, Value>>()?
-        .get(price_field)
-        .expect(&format!("`{}` field is always set", price_field))
-        .as_str()
-        .and_then(|str| str.parse::<f64>().ok())
+        .into_json::<Vec<Vec<serde_json::Value>>>()?
+        .into_iter()
+        .flatten()
+        // using BIDPRICE https://docs.bitfinex.com/reference#rest-public-tickers
+        .nth(1)
+        .expect("the bid price is the 2nd element of the returned JSON array")
+        .as_f64()
         .ok_or(Error::ExchangeRateBadResponse {
-            expected: "string representing a price",
+            expected: "number representing a price",
         })
         .map(|rate| {
+            let pair = Pair::new(Currency::BTC, Currency::USD);
             let ticker = Ticker::new(pair, rate);
             info!("got exchange rate {:?}", ticker);
             ticker
