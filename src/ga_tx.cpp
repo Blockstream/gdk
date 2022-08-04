@@ -82,7 +82,7 @@ namespace sdk {
             }
         }
 
-        static bool has_utxo(const wally_tx_ptr& tx, nlohmann::json& utxo)
+        static bool has_utxo(const wally_tx_ptr& tx, const nlohmann::json& utxo)
         {
             const auto txhash = h2b_rev(utxo.at("txhash"));
             const std::string txhash_hex = utxo.at("txhash");
