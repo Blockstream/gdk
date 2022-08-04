@@ -5,7 +5,7 @@ function compile_flags() {
     echo "`python -c "import sys; print('<compile_flags>'.join([''] + map(lambda x: x + '\n', sys.argv[1:])))" $@`"
 }
 
-BOOST_NAME="boost_1_76_0"
+BOOST_NAME="$(basename ${MESON_SUBDIR})"
 
 if [ "x${NUM_JOBS}" = "x" ]; then
     NUM_JOBS=4

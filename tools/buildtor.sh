@@ -3,7 +3,7 @@ set -e
 
 trap "cat config.log" ERR
 
-TOR_NAME="tor-tor-0.4.2.7"
+TOR_NAME="$(basename ${MESON_SUBDIR})"
 
 if [ ! -d "${MESON_BUILD_ROOT}/tor" ]; then
     cp -r "${MESON_SOURCE_ROOT}/subprojects/${TOR_NAME}" "${MESON_BUILD_ROOT}/tor"

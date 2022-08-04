@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-LIBEVENT_NAME="libevent-release-2.1.11-stable"
+LIBEVENT_NAME="$(basename ${MESON_SUBDIR})"
 
 if [ ! -d "${MESON_BUILD_ROOT}/libevent" ]; then
     cp -r "${MESON_SOURCE_ROOT}/subprojects/${LIBEVENT_NAME}" "${MESON_BUILD_ROOT}/libevent"

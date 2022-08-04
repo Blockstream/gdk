@@ -168,8 +168,10 @@ test_rust:
     - git clone https://github.com/ElementsProject/libwally-core
     - cd libwally-core && git checkout 88fc78ff72a4f3345fcb87d1c19dc5f6cc5b0e4c && ./tools/autogen.sh && ./configure --enable-debug --prefix=$PWD/build --enable-static --disable-shared --enable-elements --enable-ecmult-static-precomputation && make && make install && cd ..
     - export WALLY_DIR=$PWD/libwally-core/build/lib/
-    - curl -L https://github.com/openssl/openssl/archive/OpenSSL_1_1_1n.tar.gz | tar -xvz -C ${PWD}/subprojects
-    - MESON_SOURCE_ROOT=${PWD} MESON_BUILD_ROOT=${PWD} ${PWD}/tools/buildopenssl.sh
+    - export OPENSSL_URL=$(grep ^source_url subprojects/openssl.wrap | sed -e 's/^.*= //')
+    - curl -L ${OPENSSL_URL} | tar -xvz -C ${PWD}/subprojects
+    - export OPENSSL_SRC_DIR=$(grep ^directory subprojects/openssl.wrap | sed -e 's/^.*= //')
+    - MESON_SOURCE_ROOT=${PWD} MESON_BUILD_ROOT=${PWD} MESON_SUBDIR=subprojects/${OPENSSL_SRC_DIR} ${PWD}/tools/buildopenssl.sh
     - export OPENSSL_DIR=${PWD}/openssl/build OPENSSL_STATIC=1
     - curl -L https://github.com/RCasatta/electrsd/releases/download/electrs_releases/electrs_linux_esplora_703c6a20d52b61a234a18812503bd754d448992a.gz | tar -xvz
     - echo "6c62b280db4455a0bee1c60dcb7bb18f741313deb8aafdb7bad1bc2a3f4ff0b8  electrs" | sha256sum --check
