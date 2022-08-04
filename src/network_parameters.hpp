@@ -53,8 +53,6 @@ namespace sdk {
         unsigned char btc_version() const;
         unsigned char btc_p2sh_version() const;
         uint32_t blinded_prefix() const;
-        int ct_exponent() const;
-        int ct_bits() const;
         bool is_main_net() const;
         bool is_liquid() const;
         bool is_development() const;

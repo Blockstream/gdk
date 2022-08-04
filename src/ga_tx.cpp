@@ -1285,8 +1285,10 @@ namespace sdk {
         const auto eph_keypair_sec = h2b(output.at("eph_keypair_sec"));
         const auto eph_keypair_pub = h2b(output.at("eph_keypair_pub"));
 
+        constexpr int ct_exponent = 0;
+        constexpr int ct_bits = 52;
         const auto rangeproof = asset_rangeproof(value, pub_key, eph_keypair_sec, asset_id, abf, vbf, value_commitment,
-            script, generator, 1, std::min(std::max(net_params.ct_exponent(), -1), 18), net_params.ct_bits());
+            script, generator, 1, ct_exponent, ct_bits);
 
         std::vector<unsigned char> surjectionproof;
         if (!is_partial) {

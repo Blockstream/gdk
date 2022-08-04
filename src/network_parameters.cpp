@@ -209,8 +209,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "blech32_prefix", "lq" },
             { "blinded_prefix", 12u },
             { "csv_buckets", std::vector<uint32_t>{ 65535 } },
-            { "ct_bits", 52 },
-            { "ct_exponent", 0 },
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:995" },
@@ -251,8 +249,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
             { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
-            { "ct_bits", 52 },
-            { "ct_exponent", 0 },
             { "development", true },
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
@@ -293,8 +289,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "blech32_prefix", "tlq" },
             { "blinded_prefix", 23u },
             { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
-            { "ct_bits", 52 },
-            { "ct_exponent", 0 },
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:465" },
@@ -405,8 +399,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "blech32_prefix", "lq" },
             { "blinded_prefix", 12u },
             { "csv_buckets", std::vector<uint32_t>() },
-            { "ct_bits", 52 },
-            { "ct_exponent", 0 },
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:995" },
@@ -447,8 +439,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
             { "csv_buckets", std::vector<uint32_t>() },
-            { "ct_bits", 52 },
-            { "ct_exponent", 0 },
             { "development", true },
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
@@ -594,8 +584,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "blech32_prefix", "tlq" },
             { "blinded_prefix", 23u },
             { "csv_buckets", std::vector<uint32_t>() },
-            { "ct_bits", 52 },
-            { "ct_exponent", 0 },
             { "development", false },
             { "electrum_tls", true },
             { "electrum_url", "blockstream.info:465" },
@@ -865,8 +853,6 @@ namespace sdk {
     unsigned char network_parameters::btc_version() const { return m_details.at("p2pkh_version"); }
     unsigned char network_parameters::btc_p2sh_version() const { return m_details.at("p2sh_version"); }
     uint32_t network_parameters::blinded_prefix() const { return m_details.at("blinded_prefix"); }
-    int network_parameters::ct_exponent() const { return m_details.at("ct_exponent"); }
-    int network_parameters::ct_bits() const { return m_details.at("ct_bits"); }
     bool network_parameters::is_main_net() const { return m_details.at("mainnet"); }
     bool network_parameters::is_liquid() const { return m_details.value("liquid", false); }
     bool network_parameters::is_development() const { return m_details.at("development"); }
