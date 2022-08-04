@@ -133,18 +133,18 @@ mod tests {
     fn test_fetch_exchange_rates() {
         let mut session = TestSession::default();
 
-        for currency in Currency::iter().filter(Currency::is_fiat) {
-            let params = ConvertAmountParams {
-                currency,
-            };
+        // TODO: loop over all currencies once we use the new blockstream API.
 
-            let res = fetch_cached(&mut session, params.clone());
-            assert!(res.is_ok(), "{:?}", res);
-            assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
+        let params = ConvertAmountParams {
+            currency: Currency::USD,
+        };
 
-            let res = fetch_cached(&mut session, params);
-            assert!(res.is_ok(), "{:?}", res);
-            assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
-        }
+        let res = fetch_cached(&mut session, params.clone());
+        assert!(res.is_ok(), "{:?}", res);
+        assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
+
+        let res = fetch_cached(&mut session, params);
+        assert!(res.is_ok(), "{:?}", res);
+        assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
     }
 }
