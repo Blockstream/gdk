@@ -147,6 +147,7 @@ impl Account {
             required_ca: 0,
             receiving_id: "".to_string(),
             bip44_discovered: self.has_transactions()?,
+            user_path: self.path.clone().into(),
         })
     }
 

@@ -575,6 +575,7 @@ pub struct AccountInfo {
     pub required_ca: u32,     // unused, always 0
     pub receiving_id: String, // unused, always ""
     pub bip44_discovered: bool,
+    pub user_path: Vec<ChildNumber>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

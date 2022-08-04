@@ -636,12 +636,11 @@ fn subaccounts_liquid() {
 fn subaccounts(is_liquid: bool) {
     let mut test_session = TestSession::new(is_liquid, |_| ());
 
-    let account0 = test_session.session.get_subaccount(0);
-    assert!(account0.is_ok());
+    let account0 = test_session.session.get_subaccount(0).unwrap();
     let n_txs =
         test_session.session.get_transactions(&GetTransactionsOpt::default()).unwrap().0.len();
     assert_eq!(n_txs, 0);
-    assert_eq!(account0.unwrap().bip44_discovered, false);
+    assert_eq!(account0.bip44_discovered, false);
     assert!(test_session.session.get_subaccount(1).is_err());
 
     // Create subaccounts
@@ -827,6 +826,12 @@ fn subaccounts(is_liquid: bool) {
     test_session.wait_tx(vec![0, 34], &txid, Some(sat + fee), Some(TransactionType::Outgoing));
     *balances.entry(34).or_insert(0) += sat;
     *balances.entry(0).or_insert(0) -= sat + fee;
+
+    assert_eq!(s(account0.user_path), "m/49'/1'/0'");
+    assert_eq!(s(account1.user_path), "m/84'/1'/0'");
+    assert_eq!(s(account2.user_path), "m/44'/1'/0'");
+    assert_eq!(s(account3.user_path), "m/44'/1'/1'");
+    assert_eq!(s(account4.user_path), "m/44'/1'/2'");
 
     // Test get_next_subaccount
     let next_p2pkh = test_session
