@@ -36,9 +36,7 @@ namespace sdk {
 
     const uint32_t NO_CHANGE_INDEX = 0xffffffff;
 
-    // Fake blinding key, its corresponding private key is 1
-    // TODO: refactor blinding to not use this constant
-    static const std::string FAKE_BLINDING_KEY("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+    extern const std::string FAKE_BLINDING_KEY;
 
     bool is_segwit_address_type(const nlohmann::json& utxo);
 
