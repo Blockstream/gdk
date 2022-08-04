@@ -151,8 +151,6 @@ pub fn setup(
     network.electrum_url = Some(electrs.electrum_url.clone());
     network.sync_interval = Some(1);
     network.development = true;
-    network.ct_bits = Some(52);
-    network.ct_exponent = Some(0);
     network.spv_enabled = Some(true);
     network.set_asset_registry_url("https://assets.blockstream.info".to_string());
     if is_liquid {
