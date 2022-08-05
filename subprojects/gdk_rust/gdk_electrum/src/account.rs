@@ -143,6 +143,24 @@ impl Account {
         format!("{}({}/{}/*){}", prefix, self.xpub, internal_idx, suffix)
     }
 
+    fn slip132_extended_pubkey(&self) -> Option<String> {
+        if self.network.liquid {
+            None
+        } else {
+            let mut xpub_bytes = self.xpub.encode();
+            let slip132_version = match (self.network.mainnet, self.script_type) {
+                (true, ScriptType::P2pkh) => [0x04, 0x88, 0xb2, 0x1e], // xpub
+                (true, ScriptType::P2shP2wpkh) => [0x04, 0x9d, 0x7c, 0xb2], // ypub
+                (true, ScriptType::P2wpkh) => [0x04, 0xb2, 0x47, 0x46], // zpub
+                (false, ScriptType::P2pkh) => [0x04, 0x35, 0x87, 0xcf], // tpub
+                (false, ScriptType::P2shP2wpkh) => [0x04, 0x4a, 0x52, 0x62], // upub
+                (false, ScriptType::P2wpkh) => [0x04, 0x5f, 0x1c, 0xf6], // vpub
+            };
+            xpub_bytes[0..4].copy_from_slice(&slip132_version[0..4]);
+            Some(bitcoin::util::base58::check_encode_slice(&xpub_bytes))
+        }
+    }
+
     /// Get the full path from the master key to address index
     ///
     /// //  <                        full path                       >
@@ -165,6 +183,7 @@ impl Account {
             bip44_discovered: self.has_transactions()?,
             user_path: self.path.clone().into(),
             core_descriptors: vec![self.descriptor(false), self.descriptor(true)],
+            slip132_extended_pubkey: self.slip132_extended_pubkey(),
         })
     }
 

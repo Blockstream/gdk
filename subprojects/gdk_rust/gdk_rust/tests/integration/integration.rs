@@ -833,6 +833,14 @@ fn subaccounts(is_liquid: bool) {
     assert_eq!(s(account3.user_path), "m/44'/1'/1'");
     assert_eq!(s(account4.user_path), "m/44'/1'/2'");
 
+    if !is_liquid {
+        assert!(account0.slip132_extended_pubkey.unwrap().starts_with("upub"));
+        assert!(account1.slip132_extended_pubkey.unwrap().starts_with("vpub"));
+        assert!(account2.slip132_extended_pubkey.unwrap().starts_with("tpub"));
+        assert!(account3.slip132_extended_pubkey.unwrap().starts_with("tpub"));
+        assert!(account4.slip132_extended_pubkey.unwrap().starts_with("tpub"));
+    }
+
     for subaccount in test_session.session.get_subaccounts().unwrap() {
         test_session.check_address_from_descriptor(subaccount.account_num);
     }

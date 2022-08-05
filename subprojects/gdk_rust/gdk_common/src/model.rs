@@ -577,6 +577,8 @@ pub struct AccountInfo {
     pub bip44_discovered: bool,
     pub user_path: Vec<ChildNumber>,
     pub core_descriptors: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slip132_extended_pubkey: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
