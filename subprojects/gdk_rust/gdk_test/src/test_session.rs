@@ -1023,6 +1023,44 @@ impl TestSession {
         store.cache.cross_validation_result.clone()
     }
 
+    // Get a receive address and check that it matches the one derived from the descriptor
+    pub fn check_address_from_descriptor(&self, subaccount: u32) {
+        let account = self.session.get_subaccount(subaccount).unwrap();
+        for (i, descriptor) in account.core_descriptors.iter().enumerate() {
+            // Validate the descriptor and add the checksum
+            let ret = self
+                .node
+                .client
+                .call::<Value>("getdescriptorinfo", &[descriptor.clone().into()])
+                .unwrap();
+            let descriptor_checksum = ret.get("descriptor").unwrap().as_str().unwrap();
+
+            // Get receive address
+            let addr_opt = GetAddressOpt {
+                subaccount,
+                address_type: None,
+                is_internal: Some(i == 1),
+            };
+            let ap = self.session.get_receive_address(&addr_opt).unwrap();
+
+            let address = if self.network.liquid {
+                utils::to_unconfidential(&ap.address)
+            } else {
+                ap.address
+            };
+
+            // Derive the address
+            let ret = self
+                .node
+                .client
+                .call::<Value>("deriveaddresses", &[descriptor_checksum.into(), ap.pointer.into()])
+                .unwrap();
+            let derived_address = ret.get(ap.pointer as usize).unwrap().as_str().unwrap();
+
+            assert_eq!(address, derived_address);
+        }
+    }
+
     /// wait for the spv cross validation status to change
     pub fn wait_spv_cross_validation_change(&self, wait_for: bool) -> spv::CrossValidationResult {
         for _ in 0..60 {

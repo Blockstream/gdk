@@ -127,6 +127,22 @@ impl Account {
         self.account_num
     }
 
+    fn descriptor(&self, is_internal: bool) -> String {
+        let internal_idx = if is_internal {
+            1
+        } else {
+            0
+        };
+        let (prefix, suffix) = match self.script_type {
+            ScriptType::P2shP2wpkh => ("sh(wpkh", ")"),
+            ScriptType::P2wpkh => ("wpkh", ""),
+            ScriptType::P2pkh => ("pkh", ""),
+        };
+        // TODO: add key origin identification
+        // TODO: add checksum
+        format!("{}({}/{}/*){}", prefix, self.xpub, internal_idx, suffix)
+    }
+
     /// Get the full path from the master key to address index
     ///
     /// //  <                        full path                       >
@@ -148,6 +164,7 @@ impl Account {
             receiving_id: "".to_string(),
             bip44_discovered: self.has_transactions()?,
             user_path: self.path.clone().into(),
+            core_descriptors: vec![self.descriptor(false), self.descriptor(true)],
         })
     }
 

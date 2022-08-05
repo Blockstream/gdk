@@ -833,6 +833,10 @@ fn subaccounts(is_liquid: bool) {
     assert_eq!(s(account3.user_path), "m/44'/1'/1'");
     assert_eq!(s(account4.user_path), "m/44'/1'/2'");
 
+    for subaccount in test_session.session.get_subaccounts().unwrap() {
+        test_session.check_address_from_descriptor(subaccount.account_num);
+    }
+
     // Test get_next_subaccount
     let next_p2pkh = test_session
         .session

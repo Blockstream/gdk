@@ -576,6 +576,7 @@ pub struct AccountInfo {
     pub receiving_id: String, // unused, always ""
     pub bip44_discovered: bool,
     pub user_path: Vec<ChildNumber>,
+    pub core_descriptors: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
