@@ -661,11 +661,10 @@ namespace sdk {
                     }
                 }
 
-                if (is_liquid && !is_fee && !output.contains("eph_keypair_sec")
+                if (is_liquid && !is_fee && !output.contains("eph_private_key")
                     && !output.contains("nonce_commitment")) {
                     auto ephemeral_keypair = get_ephemeral_keypair();
-                    output["eph_keypair_sec"] = b2h(ephemeral_keypair.first);
-                    output["eph_keypair_pub"] = b2h(ephemeral_keypair.second);
+                    output["eph_private_key"] = b2h(ephemeral_keypair.first);
                 }
 
                 outputs.emplace_back(output);

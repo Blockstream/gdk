@@ -1256,8 +1256,8 @@ namespace sdk {
 
             if (authorized_assets) {
                 const auto blinding_pubkey = h2b(output.at("blinding_key"));
-                const auto eph_keypair_sec = h2b(output.at("eph_keypair_sec"));
-                const auto blinding_nonce = sha256(ecdh(blinding_pubkey, eph_keypair_sec));
+                const auto eph_private_key = h2b(output.at("eph_private_key"));
+                const auto blinding_nonce = sha256(ecdh(blinding_pubkey, eph_private_key));
                 blinding_nonces.emplace_back(b2h(blinding_nonce));
             }
 
@@ -1311,7 +1311,7 @@ namespace sdk {
         const uint64_t value = output.at("satoshi");
 
         const auto& o = tx->outputs[index];
-        std::vector<unsigned char> eph_keypair_pub;
+        std::vector<unsigned char> eph_public_key;
         std::vector<unsigned char> rangeproof;
 
         bool have_matched_commitments = false;
@@ -1323,16 +1323,16 @@ namespace sdk {
         }
         if (have_matched_commitments) {
             // Rangeproof already created for the same commitments
-            eph_keypair_pub.assign(o.nonce, o.nonce + o.nonce_len);
+            eph_public_key.assign(o.nonce, o.nonce + o.nonce_len);
             rangeproof.assign(o.rangeproof, o.rangeproof + o.rangeproof_len);
         } else {
             const auto blinding_pubkey = h2b(output.at("blinding_key"));
-            const auto eph_keypair_sec = h2b(output.at("eph_keypair_sec"));
-            eph_keypair_pub = h2b(output.at("eph_keypair_pub"));
+            const auto eph_private_key = h2b(output.at("eph_private_key"));
+            eph_public_key = ec_public_key_from_private_key(eph_private_key);
 
             constexpr int ct_exponent = 0;
             constexpr int ct_bits = 52;
-            rangeproof = asset_rangeproof(value, blinding_pubkey, eph_keypair_sec, asset_id, abf, vbf, value_commitment,
+            rangeproof = asset_rangeproof(value, blinding_pubkey, eph_private_key, asset_id, abf, vbf, value_commitment,
                 script, generator, 1, ct_exponent, ct_bits);
         }
 
@@ -1343,7 +1343,7 @@ namespace sdk {
         }
 
         tx_elements_output_commitment_set(
-            tx, index, generator, value_commitment, eph_keypair_pub, surjectionproof, rangeproof);
+            tx, index, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
     }
 
     nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout)
