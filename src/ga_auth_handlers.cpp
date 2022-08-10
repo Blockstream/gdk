@@ -839,7 +839,6 @@ namespace sdk {
 
     auth_handler::state_type psbt_get_details_call::call_impl()
     {
-        GDK_RUNTIME_ASSERT(!m_net_params.is_electrum());
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
         // TODO: replace the following line with a user error once we have the string res.
         GDK_RUNTIME_ASSERT(get_signer()->has_master_blinding_key());

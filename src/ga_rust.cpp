@@ -460,6 +460,11 @@ namespace sdk {
         throw std::runtime_error("service_sign_transaction not implemented");
     }
 
+    nlohmann::json ga_rust::psbt_get_details(const nlohmann::json& details)
+    {
+        return rust_call("psbt_get_details", details, m_session);
+    }
+
     nlohmann::json ga_rust::psbt_sign(const nlohmann::json& details)
     {
         throw std::runtime_error("psbt_sign not implemented");

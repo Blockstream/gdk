@@ -922,6 +922,20 @@ impl ElectrumSession {
         self.get_account(tx_req.subaccount)?.create_tx(tx_req)
     }
 
+    pub fn psbt_get_details(
+        &mut self,
+        params: PsbtGetDetailsParams,
+    ) -> Result<PsbtGetDetailsResult, Error> {
+        if !self.network.liquid {
+            return Err(Error::Generic(
+                "`ElectrumSession::psbt_get_details` is currently only supported for Liquid"
+                    .to_owned(),
+            ));
+        }
+
+        todo!()
+    }
+
     pub fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
         info!("electrum sign_transaction {:?}", create_tx);
         let account_num = create_tx

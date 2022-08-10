@@ -316,11 +316,7 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    nlohmann::json session_impl::psbt_get_details(const nlohmann::json& /*details*/)
-    {
-        // Overriden for multisig
-        return nlohmann::json();
-    }
+    nlohmann::json session_impl::psbt_get_details(const nlohmann::json& /*details*/) { return nlohmann::json(); }
 
     void session_impl::save_cache()
     {

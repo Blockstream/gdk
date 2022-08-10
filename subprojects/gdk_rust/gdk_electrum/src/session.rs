@@ -119,6 +119,7 @@ impl Session for ElectrumSession {
             "get_balance" => self.get_balance(&serde_json::from_value(input)?).to_json(),
             "set_transaction_memo" => set_transaction_memo(self, &input),
             "create_transaction" => create_transaction(self, input).map_err(Into::into),
+            "psbt_get_details" => self.psbt_get_details(serde_json::from_value(input)?).to_json(),
             "sign_transaction" => self.sign_transaction(&serde_json::from_value(input)?).to_json(),
             "send_transaction" => self.send_transaction(&serde_json::from_value(input)?).to_json(),
             "broadcast_transaction" => self
