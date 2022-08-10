@@ -27,10 +27,10 @@ android_logger = "0.8.6"
 
 [dev-dependencies]
 tempfile = "3.2.0"
-electrum-client = { version = "=0.10.0", default-features = false, features = [ "proxy", "use-openssl" ] }
+electrum-client = { version = "=0.11.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 bitcoin = { version = "0.28", features = [ "use-serde" ] }
 elements = { version = "0.19", features = ["serde-feature"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
-electrsd = { version = "0.19", features = [ "legacy" ] }
+electrsd = { version = "0.20", features = [ "legacy" ] }
 ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
 env_logger = "0.9.0"
