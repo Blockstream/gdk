@@ -40,6 +40,8 @@ use gdk_common::wally::{
 use gdk_common::{be::*, State};
 
 use elements::confidential::{self, Asset, Nonce};
+use elements::encode;
+use elements::pset::PartiallySignedTransaction;
 use gdk_common::exchange_rates::ExchangeRatesCache;
 use gdk_common::network;
 use gdk_common::NetworkId;
@@ -932,6 +934,30 @@ impl ElectrumSession {
                     .to_owned(),
             ));
         }
+
+        let pset = {
+            let pset_bytes = base64::decode(&params.psbt)?;
+            encode::deserialize::<PartiallySignedTransaction>(&pset_bytes)?
+        };
+
+        let inputs = pset
+            .inputs()
+            .iter()
+            .filter_map(|input| {
+                params
+                    .utxos
+                    .iter()
+                    .find(|utxo| {
+                        utxo.txhash == input.previous_txid.to_string()
+                            && utxo.pt_idx == input.previous_output_index
+                    })
+                    .cloned()
+            })
+            .map(|utxo| match utxo.asset_id {
+                Some(_) => Ok(utxo),
+                None => Err(Error::Generic("`asset_id` field not present".into())),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         todo!()
     }

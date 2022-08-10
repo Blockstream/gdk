@@ -659,6 +659,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "aes-gcm-siv",
+ "base64",
  "bitcoin",
  "block-modes",
  "electrum-client",
@@ -705,6 +706,7 @@ name = "gdk-rust"
 version = "0.1.0"
 dependencies = [
  "android_logger",
+ "base64",
  "bitcoin",
  "electrsd",
  "electrum-client",

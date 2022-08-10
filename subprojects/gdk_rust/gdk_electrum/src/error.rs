@@ -19,6 +19,9 @@ pub enum Error {
     AssetEmpty,
 
     #[error(transparent)]
+    Base64DecodeError(#[from] base64::DecodeError),
+
+    #[error(transparent)]
     Bitcoin(#[from] bitcoin::util::Error),
 
     #[error(transparent)]
