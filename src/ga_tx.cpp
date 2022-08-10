@@ -1255,10 +1255,7 @@ namespace sdk {
             blind_output(session, details, tx, i, output, generator, value_commitment, output_abfs[i], output_vbfs[i]);
 
             if (authorized_assets) {
-                const auto blinding_pubkey = h2b(output.at("blinding_key"));
-                const auto eph_private_key = h2b(output.at("eph_private_key"));
-                const auto blinding_nonce = sha256(ecdh(blinding_pubkey, eph_private_key));
-                blinding_nonces.emplace_back(b2h(blinding_nonce));
+                blinding_nonces.emplace_back(output.at("blinding_nonce"));
             }
 
             ++i;

@@ -667,6 +667,19 @@ namespace sdk {
                     output["eph_private_key"] = b2h(ephemeral_keypair.first);
                 }
 
+                if (result.at("subaccount_type") == "2of2_no_recovery") {
+                    // authorized assets
+                    if (is_fee) {
+                        // Nothing to do
+                    } else if (is_blinded) {
+                        output["blinding_nonce"] = addressee.at("blinding_nonce");
+                    } else {
+                        const auto blinding_pubkey = h2b(output.at("blinding_key"));
+                        const auto eph_private_key = h2b(output.at("eph_private_key"));
+                        output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_private_key)));
+                    }
+                }
+
                 outputs.emplace_back(output);
             }
         }
