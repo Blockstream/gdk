@@ -1933,8 +1933,8 @@ namespace sdk {
             utxo["satoshi"] = value;
             utxo["assetblinder"] = ZEROS;
             utxo["amountblinder"] = ZEROS;
-            const auto asset_tag = h2b(utxo.value("asset_tag", m_net_params.policy_asset()));
-            GDK_RUNTIME_ASSERT(asset_tag[0] == 0x1);
+            const auto asset_tag = h2b(utxo.at("asset_tag"));
+            GDK_RUNTIME_ASSERT(asset_tag.at(0) == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag).subspan(1));
             utxo["confidential"] = false;
             return false; // Cache not updated
