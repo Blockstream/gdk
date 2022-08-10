@@ -41,6 +41,7 @@ use gdk_common::{be::*, State};
 
 use elements::confidential::{self, Asset, Nonce};
 use gdk_common::exchange_rates::ExchangeRatesCache;
+use gdk_common::network;
 use gdk_common::NetworkId;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -211,13 +212,7 @@ impl ElectrumSession {
     }
 
     pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
-        match &self.proxy {
-            Some(proxy) if !proxy.is_empty() => {
-                let proxy = ureq::Proxy::new(&proxy)?;
-                Ok(ureq::AgentBuilder::new().proxy(proxy).build())
-            }
-            _ => Ok(ureq::agent()),
-        }
+        network::build_request_agent(self.proxy.as_deref()).map_err(Into::into)
     }
 
     pub fn poll_session(&self) -> Result<(), Error> {

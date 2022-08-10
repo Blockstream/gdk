@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::assets_or_icons::AssetsOrIcons;
 use crate::Result;
+use gdk_common::network;
 
 const BASE_URL: &str = "http://assets.blockstream.info";
 
@@ -38,14 +39,7 @@ pub struct RefreshAssetsParams {
 
 impl RefreshAssetsParams {
     pub(crate) fn agent(&self) -> Result<ureq::Agent> {
-        match &self.config.proxy {
-            Some(proxy) if !proxy.is_empty() => {
-                let proxy = ureq::Proxy::new(&proxy)?;
-                Ok(ureq::AgentBuilder::new().proxy(proxy).build())
-            }
-
-            _ => Ok(ureq::agent()),
-        }
+        network::build_request_agent(self.config.proxy.as_deref()).map_err(Into::into)
     }
 
     pub(crate) const fn network(&self) -> ElementsNetwork {

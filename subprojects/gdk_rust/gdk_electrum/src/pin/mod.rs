@@ -231,6 +231,7 @@ mod test {
     use bitcoin::hashes::Hmac;
     use bitcoin::secp256k1::SecretKey;
     use bitcoin::PublicKey;
+    use gdk_common::network;
 
     const PINSERVER_URL: &'static str = "https://jadepin.blockstream.com";
     const PINSERVER_ONION_URL: &'static str =
@@ -254,13 +255,7 @@ mod test {
     }
 
     pub fn test_with_pin_server(url: &str, proxy: Option<&str>) {
-        let agent = match proxy {
-            Some(proxy) => {
-                let proxy = ureq::Proxy::new(&proxy).unwrap();
-                ureq::AgentBuilder::new().proxy(proxy).build()
-            }
-            None => ureq::agent(),
-        };
+        let agent = network::build_request_agent(proxy).unwrap();
 
         // requires internet connection and pin server working
         let mut rng = rand::thread_rng();

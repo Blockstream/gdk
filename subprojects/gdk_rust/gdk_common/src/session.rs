@@ -1,3 +1,4 @@
+use crate::network;
 use serde_json::Value;
 
 use crate::{
@@ -13,13 +14,7 @@ pub trait Session: Sized + ExchangeRatesCacher {
     fn network_parameters(&self) -> &NetworkParameters;
 
     fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
-        match &self.network_parameters().proxy {
-            Some(proxy) if !proxy.is_empty() => {
-                let proxy = ureq::Proxy::new(&proxy)?;
-                Ok(ureq::AgentBuilder::new().proxy(proxy).build())
-            }
-            _ => Ok(ureq::agent()),
-        }
+        network::build_request_agent(self.network_parameters().proxy.as_deref())
     }
 
     fn set_native_notification(&mut self, native_type: NativeType) {

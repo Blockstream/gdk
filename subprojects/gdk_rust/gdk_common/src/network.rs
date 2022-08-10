@@ -1,9 +1,14 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use crate::error::Error;
 use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
 use bitcoin::{hashes::hex::ToHex, PublicKey};
 use serde::{Deserialize, Serialize};
+
+/// The default time duration that a network request is allowed to take before
+/// timing out. Used in [`build_request_agent`].
+pub const NETWORK_REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct NetworkParameters {
@@ -178,6 +183,21 @@ impl NetworkParameters {
             bitcoin::network::constants::Network::Testnet
         }
     }
+}
+
+/// Creates a new [`ureq::Agent`] from an optional proxy string, using
+/// [`NETWORK_REQUEST_TIMEOUT`] as timeout.
+pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ureq::Error> {
+    let mut builder = ureq::AgentBuilder::new().timeout(NETWORK_REQUEST_TIMEOUT);
+
+    if let Some(proxy) = maybe_proxy {
+        if !proxy.is_empty() {
+            let proxy = ureq::Proxy::new(proxy)?;
+            builder = builder.proxy(proxy);
+        }
+    }
+
+    Ok(builder.build())
 }
 
 #[cfg(test)]
