@@ -1482,7 +1482,12 @@ impl Syncer {
                                 vout,
                             };
 
-                            match self.try_unblind(outpoint, output.clone()) {
+                            let unblinded = unblind_output(
+                                output.clone(),
+                                self.master_blinding.as_ref().unwrap(),
+                                Some(outpoint),
+                            );
+                            match unblinded {
                                 Ok(unblinded) => unblinds.push((outpoint, unblinded)),
                                 Err(_) => info!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint),
                             }
@@ -1518,42 +1523,36 @@ impl Syncer {
             Ok(DownloadTxResult::default())
         }
     }
+}
 
-    pub fn try_unblind(
-        &self,
-        outpoint: elements::OutPoint,
-        output: elements::TxOut,
-    ) -> Result<elements::TxOutSecrets, Error> {
-        match (output.asset, output.value, output.nonce) {
-            (
-                Asset::Confidential(_),
-                confidential::Value::Confidential(_),
-                Nonce::Confidential(_),
-            ) => {
-                let master_blinding = self.master_blinding.as_ref().unwrap();
+fn unblind_output(
+    output: elements::TxOut,
+    master_blinding: &MasterBlindingKey,
+    outpoint: Option<elements::OutPoint>,
+) -> Result<elements::TxOutSecrets, Error> {
+    match (output.asset, output.value, output.nonce) {
+        (Asset::Confidential(_), confidential::Value::Confidential(_), Nonce::Confidential(_)) => {
+            let script = output.script_pubkey.clone();
+            let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
+            let txout_secrets = output.unblind(&EC, blinding_key)?;
+            info!(
+                "Unblinded outpoint:{} asset:{} value:{}",
+                outpoint.map(|out| out.to_string()).unwrap_or_default(),
+                txout_secrets.asset.to_hex(),
+                txout_secrets.value
+            );
 
-                let script = output.script_pubkey.clone();
-                let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
-                let txout_secrets = output.unblind(&EC, blinding_key)?;
-                info!(
-                    "Unblinded outpoint:{} asset:{} value:{}",
-                    outpoint,
-                    txout_secrets.asset.to_hex(),
-                    txout_secrets.value
-                );
-
-                Ok(txout_secrets)
-            }
-            (Asset::Explicit(asset_id), confidential::Value::Explicit(satoshi), _) => {
-                Ok(elements::TxOutSecrets {
-                    asset: asset_id,
-                    value: satoshi,
-                    asset_bf: elements::confidential::AssetBlindingFactor::zero(),
-                    value_bf: elements::confidential::ValueBlindingFactor::zero(),
-                })
-            }
-            _ => Err(Error::Generic("Unexpected asset/value/nonce".into())),
+            Ok(txout_secrets)
         }
+        (Asset::Explicit(asset_id), confidential::Value::Explicit(satoshi), _) => {
+            Ok(elements::TxOutSecrets {
+                asset: asset_id,
+                value: satoshi,
+                asset_bf: elements::confidential::AssetBlindingFactor::zero(),
+                value_bf: elements::confidential::ValueBlindingFactor::zero(),
+            })
+        }
+        _ => Err(Error::Generic("Unexpected asset/value/nonce".into())),
     }
 }
 
