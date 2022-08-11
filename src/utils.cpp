@@ -29,7 +29,7 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 #include <openssl/evp.h>
-#include <zlib/zlib.h>
+#include <zlib.h>
 
 #if defined _WIN32 || defined WIN32 || defined __CYGWIN__
 #include "bcrypt.h"

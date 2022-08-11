@@ -5,7 +5,7 @@ function compile_flags() {
     echo "`python -c "import sys; print('<compile_flags>'.join([''] + map(lambda x: x + '\n', sys.argv[1:])))" $@`"
 }
 
-BOOST_NAME="$(basename ${MESON_SUBDIR})"
+BOOST_NAME="$(basename ${PRJ_SUBDIR})"
 
 if [ "x${NUM_JOBS}" = "x" ]; then
     NUM_JOBS=4
@@ -23,16 +23,13 @@ if (($# > 0)); then
     shift
 fi
 
-if [ ! -d "${MESON_BUILD_ROOT}/boost" ]; then
-    cp -r "${MESON_SOURCE_ROOT}/subprojects/${BOOST_NAME}" "${MESON_BUILD_ROOT}/boost"
-fi
 
-boost_src_home="${MESON_BUILD_ROOT}/boost"
-boost_bld_home="${MESON_BUILD_ROOT}/boost/build"
+boost_src_home="${PRJ_SUBDIR}"
+boost_bld_home="${GDK_BUILD_ROOT}/boost/build"
 cd $boost_src_home
 if [ \( "$BUILD" = "--ndk" \) ]; then
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
-    . ${MESON_SOURCE_ROOT}/tools/env.sh
+    . ${GDK_SOURCE_ROOT}/tools/env.sh
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
 using clang : :
@@ -60,11 +57,11 @@ EOF
     fi
 elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
     gsed -i "s!B2_CXXFLAGS_RELEASE=.*!B2_CXXFLAGS_RELEASE=\"-O3 -s -isysroot $(xcrun --show-sdk-path)\"!" \
-          ${MESON_BUILD_ROOT}/boost/tools/build/src/engine/build.sh
+          ${boost_src_home}/tools/build/src/engine/build.sh
     gsed -i "s!B2_CXXFLAGS_DEBUG=.*!B2_CXXFLAGS_DEBUG=\"-O0 -g -p -isysroot $(xcrun --show-sdk-path)\"!" \
-          ${MESON_BUILD_ROOT}/boost/tools/build/src/engine/build.sh
+          ${boost_src_home}/tools/build/src/engine/build.sh
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
-    . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $BUILD
+    . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $BUILD
 
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF

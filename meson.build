@@ -254,7 +254,9 @@ endif
 # dependencies
 library_deps = []
 
-library_deps += dependency('threads')
+if cross_android_build == false
+    library_deps += compiler.find_library('pthread', required : true)
+endif
 library_deps += compiler.find_library('m', required : false)
 library_deps += compiler.find_library('atomic', required : false)
 library_deps += compiler.find_library('dl', required : false)
@@ -273,26 +275,104 @@ if debug and build_machine.system() == 'linux'
 endif
 library_deps += compiler.find_library('execinfo', required : is_freebsd)
 
-subproject_deps = []
 
-wallycore = subproject('libwally-core')
+build_dir = meson.global_build_root().split('/').get(-1)
+externaldir = 'external_deps'
+#wally dependency
+wallycore = declare_dependency(
+    include_directories:[ externaldir / 'libwally-core/build/include'],
+    variables:{
+    'wallycore_dir_name': externaldir / 'libwally-core',
+    'libdir': externaldir / 'libwally-core/build/lib',
+    }
+)
+
+subproject_deps = [
+    #### wallycore
+    wallycore,
+    compiler.find_library('wallycore', dirs: meson.global_build_root() / externaldir / 'libwally-core/build/lib'),
+    compiler.find_library('secp256k1', dirs: meson.global_build_root() / externaldir / 'libwally-core/build/lib'),
+    #### libevent
+    declare_dependency( include_directories: externaldir / 'libevent/build/include'),
+    compiler.find_library('event', dirs: meson.global_build_root() / externaldir / 'libevent/build/lib'),
+    #### boost
+    declare_dependency( include_directories: externaldir / 'boost/build/include'),
+    compiler.find_library('boost_chrono', dirs: meson.global_build_root() / externaldir / 'boost/build/lib'),
+    compiler.find_library('boost_log', dirs: meson.global_build_root() / externaldir / 'boost/build/lib'),
+    compiler.find_library('boost_thread', dirs: meson.global_build_root() / externaldir / 'boost/build/lib'),
+    #### tor
+    declare_dependency( include_directories: externaldir / 'tor/src/feature/api'),
+    compiler.find_library('tor-app', dirs: meson.global_build_root() / externaldir / 'tor/src/core'),
+    compiler.find_library('curve25519_donna', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-buf', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-compress', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-confmgt', dirs: meson.global_build_root() / externaldir  / 'tor/src/lib'),
+    compiler.find_library('tor-container', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-crypt-ops', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-ctime', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-dispatch', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-encoding', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-err', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-evloop', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-fdio', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-fs', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-geoip', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-intmath', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-lock', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-log', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-malloc', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-math', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-memarea', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-meminfo', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-net', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-osinfo', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-process', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-pubsub', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-sandbox', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-smartlist-core', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-string', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-term', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-thread', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-time', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-tls', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-trace', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-version', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('tor-wallclock', dirs: meson.global_build_root() / externaldir / 'tor/src/lib'),
+    compiler.find_library('or-trunnel', dirs: meson.global_build_root() / externaldir / 'tor/src/trunnel'),
+    compiler.find_library('keccak-tiny', dirs: meson.global_build_root() / externaldir / 'tor/src/ext/keccak-tiny'),
+    compiler.find_library('ed25519_ref10', dirs: meson.global_build_root() / externaldir / 'tor/src/ext/ed25519/ref10'),
+    compiler.find_library('ed25519_donna', dirs: meson.global_build_root() / externaldir / 'tor/src/ext/ed25519/donna'),
+    #### zlib
+    declare_dependency( include_directories: externaldir / 'zlib/build/include'),
+    compiler.find_library('z', dirs: meson.global_build_root() / externaldir / 'zlib/build/lib'),
+    #### openssl
+    declare_dependency(include_directories: externaldir / 'openssl/build/include'),
+    compiler.find_library('ssl', dirs: meson.global_build_root() / externaldir / 'openssl/build/lib'),
+    compiler.find_library('crypto', dirs: meson.global_build_root() / externaldir / 'openssl/build/lib'),
+    #### websocketpp
+    declare_dependency(include_directories: externaldir / 'websocketpp/include'),
+    #### msgpack
+    declare_dependency(include_directories: externaldir / 'msgpack/include'),
+    #### nlohmann_json
+    declare_dependency(include_directories: externaldir / 'nlohmann_json/include'),
+    #### autobahn-cpp
+    declare_dependency(include_directories: externaldir / 'autobahn-cpp/include'),
+    #### ms-gsl
+    declare_dependency(include_directories: externaldir / 'ms-gsl/include'),
+    #
+]
+
+if not cross_win_build
+    subproject_deps += compiler.find_library('event_pthreads', dirs: meson.global_build_root() / externaldir / 'libevent/build/lib')
+endif
+
 gdkrust = subproject('gdk_rust')
 subproject_deps += gdkrust.get_variable('gdk_rust_dep')
-subproject_deps += wallycore.get_variable('wallycore_dep')
-subproject_deps += dependency('external_autobahn-cpp', fallback : ['autobahn-cpp', 'autobahn_dep'])
-subproject_deps += dependency('external_boost', fallback : ['boost', 'boost_dep'])
-subproject_deps += dependency('external_GSL', fallback : ['GSL', 'GSL_dep'])
-subproject_deps += dependency('external_json', fallback : ['json', 'nlohmann_json_dep'])
-subproject_deps += dependency('external_msgpack', fallback : ['msgpack', 'msgpack_dep'])
-subproject_deps += dependency('external_openssl', fallback : ['openssl', 'openssl_dep'])
-subproject_deps += dependency('external_websocketpp', fallback : ['websocketpp', 'websocketpp_dep'])
-subproject_deps += dependency('external_tor', fallback : ['tor', 'tor_dep'])
 
 # includes
-incdirs = ['.', 'subprojects/gdk_rust']
-incdir = include_directories(incdirs)
+incdir = include_directories(['.', 'subprojects/gdk_rust'])
 
-# builds
+ #builds
 subdirs = ['src']
 foreach n : subdirs
     subdir(n)

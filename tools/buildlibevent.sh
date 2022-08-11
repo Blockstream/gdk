@@ -1,19 +1,15 @@
 #! /usr/bin/env bash
 set -e
 
-LIBEVENT_NAME="$(basename ${MESON_SUBDIR})"
+LIBEVENT_NAME="$(basename ${PRJ_SUBDIR})"
 
-if [ ! -d "${MESON_BUILD_ROOT}/libevent" ]; then
-    cp -r "${MESON_SOURCE_ROOT}/subprojects/${LIBEVENT_NAME}" "${MESON_BUILD_ROOT}/libevent"
-fi
+cd "${LIBEVENT_SRCDIR}"
 
-cd "${MESON_BUILD_ROOT}/libevent"
-
-CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/libevent/build --enable-static --disable-samples --disable-openssl --disable-shared --disable-libevent-regress --disable-debug-mode --disable-dependency-tracking"
+CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/libevent/build --enable-static --disable-samples --disable-openssl --disable-shared --disable-libevent-regress --disable-debug-mode --disable-dependency-tracking"
 sh autogen.sh
 
 if [ \( "$1" = "--ndk" \) ]; then
-    . ${MESON_SOURCE_ROOT}/tools/env.sh
+    . ${GDK_SOURCE_ROOT}/tools/env.sh
 
     export CFLAGS="$CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
     export LDFLAGS="$LDFLAGS $EXTRA_FLAGS"
@@ -21,7 +17,7 @@ if [ \( "$1" = "--ndk" \) ]; then
     ./configure --host=${NDK_TARGET_HOST} ${CONFIGURE_ARGS} --with-pic
     make -o configure install -j${NUM_JOBS}
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
-    . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
+    . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
 
     export CFLAGS="$IOS_CFLAGS $EXTRA_FLAGS"
     export LDFLAGS="$IOS_LDFLAGS $EXTRA_FLAGS"

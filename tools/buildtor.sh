@@ -3,28 +3,28 @@ set -e
 
 trap "cat config.log" ERR
 
-TOR_NAME="$(basename ${MESON_SUBDIR})"
+TOR_NAME="$(basename ${PRJ_SUBDIR})"
 
-if [ ! -d "${MESON_BUILD_ROOT}/tor" ]; then
-    cp -r "${MESON_SOURCE_ROOT}/subprojects/${TOR_NAME}" "${MESON_BUILD_ROOT}/tor"
+if [ ! -d "${GDK_BUILD_ROOT}/tor" ]; then
+    cp -r "${TOR_SRCDIR}" "${GDK_BUILD_ROOT}/tor"
 fi
 
-cd "${MESON_BUILD_ROOT}/tor"
+cd "${GDK_BUILD_ROOT}/tor"
 
 #FIXME: enable zstd for tor compression
-CONFIGURE_ARGS="--prefix=${MESON_BUILD_ROOT}/tor/build --disable-system-torrc --disable-asciidoc --enable-pic --enable-static-openssl \
-                --enable-static-libevent --enable-static-zlib --with-openssl-dir=${MESON_BUILD_ROOT}/openssl/build \
-                --with-libevent-dir=${MESON_BUILD_ROOT}/libevent/build --with-zlib-dir=${MESON_BUILD_ROOT}/zlib/build \
+CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/tor/build --disable-system-torrc --disable-asciidoc --enable-pic --enable-static-openssl \
+                --enable-static-libevent --enable-static-zlib --with-openssl-dir=${GDK_BUILD_ROOT}/openssl/build \
+                --with-libevent-dir=${GDK_BUILD_ROOT}/libevent/build --with-zlib-dir=${GDK_BUILD_ROOT}/zlib/build \
                 --disable-system-torrc --disable-systemd --disable-zstd --disable-lzma --disable-largefile \
                 ac_cv_c_bigendian=no --disable-unittests --disable-tool-name-check --disable-module-dirauth \
                 --disable-libscrypt --disable-rust"
 
 # patch for autoconf >= 2.70
-sed -ie "s!^AC_PROG_CC_C99!!" configure.ac
+$SED -ie "s!^AC_PROG_CC_C99!!" configure.ac
 
 if [ \( "$1" = "--ndk" \) ]; then
     sh autogen.sh
-    . ${MESON_SOURCE_ROOT}/tools/env.sh
+    . ${GDK_SOURCE_ROOT}/tools/env.sh
     export CFLAGS="$CFLAGS -DPIC -fPIC $EXTRA_FLAGS"
     export LDFLAGS="$LDFLAGS $EXTRA_FLAGS"
 
@@ -32,7 +32,7 @@ if [ \( "$1" = "--ndk" \) ]; then
     make -o configure install -j${NUM_JOBS}
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     sh autogen.sh
-    . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
+    . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
 
     export CFLAGS="$IOS_CFLAGS $EXTRA_FLAGS"
     export LDFLAGS="$IOS_LDFLAGS $EXTRA_FLAGS"
@@ -68,9 +68,9 @@ else
     $SED -i "912s!^TOR_SEARCH.*!TOR_SEARCH_LIBRARY(openssl, \$tryssldir, \[-lssl -lcrypto \$TOR_LIB_GDI \$TOR_LIB_WS32 \$TOR_LIB_CRYPT32\ -ldl \$TOR_LIB_PTHREAD\],!" configure.ac
     sh autogen.sh
     ./configure ${CONFIGURE_ARGS} --host=${HOST_OS}
-    sed -ie "s!^include src/app.*!!" "src/include.am"
-    sed -ie "s!^include src/test.*!!" "src/include.am"
-    sed -ie "s!^include src/tools.*!!" "src/include.am"
+    $SED -ie "s!^include src/app.*!!" "src/include.am"
+    $SED -ie "s!^include src/test.*!!" "src/include.am"
+    $SED -ie "s!^include src/tools.*!!" "src/include.am"
     make -j$NUM_JOBS
     make install
 fi

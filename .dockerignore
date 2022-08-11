@@ -1,0 +1,11 @@
+**
+!./tools/buildboost.sh
+!./tools/builddeps.sh
+!./tools/buildlibevent.sh
+!./tools/buildlibwally-core.sh
+!./tools/buildopenssl.sh
+!./tools/buildtor.sh
+!./tools/buildzlib.sh
+!./tools/bullseye_deps.sh
+!./tools/env.sh
+!./tools/requirements.txt

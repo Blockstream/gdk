@@ -13,6 +13,7 @@ if [ -z "${NUM_JOBS}" ]; then
     export NUM_JOBS=${NUM_JOBS:-4}
 fi
 
+EXTERNALDEPSFOLDER=""
 ANALYZE=false
 LIBTYPE="shared"
 MESON_OPTIONS=""
@@ -68,7 +69,7 @@ if (($# < 1)); then
     exit 0
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,clang-tidy-version:,disableccache,python-version: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,analyze,clang,gcc,mingw-w64,prefix:,install:,sanitizer:,compiler-version:,ndk:,iphone:,iphonesim:,buildtype:,clang-tidy-version:,disableccache,python-version:,external-deps-dir: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -85,6 +86,7 @@ while true; do
         --prefix) MESON_OPTIONS="$MESON_OPTIONS --prefix=$2"; shift 2 ;;
         --disableccache) CCACHE="" ; shift ;;
         --python-version) MESON_OPTIONS="$MESON_OPTIONS -Dpython-version=$2"; shift 2 ;;
+        --external-deps-dir) EXTERNALDEPSFOLDER=$2; shift 2;;
         -- ) shift; break ;;
         *) break ;;
     esac
@@ -141,6 +143,7 @@ function build() {
     export CCC_CXX="$CCACHE $CXX_COMPILER"
     export CC="$CCACHE $C_COMPILER"
     export CCC_CC="$CCACHE $C_COMPILER"
+    bld_root="$PWD/build-$C_COMPILER"
 
     SCAN_BUILD=""
     if [ $ANALYZE = true ] ; then
@@ -148,6 +151,25 @@ function build() {
     fi
 
     compress_patch
+
+    DEPSDIR="$3"
+    if [ -z ${DEPSDIR} ] || [ ${DEPSDIR} == "" ]; then
+        echo "no --external-deps-dir declared"
+        echo "building external dependencies in ${bld_root}/external_deps"
+        rm -rf ${bld_root}/external_deps
+        mkdir -p ${bld_root}/external_deps
+        ./tools/builddeps.sh ${BUILD} --prefix ${bld_root}/external_deps
+    else
+        if [ ! -f "${DEPSDIR}/boost/build/lib/libboost_thread.a" ]; then
+            echo "external dependencies not found even if --external-deps-dir was present"
+            echo "building external dependencies in ${DEPSDIR}"
+            ./tools/builddeps.sh ${BUILD} --prefix ${DEPSDIR}
+        fi
+        echo "external dependencies found, linking ${DEPSDIR} to ${bld_root}/external_deps"
+        rm -rf ${bld_root}/external_deps
+        mkdir -p ${bld_root}
+        ln -fs ${DEPSDIR} ${bld_root}/external_deps
+    fi
 
     if [ ! -f "build-$C_COMPILER/build.ninja" ]; then
         rm -rf build-$C_COMPILER/meson-private
@@ -191,7 +213,7 @@ function set_cross_build_env() {
 }
 
 if [ \( "$(uname)" != "Darwin" \) -a \( "$BUILD" = "--gcc" \) ]; then
-    build gcc g++
+    build gcc g++ ${EXTERNALDEPSFOLDER}
 fi
 if [ \( "$BUILD" = "--clang" \) ]; then
     if [ \( "$(uname)" = "Darwin" \) ]; then
@@ -203,7 +225,7 @@ if [ \( "$BUILD" = "--clang" \) ]; then
         export CFLAGS="${SDK_CFLAGS} -O3"
         export LDFLAGS="${SDK_LDFLAGS}"
     fi
-    build clang clang++
+    build clang clang++ ${EXTERNALDEPSFOLDER}
 fi
 
 if [ \( "$BUILD" = "--ndk" \) ]; then
@@ -236,7 +258,6 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
         fi
 
         mkdir -p build-clang-$1-$2
-
         if [ ! -f "build-clang-$1-$2/build.ninja" ]; then
             rm -rf build-clang-$1-$2/meson-private
             export archfilename=$SDK_ARCH
@@ -255,7 +276,26 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
             export RANLIB="$NDK_TOOLSDIR/bin/llvm-ranlib"
 
             ./tools/make_txt.sh $bld_root $bld_root/$1_$2_ndk.txt $1 ndk $2
-            compress_patch
+
+            DEPSDIR="$3"
+            if [ -z ${DEPSDIR} ] || [ ${DEPSDIR} == "" ]; then
+                echo "no --external-deps-dir declared"
+                echo "building external dependencies in ${bld_root}/external_deps"
+                rm -rf ${bld_root}/external_deps
+                mkdir -p ${bld_root}/external_deps
+                ./tools/builddeps.sh ${BUILD} --prefix ${bld_root}/external_deps
+            else
+                if [ ! -f "${DEPSDIR}/boost/build/lib/libboost_thread.a" ]; then
+                    echo "external dependencies not found even if --external-deps-dir was present"
+                    echo "building external dependencies in ${DEPSDIR}"
+                    ./tools/builddeps.sh ${BUILD} --prefix ${DEPSDIR}
+                fi
+                echo "external dependencies found, linking ${DEPSDIR} to ${bld_root}/external_deps"
+                rm -rf ${bld_root}/external_deps
+                mkdir -p ${bld_root}
+                ln -fs ${DEPSDIR} ${bld_root}/external_deps
+            fi
+
             meson $bld_root --cross-file $bld_root/$1_$2_ndk.txt --default-library=${LIBTYPE} ${MESON_OPTIONS}
         fi
         $NINJA -C $bld_root -j$NUM_JOBS -v $NINJA_TARGET
@@ -268,7 +308,7 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
     fi
     for a in $all_archs; do
         set_cross_build_env android $a
-        build android $a
+        build android $a ${EXTERNALDEPSFOLDER}
     done
 fi
 
@@ -289,7 +329,26 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
             rm -rf build-clang-$1-$2/meson-private
             mkdir -p build-clang-$1-$2
             ./tools/make_txt.sh $bld_root $bld_root/$1_$2_ios.txt $2 $2 $2
-            compress_patch
+
+            DEPSDIR="$3"
+            if [ -z ${DEPSDIR} ] || [ ${DEPSDIR} == "" ]; then
+                echo "no --external-deps-dir declared"
+                echo "building external dependencies in ${bld_root}/external_deps"
+                rm -rf ${bld_root}/external_deps
+                mkdir -p ${bld_root}/external_deps
+                ./tools/builddeps.sh ${BUILD} --prefix ${bld_root}/external_deps
+            else
+                if [ ! -f "${DEPSDIR}/boost/build/lib/libboost_thread.a" ]; then
+                    echo "external dependencies not found even if --external-deps-dir was present"
+                    echo "building external dependencies in ${DEPSDIR}"
+                    ./tools/builddeps.sh ${BUILD} --prefix ${DEPSDIR}
+                fi
+                echo "external dependencies found, linking ${DEPSDIR} to ${bld_root}/external_deps"
+                rm -rf ${bld_root}/external_deps
+                mkdir -p ${bld_root}
+                ln -fs ${DEPSDIR} ${bld_root}/external_deps
+            fi
+
             meson $bld_root --cross-file $bld_root/$1_$2_ios.txt --default-library=${LIBTYPE} ${MESON_OPTIONS}
         fi
         $NINJA -C $bld_root -j$NUM_JOBS -v $NINJA_TARGET
@@ -301,7 +360,7 @@ if [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
         PLATFORM=iphonesim
     fi
     set_cross_build_env ios $PLATFORM
-    build ios $PLATFORM
+    build ios $PLATFORM ${EXTERNALDEPSFOLDER}
 fi
 
 if [ \( "$BUILD" = "--mingw-w64" \) ]; then
@@ -319,12 +378,31 @@ if [ \( "$BUILD" = "--mingw-w64" \) ]; then
             rm -rf build-$1-$2/meson-private
             mkdir -p $bld_root
             ./tools/make_txt.sh $bld_root $bld_root/$1.txt $1 $1
-            compress_patch
+
+            DEPSDIR="$3"
+            if [ -z ${DEPSDIR} ] || [ ${DEPSDIR} == "" ]; then
+                echo "no --external-deps-dir declared"
+                echo "building external dependencies in ${bld_root}/external_deps"
+                rm -rf ${bld_root}/external_deps
+                mkdir -p ${bld_root}/external_deps
+                ./tools/builddeps.sh ${BUILD} --prefix ${bld_root}/external_deps
+            else
+                if [ ! -f "${DEPSDIR}/boost/build/lib/libboost_thread.a" ]; then
+                    echo "external dependencies not found even if --external-deps-dir was present"
+                    echo "building external dependencies in ${DEPSDIR}"
+                    ./tools/builddeps.sh ${BUILD} --prefix ${DEPSDIR}
+                fi
+                echo "external dependencies found, linking ${DEPSDIR} to ${bld_root}/external_deps"
+                rm -rf ${bld_root}/external_deps
+                mkdir -p ${bld_root}
+                ln -fs ${DEPSDIR} ${bld_root}/external_deps
+            fi
+
             meson $bld_root --cross-file $bld_root/$1.txt --default-library=${LIBTYPE} ${MESON_OPTIONS}
         fi
         $NINJA -C $bld_root -j$NUM_JOBS -v $NINJA_TARGET
     }
 
     set_cross_build_env windows mingw-w64
-    build windows mingw-w64
+    build windows mingw-w64 ${EXTERNALDEPSFOLDER}
 fi

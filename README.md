@@ -75,15 +75,25 @@ You can quickly run a single targets build from the `build-<target>` sub-directo
 This doesn't require any of the previous steps but requires docker installed; it will build the project
 
 ```
-docker build -t greenaddress_sdk - < tools/Dockerfile
-docker run -v $PWD:/sdk greenaddress_sdk
+docker build -t greenaddress_sdk -f ./tools/Dockerfile .
+docker run -v $PWD:/root/gdk -it greenaddress_sdk
 ```
 
-This will build the sdk with clang by default
+This will open a bash shell into the container, where you can then launch builds for any platform.
 
-if you want to change it for example to ndk armeabi-v7a:
+```bash
+root@bab682a071e6:~/gdk# ./tools/build.sh --gcc
+root@bab682a071e6:~/gdk# ./tools/build.sh --clang
+root@bab682a071e6:~/gdk# ./tools/build.sh --iphonesim
+...
+```
+and if you want to leverage prebuilt dependencies stored in /prebld folder (no pre-built dependencies available for macOS)
+```bash
+root@bab682a071e6:~/gdk# ./tools/build.sh --gcc --external-deps-dir /prebld/gcc
+root@bab682a071e6:~/gdk# ./tools/build.sh --clang --external-deps-dir /prebld/clang
+```
 
-`docker run -v $PWD:/sdk greenaddress/ci bash -c "cd /sdk && ./tools/build.sh --ndk armeabi-v7a"`
+
 
 ### Extra build options
 

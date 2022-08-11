@@ -112,7 +112,7 @@ gdk_rust_target = custom_target('libgdk_rust',
 
 incdir = include_directories(join_paths('..', '..', meson.build_root().split('/')[-1], 'subprojects', 'gdk_rust'))
 
-gdk_rust_deps = [subproject('libwally-core').get_variable('wallycore_dep')]
+gdk_rust_deps = []
 gdk_rust_dep = declare_dependency(
   include_directories : incdir,
   dependencies : gdk_rust_deps

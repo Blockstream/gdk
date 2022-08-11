@@ -1,25 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-have_cmd()
-{
-    command -v "$1" >/dev/null 2>&1
-}
-
-if have_cmd gsed; then
-    SED=$(command -v gsed)
-elif have_cmd sed; then
-    SED=$(command -v sed)
-else
-    echo "Could not find sed or gsed. Please install sed and try again."
-    exit 1
-fi
-
-WALLYCORE_NAME=$(grep ^source_url ${MESON_SOURCE_ROOT}/subprojects/libwally-core.wrap | ${SED} -e 's/^.*\///' -e 's/\.tar\.gz$//')
-WALLYCORE_SRCDIR=${MESON_SOURCE_ROOT}/subprojects/${WALLYCORE_NAME}
-WALLYCORE_BLDDIR=${MESON_BUILD_ROOT}/libwally-core
-SECP_URL=$(grep secp-url ${MESON_SOURCE_ROOT}/subprojects/libwally-core.wrap | ${SED} 's/^.*= //g')
-SECP_COMMIT=$(grep secp-commit ${MESON_SOURCE_ROOT}/subprojects/libwally-core.wrap | ${SED} 's/^.*= //g')
+WALLYCORE_BLDDIR=${GDK_BUILD_ROOT}/libwally-core
 
 #if [ ! -f "${WALLYCORE_SRCDIR}/.${SECP_COMMIT}" ]; then
     cd ${WALLYCORE_SRCDIR}
@@ -58,14 +40,14 @@ if ([ "$(uname)" == "Darwin" ] && [ -n "${JAVA_HOME}" ]); then
 fi
 
 if [ "$1" = "--ndk" ]; then
-    . ${MESON_SOURCE_ROOT}/tools/env.sh
+    . ${GDK_SOURCE_ROOT}/tools/env.sh
     . tools/android_helpers.sh
     export CFLAGS="${CFLAGS} -DPIC -fPIC ${EXTRA_FLAGS}"
     export LDFLAGS="${LDFLAGS} ${EXTRA_FLAGS}"
 
     android_build_wally ${HOST_ARCH} ${NDK_TOOLSDIR} ${ANDROID_VERSION} ${CONFIGURE_ARGS}
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
-    . ${MESON_SOURCE_ROOT}/tools/ios_env.sh $1
+    . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
     export CFLAGS="${CFLAGS} ${EXTRA_FLAGS} -O3"
     export LDFLAGS="${LDFLAGS} ${EXTRA_FLAGS}"
     export CC=${XCODE_DEFAULT_PATH}/clang

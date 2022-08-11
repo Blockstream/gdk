@@ -96,7 +96,7 @@ if [ -n "${NUM_JOBS}" ]; then
 fi
 
 printf "cargo args: ${CARGO_ARGS[*]}\n"
-OPENSSL_DIR=${BUILD_ROOT}/openssl/build OPENSSL_STATIC=1 \
+OPENSSL_DIR=${BUILD_ROOT}/external_deps/openssl/build OPENSSL_STATIC=1 \
   cargo build "${CARGO_ARGS[@]}"
 
 if [ -z "$RUSTTARGET" ]; then

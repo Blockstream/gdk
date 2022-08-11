@@ -1,7 +1,7 @@
 swig_target = custom_target('swig',
                      command : [join_paths(meson.source_root(), 'tools', 'swig.sh'),
                                 sed, '@OUTDIR@/gasdk_wrap.c', '@OUTDIR@', '@INPUT0@', '@INPUT1@',
-                                join_paths(meson.build_root(), 'libwally-core', 'src', 'swig_java', 'wallycore.jar'),
+                                join_paths(meson.build_root(), 'external_deps', 'libwally-core', 'src', 'swig_java', 'wallycore.jar'),
                                 java_target],
                      input : ['swig_gasdk.i', 'jni_extra.java_in'],
                      output : ['gasdk_wrap.c'],

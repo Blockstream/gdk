@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:6a031d167873f2e305a37de8a89718184b365c29535e62db4293275620d4e803
+image: greenaddress/ci@sha256:3988f2328a913a265790cb9348c756fc41b2145122adce4c71c2dacf4754e9b5
 
 stages:
   - format
@@ -74,18 +74,20 @@ test_format:
 release_py3m_bullseye:
   extends: .py_release
   script:
-    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.9
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.9 --external-deps-dir /prebld/gcc
 
 release_py3m_bullseye_debug:
   extends: .py_release
   when: manual
   script:
-    - NUM_JOBS=16 ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9
+    - NUM_JOBS=16 ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9 --external-deps-dir /prebld/gcc
 
 release_py3m_ubuntu_18.04:
   image: greenaddress/ubuntu_ci@sha256:183cfff276003c28c4388bebbbcc977b1e93f8dc85f1dbf2c02881053ad0c46f
   extends: .py_release
   script:
+    - apt-get update -y
+    - apt-get install -y cmake
     - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6
 
 release_py3m_osx:
@@ -115,6 +117,7 @@ test_fedora_clang:
   tags:
     - ga
   script:
+    - yum install -y cmake
     - python3 -m pip install virtualenv
     - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - NUM_JOBS=16 ./tools/build.sh --clang
@@ -123,7 +126,7 @@ test_clang:
   tags:
     - ga
   script:
-    - NUM_JOBS=16 ./tools/build.sh --clang --enable-tests # REVERTME
+    - NUM_JOBS=16 ./tools/build.sh --clang --enable-tests --external-deps-dir /prebld/clang # REVERTME
     - ./build-clang/test_aes_gcm >/dev/null
     - ./build-clang/test_json
     - ./build-clang/test_networks
@@ -132,32 +135,32 @@ gdk_clang_ndk_armeabi-v7a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-android-jni --ndk armeabi-v7a --external-deps-dir /prebld/armv7a
 
 gdk_clang_ndk_arm64-v8a:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-android-jni --ndk arm64-v8a --external-deps-dir /prebld/armv8a
 
 gdk_clang_ndk_arm64-v8a-debug:
   extends: .ndk_release
   when: manual
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a
+    - NUM_JOBS=16 ./tools/build.sh --buildtype=debug --install $PWD/gdk-android-jni --ndk arm64-v8a --external-deps-dir /prebld/armv8a
 
 gdk_clang_ndk_x86:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86 --external-deps-dir /prebld/x86
 
 gdk_clang_ndk_x86_64:
   extends: .ndk_release
   script:
     - mkdir gdk-android-jni
-    - NUM_JOBS=16 JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 ANDROID_NDK=/android-ndk-r23b ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-android-jni --ndk x86_64 --external-deps-dir /prebld/x86_64
 
 test_rust:
   tags:
@@ -165,14 +168,9 @@ test_rust:
   script:
     - source /root/.cargo/env
     - rustup override set 1.56.0
-    - git clone https://github.com/ElementsProject/libwally-core
-    - cd libwally-core && git checkout 88fc78ff72a4f3345fcb87d1c19dc5f6cc5b0e4c && ./tools/autogen.sh && ./configure --enable-debug --prefix=$PWD/build --enable-static --disable-shared --enable-elements --enable-ecmult-static-precomputation && make && make install && cd ..
-    - export WALLY_DIR=$PWD/libwally-core/build/lib/
-    - export OPENSSL_URL=$(grep ^source_url subprojects/openssl.wrap | sed -e 's/^.*= //')
-    - curl -L ${OPENSSL_URL} | tar -xz -C ${PWD}/subprojects
-    - export OPENSSL_SRC_DIR=$(grep ^directory subprojects/openssl.wrap | sed -e 's/^.*= //')
-    - MESON_SOURCE_ROOT=${PWD} MESON_BUILD_ROOT=${PWD} MESON_SUBDIR=subprojects/${OPENSSL_SRC_DIR} ${PWD}/tools/buildopenssl.sh
-    - export OPENSSL_DIR=${PWD}/openssl/build OPENSSL_STATIC=1
+    - export WALLY_DIR=/prebld/gcc/libwally-core/build/lib/
+    - export OPENSSL_DIR=/prebld/gcc/openssl/build 
+    - export OPENSSL_STATIC=1
     - curl -L https://github.com/RCasatta/electrsd/releases/download/electrs_releases/electrs_linux_esplora_703c6a20d52b61a234a18812503bd754d448992a.gz | tar -xz
     - echo "6c62b280db4455a0bee1c60dcb7bb18f741313deb8aafdb7bad1bc2a3f4ff0b8  electrs" | sha256sum --check
     - chmod 755 electrs && mv electrs electrs_bitcoin
@@ -252,7 +250,7 @@ test_osx_clang_ndk_arm64-v8a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk arm64-v8a
+    - NUM_JOBS=16 ANDROID_NDK=/opt/ndroid-ndk-r23b ./tools/build.sh --ndk arm64-v8a
 
 test_osx_clang_ndk_x86:
   only:
@@ -287,7 +285,7 @@ test_windows_mingw_w64_cross:
     paths:
     - build-windows-mingw-w64/src/libgreenaddress*
   script:
-    - NUM_JOBS=16 ./tools/build.sh --mingw-w64
+    - NUM_JOBS=16 ./tools/build.sh --mingw-w64 --external-deps-dir /prebld/mingw-w64
 
 apidocs:
   tags:
