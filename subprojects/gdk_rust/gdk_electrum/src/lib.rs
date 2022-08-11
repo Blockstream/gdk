@@ -959,7 +959,50 @@ impl ElectrumSession {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        todo!()
+        let master_blinding = self
+            .get_master_blinding_key()?
+            .master_blinding_key
+            .ok_or(Error::MissingMasterBlindingKey)?;
+
+        let accounts = self.get_accounts()?;
+
+        let outputs = pset
+            .outputs()
+            .iter()
+            .map(|output| {
+                let mut tx_out = output.to_txout();
+
+                // the `nonce` field of `tx_out` would be `Nonce::Null` w/o
+                // this
+                tx_out.nonce = output
+                    .ecdh_pubkey
+                    .map(|pk| confidential::Nonce::from(pk.inner))
+                    .unwrap_or_default();
+
+                tx_out
+            })
+            .filter_map(|tx_out| {
+                let script = BEScript::Elements(tx_out.script_pubkey.clone());
+
+                let subaccount = accounts.iter().find_map(|account| {
+                    self.store
+                        .as_ref()?
+                        .read()
+                        .ok()?
+                        .account_cache(account.num())
+                        .ok()?
+                        .get_path(&script)
+                        .is_ok()
+                        .then(|| account.num())
+                })?;
+
+                unblind_output(tx_out, &master_blinding, None)
+                    .map(|secrets| PsbtGetDetailsOut::new(secrets.asset, secrets.value, subaccount))
+                    .ok()
+            })
+            .collect::<Vec<_>>();
+
+        Ok(PsbtGetDetailsResult::new(inputs, outputs))
     }
 
     pub fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
