@@ -78,8 +78,12 @@ pub(crate) struct Cache {
     assets: RegistryAssets,
     icons: RegistryIcons,
 
-    /// Ids of queried assets missing from the registry.
-    missing: Vec<AssetId>,
+    /// Ids of queried assets missing from the local asset registry.
+    missing_assets: Vec<AssetId>,
+
+    /// Ids of queried assets whose icons are missing from the local icon
+    /// registry.
+    missing_icons: Vec<AssetId>,
 
     #[serde(default, skip_serializing)]
     xpub: Option<ExtendedPubKey>,
@@ -91,7 +95,8 @@ impl fmt::Debug for Cache {
         f.debug_struct("Cache")
             .field("assets", &self.assets)
             .field("icons", &self.icons)
-            .field("missing", &self.missing)
+            .field("missing_assets", &self.missing_assets)
+            .field("missing_icons", &self.missing_icons)
             .finish()
     }
 }
@@ -148,11 +153,15 @@ impl Cache {
     }
 
     pub(crate) fn is_missing(&self, id: &AssetId) -> bool {
-        self.missing.contains(id)
+        self.missing_assets.contains(id)
     }
 
-    pub(crate) fn register_missing(&mut self, ids: Vec<AssetId>) {
-        self.missing.extend(ids);
+    pub(crate) fn register_missing_assets(&mut self, ids: Vec<AssetId>) {
+        self.missing_assets.extend(ids);
+    }
+
+    pub(crate) fn register_missing_icons(&mut self, ids: Vec<AssetId>) {
+        self.missing_icons.extend(ids);
     }
 
     pub(crate) fn to_registry(self, from_cache: bool) -> RegistryInfos {
@@ -194,18 +203,32 @@ impl Cache {
         Ok(())
     }
 
-    pub(crate) fn update_missing(&mut self, present: &RegistryAssets) {
+    pub(crate) fn update_missing_assets(&mut self, present: &RegistryAssets) {
         let mut to_remove: Vec<&AssetId> =
-            Vec::with_capacity(cmp::min(self.missing.len(), present.len()));
+            Vec::with_capacity(cmp::min(self.missing_assets.len(), present.len()));
 
         for (id, entry) in present {
-            if self.missing.contains(&id) {
+            if self.missing_assets.contains(&id) {
                 self.assets.insert(id.clone(), entry.clone());
                 to_remove.push(id);
             }
         }
 
-        self.missing.retain(|id| !to_remove.contains(&id));
+        self.missing_assets.retain(|id| !to_remove.contains(&id));
+    }
+
+    pub(crate) fn update_missing_icons(&mut self, present: &RegistryIcons) {
+        let mut to_remove: Vec<&AssetId> =
+            Vec::with_capacity(cmp::min(self.missing_icons.len(), present.len()));
+
+        for (id, entry) in present {
+            if self.missing_icons.contains(&id) {
+                self.icons.insert(id.clone(), entry.clone());
+                to_remove.push(id);
+            }
+        }
+
+        self.missing_icons.retain(|id| !to_remove.contains(&id));
     }
 }
 
@@ -215,11 +238,19 @@ impl From<Cache> for RegistryInfos {
     }
 }
 
-/// Removes the `assets` from the [`Cache::missing`] section of the cache file
-/// associated to `xpub`.
-pub(crate) fn update_missing(xpub: ExtendedPubKey, assets: &RegistryAssets) -> Result<()> {
+/// Removes `assets` from the [`Cache::missing_assets`] section of the
+/// cache file associated to `xpub`.
+pub(crate) fn update_missing_assets(xpub: ExtendedPubKey, assets: &RegistryAssets) -> Result<()> {
     let mut cache = Cache::from_xpub(xpub)?;
-    cache.update_missing(assets);
+    cache.update_missing_assets(assets);
+    cache.update()
+}
+
+/// Removes `icons` from the [`Cache::missing_icons`] section of the
+/// cache file associated to `xpub`.
+pub(crate) fn update_missing_icons(xpub: ExtendedPubKey, icons: &RegistryIcons) -> Result<()> {
+    let mut cache = Cache::from_xpub(xpub)?;
+    cache.update_missing_icons(icons);
     cache.update()
 }
 

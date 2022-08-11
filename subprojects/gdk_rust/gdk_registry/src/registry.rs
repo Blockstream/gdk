@@ -63,7 +63,7 @@ pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets
             log::warn!("{} assets didn't verify!", len - assets.len());
         }
         if let Some(xpub) = params.xpub {
-            cache::update_missing(xpub, &assets)?;
+            cache::update_missing_assets(xpub, &assets)?;
         }
     }
 
@@ -77,6 +77,9 @@ pub(crate) fn get_icons(params: &RefreshAssetsParams) -> Result<(RegistryIcons, 
 
     if matches!(source, RegistrySource::Downloaded) {
         debug!("downloaded {} icons", icons.len());
+        if let Some(xpub) = params.xpub {
+            cache::update_missing_icons(xpub, &icons)?;
+        }
     }
 
     icons.extend(hard_coded::icons(params.network()));

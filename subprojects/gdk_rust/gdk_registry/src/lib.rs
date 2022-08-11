@@ -58,7 +58,7 @@ pub fn init(dir: impl AsRef<Path>) -> Result<()> {
 /// Returns informations about a set of assets and related icons.
 ///
 /// Unlike [`refresh_assets`], this function will cache the queried assets to
-/// avoid performing a full registry read on evey call. The cache file stored
+/// avoid performing a full registry read on every call. The cache file stored
 /// on disk is encrypted via the wallet's xpub key.
 pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
     let GetAssetsParams {
@@ -92,8 +92,29 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
     // of the returned assets is from the full asset registry.
     let mut from_cache = true;
 
-    let (in_registry, not_on_disk): (Vec<_>, Vec<_>) =
-        not_cached.into_iter().partition(|id| registry.contains(&id));
+    let mut in_registry = Vec::new();
+    let mut assets_not_in_disk = Vec::new();
+    let mut icons_not_in_disk = Vec::new();
+
+    for id in not_cached {
+        match (registry.contains_asset(&id), registry.contains_icon(&id)) {
+            (true, true) => in_registry.push(id),
+
+            (true, false) => {
+                in_registry.push(id.clone());
+                icons_not_in_disk.push(id);
+            }
+
+            (false, true) => {
+                assets_not_in_disk.push(id.clone());
+            }
+
+            (false, false) => {
+                assets_not_in_disk.push(id.clone());
+                icons_not_in_disk.push(id);
+            }
+        }
+    }
 
     if !in_registry.is_empty() {
         log::debug!("{:?} found in the local asset registry", in_registry);
@@ -103,9 +124,15 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
         from_cache = false;
     }
 
-    if !not_on_disk.is_empty() {
-        log::debug!("{:?} are not in the local asset registry", not_on_disk);
-        cache.register_missing(not_on_disk);
+    if !assets_not_in_disk.is_empty() {
+        log::debug!("{:?} are not in the local asset registry", assets_not_in_disk);
+        cache.register_missing_assets(assets_not_in_disk);
+        cache.update()?;
+    }
+
+    if !icons_not_in_disk.is_empty() {
+        log::debug!("{:?} are not in the local icons registry", icons_not_in_disk);
+        cache.register_missing_icons(icons_not_in_disk);
         cache.update()?;
     }
 
@@ -119,8 +146,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 /// is `false`, or could be fetched from an asset registry when it's `true`. By
 /// default, the Liquid mainnet network is used and the asset registry used is
 /// managed by Blockstream and no proxy is used to access it. This default
-/// configuration could be overridden by providing the `params.config`
-/// parameter.
+/// configuration can be overridden by providing the `params.config` parameter.
 pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
     if !params.wants_something() {
         return Err(Error::BothAssetsIconsFalse);

@@ -63,8 +63,12 @@ impl Default for RegistrySource {
 }
 
 impl RegistryInfos {
-    pub(crate) fn contains(&self, id: &AssetId) -> bool {
+    pub(crate) fn contains_asset(&self, id: &AssetId) -> bool {
         self.assets.contains_key(id)
+    }
+
+    pub(crate) fn contains_icon(&self, id: &AssetId) -> bool {
+        self.icons.contains_key(id)
     }
 
     pub(crate) const fn new(assets: RegistryAssets, icons: RegistryIcons) -> Self {
