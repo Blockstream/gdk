@@ -188,7 +188,7 @@ class gdk_wallet:
 
     def set_pin(self, mnemonic, pin):
         details = {'pin': str(pin), 'plaintext': {'mnemonic': mnemonic}}
-        pin_data = self.session.encrypt_with_pin(details).resolve()
+        pin_data = self.session.encrypt_with_pin(details).resolve()["pin_data"]
         open(self.PIN_DATA_FILENAME, 'w').write(json.dumps(pin_data))
         return pin_data
 

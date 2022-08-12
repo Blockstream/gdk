@@ -13,14 +13,14 @@ import json
 
 
 # The example uses the Testnet Liquid network. To test it on mainnet, change the following to 'liquid'.
-NETWORK = 'testnet-liquid'       
+NETWORK = 'testnet-liquid'
 # NETWORK = 'liquid'
 
 def main():
 
     # Our calls to GDK are wrapped in the gdk_wallet class, which should only be
     # created using either create_new_wallet, login_with_mnemonic or
-    # login_with_pin methods. 
+    # login_with_pin methods.
 
     # Initialize GDK.
     gdk.init({
@@ -168,9 +168,8 @@ class gdk_wallet:
         # can be enabled/disabled at any point.
         self.mnemonic = mnemonic or gdk.generate_mnemonic()
         # Set the network name to 'liquid' for the live Liquid network.
-        # There is currently no test Liquid network.
         self.session = gdk.Session({'name': self.NETWORK_NAME})
-        
+
         credentials = {'mnemonic': self.mnemonic}
         self.session.register_user({}, credentials).resolve()
         self.session.login_user({}, credentials).resolve()
@@ -204,7 +203,7 @@ class gdk_wallet:
     """Do not use this to instantiate the object, use create_new_wallet or login_with_*"""
     def __init__(self):
         self.NETWORK_NAME = NETWORK
-        
+
         # 2of2_no_recovery is the account type used by Blockstream AMP.
         # Do not change this value!
         self.AMP_ACCOUNT_TYPE = '2of2_no_recovery'
@@ -227,7 +226,7 @@ class gdk_wallet:
 
     def set_pin(self, mnemonic, pin):
         details = {'pin': str(pin), 'plaintext': {'mnemonic': mnemonic}}
-        pin_data = self.session.encrypt_with_pin(details).resolve()
+        pin_data = self.session.encrypt_with_pin(details).resolve()["pin_data"]
         open(self.PIN_DATA_FILENAME, 'w').write(json.dumps(pin_data))
         return pin_data
 
@@ -351,7 +350,7 @@ class gdk_wallet:
             'subaccount': self.subaccount_pointer,
             'num_confs': 0,
         }
-        
+
         result = self._gdk_resolve(gdk.get_unspent_outputs(self.session.session_obj, json.dumps(details)))
         return result["unspent_outputs"]
 
