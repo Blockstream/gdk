@@ -966,14 +966,18 @@ namespace sdk {
                         asset_ids.insert(std::string(addressee.at("asset_id")));
                     }
                 }
-                if (asset_ids.size()) {
+                if (asset_ids.size() > 1
+                    || (asset_ids.size() == 1 && *asset_ids.begin() != m_net_params.policy_asset())) {
+                    // Sending multiple assets, or a non-LBTC send (including L-BTC fees)
                     // Erase the change details from previous call to avoid
                     // blinding being done incorrectly.
-                    // TODO: fix this by splitting out blinding
+                    // Note we don't remove "change_subaccount" as that is set by callers
+                    // to indicate they want their change sent to another subaccount.
+                    // TODO: fix this by splitting out blinding into a separate step,
+                    // rather than blinding the tx in create_transaction.
                     m_details.erase("change_address");
                     m_details.erase("change_amount");
                     m_details.erase("change_index");
-                    m_details.erase("change_subaccount");
                     m_details.erase("have_change");
                 }
             }
