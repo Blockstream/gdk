@@ -2250,8 +2250,6 @@ namespace sdk {
                     which_balance += satoshi;
                 }
 
-                ep["addressee"] = std::string(); // default here, set below where needed
-
                 // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                 const uint32_t pt_idx = ep["pt_idx"];
                 auto& m = is_tx_output ? out_map : in_map;
@@ -2273,7 +2271,9 @@ namespace sdk {
             tx_details["outputs"] = std::move(outputs);
             tx_details.erase("eps");
 
-            GDK_RUNTIME_ASSERT(is_liquid || (unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc"));
+            if (!is_liquid) {
+                GDK_RUNTIME_ASSERT(unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc");
+            }
 
             // TODO: improve the detection of tx type.
             bool net_positive = false;
@@ -2294,64 +2294,51 @@ namespace sdk {
 
             const bool is_confirmed = tx_block_height != 0;
 
-            std::vector<std::string> addressees;
+            std::string tx_type;
             if (is_liquid && unique_asset_ids.empty()) {
                 // Failed to unblind all relevant inputs and outputs. This
                 // might be a spam transaction.
-                tx_details["type"] = "not unblindable";
+                tx_type = "not unblindable";
                 tx_details["can_rbf"] = false;
                 tx_details["can_cpfp"] = false;
             } else if (net_positive) {
+                tx_type = "incoming";
                 for (auto& ep : tx_details["inputs"]) {
-                    std::string addressee;
                     if (!json_get_value(ep, "is_relevant", false)) {
-                        // Add unique addressees that aren't ourselves
-                        addressee = json_get_value(ep, "social_source");
-                        if (addressee.empty()) {
-                            addressee = json_get_value(ep, "address");
+                        std::string addressee = json_get_value(ep, "social_source");
+                        if (!addressee.empty()) {
+                            ep["addressee"] = std::move(addressee);
                         }
-                        if (std::find(std::begin(addressees), std::end(addressees), addressee)
-                            == std::end(addressees)) {
-                            addressees.emplace_back(addressee);
-                        }
-                        ep["addressee"] = addressee;
                     }
                 }
-                tx_details["type"] = "incoming";
                 tx_details["can_rbf"] = false;
                 tx_details["can_cpfp"] = !is_confirmed;
             } else {
+                tx_type = "redeposit";
                 for (auto& ep : tx_details["outputs"]) {
                     if (is_liquid && json_get_value(ep, "script").empty()) {
-                        continue;
+                        continue; // Ignore Liquid fee output
                     }
-                    std::string addressee;
                     if (!json_get_value(ep, "is_relevant", false)) {
-                        // Add unique addressees that aren't ourselves
                         const auto social_destination_p = ep.find("social_destination");
                         if (social_destination_p != ep.end()) {
+                            std::string addressee;
                             if (social_destination_p->is_object()) {
                                 addressee = (*social_destination_p)["name"];
                             } else {
                                 addressee = *social_destination_p;
                             }
-                        } else {
-                            addressee = ep["address"];
+                            if (!addressee.empty()) {
+                                ep["addressee"] = std::move(addressee);
+                            }
                         }
-
-                        if (std::find(std::begin(addressees), std::end(addressees), addressee)
-                            == std::end(addressees)) {
-                            addressees.emplace_back(addressee);
-                        }
-                        ep["addressee"] = addressee;
+                        tx_type = "outgoing"; // We have at least one non-wallet output
                     }
                 }
-                tx_details["type"] = addressees.empty() ? "redeposit" : "outgoing";
                 tx_details["can_rbf"] = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
                 tx_details["can_cpfp"] = false;
             }
-
-            tx_details["addressees"] = addressees;
+            tx_details["type"] = std::move(tx_type);
 
             if (!sync_disrupted) {
                 // Insert the tx into the DB cache now that it is cleaned up/unblinded
