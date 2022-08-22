@@ -2311,6 +2311,7 @@ namespace sdk {
                         if (!addressee.empty()) {
                             ep["addressee"] = std::move(addressee);
                         }
+                        ep.erase("social_source");
                     }
                 }
                 can_cpfp = !is_confirmed;
@@ -2332,6 +2333,7 @@ namespace sdk {
                             if (!addressee.empty()) {
                                 ep["addressee"] = std::move(addressee);
                             }
+                            ep.erase("social_destination");
                         }
                         tx_type = "outgoing"; // We have at least one non-wallet output
                     }
