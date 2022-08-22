@@ -2248,6 +2248,12 @@ namespace sdk {
 
                     auto& which_balance = is_tx_output ? received[asset_id] : spent[asset_id];
                     which_balance += satoshi;
+
+                    if (is_tx_output) {
+                        // Add the wallet address for relevant outputs
+                        const auto script = output_script_from_utxo(locker, ep);
+                        ep["address"] = get_address_from_script(m_net_params, script, ep["address_type"]);
+                    }
                 }
 
                 // Note pt_idx on endpoints is the index within the tx, not the previous tx!
