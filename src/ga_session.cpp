@@ -2247,9 +2247,11 @@ namespace sdk {
                     const amount satoshi = ep.at("satoshi");
                     if (is_tx_output) {
                         totals[asset_id] += satoshi.signed_value();
-                        // Add the wallet address for relevant outputs
-                        const auto script = output_script_from_utxo(locker, ep);
-                        ep["address"] = get_address_from_script(m_net_params, script, ep["address_type"]);
+                        if (json_get_value(ep, "address").empty()) {
+                            // Add the wallet address for relevant outputs
+                            const auto script = output_script_from_utxo(locker, ep);
+                            ep["address"] = get_address_from_script(m_net_params, script, ep["address_type"]);
+                        }
                     } else {
                         totals[asset_id] -= satoshi.signed_value();
                     }
