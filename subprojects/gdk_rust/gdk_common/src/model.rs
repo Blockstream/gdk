@@ -460,9 +460,6 @@ pub struct GetTxInOut {
     // TODO: use an enum and sort out AddressType/ScriptType
     pub address_type: String,
 
-    /// Always empty for now.
-    pub addressee: String,
-
     /// Whether the elements is an input or an output.
     pub is_output: bool,
 
@@ -573,7 +570,6 @@ pub struct TxListItem {
     pub spv_verified: String,
     pub fee: u64,
     pub fee_rate: u64,
-    pub addressees: Vec<String>, // receiver's addresses
     pub inputs: Vec<GetTxInOut>,
     pub outputs: Vec<GetTxInOut>,
     pub transaction_size: usize,

@@ -314,16 +314,6 @@ impl Account {
                 .map(|h| 1_000_000u64.saturating_mul(h.time() as u64))
                 .unwrap_or_else(now); // in microseconds
 
-            let mut addressees = vec![];
-            for i in 0..tx.output_len() as u32 {
-                let script = tx.output_script(i);
-                if !script.is_empty() && !acc_store.paths.contains_key(&script) {
-                    if let Some(address) = tx.output_address(i, self.network.id()) {
-                        addressees.push(address);
-                    };
-                }
-            }
-
             let memo = store.get_memo(tx_id).cloned().unwrap_or("".to_string());
 
             let fee = tx.fee(
@@ -409,7 +399,6 @@ impl Account {
                     };
 
                     Ok(GetTxInOut {
-                        addressee: "".to_string(),
                         is_output: false,
                         is_spent: true,
                         pt_idx: vin as u32,
@@ -456,7 +445,6 @@ impl Account {
                     let amount_blinder = tx.output_amountblinder_hex(vout, &acc_store.unblinded);
 
                     Ok(GetTxInOut {
-                        addressee: "".to_string(),
                         is_output: true,
                         // FIXME: this can be wrong, however setting this value correctly might be quite
                         // expensive: involing db hits and potentially network calls; postponing it for now.
@@ -491,7 +479,6 @@ impl Account {
                 spv_verified: spv_verified.to_string(),
                 fee,
                 fee_rate,
-                addressees,
                 inputs,
                 outputs,
                 transaction_size: txe.size,

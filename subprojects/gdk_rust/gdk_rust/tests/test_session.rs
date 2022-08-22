@@ -281,7 +281,6 @@ impl TestSession {
         let ap = self.get_receive_address(0);
         let funding_tx = self.node_sendtoaddress(&ap.address, satoshi, None);
         self.wait_tx(vec![0], &funding_tx, Some(satoshi), Some(TransactionType::Incoming));
-        self.list_tx_contains(&funding_tx, &vec![]);
         let mut assets_issued = vec![];
 
         for _ in 0..assets_to_issue.unwrap_or(0) {
@@ -444,8 +443,6 @@ impl TestSession {
             "send_all in signed_tx is true but should be false"
         );
 
-        self.list_tx_contains(&txid, &vec![address.to_string()]);
-
         txid
     }
 
@@ -508,7 +505,6 @@ impl TestSession {
 
         let address = self.node_getnewaddress(None);
         let txid = self.send_tx(&address, 1000, None, None, None, None, None);
-        self.list_tx_contains(&txid, &[address]);
     }
 
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
@@ -524,29 +520,6 @@ impl TestSession {
             list.iter().filter(|e| e.txhash == txid).cloned().collect();
         assert!(!filtered_list.is_empty(), "just made tx {} is not in tx list", txid);
         filtered_list.first().unwrap().clone()
-    }
-
-    fn list_tx_contains(&mut self, txid: &str, addressees: &[String]) {
-        let tx = self.get_tx_from_list(0, txid);
-        if !addressees.is_empty() {
-            let recipients = match self.network_id {
-                NetworkId::Bitcoin(_) => addressees.to_vec(),
-                NetworkId::Elements(_) => {
-                    // We can't check Liquid unconfidential addressees because we can't compute those from only blockchain + mnemonic
-                    addressees
-                        .iter()
-                        .map(|s| {
-                            let mut a = elements::Address::from_str(s).unwrap();
-                            a.blinding_pubkey = None;
-                            a.to_string()
-                        })
-                        .collect()
-                }
-            };
-            let a: HashSet<String> = HashSet::from_iter(recipients.iter().cloned());
-            let b: HashSet<String> = HashSet::from_iter(tx.addressees.iter().cloned());
-            assert_eq!(a, b, "tx does not contain recipient addresses");
-        }
     }
 
     pub fn get_receive_address(&self, subaccount: u32) -> AddressPointer {
@@ -566,7 +539,6 @@ impl TestSession {
         let mut create_opt = CreateTransaction::default();
         let fee_rate = 1000;
         create_opt.fee_rate = Some(fee_rate);
-        let mut addressees = vec![];
         let mut assets_cycle = assets.iter().cycle();
         let mut tags = vec![];
         for _ in 0..recipients {
@@ -584,7 +556,6 @@ impl TestSession {
                 satoshi: amount,
                 asset_id,
             });
-            addressees.push(address);
         }
         create_opt.utxos = convertutxos(&self.utxos(create_opt.subaccount));
         let tx = self.session.create_transaction(&mut create_opt).unwrap();
@@ -613,7 +584,6 @@ impl TestSession {
             }
         }
         //TODO check node balance
-        self.list_tx_contains(&txid, &addressees);
     }
 
     pub fn receive_unconfidential(&mut self) {
@@ -669,7 +639,6 @@ impl TestSession {
         let balance_node_before = self.balance_node(None);
         let sat = 1_000;
         let txid = self.send_tx(&node_address, sat, None, None, None, Some(true), None);
-        self.list_tx_contains(&txid, &[node_address]);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
 
         // Spend a unconfidential utxos
@@ -691,7 +660,6 @@ impl TestSession {
             .all(|u| !u.confidential.unwrap_or(false)));
         let sat = unconf_sat / 2;
         let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
-        self.list_tx_contains(&txid, &[node_address]);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
     }
 
