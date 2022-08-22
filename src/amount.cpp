@@ -164,5 +164,12 @@ namespace sdk {
         return fmt(conversion_type(value_str), dp);
     }
 
+    amount::signed_value_type amount::signed_value() const
+    {
+        constexpr auto highbit = (((uint64_t)1) << ((uint64_t)63));
+        GDK_RUNTIME_ASSERT_MSG(!(m_value & highbit), "value out of range");
+        return static_cast<signed_value_type>(m_value);
+    }
+
 } // namespace sdk
 } // namespace ga

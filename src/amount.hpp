@@ -13,6 +13,7 @@ namespace sdk {
     class amount final {
     public:
         // Internally, BTC amounts are held as satoshi
+        using signed_value_type = int64_t;
         using value_type = uint64_t;
 
         static constexpr value_type coin_value = 100000000;
@@ -90,6 +91,7 @@ namespace sdk {
         }
 
         value_type value() const { return m_value; }
+        signed_value_type signed_value() const;
 
     private:
         value_type m_value;

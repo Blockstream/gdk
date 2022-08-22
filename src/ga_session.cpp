@@ -2225,7 +2225,7 @@ namespace sdk {
             const std::string txhash = tx_details["txhash"];
             const uint32_t tx_block_height = tx_details["block_height"];
 
-            std::map<std::string, amount> received, spent;
+            std::map<std::string, int64_t> totals; /* Note: signed */
             std::map<uint32_t, nlohmann::json> in_map, out_map;
             std::set<std::string> unique_asset_ids;
 
@@ -2244,15 +2244,14 @@ namespace sdk {
 
                     // Compute the effect of the input/output on the wallets balance
                     // TODO: Figure out what redeemable value for social payments is about
-                    const amount::value_type satoshi = ep.at("satoshi");
-
-                    auto& which_balance = is_tx_output ? received[asset_id] : spent[asset_id];
-                    which_balance += satoshi;
-
+                    const amount satoshi = ep.at("satoshi");
                     if (is_tx_output) {
+                        totals[asset_id] += satoshi.signed_value();
                         // Add the wallet address for relevant outputs
                         const auto script = output_script_from_utxo(locker, ep);
                         ep["address"] = get_address_from_script(m_net_params, script, ep["address_type"]);
+                    } else {
+                        totals[asset_id] -= satoshi.signed_value();
                     }
                 }
 
@@ -2282,32 +2281,27 @@ namespace sdk {
             }
 
             // TODO: improve the detection of tx type.
-            bool net_positive = false;
-            bool net_positive_set = false;
+            bool seen_positive = false, seen_negative = false;
+
             for (const auto& asset_id : unique_asset_ids) {
-                const auto net_received = received[asset_id];
-                const auto net_spent = spent[asset_id];
-                const auto asset_net_positive = net_received > net_spent;
-                if (net_positive_set) {
-                    GDK_RUNTIME_ASSERT_MSG(net_positive == asset_net_positive, "Ambiguous tx direction");
-                } else {
-                    net_positive = asset_net_positive;
-                    net_positive_set = true;
-                }
-                const amount total = net_positive ? net_received - net_spent : net_spent - net_received;
-                tx_details["satoshi"][asset_id] = total.value();
+                const auto& total = totals[asset_id];
+                seen_positive |= total > 0;
+                seen_negative |= total < 0;
+                tx_details["satoshi"][asset_id] = total;
             }
 
             const bool is_confirmed = tx_block_height != 0;
+            bool can_rbf = false, can_cpfp = false;
 
             std::string tx_type;
             if (is_liquid && unique_asset_ids.empty()) {
                 // Failed to unblind all relevant inputs and outputs. This
                 // might be a spam transaction.
                 tx_type = "not unblindable";
-                tx_details["can_rbf"] = false;
-                tx_details["can_cpfp"] = false;
-            } else if (net_positive) {
+            } else if (seen_positive && seen_negative) {
+                tx_type = "mixed";
+                // FIXME: Allow RBF/CPFP of mixed txs (e.g. swaps)
+            } else if (seen_positive) {
                 tx_type = "incoming";
                 for (auto& ep : tx_details["inputs"]) {
                     if (!json_get_value(ep, "is_relevant", false)) {
@@ -2317,8 +2311,7 @@ namespace sdk {
                         }
                     }
                 }
-                tx_details["can_rbf"] = false;
-                tx_details["can_cpfp"] = !is_confirmed;
+                can_cpfp = !is_confirmed;
             } else {
                 tx_type = "redeposit";
                 for (auto& ep : tx_details["outputs"]) {
@@ -2341,10 +2334,11 @@ namespace sdk {
                         tx_type = "outgoing"; // We have at least one non-wallet output
                     }
                 }
-                tx_details["can_rbf"] = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
-                tx_details["can_cpfp"] = false;
+                can_rbf = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
             }
             tx_details["type"] = std::move(tx_type);
+            tx_details["can_rbf"] = can_rbf;
+            tx_details["can_cpfp"] = can_cpfp;
 
             if (!sync_disrupted) {
                 // Insert the tx into the DB cache now that it is cleaned up/unblinded
