@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use elements::AssetId;
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ pub(crate) type RegistryIcons = HashMap<AssetId, String>;
 
 /// Asset informations returned by both [`crate::get_assets`] and
 /// [`crate::refresh_assets`].
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RegistryInfos {
     /// Assets metadata.
     pub assets: RegistryAssets,
@@ -20,6 +21,20 @@ pub struct RegistryInfos {
 
     #[serde(default, skip_serializing)]
     pub(crate) source: Option<RegistrySource>,
+}
+
+// Custom `Debug` impl to avoid having full base64 encoded images in debug
+// logs.
+impl fmt::Debug for RegistryInfos {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let icons = self.icons.iter().map(|(id, _b64)| (id, "...")).collect::<HashMap<_, _>>();
+
+        f.debug_struct("RegistryInfos")
+            .field("assets", &self.assets)
+            .field("icons", &icons)
+            .field("source", &self.source)
+            .finish()
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
