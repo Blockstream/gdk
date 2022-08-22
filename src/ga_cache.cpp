@@ -24,7 +24,7 @@ namespace sdk {
         constexpr uint32_t CT_WO = 2; // Watch-only wallet cache
 
         constexpr int VERSION = 1;
-        constexpr int MINOR_VERSION = 0x1;
+        constexpr int MINOR_VERSION = 0x2;
         constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
         constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
                                           "WHERE subaccount = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3;";
@@ -527,9 +527,12 @@ namespace sdk {
             // Delete cache items that can be re-populated as the latest minor version
             GDK_LOG_SEV(log_level::info) << "Updating tx cache version " << ver << " to v" << MINOR_VERSION;
             if (m_is_liquid && ver < 1) {
-                // Delete pre-v1 tx and blinding data
+                // Delete pre-v1 blinding data, tx will be deleted below
                 exec_sql(m_db, "DELETE FROM LiquidOutput;");
                 exec_sql(m_db, "DELETE FROM LiquidBlindingNonce;");
+            }
+            if (ver < 2) {
+                // Delete pre-v2 tx's
                 exec_sql(m_db, "DELETE FROM Tx;");
             }
 
