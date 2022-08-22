@@ -23,14 +23,25 @@ pub struct RegistryInfos {
     pub(crate) source: Option<RegistrySource>,
 }
 
+/// Max number of assets and icons included in the debug output of
+/// [`RegistryInfos`].
+const REGISTRY_INFOS_DEBUG_LIMIT: usize = 64;
+
 // Custom `Debug` impl to avoid having full base64 encoded images in debug
 // logs.
 impl fmt::Debug for RegistryInfos {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let icons = self.icons.iter().map(|(id, _b64)| (id, "...")).collect::<HashMap<_, _>>();
+        let assets = self.assets.iter().take(REGISTRY_INFOS_DEBUG_LIMIT).collect::<HashMap<_, _>>();
+
+        let icons = self
+            .icons
+            .iter()
+            .map(|(id, _b64)| (id, "..."))
+            .take(REGISTRY_INFOS_DEBUG_LIMIT)
+            .collect::<HashMap<_, _>>();
 
         f.debug_struct("RegistryInfos")
-            .field("assets", &self.assets)
+            .field("assets", &assets)
             .field("icons", &icons)
             .field("source", &self.source)
             .finish()
