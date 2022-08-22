@@ -8,12 +8,16 @@
 
 ### Changed
 
+- GA_get_transactions: The input/output "addressee" element is now only populated for now-disabled historical social payments.
+- GA_get_transactions: The top-level "satoshi" elements are now signed; negative values represent outgoing amounts.
+
 ### Fixed
 
 ### Removed
 
 - JSON: remove "server_signed" from create/sign/send transaction JSON.
 - JSON: remove "user_signed" from create/sign/send transaction JSON.
+- GA_get_transactions: Remove the top-level "addressees" element. Callers should use the "address" elements of inputs and outputs instead.
 
 ## Release 0.0.55 - 2022-07-08
 
