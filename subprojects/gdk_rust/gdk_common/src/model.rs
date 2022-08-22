@@ -562,7 +562,6 @@ pub struct TxListItem {
     pub type_: TransactionType,
     pub memo: String,
     pub txhash: String,
-    #[serde(serialize_with = "serialize_tx_balances")]
     pub satoshi: Balances,
     pub rbf_optin: bool,
     pub can_cpfp: bool,
@@ -575,20 +574,6 @@ pub struct TxListItem {
     pub transaction_size: usize,
     pub transaction_vsize: usize,
     pub transaction_weight: usize,
-}
-
-// Negative (sent) amounts are expected to be provided as positive numbers.
-// The app side will use the 'type' field to try and determine whether its sent or received,
-// which works in the typical case but not with transactions that has mixed types. To be fixed later.
-fn serialize_tx_balances<S>(balances: &Balances, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    let mut balances_abs = balances.clone();
-    for (_, v) in balances_abs.iter_mut() {
-        *v = v.abs();
-    }
-    balances_abs.serialize(serializer)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
