@@ -352,7 +352,7 @@ GDK_API int GA_update_subaccount(struct GA_session* session, const GA_json* deta
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: Transactions are returned from newest to oldest with up to 30 transactions per page.
+ * .. note:: Transactions are returned as :ref:`tx-list` from newest to oldest with up to 30 transactions per page.
  */
 GDK_API int GA_get_transactions(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
 

@@ -332,32 +332,31 @@ Subaccounts list JSON
 Transaction list JSON
 ---------------------
 
+Describes a users transaction history returned by `GA_get_transactions`.
+
 .. code-block:: json
 
-    [
+  {
+    "transactions": [
       {
-        "addressees": [
-          ""
-        ],
-        "block_height": 0,
-        "calculated_fee_rate": 1004,
-        "can_cpfp": true,
+        "block_height": 2098691,
+        "can_cpfp": false,
         "can_rbf": false,
-        "created_at_ts": 1551280324000000,
-        "fee": 206,
+        "created_at_ts": 1633987189032056,
+        "fee": 207,
         "fee_rate": 1004,
         "inputs": [
           {
             "address": "",
-            "address_type": "p2wsh",
-            "addressee": "",
+            "address_type": "csv",
+            "is_internal": false,
             "is_output": false,
-            "is_relevant": false,
+            "is_relevant": true,
             "is_spent": true,
-            "pointer": 1640,
+            "pointer": 287,
             "pt_idx": 0,
-            "satoshi": 1834469,
-            "script_type": 14,
+            "satoshi": 27071081568,
+            "script_type": 15,
             "subaccount": 0,
             "subtype": 0
           }
@@ -365,45 +364,216 @@ Transaction list JSON
         "memo": "",
         "outputs": [
           {
-            "address": "2N3GFLkDKXZRNUqBdHN2SDdwFXrc5FKAJ3a",
-            "address_type": "p2wsh",
-            "addressee": "",
+            "address": "2MztTCrvpq73a8homScCo659VADSLEfR2FW",
+            "address_type": "csv",
+            "is_internal": false,
             "is_output": true,
             "is_relevant": true,
             "is_spent": false,
-            "pointer": 1,
+            "pointer": 288,
             "pt_idx": 0,
-            "satoshi": 200000,
-            "script_type": 14,
-            "subaccount": 4,
-            "subtype": 0
+            "satoshi": 26970081361,
+            "script_type": 15,
+            "subaccount": 0,
+            "subtype": 51840
           },
           {
-            "address": "2N8HdRzRsV8fF8jWroeX1Hd6CFTBvUuEZfJ",
-            "address_type": "p2wsh",
-            "addressee": "",
+            "address": "tb1qt0lenzqp8ay0ryehj7m3wwuds240mzhgdhqp4c",
+            "address_type": "",
+            "is_internal": false,
             "is_output": true,
             "is_relevant": false,
             "is_spent": false,
-            "pointer": 1657,
+            "pointer": 0,
             "pt_idx": 1,
-            "satoshi": 1634263,
-            "script_type": 14,
+            "satoshi": 101000000,
+            "script_type": 11,
             "subaccount": 0,
             "subtype": 0
           }
         ],
-        "rbf_optin": true,
-        "satoshi": 200000,
-        "transaction_size": 370,
-        "transaction_vsize": 205,
-        "transaction_weight": 820,
-        "txhash": "fe50531d94fae597d9e209582a401e62b1f705ace93eca94fe2e42f187456e4a",
-        "type": "incoming",
-        "vsize": 205,
-        "spv_verified": "disabled"
+        "rbf_optin": false,
+        "satoshi": {
+          "btc": -101000207
+        },
+        "spv_verified": "disabled",
+        "transaction_size": 375,
+        "transaction_vsize": 206,
+        "transaction_weight": 824,
+        "txhash": "0a934eaa5c8a7c961c1c3aef51a49d11d7d9a04a839620ec6e796156b429c7b4",
+        "type": "outgoing"
       }
     ]
+  }
+
+
+:transactions: Top level container for the users transaction list.
+:block_height: The network block height that the transaction was confirmed
+    in, or ``0`` if the transaction is in the mempool.
+:can_cpfp: A boolean indicating whether the user can CPFP the transaction.
+:can_rbf: A boolean indicating whether the use can RBF (bump) the transaction fee.
+:created_at_ts: The timestamp in microseconds ffrom the Unix epoc when the transaction
+    was seen by gdk or Green servers, or included in a block.
+:fee: The BTC or L-BTC network fee paid by the transaction in satoshi.
+:fee_rate: The fee rate in satoshi per thousand bytes.
+:inputs: See :ref:`tx-list-inputs`.
+:memo: The users memo, if previously set by `GA_set_transaction_memo`.
+:outputs: See :ref:`tx-list-outputs`.
+:rbf_optin: A boolean indicating whether the transaction is RBF-enabled.
+:satoshi: A map of asset names to the signed satoshi total for that asset in the
+    transaction. Negative numbers represent outgoing amounts, positive incoming.
+:spv_verified: The SPV status of the transaction, one of ``"in_progress"``, ``"verified"``,
+    ``"not_verified"``, ``"disabled"``, ``"not_longest"`` or ``"unconfirmed"``.
+:transaction_size: The size of the transaction in bytes.
+:transaction_vsize: The size of the transaction in vbytes.
+:transaction_weight: The weight of the transaction.
+:txhash: The txid of the transaction.
+:type: One of ``"incoming"``, ``"outgoing"``, ``"mixed"`` or ``"not unblindable"``.
+
+
+.. _tx-list-input:
+
+Transaction list input element
+------------------------------
+
+Describes a transaction input in :ref:`tx-list`.
+
+.. code-block:: json
+
+  {
+    "address": "2MxVC4kQTpovRHiEmzd3q7vGtofM8CAijYY",
+    "address_type": "csv",
+    "is_internal": false,
+    "is_output": false,
+    "is_relevant": true,
+    "is_spent": true,
+    "pointer": 287,
+    "pt_idx": 0,
+    "satoshi": 27071081568,
+    "script_type": 15,
+    "subaccount": 0,
+    "subtype": 0
+  }
+
+
+:address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
+:addressee: Optional, multisig only. For historical social payments, the account name sent from.
+:address_type: For user wallet addresses, One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+:is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
+:is_output: Always false. Deprecated, will be removed in a future release.
+:is_relevant: A boolean indicating whether the input relates to the subaccount the
+    caller passed to `GA_get_transactions`.
+:is_spent: Always true. Deprecated, will be removed in a future release.
+:pointer: For user wallet addresses, the address number/final number in the address derivation path.
+:pt_idx: Deprecated, will be removed in a future release.
+:satoshi: The amount of the input in satoshi.
+:script_type: Deprecated, will be removed in a future release.
+:subaccount: For user wallet addresses, the subaccount this output belongs to, or ``0``.
+:subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks used in the receiving scriptpubkey.
+
+Liquid inputs have additional fields:
+
+.. code-block:: json
+
+  {
+    "amountblinder": "3ad591ed6289ab0a7fa1777197f84a05cd12f651cca831932eaa8a09ac7cc7d2",
+    "asset_id": "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49",
+    "asset_tag": "0b5ff0a91c05353089cd40250a2b6c81f09507637d90c37c7e372a8465a4dc0458",
+    "assetblinder": "0cd232883f93a3376b88e19a17192495663315a94bd54a24f20299b9af7a696c",
+    "commitment": "09f9ac1dfa5042e25a9791fde4aa8292e21c25479eec7783ec5400805a227be256",
+    "confidential": true,
+    "nonce_commitment": "03dcec00304fe2debe04a57f84962966b92db9390b96e9931fef47b002fb265278",
+    "previdx": 1,
+    "prevpointer": 40,
+    "prevsubaccount": null,
+    "prevtxhash": "be5ad6db9598873b1443796aa0b34445aa85145586b3355324130c0fd869948f",
+    "script": "a914759262b6664d3be92ff41f3a06ade42fa429843087",
+  }
+
+
+:amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
+:asset_id: The hex-encoded asset id in display format.
+:asset_tag: The hex-encoded asset commitment.
+:assetblinder: The hex-encoded asset blinder (asset blinding factor, abf).
+:commitment: The hex-encoded value commitment.
+:confidential: A boolean indicating whether or not the output is confidential.
+:nonce_commitment: The hex-encoded nonce commitment.
+:previdx: The output index of the transaction containing the output representing this input.
+:prevpointer: Deprecated, will be removed in a future release.
+:prevsubaccount: Deprecated, will be removed in a future release.
+:prevtxhash: The txid of the transaction containing the output representing this input.
+:script: The scriptpubkey of the output representing this input.
+
+
+.. _tx-list-output:
+
+Transaction list output element
+------------------------------
+
+Describes a transaction output in :ref:`tx-list`.
+
+.. code-block:: json
+
+  {
+    "address": "2MwdBCwyJnEtp2Bq8CBxyeSi5JWJQ9nXkjj",
+    "address_type": "p2wsh",
+    "is_internal": false,
+    "is_output": true,
+    "is_relevant": true,
+    "is_spent": true,
+    "pointer": 275,
+    "pt_idx": 0,
+    "satoshi": 1000,
+    "script_type": 14,
+    "subaccount": 0,
+    "subtype": 0
+  }
+
+:address: The output address.
+:address_type: For user wallet output addresses, One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+:is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
+:is_output: Always true. Deprecated, will be removed in a future release.
+:is_relevant: A boolean indicating whether the output relates to the subaccount the
+    caller passed to `GA_get_transactions`.
+:is_spent: A boolean indicating if this output has been spent.
+:pointer: For user wallet addresses, the address number/final number in the address derivation path.
+:pt_idx: Deprecated, will be removed in a future release.
+:satoshi: The amount of the output in satoshi.
+:script_type: Deprecated, will be removed in a future release.
+:subaccount: For user wallet addresses, the subaccount this output belongs to, or ``0``.
+:subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks used in the receiving scriptpubkey.
+
+
+Liquid outputs have additional fields:
+
+.. code-block:: json
+
+  {
+    "amountblinder": "752defd24e9163917aea608a2ff8b77773311a4728551f49761781af9eb4905a",
+    "asset_id": "38fca2d939696061a8f76d4e6b5eecd54e3b4221c846f24a6b279e79952850a5",
+    "asset_tag": "0ad82ac7489779a5303af3c30b1ec8abd47007f3d5ee01cb1f3b0aac2277a1df23",
+    "assetblinder": "d29b09a3f18c7b404ba99338f6427370d0a3b0f6b9591ecf54bce4623a93eb06",
+    "blinding_key": "039f2fd9daf37ae24e6a5311ffc18f60aaf3d8adac755c4ee93bf23bbde62071f7",
+    "commitment": "0920c8c8ffe7a3529d48947ee1102e3ffbaa62ffa941bc00544d4dd90767426f2d",
+    "confidential": true,
+    "is_blinded": true,
+    "nonce_commitment": "0389e67d84f9d04fd163ca540efa599fb51433e7891156c96321f9e85a2687b270",
+    "script": "a9144371b94845ee9b316fad126238ccefc05ae74ae587",
+    "unblinded_address": "8ka5DahqHU82oALm372w9rPLZskn4jwpSu"
+  }
+
+:amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
+:asset_id: The hex-encoded asset id in display format.
+:asset_tag: The hex-encoded asset commitment.
+:assetblinder: The hex-encoded asset blinder (asset blinding factor, abf).
+:commitment: The hex-encoded value commitment.
+:confidential: For user wallet outputs, a boolean indicating whether or not the output
+    is confidential, i.e. whether its asset and value have been blinded.
+:is_blinded: For user wallet outputs, alays true when ``confidential`` is true.
+:nonce_commitment: The hex-encoded nonce commitment.
+:script: For user wallet outputs, the scriptpubkey of this output.
 
 
 .. _external-tx-detail:
@@ -1132,7 +1302,7 @@ Contains the filtered unspent outputs.
                Is 0 if the transaction is unconfirmed.
 :address_type: One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
     or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
-:is_internal: Whether or not the user key belongs to the internal chain.
+:is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
 :pointer: The user key number/final number in the derivation path.
 :subaccount: The subaccount this output belongs to.
              Matches ``"pointer"`` from :ref:`subaccount-list` or :ref:`subaccount-detail`.
@@ -1154,23 +1324,23 @@ For Liquid the inner maps have additional fields:
 .. code-block:: json
 
   {
-    "confidential": true,
-    "asset_id": "e4b76d990f27bf6063cb66ff5bbc783d03258a0406ba8ac09abab7610d547e72",
-    "assetblinder": "aedb6c37d0ea0bc64fbc7036b52d0a0784da0b1ca90ac918c19ee1025b0c944c",
     "amountblinder": "3be117b88ba8284b05b89998bdee1ded8cd5b561ae3d05bcd91d4e8abab2cd47",
+    "asset_id": "e4b76d990f27bf6063cb66ff5bbc783d03258a0406ba8ac09abab7610d547e72",
     "asset_tag": "0b103a2d34cf469987dd06937919f9dae8c9856be17c554fd408fdc226b1769e59",
+    "assetblinder": "aedb6c37d0ea0bc64fbc7036b52d0a0784da0b1ca90ac918c19ee1025b0c944c",
     "commitment": "094c3f83d5bac22b527ccac141fe04883d79bf04aef10a1dd42f501c5b51318907",
-    "nonce_commitment": "0211b39afe463473e428cfafd387f9c85b350f440131fad03aa5f4809b6c834f30",
+    "confidential": true,
+    "nonce_commitment": "0211b39afe463473e428cfafd387f9c85b350f440131fad03aa5f4809b6c834f30"
   }
 
-:confidential: Whether or not the output is confidential.
-:asset_id: The hex-encoded asset id.
-:assetblinder: The hex-encoded asset blinder (asset blinding factor, abf)
-:amountblinder: The hex-encoded amount blinder (value blinding factor, vbf)
-:asset_tag: The hex-encoded asset commitment.
-:commitment: The hex-encoded value commitment.
-:nonce_commitment: The hex-encoded nonce commitment.
 
+:amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
+:asset_id: The hex-encoded asset id in display format.
+:asset_tag: The hex-encoded asset commitment.
+:assetblinder: The hex-encoded asset blinder (asset blinding factor, abf).
+:commitment: The hex-encoded value commitment.
+:confidential: A boolean indicating whether or not the output is confidential.
+:nonce_commitment: The hex-encoded nonce commitment.
 
 .. _unspent-outputs-status:
 
