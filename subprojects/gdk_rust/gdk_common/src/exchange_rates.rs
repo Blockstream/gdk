@@ -59,26 +59,18 @@ impl Currency {
         }
     }
 
-    /// Returns a `(url, field)` pair where `url` is the endpoint used to fetch
-    /// the rate between the two currencies and `field` is the name of the
-    /// `json` field where the price is defined.
-    pub fn endpoint(a: &Self, b: &Self) -> (String, &'static str) {
+    /// Returns a `(url, field)` pair, where `url` is the endpoint used to
+    /// fetch the rate between the two currencies and `field` is the name of
+    /// the JSON field where the price is defined.
+    pub fn endpoint(a: &Self, b: &Self, endpoint_url: &str) -> (String, &'static str) {
         match (a, b) {
             (Currency::BTC, Currency::USD) | (Currency::USD, Currency::BTC) => (
-                format!(
-                    "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/index/{}{}",
-                    a.endpoint_name(),
-                    b.endpoint_name()
-                ),
+                format!("{}/index/{}{}", endpoint_url, a.endpoint_name(), b.endpoint_name(),),
                 "price",
             ),
 
             _ => (
-                format!(
-                    "https://deluge-dev.blockstream.com/feed/del-v0r7-ws/price/{}{}/bitfinex",
-                    a.endpoint_name(),
-                    b.endpoint_name()
-                ),
+                format!("{}/price/{}{}", endpoint_url, a.endpoint_name(), b.endpoint_name(),),
                 "last-trade",
             ),
         }

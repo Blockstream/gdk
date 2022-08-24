@@ -31,7 +31,7 @@ pub(crate) fn fetch_cached<S: Session>(
     let agent = sess.build_request_agent()?;
 
     let ticker = if sess.is_mainnet() {
-        self::fetch(&agent, pair)?
+        self::fetch(&agent, pair, &params.url)?
     } else {
         Ticker::new(pair, 1.1)
     };
@@ -41,7 +41,7 @@ pub(crate) fn fetch_cached<S: Session>(
     Ok((ticker, ExchangeRateSource::Fetched))
 }
 
-pub(crate) fn fetch(agent: &ureq::Agent, _pair: Pair) -> Result<Ticker, Error> {
+pub(crate) fn fetch(agent: &ureq::Agent, _pair: Pair, _url: &str) -> Result<Ticker, Error> {
     agent
         .get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD")
         .call()?
@@ -76,6 +76,10 @@ pub(crate) fn ticker_to_json(ticker: &Ticker) -> Value {
 pub(crate) struct ConvertAmountParams {
     #[serde(default, rename(deserialize = "currencies"))]
     currency: Currency,
+
+    /// The url of the endpoint used to fetch the exchange rate data.
+    #[serde(rename = "price_url")]
+    url: String,
 }
 
 #[cfg(test)]
@@ -137,6 +141,7 @@ mod tests {
 
         let params = ConvertAmountParams {
             currency: Currency::USD,
+            ..Default::default()
         };
 
         let res = fetch_cached(&mut session, params.clone());
