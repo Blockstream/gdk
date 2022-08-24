@@ -16,7 +16,8 @@ use gdk_common::wally::MasterBlindingKey;
 use gdk_common::NetworkId;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
@@ -71,7 +72,7 @@ pub struct RawCache {
     pub master_blinding: Option<MasterBlindingKey>,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct RawAccountCache {
     /// contains all my tx and all prevouts
     pub all_txs: BETransactions,
@@ -92,18 +93,14 @@ pub struct RawAccountCache {
     pub indexes: Indexes,
 
     /// the xpub of the account
-    ///
-    /// This field is optional to avoid breaking the cache,
-    /// but it should always be set.
-    pub xpub: Option<ExtendedPubKey>,
+    pub xpub: ExtendedPubKey,
 
     /// Whether the subaccount was discovered through bip44 subaccount discovery
     ///
     /// If an account is discovered through bip44, then it has at least one transaction. This is
     /// used to establish if an account has some transactions without waiting for the syncer to
     /// download transactions.
-    /// If None, the account was created before the addition of this field.
-    pub bip44_discovered: Option<bool>,
+    pub bip44_discovered: bool,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
@@ -363,23 +360,18 @@ impl StoreMeta {
             .get_or_insert_with(|| Default::default())
             .entry(account_num)
             .or_default();
+
         match self.cache.accounts.entry(account_num) {
             Entry::Vacant(entry) => {
-                let mut account = RawAccountCache::default();
-                account.xpub = Some(account_xpub);
-                account.bip44_discovered = Some(discovered);
+                let account = RawAccountCache::new(account_xpub, discovered);
                 entry.insert(account);
             }
-            Entry::Occupied(mut entry) => {
-                match entry.get().xpub {
-                    None => {
-                        // This is a cache upgrade from a version that did not persist the xpub
-                        entry.get_mut().xpub = Some(account_xpub);
-                    }
-                    Some(xpub) => xpubs_equivalent(&xpub, &account_xpub)?,
-                }
+            Entry::Occupied(entry) => {
+                // Should we `.unwrap()` instead?
+                xpubs_equivalent(&entry.get().xpub, &account_xpub)?
             }
         }
+
         Ok(())
     }
 
@@ -500,6 +492,18 @@ impl StoreMeta {
 }
 
 impl RawAccountCache {
+    pub fn new(xpub: ExtendedPubKey, bip44_discovered: bool) -> Self {
+        RawAccountCache {
+            all_txs: Default::default(),
+            paths: Default::default(),
+            scripts: Default::default(),
+            heights: Default::default(),
+            unblinded: Default::default(),
+            indexes: Default::default(),
+            xpub,
+            bip44_discovered,
+        }
+    }
     pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {
         match self.all_txs.get(&txid.into_be()).map(|etx| &etx.tx) {
             Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
@@ -584,5 +588,38 @@ mod tests {
         let store_v0: RawStoreV0 = serde_cbor::from_slice(&blob).unwrap();
         assert_eq!(store_v0.settings, store_v1.settings);
         assert_eq!(store_v0.memos, store_v1.memos);
+    }
+
+    #[test]
+    fn test_cache_upgrade() {
+        #[derive(Serialize, Deserialize)]
+        pub struct RawAccountCacheV0 {
+            pub all_txs: BETransactions,
+            pub paths: HashMap<BEScript, DerivationPath>,
+            pub scripts: HashMap<DerivationPath, BEScript>,
+            pub heights: HashMap<BETxid, Option<u32>>,
+            pub unblinded: HashMap<elements::OutPoint, TxOutSecrets>,
+            pub indexes: Indexes,
+            pub xpub: ExtendedPubKey,
+            pub bip44_discovered: bool,
+        }
+        type RawAccountCacheV1 = RawAccountCache;
+
+        let cache_v0 = RawAccountCacheV0 {
+            all_txs: Default::default(),
+            paths: Default::default(),
+            scripts: Default::default(),
+            heights: Default::default(),
+            unblinded: Default::default(),
+            indexes: Default::default(),
+            xpub: ExtendedPubKey::from_str("xpub67tVq9TC3jGc93MFouaJsne9ysbJTgd2z283AhzbJnJBYLaSgd7eCneb917z4mCmt9NT1jrex9JwZnxSqMo683zUWgMvBXGFcep95TuSPo6").unwrap(),
+            bip44_discovered: Default::default(),
+        };
+
+        let blob = serde_cbor::to_vec(&cache_v0).unwrap();
+        let cache_v1 = serde_cbor::from_slice::<RawAccountCacheV1>(&blob);
+        assert!(cache_v1.is_ok(), "cache compatibility broke, not critical but think twice");
+
+        assert_eq!(cache_v0.xpub, cache_v1.unwrap().xpub);
     }
 }

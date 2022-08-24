@@ -10,6 +10,8 @@
 
 - GA_get_transactions: The input/output "addressee" element is now only populated for now-disabled historical social payments.
 - GA_get_transactions: The top-level "satoshi" elements are now signed; negative values represent outgoing amounts.
+- Singlesig: Stop stripping the witness from transactions, transaction hex returned from `get_transaction_details` will 
+return also the witness. Triggers a cache rebuild that could be noticeable from apps, seeing no transactions for a moment.
 
 ### Fixed
 

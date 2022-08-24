@@ -81,27 +81,6 @@ impl BETransaction {
         })
     }
 
-    /// strip witness from the transaction, txid doesn't change
-    pub fn strip_witness(&mut self) {
-        let before_hash = self.txid();
-        match self {
-            Self::Bitcoin(tx) => {
-                for input in tx.input.iter_mut() {
-                    input.witness.clear();
-                }
-            }
-            Self::Elements(tx) => {
-                for input in tx.input.iter_mut() {
-                    input.witness = TxInWitness::default();
-                }
-                for output in tx.output.iter_mut() {
-                    output.witness = TxOutWitness::default();
-                }
-            }
-        }
-        assert_eq!(self.txid(), before_hash, "hash doesn't match after stripping witness");
-    }
-
     pub fn txid(&self) -> BETxid {
         match self {
             Self::Bitcoin(tx) => tx.txid().into(),
@@ -1054,10 +1033,9 @@ impl BETransactions {
 }
 
 impl From<BETransaction> for BETransactionEntry {
-    fn from(mut tx: BETransaction) -> Self {
+    fn from(tx: BETransaction) -> Self {
         let size = tx.serialize().len();
         let weight = tx.get_weight();
-        tx.strip_witness();
         Self {
             tx,
             size,

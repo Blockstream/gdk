@@ -773,8 +773,8 @@ impl ElectrumSession {
         &mut self,
         opt: GetAccountXpubOpt,
     ) -> Result<GetAccountXpubResult, Error> {
-        // If the account cache is missing, we also return None
-        let xpub = self.store()?.read()?.account_cache(opt.subaccount).map_or(None, |c| c.xpub);
+        // If the account cache is missing, we return None
+        let xpub = self.store()?.read()?.account_cache(opt.subaccount).ok().map(|c| c.xpub);
         Ok(GetAccountXpubResult {
             xpub,
         })
@@ -1522,8 +1522,7 @@ impl Syncer {
                 let txs_bytes_downloaded =
                     client.batch_transaction_get_raw(txs_to_download.iter())?;
                 for vec in txs_bytes_downloaded {
-                    let mut tx = BETransaction::deserialize(&vec, self.network.id())?;
-                    tx.strip_witness();
+                    let tx = BETransaction::deserialize(&vec, self.network.id())?;
                     txs.push((tx.txid(), tx));
                 }
             }

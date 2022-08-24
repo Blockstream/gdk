@@ -636,10 +636,7 @@ impl Account {
     pub fn has_transactions(&self) -> Result<bool, Error> {
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(self.account_num)?;
-        Ok(match acc_store.bip44_discovered {
-            Some(true) => true,
-            _ => !acc_store.heights.is_empty(),
-        })
+        Ok(acc_store.bip44_discovered || !acc_store.heights.is_empty())
     }
 
     pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {

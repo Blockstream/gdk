@@ -19,8 +19,6 @@ use gdk_electrum::{headers, Notification, TransactionNotification};
 use gdk_electrum::{spv, ElectrumSession};
 use log::{info, warn, Metadata, Record};
 use serde_json::{json, Value};
-use std::collections::HashSet;
-use std::iter::FromIterator;
 use std::str::FromStr;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -504,7 +502,7 @@ impl TestSession {
         assert_eq!(self.session.filter_events("network").len(), ntf_len + 2);
 
         let address = self.node_getnewaddress(None);
-        let txid = self.send_tx(&address, 1000, None, None, None, None, None);
+        let _txid = self.send_tx(&address, 1000, None, None, None, None, None);
     }
 
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
@@ -638,7 +636,7 @@ impl TestSession {
 
         let balance_node_before = self.balance_node(None);
         let sat = 1_000;
-        let txid = self.send_tx(&node_address, sat, None, None, None, Some(true), None);
+        let _txid = self.send_tx(&node_address, sat, None, None, None, Some(true), None);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
 
         // Spend a unconfidential utxos
@@ -659,7 +657,7 @@ impl TestSession {
             .iter()
             .all(|u| !u.confidential.unwrap_or(false)));
         let sat = unconf_sat / 2;
-        let txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
+        let _txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
     }
 
