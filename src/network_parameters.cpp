@@ -177,6 +177,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "http://localhost:8081" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -216,6 +218,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
@@ -256,6 +260,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "http://localhost:8081" },
+            { "price_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -296,6 +302,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -332,6 +340,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -367,6 +377,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -406,6 +418,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
@@ -446,6 +460,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "http://localhost:8081" },
+            { "price_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -482,6 +498,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -517,6 +535,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -552,6 +572,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "http://localhost:8081" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -591,6 +613,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -628,6 +652,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -664,6 +690,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "https://deluge-dev.blockstream.com/feed/del-v0r7-ws" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -699,6 +727,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
+            { "price_url", "http://localhost:8081" },
+            { "price_onion_url", std::string() },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -760,6 +790,8 @@ namespace sdk {
             set_override(defaults, "user_agent", user_overrides, std::string());
             set_override(defaults, "cert_expiry_threshold", user_overrides, 1);
             set_override(defaults, "proxy", user_overrides, std::string());
+            set_override(defaults, "price_url", user_overrides, std::string());
+            set_override(defaults, "price_onion_url", user_overrides, std::string());
             defaults["state_dir"] = gdk_config().value("datadir", std::string()) + "/state";
             return defaults;
         }
@@ -882,5 +914,15 @@ namespace sdk {
     // a weeks worth of blocks without cache deletion, and for testnet still allows cache finalization
     // testing while being unnaffected by normal chain operation.
     uint32_t network_parameters::get_max_reorg_blocks() const { return m_details.at("max_reorg_blocks"); }
+    std::string network_parameters::get_price_url() const
+    {
+        // TODO: use
+        // ```
+        // return get_url(m_details, "price_url", "price_onion_url", use_tor());
+        // ```
+        // once market data team enables TOR endpoint.
+
+        return m_details.at("price_url");
+    }
 } // namespace sdk
 } // namespace ga
