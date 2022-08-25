@@ -62,7 +62,7 @@ namespace sdk {
         auth_handler* get_next_handler() const;
         void add_next_handler(auth_handler* next);
         std::unique_ptr<auth_handler> remove_next_handler();
-        virtual bool on_next_handler_complete(auth_handler* next_handler);
+        virtual void on_next_handler_complete(auth_handler* next_handler);
 
     protected:
         virtual void signal_hw_request(hw_request request);

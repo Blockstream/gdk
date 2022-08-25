@@ -40,7 +40,7 @@ namespace sdk {
     }
 
     std::unique_ptr<auth_handler> auth_handler::remove_next_handler() { return std::move(m_next_handler); }
-    bool auth_handler::on_next_handler_complete(auth_handler* /*next_handler*/) { return false; }
+    void auth_handler::on_next_handler_complete(auth_handler* /*next_handler*/) {}
 
     auth_handler_impl::auth_handler_impl(session& session, const std::string& name, std::shared_ptr<signer> signer)
         : m_session_parent(session)
@@ -404,7 +404,8 @@ namespace sdk {
             }
             // TODO: Intrusive handler processing
             // Allow the next-to-last handler to fetch results from its sub-handler
-            return get_current_handler()->on_next_handler_complete(last_handler.get());
+            get_current_handler()->on_next_handler_complete(last_handler.get());
+            return true; // Continue processing the current handler
         }
 
         // TODO: When multiple signers are supported, get the signer indicated by the

@@ -796,11 +796,10 @@ namespace sdk {
         update_tx_size_info(m_net_params, tx, m_result);
     }
 
-    bool sign_transaction_call::on_next_handler_complete(auth_handler* next_handler)
+    void sign_transaction_call::on_next_handler_complete(auth_handler* next_handler)
     {
         // We have completed server signing, copy the result into our result
         m_result = std::move(next_handler->move_result());
-        return false; // Don't continue through the auto auth handler, we are done
     }
 
     //
