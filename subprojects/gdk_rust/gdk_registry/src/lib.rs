@@ -484,5 +484,33 @@ mod tests {
             let asset_id = AssetId::from_hex("ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2").unwrap();
             assert_ne!(icons.get(&asset_id), new_icons.get(&asset_id), "non hard coded icon should get updated");
         }
+
+        #[test]
+        fn update_missing_icons() {
+            let _ = env_logger::try_init();
+
+            let temp_dir = TempDir::new().unwrap();
+            info!("{:?}", temp_dir);
+            init(&temp_dir).unwrap();
+
+            /// The first asset id in `data/test/extra_icons.json`.
+            const ID: &str = "223465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb";
+
+            // ID icon is not present in the hard coded icons
+            let res = get_assets(Some(&[ID]), None).unwrap();
+            assert_eq!(res.icons.len(), 0);
+
+            assets_or_icons::test::update_liquid_data();
+
+            // Not updating the icons.
+            refresh_assets(true, true, false).unwrap();
+            let res = get_assets(Some(&[ID]), None).unwrap();
+            assert_eq!(res.icons.len(), 0);
+
+            // Now updating the icons.
+            refresh_assets(true, false, true).unwrap();
+            let res = get_assets(Some(&[ID]), None).unwrap();
+            assert_eq!(res.icons.len(), 1);
+        }
     }
 }
