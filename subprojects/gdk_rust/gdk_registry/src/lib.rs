@@ -85,7 +85,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 
     log::debug!("{:?} are not already cached", not_cached);
 
-    let params = RefreshAssetsParams::new(true, true, false, config);
+    let params = RefreshAssetsParams::new(true, true, false, config, Some(xpub));
     let registry = self::refresh_assets(params)?;
 
     // The returned infos are marked as being from the registry if at least one
@@ -242,16 +242,9 @@ mod tests {
         let config =
             refresh.then(|| local_server_config(&server, assets, icons)).unwrap_or_default();
 
-        super::refresh_assets(RefreshAssetsParams::new(assets, icons, refresh, config))
-    }
+        let xpub = ExtendedPubKey::from_str(DEFAULT_XPUB)?;
+        let params = RefreshAssetsParams::new(assets, icons, refresh, config, Some(xpub));
 
-    fn refresh_with_xpub(assets: bool, icons: bool, xpub: &str) -> Result<RegistryInfos> {
-        let server = Server::run();
-
-        let config = local_server_config(&server, assets, icons);
-
-        let mut params = RefreshAssetsParams::new(true, assets, icons, config);
-        params.add_xpub(xpub)?;
         super::refresh_assets(params)
     }
 
@@ -464,7 +457,7 @@ mod tests {
 
             // updating the local registry, now those assets should be added to
             // the cache.
-            let _ =  refresh_with_xpub(true, true, DEFAULT_XPUB).unwrap();
+            let _ =  refresh_assets(true, true, true).unwrap();
 
             let res = get_assets(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
             assert_eq!(res.assets.len(), 2);

@@ -53,13 +53,19 @@ impl RefreshAssetsParams {
     }
 
     /// Creates a new [`crate::RefreshAssetsParams`].
-    pub fn new(assets: bool, icons: bool, refresh: bool, config: Config) -> Self {
+    pub fn new(
+        assets: bool,
+        icons: bool,
+        refresh: bool,
+        config: Config,
+        xpub: Option<ExtendedPubKey>,
+    ) -> Self {
         Self {
             assets,
             icons,
             refresh,
             config,
-            ..Default::default()
+            xpub,
         }
     }
 
@@ -148,14 +154,6 @@ impl ElementsNetwork {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::str::FromStr;
-
-    impl RefreshAssetsParams {
-        pub(crate) fn add_xpub(&mut self, xpub: &str) -> Result<()> {
-            self.xpub = Some(ExtendedPubKey::from_str(xpub)?);
-            Ok(())
-        }
-    }
 
     #[test]
     fn test_deserialization() {

@@ -38,7 +38,8 @@ fn make_liquid_hard_coded() {
         mut assets,
         mut icons,
         ..
-    } = refresh_assets(RefreshAssetsParams::new(true, true, true, Config::default())).unwrap();
+    } = refresh_assets(RefreshAssetsParams::new(true, true, true, Config::default(), None))
+        .unwrap();
 
     println!("Downloaded {} assets information", assets.len());
     println!("Downloaded {} assets icons", icons.len());
