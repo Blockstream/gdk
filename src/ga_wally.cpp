@@ -336,6 +336,13 @@ namespace sdk {
         return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
     }
 
+    uint32_t scriptpubkey_get_type(byte_span_t scriptpubkey)
+    {
+        size_t typ;
+        GDK_VERIFY(wally_scriptpubkey_get_type(scriptpubkey.data(), scriptpubkey.size(), &typ));
+        return static_cast<uint32_t>(typ);
+    }
+
     std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t witness_ver, uint32_t flags)
     {
         GDK_RUNTIME_ASSERT(witness_ver == 0); // Only segwit v0 is supported

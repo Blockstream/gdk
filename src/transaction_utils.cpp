@@ -197,6 +197,25 @@ namespace sdk {
         return p2pkh_address_from_public_key(net_params, public_key);
     }
 
+    std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey)
+    {
+        // TODO: Fix wally_scriptpubkey_to_address and use that
+        const auto script_type = scriptpubkey_get_type(scriptpubkey);
+        if (script_type == WALLY_SCRIPT_TYPE_P2PKH || script_type == WALLY_SCRIPT_TYPE_P2SH) {
+            std::array<unsigned char, HASH160_LEN + 1> addr_bytes;
+            const size_t offset = script_type == WALLY_SCRIPT_TYPE_P2PKH ? 3 : 2;
+            const auto p2pkh_ver = net_params.btc_version(), p2sh_ver = net_params.btc_p2sh_version();
+            addr_bytes[0] = script_type == WALLY_SCRIPT_TYPE_P2PKH ? p2pkh_ver : p2sh_ver;
+            memcpy(&addr_bytes[0] + 1, scriptpubkey.data() + offset, HASH160_LEN);
+            return base58check_from_bytes(addr_bytes);
+        } else if (script_type == WALLY_SCRIPT_TYPE_P2WPKH || script_type == WALLY_SCRIPT_TYPE_P2WSH
+            || script_type == WALLY_SCRIPT_TYPE_P2TR) {
+            return addr_segwit_from_bytes(scriptpubkey, net_params.bech32_prefix());
+        }
+        GDK_RUNTIME_ASSERT_MSG(false, std::string("unhandled scriptpubkey ") + b2h(scriptpubkey));
+        return std::string();
+    }
+
     static std::vector<unsigned char> output_script(const network_parameters& net_params, const pub_key_t& ga_pub_key,
         const pub_key_t& user_pub_key, byte_span_t backup_pub_key, const std::string& addr_type, uint32_t subtype)
     {
