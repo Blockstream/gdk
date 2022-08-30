@@ -788,9 +788,13 @@ namespace sdk {
 
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix)
     {
-        char* ret;
-        GDK_VERIFY(wally_confidential_addr_to_addr(address.c_str(), prefix, &ret));
-        return make_string(ret);
+        char* addr;
+        int ret = wally_confidential_addr_to_addr(address.c_str(), prefix, &addr);
+        if (ret != WALLY_OK) {
+            // Don't log using GDK_VERIFY as this occurs during non-error conditions
+            throw assertion_error(address + " is not confidential");
+        }
+        return make_string(addr);
     }
 
     std::string confidential_addr_to_addr_segwit(
