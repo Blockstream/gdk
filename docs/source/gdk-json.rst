@@ -412,13 +412,13 @@ Describes a users transaction history returned by `GA_get_transactions`.
     in, or ``0`` if the transaction is in the mempool.
 :can_cpfp: A boolean indicating whether the user can CPFP the transaction.
 :can_rbf: A boolean indicating whether the use can RBF (bump) the transaction fee.
-:created_at_ts: The timestamp in microseconds ffrom the Unix epoc when the transaction
+:created_at_ts: The timestamp in microseconds from the Unix epoc when the transaction
     was seen by gdk or Green servers, or included in a block.
 :fee: The BTC or L-BTC network fee paid by the transaction in satoshi.
 :fee_rate: The fee rate in satoshi per thousand bytes.
-:inputs: See :ref:`tx-list-inputs`.
+:inputs: See :ref:`tx-list-input`.
 :memo: The users memo, if previously set by `GA_set_transaction_memo`.
-:outputs: See :ref:`tx-list-outputs`.
+:outputs: See :ref:`tx-list-output`.
 :rbf_optin: A boolean indicating whether the transaction is RBF-enabled.
 :satoshi: A map of asset names to the signed satoshi total for that asset in the
     transaction. Negative numbers represent outgoing amounts, positive incoming.
@@ -509,7 +509,7 @@ Liquid inputs have additional fields:
 .. _tx-list-output:
 
 Transaction list output element
-------------------------------
+-------------------------------
 
 Describes a transaction output in :ref:`tx-list`.
 
