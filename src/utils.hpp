@@ -130,11 +130,9 @@ namespace sdk {
 
     // RUST FFI:
     // GA_init for rust
-    // No-op if rust support is not compiled in
     void init_rust(const nlohmann::json& details);
 
     // Make a call into rust code and return the result
-    // Throws if rust support is not compiled in
     nlohmann::json rust_call(const std::string& method, const nlohmann::json& input, void* session = nullptr);
 
     // Return the SPV verification status of a tx
