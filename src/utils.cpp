@@ -40,6 +40,9 @@ namespace sdk {
 
     // from bitcoin core
     namespace {
+        // Dummy network to use for computing xpub_hash_id
+        static const std::string XPUB_HASH_NETWORK("GREEN_XPUB_HASH_NETWORK");
+
         inline int64_t GetPerformanceCounter()
         {
             // Read the hardware time stamp counter when available.
@@ -713,16 +716,25 @@ namespace sdk {
         return n + n_final;
     }
 
-    std::string get_wallet_hash_id(
-        const network_parameters& net_params, const std::string& chain_code_hex, const std::string& public_key_hex)
+    std::string get_wallet_hash_id(const std::string& chain_code_hex, const std::string& public_key_hex,
+        bool is_mainnet, const std::string& network)
     {
         const chain_code_t main_chaincode{ h2b_array<32>(chain_code_hex) };
         const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(public_key_hex) };
-        const xpub_hdkey main_hdkey(net_params.is_main_net(), std::make_pair(main_chaincode, main_pubkey));
-        return main_hdkey.to_hashed_identifier(net_params.network());
+        const xpub_hdkey main_hdkey(is_mainnet, std::make_pair(main_chaincode, main_pubkey));
+        return main_hdkey.to_hashed_identifier(network);
     }
 
-    nlohmann::json get_wallet_hash_id(const nlohmann::json& net_params, const nlohmann::json& params)
+    nlohmann::json get_wallet_hash_ids(
+        const network_parameters& net_params, const std::string& chain_code_hex, const std::string& public_key_hex)
+    {
+        auto wallet_hash_id
+            = get_wallet_hash_id(chain_code_hex, public_key_hex, net_params.is_main_net(), net_params.network());
+        auto xpub_hash_id = get_wallet_hash_id(chain_code_hex, public_key_hex, false, XPUB_HASH_NETWORK);
+        return { { "wallet_hash_id", std::move(wallet_hash_id) }, { "xpub_hash_id", std::move(xpub_hash_id) } };
+    }
+
+    nlohmann::json get_wallet_hash_ids(const nlohmann::json& net_params, const nlohmann::json& params)
     {
         auto defaults = network_parameters::get(net_params.value("name", std::string()));
         const network_parameters np{ net_params, defaults };
@@ -749,7 +761,7 @@ namespace sdk {
         if (chain_code_hex.empty() || public_key_hex.empty()) {
             throw user_error("Invalid credentials");
         }
-        return { { "wallet_hash_id", get_wallet_hash_id(np, chain_code_hex, public_key_hex) } };
+        return get_wallet_hash_ids(np, chain_code_hex, public_key_hex);
     }
 
     bool nsee_log_info(std::string message, const char* context)

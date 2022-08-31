@@ -577,12 +577,15 @@ namespace sdk {
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
         // Compute wallet identifier for callers to use if they wish.
-        const auto wallet_hash_id
-            = get_wallet_hash_id(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
+        const auto hash_ids = get_wallet_hash_ids(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
+        auto& wallet_hash_id = hash_ids["wallet_hash_id"];
+        auto& xpub_hash_id = hash_ids["xpub_hash_id"];
         if (!is_initial_login) {
             GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
+            GDK_RUNTIME_ASSERT(login_data.at("xpub_hash_id") == xpub_hash_id);
         }
-        m_login_data["wallet_hash_id"] = wallet_hash_id;
+        m_login_data["wallet_hash_id"] = std::move(wallet_hash_id);
+        m_login_data["xpub_hash_id"] = std::move(xpub_hash_id);
 
         // Check that csv blocks used are recoverable and provided by the server
         const auto net_csv_buckets = m_net_params.csv_buckets();
@@ -1279,7 +1282,8 @@ namespace sdk {
 
     nlohmann::json ga_session::get_post_login_data()
     {
-        return nlohmann::json{ { "wallet_hash_id", m_login_data["wallet_hash_id"] } };
+        return { { "wallet_hash_id", m_login_data["wallet_hash_id"] },
+            { "xpub_hash_id", m_login_data["xpub_hash_id"] } };
     }
 
     void ga_session::change_settings(const nlohmann::json& settings)

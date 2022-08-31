@@ -13,6 +13,7 @@
 - Singlesig: Stop stripping the witness from transactions, transaction hex returned from `get_transaction_details` will 
 return also the witness. Triggers a cache rebuild that could be noticeable from apps, seeing no transactions for a moment.
 - GA_convert_amount: This can now be used to convert negative values.
+- GA_get_wallet_identifier (and register/login): Now returns a network-agnostic version of "wallet_hash_id" as "xpub_hash_id".
 
 ### Fixed
 

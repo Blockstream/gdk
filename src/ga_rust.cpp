@@ -121,7 +121,8 @@ namespace sdk {
     nlohmann::json ga_rust::login(std::shared_ptr<signer> signer)
     {
         set_signer(signer);
-        return rust_call("login", signer->get_credentials(), m_session);
+        rust_call("login", signer->get_credentials(), m_session);
+        return get_post_login_data();
     }
     nlohmann::json ga_rust::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
@@ -307,7 +308,7 @@ namespace sdk {
     nlohmann::json ga_rust::get_post_login_data()
     {
         auto master_xpub = get_nonnull_signer()->get_master_bip32_xpub();
-        return get_wallet_hash_id(
+        return get_wallet_hash_ids(
             { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
     }
 

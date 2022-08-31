@@ -258,7 +258,7 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_proxy_settings, struct GA_session*, session, GA_j
 GDK_DEFINE_C_FUNCTION_3(
     GA_get_wallet_identifier, const GA_json*, net_params, const GA_json*, params, GA_json**, output, {
         *json_cast(output)
-            = new nlohmann::json(ga::sdk::get_wallet_hash_id(*json_cast(net_params), *json_cast(params)));
+            = new nlohmann::json(ga::sdk::get_wallet_hash_ids(*json_cast(net_params), *json_cast(params)));
     });
 
 GDK_DEFINE_C_FUNCTION_3(GA_http_request, struct GA_session*, session, const GA_json*, params, GA_json**, output,

@@ -124,9 +124,11 @@ namespace sdk {
     // Return decompressed `bytes` (prefix is assumed removed by the caller)
     std::vector<unsigned char> decompress(byte_span_t bytes);
 
-    std::string get_wallet_hash_id(
+    std::string get_wallet_hash_id(const std::string& chain_code_hex, const std::string& public_key_hex,
+        bool is_mainnet, const std::string& network);
+    nlohmann::json get_wallet_hash_ids(
         const network_parameters& net_params, const std::string& chain_code_hex, const std::string& public_key_hex);
-    nlohmann::json get_wallet_hash_id(const nlohmann::json& net_params, const nlohmann::json& params);
+    nlohmann::json get_wallet_hash_ids(const nlohmann::json& net_params, const nlohmann::json& params);
 
     // RUST FFI:
     // GA_init for rust

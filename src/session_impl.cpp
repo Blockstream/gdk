@@ -265,7 +265,7 @@ namespace sdk {
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {
         // Default impl just returns the wallet hash; registration is only meaningful in multisig
-        return { { "wallet_hash_id", get_wallet_hash_id(m_net_params, master_chain_code_hex, master_pub_key_hex) } };
+        return get_wallet_hash_ids(m_net_params, master_chain_code_hex, master_pub_key_hex);
     }
 
     nlohmann::json session_impl::login(std::shared_ptr<signer> /*signer*/)
