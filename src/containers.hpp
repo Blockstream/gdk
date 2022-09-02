@@ -78,6 +78,9 @@ namespace sdk {
         return to_remove;
     }
 
+    // Get a JSON array of a given size, otherwise fail
+    const nlohmann::json& get_sized_array(const nlohmann::json& json, const char* key, size_t size);
+
 } // namespace sdk
 } // namespace ga
 

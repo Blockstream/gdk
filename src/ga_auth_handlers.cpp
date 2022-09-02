@@ -28,14 +28,6 @@ namespace sdk {
         static constexpr uint32_t USER_STATUS_DEFAULT = 0;
         static constexpr uint32_t USER_STATUS_FROZEN = 1;
 
-        static const auto& get_sized_array(const nlohmann::json& json, const char* key, size_t size)
-        {
-            const auto& value = json.at(key);
-            GDK_RUNTIME_ASSERT_MSG(value.is_array() && value.size() == size,
-                std::string(key) + " must be an array of length " + std::to_string(size));
-            return value;
-        }
-
         // Add anti-exfil protocol host-entropy and host-commitment to the passed json
         static void add_ae_host_data(nlohmann::json& data)
         {
