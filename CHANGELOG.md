@@ -10,12 +10,16 @@
 
 - GA_get_transactions: The input/output "addressee" element is now only populated for now-disabled historical social payments.
 - GA_get_transactions: The top-level "satoshi" elements are now signed; negative values represent outgoing amounts.
-- Singlesig: Stop stripping the witness from transactions, transaction hex returned from `get_transaction_details` will 
+- Singlesig: Stop stripping the witness from transactions, transaction hex returned from `get_transaction_details` will
 return also the witness. Triggers a cache rebuild that could be noticeable from apps, seeing no transactions for a moment.
 - GA_convert_amount: This can now be used to convert negative values.
 - GA_get_wallet_identifier (and register/login): Now returns a network-agnostic version of "wallet_hash_id" as "xpub_hash_id".
 
 ### Fixed
+
+- If the network connection drops in the middle of a request the latter will be
+  eventually timed out instead of waiting for the connection to be available
+  again.
 
 ### Removed
 
