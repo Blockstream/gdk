@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::*;
 
 use electrum_client::{Client, ConfigBuilder};
+use gdk_common::network::NETWORK_REQUEST_TIMEOUT;
 use std::str::FromStr;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -20,7 +21,10 @@ impl ElectrumUrl {
         config = config.socks5(
             proxy.filter(|p| !p.trim().is_empty()).map(|p| electrum_client::Socks5Config::new(p)),
         )?;
-        config = config.timeout(timeout)?;
+
+        let timeout = timeout.unwrap_or(NETWORK_REQUEST_TIMEOUT.as_secs() as u8);
+
+        config = config.timeout(Some(timeout))?;
 
         let (url, config) = match self {
             ElectrumUrl::Tls(url, validate) => {
