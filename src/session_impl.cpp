@@ -284,11 +284,7 @@ namespace sdk {
         // Overriden for ga_rust
     }
 
-    nlohmann::json session_impl::get_subaccount_xpub(uint32_t /*subaccount*/)
-    {
-        // Overriden for ga_rust
-        return nlohmann::json();
-    }
+    std::string session_impl::get_subaccount_type(uint32_t subaccount) { return get_subaccount(subaccount).at("type"); }
 
     bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
     {

@@ -39,8 +39,6 @@ namespace sdk {
         void start_sync_threads();
         std::vector<uint32_t> get_subaccount_pointers();
 
-        nlohmann::json get_subaccount_xpub(uint32_t subaccount);
-
         void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transactions(const nlohmann::json& details);
 

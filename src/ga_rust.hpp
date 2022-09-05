@@ -53,12 +53,6 @@ namespace sdk {
         // create_subaccount if the xpub missing from the store.
         std::vector<uint32_t> get_subaccount_pointers();
 
-        // Get the subaccount xpub from the rust store if available.
-        // If the account or xpub is missing,
-        // the caller should obtain it from the signer and set it
-        // create_subaccount.
-        nlohmann::json get_subaccount_xpub(uint32_t subaccount);
-
         void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data);
         nlohmann::json get_transactions(const nlohmann::json& details);
 

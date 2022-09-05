@@ -189,11 +189,6 @@ namespace sdk {
         throw std::runtime_error("get_subaccounts not implemented");
     }
 
-    nlohmann::json ga_lightning::get_subaccount_xpub(uint32_t subaccount)
-    {
-        throw std::runtime_error("get_subaccounts not implemented");
-    }
-
     nlohmann::json ga_lightning::get_available_currencies() const
     {
         throw std::runtime_error("get_subaccounts not implemented");

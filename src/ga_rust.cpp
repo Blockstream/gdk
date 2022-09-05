@@ -283,11 +283,6 @@ namespace sdk {
             m_net_params.is_main_net(), m_net_params.is_liquid(), subaccount, pointer, is_internal);
     }
 
-    nlohmann::json ga_rust::get_subaccount_xpub(uint32_t subaccount)
-    {
-        return rust_call("get_subaccount_xpub", { { "subaccount", subaccount } }, m_session);
-    }
-
     nlohmann::json ga_rust::get_available_currencies() const
     {
         return rust_call("get_available_currencies", nlohmann::json({}), m_session);

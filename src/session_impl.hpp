@@ -122,7 +122,7 @@ namespace sdk {
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) = 0;
         virtual std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
             = 0;
-        virtual nlohmann::json get_subaccount_xpub(uint32_t subaccount);
+        virtual std::string get_subaccount_type(uint32_t subaccount);
 
         virtual nlohmann::json get_available_currencies() const = 0;
 
