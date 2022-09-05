@@ -27,13 +27,13 @@ namespace sdk {
 
         static const std::string ZEROS(64, '0');
 
-        static bool is_explicit(wally_tx_output output)
+        static bool is_explicit(const wally_tx_output& output)
         {
             return output.asset_len == WALLY_TX_ASSET_CT_ASSET_LEN
                 && output.value_len == WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN;
         }
 
-        static bool is_blinded(wally_tx_output output)
+        static bool is_blinded(const wally_tx_output& output)
         {
             return output.asset_len == WALLY_TX_ASSET_CT_ASSET_LEN && output.value_len == WALLY_TX_ASSET_CT_VALUE_LEN
                 && output.nonce_len == WALLY_TX_ASSET_CT_NONCE_LEN && output.rangeproof_len > 0;
