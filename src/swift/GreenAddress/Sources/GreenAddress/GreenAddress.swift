@@ -384,6 +384,14 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_sign_transaction)
     }
 
+    public func createSwapTransaction(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_create_swap_transaction)
+    }
+
+    public func completeSwapTransaction(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_complete_swap_transaction)
+    }
+
     public func signPsbt(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_psbt_sign)
     }

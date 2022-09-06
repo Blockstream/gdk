@@ -513,6 +513,30 @@ GDK_API int GA_sign_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
 
 /**
+ * Construct the initiators side of a swap transaction.
+ *
+ * :param session: The session to use.
+ * :param swap_details: The :ref:`create-swap-tx-details` for constructing.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`create-swap-tx-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_create_swap_transaction(
+    struct GA_session* session, const GA_json* swap_details, struct GA_auth_handler** call);
+
+/**
+ * Complete construction of the callers side of a swap transaction.
+ *
+ * :param session: The session to use.
+ * :param swap_details: The :ref:`complete-swap-tx-details` for completing.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`complete-swap-tx-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_complete_swap_transaction(
+    struct GA_session* session, const GA_json* swap_details, struct GA_auth_handler** call);
+
+/**
  * Sign one or more of a user's inputs in a PSBT or PSET.
  *
  * :param session: The session to use.

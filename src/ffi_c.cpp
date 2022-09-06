@@ -11,6 +11,7 @@
 #include "include/greenlight.h"
 #include "network_parameters.hpp"
 #include "session.hpp"
+#include "swap_auth_handlers.hpp"
 #include "utils.hpp"
 
 namespace {
@@ -311,6 +312,14 @@ GDK_DEFINE_C_FUNCTION_3(GA_create_transaction, struct GA_session*, session, cons
 GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const GA_json*, transaction_details,
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::sign_transaction_call(*session, *json_cast(transaction_details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_create_swap_transaction, struct GA_session*, session, const GA_json*, swap_details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::create_swap_transaction_call(*session, *json_cast(swap_details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_complete_swap_transaction, struct GA_session*, session, const GA_json*, swap_details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::complete_swap_transaction_call(*session, *json_cast(swap_details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_psbt_sign, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
     call, { *call = make_call(new ga::sdk::psbt_sign_call(*session, *json_cast(details))); })
