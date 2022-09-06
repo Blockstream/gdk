@@ -920,6 +920,69 @@ Send transaction JSON
   }
   }
 
+.. _create-swap-tx-details:
+
+Create Swap Transaction JSON
+----------------------------
+
+Describes the swap to be created when calling `GA_create_swap_transaction`.
+
+.. code-block:: json
+
+  {
+    "swap_type": "liquidex",
+    "input_type": "liquidex_v0",
+    "liquidex_v0": {},
+    "output_type": "liquidex_v0"
+  }
+
+:swap_type: Pass ``"liquidex"`` to create the maker's side of a LiquiDEX 2-step swap.
+:input_type: Pass ``"liquidex_v0"`` to pass LiquiDEX version 0 details.
+:liquidex_v0: The LiquiDEX v0 specific parameters, see :ref:`liquidex-v0-create-details`.
+              This field must included only if ``"input_type"`` is ``"liquidex_v0"``.
+:output_type: Pass ``"liquidex_v0"`` to return LiquiDEX proposal JSON version 0.
+
+.. _create-swap-tx-result:
+
+Create Swap Transaction Result JSON
+-----------------------------------
+
+If the ``"output_type"`` was ``"liquidex_v0"`` this field is `liquidex-v0-create-result`.
+
+
+.. _complete-swap-tx-details:
+
+Complete Swap Transaction JSON
+------------------------------
+
+Describes the swap to be completed when calling `GA_complete_swap_transaction`.
+
+.. code-block:: json
+
+  {
+    "swap_type": "liquidex",
+    "input_type": "liquidex_v0",
+    "liquidex_v0": {},
+    "output_type": "transaction",
+    "utxos": {},
+  }
+
+:swap_type: Pass ``"liquidex"`` to complete the taker's side of a LiquiDEX 2-step swap.
+:input_type: Pass ``"liquidex_v0"`` to pass a LiquiDEX proposal JSON version 0.
+:liquidex_v0: The LiquiDEX v0 specific parameters, see :ref:`liquidex-v0-complete-details`.
+              This field must included only if ``"input_type"`` is ``"liquidex_v0"``.
+:output_type: Pass ``"transaction"`` to return a transaction JSON that can be passed to `GA_sign_transaction`.
+:utxos: Mandatory. The UTXOs to fund the transaction with.
+        Note that coin selection is not performed on the passed UTXOs.
+        All passed UTXOs of the same asset as the receiving asset id will be included in the transaction.
+
+.. _complete-swap-tx-result:
+
+Complete Swap Transaction Result JSON
+-------------------------------------
+
+If the ``"output_type"`` was ``"transaction"`` this field is :ref:`sign-tx-details`.
+
 
 .. _sign-psbt-details:
 

@@ -10,6 +10,12 @@ GDK documentation
    gdk-ntf
    gdk-hw
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Developer Guides
+
+   gdk-swap
+
 Indices and tables
 ==================
 
