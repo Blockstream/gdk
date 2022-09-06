@@ -14,6 +14,9 @@
 return also the witness. Triggers a cache rebuild that could be noticeable from apps, seeing no transactions for a moment.
 - GA_convert_amount: This can now be used to convert negative values.
 - GA_get_wallet_identifier (and register/login): Now returns a network-agnostic version of "wallet_hash_id" as "xpub_hash_id".
+- GA_create_transaction (and sign/send): The top-level "subaccount" type is no longer required or populated, and
+"subaccount_type" is also no longer populated. The subaccount(s) the tx refers to are now inferred automatically
+from its input UTXOs and output addressees.
 
 ### Fixed
 

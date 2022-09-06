@@ -3458,9 +3458,9 @@ namespace sdk {
         const auto tx = tx_from_hex(tx_details["tx"], flags);
         update_tx_size_info(m_net_params, tx, result);
 
-        std::vector<uint32_t> subaccounts; // TODO: Handle multi-account spends
-        subaccounts.push_back(details.at("subaccount"));
-        remove_cached_utxos(subaccounts);
+        // TODO: get outputs/change subaccounts also, for multi-account spends
+        const auto subaccounts = get_tx_subaccounts(details);
+        remove_cached_utxos({ subaccounts.begin(), subaccounts.end() });
 
         locker_t locker(m_mutex);
         for (auto subaccount : subaccounts) {

@@ -237,7 +237,8 @@ namespace sdk {
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
-        static std::pair<bool, bool> check_bump_tx(session_impl& session, nlohmann::json& result, uint32_t subaccount)
+        static std::pair<bool, bool> check_bump_tx(
+            session_impl& session, const std::set<uint32_t>& subaccounts, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
             const bool is_electrum = net_params.is_electrum();
@@ -260,12 +261,13 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT_MSG(false, "Transaction can not be fee-bumped");
             }
 
+            // TODO: Remove this check once cross subaccount bumps/full RBF is tested.
             // You cannot bump a tx from another subaccount, this is a
             // programming error so assert it rather than returning in "error"
             bool subaccount_ok = false;
             for (const auto& io : prev_tx.at(is_rbf ? "inputs" : "outputs")) {
-                const auto prev_subaccount = io.find("subaccount");
-                if (prev_subaccount != io.end() && *prev_subaccount == subaccount) {
+                const auto p = io.find("subaccount");
+                if (p != io.end() && subaccounts.find(p->get<uint32_t>()) != subaccounts.end()) {
                     subaccount_ok = true;
                     break;
                 }
@@ -452,8 +454,10 @@ namespace sdk {
             return { is_rbf, is_cpfp };
         }
 
-        static void create_send_to_self(session_impl& session, uint32_t subaccount, nlohmann::json& result)
+        static void create_send_to_self(
+            session_impl& session, const std::set<uint32_t>& subaccounts, nlohmann::json& result)
         {
+            const uint32_t subaccount = get_single_subaccount(subaccounts);
             // Set addressees to a wallet address from the given subaccount
             const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
             const auto address = addr.at("address");
@@ -471,23 +475,18 @@ namespace sdk {
 
             result["error"] = std::string(); // Clear any previous error
 
-            // Must specify subaccount to use
-            const auto p_subaccount = result.find("subaccount");
-            GDK_RUNTIME_ASSERT(p_subaccount != result.end());
-            const uint32_t subaccount = *p_subaccount;
-            result["subaccount_type"] = session.get_subaccount(subaccount)["type"];
-
+            const auto subaccounts = get_tx_subaccounts(result);
             const bool is_partial = json_get_value(result, "is_partial", false);
 
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
-            std::tie(is_rbf, is_cpfp) = check_bump_tx(session, result, subaccount);
+            std::tie(is_rbf, is_cpfp) = check_bump_tx(session, subaccounts, result);
 
             const bool is_redeposit = json_get_value(result, "is_redeposit", false);
 
             if (is_redeposit) {
                 if (result.find("addressees") == result.end()) {
-                    create_send_to_self(session, subaccount, result);
+                    create_send_to_self(session, subaccounts, result);
                 }
                 // When re-depositing, send everything and don't create change
                 result["send_all"] = true;
@@ -533,8 +532,8 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(addressees_p->size() == 1u);
                     addressees_p->at(0)["satoshi"] = 0;
                 } else {
-                    // Send to an address in the current subaccount
-                    create_send_to_self(session, subaccount, result);
+                    // Send to an address in the determined subaccount
+                    create_send_to_self(session, subaccounts, result);
                     addressees_p = result.find("addressees");
                 }
             }
@@ -726,8 +725,10 @@ namespace sdk {
                 if (!have_change_addr && !is_partial) {
                     // No previously generated change address found, so generate one.
                     // Find out where to send any change
-                    const uint32_t change_subaccount = result.value("change_subaccount", subaccount);
-                    result["change_subaccount"] = change_subaccount;
+                    if (!result.contains("change_subaccount")) {
+                        result["change_subaccount"] = get_single_subaccount(subaccounts);
+                    }
+                    const uint32_t change_subaccount = result.at("change_subaccount");
                     nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
                     auto change_address = session.get_receive_address(details);
 
@@ -766,7 +767,7 @@ namespace sdk {
                                 fee_index = add_tx_fee_output(net_params, tx, dummy_amount);
                                 have_fee_output = true;
                             }
-                            update_tx_info(net_params, tx, result);
+                            update_tx_info(session, tx, result);
                             std::vector<nlohmann::json> used = json_get_value<decltype(used)>(result, "used_utxos");
                             used.insert(used.end(), current_used_utxos.begin(), current_used_utxos.end());
                             if (!manual_selection) {
@@ -924,7 +925,7 @@ namespace sdk {
                 result["have_change"][asset_id] = have_change_output;
                 result["satoshi"][asset_id] = required_total.value();
 
-                update_tx_info(net_params, tx, result);
+                update_tx_info(session, tx, result);
 
                 if (is_rbf && json_get_value(result, "error").empty()) {
                     // Check if rbf requirements are met. When the user input a fee rate for the
@@ -1231,16 +1232,15 @@ namespace sdk {
         output_vbfs.emplace_back(
             generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
 
-        size_t i = 0;
-        const std::string subaccount_type = details["subaccount_type"];
-        const bool authorized_assets = subaccount_type == "2of2_no_recovery";
+        const bool has_amp_inputs = tx_has_amp_inputs(session, details);
 
         std::vector<std::string> blinding_nonces;
+        size_t i = 0;
 
         for (const auto& output : transaction_outputs) {
             // IMPORTANT: we assume the fee is always the last output
             if (output.at("is_fee")) {
-                if (authorized_assets) {
+                if (has_amp_inputs) {
                     blinding_nonces.emplace_back(std::string{});
                 }
                 break;
@@ -1254,7 +1254,7 @@ namespace sdk {
 
             blind_output(session, details, tx, i, output, generator, value_commitment, output_abfs[i], output_vbfs[i]);
 
-            if (authorized_assets) {
+            if (has_amp_inputs) {
                 blinding_nonces.emplace_back(output.at("blinding_nonce"));
             }
 
@@ -1267,7 +1267,7 @@ namespace sdk {
             result["transaction_outputs"][i]["amountblinder"] = b2h_rev(output_vbfs.at(i));
         }
         result["blinded"] = true;
-        if (authorized_assets) {
+        if (has_amp_inputs) {
             result["blinding_nonces"] = blinding_nonces;
         }
         update_tx_size_info(net_params, tx, result);

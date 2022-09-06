@@ -558,8 +558,9 @@ namespace sdk {
         return asset_final_vbf(input_values, num_inputs, abfs, vbfs);
     }
 
-    void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
+    void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result)
     {
+        const auto& net_params = session.get_network_parameters();
         update_tx_size_info(net_params, tx, result);
 
         const bool is_liquid = net_params.is_liquid();
@@ -569,6 +570,8 @@ namespace sdk {
         std::vector<nlohmann::json> outputs;
         if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
             outputs.reserve(tx->num_outputs);
+            const bool has_amp_inputs = tx_has_amp_inputs(session, result);
+
             size_t addressee_index = 0;
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
@@ -667,11 +670,8 @@ namespace sdk {
                     output["eph_private_key"] = b2h(ephemeral_keypair.first);
                 }
 
-                if (result.at("subaccount_type") == "2of2_no_recovery") {
-                    // authorized assets
-                    if (is_fee) {
-                        // Nothing to do
-                    } else if (is_blinded) {
+                if (has_amp_inputs && !is_fee) {
+                    if (is_blinded) {
                         output["blinding_nonce"] = addressee.at("blinding_nonce");
                     } else {
                         const auto blinding_pubkey = h2b(output.at("blinding_key"));
@@ -684,6 +684,71 @@ namespace sdk {
             }
         }
         result["transaction_outputs"] = outputs;
+    }
+
+    static bool is_wallet_input(const nlohmann::json& utxo)
+    {
+        if (!json_get_value(utxo, "private_key").empty()) {
+            return false; // Sweep input
+        }
+        if (utxo.contains("script_sig") && utxo.contains("witness")) {
+            return false; // External input (e.g. in a swap)
+        }
+        return true; // Wallet input
+    }
+
+    std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details)
+    {
+        std::set<uint32_t> ret;
+        if (auto utxos_p = details.find("used_utxos"); utxos_p != details.end()) {
+            for (auto& utxo : *utxos_p) {
+                if (is_wallet_input(utxo)) {
+                    ret.insert(utxo.at("subaccount").get<uint32_t>());
+                }
+            }
+        }
+        if (auto utxos_p = details.find("utxos"); utxos_p != details.end()) {
+            for (auto& asset : utxos_p->items()) {
+                if (asset.key() != "error") {
+                    for (auto& utxo : asset.value()) {
+                        if (is_wallet_input(utxo)) {
+                            ret.insert(utxo.at("subaccount").get<uint32_t>());
+                        }
+                    }
+                }
+            }
+        }
+        // TODO: Don't require subaccount for sweeping/bumping
+        if (auto p = details.find("subaccount"); p != details.end()) {
+            ret.insert(p->get<uint32_t>());
+        }
+        if (auto p = details.find("change_subaccount"); p != details.end()) {
+            ret.insert(p->get<uint32_t>());
+        }
+        return ret;
+    }
+
+    uint32_t get_single_subaccount(const std::set<uint32_t>& subaccounts)
+    {
+        if (subaccounts.size() > 1)
+            throw user_error("Cannot determine subaccount");
+        if (subaccounts.size() == 0)
+            throw user_error("Cannot determine subaccount");
+        return *subaccounts.begin();
+    }
+
+    bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details)
+    {
+        if (!session.get_network_parameters().is_electrum()) {
+            // Multisig: check if we have any AMP inputs
+            for (auto subaccount : get_tx_subaccounts(details)) {
+                // Subaccount 0 can never be amp so don't bother checking it
+                if (subaccount && session.get_subaccount_type(subaccount) == "2of2_no_recovery") {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     void set_anti_snipe_locktime(const wally_tx_ptr& tx, uint32_t current_block_height)

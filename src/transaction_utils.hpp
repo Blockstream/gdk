@@ -101,7 +101,16 @@ namespace sdk {
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
 
     // Update the json tx representation with info from tx
-    void update_tx_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
+    void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result);
+
+    // Compute the subaccounts a tx uses from its inputs
+    std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details);
+
+    // Return the single subaccount in subaccounts or throw an error
+    uint32_t get_single_subaccount(const std::set<uint32_t>& subaccounts);
+
+    // Returns true if a tx has AMP inputs
+    bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details);
 
     // Set the locktime on tx to avoid fee sniping
     void set_anti_snipe_locktime(const wally_tx_ptr& tx, uint32_t current_block_height);
