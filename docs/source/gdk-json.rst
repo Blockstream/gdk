@@ -1844,3 +1844,37 @@ Parameters controlling the `GA_get_subaccounts` call.
    }
 
 :refresh: If set to ``true``, subaccounts are re-discovered if appropriate for the session type. Note that this will take significantly more time if set. Defaults to ``false``.
+
+
+.. _validate-details:
+
+Validate JSON
+-------------
+
+Validate a JSON.
+Currently it's only possible to validate a LiquiDEX version 0 proposal.
+
+.. code-block:: json
+
+  {
+    "liquidex_v0": {
+      "proposal": {},
+    },
+  }
+
+:liquidex_v0/proposal: The LiquiDEX version 0 proposal to validate.
+
+.. _validate-result:
+
+Validate Result JSON
+--------------------
+
+.. code-block:: json
+
+  {
+    "is_valid": true,
+    "errors": []
+  }
+
+:is_valid: True if the JSON is valid.
+:errors: If the JSON is not valid, a list of error strings.

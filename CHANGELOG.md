@@ -5,6 +5,7 @@
 ### Added
 
 - Added new function GA_decrypt_with_pin
+- Added new function GA_validate
 
 ### Changed
 

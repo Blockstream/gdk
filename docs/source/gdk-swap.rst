@@ -31,6 +31,10 @@ The protocol is started by the Maker, who creates a proposal to swap
 a certain utxo for a certain amount of another asset.
 This action is performed using `GA_create_swap_transaction`.
 
+The proposal is then shared with the Taker, who first validates it
+and verifies that it is a swap that it is willing to accept.
+This action is performed using `GA_validate`.
+
 If the Taker wants to accept the proposal, they will add more inputs
 and outputs to fund and balance the transaction.
 This action is performed using `GA_complete_swap_transaction`.
@@ -90,7 +94,6 @@ Returned when ``"output_type"`` is ``"liquidex_v0"``.
   }
 
 :proposal: The LiquiDEX version 0 proposal to be shared.
-
 
 .. _liquidex-v0-complete-details:
 

@@ -215,6 +215,17 @@ GDK_API int GA_get_assets(struct GA_session* session, const GA_json* params, GA_
 GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_json* params, GA_json** output);
 
 /**
+ * Validate a gdk format JSON document.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`validate-details` for validation.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`validate-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_validate(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Create a new user wallet.
  *
  * :param session: The session to use.

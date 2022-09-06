@@ -525,6 +525,10 @@ public class Session {
     public func validateAssetDomainName(params: [String: Any]) throws -> [String: Any]? {
         return try jsonFuncToJsonWrapper(input: params, fun: GA_validate_asset_domain_name)
     }
+
+    public func validate(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_validate)
+    }
 }
 
 public func generateMnemonic() throws -> String {
