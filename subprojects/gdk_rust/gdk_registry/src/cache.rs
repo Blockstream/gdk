@@ -126,12 +126,14 @@ impl Cache {
     pub(crate) fn from_xpub(xpub: ExtendedPubKey) -> Result<Self> {
         let mut cache_files = CACHE_FILES.lock()?;
 
+        let get_cache = |file: &mut File| -> Result<Self> {
+            let cipher = xpub.to_cipher()?;
+            let decrypted = file.decrypt(&cipher)?;
+            serde_cbor::from_slice::<Self>(&decrypted).map_err(Into::into)
+        };
+
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
-            Some(file) => match {
-                let cipher = xpub.to_cipher()?;
-                let decrypted = file.decrypt(&cipher)?;
-                serde_cbor::from_slice::<Self>(&decrypted)
-            } {
+            Some(file) => match get_cache(file) {
                 Ok(cache) => Ok::<_, Error>(cache),
 
                 Err(err) => {
