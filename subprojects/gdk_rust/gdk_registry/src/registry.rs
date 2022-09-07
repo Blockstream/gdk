@@ -103,13 +103,13 @@ fn fetch<T: DeserializeOwned>(
         Err(err) => {
             log::warn!("couldn't deserialize local {} due to {}", what, err);
             let (value, source) = if params.should_refresh() {
-                Ok::<_, Error>((
+                (
                     crate::http::call(&params.url(what), &params.agent()?, "")?,
                     RegistrySource::Downloaded,
-                ))
+                )
             } else {
-                Ok((ValueModified::new_empty_map(), RegistrySource::LocalRegistry))
-            }?;
+                (ValueModified::new_empty_map(), RegistrySource::LocalRegistry)
+            };
             crate::file::write(&value, &mut file)?;
             return Ok((value.deserialize_into()?, source));
         }
