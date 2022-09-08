@@ -713,6 +713,7 @@ dependencies = [
  "gdk-common",
  "gdk-electrum",
  "gdk-registry",
+ "gdk-test",
  "libc",
  "log",
  "rand 0.7.3",
@@ -725,7 +726,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdk_test"
+name = "gdk-test"
 version = "0.1.0"
 dependencies = [
  "bitcoin",

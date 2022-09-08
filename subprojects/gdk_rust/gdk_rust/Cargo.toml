@@ -26,6 +26,7 @@ ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"]
 android_logger = "0.8.6"
 
 [dev-dependencies]
+gdk-test = { path = "../gdk_test" }
 tempfile = "3.2.0"
 electrum-client = { version = "=0.11.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 bitcoin = { version = "0.28", features = [ "use-serde" ] }

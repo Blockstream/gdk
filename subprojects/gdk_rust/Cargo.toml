@@ -5,8 +5,9 @@ members = [
     "gdk_electrum",
     "gdk_registry",
     "gdk_rust",
-    "gdk_test",
 ]
+
+exclude = [ "gdk_test" ]
 
 [profile.release]
 lto = true

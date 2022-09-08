@@ -39,7 +39,7 @@ pub struct TestSession {
 }
 
 impl TestSession {
-    pub fn new<F>(is_liquid: bool, network_conf: Option<F>) -> Self
+    pub fn new<F>(is_liquid: bool, network_conf: F) -> Self
     where
         F: FnOnce(&mut NetworkParameters),
     {
@@ -126,9 +126,7 @@ impl TestSession {
                 Some("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".into());
         }
 
-        if let Some(f) = network_conf {
-            f(&mut network);
-        }
+        network_conf(&mut network);
 
         let state_dir = TempDir::new().unwrap();
 
@@ -775,6 +773,18 @@ impl TestSession {
         self.wait_blockheight(height);
 
         block[0].to_string()
+    }
+
+    pub fn node_getnewaddress(&self, kind: Option<&str>) -> String {
+        self.node.client.getnewaddress(None, kind).unwrap()
+    }
+
+    pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<&str>) -> String {
+        self.node.client.sendtoaddress(address, satoshi, asset).unwrap()
+    }
+
+    pub fn node_issueasset(&self, satoshi: u64) -> String {
+        self.node.client.issueasset(satoshi).unwrap()
     }
 
     pub fn node_generate(&self, block_num: u32) -> Vec<String> {

@@ -1,14 +1,18 @@
+use std::collections::HashMap;
+use std::net::TcpListener;
+use std::thread;
+use std::time::{Duration, Instant};
+
 use bitcoin::util::bip32::DerivationPath;
 use bitcoin::Witness;
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrum_client::ElectrumApi;
+use log::info;
+use serde_json::Value;
+use tempfile::TempDir;
+
 use gdk_common::be::BETransaction;
-use gdk_common::model::{
-    AddressAmount, CreateAccountOpt, CreateTransaction, CreateTxUtxos, Credentials, GetBalanceOpt,
-    GetNextAccountOpt, GetPreviousAddressesOpt, GetTransactionsOpt, GetUnspentOutputs,
-    RenameAccountOpt, SPVCommonParams, SPVDownloadHeadersParams, SPVVerifyTxResult,
-    TransactionType, UpdateAccountOpt, UtxoStrategy,
-};
+use gdk_common::model::*;
 use gdk_common::scripts::ScriptType;
 use gdk_common::session::Session;
 use gdk_common::{NetworkId, NetworkParameters, State};
@@ -16,31 +20,20 @@ use gdk_electrum::error::Error;
 use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{headers, spv, ElectrumSession};
-
-use log::info;
-use serde_json::Value;
-use std::collections::HashMap;
-use std::net::TcpListener;
-use std::time::{Duration, Instant};
-use std::{env, thread};
-use tempfile::TempDir;
-
-mod test_session;
-use test_session::{
-    auth_handler_login, convertutxos, discover_subaccounts, ntf_network, spv_verify_tx,
-    to_not_unblindable, TestSession,
-};
+use gdk_test::utils;
+use gdk_test::TestSession;
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
 
 #[test]
 fn roundtrip_bitcoin() {
-    let mut test_session = setup_session(false, |_| ());
+    let mut test_session = TestSession::new(false, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
     let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
+
     test_session.fund(100_000_000, None);
     test_session.get_subaccount();
     let txid = test_session.send_tx(
@@ -82,7 +75,7 @@ fn roundtrip_bitcoin() {
 
 #[test]
 fn roundtrip_liquid() {
-    let mut test_session = setup_session(true, |_| ());
+    let mut test_session = TestSession::new(true, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     let node_bech32_address = test_session.node_getnewaddress(Some("bech32"));
@@ -160,7 +153,7 @@ fn create_tx_err_liquid() {
 }
 
 fn create_tx_err(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     let addr = test_session.node_getnewaddress(None);
     let fee_rate = None;
@@ -382,7 +375,7 @@ fn create_tx_err(is_liquid: bool) {
 
     if is_liquid {
         // Unblinded
-        let unconf_addr = test_session::to_unconfidential(&addr);
+        let unconf_addr = utils::to_unconfidential(&addr);
         let mut create_opt = test_session.create_opt(
             &unconf_addr,
             sat,
@@ -446,7 +439,7 @@ fn coin_selection_liquid() {
 }
 
 fn coin_selection(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     // Fund the wallet with 2 coins
     let sat1 = 10_000;
@@ -551,7 +544,7 @@ fn coin_selection(is_liquid: bool) {
             asset_id: Some(asset_a.clone()),
         });
         utxos.0.remove_entry(&btc_key);
-        create_opt.utxos = convertutxos(&utxos);
+        create_opt.utxos = utils::convertutxos(&utxos);
         create_opt.utxo_strategy = UtxoStrategy::Manual;
         assert!(matches!(
             test_session.session.create_transaction(&mut create_opt),
@@ -578,10 +571,10 @@ fn coin_selection(is_liquid: bool) {
         let sat2_a = 2;
         let sat3_a = 3;
         let addr = test_session.get_receive_address(0).address;
-        let txid = test_session.node_sendtoaddress(&addr, sat2_a, Some(asset_a.clone()));
+        let txid = test_session.node_sendtoaddress(&addr, sat2_a, Some(&asset_a));
         test_session.wait_tx(vec![0], &txid, None, None);
         let addr = test_session.get_receive_address(0).address;
-        let txid = test_session.node_sendtoaddress(&addr, sat3_a, Some(asset_a.clone()));
+        let txid = test_session.node_sendtoaddress(&addr, sat3_a, Some(&asset_a));
         test_session.wait_tx(vec![0], &txid, None, None);
 
         let sat1_b = 10;
@@ -589,10 +582,10 @@ fn coin_selection(is_liquid: bool) {
         let sat2_b = 2;
         let sat3_b = 3;
         let addr = test_session.get_receive_address(0).address;
-        let txid = test_session.node_sendtoaddress(&addr, sat2_b, Some(asset_b.clone()));
+        let txid = test_session.node_sendtoaddress(&addr, sat2_b, Some(&asset_b));
         test_session.wait_tx(vec![0], &txid, None, None);
         let addr = test_session.get_receive_address(0).address;
-        let txid = test_session.node_sendtoaddress(&addr, sat3_b, Some(asset_b.clone()));
+        let txid = test_session.node_sendtoaddress(&addr, sat3_b, Some(&asset_b));
         test_session.wait_tx(vec![0], &txid, None, None);
 
         let sat10 = 20_000;
@@ -641,7 +634,7 @@ fn subaccounts_liquid() {
 }
 
 fn subaccounts(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     let account0 = test_session.session.get_subaccount(0);
     assert!(account0.is_ok());
@@ -857,13 +850,13 @@ fn subaccounts(is_liquid: bool) {
         mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
         bip39_passphrase: "".to_string(),
     };
-    auth_handler_login(&mut new_session, &credentials);
+    utils::auth_handler_login(&mut new_session, &credentials);
 
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), 1);
     assert!(new_session.get_subaccount(0).is_ok());
 
-    discover_subaccounts(&mut new_session, &credentials);
+    utils::discover_subaccounts(&mut new_session, &credentials);
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), balances.len());
     assert_eq!(new_session.get_subaccount(0).unwrap().bip44_discovered, true);
@@ -888,14 +881,14 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(new_account).or_insert(0) += sat;
 
     assert!(new_session.get_subaccount(new_account).is_err());
-    discover_subaccounts(&mut new_session, &credentials);
+    utils::discover_subaccounts(&mut new_session, &credentials);
     new_session.get_subaccounts().unwrap();
     assert!(new_session.get_subaccount(new_account).is_ok());
 
     let btc_key = test_session.btc_key();
 
     for subaccount in subaccounts.iter() {
-        test_session::wait_account_n_txs(&new_session, subaccount.account_num, 1);
+        utils::wait_account_n_txs(&new_session, subaccount.account_num, 1);
 
         let opt = GetBalanceOpt {
             subaccount: subaccount.account_num,
@@ -945,14 +938,14 @@ fn coinbase_liquid() {
 
 fn coinbase(is_liquid: bool) {
     // Receive a coinbase transaction in the wallet
-    let test_session = setup_session(is_liquid, |_| ());
+    let test_session = TestSession::new(is_liquid, |_| ());
 
     // Do a transaction so we have some fees to collect, note that this is necessary for Liquid
     // since new blocks do not generate new coins.
     test_session.node_sendtoaddress(&test_session.node_getnewaddress(None), 10000, None);
 
     // Generate a coinbase sending an output to the wallet.
-    test_session.node_generatetoaddress(1, test_session.get_receive_address(0).address);
+    test_session.node_generatetoaddress(1, &test_session.get_receive_address(0).address);
     test_session.wait_blockheight(102);
     test_session.wait_account_n_txs(0, 1);
     assert!(test_session.balance_account(0, None, None) > 0);
@@ -974,7 +967,7 @@ fn spend_unsynced_liquid() {
 }
 
 fn spend_unsynced(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     // Fund the wallet
     let sat1 = 10_000;
@@ -992,7 +985,7 @@ fn spend_unsynced(is_liquid: bool) {
         satoshi: sat2,
         asset_id: test_session.asset_id(),
     });
-    create_opt.utxos = convertutxos(&utxos);
+    create_opt.utxos = utils::convertutxos(&utxos);
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
     let fee = signed_tx.fee;
@@ -1018,7 +1011,7 @@ fn spend_unsynced(is_liquid: bool) {
         satoshi: sat2,
         asset_id: test_session.asset_id(),
     });
-    create_opt.utxos = convertutxos(&utxos);
+    create_opt.utxos = utils::convertutxos(&utxos);
     let res = test_session.session.create_transaction(&mut create_opt);
     assert!(res.is_err()); // insufficient funds
 
@@ -1047,7 +1040,7 @@ fn addresses_liquid() {
 }
 
 fn addresses(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     // We send some coins to each address to ensure a new address is generated.
     let sat = 1000;
@@ -1130,7 +1123,7 @@ fn sighash_liquid() {
 }
 
 fn sighash(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     let sat = 10000;
     let txid =
@@ -1159,7 +1152,7 @@ fn sighash(is_liquid: bool) {
             satoshi: 5000,
             asset_id: test_session.asset_id(),
         });
-        create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+        create_opt.utxos = utils::convertutxos(&test_session.utxos(create_opt.subaccount));
         let mut txc = test_session.session.create_transaction(&mut create_opt).unwrap();
         if is_liquid {
             // SIGHASH_RANGEPROOF is not supported yet upstream
@@ -1207,7 +1200,7 @@ fn skip_signing_liquid() {
 }
 
 fn skip_signing(is_liquid: bool) {
-    let mut test_session = setup_session(is_liquid, |_| ());
+    let mut test_session = TestSession::new(is_liquid, |_| ());
 
     let sat = 10000;
     let txid1 =
@@ -1225,7 +1218,7 @@ fn skip_signing(is_liquid: bool) {
         satoshi: 15000,
         asset_id: test_session.asset_id(),
     });
-    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+    create_opt.utxos = utils::convertutxos(&test_session.utxos(create_opt.subaccount));
     let mut txc = test_session.session.create_transaction(&mut create_opt).unwrap();
     // sign the 2nd input
     txc.used_utxos[0].skip_signing = true;
@@ -1267,11 +1260,11 @@ fn skip_signing(is_liquid: bool) {
 
 #[test]
 fn not_unblindable_liquid() {
-    let test_session = setup_session(true, |_| ());
+    let test_session = TestSession::new(true, |_| ());
 
     // Receive a utxos that is not unblindable by the wallet
     let ap = test_session.get_receive_address(0);
-    let address = to_not_unblindable(&ap.address);
+    let address = utils::to_not_unblindable(&ap.address);
     let sat = 10_000;
     let txid = test_session.node_sendtoaddress(&address, sat, None);
     test_session.wait_tx(vec![0], &txid, None, None);
@@ -1284,7 +1277,7 @@ fn not_unblindable_liquid() {
 #[test]
 fn labels() {
     // Create a session and two accounts
-    let mut test_session = setup_session(false, |_| ());
+    let mut test_session = TestSession::new(false, |_| ());
     let account1 = test_session
         .session
         .create_subaccount(CreateAccountOpt {
@@ -1322,7 +1315,7 @@ fn labels() {
         satoshi: sat,
         asset_id: None,
     });
-    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+    create_opt.utxos = utils::convertutxos(&test_session.utxos(create_opt.subaccount));
     create_opt.memo = Some("Foo, Bar Foo".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_session.session.sign_transaction(&tx).unwrap();
@@ -1352,7 +1345,7 @@ fn labels() {
         satoshi: sat,
         asset_id: None,
     });
-    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+    create_opt.utxos = utils::convertutxos(&test_session.utxos(create_opt.subaccount));
     create_opt.memo = Some("Foo, Bar Foo".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
     let signed_tx = test_signer.sign_tx(&tx);
@@ -1374,7 +1367,7 @@ fn labels() {
 #[test]
 fn rbf() {
     // Create session/account and fund id
-    let mut test_session = setup_session(false, |_| ());
+    let mut test_session = TestSession::new(false, |_| ());
     test_session
         .session
         .create_subaccount(CreateAccountOpt {
@@ -1397,7 +1390,7 @@ fn rbf() {
         satoshi: 50000,
         asset_id: None,
     });
-    create_opt.utxos = convertutxos(&test_session.utxos(create_opt.subaccount));
+    create_opt.utxos = utils::convertutxos(&test_session.utxos(create_opt.subaccount));
     create_opt.fee_rate = Some(25000);
     create_opt.memo = Some("poz qux".into());
     let tx = test_session.session.create_transaction(&mut create_opt).unwrap();
@@ -1452,7 +1445,7 @@ fn rbf() {
 
 #[test]
 fn test_electrum_disconnect() {
-    let mut test_session = setup_session(false, |_| ());
+    let mut test_session = TestSession::new(false, |_| ());
     assert!(test_session.electrs.client.ping().is_ok());
 
     assert_eq!(test_session.session.filter_events("network").len(), 1);
@@ -1467,7 +1460,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&ntf_network(State::Disconnected, State::Connected))
+        Some(&utils::ntf_network(State::Disconnected, State::Connected))
     );
     assert_eq!(test_session.session.filter_events("network").len(), 2);
 
@@ -1475,7 +1468,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&ntf_network(State::Disconnected, State::Disconnected))
+        Some(&utils::ntf_network(State::Disconnected, State::Disconnected))
     );
     assert_eq!(test_session.session.filter_events("network").len(), 3);
 
@@ -1484,7 +1477,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         test_session.session.filter_events("network").last(),
-        Some(&ntf_network(State::Disconnected, State::Connected))
+        Some(&utils::ntf_network(State::Disconnected, State::Connected))
     );
     assert_eq!(test_session.session.filter_events("network").len(), 4);
 
@@ -1497,7 +1490,7 @@ fn test_electrum_disconnect() {
 
     assert_eq!(
         new_session.filter_events("network").last(),
-        Some(&ntf_network(State::Disconnected, State::Connected))
+        Some(&utils::ntf_network(State::Disconnected, State::Connected))
     );
     assert_eq!(new_session.filter_events("network").len(), 1);
 
@@ -1506,7 +1499,7 @@ fn test_electrum_disconnect() {
     assert_eq!(new_session.filter_events("network").len(), 2);
     assert_eq!(
         new_session.filter_events("network").last(),
-        Some(&ntf_network(State::Disconnected, State::Disconnected))
+        Some(&utils::ntf_network(State::Disconnected, State::Disconnected))
     );
 }
 
@@ -1721,7 +1714,7 @@ fn test_tor() {
         mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
         bip39_passphrase: "".to_string(),
     };
-    auth_handler_login(&mut session, &credentials);
+    utils::auth_handler_login(&mut session, &credentials);
 
     assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
 
@@ -1740,7 +1733,7 @@ fn test_tor() {
 #[test]
 fn test_spv_over_period() {
     // regtest doesn't retarget after a period (2016 blocks)
-    let mut test_session = setup_session(false, |_| ());
+    let mut test_session = TestSession::new(false, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     test_session.fund(100_000_000, None);
@@ -1780,7 +1773,7 @@ fn test_spv_external_concurrent_spv_disabled() {
 }
 
 fn test_spv_external_concurrent(spv_enabled: bool) {
-    let mut test_session = setup_session(false, |n| n.spv_enabled = Some(spv_enabled));
+    let mut test_session = TestSession::new(false, |n| n.spv_enabled = Some(spv_enabled));
     // network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
@@ -1811,7 +1804,7 @@ fn test_spv_external_concurrent(spv_enabled: bool) {
         test_session.node_generate(1); // doesn't wait the sync, may trigger header download anywhere
 
         handles.push(thread::spawn(move || {
-            spv_verify_tx(network, tip, &txid, initial_block + i as u32 + 1, Some(10));
+            utils::spv_verify_tx(network, tip, &txid, initial_block + i as u32 + 1, Some(10));
         }));
     }
 
@@ -1821,9 +1814,9 @@ fn test_spv_external_concurrent(spv_enabled: bool) {
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
-    let test_session2 = setup_session(false, |_| ());
+    let test_session2 = TestSession::new(false, |_| ());
 
-    let test_session1 = setup_session(false, |network| {
+    let test_session1 = TestSession::new(false, |network| {
         if enable_session_cross {
             network.spv_multi = Some(true);
             network.spv_servers = Some(vec![test_session2.electrs.electrum_url.clone()]);
@@ -1841,32 +1834,6 @@ fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSessi
     test_session1.node_disconnect_all();
 
     (test_session1, test_session2)
-}
-
-fn setup_session(
-    is_liquid: bool,
-    network_conf: impl FnOnce(&mut NetworkParameters),
-) -> TestSession {
-    let electrs_exec = if !is_liquid {
-        env::var("ELECTRS_EXEC")
-            .expect("env ELECTRS_EXEC pointing to electrs executable is required")
-    } else {
-        env::var("ELECTRS_LIQUID_EXEC")
-            .expect("env ELECTRS_LIQUID_EXEC pointing to electrs executable is required")
-    };
-
-    let node_exec = if !is_liquid {
-        env::var("BITCOIND_EXEC")
-            .expect("env BITCOIND_EXEC pointing to elementsd executable is required")
-    } else {
-        env::var("ELEMENTSD_EXEC")
-            .expect("env ELEMENTSD_EXEC pointing to elementsd executable is required")
-    };
-
-    env::var("WALLY_DIR").expect("env WALLY_DIR directory containing libwally is required");
-    let debug = env::var("DEBUG").is_ok();
-
-    test_session::setup(is_liquid, debug, &electrs_exec, &node_exec, network_conf)
 }
 
 fn get_chain(test_session: &mut TestSession) -> HeadersChain {
