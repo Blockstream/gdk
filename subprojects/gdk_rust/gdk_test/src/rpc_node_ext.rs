@@ -15,13 +15,8 @@ pub trait RpcNodeExt {
     ///
     /// * `nblocks` - How many blocks are generated immediately
     /// * `address` - The address to send the newly generated bitcoin to (default = `RpcNodeExt::getnewaddress`)
-    /// * `maxtries` - How many iterations to try (default = `1000000`)
-    fn generatetoaddress(
-        &self,
-        nblocks: u32,
-        address: Option<&str>,
-        maxtries: Option<u32>,
-    ) -> Result<Vec<String>>;
+    // /// * `maxtries` - How many iterations to try (default = `1000000`)
+    fn generate(&self, nblocks: u32, address: Option<&str>) -> Result<Vec<String>>;
 
     /// Returns a new Bitcoin address for receiving payments.
     ///
@@ -94,14 +89,9 @@ macro_rules! values {
 }
 
 impl RpcNodeExt for Client {
-    fn generatetoaddress(
-        &self,
-        nblocks: u32,
-        address: Option<&str>,
-        maxtries: Option<u32>,
-    ) -> Result<Vec<String>> {
+    fn generate(&self, nblocks: u32, address: Option<&str>) -> Result<Vec<String>> {
         let address = address.unwrap_or(&*self.getnewaddress(None, None)?).to_owned();
-        let params = values!(nblocks, address, maxtries);
+        let params = values!(nblocks, address);
         let block_hashes = self.call("generatetoaddress", &params)?;
         if nblocks < 10 {
             log::info!("generate result {:?}", block_hashes);

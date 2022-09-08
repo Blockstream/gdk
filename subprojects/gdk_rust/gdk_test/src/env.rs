@@ -6,6 +6,7 @@
 ///
 /// [libwally]: https://github.com/ElementsProject/libwally-core
 /// [secp]: https://github.com/ElementsProject/secp256k1-zkp
+#[allow(unused)]
 pub(crate) const WALLY_DIR: &str = env!("WALLY_DIR");
 
 /// Environment variable pointing to the `bitcoind` executable.
