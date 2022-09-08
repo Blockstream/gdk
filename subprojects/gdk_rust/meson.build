@@ -98,6 +98,7 @@ rust_sources = [
   'gdk_test/src/error.rs',
   'gdk_test/src/lib.rs',
   'gdk_test/src/rpc_node_ext.rs',
+  'gdk_test/src/test_session.rs'
 ]
 
 gdk_rust_target = custom_target('libgdk_rust',

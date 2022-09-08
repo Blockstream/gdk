@@ -732,9 +732,13 @@ dependencies = [
  "electrsd",
  "electrum-client",
  "elements",
+ "env_logger 0.9.0",
+ "gdk-common",
+ "gdk-electrum",
  "log",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
