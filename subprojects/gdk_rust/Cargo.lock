@@ -725,6 +725,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gdk_test"
+version = "0.1.0"
+dependencies = [
+ "bitcoin",
+ "electrsd",
+ "electrum-client",
+ "elements",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

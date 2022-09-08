@@ -5,6 +5,7 @@ members = [
     "gdk_electrum",
     "gdk_registry",
     "gdk_rust",
+    "gdk_test",
 ]
 
 [profile.release]
