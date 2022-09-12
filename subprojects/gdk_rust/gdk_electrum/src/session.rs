@@ -84,9 +84,6 @@ impl Session for ElectrumSession {
             "get_subaccount_root_path" => {
                 self.get_subaccount_root_path(serde_json::from_value(input)?).to_json()
             }
-            "get_subaccount_xpub" => {
-                self.get_subaccount_xpub(serde_json::from_value(input)?).to_json()
-            }
             "create_subaccount" => {
                 let opt: CreateAccountOpt = serde_json::from_value(input)?;
                 self.create_subaccount(opt).to_json()

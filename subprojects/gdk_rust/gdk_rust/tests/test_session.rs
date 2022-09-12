@@ -1341,25 +1341,20 @@ pub fn auth_handler_login(session: &mut ElectrumSession, credentials: &Credentia
 
     // Set the account xpubs if missing in the cache
     for account_num in session.get_subaccount_nums().unwrap() {
-        let opt = GetAccountXpubOpt {
+        // Currently, the resolver always asks for the subaccout xpub
+        let opt = GetAccountPathOpt {
             subaccount: account_num,
         };
-        if session.get_subaccount_xpub(opt).unwrap().xpub.is_none() {
-            // Account xpub is missing
-            let opt = GetAccountPathOpt {
-                subaccount: account_num,
-            };
-            let path = session.get_subaccount_root_path(opt).unwrap();
-            let xpub = signer.account_xpub(&path.path.into());
+        let path = session.get_subaccount_root_path(opt).unwrap();
+        let xpub = signer.account_xpub(&path.path.into());
 
-            let opt = CreateAccountOpt {
-                subaccount: account_num,
-                name: "".to_string(),
-                xpub: Some(xpub),
-                discovered: false,
-            };
-            session.create_subaccount(opt).unwrap();
-        }
+        let opt = CreateAccountOpt {
+            subaccount: account_num,
+            name: "".to_string(),
+            xpub: Some(xpub),
+            discovered: false,
+        };
+        session.create_subaccount(opt).unwrap();
     }
 
     // We got everything from the signer
