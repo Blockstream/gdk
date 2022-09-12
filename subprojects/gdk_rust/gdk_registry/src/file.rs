@@ -16,6 +16,12 @@ pub(crate) fn read<V: DeserializeOwned>(file: &mut File) -> Result<V> {
 }
 
 pub(crate) fn write<V: Serialize>(value: &V, file: &mut File) -> Result<()> {
+    // Empty the file before writing to avoid having leftover trailing bytes if
+    // the new contents are shorter than the old ones (e.g. old file was
+    // `foobar`, we write `baz`, new contents should be `baz` and not
+    // `bazbar`).
+    file.set_len(0)?;
+
     file.seek(std::io::SeekFrom::Start(0))?;
     let buffered = BufWriter::new(file);
     Ok(serde_cbor::to_writer(buffered, value)?)

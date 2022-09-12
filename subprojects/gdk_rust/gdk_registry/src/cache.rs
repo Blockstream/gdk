@@ -198,6 +198,7 @@ impl Cache {
         });
 
         // Write the file to disk.
+        file.set_len(0)?;
         file.seek(std::io::SeekFrom::Start(0))?;
         file.write_all(&nonce)?;
         file.write_all(&rest)?;
