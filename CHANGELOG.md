@@ -24,6 +24,12 @@ from its input UTXOs and output addressees.
   eventually timed out instead of waiting for the connection to be available
   again.
 
+- Fixed an issue where the Liquid asset registry would be redownloaded
+  everytime `GA_refresh_assets` was called if the local registry file got corrupted.
+
+- Fixed an issue where `GA_get_assets` would not return any assets if a
+  wallet's Liquid cache file got corrupted.
+
 ### Removed
 
 - JSON: remove "server_signed" from create/sign/send transaction JSON.
