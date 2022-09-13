@@ -18,9 +18,8 @@ use gdk_electrum::error::Error;
 use gdk_electrum::spv;
 use gdk_electrum::{ElectrumSession, TransactionNotification};
 
-use crate::RpcNodeExt;
-use crate::TestSigner;
 use crate::{env, utils};
+use crate::{ElectrumSessionExt, RpcNodeExt, TestSigner};
 
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
@@ -1087,7 +1086,7 @@ impl TestSession {
 
     /// wait for the n txs to show up in the given account
     pub fn wait_account_n_txs(&self, subaccount: u32, n: usize) {
-        utils::wait_account_n_txs(&self.session, subaccount, n);
+        self.session.wait_account_n_txs(subaccount, n);
     }
 
     pub fn wait_blockheight(&self, height: u32) {

@@ -93,6 +93,7 @@ rust_sources = [
   'gdk_rust/src/lib.rs',
   'gdk_rust/tests/integration.rs',
   'gdk_test/Cargo.toml',
+  'gdk_test/src/electrum_session_ext.rs',
   'gdk_test/src/env.rs',
   'gdk_test/src/error.rs',
   'gdk_test/src/lib.rs',

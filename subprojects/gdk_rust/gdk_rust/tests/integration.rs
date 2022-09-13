@@ -21,7 +21,7 @@ use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{headers, spv, ElectrumSession};
 use gdk_test::utils;
-use gdk_test::TestSession;
+use gdk_test::{ElectrumSessionExt, TestSession};
 
 static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
@@ -850,13 +850,13 @@ fn subaccounts(is_liquid: bool) {
         mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
         bip39_passphrase: "".to_string(),
     };
-    utils::auth_handler_login(&mut new_session, &credentials);
+    new_session.auth_handler_login(&credentials);
 
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), 1);
     assert!(new_session.get_subaccount(0).is_ok());
 
-    utils::discover_subaccounts(&mut new_session, &credentials);
+    new_session.discover_subaccounts(&credentials);
     let subaccounts = new_session.get_subaccounts().unwrap();
     assert_eq!(subaccounts.len(), balances.len());
     assert_eq!(new_session.get_subaccount(0).unwrap().bip44_discovered, true);
@@ -881,14 +881,14 @@ fn subaccounts(is_liquid: bool) {
     *balances.entry(new_account).or_insert(0) += sat;
 
     assert!(new_session.get_subaccount(new_account).is_err());
-    utils::discover_subaccounts(&mut new_session, &credentials);
+    new_session.discover_subaccounts(&credentials);
     new_session.get_subaccounts().unwrap();
     assert!(new_session.get_subaccount(new_account).is_ok());
 
     let btc_key = test_session.btc_key();
 
     for subaccount in subaccounts.iter() {
-        utils::wait_account_n_txs(&new_session, subaccount.account_num, 1);
+        new_session.wait_account_n_txs(subaccount.account_num, 1);
 
         let opt = GetBalanceOpt {
             subaccount: subaccount.account_num,
@@ -1714,7 +1714,7 @@ fn test_tor() {
         mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
         bip39_passphrase: "".to_string(),
     };
-    utils::auth_handler_login(&mut session, &credentials);
+    session.auth_handler_login(&credentials);
 
     assert_eq!(session.get_fee_estimates().unwrap().len(), 25);
 
