@@ -1152,7 +1152,8 @@ Settings JSON
     "nlocktime": 12960,
     "notifications": {
       "email_incoming": true,
-      "email_outgoing": true
+      "email_outgoing": true,
+      "email_login": true
     },
     "pgp": "",
     "pricing": {

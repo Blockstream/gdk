@@ -192,11 +192,13 @@ namespace sdk {
             nlohmann::json clean_notifications_settings({
                 { "email_incoming", false },
                 { "email_outgoing", false },
+                { "email_login", false },
             });
             clean_notifications_settings.update(clean["notifications_settings"]);
             clean["notifications_settings"] = clean_notifications_settings;
             GDK_RUNTIME_ASSERT(clean["notifications_settings"]["email_incoming"].is_boolean());
             GDK_RUNTIME_ASSERT(clean["notifications_settings"]["email_outgoing"].is_boolean());
+            GDK_RUNTIME_ASSERT(clean["notifications_settings"]["email_login"].is_boolean());
 
             // Make sure the default block target is one of [3, 12, or 24]
             uint32_t required_num_blocks = clean["required_num_blocks"];
