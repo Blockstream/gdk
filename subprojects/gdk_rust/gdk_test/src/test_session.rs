@@ -3,11 +3,12 @@ use std::thread;
 use std::time::Duration;
 
 use bitcoin::hashes::hex::FromHex;
+use bitcoin::secp256k1::SecretKey;
 use bitcoin::Amount;
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrum_client::ElectrumApi;
 use log::{info, warn};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use tempfile::TempDir;
 
 use gdk_common::be::*;
@@ -781,6 +782,34 @@ impl TestSession {
     pub fn node_getrawtransaction(&self, txid: &str) -> String {
         serde_json::from_value(self.node.client.getrawtransaction(txid, false, None).unwrap())
             .unwrap()
+    }
+
+    pub fn node_getaddressinfo(&self, txid: &str) -> Map<String, Value> {
+        self.node.client.getaddressinfo(txid).unwrap()
+    }
+
+    pub fn node_importaddress(&self, address: &str) {
+        self.node.client.importaddress(address, None, true, false).unwrap()
+    }
+
+    pub fn node_importblindingkey(&self, address: &str, priv_key: &SecretKey) {
+        self.node.client.importblindingkey(address, priv_key).unwrap()
+    }
+
+    pub fn node_listunspent(&self) -> Vec<Map<String, Value>> {
+        self.node.client.listunspent().unwrap()
+    }
+
+    pub fn node_createpsbt(&self, inputs: Value, outputs: Value) -> String {
+        self.node.client.createpsbt(inputs, outputs).unwrap()
+    }
+
+    pub fn node_walletprocesspsbt(&self, psbt: &str, sign: bool) -> Map<String, Value> {
+        self.node.client.walletprocesspsbt(psbt, sign).unwrap()
+    }
+
+    pub fn node_sendmany(&self, amounts: &[(&str, f64)], assets: &[(&str, &str)]) -> String {
+        self.node.client.sendmany(amounts, assets).unwrap()
     }
 
     pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<&str>) -> String {

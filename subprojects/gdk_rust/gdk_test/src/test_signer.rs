@@ -41,7 +41,7 @@ impl TestSigner {
         ExtendedPubKey::from_priv(&self.secp, &self.master_xprv())
     }
 
-    pub(crate) fn master_blinding(&self) -> MasterBlindingKey {
+    pub fn master_blinding(&self) -> MasterBlindingKey {
         asset_blinding_key_from_seed(&self.seed())
     }
 

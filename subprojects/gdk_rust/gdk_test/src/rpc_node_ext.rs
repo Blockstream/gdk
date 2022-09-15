@@ -9,6 +9,8 @@ use crate::Result;
 /// Extension trait for [`bitcoin_rpc::client::Client`] providing a more
 /// ergonomic API.
 pub trait RpcNodeExt {
+    fn createpsbt(&self, inputs: Value, outputs: Value) -> Result<String>;
+
     /// Mine blocks immediately to a specified address (before the RPC call returns)
     ///
     /// # Arguments
@@ -17,6 +19,8 @@ pub trait RpcNodeExt {
     /// * `address` - The address to send the newly generated bitcoin to (default = `RpcNodeExt::getnewaddress`)
     // /// * `maxtries` - How many iterations to try (default = `1000000`)
     fn generate(&self, nblocks: u32, address: Option<&str>) -> Result<Vec<String>>;
+
+    fn getaddressinfo(&self, address: &str) -> Result<Map<String, Value>>;
 
     /// Returns a new Bitcoin address for receiving payments.
     ///
@@ -70,6 +74,10 @@ pub trait RpcNodeExt {
     /// Creates a new asset and returns the asset's hex identifier.
     fn issueasset(&self, satoshi: u64) -> Result<String>;
 
+    fn listunspent(&self) -> Result<Vec<Map<String, Value>>>;
+
+    fn sendmany(&self, amounts: &[(&str, f64)], assets: &[(&str, &str)]) -> Result<String>;
+
     /// Send an amount to a given address.
     ///
     /// # Arguments
@@ -78,6 +86,8 @@ pub trait RpcNodeExt {
     /// * `satoshi` - The amount in satoshi to send
     /// * `asset` - todo
     fn sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<&str>) -> Result<String>;
+
+    fn walletprocesspsbt(&self, psbt: &str, sign: bool) -> Result<Map<String, Value>>;
 }
 
 /// Takes a tuple of values that implement [`ToJson`] and returns an array of
@@ -89,6 +99,11 @@ macro_rules! values {
 }
 
 impl RpcNodeExt for Client {
+    fn createpsbt(&self, inputs: Value, outputs: Value) -> Result<String> {
+        let psbt = self.call("createpsbt", &[inputs, outputs])?;
+        Ok(psbt)
+    }
+
     fn generate(&self, nblocks: u32, address: Option<&str>) -> Result<Vec<String>> {
         let address = address.unwrap_or(&*self.getnewaddress(None, None)?).to_owned();
         let params = values!(nblocks, address);
@@ -99,6 +114,12 @@ impl RpcNodeExt for Client {
             log::info!("generated {} blocks", nblocks);
         }
         Ok(block_hashes)
+    }
+
+    fn getaddressinfo(&self, address: &str) -> Result<Map<String, Value>> {
+        let params = values!(address);
+        let info = self.call("getaddressinfo", &params)?;
+        Ok(info)
     }
 
     fn getnewaddress(&self, label: Option<&str>, address_type: Option<&str>) -> Result<String> {
@@ -143,6 +164,30 @@ impl RpcNodeExt for Client {
         Ok(res["asset"].as_str().unwrap().to_owned())
     }
 
+    fn listunspent(&self) -> Result<Vec<Map<String, Value>>> {
+        let utxos = self.call("listunspent", &[])?;
+        Ok(utxos)
+    }
+
+    fn sendmany(&self, amounts: &[(&str, f64)], assets: &[(&str, &str)]) -> Result<String> {
+        let amounts = amounts
+            .iter()
+            .map(|(address, amount)| (address.to_string(), Value::from(*amount)))
+            .collect::<serde_json::Map<_, _>>();
+
+        let assets = assets
+            .iter()
+            .map(|(address, asset)| (address.to_string(), Value::from(*asset)))
+            .collect::<serde_json::Map<_, _>>();
+
+        let params =
+            values!("", amounts, Value::Null, "", Value::Null, false, 1, "unset", assets, false);
+
+        let txid = self.call("sendmany", &params)?;
+
+        Ok(txid)
+    }
+
     fn sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<&str>) -> Result<String> {
         let btc = Amount::from_sat(satoshi).to_string_in(Denomination::Bitcoin);
 
@@ -160,6 +205,12 @@ impl RpcNodeExt for Client {
         log::info!("`sendtoaddress` received txid {}", txid);
 
         Ok(txid)
+    }
+
+    fn walletprocesspsbt(&self, psbt: &str, sign: bool) -> Result<Map<String, Value>> {
+        let params = values!(psbt, sign);
+        let res = self.call("walletprocesspsbt", &params)?;
+        Ok(res)
     }
 }
 
@@ -182,6 +233,8 @@ macro_rules! into_json {
 into_json!(u32);
 into_json!(bool);
 into_json!(&str);
+into_json!(Value);
+into_json!(Map<String, Value>);
 
 impl ToJson for Option<u32> {
     fn to_json(self) -> Value {
