@@ -778,6 +778,11 @@ impl TestSession {
         self.node.client.getnewaddress(None, kind).unwrap()
     }
 
+    pub fn node_getrawtransaction(&self, txid: &str) -> String {
+        serde_json::from_value(self.node.client.getrawtransaction(txid, false, None).unwrap())
+            .unwrap()
+    }
+
     pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<&str>) -> String {
         self.node.client.sendtoaddress(address, satoshi, asset).unwrap()
     }

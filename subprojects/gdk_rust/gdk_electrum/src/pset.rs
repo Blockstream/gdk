@@ -56,11 +56,11 @@ pub fn merge_tx(param: &MergeTxParam) -> Result<MergeTxResult, Error> {
 
 #[derive(Debug, Deserialize)]
 pub struct FromTxParam {
-    transaction: String,
+    pub transaction: String,
 }
 #[derive(Debug, Serialize)]
 pub struct FromTxResult {
-    psbt_hex: String,
+    pub psbt_hex: String,
 }
 /// Return a pset built from the given raw tx hex
 pub fn from_tx(param: &FromTxParam) -> Result<FromTxResult, Error> {
@@ -68,7 +68,7 @@ pub fn from_tx(param: &FromTxParam) -> Result<FromTxResult, Error> {
     let mut pset = PartiallySignedTransaction::from_tx(tx);
     for output in pset.outputs_mut().iter_mut() {
         // Elements Core requires the blinder index to be set for each blinded output
-        if output.value_rangeproof.is_some() && output.blinder_index.is_none() {
+        if output.is_marked_for_blinding() && output.blinder_index.is_none() {
             output.blinder_index = Some(0);
         }
     }
