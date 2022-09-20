@@ -14,7 +14,7 @@ use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Setting
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use gdk_common::wally::MasterBlindingKey;
 use gdk_common::NetworkId;
-use log::{info, warn};
+use log::{info, log, Level};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -165,8 +165,8 @@ impl RawCache {
     /// create a new RawCache, try to load data from a file or a fallback file
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
     fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
-        Self::try_new(path, cipher).unwrap_or_else(|e| {
-            warn!("Initialize cache as default {:?}", e);
+        Self::try_new(path.as_ref(), cipher).unwrap_or_else(|e| {
+            log_initialization(e, path);
             Default::default()
         })
     }
@@ -207,8 +207,8 @@ impl RawStore {
     /// create a new RawStore, try to load data from a file or a fallback file
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
     fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
-        Self::try_new(path, cipher).unwrap_or_else(|e| {
-            warn!("Initialize store as default {:?}", e);
+        Self::try_new(path.as_ref(), cipher).unwrap_or_else(|e| {
+            log_initialization(e, path);
             Default::default()
         })
     }
@@ -220,6 +220,14 @@ impl RawStore {
     }
 }
 
+fn log_initialization<P: AsRef<Path>>(e: Error, path: P) {
+    let level = match e {
+        Error::FileNotExist(_) => Level::Info,
+        _ => Level::Warn,
+    };
+    log!(level, "Initialize {:?} as default {:?}", path.as_ref(), e);
+}
+
 fn load_decrypt<P: AsRef<Path>>(
     kind: Kind,
     path: P,
@@ -229,7 +237,7 @@ fn load_decrypt<P: AsRef<Path>>(
     let mut store_path = PathBuf::from(path.as_ref());
     store_path.push(kind.to_string());
     if !store_path.exists() {
-        return Err(Error::Generic(format!("{:?} do not exist", store_path)));
+        return Err(Error::FileNotExist(store_path));
     }
     let mut file = File::open(&store_path)?;
 

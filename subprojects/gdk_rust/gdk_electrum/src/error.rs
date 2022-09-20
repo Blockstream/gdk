@@ -5,6 +5,7 @@ use elements::hash_types::Txid;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
 use std::convert::From;
+use std::path::PathBuf;
 use std::sync::{MutexGuard, PoisonError, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(thiserror::Error, Debug)]
@@ -188,6 +189,9 @@ pub enum Error {
         method: String,
         in_session: bool,
     },
+
+    #[error("{0} do not exist")]
+    FileNotExist(PathBuf),
 
     #[error("{0}")]
     Generic(String),

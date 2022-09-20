@@ -1572,7 +1572,7 @@ impl Syncer {
                             );
                             match unblinded {
                                 Ok(unblinded) => unblinds.push((outpoint, unblinded)),
-                                Err(_) => info!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint),
+                                Err(_) => warn!("{} cannot unblind, ignoring (could be sender messed up with the blinding process)", outpoint),
                             }
                         }
                     }
