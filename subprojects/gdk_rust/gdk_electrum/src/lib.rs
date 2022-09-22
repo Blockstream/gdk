@@ -608,38 +608,9 @@ impl ElectrumSession {
 
         info!("login STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
 
-        let notify_blocks = self.notify.clone();
-
         let user_wants_to_sync = self.user_wants_to_sync.clone();
-        let tipper_url = self.url.clone();
-        let proxy = self.proxy.clone();
-
-        let tipper_handle = thread::spawn(move || {
-            info!("starting tipper thread");
-            loop {
-                if let Ok(client) = tipper_url.build_client(proxy.as_deref(), None) {
-                    match tipper.tip(&client) {
-                        Ok(None) => {} // nothing to update
-                        Ok(Some((height, header))) => {
-                            // This is a new block
-                            notify_blocks.block_from_header(height, &header);
-                        }
-                        Err(e) => {
-                            warn!("exception in tipper {:?}", e);
-                        }
-                    }
-                }
-                if wait_or_close(&user_wants_to_sync, sync_interval) {
-                    info!("closing tipper thread");
-                    break;
-                }
-            }
-        });
-        self.handles.push(tipper_handle);
-
-        let user_wants_to_sync = self.user_wants_to_sync.clone();
-        let notify_txs = self.notify.clone();
-        let syncer_url = self.url.clone();
+        let notify = self.notify.clone();
+        let url = self.url.clone();
         let proxy = self.proxy.clone();
 
         // Only the syncer thread is responsible to send network notification due for the state
@@ -648,42 +619,97 @@ impl ElectrumSession {
         // monitor state of every network call.
         let state_updater = self.state_updater()?;
 
-        let syncer_handle = thread::spawn(move || {
-            info!("starting syncer thread");
+        let syncer_tipper_handle = thread::spawn(move || {
+            info!("starting syncer & tipper thread");
+
+            let update_tip = |client: &Client| match tipper.tip(&client) {
+                Ok(Some((height, header))) => {
+                    // This is a new block
+                    if do_update {
+                        notify.block_from_header(height, &header);
+                    }
+                    Ok(Some(height))
+                }
+                Ok(None) => Ok(None), // nothing to update
+                Err(e) => {
+                    warn!("exception in tipper {:?}", e);
+                    Err(e)
+                }
+            };
+
             let mut first_sync = true;
-            loop {
-                match syncer_url.build_client(proxy.as_deref(), None) {
-                    Ok(client) => match syncer.sync(&client) {
-                        Ok(tx_ntfs) => {
-                            state_updater.update_if_needed(true);
-                            // Skip sending transaction notifications if it's the first call to
-                            // sync. This allows us to _not_ notify transactions that were sent or
-                            // received before login.
-                            if !first_sync {
-                                for ntf in tx_ntfs.iter() {
-                                    info!("there are new transactions");
-                                    notify_txs.updated_txs(ntf);
-                                }
+
+            let mut sync = |client: &Client| {
+                match syncer.sync(&client) {
+                    Ok(tx_ntfs) => {
+                        state_updater.update_if_needed(true);
+                        // Skip sending transaction notifications if it's the
+                        // first call to sync. This allows us to _not_ notify
+                        // transactions that were sent or received before
+                        // login.
+                        if !first_sync {
+                            for ntf in tx_ntfs.iter() {
+                                info!("there are new transactions");
+                                notify.updated_txs(ntf);
                             }
                         }
-                        Err(e) => {
-                            state_updater.update_if_needed(false);
-                            warn!("Error during sync, {:?}", e)
-                        }
-                    },
+                        first_sync = false;
+                    }
                     Err(e) => {
                         state_updater.update_if_needed(false);
-                        warn!("Can't build client {:?}", e)
+                        warn!("Error during sync, {:?}", e)
                     }
                 }
+            };
+
+            loop {
+                match url.build_client(proxy.as_deref(), None) {
+                    Ok(client) => {
+                        let tip_before_sync = match update_tip(&client) {
+                            Ok(height) => height,
+                            Err(_) => {
+                                continue;
+                            }
+                        };
+
+                        sync(&client);
+
+                        let tip_after_sync = match update_tip(&client) {
+                            Ok(height) => height,
+                            Err(_) => {
+                                continue;
+                            }
+                        };
+
+                        let should_resync = match (tip_before_sync, tip_after_sync) {
+                            (None, Some(_)) => true,
+                            (Some(before), Some(after)) if before != after => true,
+                            _ => false,
+                        };
+
+                        if should_resync {
+                            // If a block arrives while we are syncing
+                            // transactions, transactions might be returned as
+                            // unconfirmed even if they belong to the newly
+                            // notified block. Sync again to ensure
+                            // consistency.
+                            continue;
+                        }
+                    }
+
+                    Err(err) => {
+                        state_updater.update_if_needed(false);
+                        warn!("Can't build client {:?}", err);
+                    }
+                };
+
                 if wait_or_close(&user_wants_to_sync, sync_interval) {
-                    info!("closing syncer thread");
+                    info!("closing syncer & tipper thread");
                     break;
                 }
-                first_sync = false;
             }
         });
-        self.handles.push(syncer_handle);
+        self.handles.push(syncer_tipper_handle);
 
         Ok(())
     }
