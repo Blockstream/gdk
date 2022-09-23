@@ -1813,6 +1813,21 @@ fn test_spv_external_concurrent(spv_enabled: bool) {
     }
 }
 
+#[test]
+fn test_utxo_unconfirmed() {
+    let test_session = TestSession::new(false, |_| ());
+    let address = test_session.get_receive_address(0).address;
+    let initial_height = test_session.node_get_block_count();
+
+    for i in 1..10 {
+        let txid = test_session.node_sendtoaddress(&address, 100_000, None);
+        test_session.node_generate(1);
+        test_session.wait_block_ntf(initial_height + i);
+        let utxos = test_session.utxos(0);
+        assert!(utxos.0.get("btc").unwrap().iter().any(|u| u.txhash == txid));
+    }
+}
+
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
     let test_session2 = TestSession::new(false, |_| ());
 

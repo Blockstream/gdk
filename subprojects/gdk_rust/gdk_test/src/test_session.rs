@@ -775,6 +775,10 @@ impl TestSession {
         block[0].to_string()
     }
 
+    pub fn node_get_block_count(&self) -> u32 {
+        self.node.client.get_block_count().unwrap() as _
+    }
+
     pub fn node_getnewaddress(&self, kind: Option<&str>) -> String {
         self.node.client.getnewaddress(None, kind).unwrap()
     }
@@ -1131,6 +1135,24 @@ impl TestSession {
             if height == self.session.block_status().unwrap().0 {
                 return;
             }
+            thread::sleep(Duration::from_secs(1));
+        }
+    }
+
+    pub fn wait_block_ntf(&self, height: u32) {
+        let mut i = 60;
+        loop {
+            assert!(i > 0, "timeout waiting for notification for block {}", height);
+            i -= 1;
+
+            let events = self.session.filter_events("block");
+            if events
+                .iter()
+                .any(|e| e["block"]["block_height"].as_u64().unwrap() == (height as u64))
+            {
+                return;
+            }
+
             thread::sleep(Duration::from_secs(1));
         }
     }
