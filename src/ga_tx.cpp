@@ -1204,17 +1204,11 @@ namespace sdk {
 
         const auto num_inputs = details.at("used_utxos").size();
 
-        std::vector<unsigned char> input_assets;
         std::vector<unsigned char> input_abfs;
         std::vector<unsigned char> input_vbfs;
-        std::vector<unsigned char> input_ags;
         std::vector<uint64_t> input_values;
         for (const auto& utxo : details["used_utxos"]) {
-            const auto asset_id = h2b_rev(utxo.at("asset_id"));
-            input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
             const auto abf = h2b_rev(utxo.at("assetblinder"));
-            const auto generator = asset_generator_from_bytes(asset_id, abf);
-            input_ags.insert(input_ags.end(), std::begin(generator), std::end(generator));
             input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
             const auto vbf = h2b_rev(utxo.at("amountblinder"));
             input_vbfs.insert(input_vbfs.end(), std::begin(vbf), std::end(vbf));
