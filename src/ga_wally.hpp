@@ -276,6 +276,12 @@ namespace sdk {
     bool ae_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t host_entropy,
         byte_span_t signer_commitment, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);
 
+    bool ec_scalar_verify(byte_span_t scalar);
+
+    std::array<unsigned char, EC_SCALAR_LEN> ec_scalar_add(byte_span_t a, byte_span_t b);
+
+    std::array<unsigned char, EC_SCALAR_LEN> ec_scalar_subtract(byte_span_t a, byte_span_t b);
+
     //
     // Elements
     //
@@ -284,12 +290,20 @@ namespace sdk {
     std::array<unsigned char, ASSET_TAG_LEN> asset_final_vbf(
         uint64_span_t values, size_t num_inputs, byte_span_t abf, byte_span_t vbf);
 
+    std::array<unsigned char, EC_SCALAR_LEN> asset_scalar_offset(uint64_t value, byte_span_t abf, byte_span_t vbf);
+
     std::array<unsigned char, ASSET_COMMITMENT_LEN> asset_value_commitment(
         uint64_t value, byte_span_t vbf, byte_span_t generator);
 
     std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
         byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
         byte_span_t generator, uint64_t min_value, int exp, int min_bits);
+
+    std::vector<unsigned char> explicit_rangeproof(
+        uint64_t value, byte_span_t nonce_hash, byte_span_t vbf, byte_span_t commitment, byte_span_t generator);
+
+    bool explicit_rangeproof_verify(
+        byte_span_t rangeproof, uint64_t value, byte_span_t commitment, byte_span_t generator);
 
     size_t asset_surjectionproof_size(size_t num_inputs);
 

@@ -698,6 +698,25 @@ namespace sdk {
             == WALLY_OK;
     }
 
+    bool ec_scalar_verify(byte_span_t scalar)
+    {
+        return wally_ec_scalar_verify(scalar.data(), scalar.size()) == WALLY_OK;
+    }
+
+    std::array<unsigned char, EC_SCALAR_LEN> ec_scalar_add(byte_span_t a, byte_span_t b)
+    {
+        std::array<unsigned char, EC_SCALAR_LEN> ret;
+        GDK_VERIFY(wally_ec_scalar_add(a.data(), a.size(), b.data(), b.size(), ret.data(), ret.size()));
+        return ret;
+    }
+
+    std::array<unsigned char, EC_SCALAR_LEN> ec_scalar_subtract(byte_span_t a, byte_span_t b)
+    {
+        std::array<unsigned char, EC_SCALAR_LEN> ret;
+        GDK_VERIFY(wally_ec_scalar_subtract(a.data(), a.size(), b.data(), b.size(), ret.data(), ret.size()));
+        return ret;
+    }
+
     //
     // Elements
     //
@@ -716,6 +735,14 @@ namespace sdk {
         GDK_VERIFY(wally_asset_final_vbf(values.data(), values.size(), num_inputs, abf.data(), abf.size(), vbf.data(),
             vbf.size(), v.data(), v.size()));
         return v;
+    }
+
+    std::array<unsigned char, EC_SCALAR_LEN> asset_scalar_offset(uint64_t value, byte_span_t abf, byte_span_t vbf)
+    {
+        std::array<unsigned char, EC_SCALAR_LEN> ret;
+        GDK_VERIFY(
+            wally_asset_scalar_offset(value, abf.data(), abf.size(), vbf.data(), vbf.size(), ret.data(), ret.size()));
+        return ret;
     }
 
     std::array<unsigned char, ASSET_COMMITMENT_LEN> asset_value_commitment(
@@ -739,6 +766,26 @@ namespace sdk {
             min_value, exp, min_bits, rangeproof.data(), rangeproof.size(), &written));
         rangeproof.resize(written);
         return rangeproof;
+    }
+
+    std::vector<unsigned char> explicit_rangeproof(
+        uint64_t value, byte_span_t nonce_hash, byte_span_t vbf, byte_span_t commitment, byte_span_t generator)
+    {
+        std::vector<unsigned char> rangeproof(ASSET_EXPLICIT_RANGEPROOF_MAX_LEN);
+        size_t written;
+        GDK_VERIFY(wally_explicit_rangeproof(value, nonce_hash.data(), nonce_hash.size(), vbf.data(), vbf.size(),
+            commitment.data(), commitment.size(), generator.data(), generator.size(), rangeproof.data(),
+            rangeproof.size(), &written));
+        rangeproof.resize(written);
+        return rangeproof;
+    }
+
+    bool explicit_rangeproof_verify(
+        byte_span_t rangeproof, uint64_t value, byte_span_t commitment, byte_span_t generator)
+    {
+        return wally_explicit_rangeproof_verify(rangeproof.data(), rangeproof.size(), value, commitment.data(),
+                   commitment.size(), generator.data(), generator.size())
+            == WALLY_OK;
     }
 
     size_t asset_surjectionproof_size(size_t num_inputs)
