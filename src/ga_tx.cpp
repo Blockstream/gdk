@@ -39,20 +39,18 @@ namespace sdk {
                 && output.nonce_len == WALLY_TX_ASSET_CT_NONCE_LEN && output.rangeproof_len > 0;
         }
 
-        template <typename T>
-        static std::vector<T> get_blinding_factors(const nlohmann::json& outputs, size_t n, const std::string name)
+        static bool input_contributes_to_last_vbf(const nlohmann::json& utxo)
         {
-            std::vector<T> blinding_factors;
-            blinding_factors.reserve(n);
-            for (size_t i = 0; i < n; ++i) {
-                std::string blinder = json_get_value(outputs.at(i), name);
-                if (blinder.empty()) {
-                    blinding_factors.emplace_back(get_random_bytes<32>());
-                } else {
-                    blinding_factors.emplace_back(h2b_rev<32>(blinder));
-                }
-            }
-            return blinding_factors;
+            // If the input vbf is not set, its contribution to the last vbf comes from the scalar offset.
+            return utxo.contains("amountblinder");
+        }
+
+        static bool output_contributes_to_last_vbf(const nlohmann::json& output)
+        {
+            // If the vbf is set, then it contributes to the last vbf.
+            // If it's not set, then it could be generated at random later in the code,
+            // but it isn't generated if the output was already blinded, in which case the blinding_key is not set.
+            return output.contains("amountblinder") || output.contains("blinding_key");
         }
 
         static void add_paths(session_impl& session, nlohmann::json& utxo)
@@ -1201,18 +1199,22 @@ namespace sdk {
 
         constexpr bool is_liquid = true;
         const auto tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
-
-        const auto num_inputs = details.at("used_utxos").size();
+        const bool is_partial = json_get_value(details, "is_partial", false);
 
         std::vector<unsigned char> input_abfs;
         std::vector<unsigned char> input_vbfs;
         std::vector<uint64_t> input_values;
-        for (const auto& utxo : details["used_utxos"]) {
+        size_t num_inputs{ 0 };
+        for (const auto& utxo : details.at("used_utxos")) {
+            if (!input_contributes_to_last_vbf(utxo)) {
+                continue;
+            }
             const auto abf = h2b_rev(utxo.at("assetblinder"));
             input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
             const auto vbf = h2b_rev(utxo.at("amountblinder"));
             input_vbfs.insert(input_vbfs.end(), std::begin(vbf), std::end(vbf));
             input_values.emplace_back(utxo.at("satoshi"));
+            ++num_inputs;
         }
 
         size_t num_outputs{ 0 };
@@ -1222,19 +1224,19 @@ namespace sdk {
             if (output.at("is_fee")) {
                 continue;
             }
-            input_values.emplace_back(output.at("satoshi"));
+            if (output_contributes_to_last_vbf(output)) {
+                input_values.emplace_back(output.at("satoshi"));
+            }
             ++num_outputs;
         }
 
         GDK_RUNTIME_ASSERT(num_inputs && num_outputs);
 
-        auto output_abfs = get_blinding_factors<abf_t>(transaction_outputs, num_outputs, "assetblinder");
-        auto output_vbfs = get_blinding_factors<vbf_t>(transaction_outputs, num_outputs - 1, "amountblinder");
-
-        output_vbfs.emplace_back(
-            generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs));
-
         const bool has_amp_inputs = tx_has_amp_inputs(session, details);
+
+        // Blinding factors that contribute to the last vbf
+        std::vector<abf_t> output_abfs;
+        std::vector<vbf_t> output_vbfs;
 
         std::vector<std::string> blinding_nonces;
         size_t i = 0;
@@ -1251,10 +1253,48 @@ namespace sdk {
             const auto asset_id = h2b_rev(output.at("asset_id"));
             const uint64_t value = output.at("satoshi");
 
-            const auto generator = asset_generator_from_bytes(asset_id, output_abfs[i]);
-            const auto value_commitment = asset_value_commitment(value, output_vbfs[i], generator);
+            const bool contributes_to_last_vbf = output_contributes_to_last_vbf(output);
 
-            blind_output(session, details, tx, i, output, generator, value_commitment, output_abfs[i], output_vbfs[i]);
+            abf_t abf{ 0 };
+            const std::string abf_hex = json_get_value(output, "assetblinder");
+            if (contributes_to_last_vbf) {
+                abf = abf_hex.empty() ? get_random_bytes<32>() : h2b_rev<32>(abf_hex);
+                output_abfs.emplace_back(abf);
+            } else {
+                // Asset blinding factor must be provided
+                abf = h2b_rev<32>(abf_hex);
+            }
+
+            vbf_t vbf{ 0 };
+            if (is_partial || (i < num_outputs - 1)) {
+                if (contributes_to_last_vbf) {
+                    const std::string vbf_hex = json_get_value(output, "amountblinder");
+                    vbf = vbf_hex.empty() ? get_random_bytes<32>() : h2b_rev<32>(vbf_hex);
+                    output_vbfs.emplace_back(vbf);
+                }
+                // Leave the vbf to 0, below this value will not be used.
+            } else {
+                // Compute the final vbf
+                GDK_RUNTIME_ASSERT(contributes_to_last_vbf);
+                vbf = generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs);
+                // Add the scalar offsets
+                const std::vector<std::string> scalars = json_get_value<decltype(scalars)>(details, "scalars");
+                for (const auto& scalar : scalars) {
+                    vbf = ec_scalar_add(vbf, h2b(scalar));
+                }
+                output_vbfs.emplace_back(vbf);
+            }
+
+            const auto generator = asset_generator_from_bytes(asset_id, abf);
+            std::array<unsigned char, 33> value_commitment;
+            if (contributes_to_last_vbf) {
+                value_commitment = asset_value_commitment(value, vbf, generator);
+            } else {
+                const auto& o = tx->outputs[i];
+                std::copy(o.value, o.value + o.value_len, value_commitment.begin());
+            }
+
+            blind_output(session, details, tx, i, output, generator, value_commitment, abf, vbf);
 
             if (has_amp_inputs) {
                 blinding_nonces.emplace_back(output.at("blinding_nonce"));
@@ -1264,9 +1304,15 @@ namespace sdk {
         }
 
         nlohmann::json result(details);
+        size_t j = 0;
         for (size_t i = 0; i < num_outputs; ++i) {
-            result["transaction_outputs"][i]["assetblinder"] = b2h_rev(output_abfs.at(i));
-            result["transaction_outputs"][i]["amountblinder"] = b2h_rev(output_vbfs.at(i));
+            const auto& output = details["transaction_outputs"].at(i);
+            if (!output_contributes_to_last_vbf(output)) {
+                continue;
+            }
+            result["transaction_outputs"][i]["assetblinder"] = b2h_rev(output_abfs.at(j));
+            result["transaction_outputs"][i]["amountblinder"] = b2h_rev(output_vbfs.at(j));
+            ++j;
         }
         result["blinded"] = true;
         if (has_amp_inputs) {

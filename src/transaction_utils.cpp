@@ -459,10 +459,15 @@ namespace sdk {
             const auto asset_id = h2b_rev(addressee.at("asset_id"));
             const amount::value_type satoshi = addressee.at("satoshi");
             const auto abf = h2b_rev(addressee.at("assetblinder"));
-            const auto vbf = h2b_rev(addressee.at("amountblinder"));
 
             const auto asset_commitment = asset_generator_from_bytes(asset_id, abf);
-            const auto value_commitment = asset_value_commitment(satoshi, vbf, asset_commitment);
+            std::array<unsigned char, 33> value_commitment;
+            if (addressee.contains("amountblinder")) {
+                const auto vbf = h2b_rev(addressee.at("amountblinder"));
+                value_commitment = asset_value_commitment(satoshi, vbf, asset_commitment);
+            } else {
+                value_commitment = h2b<33>(addressee.at("commitment"));
+            }
 
             const auto nonce_commitment = h2b(addressee.at("nonce_commitment"));
 
@@ -675,8 +680,13 @@ namespace sdk {
                         if (is_blinded) {
                             // The case of an existing blinded output
                             output["assetblinder"] = addressee.at("assetblinder");
-                            output["amountblinder"] = addressee.at("amountblinder");
                             output["nonce_commitment"] = addressee.at("nonce_commitment");
+                            if (addressee.contains("amountblinder")) {
+                                output["amountblinder"] = addressee.at("amountblinder");
+                            }
+                            if (addressee.contains("commitment")) {
+                                output["commitment"] = addressee.at("commitment");
+                            }
                         } else {
                             output["blinding_key"] = blinding_key_from_addr(address);
                         }
