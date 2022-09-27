@@ -499,6 +499,11 @@ namespace sdk {
             // Let the caller know if addressees should not be modified
             result["addressees_read_only"] = is_redeposit || is_rbf || is_cpfp || is_sweep;
 
+            if (is_partial) {
+                GDK_RUNTIME_ASSERT(!is_rbf && !is_cpfp && !is_redeposit && !is_sweep);
+                GDK_RUNTIME_ASSERT(!json_get_value(result, "send_all", false));
+            }
+
             auto addressees_p = result.find("addressees");
             if (is_sweep) {
                 if (is_liquid) {
