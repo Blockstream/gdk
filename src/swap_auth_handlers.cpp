@@ -172,6 +172,10 @@ namespace sdk {
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
         }
+        if (!json_get_value(m_create_details, "error").empty()) {
+            m_result = std::move(m_create_details);
+            return state_type::done; // Create transaction returned an error, do not attempt to sign
+        }
         // Call sign_transaction to sign the callers side
         constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
         m_create_details.at("used_utxos").at(0)["user_sighash"] = sighash;
