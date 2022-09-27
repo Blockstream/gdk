@@ -803,9 +803,6 @@ impl BETransaction {
     }
 
     pub fn type_(&self, balances: &Balances, is_redeposit: bool) -> TransactionType {
-        // We define an incoming txs if there are more assets received by the wallet than spent
-        // when they are equal it's an outgoing tx because the special asset liquid BTC
-        // is negative due to the fee being paid
         // TODO how do we label issuance tx?
         let negatives = balances.iter().filter(|(_, v)| **v < 0).count();
         let positives = balances.iter().filter(|(_, v)| **v > 0).count();
@@ -813,7 +810,9 @@ impl BETransaction {
             TransactionType::NotUnblindable
         } else if is_redeposit {
             TransactionType::Redeposit
-        } else if positives > negatives {
+        } else if positives > 0 && negatives > 0 {
+            TransactionType::Mixed
+        } else if positives > 0 {
             TransactionType::Incoming
         } else {
             TransactionType::Outgoing

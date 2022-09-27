@@ -316,7 +316,7 @@ pub struct TransactionMeta {
     pub fee: u64,
     pub network: Option<Network>,
     #[serde(rename = "type")]
-    pub type_: String, // incoming or outgoing
+    pub type_: String,
     pub changes_used: Option<u32>,
     pub rbf_optin: bool,
     pub spv_verified: SPVVerifyTxResult,
@@ -513,7 +513,7 @@ pub struct GetTxInOut {
 /// Transaction type
 ///
 /// Note that the follwing types might be inaccurate for complex
-/// transactions such as swaps, coinjoins or involving multiple (sub)accounts.
+/// transactions such as coinjoins or involving multiple (sub)accounts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionType {
@@ -523,6 +523,7 @@ pub enum TransactionType {
     Redeposit,
     #[serde(rename = "not unblindable")]
     NotUnblindable,
+    Mixed,
 }
 
 impl Default for TransactionType {
@@ -534,7 +535,7 @@ impl Default for TransactionType {
 impl TransactionType {
     pub fn user_signed(&self) -> bool {
         match self {
-            TransactionType::Outgoing | TransactionType::Redeposit => true,
+            TransactionType::Outgoing | TransactionType::Redeposit | TransactionType::Mixed => true,
             _ => false,
         }
     }
