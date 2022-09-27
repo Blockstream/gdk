@@ -457,7 +457,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(error.empty() || error == res::id_nonconfidential_addresses_not);
 
             const auto asset_id = h2b_rev(addressee.at("asset_id"));
-            const uint32_t satoshi = addressee.at("satoshi");
+            const amount::value_type satoshi = addressee.at("satoshi");
             const auto abf = h2b_rev(addressee.at("assetblinder"));
             const auto vbf = h2b_rev(addressee.at("amountblinder"));
 
