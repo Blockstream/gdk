@@ -552,6 +552,9 @@ namespace sdk {
             const std::string strategy = json_add_if_missing(result, "utxo_strategy", UTXO_SEL_DEFAULT);
             const bool manual_selection = strategy == UTXO_SEL_MANUAL;
             GDK_RUNTIME_ASSERT(strategy == UTXO_SEL_DEFAULT || manual_selection);
+            if (is_partial) {
+                GDK_RUNTIME_ASSERT(manual_selection);
+            }
             if (!manual_selection) {
                 // We will recompute the used utxos
                 result.erase("used_utxos");
