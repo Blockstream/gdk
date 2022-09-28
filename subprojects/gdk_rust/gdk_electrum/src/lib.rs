@@ -242,12 +242,12 @@ impl ElectrumSession {
             match electrum_url.build_client(proxy.as_deref(), None) {
                 Ok(client) => match client.ping() {
                     Ok(_) => {
-                        info!("connect succesfully ping the electrum server");
+                        info!("succesfully pinged electrum server {:?}", electrum_url.url());
                         self.last_network_call_succeeded.store(true, Ordering::Relaxed);
                         true
                     }
                     Err(e) => {
-                        warn!("ping failed {:?}", e);
+                        warn!("failed to ping electrum server {:?}: {:?}", electrum_url.url(), e);
                         false
                     }
                 },
