@@ -622,7 +622,8 @@ impl ElectrumSession {
         let syncer_tipper_handle = thread::spawn(move || {
             info!("starting syncer & tipper thread");
 
-            let update_tip = |client: &Client| match tipper.tip(&client) {
+            let update_tip = |client: &Client, do_update: bool| match tipper.tip(&client, do_update)
+            {
                 Ok(Some((height, header))) => {
                     // This is a new block
                     if do_update {
@@ -665,7 +666,7 @@ impl ElectrumSession {
             loop {
                 match url.build_client(proxy.as_deref(), None) {
                     Ok(client) => {
-                        let tip_before_sync = match update_tip(&client) {
+                        let tip_before_sync = match update_tip(&client, false) {
                             Ok(height) => height,
                             Err(_) => {
                                 continue;
@@ -674,7 +675,7 @@ impl ElectrumSession {
 
                         sync(&client);
 
-                        let tip_after_sync = match update_tip(&client) {
+                        let tip_after_sync = match update_tip(&client, true) {
                             Ok(height) => height,
                             Err(_) => {
                                 continue;
@@ -1175,10 +1176,17 @@ pub fn keys_from_credentials(
 }
 
 impl Tipper {
-    pub fn tip(&self, client: &Client) -> Result<Option<(u32, BEBlockHeader)>, Error> {
+    pub fn tip(
+        &self,
+        client: &Client,
+        update_cache: bool,
+    ) -> Result<Option<(u32, BEBlockHeader)>, Error> {
         let header = client.block_headers_subscribe_raw()?;
         let new_height = header.height as u32;
         let new_header = BEBlockHeader::deserialize(&header.header, self.network.id())?;
+        if !update_cache {
+            return Ok(Some((new_height, new_header)));
+        }
         let do_update = match &self.store.read()?.cache.tip_ {
             None => true,
             Some((current_height, current_header)) => {
