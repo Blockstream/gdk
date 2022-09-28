@@ -315,7 +315,9 @@ impl ElectrumSession {
         } else {
             // Some pin_data encrypt the bare mnemonic, not a json
             Ok(Credentials {
-                mnemonic: std::str::from_utf8(&decrypted)?.to_string(),
+                mnemonic: std::str::from_utf8(&decrypted)
+                    .map_err(|_| Error::InvalidPin)?
+                    .to_string(),
                 bip39_passphrase: "".to_string(),
             })
         }
