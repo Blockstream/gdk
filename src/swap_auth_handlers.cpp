@@ -51,10 +51,30 @@ namespace sdk {
             for (size_t i = 0; i < in_out.size(); ++i) {
                 res[i]["asset"] = std::move(in_out[i]["asset_id"]);
                 res[i]["asset_blinder"] = std::move(in_out[i]["assetblinder"]);
-                res[i]["amount"] = std::move(in_out[i]["satoshi"]);
-                res[i]["amount_blinder"] = std::move(in_out[i]["amountblinder"]);
+                res[i]["satoshi"] = std::move(in_out[i]["satoshi"]);
+                const auto asset = h2b_rev(res[i]["asset"]);
+                const uint64_t satoshi = res[i]["satoshi"];
+                const auto abf = h2b_rev(res[i]["asset_blinder"]);
+                const auto vbf = h2b_rev(in_out[i]["amountblinder"]);
+                const auto generator = asset_generator_from_bytes(asset, abf);
+                const auto commitment = asset_value_commitment(satoshi, vbf, generator);
+                const auto nonce_hash = get_random_bytes<32>();
+                res[i]["value_blind_proof"] = b2h(explicit_rangeproof(satoshi, nonce_hash, vbf, commitment, generator));
+                // This must be aggregated and removed
+                res[i]["scalar"] = b2h(asset_scalar_offset(satoshi, abf, vbf));
             }
             return res;
+        }
+
+        static nlohmann::json::array_t liquidex_aggregate_scalars(
+            nlohmann::json::array_t& inputs, nlohmann::json::array_t& outputs)
+        {
+            GDK_RUNTIME_ASSERT(inputs.size() == 1 && outputs.size() == 1);
+            const auto input_scalar = h2b(std::move(inputs[0]["scalar"]));
+            const auto output_scalar = h2b(std::move(outputs[0]["scalar"]));
+            outputs[0].erase("scalar");
+            inputs[0].erase("scalar");
+            return { b2h(ec_scalar_subtract(input_scalar, output_scalar)) };
         }
 
         static nlohmann::json liquidex_get_maker_input(const wally_tx_ptr& tx, const nlohmann::json& proposal_input)
@@ -135,8 +155,8 @@ namespace sdk {
     auth_handler::state_type create_swap_transaction_call::call_impl()
     {
         if (m_swap_type == "liquidex") {
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == "liquidex_v0", "unknown input_type");
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == "liquidex_v0", "unknown output_type");
+            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == "liquidex_v1", "unknown input_type");
+            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == "liquidex_v1", "unknown output_type");
             return liquidex_impl();
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
@@ -146,7 +166,7 @@ namespace sdk {
 
     auth_handler::state_type create_swap_transaction_call::liquidex_impl()
     {
-        const auto& liquidex_details = m_details.at("liquidex_v0");
+        const auto& liquidex_details = m_details.at("liquidex_v1");
         const auto& send = get_sized_array(liquidex_details, "send", 1).at(0);
         const auto& receive = get_sized_array(liquidex_details, "receive", 1).at(0);
         // TODO: We may wish to allow receiving to a different subaccount.
@@ -199,19 +219,22 @@ namespace sdk {
         } else if (!m_is_signed) {
             // Call result is our signed tx
             auto result = std::move(next_handler->move_result());
-            // Create liquidex_v0 proposal to return
+            // Create liquidex_v1 proposal to return
             auto& tx_inputs = result.at("used_utxos");
             auto& tx_outputs = result.at("transaction_outputs");
             nlohmann::json::array_t inputs = liquidex_get_fields(tx_inputs);
             nlohmann::json::array_t outputs = liquidex_get_fields(tx_outputs);
-            auto proposal = nlohmann::json({ { "version", 0 }, { "transaction", std::move(result["transaction"]) },
-                { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) } });
+            nlohmann::json::array_t scalars = liquidex_aggregate_scalars(inputs, outputs);
+            GDK_RUNTIME_ASSERT(!inputs[0].contains("scalar") && !outputs[0].contains("scalar"));
+            auto proposal = nlohmann::json({ { "version", 1 }, { "transaction", std::move(result["transaction"]) },
+                { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) },
+                { "scalars", std::move(scalars) } });
             if (tx_has_amp_inputs(*m_session_parent.get_nonnull_impl(), m_create_details)) {
                 proposal["inputs"][0]["script"] = std::move(tx_inputs.at(0).at("prevout_script"));
                 proposal["outputs"][0]["blinding_nonce"] = std::move(tx_outputs.at(0).at("blinding_nonce"));
             }
-            m_result["liquidex_v0"] = nlohmann::json::object();
-            m_result["liquidex_v0"]["proposal"] = std::move(proposal);
+            m_result["liquidex_v1"] = nlohmann::json::object();
+            m_result["liquidex_v1"]["proposal"] = std::move(proposal);
             m_is_signed = true;
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown next handler called");
