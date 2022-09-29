@@ -111,10 +111,12 @@ namespace sdk {
         static wally_tx_ptr liquidex_validate_proposal(const nlohmann::json& proposal)
         {
             constexpr bool is_liquid = true;
-            GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == 0, "unknown version");
+            GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == 1, "unknown version");
             GDK_RUNTIME_ASSERT_MSG(proposal.dump().length() < 20000, "proposal exceeds maximum length");
             const auto& proposal_input = get_sized_array(proposal, "inputs", 1).at(0);
             const auto& proposal_output = get_sized_array(proposal, "outputs", 1).at(0);
+            const auto scalar = h2b(get_sized_array(proposal, "scalars", 1).at(0));
+            GDK_RUNTIME_ASSERT_MSG(ec_scalar_verify(scalar), "invalid scalar");
             GDK_RUNTIME_ASSERT_MSG(
                 proposal_input.at("asset") != proposal_output.at("asset"), "cannot swap the same asset");
             wally_tx_ptr tx = tx_from_hex(proposal.at("transaction"), tx_flags(is_liquid));
@@ -125,18 +127,19 @@ namespace sdk {
             // TODO: obtain the previous output and verify the input commitments
             const auto output_asset = h2b_rev(proposal_output.at("asset"));
             const auto output_abf = h2b_rev(proposal_output.at("asset_blinder"));
-            const auto output_value = proposal_output.at("amount");
-            const auto output_vbf = h2b_rev(proposal_output.at("amount_blinder"));
+            const auto output_value = proposal_output.at("satoshi");
+            const auto value_blind_proof = h2b(proposal_output.at("value_blind_proof"));
             const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);
-            const auto output_value_commitment
-                = asset_value_commitment(output_value, output_vbf, output_asset_commitment);
-
             const auto& tx_output = tx->outputs[0];
-            bool have_matched_commitments = tx_output.asset_len == output_asset_commitment.size()
-                && !memcmp(tx_output.asset, output_asset_commitment.data(), tx_output.asset_len)
-                && tx_output.value_len == output_value_commitment.size()
-                && !memcmp(tx_output.value, output_value_commitment.data(), tx_output.value_len);
-            GDK_RUNTIME_ASSERT_MSG(have_matched_commitments, "unblinded values do not match tx commitments");
+            const auto output_value_commitment = gsl::make_span(tx_output.value, tx_output.value_len);
+
+            bool have_matched_asset_commitment = tx_output.asset_len == output_asset_commitment.size()
+                && !memcmp(tx_output.asset, output_asset_commitment.data(), tx_output.asset_len);
+            GDK_RUNTIME_ASSERT_MSG(have_matched_asset_commitment, "unblinded asset does not match commitment");
+
+            bool value_verifies = explicit_rangeproof_verify(
+                value_blind_proof, output_value, output_value_commitment, output_asset_commitment);
+            GDK_RUNTIME_ASSERT_MSG(value_verifies, "cannot verify unblinded value matches commitment");
             return tx;
         }
     } // namespace
@@ -347,7 +350,7 @@ namespace sdk {
 
     void validate_call::liquidex_impl()
     {
-        const auto& proposal = m_details.at("liquidex_v0").at("proposal");
+        const auto& proposal = m_details.at("liquidex_v1").at("proposal");
         liquidex_validate_proposal(proposal);
     }
 } // namespace sdk
