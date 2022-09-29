@@ -16,11 +16,12 @@ LiquiDEX
 ========
 
 .. warning::
-    Note that in the current version (0) of the protocol is not safe
-    to send the proposal directly to untrusted parties (either
-    directly to the Taker, or an untrusted third party). Unless you
-    know what you are doing you should not use this version of the
-    protocol.
+    Note that in the current version (1) of the protocol if the swap
+    involves inputs or outputs from a ``"2of2_no_recovery"`` account
+    is not safe to send the proposal directly to untrusted parties
+    (either directly to the Taker, or an untrusted third party).
+    Unless you know what you are doing you should not use this
+    version of the protocol.
 
 `LiquiDEX`_ is a 2-step swap protocol, to perform a swap of this kind
 use ``"swap_type"`` ``"liquidex"``.
@@ -47,20 +48,20 @@ should get a delayed signature for the Maker input.
 
 ---------------------------------------------------------------------
 
-.. _liquidex-v0-create-details:
+.. _liquidex-v1-create-details:
 
 LiquiDEX Create Swap transaction JSON
 -------------------------------------
 
-``"input_type"`` and ``"output_type"`` must be ``"liquidex_v0"``.
+``"input_type"`` and ``"output_type"`` must be ``"liquidex_v1"``.
 
 .. code-block:: json
 
   {
     "swap_type": "liquidex",
-    "input_type": "liquidex_v0",
-    "output_type": "liquidex_v0",
-    "liquidex_v0": {
+    "input_type": "liquidex_v1",
+    "output_type": "liquidex_v1",
+    "liquidex_v1": {
       "receive": [{
         "asset_id": "ASSET_ID",
         "satoshi": 1
@@ -78,41 +79,41 @@ LiquiDEX Create Swap transaction JSON
        The swapped asset will be received to the same subaccount as the
        utxo provided.
 
-.. _liquidex-v0-create-result:
+.. _liquidex-v1-create-result:
 
 LiquiDEX Create Swap Transaction Result JSON
 --------------------------------------------
 
-Returned when ``"output_type"`` is ``"liquidex_v0"``.
+Returned when ``"output_type"`` is ``"liquidex_v1"``.
 
 .. code-block:: json
 
   {
-    "liquidex_v0": {
+    "liquidex_v1": {
       "proposal": {},
     }
   }
 
-:proposal: The LiquiDEX version 0 proposal to be shared.
+:proposal: The LiquiDEX version 1 proposal to be shared.
 
-.. _liquidex-v0-complete-details:
+.. _liquidex-v1-complete-details:
 
 LiquiDEX Complete Swap transaction JSON
 ---------------------------------------
 
-``"input_type"`` must be ``"liquidex_v0"``,
+``"input_type"`` must be ``"liquidex_v1"``,
 and ``"output_type"`` must be ``"transaction"``.
 
 .. code-block:: json
 
   {
     "swap_type": "liquidex",
-    "input_type": "liquidex_v0",
+    "input_type": "liquidex_v1",
     "output_type": "transaction",
     "utxos": {},
-    "liquidex_v0": {
+    "liquidex_v1": {
       "proposals": [{}],
     },
   }
 
-:proposals: The LiquiDEX version 0 proposals to take.
+:proposals: The LiquiDEX version 1 proposals to take.
