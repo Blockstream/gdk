@@ -82,8 +82,7 @@ namespace sdk {
             auto maker_input = get_tx_input_fields(tx, 0);
             maker_input["asset_id"] = proposal_input.at("asset");
             maker_input["assetblinder"] = proposal_input.at("asset_blinder");
-            maker_input["satoshi"] = proposal_input.at("amount");
-            maker_input["amountblinder"] = proposal_input.at("amount_blinder");
+            maker_input["satoshi"] = proposal_input.at("satoshi");
             maker_input["skip_signing"] = true;
             return maker_input;
         }
@@ -94,14 +93,15 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(tx->num_outputs);
             const auto& tx_output = tx->outputs[0];
             const auto rangeproof = gsl::make_span(tx_output.rangeproof, tx_output.rangeproof_len);
+            const auto commitment = gsl::make_span(tx_output.value, tx_output.value_len);
             const auto nonce = gsl::make_span(tx_output.nonce, tx_output.nonce_len);
             const auto scriptpubkey = gsl::make_span(tx_output.script, tx_output.script_len);
 
             nlohmann::json ret = { { "address", get_address_from_scriptpubkey(net_params, scriptpubkey) },
                 { "is_blinded", true }, { "index", 0 }, { "nonce_commitment", b2h(nonce) },
-                { "range_proof", b2h(rangeproof) }, { "asset_id", proposal_output.at("asset") },
-                { "assetblinder", proposal_output.at("asset_blinder") }, { "satoshi", proposal_output.at("amount") },
-                { "amountblinder", proposal_output.at("amount_blinder") } };
+                { "commitment", b2h(commitment) }, { "range_proof", b2h(rangeproof) },
+                { "asset_id", proposal_output.at("asset") }, { "assetblinder", proposal_output.at("asset_blinder") },
+                { "satoshi", proposal_output.at("satoshi") } };
             if (proposal_output.contains("blinding_nonce")) {
                 ret["blinding_nonce"] = proposal_output["blinding_nonce"];
             }
@@ -257,7 +257,7 @@ namespace sdk {
     auth_handler::state_type complete_swap_transaction_call::call_impl()
     {
         if (m_swap_type == "liquidex") {
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == "liquidex_v0", "unknown input_type");
+            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == "liquidex_v1", "unknown input_type");
             GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == "transaction", "unknown output_type");
             GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
             return liquidex_impl();
@@ -270,7 +270,7 @@ namespace sdk {
     auth_handler::state_type complete_swap_transaction_call::liquidex_impl()
     {
         // TODO: allow to take multiple proposal at once
-        const auto& proposal = get_sized_array(m_details.at("liquidex_v0"), "proposals", 1).at(0);
+        const auto& proposal = get_sized_array(m_details.at("liquidex_v1"), "proposals", 1).at(0);
         if (!m_tx) {
             m_tx = liquidex_validate_proposal(proposal);
         }
@@ -299,13 +299,14 @@ namespace sdk {
             auto maker_addressee = liquidex_get_maker_addressee(m_net_params, m_tx, proposal_output);
             nlohmann::json taker_addressee = { { "address", m_receive_address.at("address") },
                 { "asset_id", maker_asset_id }, // Taker is receiving the makers asset
-                { "satoshi", proposal_input.at("amount") } };
+                { "satoshi", proposal_input.at("satoshi") } };
             nlohmann::json::array_t addressees = { std::move(maker_addressee), std::move(taker_addressee) };
 
-            nlohmann::json create_details = { { "addressees", std::move(addressees) },
-                { "transaction_version", m_tx->version }, { "transaction_locktime", m_tx->locktime },
-                { "utxo_strategy", "manual" }, { "utxos", nlohmann::json::object() },
-                { "used_utxos", std::move(used_utxos) }, { "randomize_inputs", false } };
+            nlohmann::json create_details
+                = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->version },
+                      { "transaction_locktime", m_tx->locktime }, { "utxo_strategy", "manual" },
+                      { "utxos", nlohmann::json::object() }, { "used_utxos", std::move(used_utxos) },
+                      { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
         }
