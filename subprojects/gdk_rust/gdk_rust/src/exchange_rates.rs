@@ -41,22 +41,31 @@ pub(crate) fn fetch_cached<S: Session>(
     Ok((ticker, ExchangeRateSource::Fetched))
 }
 
-pub(crate) fn fetch(agent: &ureq::Agent, _pair: Pair, _url: &str) -> Result<Ticker, Error> {
+pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker, Error> {
+    if !matches!(
+        (pair.first(), pair.second()),
+        (Currency::USD, Currency::BTC) | (Currency::BTC, Currency::USD),
+    ) {
+        return Err(Error::UnsupportedCurrencyPair(pair));
+    };
+
+    let (endpoint, price_field) = Currency::endpoint(pair.first(), pair.second(), url);
+    log::info!("fetching {} price data from {}", pair, endpoint);
+
     agent
-        .get("https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD")
+        .get(&endpoint)
         .call()?
-        .into_json::<Vec<Vec<serde_json::Value>>>()?
-        .into_iter()
-        .flatten()
-        // using BIDPRICE https://docs.bitfinex.com/reference#rest-public-tickers
-        .nth(1)
-        .expect("the bid price is the 2nd element of the returned JSON array")
-        .as_f64()
+        .into_json::<serde_json::Map<String, Value>>()?
+        .get(price_field)
+        .ok_or_else(|| Error::ExchangeRateBadResponse {
+            expected: format!("field `{}` to be set", price_field),
+        })?
+        .as_str()
+        .and_then(|str| str.parse::<f64>().ok())
         .ok_or(Error::ExchangeRateBadResponse {
-            expected: "number representing a price",
+            expected: "string representing a price".into(),
         })
         .map(|rate| {
-            let pair = Pair::new(Currency::BTC, Currency::USD);
             let ticker = Ticker::new(pair, rate);
             info!("got exchange rate {:?}", ticker);
             ticker
@@ -137,11 +146,11 @@ mod tests {
     fn test_fetch_exchange_rates() {
         let mut session = TestSession::default();
 
-        // TODO: loop over all currencies once we use the new blockstream API.
+        // TODO: loop over all currencies once they are supported.
 
         let params = ConvertAmountParams {
             currency: Currency::USD,
-            ..Default::default()
+            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
         };
 
         let res = fetch_cached(&mut session, params.clone());

@@ -821,7 +821,7 @@ impl ElectrumSession {
         }
 
         let account = match accounts.entry(opt.subaccount) {
-            Entry::Occupied(entry) => (entry.into_mut()),
+            Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
                 let account = entry.insert(Account::new(
                     network,

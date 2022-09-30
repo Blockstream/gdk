@@ -1,4 +1,5 @@
 use gdk_common::error::Error as CommonError;
+use gdk_common::exchange_rates;
 use gdk_common::model::ExchangeRateError;
 use gdk_electrum as electrum;
 
@@ -36,8 +37,11 @@ pub enum Error {
 
     #[error("Expected a {expected}")]
     ExchangeRateBadResponse {
-        expected: &'static str,
+        expected: String,
     },
+
+    #[error("The {0} currency pair is not currently supported")]
+    UnsupportedCurrencyPair(exchange_rates::Pair),
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
