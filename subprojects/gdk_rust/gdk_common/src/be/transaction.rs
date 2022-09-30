@@ -11,7 +11,7 @@ use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, ecdsa::Signature, Message, Secp256k1};
 use bitcoin::util::sighash::SighashCache;
-use bitcoin::PublicKey;
+use bitcoin::{PackedLockTime, PublicKey, Sequence};
 use elements::confidential;
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
@@ -43,7 +43,7 @@ impl BETransaction {
         match id {
             NetworkId::Bitcoin(_) => BETransaction::Bitcoin(bitcoin::Transaction {
                 version: 2,
-                lock_time: 0,
+                lock_time: PackedLockTime(0),
                 input: vec![],
                 output: vec![],
             }),
@@ -97,7 +97,7 @@ impl BETransaction {
 
     pub fn lock_time(&self) -> u32 {
         match self {
-            Self::Bitcoin(tx) => tx.lock_time,
+            Self::Bitcoin(tx) => tx.lock_time.to_u32(),
             Self::Elements(tx) => tx.lock_time,
         }
     }
@@ -128,7 +128,7 @@ impl BETransaction {
                 .iter()
                 .filter(|i| {
                     !(i.previous_output.vout == u32::max_value()
-                        && i.previous_output.txid == Default::default())
+                        && i.previous_output.txid == elements::Txid::all_zeros())
                 })
                 .map(|i| i.previous_output.txid.into())
                 .collect(),
@@ -140,7 +140,7 @@ impl BETransaction {
             Self::Bitcoin(tx) => tx
                 .input
                 .iter()
-                .map(|i| (i.sequence, BEOutPoint::Bitcoin(i.previous_output)))
+                .map(|i| (i.sequence.to_consensus_u32(), BEOutPoint::Bitcoin(i.previous_output)))
                 .collect(),
             Self::Elements(tx) => tx
                 .input
@@ -201,7 +201,7 @@ impl BETransaction {
         match (self, network) {
             (BETransaction::Bitcoin(tx), NetworkId::Bitcoin(net)) => {
                 let script = &tx.output[vout as usize].script_pubkey;
-                bitcoin::Address::from_script(script, net).map(|a| a.to_string())
+                bitcoin::Address::from_script(script, net).map(|a| a.to_string()).ok()
             }
             (BETransaction::Elements(tx), NetworkId::Elements(net)) => {
                 // Note we are returning the unconfidential address, because recipient blinding pub key is not in the transaction
@@ -607,7 +607,7 @@ impl BETransaction {
                 let new_in = bitcoin::TxIn {
                     previous_output: outpoint,
                     script_sig: bitcoin::Script::default(),
-                    sequence: 0xffff_fffd, // nSequence is disabled, nLocktime is enabled, RBF is signaled.
+                    sequence: Sequence(0xffff_fffd), // nSequence is disabled, nLocktime is enabled, RBF is signaled.
                     witness: bitcoin::Witness::default(),
                 };
                 tx.input.push(new_in);
@@ -616,7 +616,6 @@ impl BETransaction {
                 let new_in = elements::TxIn {
                     previous_output: outpoint,
                     is_pegin: false,
-                    has_issuance: false,
                     script_sig: elements::Script::default(),
                     sequence: 0xffff_fffe, // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
                     asset_issuance: Default::default(),
@@ -680,7 +679,7 @@ impl BETransaction {
 
     pub fn rbf_optin(&self) -> bool {
         match self {
-            Self::Bitcoin(tx) => tx.input.iter().any(|e| e.sequence < 0xffff_fffe),
+            Self::Bitcoin(tx) => tx.input.iter().any(|e| e.sequence < Sequence(0xffff_fffe)),
             Self::Elements(tx) => tx.input.iter().any(|e| e.sequence < 0xffff_fffe),
         }
     }

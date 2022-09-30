@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::str::FromStr;
 
@@ -1056,7 +1056,7 @@ pub fn create_tx(
                         } = &address.payload
                         {
                             // Do not support segwit greater than v1 and non-P2TR v1
-                            if v.into_num() > 1 || (v.into_num() == 1 && p.len() != 32) {
+                            if v.to_num() > 1 || (v.to_num() == 1 && p.len() != 32) {
                                 return Err(Error::InvalidAddress);
                             }
                         }
@@ -1140,7 +1140,9 @@ pub fn create_tx(
                 .iter()
                 .filter_map(|o| {
                     Some(AddressAmount {
-                        address: bitcoin::Address::from_script(&o.script_pubkey, net)?.to_string(),
+                        address: bitcoin::Address::from_script(&o.script_pubkey, net)
+                            .ok()?
+                            .to_string(),
                         satoshi: o.value,
                         asset_id: None,
                     })
@@ -1496,9 +1498,9 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
     let acc_store = store_read.account_cache(account.num())?;
 
     let mut pset = elements::pset::PartiallySignedTransaction::from_tx(tx.clone());
-    let mut inp_txout_sec: Vec<Option<elements::TxOutSecrets>> = vec![];
+    let mut inp_txout_sec: HashMap<usize, elements::TxOutSecrets> = HashMap::new();
 
-    for input in pset.inputs_mut().iter_mut() {
+    for (i, input) in pset.inputs_mut().iter_mut().enumerate() {
         let previous_output =
             elements::OutPoint::new(input.previous_txid, input.previous_output_index);
         let unblinded = acc_store
@@ -1506,7 +1508,7 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
             .get(&previous_output)
             .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
 
-        inp_txout_sec.push(Some(unblinded.clone()));
+        inp_txout_sec.insert(i, unblinded.clone());
 
         let prev_tx = acc_store.get_liquid_tx(&input.previous_txid)?;
         let txout = prev_tx.output[input.previous_output_index as usize].clone();
@@ -1517,8 +1519,7 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
         output.blinder_index = Some(0);
     }
 
-    let inp_txout_sec: Vec<_> = inp_txout_sec.iter().map(|e| e.as_ref()).collect();
-    pset.blind_last(&mut rand::thread_rng(), &crate::EC, &inp_txout_sec[..])?;
+    pset.blind_last(&mut rand::thread_rng(), &crate::EC, &inp_txout_sec)?;
     pset.extract_tx().map_err(Into::into)
 }
 

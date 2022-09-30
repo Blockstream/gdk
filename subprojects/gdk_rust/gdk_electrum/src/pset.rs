@@ -155,7 +155,7 @@ mod test {
             .to_string()
         );
         assert_eq!(
-            "a Bitcoin type encoding error: I/O error: failed to fill whole buffer",
+            "a Bitcoin type encoding error: IO error",
             extract(&ExtractParam {
                 psbt_hex: "aa".to_string()
             })
@@ -205,7 +205,6 @@ mod test {
         incorrect_tx.input.push(elements::TxIn {
             previous_output: Default::default(),
             is_pegin: false,
-            has_issuance: false,
             script_sig: Default::default(),
             sequence: 0,
             asset_issuance: Default::default(),

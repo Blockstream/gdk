@@ -1,3 +1,4 @@
+use bitcoin::hashes::Hash;
 use elements::{AssetId, ContractHash, OutPoint, Txid};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -53,16 +54,34 @@ pub struct AssetEntry {
     pub version: u8,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Prevout {
     txid: Txid,
     vout: u32,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+impl Default for Prevout {
+    fn default() -> Self {
+        Self {
+            txid: Txid::all_zeros(),
+            vout: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Txin {
     txid: Txid,
     vin: u32,
+}
+
+impl Default for Txin {
+    fn default() -> Self {
+        Self {
+            txid: Txid::all_zeros(),
+            vin: Default::default(),
+        }
+    }
 }
 
 impl AssetEntry {

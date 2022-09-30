@@ -212,7 +212,7 @@ impl TestSession {
     /// test fees are 25 elements and greater than relay_fee
     pub fn fees(&mut self) {
         let fees = self.session.get_fee_estimates().unwrap();
-        let relay_fee = self.node.client.get_network_info().unwrap().relay_fee.as_sat();
+        let relay_fee = self.node.client.get_network_info().unwrap().relay_fee.to_sat();
         assert_eq!(fees.len(), 25);
         assert!(fees.iter().all(|f| f.0 >= relay_fee));
         assert!(fees.windows(2).all(|s| s[0].0 <= s[1].0)); // monotonic
@@ -861,7 +861,7 @@ impl TestSession {
             req_rate
         ); // percentage difference between fee rate requested vs real fee
         let relay_fee =
-            self.node.client.get_network_info().unwrap().relay_fee.as_sat() as f64 / 1000.0;
+            self.node.client.get_network_info().unwrap().relay_fee.to_sat() as f64 / 1000.0;
         assert!(real_rate > relay_fee, "fee rate:{} is under relay_fee:{}", real_rate, relay_fee);
     }
 
@@ -897,22 +897,22 @@ impl TestSession {
             self.node.client.call("getunconfirmedbalance", &[]).unwrap();
         match self.network_id {
             NetworkId::Bitcoin(_) => {
-                let conf_sat = Amount::from_btc(balance.as_f64().unwrap()).unwrap().as_sat();
+                let conf_sat = Amount::from_btc(balance.as_f64().unwrap()).unwrap().to_sat();
                 let unconf_sat =
-                    Amount::from_btc(unconfirmed_balance.as_f64().unwrap()).unwrap().as_sat();
+                    Amount::from_btc(unconfirmed_balance.as_f64().unwrap()).unwrap().to_sat();
                 conf_sat + unconf_sat
             }
             NetworkId::Elements(_) => {
                 let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
                 let conf_sat = match balance.get(&asset_or_policy) {
                     Some(Value::Number(s)) => {
-                        Amount::from_btc(s.as_f64().unwrap()).unwrap().as_sat()
+                        Amount::from_btc(s.as_f64().unwrap()).unwrap().to_sat()
                     }
                     _ => 0,
                 };
                 let unconf_sat = match unconfirmed_balance.get(&asset_or_policy) {
                     Some(Value::Number(s)) => {
-                        Amount::from_btc(s.as_f64().unwrap()).unwrap().as_sat()
+                        Amount::from_btc(s.as_f64().unwrap()).unwrap().to_sat()
                     }
                     _ => 0,
                 };

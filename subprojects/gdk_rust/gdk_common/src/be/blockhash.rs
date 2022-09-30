@@ -1,4 +1,7 @@
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::{
+    hashes::{hex::ToHex, Hash},
+    BlockHash,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -36,6 +39,6 @@ impl ToString for BEBlockHash {
 // will be replaced with the proper type after the first sync.
 impl Default for BEBlockHash {
     fn default() -> Self {
-        Self::Bitcoin(Default::default())
+        Self::Bitcoin(BlockHash::all_zeros())
     }
 }

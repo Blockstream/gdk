@@ -581,7 +581,7 @@ mod tests {
             settings: Some(Settings::default()),
             memos: {
                 let mut memos = HashMap::new();
-                memos.insert(bitcoin::Txid::default(), "Foobar".into());
+                memos.insert(bitcoin::Txid::all_zeros(), "Foobar".into());
                 memos
             },
         };

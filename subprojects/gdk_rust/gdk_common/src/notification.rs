@@ -70,7 +70,7 @@ pub struct TransactionNotification {
     pub type_: Option<TransactionType>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BlockNotification {
     /// The height of the block.
     pub block_height: u32,
@@ -218,6 +218,9 @@ impl NativeNotif {
 
 #[cfg(test)]
 mod test {
+    use bitcoin::hashes::Hash;
+    use elements::bitcoin::BlockHash;
+
     use super::*;
     use crate::State;
 
@@ -234,7 +237,7 @@ mod test {
         let expected = json!({"event":"transaction","transaction":{"subaccounts":[account_num],"txhash":"0000000000000000000000000000000000000000000000000000000000000000"}});
         let obj = Notification::new_transaction(&TransactionNotification {
             subaccounts: vec![account_num],
-            txid: bitcoin::Txid::default(),
+            txid: bitcoin::Txid::all_zeros(),
             satoshi: None,
             type_: None,
         });
@@ -244,7 +247,11 @@ mod test {
     #[test]
     fn test_block_json() {
         let expected = json!({"block_height":0,"block_hash":"0000000000000000000000000000000000000000000000000000000000000000","previous_hash":"0000000000000000000000000000000000000000000000000000000000000000"});
-        let obj = BlockNotification::default();
+        let obj = BlockNotification {
+            block_height: 0,
+            block_hash: BlockHash::all_zeros(),
+            previous_hash: BlockHash::all_zeros(),
+        };
         assert_eq!(expected, serde_json::to_value(&obj).unwrap());
     }
 }
