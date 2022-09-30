@@ -3,10 +3,15 @@ use std::time::{Duration, Instant};
 
 use log::info;
 
-use crate::value_modified::ValueModified;
 use crate::Result;
+use serde_json::Value;
 
-pub(crate) fn call(url: &str, agent: &ureq::Agent, last_modified: &str) -> Result<ValueModified> {
+/// Returns `None` if the response status is `304 Not Modified`.
+pub(crate) fn call(
+    url: &str,
+    agent: &ureq::Agent,
+    last_modified: &str,
+) -> Result<Option<(Value, String)>> {
     let start = Instant::now();
 
     let response = agent
@@ -20,7 +25,7 @@ pub(crate) fn call(url: &str, agent: &ureq::Agent, last_modified: &str) -> Resul
     info!("call to {} returned w/ status {} in {:?}", url, status, start.elapsed());
 
     if status == 304 {
-        return Ok(ValueModified::new(serde_json::Value::Null, last_modified.to_owned()));
+        return Ok(None);
     }
 
     let last_modified = response
@@ -36,7 +41,7 @@ pub(crate) fn call(url: &str, agent: &ureq::Agent, last_modified: &str) -> Resul
 
     info!("END call {} {} took: {:?}", &url, status, start.elapsed());
 
-    Ok(ValueModified::new(value, last_modified))
+    Ok(Some((value, last_modified)))
 }
 
 #[cfg(test)]
@@ -66,8 +71,11 @@ mod test {
                         .append_header("last-modified", expected_last_modified),
                 ),
             );
-            let value = call(&server.url_str(what.endpoint()), &agent, "").unwrap();
-            assert_eq!(expected_last_modified, value.last_modified());
+
+            let (_, last_modified) =
+                call(&server.url_str(what.endpoint()), &agent, "").unwrap().unwrap();
+
+            assert_eq!(expected_last_modified, last_modified);
         }
     }
 }

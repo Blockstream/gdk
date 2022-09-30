@@ -30,16 +30,18 @@ mod error;
 mod file;
 mod hard_coded;
 mod http;
+mod last_modified;
 mod params;
 mod registry;
 mod registry_infos;
-mod value_modified;
 
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 
+use assets_or_icons::AssetsOrIcons;
 use cache::Cache;
+use last_modified::LastModified;
 use registry_infos::RegistrySource;
 
 pub use asset_entry::AssetEntry;
@@ -333,7 +335,9 @@ mod tests {
             let value = refresh_assets(true, true, true).unwrap();
             assert!(value.assets.get(&policy_asset).is_some());
             assert!(!value.icons.is_empty());
-            assert_eq!(value.source, Some(RegistrySource::NotModified));
+            // NOTE: the returned files are still marked as downloaded because
+            // the local http server always returns a 200 response.
+            assert_eq!(value.source, Some(RegistrySource::Downloaded));
             println!("not modified took {:?}", now.elapsed());
 
             let now = std::time::Instant::now();
@@ -422,12 +426,13 @@ mod tests {
             assert!(res.icons.len() > hard_coded_icons.len());
 
             // Corrupt local assets and icons files after downloading updated
-            // registry infos. With `refresh` set to `true` they should both get
+            // registry infos. With `refresh` set to `false` they should both get
             // reset to the hard coded values.
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Assets).unwrap();
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Icons).unwrap();
 
             let res = refresh_assets(false, true, true).unwrap();
+            assert_eq!(res.source, Some(RegistrySource::LocalRegistry));
             assert_eq!(res.assets.len(), hard_coded_assets.len());
             assert_eq!(res.icons.len(), hard_coded_icons.len());
 
@@ -440,7 +445,9 @@ mod tests {
             assert!(res.icons.len() > hard_coded_icons.len());
 
             let res = refresh_assets(true, true, true).unwrap();
-            assert_eq!(res.source, Some(RegistrySource::NotModified));
+            // NOTE: the returned files are still marked as downloaded because
+            // the local http server always returns a 200 response.
+            assert_eq!(res.source, Some(RegistrySource::Downloaded));
         }
 
         #[test]

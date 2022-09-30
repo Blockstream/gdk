@@ -30,18 +30,14 @@ pub(crate) fn write<V: Serialize>(value: &V, file: &mut File) -> Result<()> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::value_modified::ValueModified;
     use serde_json::Value;
 
     #[test]
     fn test_roundtrip() {
         let mut tempfile = tempfile::tempfile().unwrap();
-        let content = ValueModified {
-            last_modified: "modified".into(),
-            value: Value::String(format!("{:?}", (1..100).collect::<Vec<_>>())),
-        };
+        let content = Value::String(format!("{:?}", (1..100).collect::<Vec<_>>()));
         write(&content, &mut tempfile).unwrap();
-        let value = read(&mut tempfile).unwrap();
+        let value = read::<Value>(&mut tempfile).unwrap();
         assert_eq!(content, value, "roundtrip failing");
     }
 }
