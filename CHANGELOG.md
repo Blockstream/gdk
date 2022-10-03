@@ -6,6 +6,8 @@
 
 - Added new function GA_decrypt_with_pin
 - Added new function GA_validate
+- Added new functions GA_create_swap_transaction and
+  GA_complete_swap_transaction with support for LiquiDEX v0
 
 ### Changed
 
@@ -18,18 +20,21 @@ return also the witness. Triggers a cache rebuild that could be noticeable from 
 - GA_create_transaction (and sign/send): The top-level "subaccount" type is no longer required or populated, and
 "subaccount_type" is also no longer populated. The subaccount(s) the tx refers to are now inferred automatically
 from its input UTXOs and output addressees.
+- Singlesig: Exchange rates for the BTC-USD currency pair are now fetched from a
+  Blockstream service.
 
 ### Fixed
 
 - If the network connection drops in the middle of a request the latter will be
   eventually timed out instead of waiting for the connection to be available
   again.
-
 - Fixed an issue where the Liquid asset registry would be redownloaded
   everytime `GA_refresh_assets` was called if the local registry file got corrupted.
-
 - Fixed an issue where `GA_get_assets` would not return any assets if a
   wallet's Liquid cache file got corrupted.
+- Singlesig: GA_get_transactions: Correctly handle "mixed" transactions
+- Singlesig: Fixed a race condition, now after a block notification, all
+  transactions are considering the last height.
 
 ### Removed
 
