@@ -3,6 +3,7 @@
 ## Release 0.0.57
 
 ### Added
+GA_get_subaccount: add user_path, core_descriptor, slip132_extended_pubkey
 
 ### Changed
 
