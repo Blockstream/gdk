@@ -1108,8 +1108,9 @@ impl ElectrumSession {
     }
 
     pub fn get_available_currencies(&self) -> Result<Value, Error> {
-        Ok(json!({ "all": [ "USD" ], "per_exchange": { "BITFINEX": [ "USD" ] } }))
-        // TODO implement
+        // TODO: use blockstream endpoint listing all available currencies when
+        // it'll be available.
+        Ok(json!({ "all": [ "USD" ], "per_exchange": { "Blockstream": [ "USD" ] } }))
     }
 
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
