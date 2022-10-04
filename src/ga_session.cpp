@@ -1749,7 +1749,8 @@ namespace sdk {
         const auto policy_asset = m_net_params.is_liquid() ? m_net_params.policy_asset() : std::string("btc");
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "recovery_xpub", recovery_xpub }, { "required_ca", required_ca }, { "hidden", is_hidden } };
+            { "recovery_xpub", recovery_xpub }, { "required_ca", required_ca }, { "hidden", is_hidden },
+            { "user_path", ga_user_pubkeys::get_ga_subaccount_root_path(subaccount) } };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
