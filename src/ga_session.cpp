@@ -1678,7 +1678,9 @@ namespace sdk {
         subaccounts.reserve(m_subaccounts.size());
 
         for (const auto& sa : m_subaccounts) {
-            subaccounts.emplace_back(sa.second);
+            auto subaccount = sa.second;
+            subaccount.erase("user_path");
+            subaccounts.emplace_back(std::move(subaccount));
         }
         return nlohmann::json(std::move(subaccounts));
     }
