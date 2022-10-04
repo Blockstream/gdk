@@ -382,6 +382,16 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
     $1 = uint32_cast(jenv, $input);
 }
 
+/* uint32_t output pointer arguments are returned as the function return value */
+%typemap(in,noblock=1,numinputs=0) uint32_t* (uint32_t val32_out = 0) {
+    $1 = ($1_ltype)&val32_out;
+}
+%typemap(argout,noblock=1) (uint32_t*) {
+    if (!(*jenv)->ExceptionOccurred(jenv)) {
+        $result = *$1;
+    }
+}
+
 /* uint64_t input arguments are taken as longs and cast unchecked. This means
  * callers need to take care with treating negative values correctly */
 %typemap(in) uint64_t {
