@@ -582,6 +582,32 @@ pub struct AccountInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct AccountInfoPruned {
+    #[serde(rename = "pointer")]
+    pub account_num: u32,
+    #[serde(rename = "type")]
+    pub script_type: ScriptType,
+    #[serde(flatten)]
+    pub settings: AccountSettings,
+    pub required_ca: u32,     // unused, always 0
+    pub receiving_id: String, // unused, always ""
+    pub bip44_discovered: bool,
+}
+
+impl From<AccountInfo> for AccountInfoPruned {
+    fn from(info: AccountInfo) -> Self {
+        Self {
+            account_num: info.account_num,
+            script_type: info.script_type,
+            settings: info.settings.clone(),
+            required_ca: info.required_ca,
+            receiving_id: info.receiving_id.clone(),
+            bip44_discovered: info.bip44_discovered,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PinSetDetails {
     pub pin: String,
     pub mnemonic: String,
