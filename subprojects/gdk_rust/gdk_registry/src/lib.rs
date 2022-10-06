@@ -216,11 +216,25 @@ mod tests {
             server.expect(
                 Expectation::matching(all_of![
                     request::method_path("GET", what.endpoint()),
-                    request::headers(contains(key("if-modified-since"))),
+                    request::headers(contains(("if-modified-since", last_modified.clone()))),
                 ])
-                .respond_with(
-                    status_code(200).body(body).append_header("last-modified", last_modified),
-                ),
+                .times(0..=1)
+                .respond_with({
+                    status_code(304)
+                        .body(body.clone())
+                        .append_header("last-modified", last_modified.clone())
+                }),
+            );
+
+            server.expect(
+                Expectation::matching(all_of![
+                    request::method_path("GET", what.endpoint()),
+                    request::headers(not(contains(("if-modified-since", last_modified.clone())))),
+                ])
+                .times(0..=1)
+                .respond_with({
+                    status_code(200).body(body).append_header("last-modified", last_modified)
+                }),
             );
         };
 
@@ -335,9 +349,7 @@ mod tests {
             let value = refresh_assets(true, true, true).unwrap();
             assert!(value.assets.get(&policy_asset).is_some());
             assert!(!value.icons.is_empty());
-            // NOTE: the returned files are still marked as downloaded because
-            // the local http server always returns a 200 response.
-            assert_eq!(value.source, Some(RegistrySource::Downloaded));
+            assert_eq!(value.source, Some(RegistrySource::NotModified));
             println!("not modified took {:?}", now.elapsed());
 
             let now = std::time::Instant::now();
@@ -445,9 +457,7 @@ mod tests {
             assert!(res.icons.len() > hard_coded_icons.len());
 
             let res = refresh_assets(true, true, true).unwrap();
-            // NOTE: the returned files are still marked as downloaded because
-            // the local http server always returns a 200 response.
-            assert_eq!(res.source, Some(RegistrySource::Downloaded));
+            assert_eq!(res.source, Some(RegistrySource::NotModified));
         }
 
         #[test]
