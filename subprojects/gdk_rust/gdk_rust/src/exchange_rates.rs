@@ -1,10 +1,8 @@
-use std::iter::FromIterator;
-
 use crate::Error;
 use gdk_common::exchange_rates::{Currency, Pair, Ticker};
 use gdk_common::session::Session;
 use serde::Deserialize;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 /// Whether an exchange rate returned by `fetch_cached` came from a previously
 /// cached value of from a network request.
@@ -17,7 +15,7 @@ pub(crate) enum ExchangeRateSource {
 // TODO: change name?
 pub(crate) fn fetch_cached<S: Session>(
     sess: &mut S,
-    params: ConvertAmountParams,
+    params: &ConvertAmountParams,
 ) -> Result<(Ticker, ExchangeRateSource), Error> {
     let pair = Pair::new(Currency::BTC, params.currency);
 
@@ -72,19 +70,10 @@ pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker
         })
 }
 
-pub(crate) fn ticker_to_json(ticker: &Ticker) -> Value {
-    let currency = ticker.pair.second();
-
-    let currency_map =
-        Map::from_iter([(currency.to_string(), format!("{:.8}", ticker.rate).into())]);
-
-    json!({ "currencies": currency_map })
-}
-
 #[derive(Clone, Debug, Default, Deserialize)]
 pub(crate) struct ConvertAmountParams {
     #[serde(default, rename(deserialize = "currencies"))]
-    currency: Currency,
+    pub(crate) currency: Currency,
 
     /// The url of the endpoint used to fetch the exchange rate data.
     #[serde(rename = "price_url")]
@@ -153,11 +142,11 @@ mod tests {
             url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
         };
 
-        let res = fetch_cached(&mut session, params.clone());
+        let res = fetch_cached(&mut session, &params);
         assert!(res.is_ok(), "{:?}", res);
         assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
 
-        let res = fetch_cached(&mut session, params);
+        let res = fetch_cached(&mut session, &params);
         assert!(res.is_ok(), "{:?}", res);
         assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
     }

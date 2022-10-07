@@ -177,37 +177,49 @@ pub extern "C" fn GDKRUST_call_session(
     input: *const c_char,
     output: *mut *const c_char,
 ) -> i32 {
-    let method = read_str(method);
-    let input: Value = match serde_json::from_str(&read_str(input)) {
-        Ok(x) => x,
-        Err(err) => {
-            error!("error: {:?}", err);
-            return GA_ERROR;
-        }
-    };
-
     if ptr.is_null() {
         return GA_ERROR;
     }
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
+    let method = read_str(method);
+    let input = read_str(input);
+
+    match call_session(sess, &method, &input) {
+        Ok(value) => {
+            unsafe { *output = make_str(value.to_string()) };
+            GA_OK
+        }
+
+        Err(err) => {
+            error!("error: {:?}", err);
+
+            let retv = if "id_invalid_pin" == err.error {
+                GA_NOT_AUTHORIZED
+            } else {
+                GA_ERROR
+            };
+
+            unsafe { *output = make_str(to_string(&err)) };
+            retv
+        }
+    }
+}
+
+fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Value, JsonError> {
+    let input = serde_json::from_str(input)?;
 
     if method == "exchange_rates" {
-        match serde_json::from_value(input)
-            .map_err(Into::into)
-            .and_then(|params| match sess.backend {
-                GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, params),
-                GdkBackend::Greenlight(ref mut s) => exchange_rates::fetch_cached(s, params),
-            })
-            .map(|(rate, _source)| exchange_rates::ticker_to_json(&rate).to_string())
-            .map(make_str)
-        {
-            Ok(json) => {
-                unsafe { *output = json };
-                return GA_OK;
-            }
+        let params = serde_json::from_value(input)?;
 
-            Err(_) => return GA_ERROR,
-        }
+        let (ticker, _source) = match sess.backend {
+            GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, &params),
+            GdkBackend::Greenlight(ref mut s) => exchange_rates::fetch_cached(s, &params),
+        }?;
+
+        // let rate = ticker.map(|t| format!("{:.8}", t.rate)).unwrap_or_default();
+        let rate = format!("{:.8}", ticker.rate);
+
+        return Ok(json!({ "currencies": { params.currency.to_string(): rate } }));
     }
 
     // Redact inputs containing private data
@@ -220,7 +232,7 @@ pub extern "C" fn GDKRUST_call_session(
         "credentials_from_pin_data",
     ];
     let input_str = format!("{:?}", &input);
-    let input_redacted = if methods_to_redact_in.contains(&method.as_str())
+    let input_redacted = if methods_to_redact_in.contains(&method)
         || input_str.contains("pin")
         || input_str.contains("mnemonic")
         || input_str.contains("xprv")
@@ -231,13 +243,14 @@ pub extern "C" fn GDKRUST_call_session(
     };
 
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
+
     let res = match sess.backend {
         GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input),
         GdkBackend::Greenlight(ref mut s) => s.handle_call(&method, input),
     };
 
     let methods_to_redact_out = vec!["credentials_from_pin_data"];
-    let mut output_redacted = if methods_to_redact_out.contains(&method.as_str()) {
+    let mut output_redacted = if methods_to_redact_out.contains(&method) {
         "redacted".to_string()
     } else {
         format!("{:?}", res)
@@ -245,22 +258,7 @@ pub extern "C" fn GDKRUST_call_session(
     output_redacted.truncate(200);
     info!("GDKRUST_call_session {} output {:?}", method, output_redacted);
 
-    let (s, ret) = match res {
-        Ok(ref val) => (val.to_string(), GA_OK),
-        Err(ref json_error) => {
-            let ret_val = if "id_invalid_pin" == json_error.error {
-                GA_NOT_AUTHORIZED
-            } else {
-                GA_ERROR
-            };
-            (to_string(&json_error), ret_val)
-        }
-    };
-    let s = make_str(s);
-    unsafe {
-        *output = s;
-    }
-    ret
+    res
 }
 
 #[no_mangle]
