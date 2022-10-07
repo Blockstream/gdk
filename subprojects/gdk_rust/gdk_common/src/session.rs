@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::network;
 use serde_json::Value;
 
@@ -31,6 +33,14 @@ pub struct JsonError {
     pub message: String,
     pub error: String,
 }
+
+impl fmt::Display for JsonError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::error::Error for JsonError {}
 
 impl JsonError {
     pub fn new<S: Into<String>>(message: S) -> Self {
