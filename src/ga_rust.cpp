@@ -525,7 +525,6 @@ namespace sdk {
     nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
     {
         auto currency = amount_json.value("fiat_currency", "USD");
-        auto fallback_rate = amount_json.value("fiat_rate", "");
         auto currency_query = nlohmann::json({ { "currencies", currency } });
         currency_query["price_url"] = m_net_params.get_price_url();
         std::string fetched_rate;
@@ -535,8 +534,7 @@ namespace sdk {
         } catch (const std::exception& ex) {
             GDK_LOG_SEV(log_level::warning) << "cannot fetch exchange rate " << ex.what();
         }
-        auto rate = fetched_rate.empty() ? fallback_rate : fetched_rate;
-        return amount::convert(amount_json, currency, rate);
+        return amount::convert(amount_json, currency, fetched_rate);
     }
 
     amount ga_rust::get_min_fee_rate() const { return amount(m_net_params.is_liquid() ? 100 : 1000); }
