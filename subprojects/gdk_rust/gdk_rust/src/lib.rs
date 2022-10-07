@@ -211,13 +211,12 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
     if method == "exchange_rates" {
         let params = serde_json::from_value(input)?;
 
-        let (ticker, _source) = match sess.backend {
+        let ticker = match sess.backend {
             GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, &params),
             GdkBackend::Greenlight(ref mut s) => exchange_rates::fetch_cached(s, &params),
         }?;
 
-        // let rate = ticker.map(|t| format!("{:.8}", t.rate)).unwrap_or_default();
-        let rate = format!("{:.8}", ticker.rate);
+        let rate = ticker.map(|t| format!("{:.8}", t.rate)).unwrap_or_default();
 
         return Ok(json!({ "currencies": { params.currency.to_string(): rate } }));
     }

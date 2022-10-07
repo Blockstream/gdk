@@ -4,39 +4,33 @@ use gdk_common::session::Session;
 use serde::Deserialize;
 use serde_json::Value;
 
-/// Whether an exchange rate returned by `fetch_cached` came from a previously
-/// cached value of from a network request.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ExchangeRateSource {
-    Cached,
-    Fetched,
-}
-
 // TODO: change name?
 pub(crate) fn fetch_cached<S: Session>(
     sess: &mut S,
     params: &ConvertAmountParams,
-) -> Result<(Ticker, ExchangeRateSource), Error> {
+) -> Result<Option<Ticker>, Error> {
     let pair = Pair::new(Currency::BTC, params.currency);
 
     if let Some(rate) = sess.get_cached_rate(&pair) {
         debug!("hit exchange rate cache");
-        return Ok((Ticker::new(pair, rate), ExchangeRateSource::Cached));
+        return Ok(Some(Ticker::new(pair, rate)));
     }
 
     info!("missed exchange rate cache");
 
-    let agent = sess.build_request_agent()?;
+    Ok(None)
 
-    let ticker = if sess.is_mainnet() {
-        self::fetch(&agent, pair, &params.url)?
-    } else {
-        Ticker::new(pair, 1.1)
-    };
+    // let agent = sess.build_request_agent()?;
 
-    sess.cache_ticker(ticker);
+    // let ticker = if sess.is_mainnet() {
+    //     self::fetch(&agent, pair, &params.url)?
+    // } else {
+    //     Ticker::new(pair, 1.1)
+    // };
 
-    Ok((ticker, ExchangeRateSource::Fetched))
+    // sess.cache_ticker(ticker);
+
+    // Ok((ticker, ExchangeRateSource::Fetched))
 }
 
 pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker, Error> {
@@ -144,10 +138,10 @@ mod tests {
 
         let res = fetch_cached(&mut session, &params);
         assert!(res.is_ok(), "{:?}", res);
-        assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
+        // assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
 
         let res = fetch_cached(&mut session, &params);
         assert!(res.is_ok(), "{:?}", res);
-        assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
+        // assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
     }
 }
