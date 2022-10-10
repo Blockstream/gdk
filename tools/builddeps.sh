@@ -170,13 +170,13 @@ mkdir tmp
 
 # building wally-core
 name="libwally-core"
-source_url="https://github.com/ElementsProject/libwally-core/tarball/e6ab70fba3387d39cf5d871e45a8e6d16d90f593/ElementsProject-libwally-core-e6ab70f.tar.gz"
-source_name="ElementsProject-libwally-core-e6ab70f"
+source_url="https://github.com/ElementsProject/libwally-core/tarball/b1b7b05d23592e3bc1412053850eb975118ec53c/ElementsProject-libwally-core-b1b7b05.tar.gz"
+source_name="ElementsProject-libwally-core-b1b7b05"
 source_filename="${source_name}.tar.gz"
-source_hash="c7dd0892a3c323f42505bfc852b75842ed60746daad71751f16a09f1c3711f33"
+source_hash="d755ca60bd68676fdf80a7116536b9dc06fa29d159eff264b8128d150854f7a8"
 secpurl="https://github.com/ElementsProject/secp256k1-zkp.git"
 # Update this line to the secp commit used in wally
-secpcommit="6c0aecf72b1f4290f50302440065392715d6240a"
+secpcommit="71a206fa5bbcbba5792fc6f9eb7e07c69555f2df"
 prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
 export WALLYCORE_SRCDIR=`pwd`/tmp/${source_name}
 export WALLYCORE_NAME=${source_name}
