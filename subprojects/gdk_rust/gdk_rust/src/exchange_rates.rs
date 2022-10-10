@@ -1,8 +1,12 @@
-use crate::Error;
+use std::thread;
+use std::time::SystemTime;
+
 use gdk_common::exchange_rates::{Currency, Pair, Ticker};
 use gdk_common::session::Session;
 use serde::Deserialize;
 use serde_json::Value;
+
+use crate::Error;
 
 // TODO: change name?
 pub(crate) fn fetch_cached<S: Session>(
@@ -16,21 +20,26 @@ pub(crate) fn fetch_cached<S: Session>(
         return Ok(Some(Ticker::new(pair, rate)));
     }
 
+    if !sess.is_mainnet() {
+        let ticker = Ticker::new(pair, 1.1);
+        sess.cache_ticker(ticker);
+        return Ok(Some(ticker));
+    }
+
     info!("missed exchange rate cache");
 
+    let agent = sess.build_request_agent()?;
+    let cache = sess.xr_cache();
+    let url = params.url.clone();
+
+    let _ = thread::spawn(move || {
+        let ticker = self::fetch(&agent, pair, &url)?;
+        let cache = &mut *cache.lock().unwrap();
+        cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
+        Ok::<_, Error>(())
+    });
+
     Ok(None)
-
-    // let agent = sess.build_request_agent()?;
-
-    // let ticker = if sess.is_mainnet() {
-    //     self::fetch(&agent, pair, &params.url)?
-    // } else {
-    //     Ticker::new(pair, 1.1)
-    // };
-
-    // sess.cache_ticker(ticker);
-
-    // Ok((ticker, ExchangeRateSource::Fetched))
 }
 
 pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker, Error> {
@@ -76,6 +85,9 @@ pub(crate) struct ConvertAmountParams {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+    use std::time::Duration;
+
     use super::*;
     use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
     use gdk_common::network::NetworkParameters;
@@ -87,11 +99,8 @@ mod tests {
     }
 
     impl ExchangeRatesCacher for TestSession {
-        fn xr_cache(&self) -> &ExchangeRatesCache {
-            &self.xr_cache
-        }
-        fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache {
-            &mut self.xr_cache
+        fn xr_cache(&self) -> ExchangeRatesCache {
+            Arc::clone(&self.xr_cache)
         }
     }
 
@@ -136,12 +145,25 @@ mod tests {
             url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
         };
 
-        let res = fetch_cached(&mut session, &params);
-        assert!(res.is_ok(), "{:?}", res);
-        // assert_eq!(ExchangeRateSource::Fetched, res.unwrap().1);
+        let mut i = 0;
 
-        let res = fetch_cached(&mut session, &params);
-        assert!(res.is_ok(), "{:?}", res);
-        // assert_eq!(ExchangeRateSource::Cached, res.unwrap().1);
+        let ticker = loop {
+            i += 1;
+
+            if i == 60 {
+                panic!("Exchange rate couldn't be fetched");
+            }
+
+            if let Some(ticker) = fetch_cached(&mut session, &params).unwrap() {
+                break ticker;
+            }
+
+            thread::sleep(Duration::from_millis(500));
+        };
+
+        // Now the fetched exchange rate should have been cached.
+        let res = fetch_cached(&mut session, &params).unwrap();
+        assert!(res.is_some());
+        assert_eq!(ticker, res.unwrap());
     }
 }

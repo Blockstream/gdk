@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::str::FromStr;
-use std::sync::Once;
+use std::sync::{Arc, Once};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
@@ -46,12 +46,8 @@ pub struct GreenlightSession {
 }
 
 impl ExchangeRatesCacher for GreenlightSession {
-    fn xr_cache(&self) -> &ExchangeRatesCache {
-        &self.xr_cache
-    }
-
-    fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache {
-        &mut self.xr_cache
+    fn xr_cache(&self) -> ExchangeRatesCache {
+        Arc::clone(&self.xr_cache)
     }
 }
 

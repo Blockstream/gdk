@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use crate::Error;
@@ -10,32 +11,24 @@ use serde::Deserialize;
 /// and the values are a `(time, rate)` tuple, where `time` represents the
 /// last time the exchange rate was fetched and `rate` is the result of the
 /// fetching.
-pub type ExchangeRatesCache = HashMap<Pair, (std::time::SystemTime, f64)>;
+pub type ExchangeRatesCache = Arc<Mutex<HashMap<Pair, (std::time::SystemTime, f64)>>>;
 
 pub trait ExchangeRatesCacher {
-    fn xr_cache(&self) -> &ExchangeRatesCache;
-    fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache;
-
-    /// Returns `true` if the given `pair` has a cached exchange rate that
-    /// hasn't expired yet.
-    fn is_cached(&self, pair: &Pair) -> bool {
-        if let Some((last, _)) = self.xr_cache().get(pair) {
-            if *last + Duration::from_secs(60) > SystemTime::now() {
-                return true;
-            }
-        }
-
-        false
-    }
+    fn xr_cache(&self) -> ExchangeRatesCache;
 
     /// Returns the exchange rate of `pair` if it's cached, `None` otherwise.
     fn get_cached_rate(&self, pair: &Pair) -> Option<f64> {
-        self.xr_cache().get(pair).and_then(|(_, rate)| self.is_cached(pair).then(|| *rate))
+        let cache = self.xr_cache();
+        let cache = &*cache.lock().unwrap();
+        let &(time_fetched, rate) = cache.get(pair)?;
+        (time_fetched + Duration::from_secs(60) > SystemTime::now()).then(|| rate)
     }
 
     /// Caches `ticker` for future queries.
     fn cache_ticker(&mut self, ticker: Ticker) {
-        self.xr_cache_mut().insert(ticker.pair, (SystemTime::now(), ticker.rate));
+        let cache = self.xr_cache();
+        let cache = &mut *cache.lock().unwrap();
+        cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
     }
 }
 
@@ -156,7 +149,7 @@ impl fmt::Display for Pair {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Ticker {
     pub pair: Pair,
     pub rate: f64,

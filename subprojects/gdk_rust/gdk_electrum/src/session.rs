@@ -16,12 +16,8 @@ use serde_json::Value;
 use crate::{account::Account, error::Error, interface::ElectrumUrl, socksify, ElectrumSession};
 
 impl ExchangeRatesCacher for ElectrumSession {
-    fn xr_cache(&self) -> &ExchangeRatesCache {
-        &self.xr_cache
-    }
-
-    fn xr_cache_mut(&mut self) -> &mut ExchangeRatesCache {
-        &mut self.xr_cache
+    fn xr_cache(&self) -> ExchangeRatesCache {
+        Arc::clone(&self.xr_cache)
     }
 }
 
@@ -43,7 +39,7 @@ impl Session for ElectrumSession {
             master_xpub: None,
             master_xprv: None,
             recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
-            xr_cache: ExchangeRatesCache::new(),
+            xr_cache: ExchangeRatesCache::default(),
         })
     }
 
