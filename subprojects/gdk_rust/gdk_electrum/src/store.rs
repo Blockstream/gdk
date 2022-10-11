@@ -1,11 +1,11 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
 use crate::Error;
-use aes_gcm_siv::Aes256GcmSiv;
 use bitcoin::hashes::{sha256, Hash};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use bitcoin::Transaction;
 use elements::TxOutSecrets;
+use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,

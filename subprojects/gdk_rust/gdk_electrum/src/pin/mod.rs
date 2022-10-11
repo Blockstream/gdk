@@ -1,11 +1,11 @@
 use crate::Error;
-use aes::Aes256;
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::secp256k1::{self, ecdh, ecdsa::Signature, Message, SecretKey};
 use bitcoin::PublicKey;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
+use gdk_common::aes::Aes256;
 use log::info;
 use rand::prelude::ThreadRng;
 use rand::Rng;

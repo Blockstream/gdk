@@ -8,6 +8,7 @@ edition = "2018"
 testing = []
 
 [dependencies]
+aes = "0.7.0"
 aes-gcm-siv = "0.10"
 bitcoin = { version = "0.29", features = ["serde"] }
 elements = { version = "0.20", features = ["serde"] }

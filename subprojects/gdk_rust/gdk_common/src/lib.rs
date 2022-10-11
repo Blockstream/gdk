@@ -12,6 +12,10 @@ pub mod state;
 pub mod store;
 pub mod util;
 pub mod wally;
+pub mod aes {
+    pub use aes::*;
+    pub use aes_gcm_siv::*;
+}
 
 pub use error::*;
 pub use network::*;

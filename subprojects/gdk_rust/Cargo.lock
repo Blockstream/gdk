@@ -619,6 +619,7 @@ dependencies = [
 name = "gdk-common"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "aes-gcm-siv",
  "bitcoin",
  "elements",
@@ -639,8 +640,6 @@ dependencies = [
 name = "gdk-electrum"
 version = "0.1.0"
 dependencies = [
- "aes",
- "aes-gcm-siv",
  "base64",
  "bitcoin",
  "block-modes",

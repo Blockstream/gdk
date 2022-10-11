@@ -4,9 +4,9 @@ use crate::headers::liquid::Verifier;
 use crate::session::determine_electrum_url;
 use ::bitcoin::hashes::hex::ToHex;
 use ::bitcoin::hashes::{sha256, sha256d, Hash};
-use aes_gcm_siv::aead::NewAead;
-use aes_gcm_siv::{Aes256GcmSiv, Key};
 use electrum_client::{Client, ElectrumApi, GetMerkleRes};
+use gdk_common::aes::aead::NewAead;
+use gdk_common::aes::{Aes256GcmSiv, Key};
 use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::model::{
     SPVCommonParams, SPVDownloadHeadersParams, SPVDownloadHeadersResult, SPVVerifyTxParams,
