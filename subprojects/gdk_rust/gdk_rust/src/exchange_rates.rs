@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use gdk_common::exchange_rates::{Currency, Pair, Ticker};
 use gdk_common::session::Session;
-use serde::Deserialize;
+use serde::{de::Deserializer, Deserialize};
 use serde_json::Value;
 
 use crate::Error;
@@ -32,12 +32,16 @@ pub(crate) fn fetch_cached<S: Session>(
     let cache = sess.xr_cache();
     let url = params.url.clone();
 
-    let _ = thread::spawn(move || {
+    let handle = thread::spawn(move || {
         let ticker = self::fetch(&agent, pair, &url)?;
         let cache = &mut *cache.lock().unwrap();
         cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
-        Ok::<_, Error>(())
+        Ok::<_, Error>(Some(ticker))
     });
+
+    if params.fallback_rate.is_none() {
+        return handle.join().unwrap();
+    }
 
     Ok(None)
 }
@@ -81,6 +85,24 @@ pub(crate) struct ConvertAmountParams {
     /// The url of the endpoint used to fetch the exchange rate data.
     #[serde(rename = "price_url")]
     url: String,
+
+    #[serde(deserialize_with = "deserialize_rate")]
+    fallback_rate: Option<f64>,
+}
+
+fn deserialize_rate<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let str = String::deserialize(deserializer)?;
+
+    if str.is_empty() {
+        Ok(None)
+    } else {
+        str.parse::<f64>().map_err(D::Error::custom).map(Some)
+    }
 }
 
 #[cfg(test)]
@@ -135,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_exchange_rates() {
+    fn test_fetch_xr_with_fallback() {
         let mut session = TestSession::default();
 
         // TODO: loop over all currencies once they are supported.
@@ -143,6 +165,7 @@ mod tests {
         let params = ConvertAmountParams {
             currency: Currency::USD,
             url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            fallback_rate: Some(1.0),
         };
 
         let mut i = 0;
@@ -165,5 +188,19 @@ mod tests {
         let res = fetch_cached(&mut session, &params).unwrap();
         assert!(res.is_some());
         assert_eq!(ticker, res.unwrap());
+    }
+
+    #[test]
+    fn test_fetch_xr_without_fallback() {
+        let mut session = TestSession::default();
+
+        let params = ConvertAmountParams {
+            currency: Currency::USD,
+            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            fallback_rate: None,
+        };
+
+        let res = fetch_cached(&mut session, &params).unwrap();
+        assert!(res.is_some());
     }
 }
