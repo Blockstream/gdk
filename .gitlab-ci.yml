@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:50f48441e346915389f4ac178315c24c3b298c23223186fb56d5e8a313f6a0f1
+image: greenaddress/ci@sha256:e7ba24b0b73d550842994306bb09df2edba0791223e783dfd09a2acb42694296
 
 stages:
   - format
@@ -83,7 +83,7 @@ release_py3m_bullseye_debug:
     - NUM_JOBS=16 ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9 --external-deps-dir /prebld/gcc
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ubuntu_ci@sha256:183cfff276003c28c4388bebbbcc977b1e93f8dc85f1dbf2c02881053ad0c46f
+  image: greenaddress/ubuntu_ci@sha256:44146516560880da9e33546706f07a2b99efd6248f6129bfef980472eefe3786
   extends: .py_release
   script:
     - apt-get update -y
@@ -113,7 +113,7 @@ release_py3m_osx_m1:
     - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
 
 test_fedora_clang:
-  image: greenaddress/fedora_ci@sha256:2eb6f59eecc77929e68a8fd50aa1a50bcb394b57df41c3049d976b159ec2abcb
+  image: greenaddress/fedora_ci@sha256:72f5371e7da9c0659430ac07f3085fd49ec7e6788ecfd664f4a34b530bc0ff8b
   tags:
     - ga
   script:
@@ -167,7 +167,7 @@ test_rust:
     - ga
   script:
     - source /root/.cargo/env
-    - rustup override set 1.56.0
+    - rustup override set 1.64.0
     - export WALLY_DIR=/prebld/gcc/libwally-core/build/lib/
     - export OPENSSL_DIR=/prebld/gcc/openssl/build 
     - export OPENSSL_STATIC=1

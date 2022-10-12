@@ -14,11 +14,18 @@ echo "c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382 ndk.zip" 
 unzip ndk.zip
 rm ndk.zip
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.56.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
 
 source /root/.cargo/env
 rustup component add rustfmt clippy
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
+
+mkdir /tmp/protoc && \
+    cd /tmp/protoc && \
+    curl -Ls https://github.com/protocolbuffers/protobuf/releases/download/v3.19.3/protoc-3.19.3-linux-x86_64.zip > protoc.zip && \
+    unzip protoc.zip && \
+    mv /tmp/protoc/bin/protoc /usr/local/bin && \
+    rm -rf /tmp/protoc
 
 if [ -f /.dockerenv ]; then
     apt remove --purge unzip -yqq

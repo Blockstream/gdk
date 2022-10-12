@@ -28,7 +28,7 @@ Install rust dependencies:
 
   1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
-  2. Install default rust toolchain: `rustup install 1.56.0`
+  2. Install default rust toolchain: `rustup install 1.64.0`
 
   3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios
 x86_64-apple-ios`
