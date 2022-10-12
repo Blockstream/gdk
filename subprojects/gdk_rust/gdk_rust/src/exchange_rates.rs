@@ -1,5 +1,5 @@
 use std::thread;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use gdk_common::exchange_rates::{Currency, Pair, Ticker};
 use gdk_common::session::Session;
@@ -15,7 +15,7 @@ pub(crate) fn fetch_cached<S: Session>(
 ) -> Result<Option<Ticker>, Error> {
     let pair = Pair::new(Currency::BTC, params.currency);
 
-    if let Some(rate) = sess.get_cached_rate(&pair) {
+    if let Some(rate) = sess.get_cached_rate(&pair, params.cache_limit) {
         debug!("hit exchange rate cache");
         return Ok(Some(Ticker::new(pair, rate)));
     }
@@ -88,6 +88,13 @@ pub(crate) struct ConvertAmountParams {
 
     #[serde(deserialize_with = "deserialize_rate")]
     fallback_rate: Option<f64>,
+
+    #[serde(default = "one_minute")]
+    cache_limit: Duration,
+}
+
+fn one_minute() -> Duration {
+    Duration::from_secs(60)
 }
 
 fn deserialize_rate<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
@@ -166,6 +173,7 @@ mod tests {
             currency: Currency::USD,
             url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
             fallback_rate: Some(1.0),
+            cache_limit: one_minute(),
         };
 
         let mut i = 0;
@@ -198,9 +206,36 @@ mod tests {
             currency: Currency::USD,
             url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
             fallback_rate: None,
+            cache_limit: one_minute(),
         };
 
         let res = fetch_cached(&mut session, &params).unwrap();
         assert!(res.is_some());
+    }
+
+    #[test]
+    fn test_fetch_xr_cache_expired() {
+        let mut session = TestSession::default();
+
+        let params = ConvertAmountParams {
+            currency: Currency::USD,
+            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            fallback_rate: None,
+            cache_limit: one_minute(),
+        };
+
+        let res = fetch_cached(&mut session, &params).unwrap();
+        assert!(res.is_some());
+
+        // A new request with a cache limit of 0 should return None.
+        let params = ConvertAmountParams {
+            currency: Currency::USD,
+            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            fallback_rate: Some(1.0),
+            cache_limit: Duration::from_millis(0),
+        };
+
+        let res = fetch_cached(&mut session, &params).unwrap();
+        assert!(res.is_none());
     }
 }

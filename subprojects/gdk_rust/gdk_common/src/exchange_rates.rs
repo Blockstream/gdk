@@ -17,11 +17,11 @@ pub trait ExchangeRatesCacher {
     fn xr_cache(&self) -> ExchangeRatesCache;
 
     /// Returns the exchange rate of `pair` if it's cached, `None` otherwise.
-    fn get_cached_rate(&self, pair: &Pair) -> Option<f64> {
+    fn get_cached_rate(&self, pair: &Pair, cache_limit: Duration) -> Option<f64> {
         let cache = self.xr_cache();
         let cache = &*cache.lock().unwrap();
         let &(time_fetched, rate) = cache.get(pair)?;
-        (time_fetched + Duration::from_secs(60) > SystemTime::now()).then(|| rate)
+        (time_fetched + cache_limit > SystemTime::now()).then(|| rate)
     }
 
     /// Caches `ticker` for future queries.
