@@ -1,0 +1,23 @@
+FROM fedora:37@sha256:8424686c5327e302f17f336af82da620eee70b5718a1dd3a44c1e502cc7a59da as base
+WORKDIR /root
+COPY ./tools/fedora37_deps.sh ./tools/deps.sh
+COPY ./tools/requirements.txt /requirements.txt
+RUN ./tools/deps.sh
+
+FROM base AS buildergcc
+COPY ./tools ./tools
+RUN mkdir -p /prebuild/gcc
+RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
+
+FROM base AS builderclang
+COPY ./tools ./tools
+RUN mkdir -p /prebuild/clang
+RUN ./tools/builddeps.sh --clang --prefix /prebuild/clang
+
+FROM base
+COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
+COPY --from=builderclang /prebuild/clang /prebuild/clang
+
+RUN chmod +xr /root
+WORKDIR /root/gdk
+VOLUME /root/gdk

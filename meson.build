@@ -34,6 +34,7 @@ endforeach
 add_project_arguments(compiler.first_supported_argument(['-std=c++17', '-std=c++14']), language : 'cpp')
 add_project_arguments(['-Wno-deprecated-declarations', '-funsigned-char'], language : 'cpp')
 
+
 static_libstdc = compiler.has_link_argument('-static-libstdc++')
 
 # language related arguments
@@ -296,7 +297,7 @@ subproject_deps = [
     declare_dependency( include_directories: externaldir / 'libevent/build/include'),
     compiler.find_library('event', dirs: meson.global_build_root() / externaldir / 'libevent/build/lib'),
     #### boost
-    declare_dependency( include_directories: externaldir / 'boost/build/include'),
+    declare_dependency( include_directories: include_directories(externaldir / 'boost/build/include', is_system:true)),
     compiler.find_library('boost_chrono', dirs: meson.global_build_root() / externaldir / 'boost/build/lib'),
     compiler.find_library('boost_log', dirs: meson.global_build_root() / externaldir / 'boost/build/lib'),
     compiler.find_library('boost_thread', dirs: meson.global_build_root() / externaldir / 'boost/build/lib'),

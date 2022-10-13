@@ -111,14 +111,11 @@ release_py3m_osx_m1:
     - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
 
 test_fedora_clang:
-  image: greenaddress/fedora_ci@sha256:72f5371e7da9c0659430ac07f3085fd49ec7e6788ecfd664f4a34b530bc0ff8b
+  image: greenaddress/fedora_ci@sha256:07f47f381f96232b097015b7081863ae13b9b83f0e78955be4c1c86fc964ddd0
   tags:
     - ga
   script:
-    - yum install -y cmake
-    - python3 -m pip install virtualenv
-    - python3 -m virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --clang
+    - NUM_JOBS=16 ./tools/build.sh --clang --external-deps-dir /prebuild/clang
 
 test_clang:
   tags:
