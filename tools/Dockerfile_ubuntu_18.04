@@ -1,5 +1,23 @@
-FROM ubuntu:18.04@sha256:139b3846cee2e63de9ced83cee7023a2d95763ee2573e5b0ab6dea9dfbd4db8f
-COPY ubuntu_18.04_deps.sh /deps.sh
-COPY requirements.txt /requirements.txt
-RUN /deps.sh && rm /deps.sh
-CMD cd /sdk && ./tools/build.sh --clang
+FROM ubuntu:18.04@sha256:07896b8999fbcb3aaf71a0c5addc9bbc4d59682a143208610cc023f41a968fa6 as base
+WORKDIR /root
+COPY ./tools/ubuntu_18.04_deps.sh ./tools/deps.sh
+COPY ./tools/requirements.txt /requirements.txt
+RUN ./tools/deps.sh
+
+FROM base AS buildergcc
+COPY ./tools ./tools
+RUN mkdir -p /prebuild/gcc
+RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
+
+FROM base AS builderclang
+COPY ./tools ./tools
+RUN mkdir -p /prebuild/clang
+RUN ./tools/builddeps.sh --clang --prefix /prebuild/clang
+
+FROM base
+COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
+COPY --from=builderclang /prebuild/clang /prebuild/clang
+
+RUN chmod +xr /root
+WORKDIR /root/gdk
+VOLUME /root/gdk

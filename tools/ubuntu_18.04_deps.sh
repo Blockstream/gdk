@@ -4,7 +4,7 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install curl autoconf pkg-config build-essential libtool virtualenv python3-{pip,yaml} ninja-build clang llvm-dev git swig unzip -yqq
+apt install curl autoconf pkg-config build-essential libtool virtualenv python3-{pip,yaml} ninja-build clang llvm-dev git swig unzip cmake -yqq
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
 

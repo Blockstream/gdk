@@ -7,5 +7,6 @@
 !./tools/buildtor.sh
 !./tools/buildzlib.sh
 !./tools/bullseye_deps.sh
+!./tools/ubuntu_18.04_deps.sh
 !./tools/env.sh
 !./tools/requirements.txt

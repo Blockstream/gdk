@@ -83,12 +83,10 @@ release_py3m_bullseye_debug:
     - NUM_JOBS=16 ./tools/build.sh --buildtype=debug --install $PWD/gdk-python --gcc --python-version 3.9 --external-deps-dir /prebld/gcc
 
 release_py3m_ubuntu_18.04:
-  image: greenaddress/ubuntu_ci@sha256:44146516560880da9e33546706f07a2b99efd6248f6129bfef980472eefe3786
+  image: greenaddress/ubuntu_ci@sha256:bf83a3116c8fcb21e6535497c3aa7db266f4e8a823387ad30442c5a53f54bbff
   extends: .py_release
   script:
-    - apt-get update -y
-    - apt-get install -y cmake
-    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --gcc --python-version 3.6 --external-deps-dir /prebuild/gcc
 
 release_py3m_osx:
   extends: .py_release
