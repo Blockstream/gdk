@@ -1,7 +1,6 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
 use crate::Error;
-use elements::TxOutSecrets;
 use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
@@ -10,6 +9,8 @@ use gdk_common::be::{
 use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::{Transaction, Txid};
+use gdk_common::elements;
+use gdk_common::elements::TxOutSecrets;
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use gdk_common::wally::MasterBlindingKey;

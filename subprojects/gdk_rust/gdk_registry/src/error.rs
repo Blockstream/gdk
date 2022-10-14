@@ -26,7 +26,7 @@ pub enum Error {
 
     /// Wraps hex parsing error
     #[error(transparent)]
-    Hex(#[from] elements::bitcoin::hashes::hex::Error),
+    Hex(#[from] gdk_common::elements::bitcoin::hashes::hex::Error),
 
     /// An invalid network as been specified
     #[error("InvalidNetwork({0})")]

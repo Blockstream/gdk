@@ -1,4 +1,4 @@
-use elements::{hashes::hex::FromHex, AssetId};
+use gdk_common::elements::{hashes::hex::FromHex, AssetId};
 
 use crate::assets_or_icons::AssetsOrIcons;
 use crate::params::ElementsNetwork;

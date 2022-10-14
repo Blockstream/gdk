@@ -27,10 +27,10 @@ use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::*;
 
-use gdk_common::bitcoin;
 use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
 use gdk_common::bitcoin::secp256k1::{self, SecretKey};
 use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use gdk_common::{bitcoin, elements};
 
 use electrum_client::GetHistoryRes;
 use gdk_common::model::*;
@@ -40,9 +40,9 @@ use gdk_common::wally::{
 };
 use gdk_common::{be::*, State};
 
-use elements::confidential::{self, Asset, Nonce};
-use elements::encode;
-use elements::pset::PartiallySignedTransaction;
+use gdk_common::elements::confidential::{self, Asset, Nonce};
+use gdk_common::elements::encode;
+use gdk_common::elements::pset::PartiallySignedTransaction;
 use gdk_common::exchange_rates::ExchangeRatesCache;
 use gdk_common::network;
 use gdk_common::NetworkId;

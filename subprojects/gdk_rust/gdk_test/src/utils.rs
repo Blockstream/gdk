@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+use gdk_common::elements;
 use gdk_common::model::*;
 use gdk_common::{NetworkId, NetworkParameters, State};
 use gdk_electrum::headers;

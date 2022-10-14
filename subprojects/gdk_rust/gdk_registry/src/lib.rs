@@ -187,9 +187,9 @@ mod tests {
     use crate::assets_or_icons::AssetsOrIcons;
     use crate::hard_coded;
     use crate::params::ElementsNetwork;
-    use elements::AssetId;
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+    use gdk_common::elements::AssetId;
     use httptest::{matchers::*, responders::*, Expectation, Server};
     use log::info;
     use rusty_fork::rusty_fork_test;

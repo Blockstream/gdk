@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
-use gdk_common::bitcoin;
+use gdk_common::{bitcoin, elements};
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::secp256k1::SecretKey;
 use gdk_common::bitcoin::Amount;

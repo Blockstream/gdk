@@ -6,8 +6,6 @@ use std::str::FromStr;
 use gdk_common::bitcoin::util::sighash::SighashCache;
 use log::{info, warn};
 
-use elements::confidential::Value;
-use gdk_common::bitcoin;
 use gdk_common::bitcoin::blockdata::script;
 use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
 use gdk_common::bitcoin::hashes::Hash;
@@ -17,6 +15,8 @@ use gdk_common::bitcoin::util::bip32::{
     ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey,
 };
 use gdk_common::bitcoin::{PublicKey, Witness};
+use gdk_common::elements::confidential::Value;
+use gdk_common::{bitcoin, elements};
 
 use gdk_common::be::{
     BEAddress, BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETxid,

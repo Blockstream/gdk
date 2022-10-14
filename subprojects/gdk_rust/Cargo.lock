@@ -643,7 +643,6 @@ dependencies = [
  "base64",
  "block-modes",
  "electrum-client",
- "elements",
  "env_logger 0.9.0",
  "gdk-common",
  "gdk-registry",
@@ -664,7 +663,6 @@ dependencies = [
 name = "gdk-registry"
 version = "0.1.0"
 dependencies = [
- "elements",
  "env_logger 0.9.0",
  "gdk-common",
  "httptest",
@@ -712,7 +710,6 @@ version = "0.1.0"
 dependencies = [
  "electrsd",
  "electrum-client",
- "elements",
  "env_logger 0.9.0",
  "gdk-common",
  "gdk-electrum",

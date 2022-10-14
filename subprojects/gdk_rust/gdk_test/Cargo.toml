@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-elements = { version = "0.20", features = ["serde"] }
 electrsd = { version = "0.21.0", features = [ "legacy" ] }
 electrum-client = { version = "0.12.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 env_logger = "0.9.0"

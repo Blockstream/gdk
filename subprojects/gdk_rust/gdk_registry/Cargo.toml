@@ -8,7 +8,6 @@ autobins = false
 # name = "make_hard_coded"
 
 [dependencies]
-elements = { version = "0.20", features = ["serde"] }
 gdk-common = { path = "../gdk_common" }
 log = "0.4"
 once_cell = "1.12"

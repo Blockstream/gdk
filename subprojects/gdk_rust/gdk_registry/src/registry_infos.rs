@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use elements::AssetId;
+use gdk_common::elements::AssetId;
 use serde::{Deserialize, Serialize};
 
 use crate::asset_entry::AssetEntry;
@@ -106,8 +106,8 @@ impl RegistrySource {
 
 #[cfg(test)]
 mod test {
-    use elements::bitcoin::hashes::hex::FromHex;
-    use elements::{AssetId, ContractHash};
+    use gdk_common::elements::bitcoin::hashes::hex::FromHex;
+    use gdk_common::elements::{AssetId, ContractHash};
     use serde_json::{json, Value};
 
     use super::*;
