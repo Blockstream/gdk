@@ -137,16 +137,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cb36de3b18ad25f396f9168302e36fb7e1e8923298ab3127da252d288d5af9d"
 dependencies = [
  "bech32",
- "bitcoin_hashes 0.11.0",
+ "bitcoin_hashes",
  "secp256k1",
  "serde",
 ]
-
-[[package]]
-name = "bitcoin_hashes"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "006cc91e1a1d99819bc5b8214be3555c1f0611b169f527a1fdc54ed1f2b745b0"
 
 [[package]]
 name = "bitcoin_hashes"
@@ -187,7 +181,7 @@ version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d0196050d8387a47ee50ff2bb0dff08e12b9199b79c717a5b9ccde0148dd691"
 dependencies = [
- "bitcoin_hashes 0.11.0",
+ "bitcoin_hashes",
  "bitcoincore-rpc",
  "filetime",
  "flate2",
@@ -402,11 +396,11 @@ checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "electrsd"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "669a5e052efcfc178df4adb68bb1d384af43ac975eceed40682d45aeeb62485c"
+checksum = "ee4a44f44aa711be655b8b67b05bb64624743d612dd3b422aa310df159565809"
 dependencies = [
- "bitcoin_hashes 0.10.0",
+ "bitcoin_hashes",
  "bitcoind",
  "electrum-client",
  "log",
@@ -438,7 +432,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6bc83b74387e141a4afb2433bec453968b722f2c660e4c03846080ba1bd4986"
 dependencies = [
  "bitcoin",
- "bitcoin_hashes 0.11.0",
+ "bitcoin_hashes",
  "secp256k1-zkp",
  "serde",
  "serde_json",
@@ -1331,7 +1325,7 @@ version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7649a0b3ffb32636e60c7ce0d70511eda9c52c658cd0634e194d5a19943aeff"
 dependencies = [
- "bitcoin_hashes 0.11.0",
+ "bitcoin_hashes",
  "rand",
  "secp256k1-sys",
  "serde",
@@ -1463,7 +1457,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "516f52f3cec67962a9c414130251b512f2ff47f81980411ae01b6ce540b1ca6b"
 dependencies = [
- "bitcoin_hashes 0.10.0",
+ "bitcoin_hashes",
 ]
 
 [[package]]
