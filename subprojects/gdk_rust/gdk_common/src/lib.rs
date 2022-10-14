@@ -17,6 +17,7 @@ pub mod aes {
     pub use aes_gcm_siv::*;
 }
 
+pub use bitcoin;
 pub use error::*;
 pub use network::*;
 pub use state::State;

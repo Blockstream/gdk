@@ -2,12 +2,12 @@ use crate::error::Error;
 use crate::headers::bitcoin::{HeadersChain, HEADERS_FILE_MUTEX};
 use crate::headers::liquid::Verifier;
 use crate::session::determine_electrum_url;
-use ::bitcoin::hashes::hex::ToHex;
-use ::bitcoin::hashes::{sha256, sha256d, Hash};
 use electrum_client::{Client, ElectrumApi, GetMerkleRes};
 use gdk_common::aes::aead::NewAead;
 use gdk_common::aes::{Aes256GcmSiv, Key};
 use gdk_common::be::{BETxid, BETxidConvert};
+use gdk_common::bitcoin::hashes::hex::ToHex;
+use gdk_common::bitcoin::hashes::{sha256, sha256d, Hash};
 use gdk_common::model::{
     SPVCommonParams, SPVDownloadHeadersParams, SPVDownloadHeadersResult, SPVVerifyTxParams,
     SPVVerifyTxResult,
@@ -61,7 +61,7 @@ trait ParamsMethods {
     fn build_client(&self) -> Result<Client, Error>;
     fn headers_chain(&self) -> Result<HeadersChain, Error>;
     fn verified_cache(&self) -> Result<VerifiedCache, Error>;
-    fn bitcoin_network(&self) -> Option<::bitcoin::Network>;
+    fn bitcoin_network(&self) -> Option<gdk_common::bitcoin::Network>;
 }
 
 impl ParamsMethods for SPVCommonParams {
@@ -76,7 +76,7 @@ impl ParamsMethods for SPVCommonParams {
     fn verified_cache(&self) -> Result<VerifiedCache, Error> {
         Ok(VerifiedCache::new(&self.network.state_dir, self.network.id(), &self.encryption_key))
     }
-    fn bitcoin_network(&self) -> Option<::bitcoin::Network> {
+    fn bitcoin_network(&self) -> Option<gdk_common::bitcoin::Network> {
         self.network.id().get_bitcoin_network()
     }
 }

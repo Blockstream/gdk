@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::str::FromStr;
 
-use bitcoin::hashes::hex::FromHex;
 use elements::{AssetId, Script};
+use gdk_common::bitcoin::hashes::hex::FromHex;
 use serde_json::{json, Map, Value};
 
 use gdk_common::model::*;

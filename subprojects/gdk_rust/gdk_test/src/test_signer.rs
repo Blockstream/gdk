@@ -1,12 +1,12 @@
-use bitcoin::blockdata::script::Builder as ScriptBuilder;
-use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::hashes::Hash;
-use bitcoin::network::constants::Network as Bip32Network;
-use bitcoin::secp256k1::{All, Message, Secp256k1};
-use bitcoin::util::address::Address;
-use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::util::sighash::SighashCache;
-use bitcoin::{self, EcdsaSighashType, Witness};
+use gdk_common::bitcoin::blockdata::script::Builder as ScriptBuilder;
+use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+use gdk_common::bitcoin::hashes::Hash;
+use gdk_common::bitcoin::network::constants::Network as Bip32Network;
+use gdk_common::bitcoin::secp256k1::{All, Message, Secp256k1};
+use gdk_common::bitcoin::util::address::Address;
+use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use gdk_common::bitcoin::util::sighash::SighashCache;
+use gdk_common::bitcoin::{self, EcdsaSighashType, Witness};
 
 use gdk_common::be::BETransaction;
 use gdk_common::model::*;

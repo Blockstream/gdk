@@ -2,14 +2,14 @@ use elements::{self, BlockExtData};
 
 use crate::error::*;
 use crate::headers::compute_merkle_root;
-use bitcoin::hashes::hex::FromHex;
-use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{ecdsa::Signature, Message};
-use bitcoin::PublicKey;
 use electrum_client::GetMerkleRes;
 use elements::opcodes::{self, Class, ClassifyContext};
 use elements::script::{self, Instruction};
 use elements::{BlockHash, BlockHeader, Script, TxMerkleNode, Txid};
+use gdk_common::bitcoin::hashes::hex::FromHex;
+use gdk_common::bitcoin::hashes::Hash;
+use gdk_common::bitcoin::secp256k1::{ecdsa::Signature, Message};
+use gdk_common::bitcoin::PublicKey;
 use gdk_common::ElementsNetwork;
 use log::info;
 
@@ -154,9 +154,9 @@ impl Verifier {
 #[cfg(test)]
 mod test {
     use crate::headers::liquid::Verifier;
-    use bitcoin::hashes::hex::FromHex;
     use elements::encode::deserialize;
     use elements::{BlockExtData, BlockHeader, Script};
+    use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::ElementsNetwork;
     use rand::seq::SliceRandom;
 

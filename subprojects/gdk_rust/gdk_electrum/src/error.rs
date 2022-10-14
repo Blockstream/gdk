@@ -1,7 +1,7 @@
 use crate::BETxid;
-use bitcoin::util::bip32::ExtendedPubKey;
-use bitcoin::util::sighash;
 use elements::hash_types::Txid;
+use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::util::sighash;
 use gdk_common::error::Error as CommonError;
 use serde::ser::Serialize;
 use std::convert::From;
@@ -23,22 +23,22 @@ pub enum Error {
     Base64DecodeError(#[from] base64::DecodeError),
 
     #[error(transparent)]
-    Bitcoin(#[from] bitcoin::util::Error),
+    Bitcoin(#[from] gdk_common::bitcoin::util::Error),
 
     #[error(transparent)]
-    BitcoinBIP32Error(#[from] bitcoin::util::bip32::Error),
+    BitcoinBIP32Error(#[from] gdk_common::bitcoin::util::bip32::Error),
 
     #[error(transparent)]
-    BitcoinConsensus(#[from] bitcoin::consensus::encode::Error),
+    BitcoinConsensus(#[from] gdk_common::bitcoin::consensus::encode::Error),
 
     #[error(transparent)]
-    BitcoinHashes(#[from] bitcoin::hashes::error::Error),
+    BitcoinHashes(#[from] gdk_common::bitcoin::hashes::error::Error),
 
     #[error(transparent)]
-    BitcoinHexError(#[from] bitcoin::hashes::hex::Error),
+    BitcoinHexError(#[from] gdk_common::bitcoin::hashes::hex::Error),
 
     #[error(transparent)]
-    BitcoinKeyError(#[from] bitcoin::util::key::Error),
+    BitcoinKeyError(#[from] gdk_common::bitcoin::util::key::Error),
 
     #[error(transparent)]
     ClientError(#[from] electrum_client::Error),
@@ -137,7 +137,7 @@ pub enum Error {
     ScriptPubkeyNotFound,
 
     #[error(transparent)]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] gdk_common::bitcoin::secp256k1::Error),
 
     #[error(transparent)]
     Secp256k1Zkp(#[from] elements::secp256k1_zkp::Error),

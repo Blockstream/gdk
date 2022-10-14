@@ -3,17 +3,20 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::str::FromStr;
 
-use bitcoin::util::sighash::SighashCache;
+use gdk_common::bitcoin::util::sighash::SighashCache;
 use log::{info, warn};
 
-use bitcoin::blockdata::script;
-use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{self, Message};
-use bitcoin::util::address::Payload;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use bitcoin::{PublicKey, Witness};
 use elements::confidential::Value;
+use gdk_common::bitcoin;
+use gdk_common::bitcoin::blockdata::script;
+use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+use gdk_common::bitcoin::hashes::Hash;
+use gdk_common::bitcoin::secp256k1::{self, Message};
+use gdk_common::bitcoin::util::address::Payload;
+use gdk_common::bitcoin::util::bip32::{
+    ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey,
+};
+use gdk_common::bitcoin::{PublicKey, Witness};
 
 use gdk_common::be::{
     BEAddress, BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETxid,
@@ -998,7 +1001,7 @@ fn bitcoin_address(
     script_type: ScriptType,
     net: bitcoin::Network,
 ) -> bitcoin::Address {
-    use bitcoin::Address;
+    use gdk_common::bitcoin::Address;
     match script_type {
         ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, net).expect("no compressed keys"),
         ScriptType::P2wpkh => Address::p2wpkh(public_key, net).expect("no compressed keys"),

@@ -1,7 +1,7 @@
-use bitcoin::secp256k1::SecretKey;
-use bitcoin::util::amount::Denomination;
-use bitcoin::Amount;
 use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
+use gdk_common::bitcoin::secp256k1::SecretKey;
+use gdk_common::bitcoin::util::amount::Denomination;
+use gdk_common::bitcoin::Amount;
 use serde_json::{Map, Value};
 
 use crate::Result;

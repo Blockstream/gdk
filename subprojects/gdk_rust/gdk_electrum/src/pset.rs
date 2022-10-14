@@ -1,10 +1,10 @@
 use crate::error::Error;
-use bitcoin::hashes::hex::{FromHex, ToHex};
 use elements::encode::{deserialize, serialize};
 use elements::pset;
 use elements::pset::PartiallySignedTransaction;
 use elements::script::Builder;
 use elements::Transaction;
+use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]

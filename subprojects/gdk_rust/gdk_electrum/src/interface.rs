@@ -73,16 +73,16 @@ impl FromStr for ElectrumUrl {
 
 #[cfg(test)]
 mod test {
-    use bitcoin::consensus::deserialize;
-    use bitcoin::hashes::hex::{FromHex, ToHex};
-    use bitcoin::hashes::Hash;
-    use bitcoin::secp256k1::{Message, SecretKey};
-    use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
-    use bitcoin::util::key::PrivateKey;
-    use bitcoin::util::key::PublicKey;
-    use bitcoin::util::sighash::SighashCache;
-    use bitcoin::{Address, Network, Transaction};
-    use bitcoin::{EcdsaSighashType, Script};
+    use gdk_common::bitcoin::consensus::deserialize;
+    use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+    use gdk_common::bitcoin::hashes::Hash;
+    use gdk_common::bitcoin::secp256k1::{Message, SecretKey};
+    use gdk_common::bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
+    use gdk_common::bitcoin::util::key::PrivateKey;
+    use gdk_common::bitcoin::util::key::PublicKey;
+    use gdk_common::bitcoin::util::sighash::SighashCache;
+    use gdk_common::bitcoin::{Address, Network, Transaction};
+    use gdk_common::bitcoin::{EcdsaSighashType, Script};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 

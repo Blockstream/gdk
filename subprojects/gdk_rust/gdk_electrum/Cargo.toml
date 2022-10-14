@@ -9,7 +9,6 @@ testing = [ "gdk-common/testing" ]
 
 [dependencies]
 base64 = "0.13"
-bitcoin = { version = "0.29", features = [ "serde" ] }
 block-modes = "0.8.0"
 electrum-client = { version = "0.12.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 elements = { version = "0.20", features = ["serde"] }

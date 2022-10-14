@@ -1,6 +1,6 @@
 use std::fmt;
 
-use bitcoin::util::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
 use serde::{Deserialize, Serialize};
 
 use crate::assets_or_icons::AssetsOrIcons;

@@ -1,15 +1,15 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
 use crate::Error;
-use bitcoin::hashes::{sha256, Hash};
-use bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
-use bitcoin::Transaction;
 use elements::TxOutSecrets;
 use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
 };
+use gdk_common::bitcoin::hashes::{sha256, Hash};
+use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
+use gdk_common::bitcoin::{Transaction, Txid};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use gdk_common::wally::MasterBlindingKey;
@@ -111,7 +111,7 @@ pub struct RawStore {
     settings: Option<Settings>,
 
     /// transaction memos (account_num -> txid -> memo)
-    memos: HashMap<bitcoin::Txid, String>,
+    memos: HashMap<Txid, String>,
 
     // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility
     /// account settings
@@ -512,7 +512,7 @@ impl RawAccountCache {
             bip44_discovered,
         }
     }
-    pub fn get_bitcoin_tx(&self, txid: &bitcoin::Txid) -> Result<Transaction, Error> {
+    pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Transaction, Error> {
         match self.all_txs.get(&txid.into_be()).map(|etx| &etx.tx) {
             Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
             _ => Err(Error::TxNotFound(BETxid::Bitcoin(txid.clone()))),
@@ -534,8 +534,8 @@ impl RawAccountCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::util::bip32::ExtendedPubKey;
-    use bitcoin::Network;
+    use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+    use gdk_common::bitcoin::{Network, Txid};
     use gdk_common::{be::BETxid, NetworkId};
     use std::str::FromStr;
     use tempfile::TempDir;
@@ -572,7 +572,7 @@ mod tests {
         #[derive(Serialize, Deserialize)]
         struct RawStoreV0 {
             settings: Option<Settings>,
-            memos: HashMap<bitcoin::Txid, String>,
+            memos: HashMap<Txid, String>,
         }
 
         type RawStoreV1 = RawStore;
@@ -581,7 +581,7 @@ mod tests {
             settings: Some(Settings::default()),
             memos: {
                 let mut memos = HashMap::new();
-                memos.insert(bitcoin::Txid::all_zeros(), "Foobar".into());
+                memos.insert(Txid::all_zeros(), "Foobar".into());
                 memos
             },
         };

@@ -1,5 +1,5 @@
-use bitcoin::hashes::Hash;
 use elements::{AssetId, ContractHash, OutPoint, Txid};
+use gdk_common::bitcoin::hashes::Hash;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

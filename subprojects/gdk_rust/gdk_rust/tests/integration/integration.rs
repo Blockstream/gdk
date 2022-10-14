@@ -3,10 +3,10 @@ use std::net::TcpListener;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use bitcoin::util::bip32::DerivationPath;
-use bitcoin::Witness;
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrum_client::ElectrumApi;
+use gdk_common::bitcoin::util::bip32::DerivationPath;
+use gdk_common::bitcoin::Witness;
 use log::info;
 use serde_json::Value;
 use tempfile::TempDir;

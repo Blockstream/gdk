@@ -1,11 +1,11 @@
 use crate::Error;
-use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
-use bitcoin::secp256k1::{self, ecdh, ecdsa::Signature, Message, SecretKey};
-use bitcoin::PublicKey;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use gdk_common::aes::Aes256;
+use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+use gdk_common::bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
+use gdk_common::bitcoin::secp256k1::{self, ecdh, ecdsa::Signature, Message, SecretKey};
+use gdk_common::bitcoin::PublicKey;
 use log::info;
 use rand::prelude::ThreadRng;
 use rand::Rng;
@@ -227,10 +227,10 @@ mod test {
     use std::str::FromStr;
 
     use crate::pin::{Handshake, PinManager, ResponseData};
-    use bitcoin::hashes::hex::{FromHex, ToHex};
-    use bitcoin::hashes::Hmac;
-    use bitcoin::secp256k1::SecretKey;
-    use bitcoin::PublicKey;
+    use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+    use gdk_common::bitcoin::hashes::Hmac;
+    use gdk_common::bitcoin::secp256k1::SecretKey;
+    use gdk_common::bitcoin::PublicKey;
     use gdk_common::network;
 
     const PINSERVER_URL: &'static str = "https://jadepin.blockstream.com";

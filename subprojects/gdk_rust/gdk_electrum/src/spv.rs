@@ -3,10 +3,13 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-use bitcoin::blockdata::constants::{max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN};
-use bitcoin::BlockHash;
-use bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
 use electrum_client::{Client as ElectrumClient, ElectrumApi};
+use gdk_common::bitcoin;
+use gdk_common::bitcoin::blockdata::constants::{
+    max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
+};
+use gdk_common::bitcoin::BlockHash;
+use gdk_common::bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
 use once_cell::sync::Lazy;
 
 use gdk_common::network::NetworkParameters;

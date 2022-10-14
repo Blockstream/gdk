@@ -18,7 +18,7 @@ pub enum Error {
     /// Returned when calling `ExtendedPubKey::from_str` with an invalid
     /// string.
     #[error(transparent)]
-    BtcBip32Error(#[from] bitcoin::util::bip32::Error),
+    BtcBip32Error(#[from] gdk_common::bitcoin::util::bip32::Error),
 
     /// Wraps errors coming from the `gdk_common` crate.
     #[error(transparent)]

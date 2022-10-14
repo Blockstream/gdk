@@ -27,9 +27,10 @@ use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::*;
 
-use bitcoin::hashes::hex::{FromHex, ToHex};
-use bitcoin::secp256k1::{self, SecretKey};
-use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use gdk_common::bitcoin;
+use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+use gdk_common::bitcoin::secp256k1::{self, SecretKey};
+use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 
 use electrum_client::GetHistoryRes;
 use gdk_common::model::*;
@@ -57,12 +58,12 @@ use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
 use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
-use bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 use block_modes::block_padding::Pkcs7;
 use block_modes::BlockMode;
 use block_modes::Cbc;
 use electrum_client::{Client, ElectrumApi};
 use gdk_common::aes::Aes256;
+use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
 use once_cell::sync::Lazy;
 use rand::seq::SliceRandom;
