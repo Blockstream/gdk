@@ -7,6 +7,10 @@ GA_get_subaccount: add user_path, core_descriptor, slip132_extended_pubkey
 
 ### Changed
 
+- Singlesig: GA_convert_amount: If a fallback fiat rate is provided the
+  function will return that rate immediately instead of waiting for the latest
+  rate to be fetched.
+
 ### Fixed
 
 ### Removed
