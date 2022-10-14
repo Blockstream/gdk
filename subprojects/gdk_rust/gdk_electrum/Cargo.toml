@@ -8,26 +8,25 @@ edition = "2018"
 testing = [ "gdk-common/testing" ]
 
 [dependencies]
-once_cell = "1.12"
-log = "0.4.8"
-rand = "0.8"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_cbor = "0.11.1"
-thiserror = "1.0"
-# FIXME: unpin zeroize once we bump MSRV (needs rebuild of docker images)
-zeroize = "<1.4.0"
+base64 = "0.13"
+bitcoin = { version = "0.29", features = [ "serde" ] }
+block-modes = "0.8.0"
+electrum-client = { version = "0.12.0", default-features = false, features = [ "proxy", "use-openssl" ] }
+elements = { version = "0.20", features = ["serde"] }
 gdk-common = { path = "../gdk_common" }
 gdk-registry = { path = "../gdk_registry" }
 libc = "0.2"
-electrum-client = { version = "0.12.0", default-features = false, features = [ "proxy", "use-openssl" ] }
-ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
-block-modes = "0.8.0"
+log = "0.4.8"
+once_cell = "1.12"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_cbor = "0.11.1"
+serde_json = "1.0"
 tempfile = "3.2.0"
-base64 = "0.13"
-
-bitcoin = { version = "0.29", features = [ "serde" ] }
-elements = { version = "0.20", features = ["serde"] }
+thiserror = "1.0"
+ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
+# FIXME: unpin zeroize once we bump MSRV (needs rebuild of docker images)
+zeroize = "<1.4.0"
 
 [dev-dependencies]
 env_logger = "0.9.0"
