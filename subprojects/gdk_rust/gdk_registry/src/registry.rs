@@ -3,7 +3,7 @@ use std::fs::{self, File, OpenOptions};
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
-use log::{debug, info, warn};
+use gdk_common::log::{debug, info, warn};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -75,7 +75,7 @@ pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets
         debug!("downloaded {} assets", assets.len());
         assets.retain(|_, entry| entry.verifies().unwrap_or(false));
         if assets.len() != len {
-            log::warn!("{} assets didn't verify!", len - assets.len());
+            warn!("{} assets didn't verify!", len - assets.len());
         }
         if let Some(xpub) = params.xpub {
             cache::update_missing_assets(xpub, &assets)?;

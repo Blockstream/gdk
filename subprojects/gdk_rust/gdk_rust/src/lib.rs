@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate serde_json;
 
-#[macro_use]
-extern crate log;
-
 pub mod error;
 mod exchange_rates;
 
@@ -20,10 +17,10 @@ use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
 use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
+use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{headers, ElectrumSession, NativeNotif};
-use log::{LevelFilter, Metadata, Record};
 use serde::Serialize;
 
 pub const GA_OK: i32 = 0;
@@ -92,14 +89,14 @@ pub extern "C" fn GDKRUST_create_session(
     let network: Value = match serde_json::from_str(&read_str(network)) {
         Ok(x) => x,
         Err(err) => {
-            error!("error: {:?}", err);
+            log::error!("error: {:?}", err);
             return GA_ERROR;
         }
     };
 
     match create_session(&network) {
         Err(err) => {
-            error!("create_session error: {}", err);
+            log::error!("create_session error: {}", err);
             GA_ERROR
         }
         Ok(session) => {
@@ -139,13 +136,13 @@ fn init_logging(level: LevelFilter) {
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
     info!("create_session {:?}", network);
     if !network.is_object() || !network.as_object().unwrap().contains_key("server_type") {
-        error!("Expected network to be an object with a server_type key");
+        log::error!("Expected network to be an object with a server_type key");
         return Err(GA_ERROR.into());
     }
 
     let parsed_network = serde_json::from_value(network.clone());
     if let Err(msg) = parsed_network {
-        error!("Error parsing network {}", msg);
+        log::error!("Error parsing network {}", msg);
         return Err(GA_ERROR.into());
     }
 
@@ -187,7 +184,7 @@ pub extern "C" fn GDKRUST_call_session(
         }
 
         Err(err) => {
-            error!("error: {:?}", err);
+            log::error!("error: {:?}", err);
 
             let retv = if "id_invalid_pin" == err.error {
                 GA_NOT_AUTHORIZED

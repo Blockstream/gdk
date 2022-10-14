@@ -9,7 +9,7 @@ use gdk_common::bitcoin::consensus::{deserialize, serialize};
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::{BlockHash, Txid};
 use gdk_common::bitcoin::{BlockHeader, Network};
-use log::{info, warn};
+use gdk_common::log::{info, warn};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};

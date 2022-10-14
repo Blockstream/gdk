@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Seek};
 
-use log::{info, log_enabled, Level};
+use gdk_common::log::{info, log_enabled, Level};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::Result;

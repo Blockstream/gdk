@@ -2,13 +2,13 @@ use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
-use gdk_common::{bitcoin, elements};
+use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
+use electrum_client::ElectrumApi;
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::secp256k1::SecretKey;
 use gdk_common::bitcoin::Amount;
-use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
-use electrum_client::ElectrumApi;
-use log::{info, warn};
+use gdk_common::log::{info, warn};
+use gdk_common::{bitcoin, elements};
 use serde_json::{json, Map, Value};
 use tempfile::TempDir;
 

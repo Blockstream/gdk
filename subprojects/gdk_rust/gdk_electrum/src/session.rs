@@ -6,6 +6,7 @@ use std::{
 use gdk_common::{
     be::BEOutPoint,
     exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher},
+    log,
     model::*,
     notification::NativeNotif,
     session::{JsonError, Session},

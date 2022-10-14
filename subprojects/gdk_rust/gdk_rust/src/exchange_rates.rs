@@ -2,6 +2,7 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use gdk_common::exchange_rates::{Currency, Pair, Ticker};
+use gdk_common::log::{debug, info};
 use gdk_common::session::Session;
 use serde::{de::Deserializer, Deserialize};
 use serde_json::Value;
@@ -55,7 +56,7 @@ pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker
     };
 
     let (endpoint, price_field) = Currency::endpoint(pair.first(), pair.second(), url);
-    log::info!("fetching {} price data from {}", pair, endpoint);
+    info!("fetching {} price data from {}", pair, endpoint);
 
     agent
         .get(&endpoint)

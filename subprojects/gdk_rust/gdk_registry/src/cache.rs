@@ -9,8 +9,8 @@ use std::sync::Mutex;
 use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
 use gdk_common::elements::AssetId;
+use gdk_common::log::{debug, warn};
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
-use log::debug;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
@@ -137,7 +137,7 @@ impl Cache {
                 Ok(cache) => Ok::<_, Error>(cache),
 
                 Err(err) => {
-                    log::warn!("couldn't deserialize cached file due to {}", err);
+                    warn!("couldn't deserialize cached file due to {}", err);
                     Ok(Self::default())
                 }
             },

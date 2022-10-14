@@ -1,4 +1,4 @@
-use log::warn;
+use gdk_common::log::warn;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

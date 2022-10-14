@@ -2,6 +2,7 @@ use electrsd::bitcoind::bitcoincore_rpc::{Client, RpcApi};
 use gdk_common::bitcoin::secp256k1::SecretKey;
 use gdk_common::bitcoin::util::amount::Denomination;
 use gdk_common::bitcoin::Amount;
+use gdk_common::log;
 use serde_json::{Map, Value};
 
 use crate::Result;

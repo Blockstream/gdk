@@ -41,6 +41,7 @@ use std::thread;
 
 use assets_or_icons::AssetsOrIcons;
 use cache::Cache;
+use gdk_common::log;
 use last_modified::LastModified;
 use registry_infos::RegistrySource;
 
@@ -190,8 +191,8 @@ mod tests {
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
     use gdk_common::elements::AssetId;
+    use gdk_common::log::info;
     use httptest::{matchers::*, responders::*, Expectation, Server};
-    use log::info;
     use rusty_fork::rusty_fork_test;
     use serde_json::Value;
     use std::path::Path;

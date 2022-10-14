@@ -6,8 +6,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate gdk_common;
 
+use gdk_common::log::{debug, info, trace, warn};
 use headers::bitcoin::HEADERS_FILE_MUTEX;
-use log::{debug, info, trace, warn};
 use serde_json::Value;
 
 pub mod account;

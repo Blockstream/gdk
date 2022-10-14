@@ -1,4 +1,4 @@
-use gdk_common::elements::{BlockExtData};
+use gdk_common::elements::BlockExtData;
 
 use crate::error::*;
 use crate::headers::compute_merkle_root;
@@ -10,8 +10,8 @@ use gdk_common::bitcoin::PublicKey;
 use gdk_common::elements::opcodes::{self, Class, ClassifyContext};
 use gdk_common::elements::script::{self, Instruction};
 use gdk_common::elements::{BlockHash, BlockHeader, Script, TxMerkleNode, Txid};
+use gdk_common::log::info;
 use gdk_common::ElementsNetwork;
-use log::info;
 
 /// liquid v1 block header verifier, not suitable for dynafed
 /// checks the challenge is exactly equal to the one present in block 1

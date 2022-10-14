@@ -20,5 +20,6 @@ pub mod aes {
 pub use bitcoin;
 pub use elements;
 pub use error::*;
+pub use log;
 pub use network::*;
 pub use state::State;

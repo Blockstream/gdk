@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::str::FromStr;
 
 use gdk_common::bitcoin::util::sighash::SighashCache;
-use log::{info, warn};
+use gdk_common::log::{info, warn};
 
 use gdk_common::bitcoin::blockdata::script;
 use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};

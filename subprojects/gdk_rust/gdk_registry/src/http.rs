@@ -1,7 +1,7 @@
 use std::io::BufReader;
 use std::time::{Duration, Instant};
 
-use log::info;
+use gdk_common::log::info;
 
 use crate::Result;
 use serde_json::Value;

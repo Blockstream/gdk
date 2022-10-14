@@ -6,7 +6,7 @@ use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
 use gdk_common::bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use gdk_common::bitcoin::secp256k1::{self, ecdh, ecdsa::Signature, Message, SecretKey};
 use gdk_common::bitcoin::PublicKey;
-use log::info;
+use gdk_common::log::info;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
