@@ -72,7 +72,7 @@ impl TestSession {
         conf.p2p = electrsd::bitcoind::P2P::Yes;
         conf.network = network;
 
-        let node = electrsd::bitcoind::BitcoinD::with_conf(&node, &conf).unwrap();
+        let node = electrsd::bitcoind::BitcoinD::with_conf(&*node, &conf).unwrap();
         info!("node spawned");
 
         RpcNodeExt::generate(&node.client, 1, None).unwrap();
@@ -95,7 +95,7 @@ impl TestSession {
         conf.http_enabled = false;
         conf.network = network;
 
-        let electrs = electrsd::ElectrsD::with_conf(&electrs, &node, &conf).unwrap();
+        let electrs = electrsd::ElectrsD::with_conf(&*electrs, &node, &conf).unwrap();
         info!("Electrs spawned");
 
         let mut hashes = RpcNodeExt::generate(&node.client, 100, None).unwrap();
