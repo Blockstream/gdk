@@ -157,8 +157,8 @@ mod test {
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::elements::encode::deserialize;
     use gdk_common::elements::{BlockExtData, BlockHeader, Script};
+    use gdk_common::rand::seq::SliceRandom;
     use gdk_common::ElementsNetwork;
-    use rand::seq::SliceRandom;
 
     #[test]
     fn test_regtest() {
@@ -213,7 +213,7 @@ mod test {
             assert!(false);
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = gdk_common::rand::thread_rng();
 
         let mut wrong_header = block_header.clone();
         if let BlockExtData::Proof {

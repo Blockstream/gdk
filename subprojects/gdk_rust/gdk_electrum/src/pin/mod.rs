@@ -7,8 +7,8 @@ use gdk_common::bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use gdk_common::bitcoin::secp256k1::{self, ecdh, ecdsa::Signature, Message, SecretKey};
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::log::info;
-use rand::prelude::ThreadRng;
-use rand::Rng;
+use gdk_common::rand::prelude::ThreadRng;
+use gdk_common::rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
@@ -85,7 +85,7 @@ impl PinManager {
         url: &str,
         public_key: &PublicKey,
     ) -> Result<Self, Error> {
-        let mut rng = rand::thread_rng();
+        let mut rng = gdk_common::rand::thread_rng();
 
         let sig = data.sig()?;
         let (ske, msg) = data.ske()?;
@@ -232,6 +232,7 @@ mod test {
     use gdk_common::bitcoin::secp256k1::SecretKey;
     use gdk_common::bitcoin::PublicKey;
     use gdk_common::network;
+    use gdk_common::rand;
 
     const PINSERVER_URL: &'static str = "https://jadepin.blockstream.com";
     const PINSERVER_ONION_URL: &'static str =

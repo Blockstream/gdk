@@ -65,10 +65,10 @@ use electrum_client::{Client, ElectrumApi};
 use gdk_common::aes::Aes256;
 use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
+use gdk_common::rand::seq::SliceRandom;
+use gdk_common::rand::thread_rng;
+use gdk_common::rand::Rng;
 use once_cell::sync::Lazy;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-use rand::Rng;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -79,7 +79,7 @@ const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughl
 
 static EC: Lazy<secp256k1::Secp256k1<secp256k1::All>> = Lazy::new(|| {
     let mut ctx = secp256k1::Secp256k1::new();
-    let mut rng = rand::thread_rng();
+    let mut rng = gdk_common::rand::thread_rng();
     ctx.randomize(&mut rng);
     ctx
 });

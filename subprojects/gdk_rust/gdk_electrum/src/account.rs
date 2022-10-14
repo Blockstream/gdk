@@ -16,7 +16,7 @@ use gdk_common::bitcoin::util::bip32::{
 };
 use gdk_common::bitcoin::{PublicKey, Witness};
 use gdk_common::elements::confidential::Value;
-use gdk_common::{bitcoin, elements};
+use gdk_common::{bitcoin, elements, rand};
 
 use gdk_common::be::{
     BEAddress, BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETxid,

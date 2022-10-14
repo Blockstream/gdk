@@ -1,5 +1,5 @@
 use gdk_common::log::warn;
-use rand::seq::SliceRandom;
+use gdk_common::rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -147,7 +147,7 @@ impl SpvCrossValidator {
 
     fn random_servers(&self, num: usize) -> Vec<ElectrumUrl> {
         let mut servers: Vec<_> = self.servers.iter().collect();
-        servers.shuffle(&mut rand::thread_rng());
+        servers.shuffle(&mut gdk_common::rand::thread_rng());
         servers.into_iter().take(num).cloned().collect()
     }
 }
