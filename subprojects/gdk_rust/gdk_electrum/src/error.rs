@@ -3,6 +3,7 @@ use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
 use gdk_common::bitcoin::util::sighash;
 use gdk_common::elements::hash_types::Txid;
 use gdk_common::error::Error as CommonError;
+use gdk_common::ureq;
 use gdk_common::{bitcoin, elements};
 use serde::ser::Serialize;
 use std::convert::From;

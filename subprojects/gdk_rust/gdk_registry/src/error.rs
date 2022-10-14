@@ -1,3 +1,4 @@
+use gdk_common::{bitcoin, elements, ureq};
 use std::sync::{MutexGuard, PoisonError, TryLockError};
 
 /// Result type alias of the `gdk_registry` crate.
@@ -18,7 +19,7 @@ pub enum Error {
     /// Returned when calling `ExtendedPubKey::from_str` with an invalid
     /// string.
     #[error(transparent)]
-    BtcBip32Error(#[from] gdk_common::bitcoin::util::bip32::Error),
+    BtcBip32Error(#[from] bitcoin::util::bip32::Error),
 
     /// Wraps errors coming from the `gdk_common` crate.
     #[error(transparent)]
@@ -26,7 +27,7 @@ pub enum Error {
 
     /// Wraps hex parsing error
     #[error(transparent)]
-    Hex(#[from] gdk_common::elements::bitcoin::hashes::hex::Error),
+    Hex(#[from] elements::bitcoin::hashes::hex::Error),
 
     /// An invalid network as been specified
     #[error("InvalidNetwork({0})")]

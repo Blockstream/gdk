@@ -1,6 +1,7 @@
 use gdk_common::error::Error as CommonError;
 use gdk_common::exchange_rates;
 use gdk_common::model::ExchangeRateError;
+use gdk_common::ureq;
 use gdk_electrum as electrum;
 
 #[derive(thiserror::Error, Debug)]

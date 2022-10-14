@@ -4,6 +4,7 @@ use std::time::{Duration, SystemTime};
 use gdk_common::exchange_rates::{Currency, Pair, Ticker};
 use gdk_common::log::{debug, info};
 use gdk_common::session::Session;
+use gdk_common::ureq;
 use serde::{de::Deserializer, Deserialize};
 use serde_json::Value;
 

@@ -68,6 +68,7 @@ pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotific
 use gdk_common::rand::seq::SliceRandom;
 use gdk_common::rand::thread_rng;
 use gdk_common::rand::Rng;
+use gdk_common::ureq;
 use once_cell::sync::Lazy;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;

@@ -9,6 +9,7 @@ use gdk_common::bitcoin::PublicKey;
 use gdk_common::log::info;
 use gdk_common::rand::prelude::ThreadRng;
 use gdk_common::rand::Rng;
+use gdk_common::ureq;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
@@ -233,6 +234,7 @@ mod test {
     use gdk_common::bitcoin::PublicKey;
     use gdk_common::network;
     use gdk_common::rand;
+    use gdk_common::ureq;
 
     const PINSERVER_URL: &'static str = "https://jadepin.blockstream.com";
     const PINSERVER_ONION_URL: &'static str =

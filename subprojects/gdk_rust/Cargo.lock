@@ -653,7 +653,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
- "ureq 2.4.0",
  "zeroize",
 ]
 
@@ -671,7 +670,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
- "ureq 2.4.0",
 ]
 
 [[package]]
