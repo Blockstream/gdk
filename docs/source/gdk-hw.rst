@@ -4,7 +4,7 @@ GDK Hardware Wallet Interface
 =============================
 
 This section details the format of data requests from hardware wallet
-interation during resolution of GA_auth_handler processing when
+interaction during resolution of GA_auth_handler processing when
 `GA_auth_handler_get_status` returns the status ``"resolve_code"`` with
 a ``"required_data"`` element present.
 
