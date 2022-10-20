@@ -515,7 +515,11 @@ public class Session {
     }
 
     public func refreshAssets(params: [String: Any]) throws -> [String: Any]? {
-        return try jsonFuncToJsonWrapper(input: params, fun: GA_refresh_assets)
+        var paramsJson: OpaquePointer = try convertDictToJson(dict: params)
+        defer {
+            GA_destroy_json(paramsJson)
+        }
+        try callWrapper(fun: GA_refresh_assets(session, paramsJson))
     }
 
     public func getAssets(params: [String: Any]) throws -> [String: Any]? {

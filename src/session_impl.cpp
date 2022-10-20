@@ -160,7 +160,7 @@ namespace sdk {
         return config;
     }
 
-    nlohmann::json session_impl::refresh_assets(const nlohmann::json& params)
+    void session_impl::refresh_assets(const nlohmann::json& params)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
@@ -174,15 +174,11 @@ namespace sdk {
 
         p["config"] = get_registry_config();
 
-        nlohmann::json result;
         try {
-            result = rust_call("refresh_assets", p);
+            rust_call("refresh_assets", p);
         } catch (const std::exception& ex) {
             GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
-            result = { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() },
-                { "error", ex.what() } };
         }
-        return result;
     }
 
     nlohmann::json session_impl::get_assets(const nlohmann::json& params)

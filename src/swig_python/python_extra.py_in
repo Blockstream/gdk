@@ -299,7 +299,7 @@ class Session(object):
         return json.loads(http_request(self.session_obj, self._to_json(params)))
 
     def refresh_assets(self, params):
-        return json.loads(refresh_assets(self.session_obj, self._to_json(params)))
+        return refresh_assets(self.session_obj, self._to_json(params))
 
     def get_assets(self, params):
         return json.loads(get_assets(self.session_obj, self._to_json(params)))

@@ -75,7 +75,7 @@ namespace sdk {
 
         // Make an http request to an arbitrary host governed by 'params'.
         virtual nlohmann::json http_request(nlohmann::json params);
-        virtual nlohmann::json refresh_assets(const nlohmann::json& params);
+        virtual void refresh_assets(const nlohmann::json& params);
         nlohmann::json get_assets(const nlohmann::json& params);
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
 

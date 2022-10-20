@@ -515,7 +515,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_get_proxy_settings, GA_json)
 %returns_struct(GA_get_wallet_identifier, GA_json)
 %returns_struct(GA_http_request, GA_json)
-%returns_struct(GA_refresh_assets, GA_json)
+%returns_void__(GA_refresh_assets)
 %returns_struct(GA_get_assets, GA_json)
 %returns_struct(GA_validate_asset_domain_name, GA_json)
 %returns_string(GA_generate_mnemonic)

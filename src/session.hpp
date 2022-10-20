@@ -37,7 +37,7 @@ namespace sdk {
         nlohmann::json get_proxy_settings();
 
         nlohmann::json http_request(const nlohmann::json& params);
-        nlohmann::json refresh_assets(const nlohmann::json& params);
+        void refresh_assets(const nlohmann::json& params);
         nlohmann::json get_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 

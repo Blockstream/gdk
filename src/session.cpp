@@ -225,11 +225,11 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::refresh_assets(const nlohmann::json& params)
+    void session::refresh_assets(const nlohmann::json& params)
     {
-        return exception_wrapper([&] {
+        exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->refresh_assets(params);
+            p->refresh_assets(params);
         });
     }
 

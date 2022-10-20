@@ -183,14 +183,12 @@ GDK_API int GA_http_request(struct GA_session* session, const GA_json* params, G
  *
  * :param session: The session to use.
  * :param params: the :ref:`assets-params-data` of the server to connect to.
- * :param output: Destination for the output :ref:`asset-informations`.
- *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
- * Each release of GDK comes with a list of the latest registered Liquid
- * assets built-in. This call is used to update it to include any new assets
- * that have been registered since installation or the last update.
+ * Each release of GDK comes with a partial list of Liquid assets built-in.
+ * This call is used to update it to include all the registered Liquid assets
+ * or any new assets that have been registered since the last update.
  */
-GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params, GA_json** output);
+GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params);
 
 /**
  *

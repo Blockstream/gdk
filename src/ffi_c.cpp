@@ -265,8 +265,8 @@ GDK_DEFINE_C_FUNCTION_3(
 GDK_DEFINE_C_FUNCTION_3(GA_http_request, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->http_request(*json_cast(params))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_refresh_assets, struct GA_session*, session, const GA_json*, params, GA_json**, output,
-    { *json_cast(output) = new nlohmann::json(session->refresh_assets(*json_cast(params))); });
+GDK_DEFINE_C_FUNCTION_2(GA_refresh_assets, struct GA_session*, session, const GA_json*, params,
+    { session->refresh_assets(*json_cast(params)); });
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_assets, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->get_assets(*json_cast(params))); });
