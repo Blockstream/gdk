@@ -4,7 +4,7 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 ninja-build clang{,-format,-tidy} git swig openjdk-11-jdk g++-mingw-w64-x86-64 curl cmake -yqq
+apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 ninja-build clang{,-format,-tidy} git swig openjdk-11-jdk g++-mingw-w64-x86-64 curl cmake libssl-dev -yqq
 update-java-alternatives -s java-1.11.0-openjdk-amd64
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
@@ -19,6 +19,7 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
 source /root/.cargo/env
 rustup component add rustfmt clippy
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
+cargo install cargo-audit
 
 mkdir /tmp/protoc && \
     cd /tmp/protoc && \

@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:3415685740f310259f8c5713bc60f3c90e429d8dc1c77e0eb1d76e7924374e39
+image: greenaddress/ci@sha256:c59bf60ceb7f2e91290a8f243b258443318e6deb31ba4cc905547d241204878e
 
 stages:
   - format
@@ -169,6 +169,17 @@ test_rust:
     - cd subprojects/gdk_rust
     - export WALLY_DIR=/prebld/gcc/libwally-core/build/lib
     - RUST_BACKTRACE=1 timeout 20m cargo test -- --nocapture --test-threads 6
+
+rust_audit:
+  stage: test
+  tags:
+    - ga
+  script:
+    - source /root/.cargo/env
+    - rustup override set 1.64.0
+    - cd subprojects/gdk_rust/
+    - cargo audit -D warnings --ignore RUSTSEC-2021-0127
+  allow_failure: true
 
 test_osx_clang:
   extends: .osx_test
