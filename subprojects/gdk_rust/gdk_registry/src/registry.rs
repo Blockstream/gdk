@@ -3,16 +3,14 @@ use std::fs::{self, File, OpenOptions};
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
-use gdk_common::log::{debug, info, warn};
+use gdk_common::log::{debug, warn};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::params::{ElementsNetwork, RefreshAssetsParams};
 use crate::registry_infos::{RegistryAssets, RegistryIcons, RegistrySource};
-use crate::AssetsOrIcons;
-use crate::LastModified;
-use crate::{cache, hard_coded, http};
-use crate::{Error, Result};
+use crate::{cache, file, hard_coded, http};
+use crate::{AssetsOrIcons, Error, LastModified, RegistryInfos, Result};
 
 type LastModifiedFiles = HashMap<ElementsNetwork, Mutex<File>>;
 type RegistryFiles = HashMap<(ElementsNetwork, AssetsOrIcons), Mutex<File>>;
@@ -67,83 +65,97 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn get_assets(params: &RefreshAssetsParams) -> Result<(RegistryAssets, RegistrySource)> {
-    let (mut assets, source) = fetch::<RegistryAssets>(AssetsOrIcons::Assets, params)?;
+pub(crate) fn refresh_assets(params: &RefreshAssetsParams) -> Result<RegistrySource> {
+    match refresh::<RegistryAssets>(AssetsOrIcons::Assets, params)? {
+        Some(mut assets) => {
+            let len = assets.len();
+            debug!("downloaded {} assets", assets.len());
+            assets.retain(|_, entry| entry.verifies().unwrap_or(false));
+            if assets.len() != len {
+                warn!("{} assets didn't verify!", len - assets.len());
+            }
+            if let Some(xpub) = params.xpub {
+                cache::update_missing_assets(xpub, &assets)?;
+            }
+            Ok(RegistrySource::Downloaded)
+        }
 
-    if matches!(source, RegistrySource::Downloaded) {
-        let len = assets.len();
-        debug!("downloaded {} assets", assets.len());
-        assets.retain(|_, entry| entry.verifies().unwrap_or(false));
-        if assets.len() != len {
-            warn!("{} assets didn't verify!", len - assets.len());
-        }
-        if let Some(xpub) = params.xpub {
-            cache::update_missing_assets(xpub, &assets)?;
-        }
+        _ => Ok(RegistrySource::NotModified),
     }
-
-    assets.extend(hard_coded::assets(params.network()));
-
-    Ok((assets, source))
 }
 
-pub(crate) fn get_icons(params: &RefreshAssetsParams) -> Result<(RegistryIcons, RegistrySource)> {
-    let (mut icons, source) = fetch::<RegistryIcons>(AssetsOrIcons::Icons, params)?;
-
-    if matches!(source, RegistrySource::Downloaded) {
-        debug!("downloaded {} icons", icons.len());
-        if let Some(xpub) = params.xpub {
-            cache::update_missing_icons(xpub, &icons)?;
+pub(crate) fn refresh_icons(params: &RefreshAssetsParams) -> Result<RegistrySource> {
+    match refresh::<RegistryIcons>(AssetsOrIcons::Icons, params)? {
+        Some(icons) => {
+            debug!("downloaded {} icons", icons.len());
+            if let Some(xpub) = params.xpub {
+                cache::update_missing_icons(xpub, &icons)?;
+            }
+            Ok(RegistrySource::Downloaded)
         }
+
+        _ => Ok(RegistrySource::NotModified),
     }
-
-    icons.extend(hard_coded::icons(params.network()));
-
-    Ok((icons, source))
 }
 
-/// TODO: docs
+/// Returns all the local assets and icons.
+pub(crate) fn get_full(network: ElementsNetwork) -> Result<RegistryInfos> {
+    let assets = {
+        let mut v = fetch::<RegistryAssets>(network, AssetsOrIcons::Assets)?;
+        v.extend(hard_coded::assets(network));
+        v
+    };
+
+    let icons = {
+        let mut v = fetch::<RegistryIcons>(network, AssetsOrIcons::Icons)?;
+        v.extend(hard_coded::icons(network));
+        v
+    };
+
+    Ok(RegistryInfos::new(assets, icons))
+}
+
 fn fetch<T: Default + Serialize + DeserializeOwned>(
+    network: ElementsNetwork,
+    what: AssetsOrIcons,
+) -> Result<T> {
+    let file = &mut *get_registry_file(network, what)?;
+
+    match file::read::<T>(file) {
+        Ok(value) => Ok(value),
+
+        Err(err) => {
+            warn!("couldn't deserialize local {} due to {}", what, err);
+            file::write(&T::default(), file)?;
+            Ok(T::default())
+        }
+    }
+}
+
+fn refresh<T: Serialize + DeserializeOwned>(
     what: AssetsOrIcons,
     params: &RefreshAssetsParams,
-) -> Result<(T, RegistrySource)> {
+) -> Result<Option<T>> {
     let file = &mut *get_registry_file(params.network(), what)?;
 
-    if !params.should_refresh() {
-        info!("returning local {}", what);
-        let value = match crate::file::read::<T>(file) {
-            Ok(v) => v,
-
-            Err(err) => {
-                warn!("couldn't deserialize local {} due to {}", what, err);
-                crate::file::write(&T::default(), file)?;
-                T::default()
-            }
-        };
-        Ok((value, RegistrySource::LocalRegistry))
+    let last_modified = if file::read::<T>(file).is_ok() {
+        get_last_modified(params.network(), what)?
     } else {
-        let (value, last_modified) = match crate::file::read::<T>(file) {
-            Ok(value) => (value, get_last_modified(params.network(), what)?),
+        String::new()
+    };
 
-            Err(err) => {
-                warn!("couldn't deserialize local {} due to {}", what, err);
-                (T::default(), String::new())
-            }
-        };
+    match http::call(&params.url(what), &params.agent()?, &last_modified)? {
+        Some((value, new_modified)) => {
+            debug!("fetched {} were last modified {}", what, new_modified);
+            let downloaded = serde_json::from_value::<T>(value)?;
+            file::write(&downloaded, file)?;
+            set_last_modified(new_modified, params.network(), what)?;
+            Ok(Some(downloaded))
+        }
 
-        match http::call(&params.url(what), &params.agent()?, &last_modified)? {
-            Some((value, new_modified)) => {
-                debug!("fetched {} were last modified {}", what, new_modified);
-                let downloaded = serde_json::from_value::<T>(value)?;
-                crate::file::write(&downloaded, file)?;
-                set_last_modified(new_modified, params.network(), what)?;
-                Ok((downloaded, RegistrySource::Downloaded))
-            }
-
-            None => {
-                debug!("local {} are up to date", what);
-                Ok((value, RegistrySource::NotModified))
-            }
+        _ => {
+            debug!("local {} are up to date", what);
+            Ok(None)
         }
     }
 }

@@ -89,8 +89,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 
     log::debug!("{:?} are not already cached", not_cached);
 
-    let params = RefreshAssetsParams::new(true, true, false, config, Some(xpub));
-    let registry = self::refresh_assets(params)?;
+    let registry = registry::get_full(config.network)?;
 
     // The returned infos are marked as being from the registry if at least one
     // of the returned assets is from the full asset registry.
@@ -151,7 +150,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 /// default, the Liquid mainnet network is used and the asset registry used is
 /// managed by Blockstream and no proxy is used to access it. This default
 /// configuration can be overridden by providing the `params.config` parameter.
-pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
+pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistrySource> {
     if !params.wants_something() {
         return Err(Error::BothAssetsIconsFalse);
     }
@@ -163,24 +162,22 @@ pub fn refresh_assets(params: RefreshAssetsParams) -> Result<RegistryInfos> {
         thread::spawn(move || {
             params
                 .wants_assets()
-                .then(|| registry::get_assets(&params))
+                .then(|| registry::refresh_assets(&params))
                 .transpose()
                 .map(Option::unwrap_or_default)
         })
     };
 
-    let (icons, icons_source) = params
+    let icons_source = params
         .wants_icons()
         // forces multiline formatting
-        .then(|| registry::get_icons(&params))
+        .then(|| registry::refresh_icons(&params))
         .transpose()?
         .unwrap_or_default();
 
-    let (assets, assets_source) = assets_handle.join().unwrap()?;
+    let assets_source = assets_handle.join().unwrap()?;
 
-    let source = assets_source.merge(icons_source);
-
-    Ok(RegistryInfos::new_with_source(assets, icons, source))
+    Ok(RegistrySource::merge(assets_source, icons_source))
 }
 
 #[cfg(test)]
@@ -254,16 +251,18 @@ mod tests {
         }
     }
 
-    fn refresh_assets(refresh: bool, assets: bool, icons: bool) -> Result<RegistryInfos> {
+    fn refresh_assets(assets: bool, icons: bool) -> Result<RegistrySource> {
         let server = Server::run();
 
-        let config =
-            refresh.then(|| local_server_config(&server, assets, icons)).unwrap_or_default();
-
+        let config = local_server_config(&server, assets, icons);
         let xpub = ExtendedPubKey::from_str(DEFAULT_XPUB)?;
-        let params = RefreshAssetsParams::new(assets, icons, refresh, config, Some(xpub));
+        let params = RefreshAssetsParams::new(assets, icons, config, Some(xpub));
 
         super::refresh_assets(params)
+    }
+
+    fn get_full_registry() -> RegistryInfos {
+        registry::get_full(ElementsNetwork::Liquid).unwrap()
     }
 
     const DEFAULT_ASSETS: [&str; 2] = [
@@ -307,66 +306,37 @@ mod tests {
                 };
 
             // Either assets or icons must be requested
-            assert!(refresh_assets(true, false, false).is_err());
+            assert!(refresh_assets(false, false).is_err());
 
-            // refresh false, asset true (no cache), icons true (no cache)
-            let value = refresh_assets(false, true, true).unwrap();
+            // asset true (no cache), icons true (no cache)
+            let value = get_full_registry();
             assert_eq!(value.assets.len(), hard_coded_values.len());
             assert_eq!(value.icons.len(), 1);
-            assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
 
-            // refresh false, asset true (no cache), icons false (no cache)
-            let value = refresh_assets(false, true, false).unwrap();
-            assert_eq!(value.assets.len(), hard_coded_values.len());
-            assert!(value.icons.is_empty());
-            assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
+            // refresh assets but not icons
+            let source = refresh_assets(true, false).unwrap();
+            assert_eq!(source, RegistrySource::Downloaded);
 
-            // refresh false, asset false (no cache), icons true (no cache)
-            let value = refresh_assets(false, false, true).unwrap();
-            assert!(value.assets.is_empty());
-            assert_eq!(value.icons.len(), 1);
-            assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
+            // refresh icons but not assets
+            let source = refresh_assets(false, true).unwrap();
+            assert_eq!(source, RegistrySource::Downloaded);
 
-            // refresh true, asset true, icons false (no cache)
-            let value = refresh_assets(true, true, false).unwrap();
+            let value = get_full_registry();
             assert!(value.assets.get(&policy_asset).is_some());
-            assert!(value.icons.is_empty());
-            assert_eq!(value.source, Some(RegistrySource::Downloaded));
 
-            // refresh false, asset false, icons true (no cache)
-            let value = refresh_assets(false, false, true).unwrap();
-            assert!(value.assets.is_empty());
-            assert_eq!(value.icons.len(), 1);
-            assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
-
-            // refresh true, asset true, icons true (no cache)
-            // {"asset": data, "icons": data}
-            let value = refresh_assets(true, true, true).unwrap();
-            assert!(value.assets.get(&policy_asset).is_some());
-            assert!(!value.icons.is_empty());
-            assert_eq!(value.source, Some(RegistrySource::Downloaded));
-
-            let now = std::time::Instant::now();
             // check 304
-            let value = refresh_assets(true, true, true).unwrap();
-            assert!(value.assets.get(&policy_asset).is_some());
-            assert!(!value.icons.is_empty());
-            assert_eq!(value.source, Some(RegistrySource::NotModified));
+            let now = std::time::Instant::now();
+            let source = refresh_assets(true, true).unwrap();
+            assert_eq!(source, RegistrySource::NotModified);
             println!("not modified took {:?}", now.elapsed());
 
-            let now = std::time::Instant::now();
-            // cache read
-            let value = refresh_assets(false, true, true).unwrap();
-            assert!(value.assets.get(&policy_asset).is_some());
-            assert!(!value.icons.is_empty());
-            assert_eq!(value.source, Some(RegistrySource::LocalRegistry));
-            println!("cache read {:?}", now.elapsed());
+            let value = get_full_registry();
 
             // concurrent access
             // TODO: interleaved write
             let mut handles = vec![];
             for _ in 0..5 {
-                let handle = std::thread::spawn(move || refresh_assets(false, true, true).unwrap());
+                let handle = std::thread::spawn(move || get_full_registry());
                 handles.push(handle);
             }
             while let Some(handle) = handles.pop() {
@@ -434,8 +404,10 @@ mod tests {
             let hard_coded_assets = hard_coded::assets(ElementsNetwork::Liquid);
             let hard_coded_icons = hard_coded::icons(ElementsNetwork::Liquid);
 
-            let res = refresh_assets(true, true, true).unwrap();
-            assert_eq!(res.source, Some(RegistrySource::Downloaded));
+            let source = refresh_assets(true, true).unwrap();
+            assert_eq!(source, RegistrySource::Downloaded);
+
+            let res = get_full_registry();
             assert!(res.assets.len() > hard_coded_assets.len());
             assert!(res.icons.len() > hard_coded_icons.len());
 
@@ -445,21 +417,22 @@ mod tests {
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Assets).unwrap();
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Icons).unwrap();
 
-            let res = refresh_assets(false, true, true).unwrap();
-            assert_eq!(res.source, Some(RegistrySource::LocalRegistry));
+            let res = get_full_registry();
             assert_eq!(res.assets.len(), hard_coded_assets.len());
             assert_eq!(res.icons.len(), hard_coded_icons.len());
 
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Assets).unwrap();
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Icons).unwrap();
 
-            let res = refresh_assets(true, true, true).unwrap();
-            assert_eq!(res.source, Some(RegistrySource::Downloaded));
+            let source = refresh_assets(true, true).unwrap();
+            assert_eq!(source, RegistrySource::Downloaded);
+
+            let res = get_full_registry();
             assert!(res.assets.len() > hard_coded_assets.len());
             assert!(res.icons.len() > hard_coded_icons.len());
 
-            let res = refresh_assets(true, true, true).unwrap();
-            assert_eq!(res.source, Some(RegistrySource::NotModified));
+            let res = refresh_assets(true, true).unwrap();
+            assert_eq!(res, RegistrySource::NotModified);
         }
 
         #[test]
@@ -476,7 +449,7 @@ mod tests {
 
             // updating the local registry, now those assets should be added to
             // the cache.
-            let _ =  refresh_assets(true, true, true).unwrap();
+             refresh_assets(true, true).unwrap();
 
             let res = get_assets(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
             assert_eq!(res.assets.len(), 2);
@@ -491,9 +464,13 @@ mod tests {
             info!("{:?}", temp_dir);
             init(&temp_dir).unwrap();
 
-            let icons = refresh_assets(true, true, true).unwrap().icons;
+            refresh_assets(true, true).unwrap();
+            let icons = get_full_registry().icons;
+
             assets_or_icons::test::update_liquid_data();
-            let new_icons = refresh_assets(true, true, true).unwrap().icons;
+
+            refresh_assets(true, true).unwrap();
+            let new_icons = get_full_registry().icons;
 
             assert!(new_icons.len() > icons.len(), "{} vs {}", new_icons.len(), icons.len());
 
@@ -522,12 +499,12 @@ mod tests {
             assets_or_icons::test::update_liquid_data();
 
             // Not updating the icons.
-            refresh_assets(true, true, false).unwrap();
+            refresh_assets(true, false).unwrap();
             let res = get_assets(Some(&[ID]), None).unwrap();
             assert_eq!(res.icons.len(), 0);
 
             // Now updating the icons.
-            refresh_assets(true, false, true).unwrap();
+            refresh_assets(false, true).unwrap();
             let res = get_assets(Some(&[ID]), None).unwrap();
             assert_eq!(res.icons.len(), 1);
         }

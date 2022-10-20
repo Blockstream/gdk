@@ -2,15 +2,14 @@ use std::collections::HashMap;
 use std::fmt;
 
 use gdk_common::elements::AssetId;
-use serde::{Deserialize, Serialize};
+use serde::{ser, Deserialize, Serialize};
 
 use crate::asset_entry::AssetEntry;
 
 pub(crate) type RegistryAssets = HashMap<AssetId, AssetEntry>;
 pub(crate) type RegistryIcons = HashMap<AssetId, String>;
 
-/// Asset informations returned by both [`crate::get_assets`] and
-/// [`crate::refresh_assets`].
+/// Asset informations returned by [`get_assets`](crate::get_assets).
 #[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RegistryInfos {
     /// Assets metadata.
@@ -48,8 +47,8 @@ impl fmt::Debug for RegistryInfos {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) enum RegistrySource {
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize)]
+pub enum RegistrySource {
     Cache,
     Downloaded,
     LocalRegistry,
@@ -59,6 +58,15 @@ pub(crate) enum RegistrySource {
 impl Default for RegistrySource {
     fn default() -> Self {
         Self::LocalRegistry
+    }
+}
+
+impl ser::Serialize for RegistrySource {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_unit()
     }
 }
 

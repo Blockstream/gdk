@@ -21,12 +21,6 @@ pub struct RefreshAssetsParams {
     #[serde(default)]
     icons: bool,
 
-    /// Whether to update the local registry via an HTTP call to the asset
-    /// registry. If `false` no network calls are performed and the locally
-    /// stored value is returned.
-    #[serde(default)]
-    refresh: bool,
-
     /// Options to configure network used and registry connection.
     #[serde(default)]
     config: Config,
@@ -48,24 +42,13 @@ impl RefreshAssetsParams {
     }
 
     /// Creates a new [`crate::RefreshAssetsParams`].
-    pub fn new(
-        assets: bool,
-        icons: bool,
-        refresh: bool,
-        config: Config,
-        xpub: Option<ExtendedPubKey>,
-    ) -> Self {
+    pub fn new(assets: bool, icons: bool, config: Config, xpub: Option<ExtendedPubKey>) -> Self {
         Self {
             assets,
             icons,
-            refresh,
             config,
             xpub,
         }
-    }
-
-    pub(crate) const fn should_refresh(&self) -> bool {
-        self.refresh
     }
 
     pub(crate) fn url(&self, what: AssetsOrIcons) -> String {
