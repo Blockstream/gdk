@@ -187,9 +187,8 @@ GDK_API int GA_http_request(struct GA_session* session, const GA_json* params, G
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  *
  * Each release of GDK comes with a list of the latest registered Liquid
- * assets built-in. This call is used to return this data and/or to update
- * it to include any new assets that have been registered since installation
- * or the last update.
+ * assets built-in. This call is used to update it to include any new assets
+ * that have been registered since installation or the last update.
  */
 GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params, GA_json** output);
 

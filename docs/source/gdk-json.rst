@@ -1782,8 +1782,7 @@ Asset parameters JSON
 
    {
       "assets": true,
-      "icons": true,
-      "refresh": true
+      "icons": true
    }
 
 .. _get-assets-params:
