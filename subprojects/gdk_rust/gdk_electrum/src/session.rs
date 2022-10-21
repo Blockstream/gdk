@@ -41,6 +41,7 @@ impl Session for ElectrumSession {
             master_xprv: None,
             recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
             xr_cache: ExchangeRatesCache::default(),
+            first_sync: Arc::new(AtomicBool::new(true)),
         })
     }
 

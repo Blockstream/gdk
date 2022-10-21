@@ -144,6 +144,8 @@ pub struct ElectrumSession {
     pub recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
 
     xr_cache: ExchangeRatesCache,
+
+    first_sync: Arc<AtomicBool>,
 }
 
 #[derive(Clone)]
@@ -622,6 +624,7 @@ impl ElectrumSession {
         // works while another don't. Once we categorize the disconnection by endpoint we can
         // monitor state of every network call.
         let state_updater = self.state_updater()?;
+        let first_sync = self.first_sync.clone();
 
         let syncer_tipper_handle = thread::spawn(move || {
             info!("starting syncer & tipper thread");
@@ -642,9 +645,7 @@ impl ElectrumSession {
                 }
             };
 
-            let mut first_sync = true;
-
-            let mut sync = |client: &Client| {
+            let sync = |client: &Client| {
                 match syncer.sync(&client) {
                     Ok(tx_ntfs) => {
                         state_updater.update_if_needed(true);
@@ -652,13 +653,13 @@ impl ElectrumSession {
                         // first call to sync. This allows us to _not_ notify
                         // transactions that were sent or received before
                         // login.
-                        if !first_sync {
+                        if !first_sync.load(Ordering::Relaxed) {
                             for ntf in tx_ntfs.iter() {
                                 info!("there are new transactions");
                                 notify.updated_txs(ntf);
                             }
                         }
-                        first_sync = false;
+                        first_sync.store(false, Ordering::Relaxed);
                     }
                     Err(e) => {
                         state_updater.update_if_needed(false);

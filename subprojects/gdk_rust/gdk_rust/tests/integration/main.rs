@@ -1,2 +1,2 @@
-// mod integration;
+mod integration;
 mod psbt;
