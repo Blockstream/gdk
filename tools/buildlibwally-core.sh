@@ -11,7 +11,7 @@ WALLYCORE_BLDDIR=${GDK_BUILD_ROOT}/libwally-core
     git checkout ${SECP_COMMIT}
     cd ${WALLYCORE_SRCDIR}
     touch .${SECP_COMMIT}
-    make clean -k || echo >/dev/null
+    #make clean -k || echo >/dev/null
 #fi
 
 if [ ! -d "${WALLYCORE_BLDDIR}" ]; then
