@@ -222,16 +222,16 @@ namespace sdk {
         m_request.set(beast::http::field::host, m_host);
         m_request.set(beast::http::field::user_agent, "GreenAddress SDK");
 
-        const auto data_p = params.find("data");
-        if (data_p != params.end()) {
-            m_request.body() = data_p->dump();
-            m_request.prepare_payload();
-        }
-
         const auto headers = params.value("headers", nlohmann::json{});
         for (const auto& header : headers.items()) {
             const std::string value = header.value();
             m_request.set(beast::http::string_to_field(header.key()), value);
+        }
+
+        const auto data_p = params.find("data");
+        if (data_p != params.end()) {
+            m_request.body() = data_p->dump();
+            m_request.prepare_payload();
         }
 
         m_accept = params.value("accept", "");
