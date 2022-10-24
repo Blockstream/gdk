@@ -229,11 +229,9 @@ namespace sdk {
         }
 
         const auto headers = params.value("headers", nlohmann::json{});
-        if (!headers.empty()) {
-            for (const auto& header : headers.items()) {
-                const std::string value = header.value();
-                m_request.set(beast::http::string_to_field(header.key()), value);
-            }
+        for (const auto& header : headers.items()) {
+            const std::string value = header.value();
+            m_request.set(beast::http::string_to_field(header.key()), value);
         }
 
         m_accept = params.value("accept", "");
