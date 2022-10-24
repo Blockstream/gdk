@@ -29,6 +29,5 @@ bitcoin = { version = "0.29", features = [ "serde" ] }
 elements = { version = "0.20", features = ["serde"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
 electrsd = { version = "0.21.0", features = [ "legacy" ] }
-ureq = { version = "2.4.0", features = ["json", "socks-proxy", "gzip", "brotli"] }
 env_logger = "0.9.0"
 base64 = "0.13"

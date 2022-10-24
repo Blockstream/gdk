@@ -405,7 +405,7 @@ dependencies = [
  "electrum-client",
  "log",
  "nix",
- "ureq 2.4.0",
+ "ureq 2.5.0",
  "zip",
 ]
 
@@ -621,7 +621,7 @@ dependencies = [
  "strum_macros",
  "tempfile",
  "thiserror",
- "ureq 2.4.0",
+ "ureq 2.5.0",
 ]
 
 [[package]]
@@ -680,7 +680,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
- "ureq 2.4.0",
 ]
 
 [[package]]
@@ -1809,9 +1808,9 @@ dependencies = [
 
 [[package]]
 name = "ureq"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9399fa2f927a3d327187cbd201480cee55bee6ac5d3c77dd27f0c6814cff16d5"
+checksum = "b97acb4c28a254fd7a4aeec976c46a7fa404eac4d7c134b30c75144846d7cb8f"
 dependencies = [
  "base64",
  "brotli-decompressor",
