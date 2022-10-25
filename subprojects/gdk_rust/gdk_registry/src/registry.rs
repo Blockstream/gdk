@@ -10,7 +10,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use crate::params::{ElementsNetwork, RefreshAssetsParams};
 use crate::registry_infos::{RegistryAssets, RegistryIcons, RegistrySource};
 use crate::{cache, file, hard_coded, http};
-use crate::{AssetsOrIcons, Error, LastModified, RegistryInfos, Result};
+use crate::{AssetEntry, AssetsOrIcons, Error, LastModified, RegistryInfos, Result};
 
 type LastModifiedFiles = HashMap<ElementsNetwork, Mutex<File>>;
 type RegistryFiles = HashMap<(ElementsNetwork, AssetsOrIcons), Mutex<File>>;
@@ -113,6 +113,13 @@ pub(crate) fn get_full(network: ElementsNetwork) -> Result<RegistryInfos> {
     };
 
     Ok(RegistryInfos::new(assets, icons))
+}
+
+pub(crate) fn filter(
+    network: ElementsNetwork,
+    matcher: &dyn Fn(&AssetEntry, Option<&str>) -> bool,
+) -> Result<RegistryInfos> {
+    todo!()
 }
 
 fn fetch<T: Default + Serialize + DeserializeOwned>(

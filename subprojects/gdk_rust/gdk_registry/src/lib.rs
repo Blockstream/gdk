@@ -43,6 +43,7 @@ use assets_or_icons::AssetsOrIcons;
 use cache::Cache;
 use gdk_common::log;
 use last_modified::LastModified;
+use params::GetAssetsQuery;
 use registry_infos::RegistrySource;
 
 pub use asset_entry::AssetEntry;
@@ -64,11 +65,13 @@ pub fn init(dir: impl AsRef<Path>) -> Result<()> {
 /// avoid performing a full registry read on every call. The cache file stored
 /// on disk is encrypted via the wallet's xpub key.
 pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
-    let GetAssetsParams {
-        assets_id,
-        xpub,
-        config,
-    } = params;
+    let network = params.config.network;
+
+    let (assets_id, xpub) = match params.into_query()? {
+        GetAssetsQuery::FromCache(assets_id, xpub) => (assets_id, xpub),
+        GetAssetsQuery::FromRegistry(matcher) => return registry::filter(network, &*matcher),
+        GetAssetsQuery::WholeRegistry => return registry::get_full(network),
+    };
 
     let mut cache_files = cache::CACHE_FILES.lock()?;
     let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
@@ -89,7 +92,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 
     log::debug!("{:?} are not already cached", not_cached);
 
-    let registry = registry::get_full(config.network)?;
+    let registry = registry::get_full(network)?;
 
     // The returned infos are marked as being from the registry if at least one
     // of the returned assets is from the full asset registry.
@@ -281,11 +284,7 @@ mod tests {
 
         let xpub = ExtendedPubKey::from_str(xpub.unwrap_or(DEFAULT_XPUB))?;
 
-        super::get_assets(GetAssetsParams {
-            assets_id,
-            xpub,
-            config: Config::default(),
-        })
+        super::get_assets(GetAssetsParams::new_cache_query(assets_id, xpub, None))
     }
 
     rusty_fork_test! {

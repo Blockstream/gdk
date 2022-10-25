@@ -3,17 +3,116 @@ use gdk_common::elements::AssetId;
 use serde::{Deserialize, Serialize};
 
 use super::Config;
+use crate::AssetEntry;
 
 /// Parameters passed to [`crate::get_assets`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetAssetsParams {
-    pub(crate) assets_id: Vec<AssetId>,
+    #[serde(default)]
+    assets_id: Option<Vec<AssetId>>,
 
-    pub(crate) xpub: ExtendedPubKey,
+    xpub: ExtendedPubKey,
+
+    #[serde(default)]
+    names: Option<Vec<String>>,
+
+    #[serde(default)]
+    tickers: Option<Vec<String>>,
+
+    #[serde(default)]
+    category: Option<AssetCategory>,
 
     /// Options to configure network used and registry connection.
     #[serde(default)]
     pub(crate) config: Config,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AssetCategory {
+    All,
+    WithIcons,
+}
+
+/// Describes how a query to [`get_assets`](crate::get_assets) should be
+/// performed.
+pub(crate) enum GetAssetsQuery {
+    /// Fetch the assets metadata from the user's cache using a vec of
+    /// [`AssetId`] and the wallet's xpub.
+    FromCache(Vec<AssetId>, ExtendedPubKey),
+
+    /// Query the whole registry and filter it using a closure that takes two
+    /// arguments: an `AssetEntry` representing an asset and an optional string
+    /// slice representing that asset's icon (if it has one). The closure
+    /// returns `true` if the given `(asset, icon)` pair is matched by these
+    /// parameters.
+    FromRegistry(Box<dyn Fn(&AssetEntry, Option<&str>) -> bool>),
+
+    /// Simply return all the assets and icons in the local registry files.
+    WholeRegistry,
+}
+
+impl GetAssetsParams {
+    #[cfg(test)]
+    pub(crate) fn new_cache_query<I>(
+        assets_id: I,
+        xpub: ExtendedPubKey,
+        config: Option<Config>,
+    ) -> Self
+    where
+        I: IntoIterator<Item = AssetId>,
+    {
+        Self {
+            assets_id: Some(assets_id.into_iter().collect()),
+            xpub,
+            config: config.unwrap_or_default(),
+            names: None,
+            tickers: None,
+            category: None,
+        }
+    }
+
+    pub(crate) fn into_query(self) -> crate::Result<GetAssetsQuery> {
+        match (self.assets_id, self.names, self.tickers, self.category) {
+            // If both `assets_id` and any other field is set we return an
+            // error.
+            (Some(_), Some(_), _, _) | (Some(_), _, Some(_), _) | (Some(_), _, _, Some(_)) => {
+                // return error
+                todo!()
+            }
+
+            (None, _, _, Some(AssetCategory::All)) => Ok(GetAssetsQuery::WholeRegistry),
+
+            (None, None, None, None) => todo!(), // return error
+
+            (Some(assets_id), None, None, None) => {
+                Ok(GetAssetsQuery::FromCache(assets_id, self.xpub))
+            }
+
+            (None, names, tickers, category) => {
+                let matcher: Box<dyn Fn(&AssetEntry, Option<&str>) -> bool> =
+                    Box::new(move |asset, icon| {
+                        let mut matched = true;
+                        if let Some(names) = names.as_deref() {
+                            matched &= names.iter().any(|name| asset.name.contains(&**name));
+                        }
+                        if let Some(tickers) = tickers.as_deref() {
+                            if let Some(ticker) = asset.ticker.as_ref() {
+                                matched &= tickers.contains(ticker);
+                            } else {
+                                matched = false;
+                            }
+                        }
+                        if let Some(AssetCategory::WithIcons) = category {
+                            matched &= icon.is_some();
+                        }
+                        matched
+                    });
+
+                Ok(GetAssetsQuery::FromRegistry(matcher))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
