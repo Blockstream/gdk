@@ -119,7 +119,21 @@ pub(crate) fn filter(
     network: ElementsNetwork,
     matcher: &dyn Fn(&AssetEntry, Option<&str>) -> bool,
 ) -> Result<RegistryInfos> {
-    todo!()
+    let mut registry = get_full(network)?;
+
+    let matched_ids = registry
+        .assets
+        .iter()
+        .filter_map(|(id, asset)| {
+            let icon = registry.icons.get(id).map(|i| &**i);
+            matcher(asset, icon).then_some(id.clone())
+        })
+        .collect::<Vec<_>>();
+
+    registry.assets.retain(|id, _| matched_ids.contains(id));
+    registry.icons.retain(|id, _| matched_ids.contains(id));
+
+    Ok(registry)
 }
 
 fn fetch<T: Default + Serialize + DeserializeOwned>(
