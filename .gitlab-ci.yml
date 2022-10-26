@@ -168,7 +168,7 @@ test_rust:
     - rustup override set 1.64.0
     - cd subprojects/gdk_rust
     - export WALLY_DIR=/prebld/gcc/libwally-core/build/lib
-    - RUST_BACKTRACE=1 cargo test -- --nocapture
+    - RUST_BACKTRACE=1 timeout 20m cargo test -- --nocapture --test-threads 6
 
 test_osx_clang:
   extends: .osx_test
