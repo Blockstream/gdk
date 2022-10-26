@@ -1586,6 +1586,7 @@ fn spv_cross_validate() {
 
 // Test high-level session management, background validation and transaction status
 #[test]
+#[ignore] // FIXME improve test flakiness and restore
 fn spv_cross_validation_session() {
     let (mut test_session1, mut test_session2) = setup_forking_sessions(true);
 
