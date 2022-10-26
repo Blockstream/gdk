@@ -25,6 +25,17 @@ pub enum Error {
     #[error(transparent)]
     Common(#[from] gdk_common::Error),
 
+    /// Returned when both `assets_id` and some other field is set when calling
+    /// [`get_assets`](crate::get_assets).
+    #[error("Cannot call `get_assets` with both `assets_id` and another field set")]
+    GetAssetsIdNotAlone,
+
+    /// Returned when none of the fields of
+    /// [`GetAssetsParams`](crate::GetAssetsParams) are set when calling
+    /// [`get_assets`](crate::get_assets).
+    #[error("Specify either `assets_id` or one of more of the following fields when calling `get_assets`: `names`, `tickers`, `category`")]
+    GetAssetsNoFields,
+
     /// Wraps hex parsing error
     #[error(transparent)]
     Hex(#[from] elements::bitcoin::hashes::hex::Error),

@@ -3,7 +3,7 @@ use gdk_common::elements::AssetId;
 use serde::{Deserialize, Serialize};
 
 use super::Config;
-use crate::AssetEntry;
+use crate::{AssetEntry, Error};
 
 /// Parameters passed to [`crate::get_assets`].
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,7 +41,7 @@ pub(crate) enum GetAssetsQuery {
     /// [`AssetId`] and the wallet's xpub.
     FromCache(Vec<AssetId>, ExtendedPubKey),
 
-    /// Query the whole registry and filter it using a closure that takes two
+    /// Query the local registry and filter it using a closure that takes two
     /// arguments: an `AssetEntry` representing an asset and an optional string
     /// slice representing that asset's icon (if it has one). The closure
     /// returns `true` if the given `(asset, icon)` pair is matched by these
@@ -77,13 +77,12 @@ impl GetAssetsParams {
             // If both `assets_id` and any other field is set we return an
             // error.
             (Some(_), Some(_), _, _) | (Some(_), _, Some(_), _) | (Some(_), _, _, Some(_)) => {
-                // return error
-                todo!()
+                Err(Error::GetAssetsIdNotAlone)
             }
 
             (None, _, _, Some(AssetCategory::All)) => Ok(GetAssetsQuery::WholeRegistry),
 
-            (None, None, None, None) => todo!(), // return error
+            (None, None, None, None) => Err(Error::GetAssetsNoFields),
 
             (Some(assets_id), None, None, None) => {
                 Ok(GetAssetsQuery::FromCache(assets_id, self.xpub))
