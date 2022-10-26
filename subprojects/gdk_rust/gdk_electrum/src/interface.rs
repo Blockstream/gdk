@@ -13,7 +13,6 @@ pub enum ElectrumUrl {
 }
 
 impl ElectrumUrl {
-    /// returns error if both proxy and timeout are set
     pub fn build_client(&self, proxy: Option<&str>, timeout: Option<u8>) -> Result<Client, Error> {
         let mut config = ConfigBuilder::new();
 
