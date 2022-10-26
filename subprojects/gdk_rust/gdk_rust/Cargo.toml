@@ -28,6 +28,6 @@ electrum-client = { version = "0.12.0", default-features = false, features = [ "
 bitcoin = { version = "0.29", features = [ "serde" ] }
 elements = { version = "0.20", features = ["serde"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
-electrsd = { version = "0.21.0", features = [ "legacy" ] }
+electrsd = { version = "0.22.0", features = [ "legacy" ] }
 env_logger = "0.9.0"
 base64 = "0.13"
