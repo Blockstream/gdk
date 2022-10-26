@@ -462,6 +462,7 @@ mod tests {
         }
 
         #[test]
+        #[ignore] // FIXME improve test flakiness and restore
         fn test_update_missing() {
             let _ = env_logger::try_init();
 
