@@ -70,7 +70,8 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
         config,
     } = params;
 
-    let mut cache = Cache::from_xpub(xpub)?;
+    let mut cache_files = cache::CACHE_FILES.lock()?;
+    let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
 
     log::debug!("`get_assets` using cache {:?}", cache);
 
@@ -122,7 +123,7 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
     if !in_registry.is_empty() {
         log::debug!("{:?} found in the local asset registry", in_registry);
         cache.extend_from_registry(registry, &in_registry);
-        cache.update()?;
+        cache.update(&mut *cache_files)?;
         cached.extend(in_registry);
         from_cache = false;
     }
@@ -130,13 +131,13 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
     if !assets_not_in_disk.is_empty() {
         log::debug!("{:?} are not in the local asset registry", assets_not_in_disk);
         cache.register_missing_assets(assets_not_in_disk);
-        cache.update()?;
+        cache.update(&mut *cache_files)?;
     }
 
     if !icons_not_in_disk.is_empty() {
         log::debug!("{:?} are not in the local icons registry", icons_not_in_disk);
         cache.register_missing_icons(icons_not_in_disk);
-        cache.update()?;
+        cache.update(&mut *cache_files)?;
     }
 
     cache.filter(&cached);
@@ -462,7 +463,6 @@ mod tests {
         }
 
         #[test]
-        #[ignore] // FIXME improve test flakiness and restore
         fn test_update_missing() {
             let _ = env_logger::try_init();
 

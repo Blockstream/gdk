@@ -28,7 +28,7 @@ static CACHE_DIR: OnceCell<PathBuf> = OnceCell::new();
 /// Mapping from sha256(xpub) to the corresponding cache file.
 type CacheFiles = HashMap<String, File>;
 
-static CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new(|| {
+pub(crate) static CACHE_FILES: Lazy<Mutex<CacheFiles>> = Lazy::new(|| {
     // The cache files are initialized by listing all the files inside
     // `CACHE_DIR`.
 
@@ -123,9 +123,7 @@ impl Cache {
         self.icons.retain(|id, _| ids.contains(id));
     }
 
-    pub(crate) fn from_xpub(xpub: ExtendedPubKey) -> Result<Self> {
-        let mut cache_files = CACHE_FILES.lock()?;
-
+    pub(crate) fn from_xpub(xpub: ExtendedPubKey, cache_files: &mut CacheFiles) -> Self {
         let get_cache = |file: &mut File| -> Result<Self> {
             let cipher = xpub.to_cipher()?;
             let decrypted = file.decrypt(&cipher)?;
@@ -134,20 +132,20 @@ impl Cache {
 
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
             Some(file) => match get_cache(file) {
-                Ok(cache) => Ok::<_, Error>(cache),
+                Ok(cache) => cache,
 
                 Err(err) => {
                     warn!("couldn't deserialize cached file due to {}", err);
-                    Ok(Self::default())
+                    Self::default()
                 }
             },
 
-            _ => Ok(Self::default()),
-        }?;
+            _ => Self::default(),
+        };
 
         cache.xpub = Some(xpub);
 
-        Ok(cache)
+        cache
     }
 
     pub(crate) fn is_cached(&self, id: &AssetId) -> bool {
@@ -176,14 +174,12 @@ impl Cache {
         RegistryInfos::new_with_source(self.assets, self.icons, source)
     }
 
-    pub(crate) fn update(&self) -> Result<()> {
+    pub(crate) fn update(&self, cache_files: &mut CacheFiles) -> Result<()> {
         let xpub = self.xpub.unwrap();
 
         let plain_text = serde_cbor::to_vec(self)?;
         let cipher = xpub.to_cipher()?;
         let (nonce, rest) = plain_text.encrypt(&cipher)?;
-
-        let mut cache_files = CACHE_FILES.lock()?;
 
         let file = cache_files.entry(hash_xpub(xpub)).or_insert_with_key(|hash| {
             let cache_path =
@@ -244,17 +240,19 @@ impl From<Cache> for RegistryInfos {
 /// Removes `assets` from the [`Cache::missing_assets`] section of the
 /// cache file associated to `xpub`.
 pub(crate) fn update_missing_assets(xpub: ExtendedPubKey, assets: &RegistryAssets) -> Result<()> {
-    let mut cache = Cache::from_xpub(xpub)?;
+    let mut cache_files = CACHE_FILES.lock()?;
+    let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
     cache.update_missing_assets(assets);
-    cache.update()
+    cache.update(&mut *cache_files)
 }
 
 /// Removes `icons` from the [`Cache::missing_icons`] section of the
 /// cache file associated to `xpub`.
 pub(crate) fn update_missing_icons(xpub: ExtendedPubKey, icons: &RegistryIcons) -> Result<()> {
-    let mut cache = Cache::from_xpub(xpub)?;
+    let mut cache_files = CACHE_FILES.lock()?;
+    let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
     cache.update_missing_icons(icons);
-    cache.update()
+    cache.update(&mut *cache_files)
 }
 
 /// Returns the string representation of sha256(xpub).
