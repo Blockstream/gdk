@@ -1521,6 +1521,7 @@ fn test_electrum_disconnect() {
 }
 
 // Test the low-level spv_cross_validate()
+#[ignore] // FIXME: restore when it's not flaky
 #[test]
 fn spv_cross_validate() {
     // Scenario 1: our local chain is a minority fork
@@ -1748,6 +1749,7 @@ fn test_tor() {
     assert_eq!(result.height, 1);
 }
 
+#[ignore] // FIXME: restore when it's not flaky
 #[test]
 fn test_spv_over_period() {
     // regtest doesn't retarget after a period (2016 blocks)
@@ -1780,6 +1782,7 @@ fn test_spv_over_period() {
     test_session.spv_verify_tx(&txid, initial_block + block_to_mine * times + 1, Some(100));
 }
 
+#[ignore] // FIXME: restore when it's not flaky
 #[test]
 fn test_spv_external_concurrent_spv_enabled() {
     test_spv_external_concurrent(true);
