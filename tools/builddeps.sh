@@ -3,10 +3,11 @@ set -e
 
 if [ -z "${NUM_JOBS}" ]; then
     if [ -f /proc/cpuinfo ]; then
-        export NUM_JOBS=${NUM_JOBS:-$(cat /proc/cpuinfo | grep ^processor | wc -l)}
+        NUM_JOBS=${NUM_JOBS:-$(cat /proc/cpuinfo | grep ^processor | wc -l)}
     fi
-    export NUM_JOBS=${NUM_JOBS:-4}
+    NUM_JOBS=${NUM_JOBS:-4}
 fi
+export NUM_JOBS
 
 have_cmd()
 {
@@ -145,9 +146,14 @@ function prepare_sources {
     source_url=$1
     source_filename=$2
     source_hash=$3
-    tmp_folder=$4
-    curl -sL -o ${source_filename} ${source_url}
-    echo "${source_hash}  ${source_filename}" | shasum -a 256 -c 
+    if [ -f ${source_filename} ]; then
+        echo "${source_hash}  ${source_filename}" | shasum -a 256 -c || rm ${source_filename}
+    fi
+    if [ ! -f ${source_filename} ]; then
+        curl -sL -o ${source_filename} ${source_url}
+        echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
+    fi
+    tmp_folder="tmp"
     tar -zxf ${source_filename} -C ${tmp_folder}
     rm ${source_filename}
 }
@@ -177,7 +183,7 @@ source_hash="d755ca60bd68676fdf80a7116536b9dc06fa29d159eff264b8128d150854f7a8"
 secpurl="https://github.com/ElementsProject/secp256k1-zkp.git"
 # Update this line to the secp commit used in wally
 secpcommit="71a206fa5bbcbba5792fc6f9eb7e07c69555f2df"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 export WALLYCORE_SRCDIR=`pwd`/tmp/${source_name}
 export WALLYCORE_NAME=${source_name}
 export SECP_URL=${secpurl}
@@ -194,7 +200,7 @@ source_url="https://github.com/madler/zlib/archive/v1.2.12.tar.gz"
 source_name="zlib-1.2.12"
 source_filename="${source_name}.tar.gz"
 source_hash="d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 export ZLIB_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${ZLIB_SRCDIR}
 
@@ -205,7 +211,7 @@ source_url="https://github.com/libevent/libevent/archive/release-2.1.11-stable.t
 source_name="libevent-release-2.1.11-stable"
 source_filename="${source_name}.tar.gz"
 source_hash="229393ab2bf0dc94694f21836846b424f3532585bac3468738b7bf752c03901e"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 export LIBEVENT_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${LIBEVENT_SRCDIR}
 
@@ -216,7 +222,7 @@ source_url="https://github.com/openssl/openssl/archive/OpenSSL_1_1_1n.tar.gz"
 source_name="openssl-OpenSSL_1_1_1n"
 source_filename="${source_name}.tar.gz"
 source_hash="6b2d2440ced8c802aaa61475919f0870ec556694c466ebea460e35ea2b14839e"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${OPENSSL_SRCDIR}
 
@@ -227,7 +233,7 @@ source_url="https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boo
 source_name="boost_1_76_0"
 source_filename="boost-7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca.tar.gz"
 source_hash="7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BOOST_SRCDIR=`pwd`/tmp/${source_name}
 export PRJ_SUBDIR=${BOOST_SRCDIR}
 ${GDK_SOURCE_ROOT}/tools/build${name}.sh $C_COMPILER $BUILD
@@ -239,7 +245,7 @@ source_url="https://github.com/torproject/tor/archive/tor-0.4.2.7.tar.gz"
 source_name="tor-tor-0.4.2.7"
 source_filename="${source_name}.tar.gz"
 source_hash="526e61ebc5a8093fd0eadc2ebe9d61a413b183043d99bdef7ab95f5086d6601a"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 export TOR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${source_name} "tmp"
 # cleaning up tor's mess
@@ -255,7 +261,7 @@ source_url="https://github.com/nlohmann/json/archive/refs/tags/v3.10.5.tar.gz"
 source_name="json-3.10.5"
 source_filename="json-3.10.5.tar.gz"
 source_hash="5daca6ca216495edf89d167f808d1d03c4a4d929cef7da5e10f135ae1540c7e4"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 # cmake -S tmp/${source_name} -B tmp/${source_name}/build -DCMAKE_CXX_COMPILER=${CMAKE_COMPILER_PREFIX}${CXX_COMPILER} -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} -DJSON_BuildTests:BOOL=OFF
 # cmake --build tmp/${source_name}/build
 # cmake --install tmp/${source_name}/build
@@ -274,7 +280,7 @@ source_url="https://github.com/blockstream/websocketpp/archive/1026e877449aeee27
 source_name="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652"
 source_filename="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652.tar.gz"
 source_hash="82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 # cmake -S tmp/${source_name} -B tmp/${source_name}/build -DCMAKE_C_COMPILER=${CMAKE_COMPILER_PREFIX}${C_COMPILER} -DCMAKE_C_COMPILER_WORKS:BOOL=TRUE -DCMAKE_CXX_COMPILER=${CMAKE_COMPILER_PREFIX}${CXX_COMPILER} -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}
 # cmake --build tmp/${source_name}/build
 # cmake --install tmp/${source_name}/build
@@ -293,7 +299,7 @@ source_url="https://github.com/msgpack/msgpack-c/releases/download/cpp-4.1.1/msg
 source_name="msgpack-cxx-4.1.1"
 source_filename="msgpack-4.1.1.tar.gz"
 source_hash="8115c5edcf20bc1408c798a6bdaec16c1e52b1c34859d4982a0fb03300438f0b"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 # cmake -S tmp/${source_name} -B tmp/${source_name}/build -DCMAKE_CXX_COMPILER=${CMAKE_COMPILER_PREFIX}${CXX_COMPILER} -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} -DBOOST_ROOT:PATH=${GDK_BUILD_ROOT}/boost/build -DMSGPACK_CXX11:BOOL=ON
 # cmake --build tmp/${source_name}/build
 # cmake --install tmp/${source_name}/build
@@ -312,7 +318,7 @@ source_url="https://codeload.github.com/jgriffiths/autobahn-cpp/tar.gz/976e1f64b
 source_name="autobahn-cpp-976e1f64bf5bc5bf22d7b96e1447467d6e1c063f"
 source_filename="autobahn-cpp-68a79600efd6b4861e2155ce640108918c538312f6e7d8e1fc7f660d425c2b7c.tar.gz"
 source_hash="68a79600efd6b4861e2155ce640108918c538312f6e7d8e1fc7f660d425c2b7c"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 rm -f tmp/${source_name}/cmake/Modules/FindWebsocketpp.cmake
 rm -f tmp/${source_name}/cmake/Modules/FindMsgpack.cmake
 ${SED} -ie "s/Boost REQUIRED COMPONENTS program_options system thread random/Boost COMPONENTS system thread/g" tmp/${source_name}/cmake/Includes/CMakeLists.txt
@@ -335,7 +341,7 @@ source_url="https://github.com/microsoft/GSL/archive/a3534567187d2edc428efd3f134
 source_name="GSL-a3534567187d2edc428efd3f13466ff75fe5805c"
 source_filename="GSL-a3534567187d2edc428efd3f13466ff75fe5805c.tar.gz"
 source_hash="c0379cff645543d5076216bc5b22a3426de57796fc043527a24a6e494628d8a6"
-prepare_sources ${source_url} ${source_filename} ${source_hash} "tmp"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
 # cmake -S tmp/${source_name} -B tmp/${source_name}/build -DCMAKE_CXX_COMPILER=${CMAKE_COMPILER_PREFIX}${CXX_COMPILER} -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} -DGSL_STANDALONE_PROJECT:BOOL=OFF -DGSL_TEST:BOOL=OFF -DGSL_INSTALL:BOOL=ON
 # cmake --build tmp/${source_name}/build
 # cmake --install tmp/${source_name}/build
