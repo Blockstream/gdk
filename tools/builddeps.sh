@@ -146,16 +146,20 @@ function prepare_sources {
     source_url=$1
     source_filename=$2
     source_hash=$3
+    rm_downloaded=""
     if [ -f ${source_filename} ]; then
         echo "${source_hash}  ${source_filename}" | shasum -a 256 -c || rm ${source_filename}
     fi
     if [ ! -f ${source_filename} ]; then
         curl -sL -o ${source_filename} ${source_url}
         echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
+        rm_downloaded="yes"
     fi
     tmp_folder="tmp"
     tar -zxf ${source_filename} -C ${tmp_folder}
-    rm ${source_filename}
+    if [ -n "${rm_downloaded}" -a -z "${GDK_KEEP_DOWNLOADS}" ]; then
+        rm ${source_filename}
+    fi
 }
 
 function build {
