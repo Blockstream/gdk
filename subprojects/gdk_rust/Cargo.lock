@@ -397,9 +397,9 @@ checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "electrsd"
-version = "0.22.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84262b0a1a558b6cf33f0d0d833eb9916d74585edee1f8057ae80181698dfaa8"
+checksum = "0204c0695deabd4db9fe278ba26499a83cd35394297fd6b112bfea087e739e97"
 dependencies = [
  "bitcoin_hashes",
  "bitcoind",
