@@ -187,7 +187,12 @@ namespace sdk {
 
         nlohmann::json p = params;
 
-        p["xpub"] = get_nonnull_signer()->get_master_bip32_xpub();
+        // We only need to set the xpub if we're accessing the registry cache,
+        // which in turn only happens if we're querying via asset ids.
+        if (p.contains("assets_id")) {
+            p["xpub"] = get_nonnull_signer()->get_master_bip32_xpub();
+        }
+
         p["config"] = get_registry_config();
 
         try {
