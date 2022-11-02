@@ -17,9 +17,10 @@ rm ndk.zip
 curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
 
 source /root/.cargo/env
-rustup component add rustfmt clippy
+rustup component add rustfmt clippy llvm-tools-preview
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
 cargo install cargo-audit
+cargo install grcov
 
 mkdir /tmp/protoc && \
     cd /tmp/protoc && \

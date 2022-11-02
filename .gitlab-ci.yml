@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:c59bf60ceb7f2e91290a8f243b258443318e6deb31ba4cc905547d241204878e
+image: greenaddress/ci@sha256:ce29f1edcabbb8257ecf1091db633b69d0e9c4b5445d4c9b7430ff32f9148435
 
 stages:
   - format
@@ -160,12 +160,24 @@ gdk_clang_ndk_x86_64:
 test_rust:
   tags:
     - ga
+  variables:
+    WALLY_DIR: "/prebld/clang/libwally-core/build/lib"
+    RUSTFLAGS: "-C instrument-coverage"
+    RUST_BACKTRACE: "1"
+    LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
   script:
     - source /root/.cargo/env
-    - rustup override set 1.64.0
-    - cd subprojects/gdk_rust
-    - export WALLY_DIR=/prebld/gcc/libwally-core/build/lib
-    - RUST_BACKTRACE=1 timeout 20m cargo test -- --nocapture --test-threads 6
+    - timeout 20m cargo test --manifest-path subprojects/gdk_rust/Cargo.toml -- --nocapture --test-threads 6
+    - grcov --binary-path subprojects/gdk_rust/target/debug/ -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml -p `pwd` subprojects/gdk_rust
+  artifacts:
+    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
+    expire_in: 5 days
+    paths:
+      - coverage.xml
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 rust_audit:
   stage: test
