@@ -188,7 +188,8 @@ mod tests {
     use super::*;
     use crate::assets_or_icons::AssetsOrIcons;
     use crate::hard_coded;
-    use crate::params::ElementsNetwork;
+    use crate::params::test::GetAssetsBuilder;
+    use crate::params::{AssetCategory, ElementsNetwork};
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
     use gdk_common::elements::AssetId;
@@ -196,6 +197,7 @@ mod tests {
     use httptest::{matchers::*, responders::*, Expectation, Server};
     use rusty_fork::rusty_fork_test;
     use serde_json::Value;
+    use std::collections::{HashMap, HashSet};
     use std::path::Path;
     use std::str::FromStr;
 
@@ -276,15 +278,14 @@ mod tests {
     const DEFAULT_XPUB: &str = "tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm";
 
     fn get_assets(assets: Option<&[&str]>, xpub: Option<&str>) -> Result<RegistryInfos> {
-        let assets_id = assets
-            .unwrap_or(&DEFAULT_ASSETS)
-            .into_iter()
-            .flat_map(|s| AssetId::from_str(*s))
-            .collect::<Vec<_>>();
+        let assets_id =
+            assets.unwrap_or(&DEFAULT_ASSETS).into_iter().flat_map(|s| AssetId::from_str(*s));
 
         let xpub = ExtendedPubKey::from_str(xpub.unwrap_or(DEFAULT_XPUB))?;
 
-        super::get_assets(GetAssetsParams::new_cache_query(assets_id, xpub, None))
+        let params = GetAssetsBuilder::new().assets_id(assets_id, xpub).build();
+
+        super::get_assets(params)
     }
 
     rusty_fork_test! {
@@ -506,6 +507,76 @@ mod tests {
             refresh_assets(false, true).unwrap();
             let res = get_assets(Some(&[ID]), None).unwrap();
             assert_eq!(res.icons.len(), 1);
+        }
+
+        #[test]
+        fn get_assets_extended() {
+            let _ = env_logger::try_init();
+
+            let temp_dir = TempDir::new().unwrap();
+            info!("{:?}", temp_dir);
+            init(&temp_dir).unwrap();
+
+            let xpub = ExtendedPubKey::from_str(DEFAULT_XPUB).unwrap();
+
+            let hard_coded_values =
+                match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Assets) {
+                    Value::Object(h) => h,
+                    _ => panic!("must be value object"),
+                };
+
+            let hard_coded_icons =
+                match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Icons) {
+                    Value::Object(h) => h,
+                    _ => panic!("must be value object"),
+                };
+
+            // Not setting any field -> should error.
+            let params = GetAssetsBuilder::new().build();
+            assert!(matches!(super::get_assets(params), Err(Error::GetAssetsNoFields)));
+
+            // Setting both `assets_id` and another field -> should error.
+            let params = GetAssetsBuilder::new().assets_id([], xpub).names(Vec::<String>::new()).build();
+            assert!(matches!(super::get_assets(params), Err(Error::GetAssetsIdNotAlone)));
+
+            // Fetching the whole registry before doing any updates.
+            let params = GetAssetsBuilder::new().category(AssetCategory::All).build();
+            let res = super::get_assets(params.clone()).unwrap();
+            assert_eq!(res.assets.len(), hard_coded_values.len());
+            assert_eq!(res.icons.len(), hard_coded_icons.len());
+
+            // Update assets and redo same query -> we should get new assets.
+            refresh_assets(true, false).unwrap();
+            let new = super::get_assets(params.clone()).unwrap();
+            assert!(new.assets.len() > res.assets.len());
+
+            // Update icons and redo same query -> we should get new icons.
+            refresh_assets(false, true).unwrap();
+            let new = super::get_assets(params).unwrap();
+            assert!(new.assets.len() > res.assets.len());
+
+            let params = GetAssetsBuilder::new().category(AssetCategory::WithIcons).build();
+            let with_icons = super::get_assets(params).unwrap();
+            assert!(with_icons.assets.len() > 0);
+            // We should get the same number of assets and icons..
+            assert_eq!(with_icons.assets.len(), with_icons.icons.len());
+            // ..and the asset ids should match.
+            assert_eq!(with_icons.assets.keys().collect::<HashSet<_>>(), with_icons.icons.keys().collect::<HashSet<_>>());
+
+            // Manually filter all the assets with icons with ticker `LCAD`.
+            let icons_and_lcad = with_icons.assets
+                .iter()
+                .filter_map(|(id, asset)| {
+                    matches!(asset.ticker.as_deref(), Some("LCAD"))
+                        .then(|| (id.clone(), asset.clone()))
+                })
+                .collect::<HashMap<_, _>>();
+
+            // This should be the same as the following query.
+            let params = GetAssetsBuilder::new().category(AssetCategory::WithIcons).tickers(["LCAD"]).build();
+            let also_icons_and_lcad = super::get_assets(params).unwrap().assets;
+
+            assert_eq!(icons_and_lcad, also_icons_and_lcad);
         }
     }
 }

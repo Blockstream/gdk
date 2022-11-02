@@ -6,12 +6,13 @@ use super::Config;
 use crate::{AssetEntry, Error};
 
 /// Parameters passed to [`crate::get_assets`].
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct GetAssetsParams {
     #[serde(default)]
     assets_id: Option<Vec<AssetId>>,
 
-    xpub: ExtendedPubKey,
+    #[serde(default)]
+    xpub: Option<ExtendedPubKey>,
 
     #[serde(default)]
     names: Option<Vec<String>>,
@@ -27,9 +28,9 @@ pub struct GetAssetsParams {
     pub(crate) config: Config,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
-enum AssetCategory {
+pub(crate) enum AssetCategory {
     All,
     WithIcons,
 }
@@ -53,25 +54,6 @@ pub(crate) enum GetAssetsQuery {
 }
 
 impl GetAssetsParams {
-    #[cfg(test)]
-    pub(crate) fn new_cache_query<I>(
-        assets_id: I,
-        xpub: ExtendedPubKey,
-        config: Option<Config>,
-    ) -> Self
-    where
-        I: IntoIterator<Item = AssetId>,
-    {
-        Self {
-            assets_id: Some(assets_id.into_iter().collect()),
-            xpub,
-            config: config.unwrap_or_default(),
-            names: None,
-            tickers: None,
-            category: None,
-        }
-    }
-
     pub(crate) fn into_query(self) -> crate::Result<GetAssetsQuery> {
         match (self.assets_id, self.names, self.tickers, self.category) {
             // If both `assets_id` and any other field is set we return an
@@ -85,7 +67,7 @@ impl GetAssetsParams {
             (None, None, None, None) => Err(Error::GetAssetsNoFields),
 
             (Some(assets_id), None, None, None) => {
-                Ok(GetAssetsQuery::FromCache(assets_id, self.xpub))
+                Ok(GetAssetsQuery::FromCache(assets_id, self.xpub.unwrap()))
             }
 
             (None, names, tickers, category) => {
@@ -115,8 +97,57 @@ impl GetAssetsParams {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use super::*;
+
+    #[derive(Clone)]
+    pub(crate) struct GetAssetsBuilder(GetAssetsParams);
+
+    impl GetAssetsBuilder {
+        pub(crate) fn new() -> Self {
+            Self(GetAssetsParams::default())
+        }
+
+        pub(crate) fn assets_id<I: IntoIterator<Item = AssetId>>(
+            mut self,
+            ids: I,
+            xpub: ExtendedPubKey,
+        ) -> Self {
+            self.0.assets_id = Some(ids.into_iter().collect());
+            self.0.xpub = Some(xpub);
+            self
+        }
+
+        pub(crate) fn names<I: IntoIterator<Item = S>, S: Into<String>>(
+            mut self,
+            names: I,
+        ) -> Self {
+            self.0.names = Some(names.into_iter().map(Into::into).collect());
+            self
+        }
+
+        pub(crate) fn tickers<I: IntoIterator<Item = S>, S: Into<String>>(
+            mut self,
+            tickers: I,
+        ) -> Self {
+            self.0.tickers = Some(tickers.into_iter().map(Into::into).collect());
+            self
+        }
+
+        pub(crate) fn category(mut self, category: AssetCategory) -> Self {
+            self.0.category = Some(category);
+            self
+        }
+
+        pub(crate) fn _config(mut self, config: Config) -> Self {
+            self.0.config = config;
+            self
+        }
+
+        pub(crate) fn build(self) -> GetAssetsParams {
+            self.0
+        }
+    }
 
     #[test]
     fn test_deserialization() {

@@ -68,7 +68,7 @@ impl RefreshAssetsParams {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 /// Network configurations used when fetching assets via HTTP.
 pub struct Config {
     /// Defaults to Liquid mainnet.
