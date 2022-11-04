@@ -93,6 +93,7 @@ if [ ${BUILD} == "--gcc" ]; then
 elif [ ${BUILD} == "--clang" ]; then
     C_COMPILER="clang"
     CXX_COMPILER="clang++"
+    source tools/macos_env.sh
 elif [ ${BUILD} == "--ndk" ]; then
     C_COMPILER="clang"
     CXX_COMPILER="clang++"
