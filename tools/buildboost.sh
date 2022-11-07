@@ -51,7 +51,7 @@ $EXTRA_LINK_FLAGS
 ;
 EOF
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang target-os=android link=static release install
+    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang target-os=android link=static release install
     if [ "$(uname)" = "Darwin" ]; then
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
@@ -84,7 +84,7 @@ $EXTRA_LINK_FLAGS
 ;
 EOF
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-date_time --with-log --with-thread --with-system toolset=darwin-arm target-os=iphone link=static release install
+    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system toolset=darwin-arm target-os=iphone link=static release install
 elif [ \( "$BUILD" = "--windows" \) ]; then
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
@@ -100,7 +100,7 @@ $(compile_flags $@)
 EOF
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-date_time --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
+    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
 else
     TOOLSET=$COMPILER
     if [[ ${CC} = *"clang"* ]]; then
@@ -115,5 +115,5 @@ else
     cxxflags="$SDK_CFLAGS $EXTRAFLAGS -DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread --with-toolset=${TOOLSET}
     ./b2 --clean
-    ./b2 -j$NUM_JOBS --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install
+    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install
 fi
