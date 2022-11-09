@@ -115,12 +115,25 @@ pub(crate) fn get_full(network: ElementsNetwork) -> Result<RegistryInfos> {
     Ok(RegistryInfos::new(assets, icons))
 }
 
-pub(crate) fn filter(
+pub(crate) fn filter_full(
     network: ElementsNetwork,
     matcher: &dyn Fn(&AssetEntry, Option<&str>) -> bool,
 ) -> Result<RegistryInfos> {
-    let mut registry = get_full(network)?;
+    filter(get_full(network)?, matcher)
+}
 
+pub(crate) fn filter_hard_coded(
+    network: ElementsNetwork,
+    matcher: &dyn Fn(&AssetEntry, Option<&str>) -> bool,
+) -> Result<RegistryInfos> {
+    let registry = RegistryInfos::new(hard_coded::assets(network), hard_coded::icons(network));
+    filter(registry, matcher)
+}
+
+fn filter(
+    mut registry: RegistryInfos,
+    matcher: &dyn Fn(&AssetEntry, Option<&str>) -> bool,
+) -> Result<RegistryInfos> {
     let matched_ids = registry
         .assets
         .iter()

@@ -69,7 +69,10 @@ pub fn get_assets(params: GetAssetsParams) -> Result<RegistryInfos> {
 
     let (assets_id, xpub) = match params.into_query()? {
         GetAssetsQuery::FromCache(assets_id, xpub) => (assets_id, xpub),
-        GetAssetsQuery::FromRegistry(matcher) => return registry::filter(network, &*matcher),
+        GetAssetsQuery::FromRegistry(matcher) => return registry::filter_full(network, &*matcher),
+        GetAssetsQuery::FromHardCoded(matcher) => {
+            return registry::filter_hard_coded(network, &*matcher)
+        }
         GetAssetsQuery::WholeRegistry => return registry::get_full(network),
     };
 
@@ -577,6 +580,12 @@ mod tests {
             let also_icons_and_lcad = super::get_assets(params).unwrap().assets;
 
             assert_eq!(icons_and_lcad, also_icons_and_lcad);
+
+            // Get hard coded assets
+            let params = GetAssetsBuilder::new().category(AssetCategory::HardCoded).build();
+            let res = super::get_assets(params).unwrap();
+            assert_eq!(res.assets, hard_coded::assets(ElementsNetwork::Liquid));
+            assert_eq!(res.icons, hard_coded::icons(ElementsNetwork::Liquid));
         }
     }
 }

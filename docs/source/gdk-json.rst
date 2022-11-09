@@ -1803,9 +1803,10 @@ or by specifying one or more of the following attributes:
 
 :names: a list of strings representing asset names;
 :tickers: a list of strings representing asset tickers:
-:category: must be either ``"with_icons"``, in which case only assets that have
-           icons associated to them will be returned, or ``"all"``, in which
-           case all the locally-stored assets and icons will be returned.
+:category: must be one of:
+        - ``"with_icons"``: only assets that have icons associated to them will be returned;
+        - ``"hard_coded"``: only assets bundled in the GDK release will be returned;
+        - ``"all"``: all the locally-stored assets and icons will be returned.
 
 Specifying multiple attributes is interpreted as a logical AND. For example,
 ``{"category": "with_icons", "tickers": ["LCAD"]}`` will return all the assets

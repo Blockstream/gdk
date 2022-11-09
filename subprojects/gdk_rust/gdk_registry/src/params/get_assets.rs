@@ -28,10 +28,11 @@ pub struct GetAssetsParams {
     pub(crate) config: Config,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Copy, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum AssetCategory {
     All,
+    HardCoded,
     WithIcons,
 }
 
@@ -48,6 +49,10 @@ pub(crate) enum GetAssetsQuery {
     /// returns `true` if the given `(asset, icon)` pair is matched by these
     /// parameters.
     FromRegistry(Box<dyn Fn(&AssetEntry, Option<&str>) -> bool>),
+
+    /// Same as `FromRegistry`, except the input asset and icon are restricted
+    /// to the hard coded ones and not the whole liquid registry.
+    FromHardCoded(Box<dyn Fn(&AssetEntry, Option<&str>) -> bool>),
 
     /// Simply return all the assets and icons in the local registry files.
     WholeRegistry,
@@ -90,7 +95,11 @@ impl GetAssetsParams {
                         matched
                     });
 
-                Ok(GetAssetsQuery::FromRegistry(matcher))
+                if let Some(AssetCategory::HardCoded) = category {
+                    Ok(GetAssetsQuery::FromHardCoded(matcher))
+                } else {
+                    Ok(GetAssetsQuery::FromRegistry(matcher))
+                }
             }
         }
     }
