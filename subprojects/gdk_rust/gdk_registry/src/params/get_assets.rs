@@ -75,12 +75,18 @@ impl GetAssetsParams {
                 Ok(GetAssetsQuery::FromCache(assets_id, self.xpub.unwrap()))
             }
 
-            (None, names, tickers, category) => {
+            (None, mut names, tickers, category) => {
+                // If there's a list of names to match we uppercase them to
+                // match ignoring the case. This is done outside of the closure
+                // to allocate once instead of allocating every time the
+                // closure is called.
+                names = names.map(|v| v.iter().map(|s| s.to_ascii_uppercase()).collect::<Vec<_>>());
                 let matcher: Box<dyn Fn(&AssetEntry, Option<&str>) -> bool> =
                     Box::new(move |asset, icon| {
                         let mut matched = true;
                         if let Some(names) = names.as_deref() {
-                            matched &= names.iter().any(|name| asset.name.contains(&**name));
+                            let uppercased = asset.name.to_ascii_uppercase();
+                            matched &= names.iter().any(|name| uppercased.contains(&**name));
                         }
                         if let Some(tickers) = tickers.as_deref() {
                             if let Some(ticker) = asset.ticker.as_ref() {
