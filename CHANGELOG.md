@@ -3,7 +3,9 @@
 ## Release 0.0.57
 
 ### Added
-GA_get_subaccount: add user_path, core_descriptor, slip132_extended_pubkey
+- GA_get_subaccount: add user_path, core_descriptor, slip132_extended_pubkey.
+- GA_get_assets: add ability to fetch informations about Liquid assets by
+specifying one or more of the following fields: `names`, `tickers`, `category`.
 
 ### Changed
 
