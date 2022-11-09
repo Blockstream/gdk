@@ -1790,12 +1790,29 @@ Asset parameters JSON
 Get assets parameters JSON
 --------------------------
 
+Informations about Liquid assets can be obtained by either passing a list of
+asset ids to query:
+
 .. code-block:: json
 
    {
-      "assets_id": ["6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d","144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"],
+      "assets_id": ["6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d","144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"]
    }
 
+or by specifying one or more of the following attributes:
+
+:names: a list of strings representing asset names;
+:tickers: a list of strings representing asset tickers:
+:category: must be either ``"with_icons"``, in which case only assets that have
+           icons associated to them will be returned, or ``"all"``, in which
+           case all the locally-stored assets and icons will be returned.
+
+Specifying multiple attributes is interpreted as a logical AND. For example,
+``{"category": "with_icons", "tickers": ["LCAD"]}`` will return all the assets
+with ticker ``LCAD`` that also have an icon.
+
+Note that the results returned by specifying the ``"assets_id"`` field are
+cached between calls and as such this field can only be used after logging in.
 
 .. _asset-informations:
 
