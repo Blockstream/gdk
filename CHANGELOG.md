@@ -12,6 +12,10 @@ specifying one or more of the following fields: `names`, `tickers`, `category`.
 - Singlesig: GA_convert_amount: If a fallback fiat rate is provided the
   function will return that rate immediately instead of waiting for the latest
   rate to be fetched.
+- GA_refresh_assets: remove "refresh" parameter. Now every call to
+GA_refresh_assets will perform a network call to update the Liquid assets. To
+avoid the network call use GA_get_assets. In addition GA_refresh_assets now
+does not return any value, to get assets data use GA_get_assets.
 
 ### Fixed
 
