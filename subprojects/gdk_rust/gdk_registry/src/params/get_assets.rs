@@ -75,11 +75,11 @@ impl GetAssetsParams {
 
             (None, None, None, None) => Err(Error::GetAssetsNoFields),
 
-            (Some(assets_id), None, None, None) => {
+            (Some(assets_id), None, None, None) if self.xpub.is_some() => {
                 Ok(GetAssetsQuery::FromCache(assets_id, self.xpub.unwrap()))
             }
 
-            (None, mut names, tickers, category) => {
+            (assets_id, mut names, tickers, category) => {
                 // If there's a list of names to match we uppercase them to
                 // match ignoring the case. This is done outside of the closure
                 // to allocate once instead of allocating every time the
@@ -88,6 +88,9 @@ impl GetAssetsParams {
                 let matcher: Box<dyn Fn(&AssetEntry, Option<&str>) -> bool> =
                     Box::new(move |asset, icon| {
                         let mut matched = true;
+                        if let Some(assets_id) = assets_id.as_deref() {
+                            matched &= assets_id.contains(&asset.asset_id);
+                        }
                         if let Some(names) = names.as_deref() {
                             let uppercased = asset.name.to_ascii_uppercase();
                             matched &= names.iter().any(|name| uppercased.contains(&**name));

@@ -190,7 +190,10 @@ namespace sdk {
         // We only need to set the xpub if we're accessing the registry cache,
         // which in turn only happens if we're querying via asset ids.
         if (p.contains("assets_id")) {
-            p["xpub"] = get_nonnull_signer()->get_master_bip32_xpub();
+            auto session_signer = get_signer();
+            if (session_signer != nullptr) {
+                p["xpub"] = session_signer->get_master_bip32_xpub();
+            }
         }
 
         p["config"] = get_registry_config();
