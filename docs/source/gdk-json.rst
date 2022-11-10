@@ -1796,7 +1796,7 @@ asset ids to query:
 .. code-block:: json
 
    {
-      "assets_id": ["6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d","144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"]
+      "assets_id": ["6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d","ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2"]
    }
 
 or by specifying one or more of the following attributes:
