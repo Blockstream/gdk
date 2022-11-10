@@ -49,7 +49,9 @@ use registry_infos::RegistrySource;
 pub use asset_entry::AssetEntry;
 pub use error::{Error, Result};
 pub use hard_coded::policy_asset_id;
-pub use params::{Config, ElementsNetwork, GetAssetsParams, RefreshAssetsParams};
+pub use params::{
+    AssetCategory, Config, ElementsNetwork, GetAssetsBuilder, GetAssetsParams, RefreshAssetsParams,
+};
 pub use registry_infos::RegistryInfos;
 
 /// Initialize the library by specifying the root directory where the cached
@@ -191,7 +193,7 @@ mod tests {
     use super::*;
     use crate::assets_or_icons::AssetsOrIcons;
     use crate::hard_coded;
-    use crate::params::test::GetAssetsBuilder;
+    use crate::params::GetAssetsBuilder;
     use crate::params::{AssetCategory, ElementsNetwork};
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::bitcoin::util::bip32::ExtendedPubKey;

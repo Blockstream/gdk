@@ -4,10 +4,10 @@
 //! to be run in gdk_regsitry folder
 //!
 
-use elements::AssetId;
+use gdk_common::elements::AssetId;
 use gdk_registry::{
-    init, policy_asset_id, refresh_assets, AssetEntry, Config, ElementsNetwork,
-    RefreshAssetsParams, RegistryInfos,
+    get_assets, init, policy_asset_id, refresh_assets, AssetCategory, AssetEntry, Config,
+    ElementsNetwork, GetAssetsBuilder, RefreshAssetsParams, RegistryInfos,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -34,12 +34,13 @@ fn new_policy(asset_id: AssetId, name: &str, ticker: &str) -> AssetEntry {
 }
 
 fn make_liquid_hard_coded() {
+    refresh_assets(RefreshAssetsParams::new(true, true, Config::default(), None)).unwrap();
+
     let RegistryInfos {
         mut assets,
         mut icons,
         ..
-    } = refresh_assets(RefreshAssetsParams::new(true, true, true, Config::default(), None))
-        .unwrap();
+    } = get_assets(GetAssetsBuilder::new().category(AssetCategory::All).build()).unwrap();
 
     println!("Downloaded {} assets information", assets.len());
     println!("Downloaded {} assets icons", icons.len());

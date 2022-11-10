@@ -28,11 +28,15 @@ pub struct GetAssetsParams {
     pub(crate) config: Config,
 }
 
+///
 #[derive(Debug, Copy, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum AssetCategory {
+pub enum AssetCategory {
+    /// All the assets stored in the local copy of the registry.
     All,
+    /// The assets hard coded in each gdk release.
     HardCoded,
+    /// The assets with icons.
     WithIcons,
 }
 
@@ -111,58 +115,60 @@ impl GetAssetsParams {
     }
 }
 
+/// A builder for the parameters passed to [`get_assets`](crate::get_assets).
+#[derive(Clone)]
+pub struct GetAssetsBuilder(GetAssetsParams);
+
+impl GetAssetsBuilder {
+    /// Initializes the builder.
+    pub fn new() -> Self {
+        Self(GetAssetsParams::default())
+    }
+
+    ///
+    pub fn assets_id<I: IntoIterator<Item = AssetId>>(
+        mut self,
+        ids: I,
+        xpub: ExtendedPubKey,
+    ) -> Self {
+        self.0.assets_id = Some(ids.into_iter().collect());
+        self.0.xpub = Some(xpub);
+        self
+    }
+
+    ///
+    pub fn names<I: IntoIterator<Item = S>, S: Into<String>>(mut self, names: I) -> Self {
+        self.0.names = Some(names.into_iter().map(Into::into).collect());
+        self
+    }
+
+    ///
+    pub fn tickers<I: IntoIterator<Item = S>, S: Into<String>>(mut self, tickers: I) -> Self {
+        self.0.tickers = Some(tickers.into_iter().map(Into::into).collect());
+        self
+    }
+
+    ///
+    pub fn category(mut self, category: AssetCategory) -> Self {
+        self.0.category = Some(category);
+        self
+    }
+
+    ///
+    pub fn config(mut self, config: Config) -> Self {
+        self.0.config = config;
+        self
+    }
+
+    /// Finishes the build and returns the generated parameters.
+    pub fn build(self) -> GetAssetsParams {
+        self.0
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use super::*;
-
-    #[derive(Clone)]
-    pub(crate) struct GetAssetsBuilder(GetAssetsParams);
-
-    impl GetAssetsBuilder {
-        pub(crate) fn new() -> Self {
-            Self(GetAssetsParams::default())
-        }
-
-        pub(crate) fn assets_id<I: IntoIterator<Item = AssetId>>(
-            mut self,
-            ids: I,
-            xpub: ExtendedPubKey,
-        ) -> Self {
-            self.0.assets_id = Some(ids.into_iter().collect());
-            self.0.xpub = Some(xpub);
-            self
-        }
-
-        pub(crate) fn names<I: IntoIterator<Item = S>, S: Into<String>>(
-            mut self,
-            names: I,
-        ) -> Self {
-            self.0.names = Some(names.into_iter().map(Into::into).collect());
-            self
-        }
-
-        pub(crate) fn tickers<I: IntoIterator<Item = S>, S: Into<String>>(
-            mut self,
-            tickers: I,
-        ) -> Self {
-            self.0.tickers = Some(tickers.into_iter().map(Into::into).collect());
-            self
-        }
-
-        pub(crate) fn category(mut self, category: AssetCategory) -> Self {
-            self.0.category = Some(category);
-            self
-        }
-
-        pub(crate) fn _config(mut self, config: Config) -> Self {
-            self.0.config = config;
-            self
-        }
-
-        pub(crate) fn build(self) -> GetAssetsParams {
-            self.0
-        }
-    }
 
     #[test]
     fn test_deserialization() {
