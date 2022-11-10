@@ -310,13 +310,19 @@ mod tests {
                     _ => panic!("must be value object"),
                 };
 
+            let hard_coded_icons =
+                match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Icons) {
+                    Value::Object(h) => h,
+                    _ => panic!("must be value object"),
+                };
+
             // Either assets or icons must be requested
             assert!(refresh_assets(false, false).is_err());
 
             // asset true (no cache), icons true (no cache)
             let value = get_full_registry();
             assert_eq!(value.assets.len(), hard_coded_values.len());
-            assert_eq!(value.icons.len(), 1);
+            assert_eq!(value.icons.len(), hard_coded_icons.len());
 
             // refresh assets but not icons
             let source = refresh_assets(true, false).unwrap();
@@ -412,10 +418,6 @@ mod tests {
             let source = refresh_assets(true, true).unwrap();
             assert_eq!(source, RegistrySource::Downloaded);
 
-            let res = get_full_registry();
-            assert!(res.assets.len() > hard_coded_assets.len());
-            assert!(res.icons.len() > hard_coded_icons.len());
-
             // Corrupt local assets and icons files after downloading updated
             // registry infos. With `refresh` set to `false` they should both get
             // reset to the hard coded values.
@@ -431,10 +433,6 @@ mod tests {
 
             let source = refresh_assets(true, true).unwrap();
             assert_eq!(source, RegistrySource::Downloaded);
-
-            let res = get_full_registry();
-            assert!(res.assets.len() > hard_coded_assets.len());
-            assert!(res.icons.len() > hard_coded_icons.len());
 
             let res = refresh_assets(true, true).unwrap();
             assert_eq!(res, RegistrySource::NotModified);
@@ -482,7 +480,7 @@ mod tests {
             let asset_id = AssetId::from_hex("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d").unwrap();
             assert_eq!(icons.get(&asset_id), new_icons.get(&asset_id), "hard coded icon should not get updated");
 
-            let asset_id = AssetId::from_hex("ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2").unwrap();
+            let asset_id = AssetId::from_hex("de091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2").unwrap();
             assert_ne!(icons.get(&asset_id), new_icons.get(&asset_id), "non hard coded icon should get updated");
         }
 
