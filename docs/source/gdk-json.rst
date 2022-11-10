@@ -294,7 +294,7 @@ as the array elements of `GA_get_subaccounts`.
 :core_descriptors: Singlesig only. The Bitcoin Core compatible output descriptors.
     One for the external chain and one for internal chain (change),
     for instance ``"sh(wpkh(tpubDC2Q4xK4XH72H18SiEV2A6HUwUPLhXiTEQXU35r4a41ZVrUv2cgKUMm2fsKTapi8DH4Y8ZVjy8TQtmyWMuH37kjw8fQGJahjWbuQoPm6qRF/0/*))"``
-     ``"sh(wpkh(tpubDC2Q4xK4XH72H18SiEV2A6HUwUPLhXiTEQXU35r4a41ZVrUv2cgKUMm2fsKTapi8DH4Y8ZVjy8TQtmyWMuH37kjw8fQGJahjWbuQoPm6qRF/1/*))"``
+    ``"sh(wpkh(tpubDC2Q4xK4XH72H18SiEV2A6HUwUPLhXiTEQXU35r4a41ZVrUv2cgKUMm2fsKTapi8DH4Y8ZVjy8TQtmyWMuH37kjw8fQGJahjWbuQoPm6qRF/1/*))"``
     for a ``p2sh-p2wpkh`` subaccount.
     This field is only returned by `GA_get_subaccount`.
 :slip132_extended_pubkey: Singlesig and Bitcoin only. The extended public key with modified version
