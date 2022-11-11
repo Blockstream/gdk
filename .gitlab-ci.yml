@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:ce29f1edcabbb8257ecf1091db633b69d0e9c4b5445d4c9b7430ff32f9148435
+image: greenaddress/ci@sha256:5d53d876b943129721f45ca157003fa06ee4bcbe2a772bab6836bbc3ca153bc7
 
 stages:
   - format

@@ -8,18 +8,6 @@ ENV ANDROID_NDK=/root/android-ndk-r23b
 ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
 
 
-FROM curlimages/curl as downloader
-WORKDIR /home/curl_user
-RUN curl -L https://github.com/RCasatta/electrsd/releases/download/electrs_releases/electrs_linux_esplora_703c6a20d52b61a234a18812503bd754d448992a.gz | tar -xz
-RUN echo "6c62b280db4455a0bee1c60dcb7bb18f741313deb8aafdb7bad1bc2a3f4ff0b8  electrs" | sha256sum -c
-RUN chmod 755 electrs && mv electrs electrs_bitcoin
-RUN curl -L https://github.com/RCasatta/electrsd/releases/download/electrs_releases/electrs_linux_esplora_703c6a20d52b61a234a18812503bd754d448992a_liquid.gz | tar -xz
-RUN echo "47571e09fbc5bc25504e3b66ee47295cea9912182d42721c11d895183e5b6c6e  electrs" | sha256sum -c
-RUN chmod 755 electrs && mv electrs electrs_liquid
-RUN curl https://bitcoincore.org/bin/bitcoin-core-0.20.1/bitcoin-0.20.1-x86_64-linux-gnu.tar.gz | tar -xz bitcoin-0.20.1/bin/bitcoind && mv bitcoin-0.20.1/bin/bitcoind bitcoind
-RUN curl -L https://github.com/ElementsProject/elements/releases/download/elements-0.21.0/elements-elements-0.21.0-x86_64-linux-gnu.tar.gz | tar -xz elements-elements-0.21.0/bin/elementsd && mv elements-elements-0.21.0/bin/elementsd elementsd
-
-
 FROM base AS builderarmv7a
 COPY ./tools ./tools
 RUN mkdir -p /prebuild/armv7a
@@ -56,12 +44,13 @@ RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
 
+FROM blockstream/esplora@sha256:dabc2501137dea9db6107e6c5c4d6d575616b2274dc278647f91ab9a4f75a848 AS esplora-base-image
 FROM base as final
 
-COPY --from=downloader /home/curl_user/electrs_bitcoin /root/bin/electrs_bitcoin
-COPY --from=downloader /home/curl_user/electrs_liquid /root/bin/electrs_liquid
-COPY --from=downloader /home/curl_user/bitcoind /root/bin/bitcoind
-COPY --from=downloader /home/curl_user/elementsd /root/bin/elementsd
+COPY --from=esplora-base-image /srv/explorer/electrs_bitcoin/bin/electrs /root/bin/electrs_bitcoin
+COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bin/electrs_liquid
+COPY --from=esplora-base-image /srv/explorer/bitcoin/bin/bitcoind /root/bin/bitcoind
+COPY --from=esplora-base-image /srv/explorer/liquid/bin/liquidd /root/bin/elementsd
 
 COPY --from=builderarmv7a /prebuild/armv7a /prebld/armv7a
 COPY --from=builderarmv8a /prebuild/armv8a /prebld/armv8a
