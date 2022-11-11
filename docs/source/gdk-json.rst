@@ -1812,9 +1812,6 @@ Specifying multiple attributes is interpreted as a logical AND. For example,
 ``{"category": "with_icons", "tickers": ["LCAD"]}`` will return all the assets
 with ticker ``LCAD`` that also have an icon.
 
-Note that the results returned by specifying the ``"assets_id"`` field are
-cached between calls and as such this field can only be used after logging in.
-
 .. _asset-informations:
 
 Asset informations JSON

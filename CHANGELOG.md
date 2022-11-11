@@ -16,6 +16,8 @@ specifying one or more of the following fields: `names`, `tickers`, `category`.
 GA_refresh_assets will perform a network call to update the Liquid assets. To
 avoid the network call use GA_get_assets. In addition GA_refresh_assets now
 does not return any value, to get assets data use GA_get_assets.
+- GA_get_assets: it is now possible to fetch informations via the `assets_id`
+even before logging into a session.
 
 ### Fixed
 
