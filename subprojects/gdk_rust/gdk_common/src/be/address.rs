@@ -19,6 +19,18 @@ impl BEAddress {
             BEAddress::Elements(addr) => addr.blinding_pubkey,
         }
     }
+    pub fn elements(&self) -> Option<&elements::Address> {
+        match self {
+            BEAddress::Bitcoin(_) => None,
+            BEAddress::Elements(addr) => Some(addr),
+        }
+    }
+    pub fn bitcoin(&self) -> Option<&bitcoin::Address> {
+        match self {
+            BEAddress::Bitcoin(addr) => Some(addr),
+            BEAddress::Elements(_) => None,
+        }
+    }
 }
 
 impl ToString for BEAddress {

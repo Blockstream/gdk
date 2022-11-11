@@ -407,10 +407,30 @@ impl Account {
                         (0, "".to_string())
                     };
 
-                    let address = acc_store
-                        .all_txs
-                        .get_previous_output_address(beoutpoint, self.network.id())
-                        .unwrap_or_else(|| "".to_string());
+                    let (address, script_pubkey, unblinded_address, is_blinded, blinding_key) =
+                        if is_relevant {
+                            let addr = self
+                                .derive_address(is_internal, pointer)
+                                .expect("deriving a relevant address");
+                            let script_pubkey = addr.script_pubkey().to_string();
+                            let address = addr.to_string();
+                            let unblinded_address =
+                                addr.elements().map(|a| a.to_unconfidential().to_string());
+                            let is_blinded = addr.elements().map(|_| true);
+                            let blinding_key = addr.blinding_pubkey().map(|p| p.to_string());
+                            (address, script_pubkey, unblinded_address, is_blinded, blinding_key)
+                        } else {
+                            let address = acc_store
+                                .all_txs
+                                .get_previous_output_address(beoutpoint, self.network.id())
+                                .unwrap_or_else(|| "".to_string());
+                            let script_pubkey = acc_store
+                                .all_txs
+                                .get_previous_output_script_pubkey(beoutpoint)
+                                .map(|s| s.to_hex())
+                                .unwrap_or_else(|| "".to_string());
+                            (address, script_pubkey, None, None, None)
+                        };
 
                     let satoshi = acc_store
                         .all_txs
@@ -454,6 +474,10 @@ impl Account {
                         asset_id,
                         asset_blinder,
                         amount_blinder,
+                        is_blinded,
+                        unblinded_address,
+                        blinding_key,
+                        script_pubkey,
                     })
                 })
                 .collect::<Result<Vec<GetTxInOut>, Error>>()?;
@@ -476,9 +500,26 @@ impl Account {
                         (0, "".to_string())
                     };
 
-                    let address = tx
-                        .output_address(vout, self.network.id())
-                        .unwrap_or_else(|| "".to_string());
+                    let (address, script_pubkey, unblinded_address, is_blinded, blinding_key) =
+                        if is_relevant {
+                            let addr = self
+                                .derive_address(is_internal, pointer)
+                                .expect("deriving a relevant address");
+                            let address = addr.to_string();
+                            let script_pubkey = addr.script_pubkey().to_string();
+                            let unblinded_address =
+                                addr.elements().map(|a| a.to_unconfidential().to_string());
+                            let is_blinded = addr.elements().map(|_| true);
+                            let blinding_key = addr.blinding_pubkey().map(|p| p.to_string());
+                            (address, script_pubkey, unblinded_address, is_blinded, blinding_key)
+                        } else {
+                            let address = tx
+                                .output_address(vout, self.network.id())
+                                .unwrap_or_else(|| "".to_string());
+                            let script_pubkey = tx.output_script(vout).to_hex();
+                            (address, script_pubkey, None, None, None)
+                        };
+
                     let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or(0);
                     let asset_id = tx.output_asset(vout, &acc_store.unblinded).map(|a| a.to_hex());
                     let asset_blinder = tx.output_assetblinder_hex(vout, &acc_store.unblinded);
@@ -502,6 +543,10 @@ impl Account {
                         asset_id,
                         asset_blinder,
                         amount_blinder,
+                        is_blinded,
+                        unblinded_address,
+                        blinding_key,
+                        script_pubkey,
                     })
                 })
                 .collect::<Result<Vec<GetTxInOut>, Error>>()?;

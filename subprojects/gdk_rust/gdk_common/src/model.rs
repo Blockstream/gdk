@@ -435,7 +435,7 @@ pub struct TransactionOutput {
 pub struct GetTxInOut {
     /// The address of the input or output.
     ///
-    /// For Liquid is always unblinded.
+    /// For Liquid is blinded for relevant elements, and unblinded for not relevant elements.
     ///
     /// For not relevant Liquid inputs it might be empty,
     /// because we don't need to fecth previous transaction for the fee computation.
@@ -508,6 +508,31 @@ pub struct GetTxInOut {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "amountblinder")]
     pub amount_blinder: Option<String>,
+
+    /// Whether the elements is confidential or not.
+    ///
+    /// None for not relevant elements.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_blinded: Option<bool>,
+
+    /// Blinding public key.
+    ///
+    /// None for not relevant elements.
+    /// Note that it might not be the key that was actually used by the sender.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blinding_key: Option<String>,
+
+    /// Unblinded address.
+    ///
+    /// None for not relevant elements.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unblinded_address: Option<String>,
+
+    /// Scriptpukey.
+    ///
+    /// None for not relevant Liquid inputs (for which the address is the empty string).
+    #[serde(rename = "script")]
+    pub script_pubkey: String,
 }
 
 /// Transaction type
