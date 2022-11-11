@@ -4,17 +4,36 @@
 //! to be run in gdk_regsitry folder
 //!
 
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::File,
+    io::Write,
+    str::FromStr,
+};
+
 use gdk_common::elements::AssetId;
 use gdk_registry::{
     get_assets, init, policy_asset_id, refresh_assets, AssetCategory, AssetEntry, Config,
     ElementsNetwork, GetAssetsBuilder, RefreshAssetsParams, RegistryInfos,
 };
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::File,
-    io::Write,
-};
+use once_cell::unsync::Lazy;
 use tempfile::TempDir;
+
+const FEATURED_ASSETS: Lazy<Vec<AssetId>> = Lazy::new(|| {
+    [
+        "ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2",
+        "0e99c1a6da379d1f4151fb9df90449d40d0608f6cb33a5bcbfc8c265f42bab0a",
+        "18729918ab4bca843656f08d4dd877bed6641fbd596a0a963abbf199cfeb3cec",
+        "78557eb89ea8439dc1a519f4eb0267c86b261068648a0f84a5c6b55ca39b66f1",
+        "11f91cb5edd5d0822997ad81f068ed35002daec33986da173461a8427ac857e1",
+        "52d77159096eed69c73862a30b0d4012b88cedf92d518f98bc5fc8d34b6c27c9",
+        "9c11715c79783d7ba09ecece1e82c652eccbb8d019aec50cf913f540310724a6",
+    ]
+    .into_iter()
+    .map(AssetId::from_str)
+    .collect::<Result<_, _>>()
+    .unwrap()
+});
 
 fn main() {
     let temp_dir = TempDir::new().unwrap();
@@ -56,7 +75,7 @@ fn make_liquid_hard_coded() {
     file.write_all(serde_json::to_string_pretty(&assets_ord).unwrap().as_bytes()).unwrap();
 
     let mut file = File::create("src/hard_coded/liquid_icons.json").unwrap();
-    icons.retain(|k, _| k == &policy_asset_id);
+    icons.retain(|k, _| k == &policy_asset_id || FEATURED_ASSETS.contains(k));
     file.write_all(serde_json::to_string_pretty(&icons).unwrap().as_bytes()).unwrap();
 
     println!("wrote {:?}", file);
