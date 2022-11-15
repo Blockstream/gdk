@@ -44,7 +44,7 @@ use gdk_common::{be::*, State};
 use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::elements::encode;
 use gdk_common::elements::pset::PartiallySignedTransaction;
-use gdk_common::exchange_rates::ExchangeRatesCache;
+use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
 use gdk_common::network;
 use gdk_common::scripts::ScriptType;
 use gdk_common::NetworkId;
@@ -139,6 +139,10 @@ pub struct ElectrumSession {
     pub recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
 
     xr_cache: ExchangeRatesCache,
+
+    /// The keys are exchange names, the values are all the currencies that a
+    /// given exchange has data for.
+    available_currencies: Option<HashMap<String, Vec<Currency>>>,
 
     first_sync: Arc<AtomicBool>,
 }
@@ -1117,12 +1121,20 @@ impl ElectrumSession {
     }
 
     pub fn get_available_currencies(
-        &self,
+        &mut self,
         params: &GetAvailableCurrenciesParams,
     ) -> Result<Value, Error> {
-        // TODO: use blockstream endpoint listing all available currencies when
-        // it'll be available.
-        Ok(json!({ "all": [ "USD" ], "per_exchange": { "Blockstream": [ "USD" ] } }))
+        let currencies = match &self.available_currencies {
+            Some(map) => map,
+            None => self.available_currencies.get_or_insert(fetch_available_currencies(
+                &self.build_request_agent()?,
+                &params.url,
+            )?),
+        };
+
+        let all = currencies.values().flatten().collect::<HashSet<_>>();
+
+        Ok(json!({ "all": all, "per_exchange": &currencies }))
     }
 
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
@@ -1687,6 +1699,33 @@ impl Syncer {
             Ok(DownloadTxResult::default())
         }
     }
+}
+
+fn fetch_available_currencies(
+    agent: &ureq::Agent,
+    url: &str,
+) -> Result<HashMap<String, Vec<Currency>>, Error> {
+    #[derive(serde::Deserialize)]
+    struct ExchangeInfos {
+        pairs: Vec<(Currency, Currency)>,
+    }
+
+    let response = agent.get(url).call()?.into_json::<HashMap<String, ExchangeInfos>>()?;
+
+    let map = response.into_iter().map(|(exchange, infos)| {
+        let currencies = infos.pairs.into_iter().map(|(first, second)| {
+            // Either the first or the second currency in the pair must be
+            // fiat (but not both).
+            if !(first.is_fiat() ^ second.is_fiat()) {
+                panic!("Was expecting one currency in the pair to be Bitcoin, got {}-{} instead", first, second);
+            }
+            if first.is_fiat() { first } else { second }
+        }).collect::<Vec<Currency>>();
+
+        (exchange, currencies)
+    }).collect();
+
+    Ok(map)
 }
 
 fn unblind_output(

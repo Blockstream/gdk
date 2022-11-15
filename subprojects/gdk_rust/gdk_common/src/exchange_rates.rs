@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use crate::Error;
-use serde::Deserialize;
+use serde::{de, Deserialize, Serialize};
 
 /// The exchange rates cache. The keys are currency pairs (like BTC-USD)
 /// and the values are a `(time, rate)` tuple, where `time` represents the
@@ -32,7 +32,7 @@ pub trait ExchangeRatesCacher {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Deserialize, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Deserialize, Serialize, Hash)]
 #[cfg_attr(test, derive(strum_macros::EnumIter))]
 pub enum Currency {
     BTC,
@@ -97,7 +97,7 @@ impl FromStr for Currency {
 
         // TODO: support harder to parse pairs (LBTC?)
         match s {
-            "BTC" => Ok(Currency::BTC),
+            "BTC" | "XBT" => Ok(Currency::BTC),
             "USD" => Ok(Currency::USD),
             "EUR" => Ok(Currency::EUR),
             "GBP" => Ok(Currency::GBP),

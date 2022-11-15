@@ -21,6 +21,11 @@ pub enum Error {
     #[error("`asset_id` cannot be empty in Liquid")]
     AssetEmpty,
 
+    #[error("Expected a {expected}")]
+    AvailableIndexesBadResponse {
+        expected: String,
+    },
+
     #[error(transparent)]
     Base64DecodeError(#[from] base64::DecodeError),
 
