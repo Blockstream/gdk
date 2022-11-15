@@ -1116,7 +1116,10 @@ impl ElectrumSession {
         Ok(())
     }
 
-    pub fn get_available_currencies(&self) -> Result<Value, Error> {
+    pub fn get_available_currencies(
+        &self,
+        params: &GetAvailableCurrenciesParams,
+    ) -> Result<Value, Error> {
         // TODO: use blockstream endpoint listing all available currencies when
         // it'll be available.
         Ok(json!({ "all": [ "USD" ], "per_exchange": { "Blockstream": [ "USD" ] } }))

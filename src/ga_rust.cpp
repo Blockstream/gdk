@@ -289,7 +289,15 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_available_currencies() const
     {
-        return rust_call("get_available_currencies", nlohmann::json({}), m_session);
+        nlohmann::json p = nlohmann::json::object();
+        p["currency_url"] = m_net_params.get_price_url();
+
+        try {
+            return rust_call("get_available_currencies", p, m_session);
+        } catch (const std::exception& ex) {
+            GDK_LOG_SEV(log_level::error) << "error fetching currencies: " << ex.what();
+            return { { "error", ex.what() } };
+        }
     }
 
     bool ga_rust::is_rbf_enabled() const
