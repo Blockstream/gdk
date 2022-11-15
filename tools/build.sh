@@ -127,7 +127,7 @@ function build_dependencies() {
         echo "using external-deps-dir dependencies from ${EXTERNAL_DEPS_DIR}"
     else
         echo "building external dependencies in ${EXTERNAL_DEPS_DIR}"
-        ./tools/builddeps.sh ${BUILD} --prefix ${EXTERNAL_DEPS_DIR}
+        ./tools/builddeps.sh ${BUILD} --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR}
     fi
 }
 

@@ -132,6 +132,13 @@ else
     exit 0
 fi
 
+if [ ${BUILDTYPE} == "debug" ]; then
+    export CFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+    export CXXFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+    export CPPFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+    export BUILDTYPE=${BUILDTYPE}
+fi
+
 export CXX=$CXX_COMPILER
 export CCC_CXX=$CXX_COMPILER
 export CC=$C_COMPILER
@@ -151,6 +158,7 @@ function prepare_sources {
         echo "${source_hash}  ${source_filename}" | shasum -a 256 -c || rm ${source_filename}
     fi
     if [ ! -f ${source_filename} ]; then
+        echo "downloading from ${source_url} ..."
         curl -sL -o ${source_filename} ${source_url}
         echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
         rm_downloaded="yes"
@@ -240,7 +248,7 @@ source_hash="7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BOOST_SRCDIR=`pwd`/tmp/${source_name}
 export PRJ_SUBDIR=${BOOST_SRCDIR}
-${GDK_SOURCE_ROOT}/tools/build${name}.sh $C_COMPILER $BUILD
+${GDK_SOURCE_ROOT}/tools/build${name}.sh $C_COMPILER $BUILD ${CXXFLAGS}
 
 
 # building tor

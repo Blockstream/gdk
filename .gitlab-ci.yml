@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:5d53d876b943129721f45ca157003fa06ee4bcbe2a772bab6836bbc3ca153bc7
+image: greenaddress/ci@sha256:dad739cbaa366afed1a73d74f985787950e0298fa5e58791e529923c83ad72db
 
 stages:
   - format
@@ -117,11 +117,11 @@ test_fedora_clang:
   script:
     - NUM_JOBS=16 ./tools/build.sh --clang --external-deps-dir /prebuild/clang
 
-test_clang:
+test_clang_debug:
   tags:
     - ga
   script:
-    - NUM_JOBS=16 ./tools/build.sh --clang --enable-tests --external-deps-dir /prebld/clang # REVERTME
+    - NUM_JOBS=16 ./tools/build.sh --clang --buildtype debug --enable-tests --external-deps-dir /prebld/clang-debug # REVERTME
     - ./build-clang/test_aes_gcm >/dev/null
     - ./build-clang/test_json
     - ./build-clang/test_networks
