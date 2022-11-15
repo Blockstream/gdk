@@ -1,15 +1,13 @@
 if test "x$1" == "x--iphone"; then
     export IOS_PLATFORM=iPhoneOS
     export ARCHS="-arch arm64"
+    export IOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
 else
     export IOS_PLATFORM=iPhoneSimulator
     export ARCHS="-arch x86_64"
+    export IOS_SDK_PATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
 fi
 
-export XCODE_PATH=$(xcode-select --print-path 2>/dev/null)
-export XCODE_DEFAULT_PATH="$XCODE_PATH/Toolchains/XcodeDefault.xctoolchain/usr/bin"
-export XCODE_IOS_PATH="$XCODE_PATH/Platforms/$IOS_PLATFORM.platform/Developer/usr/bin"
-export IOS_SDK_PATH="$XCODE_PATH/Platforms/$IOS_PLATFORM.platform/Developer/SDKs/$IOS_PLATFORM.sdk"
 
 export SDK_CFLAGS_NO_ARCH="$q"
 export SDK_CFLAGS="$SDK_CFLAGS $ARCHS"
