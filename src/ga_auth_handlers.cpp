@@ -1881,7 +1881,7 @@ namespace sdk {
     // Encrypt with PIN
     //
     encrypt_with_pin_call::encrypt_with_pin_call(session& session, const nlohmann::json& details)
-        : auth_handler_impl(session, "encrypt_with_pin")
+        : auth_handler_impl(session, "encrypt_with_pin", std::shared_ptr<signer>())
         , m_details(details)
     {
     }
