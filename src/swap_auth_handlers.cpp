@@ -19,6 +19,9 @@
 namespace ga {
 namespace sdk {
     namespace {
+        static const std::string LIQUIDEX_STR("liquidex_v1");
+        static constexpr uint32_t LIQUIDEX_VERSION = 1;
+
         static nlohmann::json get_tx_input_fields(const wally_tx_ptr& tx, size_t index)
         {
             GDK_RUNTIME_ASSERT(index < tx->num_inputs);
@@ -111,7 +114,7 @@ namespace sdk {
         static wally_tx_ptr liquidex_validate_proposal(const nlohmann::json& proposal)
         {
             constexpr bool is_liquid = true;
-            GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == 1, "unknown version");
+            GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == LIQUIDEX_VERSION, "unknown version");
             GDK_RUNTIME_ASSERT_MSG(proposal.dump().length() < 20000, "proposal exceeds maximum length");
             const auto& proposal_input = get_sized_array(proposal, "inputs", 1).at(0);
             const auto& proposal_output = get_sized_array(proposal, "outputs", 1).at(0);
@@ -158,8 +161,8 @@ namespace sdk {
     auth_handler::state_type create_swap_transaction_call::call_impl()
     {
         if (m_swap_type == "liquidex") {
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == "liquidex_v1", "unknown input_type");
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == "liquidex_v1", "unknown output_type");
+            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
+            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == LIQUIDEX_STR, "unknown output_type");
             return liquidex_impl();
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
@@ -169,7 +172,7 @@ namespace sdk {
 
     auth_handler::state_type create_swap_transaction_call::liquidex_impl()
     {
-        const auto& liquidex_details = m_details.at("liquidex_v1");
+        const auto& liquidex_details = m_details.at(LIQUIDEX_STR);
         const auto& send = get_sized_array(liquidex_details, "send", 1).at(0);
         const auto& receive = get_sized_array(liquidex_details, "receive", 1).at(0);
         // TODO: We may wish to allow receiving to a different subaccount.
@@ -229,15 +232,15 @@ namespace sdk {
             nlohmann::json::array_t outputs = liquidex_get_fields(tx_outputs);
             nlohmann::json::array_t scalars = liquidex_aggregate_scalars(inputs, outputs);
             GDK_RUNTIME_ASSERT(!inputs[0].contains("scalar") && !outputs[0].contains("scalar"));
-            auto proposal = nlohmann::json({ { "version", 1 }, { "transaction", std::move(result["transaction"]) },
-                { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) },
-                { "scalars", std::move(scalars) } });
+            auto proposal = nlohmann::json({ { "version", LIQUIDEX_VERSION },
+                { "transaction", std::move(result["transaction"]) }, { "inputs", std::move(inputs) },
+                { "outputs", std::move(outputs) }, { "scalars", std::move(scalars) } });
             if (tx_has_amp_inputs(*m_session_parent.get_nonnull_impl(), m_create_details)) {
                 proposal["inputs"][0]["script"] = std::move(tx_inputs.at(0).at("prevout_script"));
                 proposal["outputs"][0]["blinding_nonce"] = std::move(tx_outputs.at(0).at("blinding_nonce"));
             }
-            m_result["liquidex_v1"] = nlohmann::json::object();
-            m_result["liquidex_v1"]["proposal"] = std::move(proposal);
+            m_result[LIQUIDEX_STR] = nlohmann::json::object();
+            m_result[LIQUIDEX_STR]["proposal"] = std::move(proposal);
             m_is_signed = true;
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown next handler called");
@@ -257,7 +260,7 @@ namespace sdk {
     auth_handler::state_type complete_swap_transaction_call::call_impl()
     {
         if (m_swap_type == "liquidex") {
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == "liquidex_v1", "unknown input_type");
+            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
             GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == "transaction", "unknown output_type");
             GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
             return liquidex_impl();
@@ -270,7 +273,7 @@ namespace sdk {
     auth_handler::state_type complete_swap_transaction_call::liquidex_impl()
     {
         // TODO: allow to take multiple proposal at once
-        const auto& proposal = get_sized_array(m_details.at("liquidex_v1"), "proposals", 1).at(0);
+        const auto& proposal = get_sized_array(m_details.at(LIQUIDEX_STR), "proposals", 1).at(0);
         if (!m_tx) {
             m_tx = liquidex_validate_proposal(proposal);
         }
@@ -351,7 +354,7 @@ namespace sdk {
 
     void validate_call::liquidex_impl()
     {
-        const auto& proposal = m_details.at("liquidex_v1").at("proposal");
+        const auto& proposal = m_details.at(LIQUIDEX_STR).at("proposal");
         liquidex_validate_proposal(proposal);
     }
 } // namespace sdk
