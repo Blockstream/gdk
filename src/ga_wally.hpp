@@ -269,9 +269,10 @@ namespace sdk {
 
     std::pair<priv_key_t, std::vector<unsigned char>> get_ephemeral_keypair();
 
-    std::vector<unsigned char> ecdh(byte_span_t public_key, byte_span_t private_key);
+    std::array<unsigned char, SHA256_LEN> ecdh(byte_span_t public_key, byte_span_t private_key);
 
-    std::vector<unsigned char> ae_host_commit_from_bytes(byte_span_t entropy, uint32_t flags = EC_FLAG_ECDSA);
+    std::array<unsigned char, WALLY_HOST_COMMITMENT_LEN> ae_host_commit_from_bytes(
+        byte_span_t entropy, uint32_t flags = EC_FLAG_ECDSA);
 
     bool ae_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t host_entropy,
         byte_span_t signer_commitment, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);

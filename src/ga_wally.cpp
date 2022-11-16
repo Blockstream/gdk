@@ -673,17 +673,18 @@ namespace sdk {
         return { private_key, ec_public_key_from_private_key(private_key) };
     }
 
-    std::vector<unsigned char> ecdh(byte_span_t public_key, byte_span_t private_key)
+    std::array<unsigned char, SHA256_LEN> ecdh(byte_span_t public_key, byte_span_t private_key)
     {
-        std::vector<unsigned char> ret(SHA256_LEN);
+        std::array<unsigned char, SHA256_LEN> ret;
         GDK_VERIFY(wally_ecdh(
             public_key.data(), public_key.size(), private_key.data(), private_key.size(), ret.data(), ret.size()));
         return ret;
     }
 
-    std::vector<unsigned char> ae_host_commit_from_bytes(byte_span_t host_entropy, uint32_t flags)
+    std::array<unsigned char, WALLY_HOST_COMMITMENT_LEN> ae_host_commit_from_bytes(
+        byte_span_t host_entropy, uint32_t flags)
     {
-        std::vector<unsigned char> ret(WALLY_HOST_COMMITMENT_LEN);
+        std::array<unsigned char, WALLY_HOST_COMMITMENT_LEN> ret;
         GDK_VERIFY(
             wally_ae_host_commit_from_bytes(host_entropy.data(), host_entropy.size(), flags, ret.data(), ret.size()));
         return ret;
