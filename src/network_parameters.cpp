@@ -219,7 +219,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
@@ -303,7 +303,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -341,7 +341,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -378,7 +378,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -419,7 +419,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
@@ -499,7 +499,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -536,7 +536,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -614,7 +614,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
@@ -653,7 +653,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
@@ -691,7 +691,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
             { "price_url", "https://deluge-green.blockstream.com/feed/del-v0r7-green" },
-            { "price_onion_url", std::string() },
+            { "price_onion_url", "http://qen5i6m5qyqqrmu67dwdzororushqhnrvobkoyf7e7wno2fthzwyspid.onion/feed/del-v0r7-green" },
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
@@ -916,13 +916,7 @@ namespace sdk {
     uint32_t network_parameters::get_max_reorg_blocks() const { return m_details.at("max_reorg_blocks"); }
     std::string network_parameters::get_price_url() const
     {
-        // TODO: use
-        // ```
-        // return get_url(m_details, "price_url", "price_onion_url", use_tor());
-        // ```
-        // once market data team enables TOR endpoint.
-
-        return m_details.at("price_url");
+        return get_url(m_details, "price_url", "price_onion_url", use_tor());
     }
 } // namespace sdk
 } // namespace ga

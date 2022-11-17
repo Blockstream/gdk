@@ -10,7 +10,7 @@ use gdk_common::{
     model::*,
     notification::NativeNotif,
     session::{JsonError, Session},
-    NetworkParameters,
+    ureq, NetworkParameters,
 };
 use serde_json::Value;
 
@@ -51,6 +51,10 @@ impl Session for ElectrumSession {
 
     fn network_parameters(&self) -> &NetworkParameters {
         &self.network
+    }
+
+    fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
+        gdk_common::network::build_request_agent(self.proxy.as_deref())
     }
 
     fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, JsonError> {
