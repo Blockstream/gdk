@@ -283,9 +283,34 @@ mod tests {
     #[test]
     fn from_str_currency_roundtrip() {
         for currency in <Currency as strum::IntoEnumIterator>::iter() {
+            if matches!(currency, Currency::Other(_, _)) {
+                continue;
+            }
             let str = currency.to_string();
             let res = Currency::from_str(&str);
             assert_eq!(currency, res.unwrap());
         }
+    }
+
+    #[test]
+    fn deserialize_currency() {
+        let s = "[\"BTC\",\"USD\",\"ABCE\"]";
+        let currencies = serde_json::from_str::<Vec<Currency>>(s).unwrap();
+
+        match &currencies[..] {
+            [btc, usd, abce] => {
+                assert_eq!(Currency::BTC, *btc);
+                assert_eq!(Currency::USD, *usd);
+                assert_eq!("ABCE", abce.to_string());
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn serialize_currency() {
+        let s = "[\"BTC\",\"USD\",\"ABCE\"]";
+        let currencies = vec![Currency::BTC, Currency::USD, Currency::from_str("ABCE").unwrap()];
+        assert_eq!(s, serde_json::to_string(&currencies).unwrap());
     }
 }
