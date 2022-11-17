@@ -1191,6 +1191,13 @@ namespace sdk {
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
 
+        uint32_t num_blinded_addressees = 0;
+        for (auto& addressee : details.at("addressees")) {
+            if (json_get_value(addressee, "is_blinded", false)) {
+                ++num_blinded_addressees;
+            }
+        }
+
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
             GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
@@ -1279,6 +1286,9 @@ namespace sdk {
                 vbf = generate_final_vbf(input_abfs, input_vbfs, input_values, output_abfs, output_vbfs, num_inputs);
                 // Add the scalar offsets
                 const std::vector<std::string> scalars = json_get_value<decltype(scalars)>(details, "scalars");
+                // For now we don't want to attempt to support general cases. Here we want to restrict our
+                // capabilities to avoid some footguns.
+                GDK_RUNTIME_ASSERT(scalars.size() == 0 || scalars.size() == num_blinded_addressees);
                 for (const auto& scalar : scalars) {
                     vbf = ec_scalar_add(vbf, h2b(scalar));
                 }
