@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use crate::Error;
-use serde::{de, Deserialize, Serialize};
+use serde::{de, ser};
 
 /// The exchange rates cache. The keys are currency pairs (like BTC-USD)
 /// and the values are a `(time, rate)` tuple, where `time` represents the
@@ -32,10 +32,9 @@ pub trait ExchangeRatesCacher {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Deserialize, Serialize, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Hash)]
 #[cfg_attr(test, derive(strum_macros::EnumIter))]
 pub enum Currency {
-    #[serde(rename = "XBT")]
     BTC,
     USD,
     EUR,
@@ -64,7 +63,44 @@ pub enum Currency {
     CLP,
     PEN,
     UGX,
-    // LBTC,
+
+    /// Storing a catch-all variant as a byte array to keep this enum `Copy`.
+    /// Tickers can have 3 to 24 letters/numbers/dots, the second value in the
+    /// pair is the length of the ticker. The last `24 - len` bytes in the
+    /// array are left as null.
+    Other([u8; 24], usize),
+}
+
+impl<'de> de::Deserialize<'de> for Currency {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        struct CurrencyVisitor;
+
+        impl<'de> de::Visitor<'de> for CurrencyVisitor {
+            type Value = Currency;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string of 3 to 24 characters representing a currency ticker")
+            }
+
+            fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Currency::from_str(s).map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_str(CurrencyVisitor)
+    }
+}
+
+impl ser::Serialize for Currency {
+    fn serialize<S: ser::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.to_string())
+    }
 }
 
 impl Currency {
@@ -119,7 +155,6 @@ impl FromStr for Currency {
             return Err("ticker length less than 3".to_string().into());
         }
 
-        // TODO: support harder to parse pairs (LBTC?)
         match s {
             "BTC" | "XBT" => Ok(Currency::BTC),
             "USD" => Ok(Currency::USD),
@@ -150,6 +185,13 @@ impl FromStr for Currency {
             "PEN" => Ok(Currency::PEN),
             "UGX" => Ok(Currency::UGX),
             "" => Err("empty ticker".to_string().into()),
+
+            other if other.len() >= 3 && other.len() <= 24 => {
+                let mut ticker = [0u8; 24];
+                ticker[..other.len()].copy_from_slice(other.as_bytes());
+                Ok(Currency::Other(ticker, other.len()))
+            }
+
             other => Err(format!("unknown currency {}", other).into()),
         }
     }
@@ -186,7 +228,7 @@ impl fmt::Display for Currency {
             Currency::CLP => "CLP",
             Currency::PEN => "PEN",
             Currency::UGX => "UGX",
-            // Currency::LBTC => "LBTC",
+            Currency::Other(bytes, len) => std::str::from_utf8(&bytes[..*len]).unwrap(),
         };
         write!(f, "{}", s)
     }
