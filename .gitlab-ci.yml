@@ -111,7 +111,7 @@ release_py3m_osx_m1:
     - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
 
 test_fedora_clang:
-  image: greenaddress/fedora_ci@sha256:07f47f381f96232b097015b7081863ae13b9b83f0e78955be4c1c86fc964ddd0
+  image: greenaddress/fedora_ci@sha256:78997558029c74fbf6ad078b0eb75663749a216b676f6df2eb17dba8c97acc0e
   tags:
     - ga
   script:

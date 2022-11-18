@@ -1,4 +1,4 @@
-FROM fedora:37@sha256:8424686c5327e302f17f336af82da620eee70b5718a1dd3a44c1e502cc7a59da as base
+FROM fedora:32@sha256:7afb459893c1c5defb714d7e0a2aae4a5c2a12f24aa5b26ff5f8f8e7dd8b2317 as base
 WORKDIR /root
 COPY ./tools/fedora37_deps.sh ./tools/deps.sh
 COPY ./tools/requirements.txt /requirements.txt
