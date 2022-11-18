@@ -73,6 +73,7 @@ fn roundtrip_bitcoin() {
     test_session.stop();
 }
 
+#[ignore]
 #[test]
 fn roundtrip_liquid() {
     let mut test_session = TestSession::new(true, |_| ());
@@ -1134,6 +1135,7 @@ fn sighash_bitcoin() {
     sighash(false);
 }
 
+#[ignore]
 #[test]
 fn sighash_liquid() {
     sighash(true);
