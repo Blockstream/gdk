@@ -19,6 +19,7 @@ use crate::error::Error;
 use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
 use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
+use gdk_common::ureq;
 use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{headers, ElectrumSession, NativeNotif};
 use serde::Serialize;
@@ -58,6 +59,10 @@ impl Session for GreenlightSession {
     }
 
     fn network_parameters(&self) -> &gdk_common::NetworkParameters {
+        todo!()
+    }
+
+    fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
         todo!()
     }
 

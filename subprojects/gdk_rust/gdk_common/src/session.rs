@@ -1,6 +1,5 @@
 use std::fmt;
 
-use crate::network;
 use serde_json::Value;
 
 use crate::{
@@ -15,9 +14,7 @@ pub trait Session: Sized + ExchangeRatesCacher {
     fn native_notification(&mut self) -> &mut NativeNotif;
     fn network_parameters(&self) -> &NetworkParameters;
 
-    fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
-        network::build_request_agent(self.network_parameters().proxy.as_deref())
-    }
+    fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error>;
 
     fn set_native_notification(&mut self, native_type: NativeType) {
         self.native_notification().set_native(native_type)
