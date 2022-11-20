@@ -514,8 +514,8 @@ public class Session {
         return try jsonFuncToJsonWrapper(input: params, fun: GA_http_request)
     }
 
-    public func refreshAssets(params: [String: Any]) throws -> [String: Any]? {
-        var paramsJson: OpaquePointer = try convertDictToJson(dict: params)
+    public func refreshAssets(params: [String: Any]) throws {
+        let paramsJson: OpaquePointer = try convertDictToJSON(dict: params)
         defer {
             GA_destroy_json(paramsJson)
         }
