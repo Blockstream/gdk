@@ -418,6 +418,7 @@ impl ElectrumSession {
                 name: "".to_string(),
                 xpub: Some(xpub),
                 discovered: false,
+                is_already_created: true,
             })?;
         }
 
@@ -818,7 +819,7 @@ impl ElectrumSession {
             let account = accounts
                 .get(&last_account)
                 .ok_or_else(|| Error::InvalidSubaccount(last_account))?;
-            if !account.has_transactions()? {
+            if !opt.is_already_created && !account.has_transactions()? {
                 bail!(Error::AccountGapsDisallowed);
             }
         }

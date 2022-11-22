@@ -108,7 +108,9 @@ namespace sdk {
         const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
         // Note we only register each loaded subaccount once.
-        const nlohmann::json details({ { "name", std::string() } });
+        // Subaccount to register has already been created, so we
+        // set a flag to avoid the checks on the (sub)account gaps.
+        const nlohmann::json details({ { "name", std::string() }, { "is_already_created", true } });
         for (size_t i = 0; i < pointers.size(); ++i) {
             const auto pointer = pointers.at(i);
             if (!m_user_pubkeys->have_subaccount(pointer)) {

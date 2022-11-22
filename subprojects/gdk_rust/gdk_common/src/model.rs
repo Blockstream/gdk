@@ -206,6 +206,8 @@ pub struct CreateAccountOpt {
     pub xpub: Option<ExtendedPubKey>,
     #[serde(default)]
     pub discovered: bool,
+    #[serde(default)]
+    pub is_already_created: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

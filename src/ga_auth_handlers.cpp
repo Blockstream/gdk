@@ -530,6 +530,8 @@ namespace sdk {
             // Fall through to create the subaccount
         }
 
+        // This is an actual subaccount creation, do not allow the caller to set this flag
+        m_details.erase("is_already_created");
         // Create the subaccount
         m_result = m_session->create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
         // Ensure the server created the subaccount number we expected
