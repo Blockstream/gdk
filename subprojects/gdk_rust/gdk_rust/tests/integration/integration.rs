@@ -73,7 +73,6 @@ fn roundtrip_bitcoin() {
     test_session.stop();
 }
 
-#[ignore]
 #[test]
 fn roundtrip_liquid() {
     let mut test_session = TestSession::new(true, |_| ());
@@ -1135,7 +1134,6 @@ fn sighash_bitcoin() {
     sighash(false);
 }
 
-#[ignore]
 #[test]
 fn sighash_liquid() {
     sighash(true);
@@ -1523,7 +1521,6 @@ fn test_electrum_disconnect() {
 }
 
 // Test the low-level spv_cross_validate()
-#[ignore] // FIXME: restore when it's not flaky
 #[test]
 fn spv_cross_validate() {
     // Scenario 1: our local chain is a minority fork
@@ -1589,7 +1586,6 @@ fn spv_cross_validate() {
 
 // Test high-level session management, background validation and transaction status
 #[test]
-#[ignore] // FIXME improve test flakiness and restore
 fn spv_cross_validation_session() {
     let (mut test_session1, mut test_session2) = setup_forking_sessions(true);
 
@@ -1751,7 +1747,6 @@ fn test_tor() {
     assert_eq!(result.height, 1);
 }
 
-#[ignore] // FIXME: restore when it's not flaky
 #[test]
 fn test_spv_over_period() {
     // regtest doesn't retarget after a period (2016 blocks)
@@ -1784,7 +1779,6 @@ fn test_spv_over_period() {
     test_session.spv_verify_tx(&txid, initial_block + block_to_mine * times + 1, Some(100));
 }
 
-#[ignore] // FIXME: restore when it's not flaky
 #[test]
 fn test_spv_external_concurrent_spv_enabled() {
     test_spv_external_concurrent(true);
