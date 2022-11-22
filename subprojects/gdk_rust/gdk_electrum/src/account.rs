@@ -38,7 +38,7 @@ use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters};
 
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
-use crate::store::{Store, BATCH_SIZE};
+use crate::store::{RawAccountCache, Store, BATCH_SIZE};
 
 // The number of account types, including these reserved for future use.
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
@@ -587,9 +587,11 @@ impl Account {
         p2pkh_script(&public_key).into()
     }
 
-    pub fn tx_outputs(&self, tx: &BETransaction) -> Result<Vec<TransactionOutput>, Error> {
-        let store_read = self.store.read()?;
-        let acc_store = store_read.account_cache(self.account_num)?;
+    pub fn tx_outputs(
+        &self,
+        tx: &BETransaction,
+        acc_store: &RawAccountCache,
+    ) -> Result<Vec<TransactionOutput>, Error> {
         let mut tx_outputs = vec![];
         for vout in 0..tx.output_len() as u32 {
             let address = tx.output_address(vout, self.network.id()).unwrap_or_default();
@@ -630,12 +632,9 @@ impl Account {
         Ok(tx_outputs)
     }
 
-    pub fn txo(&self, outpoint: &BEOutPoint) -> Result<Txo, Error> {
+    pub fn txo(&self, outpoint: &BEOutPoint, acc_store: &RawAccountCache) -> Result<Txo, Error> {
         let vout = outpoint.vout();
         let txid = outpoint.txid();
-
-        let store_read = self.store.read()?;
-        let acc_store = store_read.account_cache(self.account_num)?;
 
         let txe = acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?;
         let tx = &txe.tx;
@@ -676,11 +675,15 @@ impl Account {
         })
     }
 
-    pub fn used_utxos(&self, tx: &BETransaction) -> Result<Vec<UnspentOutput>, Error> {
+    pub fn used_utxos(
+        &self,
+        tx: &BETransaction,
+        acc_store: &RawAccountCache,
+    ) -> Result<Vec<UnspentOutput>, Error> {
         tx.previous_sequence_and_outpoints()
             .into_iter()
             .map(|(sequence, outpoint)| {
-                self.txo(&outpoint)
+                self.txo(&outpoint, acc_store)
                     .and_then(|mut u| {
                         u.sequence = Some(sequence);
                         Ok(u.try_into()?)
@@ -1192,14 +1195,14 @@ pub fn create_tx(
     let mut template_tx = None;
     let mut change_addresses = vec![];
 
+    let store_read = account.store.read()?;
+    let acc_store = store_read.account_cache(account.num())?;
+
     // When a previous transaction is replaced, use it as a template for the new transaction
     if let Some(ref prev_txitem) = request.previous_transaction {
         if send_all || network.liquid {
             return Err(Error::InvalidReplacementRequest);
         }
-
-        let store_read = account.store.read()?;
-        let acc_store = store_read.account_cache(account.num())?;
 
         let txid = BETxid::from_hex(&prev_txitem.txhash, network.id())?;
         let prev_tx = &acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?.tx;
@@ -1280,7 +1283,7 @@ pub fn create_tx(
             let outpoint = o.outpoint(id)?;
             // TODO: check that the outpoint is not confirmed
             // TODO: check that outpoints are unique
-            let utxo = account.txo(&outpoint)?;
+            let utxo = account.txo(&outpoint, acc_store)?;
             if request.confidential_utxos_only && !utxo.is_confidential() {
                 continue;
             }
@@ -1342,8 +1345,6 @@ pub fn create_tx(
     )?;
 
     // STEP 2) add utxos until tx outputs are covered (including fees) or fail
-    let store_read = account.store.read()?;
-    let acc_store = store_read.account_cache(account.num())?;
     match request.utxo_strategy {
         UtxoStrategy::Default => {
             let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
@@ -1459,8 +1460,8 @@ pub fn create_tx(
         *v = v.abs();
     }
 
-    let used_utxos = account.used_utxos(&tx)?;
-    let tx_outputs = account.tx_outputs(&tx)?;
+    let used_utxos = account.used_utxos(&tx, acc_store)?;
+    let tx_outputs = account.tx_outputs(&tx, acc_store)?;
     let mut created_tx = TransactionMeta::new(
         tx,
         None,
