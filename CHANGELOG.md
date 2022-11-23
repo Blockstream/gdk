@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.0.57
+## Release 0.0.58
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.0.57 - 2022-11-23
 
 ### Added
 - GA_get_subaccount: add user_path, core_descriptor, slip132_extended_pubkey.
