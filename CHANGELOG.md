@@ -18,6 +18,10 @@ avoid the network call use GA_get_assets. In addition GA_refresh_assets now
 does not return any value, to get assets data use GA_get_assets.
 - GA_get_assets: it is now possible to fetch informations via the `assets_id`
 even before logging into a session.
+- Removed support for LiquiDEX v0 for GA_create_swap_transaction,
+GA_complete_swap_transaction and GA_validate, which now support LiquiDEX v1
+only. LiquiDEX v0 transactions can still be created and completed with
+GA_create_transaction.
 
 ### Fixed
 
