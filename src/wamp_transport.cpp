@@ -262,6 +262,9 @@ namespace sdk {
             const auto t = std::chrono::system_clock::now();
             return t < from || t - from > duration;
         }
+
+        static bool is_tls_connection(const std::string& url) { return boost::algorithm::starts_with(url, "wss://"); }
+
     } // namespace
 
     class exponential_backoff {
@@ -310,13 +313,17 @@ namespace sdk {
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
-    wamp_transport::wamp_transport(const network_parameters& net_params, wamp_transport::notify_fn_t fn)
-        : m_net_params(net_params)
-        , m_io()
+    wamp_transport::wamp_transport(std::string server, const std::string& hostname, std::vector<std::string> cert_roots,
+        std::vector<std::string> cert_pins, uint32_t cert_expiry_threshold, std::string call_prefix,
+        wamp_transport::notify_fn_t fn)
+        : m_io()
         , m_work_guard(asio::make_work_guard(m_io))
-        , m_server(m_net_params.get_connection_string())
-        , m_wamp_host_name(websocketpp::uri(m_net_params.gait_wamp_url()).get_host())
-        , m_wamp_call_prefix("com.greenaddress.")
+        , m_server(std::move(server))
+        , m_wamp_host_name(websocketpp::uri(hostname).get_host())
+        , m_wamp_cert_roots(std::move(cert_roots))
+        , m_wamp_cert_pins(std::move(cert_pins))
+        , m_wamp_cert_expiry_threshold(cert_expiry_threshold)
+        , m_wamp_call_prefix(std::move(call_prefix))
         , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_desired_state(state_t::disconnected)
@@ -331,7 +338,7 @@ namespace sdk {
         m_run_thread = std::thread([this] { m_io.run(); });
         m_reconnect_thread = std::thread([this] { reconnect_handler(); });
 
-        if (!m_net_params.is_tls_connection()) {
+        if (!is_tls_connection(server)) {
             m_client = std::make_unique<client>();
             m_client->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
             m_client->init_asio(&m_io);
@@ -341,8 +348,7 @@ namespace sdk {
         m_client_tls = std::make_unique<client_tls>();
         m_client_tls->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
         m_client_tls->set_tls_init_handler([this](const websocketpp::connection_hdl) {
-            return tls_init(m_wamp_host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
-                m_net_params.cert_expiry_threshold());
+            return tls_init(m_wamp_host_name, m_wamp_cert_roots, m_wamp_cert_pins, m_wamp_cert_expiry_threshold);
         });
         m_client_tls->init_asio(&m_io);
     }
@@ -488,7 +494,7 @@ namespace sdk {
 
     void wamp_transport::reconnect_handler()
     {
-        const bool is_tls = m_net_params.is_tls_connection();
+        const bool is_tls = is_tls_connection(m_server);
         const bool is_debug = gdk_config()["log_level"] == "debug";
         const auto& executor = m_io.get_executor();
 

@@ -277,7 +277,13 @@ namespace sdk {
         , m_multi_call_category(0)
         , m_cache(std::make_shared<cache>(m_net_params, m_net_params.network()))
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
-        , m_wamp(new wamp_transport(m_net_params,
+        , m_wamp(std::make_unique<wamp_transport>(m_net_params.get_connection_string(), m_net_params.gait_wamp_url(),
+              m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
+              m_net_params.cert_expiry_threshold(), "com.greenaddress.",
+              std::bind(&ga_session::emit_notification, this, std::placeholders::_1, std::placeholders::_2)))
+        , m_blobserver(std::make_unique<wamp_transport>(m_net_params.get_blob_server_url(),
+              m_net_params.get_blob_server_url(), m_net_params.gait_wamp_cert_roots(),
+              m_net_params.gait_wamp_cert_pins(), m_net_params.cert_expiry_threshold(), "",
               std::bind(&ga_session::emit_notification, this, std::placeholders::_1, std::placeholders::_2)))
         , m_spv_thread_done(false)
         , m_spv_thread_stop(false)

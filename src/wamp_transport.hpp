@@ -43,7 +43,9 @@ namespace sdk {
         using notify_fn_t = std::function<void(nlohmann::json, bool)>;
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
 
-        wamp_transport(const network_parameters& net_params, notify_fn_t fn);
+        wamp_transport(std::string server, const std::string& hostname, std::vector<std::string> cert_roots,
+            std::vector<std::string> cert_pins, uint32_t cert_expiry_threshold, std::string call_prefix,
+            wamp_transport::notify_fn_t fn);
         ~wamp_transport();
 
         // Connect the transport. The proxy to use is passed to us as it can
@@ -120,13 +122,15 @@ namespace sdk {
             autobahn::wamp_websocket_transport* t, boost::future<autobahn::wamp_call_result>& fn);
 
         // These members are immutable after construction
-        const network_parameters& m_net_params;
         boost::asio::io_context m_io;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
         std::thread m_run_thread; // Runs the asio context
         std::thread m_reconnect_thread; // Runs the reconnection logic
         const std::string m_server;
         const std::string m_wamp_host_name;
+        const std::vector<std::string> m_wamp_cert_roots;
+        const std::vector<std::string> m_wamp_cert_pins;
+        uint32_t m_wamp_cert_expiry_threshold;
         const std::string m_wamp_call_prefix;
         autobahn::wamp_call_options m_wamp_call_options;
         notify_fn_t m_notify_fn;

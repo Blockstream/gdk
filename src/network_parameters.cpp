@@ -767,10 +767,6 @@ namespace sdk {
     {
         return get_url(m_details, "asset_registry_url", "asset_registry_onion_url", use_tor());
     }
-    bool network_parameters::is_tls_connection() const
-    {
-        return boost::algorithm::starts_with(get_connection_string(), "wss://");
-    }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
     uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }
     // max_reorg_blocks indicates the maximum number of blocks that gdk will expect to re-org on-chain.
