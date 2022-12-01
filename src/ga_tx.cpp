@@ -452,18 +452,6 @@ namespace sdk {
             return { is_rbf, is_cpfp };
         }
 
-        static void create_send_to_self(
-            session_impl& session, const std::set<uint32_t>& subaccounts, nlohmann::json& result)
-        {
-            const uint32_t subaccount = get_single_subaccount(subaccounts);
-            // Set addressees to a wallet address from the given subaccount
-            const auto addr = session.get_receive_address({ { "subaccount", subaccount } });
-            const auto address = addr.at("address");
-            std::vector<nlohmann::json> addressees;
-            addressees.emplace_back(nlohmann::json({ { "address", address }, { "satoshi", 0 } }));
-            result["addressees"] = addressees;
-        }
-
         static void create_ga_transaction_impl(session_impl& session, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
@@ -483,9 +471,6 @@ namespace sdk {
             const bool is_redeposit = json_get_value(result, "is_redeposit", false);
 
             if (is_redeposit) {
-                if (result.find("addressees") == result.end()) {
-                    create_send_to_self(session, subaccounts, result);
-                }
                 // When re-depositing, send everything and don't create change
                 result["send_all"] = true;
             }
@@ -502,7 +487,19 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(!json_get_value(result, "send_all", false));
             }
 
+            // We must have addressees to send to, and if sending everything, only one
+            // Note that this error is set unconditionally and so overrides any others,
+            // Since addressing transactions is normally done first by users
             auto addressees_p = result.find("addressees");
+            if (addressees_p == result.end() || addressees_p->empty()) {
+                set_tx_error(result, res::id_no_recipients);
+                if (!result.contains("used_utxos")) {
+                    result.emplace("used_utxos", std::vector<nlohmann::json>());
+                }
+                return;
+            }
+            const size_t num_addressees = addressees_p->size();
+
             if (is_sweep) {
                 if (is_liquid) {
                     set_tx_error(result, "sweep not supported for liquid");
@@ -524,26 +521,20 @@ namespace sdk {
                     } catch (const std::exception& ex) {
                         GDK_LOG_SEV(log_level::error) << "Exception getting outputs for private key: " << ex.what();
                     }
-                    result["utxos"][policy_asset] = sweep_utxos;
                     if (sweep_utxos.empty()) {
                         set_tx_error(result, res::id_no_utxos_found); // No UTXOs found
                     }
+                    result["utxos"][policy_asset] = std::move(sweep_utxos);
                 }
                 result["send_all"] = true;
-                if (addressees_p != result.end()) {
-                    // Use the provided address
-                    GDK_RUNTIME_ASSERT(addressees_p->size() == 1u);
-                    addressees_p->at(0)["satoshi"] = 0;
-                } else {
-                    // Send to an address in the determined subaccount
-                    create_send_to_self(session, subaccounts, result);
-                    addressees_p = result.find("addressees");
-                }
+                // Use the provided address
+                GDK_RUNTIME_ASSERT(addressees_p->size() == 1u);
+                addressees_p->at(0)["satoshi"] = 0;
             }
 
             const bool send_all = json_add_if_missing(result, "send_all", false);
             // For now, the amount can't be directly edited for the below actions
-            // One we expose coin control, the amount will auto update as utxos are
+            // With coin control, the amount will auto update as utxos are
             // selected/deselected
             result["amount_read_only"] = send_all || is_redeposit || is_rbf || is_cpfp || is_sweep;
 
@@ -556,16 +547,6 @@ namespace sdk {
             if (!manual_selection) {
                 // We will recompute the used utxos
                 result.erase("used_utxos");
-            }
-
-            // We must have addressees to send to, and if sending everything, only one
-            // Note that this error is set unconditionally and so overrides any others,
-            // Since addressing transactions is normally done first by users
-            size_t num_addressees = 0;
-            if (addressees_p == result.end() || addressees_p->empty()) {
-                set_tx_error(result, res::id_no_recipients); // No outputs
-            } else {
-                num_addressees = addressees_p->size();
             }
 
             // Send all should not be visible/set when RBFing
