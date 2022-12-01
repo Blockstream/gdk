@@ -191,10 +191,11 @@ static void _python_destroy_GA_session(PyObject* obj)
     p = (struct GA_session *)get_from_capsule(obj, "struct GA_session *");
     if (p) {
         _python_set_callback_handler(obj, Py_None);
-        GA_destroy_session(p);
         PyCapsule_SetDestructor(obj, NULL);
     }
     SWIG_PYTHON_THREAD_END_BLOCK;
+    if (p)
+        GA_destroy_session(p);
 }
 
 static int _python_destroy_session(PyObject* obj)
@@ -209,11 +210,11 @@ static void _python_destroy_GA_auth_handler(PyObject* obj)
 
     SWIG_PYTHON_THREAD_BEGIN_BLOCK;
     p = (struct GA_auth_handler *)get_from_capsule(obj, "struct GA_auth_handler *");
-    if (p) {
-        GA_destroy_auth_handler(p);
+    if (p)
         PyCapsule_SetDestructor(obj, NULL);
-    }
     SWIG_PYTHON_THREAD_END_BLOCK;
+    if (p)
+        GA_destroy_auth_handler(p);
 }
 %}
 
