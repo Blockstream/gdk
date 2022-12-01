@@ -468,12 +468,7 @@ namespace sdk {
 
     bool validate_hex(const std::string& hex, size_t len)
     {
-        try {
-            return h2b(hex).size() == len;
-        } catch (const std::exception&) {
-            // Fall through
-        }
-        return false;
+        return hex.size() == len * 2 && wally_hex_verify(hex.c_str()) == WALLY_OK;
     }
 
     std::vector<unsigned char> addr_segwit_to_bytes(const std::string& addr, const std::string& family)
