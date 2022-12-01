@@ -165,11 +165,11 @@ static int _python_set_callback_handler(PyObject* obj, PyObject* arg)
     if (PyErr_Occurred())
         goto end;
 
-    if (old_arg)
-        Py_DecRef(old_arg);
-
     if (PyCapsule_SetContext(obj, arg))
         goto end;
+
+    if (old_arg)
+        Py_DecRef(old_arg);
 
     Py_IncRef(arg);
 
