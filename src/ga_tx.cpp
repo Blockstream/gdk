@@ -1201,7 +1201,7 @@ namespace sdk {
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
             GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
-            GDK_RUNTIME_ASSERT_MSG(false, error);
+            throw user_error(error);
         }
 
         constexpr bool is_liquid = true;
