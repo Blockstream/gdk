@@ -301,14 +301,14 @@ namespace sdk {
                 const auto& outputs = prev_tx.at("outputs");
                 GDK_RUNTIME_ASSERT(tx->num_outputs == outputs.size());
                 addressees.reserve(outputs.size());
-                uint32_t i = 0, change_index = NO_CHANGE_INDEX;
+                uint32_t out_index = 0, change_index = NO_CHANGE_INDEX;
 
                 for (const auto& output : outputs) {
                     const std::string output_addr = output.at("address");
                     if (!output_addr.empty()) {
                         // Validate address matches the transaction scriptpubkey
                         const auto spk_from_address = scriptpubkey_from_address(net_params, output_addr);
-                        const auto& o = tx->outputs[i];
+                        const auto& o = tx->outputs[out_index];
                         const auto spk_from_tx = gsl::make_span(o.script, o.script_len);
                         GDK_RUNTIME_ASSERT(static_cast<size_t>(spk_from_tx.size()) == spk_from_address.size());
                         GDK_RUNTIME_ASSERT(
@@ -334,14 +334,14 @@ namespace sdk {
                     const bool is_possible_change = is_relevant && (!is_electrum || is_internal);
                     if (is_possible_change && change_index == NO_CHANGE_INDEX) {
                         // Change output.
-                        change_index = i;
+                        change_index = out_index;
                     } else {
                         // Not a change output, or there is already one:
                         // treat this as a regular output
                         addressees.emplace_back(nlohmann::json(
                             { { "address", output.at("address") }, { "satoshi", output.at("satoshi") } }));
                     }
-                    ++i;
+                    ++out_index;
                 }
 
                 bool is_redeposit = false;
@@ -418,7 +418,7 @@ namespace sdk {
                 for (auto& input : result["old_used_utxos"]) {
                     const auto sigs = get_signatures_from_input(input, tx, vin, net_params.is_liquid());
                     const auto pubkeys = session.pubkeys_from_utxo(input);
-                    for (i = 0; i < sigs.size(); ++i) {
+                    for (size_t i = 0; i < sigs.size(); ++i) {
                         const auto sighash = sigs.at(i).second;
                         input["user_sighash"] = sighash;
                         const auto script_hash = get_script_hash(net_params, input, tx, vin, sighash);
