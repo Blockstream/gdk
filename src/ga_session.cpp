@@ -46,6 +46,7 @@ namespace sdk {
 
         static const std::string MASKED_GAUTH_SEED("***");
         static const uint32_t DEFAULT_MIN_FEE = 1000; // 1 satoshi/byte
+        static const uint32_t DEFAULT_MIN_FEE_LIQUID = 100; // 0.1 satoshi/byte
         static const uint32_t NUM_FEE_ESTIMATES = 25; // Min fee followed by blocks 1-24
 
         static const std::string ZEROS(64, '0');
@@ -261,7 +262,7 @@ namespace sdk {
         , m_blob()
         , m_blob_hmac()
         , m_blob_outdated(false)
-        , m_min_fee_rate(DEFAULT_MIN_FEE)
+        , m_min_fee_rate(m_net_params.is_liquid() ? DEFAULT_MIN_FEE_LIQUID : DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
         , m_fee_estimates_ts(std::chrono::system_clock::now())
