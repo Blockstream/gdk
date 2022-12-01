@@ -547,7 +547,7 @@ namespace sdk {
         return get_min_fee_rate();
     }
     uint32_t ga_rust::get_block_height() const { return rust_call("get_block_height", {}, m_session); }
-    amount ga_rust::get_dust_threshold() const { return amount(546); }
+    amount ga_rust::get_dust_threshold() const { return amount(m_net_params.is_liquid() ? 1 : 546); }
 
     nlohmann::json ga_rust::get_spending_limits() const
     {
