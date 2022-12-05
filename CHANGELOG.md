@@ -5,8 +5,14 @@
 ### Added
 
 ### Changed
+- GA_create_transaction: Sweeping and re-deposit transactions now require the
+  caller to provide the recipient address. GA_get_receive_address can be used
+  for this purpose.
+- GA_create_transaction: If addressees are not provided, some fields of the
+  result transaction may not be populated.
 
 ### Fixed
+- Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.
 
 ### Removed
 
