@@ -1178,6 +1178,11 @@ namespace sdk {
     // FIXME: Only used for sweep txs, refactor to remove
     nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details)
     {
+        const std::string error = json_get_value(details, "error");
+        if (!error.empty()) {
+            GDK_LOG_SEV(log_level::debug) << " attempt to sign with error: " << details.dump();
+            throw user_error(error);
+        }
         auto tx = sign_ga_transaction(session, details, get_ga_signing_inputs(details)).second;
         nlohmann::json result(details);
         result.erase("utxos");
