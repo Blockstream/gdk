@@ -56,6 +56,18 @@ else
     exit 1
 fi
 
+export HOST_OS="i686-linux-gnu"
+if [ "$(uname)" = "Darwin" ]; then
+    if [ "$(uname -m)" = "arm64" ]; then
+        export HOST_OS="aarch64-apple-darwin"
+        export SDK_ARCH="aarch64"
+        export SDK_CPU="arm64"
+    else
+        export SDK_ARCH="x86_64"
+        export SDK_CPU="x86_64"
+        export HOST_OS="x86_64-apple-darwin"
+    fi
+fi
 BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
@@ -66,6 +78,11 @@ export PATH_BASE=$PATH
 
 export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64"
 export GDK_SOURCE_ROOT=$(pwd)
+export CFLAGS="$CFLAGS"
+export CPPFLAGS="$CFLAGS"
+export PATH_BASE=$PATH
+export BUILDTYPE
+
 
 while true; do
     case "$1" in
@@ -118,11 +135,23 @@ elif [ ${BUILD} == "--ndk" ]; then
     export AR="$NDK_TOOLSDIR/bin/llvm-ar"
     export RANLIB="$NDK_TOOLSDIR/bin/llvm-ranlib"
 elif [ ${BUILD} == "--iphone" ]; then
+    set_cross_build_env ios iphone
+    . tools/ios_env.sh $BUILD
+    export PATH=$XCODE_IOS_PATH:$PATH_BASE
+    export AR=ar
     C_COMPILER=${XCODE_DEFAULT_PATH}/clang
     CXX_COMPILER=${XCODE_DEFAULT_PATH}/clang++
+    export CFLAGS="${IOS_CFLAGS} ${EXTRA_FLAGS}"
+    export LDFLAGS="${IOS_LDFLAGS} ${EXTRA_FLAGS}"
 elif [ ${BUILD} == "--iphonesim" ]; then
+    set_cross_build_env ios iphonesim
+    . tools/ios_env.sh $BUILD
+    export PATH=$XCODE_IOS_PATH:$PATH_BASE
+    export AR=ar
     C_COMPILER=${XCODE_DEFAULT_PATH}/clang
     CXX_COMPILER=${XCODE_DEFAULT_PATH}/clang++
+    export CFLAGS="${IOS_CFLAGS} ${EXTRA_FLAGS}"
+    export LDFLAGS="${IOS_LDFLAGS} ${EXTRA_FLAGS}"
 elif [ ${BUILD} == "--mingw-w64" ]; then
     BUILD="--windows"
     C_COMPILER=gcc-posix
@@ -149,6 +178,7 @@ export CCC_CC=$C_COMPILER
 mkdir -p ${GDK_BUILD_ROOT}
 
 export NDK_ARCH=${NDK_ARCH}
+
 
 function prepare_sources {
     source_url=$1

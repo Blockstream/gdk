@@ -97,7 +97,8 @@ release_py3m_osx:
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
+    - NUM_JOBS=16 ./tools/builddeps.sh --clang --prefix $PWD/clang-deps
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9 --external-deps-dir $PWD/clang-deps
 
 release_py3m_osx_m1:
   extends: .py_release
@@ -108,7 +109,8 @@ release_py3m_osx_m1:
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9
+    - NUM_JOBS=16 ./tools/builddeps.sh --clang --prefix $PWD/clang-deps
+    - NUM_JOBS=16 ./tools/build.sh --install $PWD/gdk-python --clang --python-version 3.9 --external-deps-dir $PWD/clang-deps
 
 test_fedora_clang:
   image: greenaddress/fedora_ci@sha256:78997558029c74fbf6ad078b0eb75663749a216b676f6df2eb17dba8c97acc0e
@@ -196,7 +198,8 @@ test_osx_clang:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --clang
+    - NUM_JOBS=16 ./tools/builddeps.sh --clang --prefix $PWD/clang-deps
+    - NUM_JOBS=16 ./tools/build.sh --clang --external-deps-dir $PWD/clang-deps
 
 release_osx_ios:
   extends: .ios_release
@@ -204,7 +207,8 @@ release_osx_ios:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphone static --install $PWD/gdk-iphone
+    - NUM_JOBS=16 ./tools/builddeps.sh --iphone --prefix $PWD/iphone-deps
+    - NUM_JOBS=16 ./tools/build.sh --iphone static --install $PWD/gdk-iphone --external-deps-dir $PWD/iphone-deps
 
 release_osx_ios_sim:
   extends: .ios_sim_release
@@ -212,7 +216,8 @@ release_osx_ios_sim:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --install $PWD/gdk-iphone-sim
+    - NUM_JOBS=16 ./tools/builddeps.sh --iphonesim --prefix $PWD/iphonesim-deps
+    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --install $PWD/gdk-iphone-sim --external-deps-dir $PWD/iphonesim-deps
 
 release_osx_ios_debug:
   extends: .ios_release
@@ -221,7 +226,8 @@ release_osx_ios_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphone static --buildtype=debug --install $PWD/gdk-iphone
+    - NUM_JOBS=16 ./tools/builddeps.sh --iphone --buildtype debug --prefix $PWD/iphone-deps-debug
+    - NUM_JOBS=16 ./tools/build.sh --iphone static --buildtype=debug --install $PWD/gdk-iphone --external-deps-dir $PWD/iphone-deps-debug
 
 release_osx_ios_sim_debug:
   extends: .ios_sim_release
@@ -230,7 +236,8 @@ release_osx_ios_sim_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --buildtype=debug --install $PWD/gdk-iphone-sim
+    - NUM_JOBS=16 ./tools/builddeps.sh --iphonesim --buildtype debug --prefix $PWD/iphonesim-deps-debug
+    - NUM_JOBS=16 ./tools/build.sh --iphonesim static --buildtype=debug --install $PWD/gdk-iphone-sim --external-deps-dir $PWD/iphonesim-deps-debug
 
 test_osx_clang_ndk_armeabi-v7a:
   only:
@@ -242,7 +249,8 @@ test_osx_clang_ndk_armeabi-v7a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk armeabi-v7a
+    - NUM_JOBS=16 ./tools/builddeps.sh --ndk armeabi-v7a --prefix $PWD/android-armeabi-v7a
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk armeabi-v7a --external-deps-dir $PWD/android-armeabi-v7a
 
 test_osx_clang_ndk_arm64-v8a:
   only:
@@ -254,7 +262,8 @@ test_osx_clang_ndk_arm64-v8a:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ANDROID_NDK=/opt/ndroid-ndk-r23b ./tools/build.sh --ndk arm64-v8a
+    - NUM_JOBS=16 ./tools/builddeps.sh --ndk arm64-v8a --prefix $PWD/android-arm64-v8a
+    - NUM_JOBS=16 ANDROID_NDK=/opt/ndroid-ndk-r23b ./tools/build.sh --ndk arm64-v8a --external-deps-dir $PWD/android-arm64-v8a
 
 test_osx_clang_ndk_x86:
   only:
@@ -266,7 +275,8 @@ test_osx_clang_ndk_x86:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk x86
+    - NUM_JOBS=16 ./tools/builddeps.sh --ndk x86 --prefix $PWD/android-x86
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk x86 --external-deps-dir $PWD/android-x86
 
 test_osx_clang_ndk_x86_64:
   only:
@@ -278,7 +288,8 @@ test_osx_clang_ndk_x86_64:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk x86_64
+    - NUM_JOBS=16 ./tools/builddeps.sh --ndk x86_64 --prefix $PWD/android-x86_64
+    - NUM_JOBS=16 ANDROID_NDK=/opt/android-ndk-r23b ./tools/build.sh --ndk x86_64 --external-deps-dir $PWD/android-x86_64
 
 test_windows_mingw_w64_cross:
   tags:

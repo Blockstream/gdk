@@ -60,7 +60,6 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
 elif [ "$1" = "--windows" ]; then
      export CC=x86_64-w64-mingw32-gcc-posix
      export CXX=x86_64-w64-mingw32-g++-posix
-
     ./configure --disable-swig-java --disable-swig-python --host=x86_64-w64-mingw32 --build=${HOST_OS} ${CONFIGURE_ARGS}
     make clean -k || echo >/dev/null
     make -j${NUM_JOBS}
