@@ -552,7 +552,7 @@ namespace sdk {
             // Send all should not be visible/set when RBFing
             GDK_RUNTIME_ASSERT(!is_rbf || (!send_all || is_redeposit));
 
-            if (send_all && num_addressees > 1) {
+            if (send_all && num_addressees > 1u) {
                 set_tx_error(result, res::id_send_all_requires_a_single); // Send all requires a single output
             }
 
@@ -571,16 +571,14 @@ namespace sdk {
 
             std::set<std::string> asset_ids;
             bool have_assets = json_get_value(result, "addressees_have_assets", false);
-            if (num_addressees) {
-                for (auto& addressee : *addressees_p) {
-                    const std::string asset_id_hex = validate_tx_addressee(net_params, result, addressee);
-                    if (!json_get_value(result, "error").empty()) {
-                        // FIXME: should probably either exit early or continue
-                        // and not overwrite error here
-                        break;
-                    }
-                    asset_ids.insert(asset_id_hex);
+            for (auto& addressee : *addressees_p) {
+                const std::string asset_id_hex = validate_tx_addressee(net_params, result, addressee);
+                if (!json_get_value(result, "error").empty()) {
+                    // FIXME: should probably either exit early or continue
+                    // and not overwrite error here
+                    break;
                 }
+                asset_ids.insert(asset_id_hex);
             }
 
             if (is_liquid) {
@@ -614,23 +612,21 @@ namespace sdk {
                 // Add all outputs and compute the total amount of satoshi to be sent
                 amount required_total{ 0 };
 
-                if (num_addressees) {
-                    for (auto& addressee : *addressees_p) {
-                        const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
-                        if (addressee_asset_id == asset_id) {
-                            required_total += add_tx_addressee(session, net_params, result, tx, addressee);
-                            reordered_addressees.push_back(addressee);
-                            // If addressee has an index, we are inserting the addressee in the
-                            // transaction at that index, thus change indexes after the index must
-                            // be incremented.
-                            if (addressee.contains("index")) {
-                                const auto index = addressee.at("index");
-                                if (result.contains("change_index")) {
-                                    auto& change_indexes = result.at("change_index");
-                                    for (auto it = change_indexes.begin(); it != change_indexes.end(); ++it) {
-                                        if (*it >= index) {
-                                            *it = static_cast<uint32_t>(*it) + 1;
-                                        }
+                for (auto& addressee : *addressees_p) {
+                    const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
+                    if (addressee_asset_id == asset_id) {
+                        required_total += add_tx_addressee(session, net_params, result, tx, addressee);
+                        reordered_addressees.push_back(addressee);
+                        // If addressee has an index, we are inserting the addressee in the
+                        // transaction at that index, thus change indexes after the index must
+                        // be incremented.
+                        if (addressee.contains("index")) {
+                            const auto index = addressee.at("index");
+                            if (result.contains("change_index")) {
+                                auto& change_indexes = result.at("change_index");
+                                for (auto it = change_indexes.begin(); it != change_indexes.end(); ++it) {
+                                    if (*it >= index) {
+                                        *it = static_cast<uint32_t>(*it) + 1;
                                     }
                                 }
                             }
