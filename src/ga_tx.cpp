@@ -590,7 +590,7 @@ namespace sdk {
             }
             result["addressees_have_assets"] = have_assets;
 
-            std::vector<nlohmann::json> reordered_addressees;
+            nlohmann::json::array_t reordered_addressees;
 
             auto create_tx_outputs = [&](const std::string& asset_id) {
                 const bool include_fee = asset_id == policy_asset && !is_partial;
@@ -937,7 +937,7 @@ namespace sdk {
                 create_tx_outputs(policy_asset);
             }
 
-            result["addressees"] = reordered_addressees;
+            result["addressees"] = std::move(reordered_addressees);
 
             if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
                 randomise_inputs(tx, used_utxos);
