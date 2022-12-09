@@ -270,7 +270,7 @@ namespace sdk {
                     break;
                 }
             }
-            GDK_RUNTIME_ASSERT(subaccount_ok);
+            GDK_RUNTIME_ASSERT_MSG(subaccount_ok, "No suitable subaccount UTXOs found");
 
             const auto tx = session.get_raw_transaction_details(prev_tx.at("txhash"));
             const auto min_fee_rate = session.get_min_fee_rate();
@@ -302,6 +302,20 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(tx->num_outputs == outputs.size());
                 addressees.reserve(outputs.size());
                 uint32_t out_index = 0, change_index = NO_CHANGE_INDEX;
+                bool have_explicit_change = false; // True if we found an explicit change output
+
+                if (is_electrum) {
+                    // single sig: determine if we have explicit change; if not
+                    // we use any found wallet output as change below.
+                    for (const auto& output : outputs) {
+                        const bool is_relevant = json_get_value(output, "is_relevant", false);
+                        const bool is_internal = json_get_value(output, "is_internal", false);
+                        if (is_relevant && is_internal) {
+                            have_explicit_change = true;
+                            break;
+                        }
+                    }
+                }
 
                 for (const auto& output : outputs) {
                     const std::string output_addr = output.at("address");
@@ -329,10 +343,22 @@ namespace sdk {
                         }
                         GDK_RUNTIME_ASSERT(output_addr == address);
                     }
-                    // For singlesig, only consider internal addresses as change candidates
-                    const bool is_internal = json_get_value(output, "is_internal", false);
-                    const bool is_possible_change = is_relevant && (!is_electrum || is_internal);
-                    if (is_possible_change && change_index == NO_CHANGE_INDEX) {
+
+                    bool is_change = false;
+                    if (is_relevant && change_index == NO_CHANGE_INDEX) {
+                        // No change found so far; this output is possibly change
+                        if (!is_electrum) {
+                            // Multisig: Treat the first wallet output as change, as we
+                            // don't have internal addresses to mark change explicitly
+                            is_change = true;
+                        } else if (!have_explicit_change || json_get_value(output, "is_internal", false)) {
+                            // Singlesig: Either we don't have explicit change, and
+                            // this is the first wallet output, or we do have explicit
+                            // change and this is the first explicit change output
+                            is_change = true;
+                        }
+                    }
+                    if (is_change) {
                         // Change output.
                         change_index = out_index;
                     } else {
