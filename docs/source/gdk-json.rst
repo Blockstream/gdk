@@ -651,7 +651,6 @@ Sign transaction JSON
       "satoshi": 5000
     }
   ],
-  "addressees_have_assets": false,
   "addressees_read_only": false,
   "amount_read_only": false,
   "available_total": 50000,
@@ -804,7 +803,6 @@ Send transaction JSON
       "satoshi": 5000
     }
   ],
-  "addressees_have_assets": false,
   "addressees_read_only": false,
   "amount_read_only": false,
   "available_total": 50000,

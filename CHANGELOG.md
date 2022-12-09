@@ -10,6 +10,7 @@
   for this purpose.
 - GA_create_transaction: If addressees are not provided, some fields of the
   result transaction may not be populated.
+- GA_create_transaction: The `addressees_have_assets` element has been removed.
 
 ### Fixed
 - Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.

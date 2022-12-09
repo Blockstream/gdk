@@ -570,7 +570,6 @@ namespace sdk {
             used_utxos.reserve(utxos.size());
 
             std::set<std::string> asset_ids;
-            bool have_assets = json_get_value(result, "addressees_have_assets", false);
             for (auto& addressee : *addressees_p) {
                 const std::string asset_id_hex = validate_tx_addressee(net_params, result, addressee);
                 if (!json_get_value(result, "error").empty()) {
@@ -580,15 +579,6 @@ namespace sdk {
                 }
                 asset_ids.insert(asset_id_hex);
             }
-
-            if (is_liquid) {
-                have_assets = true;
-            } else {
-                if (have_assets) {
-                    set_tx_error(result, res::id_assets_cannot_be_used_on_bitcoin);
-                }
-            }
-            result["addressees_have_assets"] = have_assets;
 
             nlohmann::json::array_t reordered_addressees;
 

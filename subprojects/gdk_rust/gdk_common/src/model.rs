@@ -311,7 +311,6 @@ pub struct TransactionMeta {
     pub height: Option<u32>,
     pub timestamp: u64, // in microseconds, for confirmed tx is block time for unconfirmed is when created or when list_tx happens
     pub error: String,
-    pub addressees_have_assets: bool,
     pub addressees_read_only: bool,
     pub is_sweep: bool,
     pub satoshi: Balances,
@@ -353,7 +352,6 @@ impl From<BETransaction> for TransactionMeta {
             txid,
             hex,
             error: "".to_string(),
-            addressees_have_assets: false,
             addressees_read_only: false,
             is_sweep: false,
             satoshi: HashMap::new(),
