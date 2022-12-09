@@ -518,26 +518,22 @@ namespace sdk {
             addressee["address"] = address;
         }
 
-        // Convert the users entered value into satoshi
+        // Process the users entered value, if any
         amount satoshi;
         try {
             satoshi = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
+            // Transactions with outputs below the dust threshold (except OP_RETURN)
+            // are not relayed by network nodes
+            if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold()) {
+                set_tx_error(result, res::id_invalid_amount);
+            }
+            amount::strip_non_satoshi_keys(addressee);
+            addressee["satoshi"] = satoshi.value(); // Sets to 0 if not present
         } catch (const user_error& ex) {
-            // Note the error, and create a 0 satoshi output
             set_tx_error(result, ex.what());
-        } catch (const std::exception&) {
-            // Note the error, and create a 0 satoshi output
+        } catch (const std::exception& ex) {
             set_tx_error(result, res::id_invalid_amount);
         }
-
-        // Transactions with outputs below the dust threshold (except OP_RETURN)
-        // are not relayed by network nodes
-        if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold()) {
-            set_tx_error(result, res::id_invalid_amount);
-        }
-
-        amount::strip_non_satoshi_keys(addressee);
-        addressee["satoshi"] = satoshi.value(); // Sets to 0 if not present
 
         return add_tx_output(
             net_params, result, tx, address, satoshi.value(), asset_id_from_json(net_params, addressee));

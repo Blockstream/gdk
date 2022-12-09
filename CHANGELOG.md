@@ -14,6 +14,8 @@
 
 ### Fixed
 - Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.
+- GA_create_transaction: `id_no_amount_specified` is now returned under all
+  circumstances where an amount is not given in an addressee.
 
 ### Removed
 
