@@ -28,28 +28,33 @@ int main()
 
     GDK_RUNTIME_ASSERT(GA_destroy_json(json) == GA_OK);
 
-    // Default-constructed JSON is both empty and null
+    // Default-constructed JSON is both empty and null, and not an object
     GDK_RUNTIME_ASSERT(nlohmann::json().empty());
     GDK_RUNTIME_ASSERT(nlohmann::json().is_null());
+    GDK_RUNTIME_ASSERT(!nlohmann::json().is_object());
 
-    // Empty init list constructed JSON is both empty but *not* null
+    // Empty init list constructed JSON is empty but *not* null, and is an object
     GDK_RUNTIME_ASSERT(nlohmann::json({}).empty());
     GDK_RUNTIME_ASSERT(!nlohmann::json({}).is_null());
+    GDK_RUNTIME_ASSERT(nlohmann::json({}).is_object());
 
-    // JSON constructed from an empty object is empty but *not* null
+    // JSON constructed from an empty object is empty but *not* null, and is an object
     GDK_RUNTIME_ASSERT(nlohmann::json(nlohmann::json::object()).empty());
     GDK_RUNTIME_ASSERT(!nlohmann::json(nlohmann::json::object()).is_null());
+    GDK_RUNTIME_ASSERT(nlohmann::json(nlohmann::json::object()).is_object());
 
-    // Default-constructed JSON Object is empty but *not* null
+    // Default-constructed JSON Object is empty but *not* null, and is an object
     GDK_RUNTIME_ASSERT(nlohmann::json::object().empty());
     GDK_RUNTIME_ASSERT(!nlohmann::json::object().is_null());
+    GDK_RUNTIME_ASSERT(nlohmann::json::object().is_object());
 
-    // Verify that an object with its keys erased is empty but *not* null
+    // An object with its keys erased is empty but *not* null, and is an object
     auto obj = nlohmann::json::object();
     obj["foo"] = "bar";
     obj.erase("foo");
     GDK_RUNTIME_ASSERT(obj.empty());
     GDK_RUNTIME_ASSERT(!obj.is_null());
+    GDK_RUNTIME_ASSERT(obj.is_object());
 
     // References to blank string values are not empty() and have a size() of 1
     // This is because the reference is to the holding json object, not the
