@@ -14,6 +14,7 @@
 
 ### Fixed
 - Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.
+- Liquid: Respect the dust limit for non-fee L-BTC outputs.
 - GA_create_transaction: `id_no_amount_specified` is now returned under all
   circumstances where an amount is not given in an addressee.
 

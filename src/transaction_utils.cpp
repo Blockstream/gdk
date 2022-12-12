@@ -444,9 +444,10 @@ namespace sdk {
         return asset_id_from_json(net_params, addressee);
     }
 
-    amount add_tx_addressee(session_impl& session, const network_parameters& net_params, nlohmann::json& result,
-        wally_tx_ptr& tx, nlohmann::json& addressee)
+    amount add_tx_addressee(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee,
+        const std::string& asset_id_hex)
     {
+        const auto& net_params = session.get_network_parameters();
         std::string address = addressee.at("address"); // Assume its a standard address
         const bool is_blinded = addressee.value("is_blinded", false);
 
@@ -456,7 +457,7 @@ namespace sdk {
             auto script = output_script_for_address(net_params, address, error);
             GDK_RUNTIME_ASSERT(error.empty() || error == res::id_nonconfidential_addresses_not);
 
-            const auto asset_id = h2b_rev(addressee.at("asset_id"));
+            const auto asset_id = h2b_rev(asset_id_hex);
             const amount::value_type satoshi = addressee.at("satoshi");
             const auto abf = h2b_rev(addressee.at("assetblinder"));
 
@@ -524,7 +525,7 @@ namespace sdk {
             satoshi = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
             // Transactions with outputs below the dust threshold (except OP_RETURN)
             // are not relayed by network nodes
-            if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold()) {
+            if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold(asset_id_hex)) {
                 set_tx_error(result, res::id_invalid_amount);
             }
             amount::strip_non_satoshi_keys(addressee);
@@ -535,8 +536,7 @@ namespace sdk {
             set_tx_error(result, res::id_invalid_amount);
         }
 
-        return add_tx_output(
-            net_params, result, tx, address, satoshi.value(), asset_id_from_json(net_params, addressee));
+        return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex);
     }
 
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)

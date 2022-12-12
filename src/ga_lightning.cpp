@@ -391,7 +391,6 @@ namespace sdk {
         throw std::runtime_error("get_default_fee_rate not implemented");
     }
     uint32_t ga_lightning::get_block_height() const { throw std::runtime_error("get_block_height not implemented"); }
-    amount ga_lightning::get_dust_threshold() const { throw std::runtime_error("get_dust_threshold not implemented"); }
     nlohmann::json ga_lightning::get_spending_limits() const
     {
         throw std::runtime_error("get_spending_limits not implemented");

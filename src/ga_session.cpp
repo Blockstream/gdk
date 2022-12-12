@@ -2473,13 +2473,6 @@ namespace sdk {
         return nlohmann::json(std::move(result));
     }
 
-    amount ga_session::get_dust_threshold() const
-    {
-        locker_t locker(m_mutex);
-        const amount::value_type v = m_login_data.at("dust");
-        return amount(v);
-    }
-
     bool ga_session::encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,
         const std::string& nonce_hex, const std::string& blinding_pubkey_hex)
     {

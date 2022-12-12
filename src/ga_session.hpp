@@ -148,7 +148,6 @@ namespace sdk {
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
         uint32_t get_block_height() const;
-        amount get_dust_threshold() const;
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& details);
 

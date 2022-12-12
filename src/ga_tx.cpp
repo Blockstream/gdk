@@ -645,7 +645,7 @@ namespace sdk {
                 for (auto& addressee : *addressees_p) {
                     const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
                     if (addressee_asset_id == asset_id) {
-                        required_total += add_tx_addressee(session, net_params, result, tx, addressee);
+                        required_total += add_tx_addressee(session, result, tx, addressee, asset_id);
                         reordered_addressees.push_back(addressee);
                         // If addressee has an index, we are inserting the addressee in the
                         // transaction at that index, thus change indexes after the index must
@@ -720,7 +720,7 @@ namespace sdk {
                 if (result.find("fee_rate") == result.end()) {
                     result["fee_rate"] = session.get_default_fee_rate().value();
                 }
-                const amount dust_threshold = session.get_dust_threshold();
+                const amount dust_threshold = session.get_dust_threshold(asset_id);
                 const amount user_fee_rate = amount(result.at("fee_rate"));
                 const amount min_fee_rate = session.get_min_fee_rate();
                 const amount old_fee_rate = amount(json_get_value(result, "old_fee_rate", 0u));
