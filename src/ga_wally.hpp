@@ -50,6 +50,7 @@ namespace sdk {
     using uint64_span_t = gsl::span<const uint64_t>;
 
     using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
+    using sig_and_sighash_t = std::pair<ecdsa_sig_t, uint32_t>;
     using chain_code_t = std::array<unsigned char, 32>;
     using pbkdf2_hmac256_t = std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>;
     using pbkdf2_hmac512_t = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>;
@@ -142,9 +143,9 @@ namespace sdk {
 
     uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script);
 
-    ecdsa_sig_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig);
+    sig_and_sighash_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig);
 
-    std::vector<std::pair<ecdsa_sig_t, uint32_t>> get_sigs_from_multisig_script_sig(byte_span_t script_sig);
+    std::vector<sig_and_sighash_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig);
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 

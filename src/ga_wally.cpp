@@ -239,17 +239,18 @@ namespace sdk {
         return csv_blocks;
     }
 
-    ecdsa_sig_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig)
+    sig_and_sighash_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig)
     {
         // <user_sig> <pubkey>
         constexpr bool has_sighash = true;
-        size_t push_len = script_sig[0];
+        const size_t push_len = script_sig[0];
         GDK_RUNTIME_ASSERT(push_len && push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
         GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= push_len + 2);
-        return ec_sig_from_der(script_sig.subspan(1, push_len), has_sighash);
+        const auto der_sig = script_sig.subspan(1, push_len);
+        return { ec_sig_from_der(der_sig, has_sighash), der_sig.back() };
     }
 
-    std::vector<std::pair<ecdsa_sig_t, uint32_t>> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
+    std::vector<sig_and_sighash_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
     {
         constexpr bool has_sighash = true;
         size_t offset = 0;
@@ -266,7 +267,7 @@ namespace sdk {
         const auto ga_der_sig = script_sig.subspan(offset, push_len);
         const uint32_t ga_sighash = ga_der_sig[push_len - 1];
         const ecdsa_sig_t ga_sig = ec_sig_from_der(ga_der_sig, has_sighash);
-        const auto ga_pair = std::make_pair(ga_sig, ga_sighash);
+        auto ga_pair = std::make_pair(std::move(ga_sig), ga_sighash);
         offset += push_len;
 
         push_len = script_sig[offset];
@@ -276,9 +277,9 @@ namespace sdk {
         const auto user_der_sig = script_sig.subspan(offset, push_len);
         const uint32_t user_sighash = user_der_sig[push_len - 1];
         const ecdsa_sig_t user_sig = ec_sig_from_der(user_der_sig, has_sighash);
-        const auto user_pair = std::make_pair(user_sig, user_sighash);
+        auto user_pair = std::make_pair(std::move(user_sig), user_sighash);
 
-        return std::vector<std::pair<ecdsa_sig_t, uint32_t>>({ ga_pair, user_pair });
+        return { std::move(ga_pair), std::move(user_pair) };
     }
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out)
