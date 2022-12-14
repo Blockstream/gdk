@@ -1059,8 +1059,7 @@ namespace sdk {
         const std::string bech32_prefix = net_params.bech32_prefix();
         const std::string blech32_prefix = net_params.blech32_prefix();
         if (boost::starts_with(address.get<std::string>(), bech32_prefix)) {
-            address = confidential_addr_from_addr_segwit(
-                address, net_params.bech32_prefix(), blech32_prefix, blinding_pubkey_hex);
+            address = confidential_addr_from_addr_segwit(address, bech32_prefix, blech32_prefix, blinding_pubkey_hex);
         } else {
             address = confidential_addr_from_addr(address, net_params.blinded_prefix(), blinding_pubkey_hex);
         }
