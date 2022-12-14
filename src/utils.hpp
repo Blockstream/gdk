@@ -80,7 +80,9 @@ namespace sdk {
     std::string asset_id_from_json(
         const network_parameters& net_params, const nlohmann::json& json, const std::string& key = "asset_id");
 
-    nlohmann::json parse_bitcoin_uri(const std::string& uri, const std::string& expected_scheme);
+    // Parse a BIP-21 style URI into its components
+    // If the uri passed is not a bitcoin uri returns an empty json object
+    nlohmann::json parse_bitcoin_uri(const network_parameters& net_params, const std::string& uri);
 
     nlohmann::json parse_url(const std::string& url);
     nlohmann::json select_url(const std::vector<nlohmann::json>& urls, bool use_tor);

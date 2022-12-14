@@ -406,24 +406,18 @@ namespace sdk {
     {
         std::string address = addressee.at("address"); // Assume its a standard address
 
-        const auto uri = parse_bitcoin_uri(address, net_params.bip21_prefix());
-        if (net_params.is_liquid() && uri.is_object()) {
-            const auto& bip21_params = uri["bip21-params"];
-            const bool has_assetid = bip21_params.contains("assetid");
-
-            if (!has_assetid && bip21_params.contains("amount")) {
-                set_tx_error(result, res::id_invalid_payment_request_assetid);
-                return std::string();
-            } else if (has_assetid) {
-                const std::string assetid_hex = bip21_params["assetid"];
-                if (!validate_hex(assetid_hex, ASSET_TAG_LEN)) {
-                    set_tx_error(result, res::id_invalid_payment_request_assetid);
-                    return std::string();
+        try {
+            const auto uri_params = parse_bitcoin_uri(net_params, address);
+            if (!uri_params.empty()) {
+                const auto& bip21_params = uri_params["bip21-params"];
+                if (bip21_params.contains("assetid")) {
+                    addressee["asset_id"] = bip21_params["assetid"];
                 }
-                addressee["asset_id"] = assetid_hex;
             }
+        } catch (const std::exception& e) {
+            set_tx_error(result, e.what());
+            return std::string();
         }
-
         return asset_id_from_json(net_params, addressee);
     }
 
@@ -471,8 +465,8 @@ namespace sdk {
             return amount(satoshi);
         }
 
-        nlohmann::json uri = parse_bitcoin_uri(address, net_params.bip21_prefix());
-        if (!uri.is_null()) {
+        nlohmann::json uri = parse_bitcoin_uri(net_params, address);
+        if (!uri.empty()) {
             // Address is a BIP21 style payment URI. Validation is done in
             // validate_tx_addressee(), assume everything is good here
             address = uri.at("address");

@@ -416,12 +416,12 @@ namespace sdk {
                 // TODO: unify handling with add_tx_addressee
                 nlohmann::json uri_params;
                 try {
-                    uri_params = parse_bitcoin_uri(addressee.at("address"), m_net_params.bip21_prefix());
+                    uri_params = parse_bitcoin_uri(m_net_params, addressee.at("address"));
                 } catch (const std::exception& e) {
                     result["error"] = e.what();
                     return result;
                 }
-                if (!uri_params.is_null()) {
+                if (!uri_params.empty()) {
                     addressee["address"] = uri_params["address"];
                     const auto& bip21_params = uri_params["bip21-params"];
                     addressee["bip21-params"] = bip21_params;

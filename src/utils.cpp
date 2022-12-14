@@ -426,9 +426,7 @@ namespace sdk {
         return "btc";
     }
 
-    // Parse a bitcoin uri as described in bip21/72 and return the components
-    // If the uri passed is not a bitcoin uri return a null json object.
-    nlohmann::json parse_bitcoin_uri(const std::string& uri, const std::string& expected_scheme)
+    nlohmann::json parse_bitcoin_uri(const network_parameters& net_params, const std::string& uri)
     {
         // Split a string into a head and tail around the first (leftmost) occurrence
         // of delimiter and return the tuple (head, tail). If delimiter does not occur
@@ -442,20 +440,14 @@ namespace sdk {
         // TODO: Take either the label or message and set the tx memo field with it if not set
         // FIXME: URL unescape the arguments before returning
         //
-        std::string uri_copy = uri;
-        boost::trim(uri_copy);
-        nlohmann::json parsed;
         std::string scheme, tail;
-        std::tie(scheme, tail) = split(uri_copy, ':');
+        std::tie(scheme, tail) = split(boost::trim_copy(uri), ':');
 
-        boost::algorithm::to_lower(scheme);
-        if (scheme == expected_scheme) {
-            parsed["scheme"] = scheme;
-
+        if (boost::to_lower_copy(scheme) == net_params.bip21_prefix()) {
             std::string address;
             std::tie(address, tail) = split(tail, '?');
-            if (!address.empty()) {
-                parsed["address"] = address;
+            if (address.empty()) {
+                throw user_error(res::id_invalid_address);
             }
             nlohmann::json params;
             while (!tail.empty()) {
@@ -467,16 +459,22 @@ namespace sdk {
                 }
                 params.emplace(key, value);
             }
-            parsed["bip21-params"] = params;
 
-            // always treat the asset_id as lowercase
-            if (parsed["bip21-params"].contains("assetid")) {
-                parsed["bip21-params"]["assetid"]
-                    = boost::algorithm::to_lower_copy(parsed["bip21-params"]["assetid"].get<std::string>());
+            if (params.contains("assetid")) {
+                // Lowercase and validate the asset id
+                params["assetid"] = boost::to_lower_copy(json_get_value(params, "assetid"));
+                asset_id_from_json(net_params, params, "assetid"); // Validate it
+            } else if (net_params.is_liquid() && params.contains("amount")) {
+                // Asset id is mandatory if an amount is present
+                throw user_error(res::id_invalid_payment_request_assetid);
             }
+
+            // Valid. Convert the URI to its address and return the
+            // asset id and amount in "bip21-params".
+            return { { "address", std::move(address) }, { "bip21-params", std::move(params) } };
         }
 
-        return parsed;
+        return {};
     }
 
     // Lookup key in json and if present decode it as hex and return the bytes, if not present
