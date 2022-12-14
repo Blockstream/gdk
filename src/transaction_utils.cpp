@@ -307,21 +307,22 @@ namespace sdk {
         return false;
     }
 
-    std::string asset_id_from_json(const network_parameters& net_params, const nlohmann::json& json)
+    std::string asset_id_from_json(
+        const network_parameters& net_params, const nlohmann::json& json, const std::string& key)
     {
+        const std::string asset_id_hex = json_get_value(json, key);
+        const bool is_empty = asset_id_hex.empty();
         if (net_params.is_liquid()) {
-            // Input asset_ids must only be valid hex asset ids
-            std::string asset_id_hex = json_get_value(json, "asset_id");
-            if (!validate_hex(asset_id_hex, ASSET_TAG_LEN)) {
+            if (is_empty || !validate_hex(asset_id_hex, ASSET_TAG_LEN)) {
+                // Must be a valid hex asset id
                 throw user_error(res::id_invalid_asset_id);
             }
             return asset_id_hex;
-        } else {
-            if (json.contains("asset_id")) {
-                throw user_error(res::id_assets_cannot_be_used_on_bitcoin);
-            }
-            return "btc";
         }
+        if (!is_empty) {
+            throw user_error(res::id_assets_cannot_be_used_on_bitcoin);
+        }
+        return "btc";
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
