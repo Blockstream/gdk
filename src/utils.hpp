@@ -76,6 +76,10 @@ namespace sdk {
         return nsee_log_info(message, context);
     }
 
+    // Returns the 32 byte asset id in hex, or "btc" for bitcoin
+    std::string asset_id_from_json(
+        const network_parameters& net_params, const nlohmann::json& json, const std::string& key = "asset_id");
+
     nlohmann::json parse_bitcoin_uri(const std::string& uri, const std::string& expected_scheme);
 
     nlohmann::json parse_url(const std::string& url);

@@ -51,10 +51,6 @@ namespace sdk {
     std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
         user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
-    // Returns the 32 byte asset id in hex, or "btc" for bitcoin
-    std::string asset_id_from_json(
-        const network_parameters& net_params, const nlohmann::json& json, const std::string& key = "asset_id");
-
     // Make a multisig scriptSig
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
         const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash, uint32_t ga_sighash);
