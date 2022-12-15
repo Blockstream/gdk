@@ -944,6 +944,7 @@ namespace sdk {
         : auth_handler_impl(session, "create_transaction")
         , m_details(details)
     {
+        m_details["error"] = std::string(); // Clear any previous error
     }
 
     auth_handler::state_type create_transaction_call::call_impl()

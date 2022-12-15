@@ -499,8 +499,6 @@ namespace sdk {
             const bool is_electrum = net_params.is_electrum();
             const auto policy_asset = is_liquid ? net_params.policy_asset() : std::string("btc");
 
-            result["error"] = std::string(); // Clear any previous error
-
             const auto subaccounts = get_tx_subaccounts(result);
             const bool is_partial = json_get_value(result, "is_partial", false);
 
