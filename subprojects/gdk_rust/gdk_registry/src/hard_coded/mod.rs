@@ -57,4 +57,37 @@ pub(crate) mod test {
             let _ = policy_asset_id(n);
         }
     }
+
+    #[test]
+    fn serialize_deserialize_round_trip() {
+        let mut file = tempfile::tempfile().unwrap();
+
+        for network in ElementsNetwork::iter() {
+            let assets = crate::hard_coded::assets(network);
+            crate::file::write(&assets, &mut file).unwrap();
+            let deserialized = crate::file::read::<RegistryAssets>(&mut file).unwrap();
+            assert_eq!(assets, deserialized);
+
+            let icons = crate::hard_coded::icons(network);
+            crate::file::write(&icons, &mut file).unwrap();
+            let deserialized = crate::file::read::<RegistryIcons>(&mut file).unwrap();
+            assert_eq!(icons, deserialized);
+
+            // NOTE: the following doesn't work because writing the
+            // assets/icons to file as a `serde_json::Value` causes the cbor
+            // deserializer to call the `visit_str` method of the `Deserialize`
+            // implementation of `AssetId`, which as of rust-elements v0.21 is
+            // not defined for non human-readable formats (like cbor).
+            //
+            // let assets = crate::hard_coded::value(network, AssetsOrIcons::Assets);
+            // crate::file::write(&assets, &mut file).unwrap();
+            // let deserialized = crate::file::read::<RegistryAssets>(&mut file).unwrap();
+            // assert_eq!(serde_json::from_value::<RegistryAssets>(assets).unwrap(), deserialized);
+            //
+            // let icons = crate::hard_coded::value(network, AssetsOrIcons::Icons);
+            // crate::file::write(&icons, &mut file).unwrap();
+            // let deserialized = crate::file::read::<RegistryIcons>(&mut file).unwrap();
+            // assert_eq!(serde_json::from_value::<RegistryIcons>(icons).unwrap(), deserialized);
+        }
+    }
 }
