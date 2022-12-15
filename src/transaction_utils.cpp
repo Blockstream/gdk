@@ -12,9 +12,16 @@
 #include <cctype>
 
 namespace {
-bool isupper(const std::string& s)
+static bool isupper(const std::string& s)
 {
-    return std::all_of(std::begin(s), std::end(s), [](int c) { return std::islower(c) == 0; });
+    // String is upper case if no lower case characters are found
+    return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::islower(c) != 0; });
+}
+
+static bool islower(const std::string& s)
+{
+    // String is lower case if no upper case characters are found
+    return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::isupper(c) != 0; });
 }
 
 using namespace ga::sdk;
@@ -23,48 +30,63 @@ static std::vector<unsigned char> output_script_for_address(
     const network_parameters& net_params, std::string address, std::string& error)
 {
     // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
-    const bool is_bech32 = boost::starts_with(address, net_params.bech32_prefix());
-    const bool is_blech32 = net_params.is_liquid() && boost::starts_with(address, net_params.blech32_prefix());
+    const bool is_bech32 = boost::istarts_with(address, net_params.bech32_prefix());
+    const bool is_blech32 = net_params.is_liquid() && boost::istarts_with(address, net_params.blech32_prefix());
+    const bool is_base58 = !is_bech32 && !is_bech32 && validate_base58check(address);
+
+    if (!is_bech32 && !is_blech32 && !is_base58) {
+        error = res::id_invalid_address; // Unknown address type
+        return {};
+    }
+
+    if ((is_bech32 || is_blech32) && !(islower(address) || isupper(address))) {
+        // BIP-173 specifically disallows mixed case
+        error = res::id_invalid_address;
+        return {};
+    }
 
     if (net_params.is_liquid()) {
         if (is_bech32) {
             error = res::id_nonconfidential_addresses_not;
-        } else if (is_blech32) {
-            address
-                = confidential_addr_to_addr_segwit(address, net_params.blech32_prefix(), net_params.bech32_prefix());
         } else {
             try {
-                address = confidential_addr_to_addr(address, net_params.blinded_prefix());
+                if (is_blech32) {
+                    address = confidential_addr_to_addr_segwit(
+                        address, net_params.blech32_prefix(), net_params.bech32_prefix());
+                } else {
+                    address = confidential_addr_to_addr(address, net_params.blinded_prefix());
+                }
             } catch (const std::exception& e) {
-                error = res::id_nonconfidential_addresses_not;
+                // If the address isn't blech32, its base58 with the wrong prefix byte
+                error = is_blech32 ? res::id_invalid_address : res::id_nonconfidential_addresses_not;
             }
         }
     }
 
-    if (is_bech32 || is_blech32) {
-        std::vector<unsigned char> ret;
-        try {
-            ret = addr_segwit_to_bytes(address, net_params.bech32_prefix());
-        } catch (const std::exception&) {
-            error = res::id_invalid_address;
+    try {
+        if (is_bech32 || is_blech32) {
+            // Segwit address
+            return addr_segwit_to_bytes(address, net_params.bech32_prefix());
+        } else {
+            // Base58 encoded bitcoin address
+            const auto addr_bytes = base58check_to_bytes(address);
+            GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
+            const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
+
+            if (addr_bytes.front() == net_params.btc_p2sh_version()) {
+                return scriptpubkey_p2sh_from_hash160(script_hash);
+            }
+            if (addr_bytes.front() == net_params.btc_version()) {
+                return scriptpubkey_p2pkh_from_hash160(script_hash);
+            }
         }
-        return ret;
+    } catch (const std::exception&) {
+        // Return id_invalid_address below
     }
-
-    // Base58 encoded bitcoin address
-    const auto addr_bytes = base58check_to_bytes(address);
-    GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
-    const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
-
-    if (addr_bytes.front() == net_params.btc_p2sh_version()) {
-        return scriptpubkey_p2sh_from_hash160(script_hash);
+    if (error.empty()) {
+        error = res::id_invalid_address;
     }
-    if (addr_bytes.front() == net_params.btc_version()) {
-        return scriptpubkey_p2pkh_from_hash160(script_hash);
-    }
-
-    error = res::id_invalid_address;
-    return std::vector<unsigned char>();
+    return {};
 }
 
 static std::vector<unsigned char> output_script_for_address(
@@ -401,24 +423,70 @@ namespace sdk {
     }
 
     // TODO: Merge this validation with add_tx_addressee to avoid re-parsing?
-    std::string validate_tx_addressee(
-        const network_parameters& net_params, nlohmann::json& result, nlohmann::json& addressee)
+    std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee)
     {
-        std::string address = addressee.at("address"); // Assume its a standard address
+        const auto& net_params = session.get_network_parameters();
 
         try {
-            const auto uri_params = parse_bitcoin_uri(net_params, address);
-            if (!uri_params.empty()) {
-                const auto& bip21_params = uri_params["bip21-params"];
-                if (bip21_params.contains("assetid")) {
-                    addressee["asset_id"] = bip21_params["assetid"];
+            std::string address = json_get_value(addressee, "address");
+            if (address.empty()) {
+                throw user_error(res::id_invalid_address);
+            }
+            const bool is_blinded = addressee.value("is_blinded", false);
+
+            // BIP21
+            auto uri = parse_bitcoin_uri(net_params, address);
+            if (!uri.empty()) {
+                GDK_RUNTIME_ASSERT(!is_blinded);
+
+                // Address is a BIP21 style payment URI.
+                auto& bip21 = uri["bip21-params"];
+                if (auto p = bip21.find("assetid"); p != bip21.end()) {
+                    addressee["asset_id"] = *p;
+                }
+                address = uri.at("address");
+                addressee["address"] = address;
+                if (auto p = bip21.find("amount"); p != bip21.end()) {
+                    // Note liquid amounts are also encoded just as BTC amounts
+                    const nlohmann::json uri_amount = { { "btc", p->get<std::string>() } };
+                    addressee["satoshi"] = session.convert_amount(uri_amount)["satoshi"];
+                    amount::strip_non_satoshi_keys(addressee);
+                }
+                addressee["bip21-params"] = std::move(bip21);
+            }
+
+            // Validate the address
+            std::string error;
+            output_script_for_address(net_params, address, error);
+            if (!error.empty()) {
+                if (error == res::id_nonconfidential_addresses_not && is_blinded) {
+                    // Existing outputs which are already blinded are OK
+                    error.clear();
+                }
+                if (!error.empty()) {
+                    set_tx_error(result, error);
+                    return std::string();
                 }
             }
+
+            // Validate the asset (or lack of it) and return it
+            auto asset_id_hex = asset_id_from_json(net_params, addressee);
+
+            if (isupper(address)) {
+                // Convert uppercase b(l)ech32 addresses to lowercase
+                const auto blech32_prefix = net_params.blech32_prefix() + "1";
+                if (boost::istarts_with(address, net_params.bech32_prefix() + "1")
+                    || (net_params.is_liquid() && boost::istarts_with(address, blech32_prefix))) {
+                    boost::to_lower(address);
+                    addressee["address"] = address;
+                }
+            }
+
+            return asset_id_hex;
         } catch (const std::exception& e) {
             set_tx_error(result, e.what());
-            return std::string();
         }
-        return asset_id_from_json(net_params, addressee);
+        return std::string();
     }
 
     amount add_tx_addressee(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee,
@@ -463,37 +531,6 @@ namespace sdk {
             tx_add_elements_raw_output_at(
                 tx, index, script, asset_commitment, value_commitment, nonce_commitment, surjectionproof, rangeproof);
             return amount(satoshi);
-        }
-
-        nlohmann::json uri = parse_bitcoin_uri(net_params, address);
-        if (!uri.empty()) {
-            // Address is a BIP21 style payment URI. Validation is done in
-            // validate_tx_addressee(), assume everything is good here
-            address = uri.at("address");
-            addressee["address"] = address;
-            const auto& bip21_params = uri["bip21-params"];
-            addressee["bip21-params"] = bip21_params;
-
-            // In Liquid amounts should be encoded in the "consensus form"
-            // For instance, assuming an invoice for qty 1 of an asset with precision `2`, the amount in the URI
-            // should be 0.00000100
-            const auto uri_amount_p = bip21_params.find("amount");
-            if (uri_amount_p != bip21_params.end()) {
-                // Use the amount specified in the URI
-                const nlohmann::json uri_amount = { { "btc", uri_amount_p->get<std::string>() } };
-                addressee["satoshi"] = session.convert_amount(uri_amount)["satoshi"];
-                amount::strip_non_satoshi_keys(addressee);
-            }
-        }
-
-        // Convert uppercase b(l)ech32 alphanumeric strings to lowercase
-        // Only convert all uppercase strings, BIP-173 specifically disallows mixed case strings
-        const std::string bech32_prefix = net_params.bech32_prefix() + "1";
-        if ((boost::istarts_with(address, bech32_prefix)
-                || (net_params.is_liquid() && boost::istarts_with(address, net_params.blech32_prefix() + "1")))
-            && isupper(address)) {
-            boost::to_lower(address);
-            addressee["address"] = address;
         }
 
         // Process the users entered value, if any

@@ -86,8 +86,7 @@ namespace sdk {
     void set_tx_output_commitment(
         wally_tx_ptr& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi);
 
-    std::string validate_tx_addressee(
-        const network_parameters& net_params, nlohmann::json& result, nlohmann::json& addressee);
+    std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
     amount add_tx_addressee(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee,
