@@ -17,21 +17,22 @@ const ICONS: [&str; ElementsNetwork::len()] = [
 ];
 
 pub(crate) fn assets(network: ElementsNetwork) -> RegistryAssets {
-    serde_json::from_value(self::value(network, AssetsOrIcons::Assets))
-        .expect("checked at test time")
+    serde_json::from_str(to_str(network, AssetsOrIcons::Assets)).expect("checked at test time")
 }
 
 pub(crate) fn icons(network: ElementsNetwork) -> RegistryIcons {
-    serde_json::from_value(self::value(network, AssetsOrIcons::Icons))
-        .expect("checked at test time")
+    serde_json::from_str(to_str(network, AssetsOrIcons::Icons)).expect("checked at test time")
+}
+
+fn to_str(network: ElementsNetwork, what: AssetsOrIcons) -> &'static str {
+    match what {
+        AssetsOrIcons::Assets => ASSETS[network as usize],
+        AssetsOrIcons::Icons => ICONS[network as usize],
+    }
 }
 
 pub(crate) fn value(network: ElementsNetwork, what: AssetsOrIcons) -> serde_json::Value {
-    serde_json::from_str(match what {
-        AssetsOrIcons::Assets => ASSETS[network as usize],
-        AssetsOrIcons::Icons => ICONS[network as usize],
-    })
-    .expect("checked at test time")
+    serde_json::from_str(to_str(network, what)).expect("checked at test time")
 }
 const POLICY_ASSET: [&str; ElementsNetwork::len()] = [
     "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d", // liquid

@@ -48,10 +48,19 @@ pub(crate) fn init(registry_dir: impl AsRef<Path>) -> Result<()> {
         let file = get_file(&path.join("last-modified"), LastModified::default)?;
         last_modified_files.insert(network, Mutex::new(file));
 
-        for what in AssetsOrIcons::iter() {
-            path.push(what.to_string());
-            let file = get_file(&path, || hard_coded::value(network, what))?;
-            registry_files.insert((network, what), Mutex::new(file));
+        {
+            let assets = AssetsOrIcons::Assets;
+            path.push(assets.to_string());
+            let file = get_file(&path, || hard_coded::assets(network))?;
+            registry_files.insert((network, assets), Mutex::new(file));
+            path.pop();
+        }
+
+        {
+            let iconss = AssetsOrIcons::Icons;
+            path.push(iconss.to_string());
+            let file = get_file(&path, || hard_coded::icons(network))?;
+            registry_files.insert((network, iconss), Mutex::new(file));
             path.pop();
         }
 
