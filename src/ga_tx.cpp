@@ -1053,11 +1053,11 @@ namespace sdk {
     void blind_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex)
     {
+        const std::string bech32_prefix = net_params.bech32_prefix();
         auto& address = addr.at("address");
         addr["unblinded_address"] = address;
-        const std::string bech32_prefix = net_params.bech32_prefix();
-        const std::string blech32_prefix = net_params.blech32_prefix();
         if (boost::starts_with(address.get<std::string>(), bech32_prefix)) {
+            const std::string blech32_prefix = net_params.blech32_prefix();
             address = confidential_addr_from_addr_segwit(address, bech32_prefix, blech32_prefix, blinding_pubkey_hex);
         } else {
             address = confidential_addr_from_addr(address, net_params.blinded_prefix(), blinding_pubkey_hex);
@@ -1068,8 +1068,8 @@ namespace sdk {
 
     void unblind_address(const network_parameters& net_params, nlohmann::json& addr)
     {
-        auto& address = addr.at("address");
         const std::string blech32_prefix = net_params.blech32_prefix();
+        auto& address = addr.at("address");
         if (boost::starts_with(address.get<std::string>(), blech32_prefix)) {
             address = confidential_addr_to_addr_segwit(address, blech32_prefix, net_params.bech32_prefix());
         } else {

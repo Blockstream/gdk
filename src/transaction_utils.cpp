@@ -473,10 +473,10 @@ namespace sdk {
             auto asset_id_hex = asset_id_from_json(net_params, addressee);
 
             if (isupper(address)) {
+                const bool is_liquid = net_params.is_liquid();
                 // Convert uppercase b(l)ech32 addresses to lowercase
-                const auto blech32_prefix = net_params.blech32_prefix() + "1";
                 if (boost::istarts_with(address, net_params.bech32_prefix() + "1")
-                    || (net_params.is_liquid() && boost::istarts_with(address, blech32_prefix))) {
+                    || (is_liquid && boost::istarts_with(address, net_params.blech32_prefix() + "1"))) {
                     boost::to_lower(address);
                     addressee["address"] = address;
                 }
@@ -655,8 +655,9 @@ namespace sdk {
                     { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", asset_id } };
 
                 auto&& blinding_key_from_addr = [&net_params](const std::string& address) {
-                    if (boost::starts_with(address, net_params.blech32_prefix())) {
-                        return b2h(confidential_addr_segwit_to_ec_public_key(address, net_params.blech32_prefix()));
+                    const auto blech32_prefix = net_params.blech32_prefix();
+                    if (boost::starts_with(address, blech32_prefix)) {
+                        return b2h(confidential_addr_segwit_to_ec_public_key(address, blech32_prefix));
                     } else {
                         return b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
                     }

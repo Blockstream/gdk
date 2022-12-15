@@ -881,7 +881,7 @@ namespace sdk {
     std::string network_parameters::policy_asset() const { return m_details.value("policy_asset", std::string()); }
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
     std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
-    std::string network_parameters::blech32_prefix() const { return m_details.at("blech32_prefix"); }
+    std::string network_parameters::blech32_prefix() const { return m_details.value("blech32_prefix", std::string()); }
     unsigned char network_parameters::btc_version() const { return m_details.at("p2pkh_version"); }
     unsigned char network_parameters::btc_p2sh_version() const { return m_details.at("p2sh_version"); }
     uint32_t network_parameters::blinded_prefix() const { return m_details.at("blinded_prefix"); }
