@@ -1327,12 +1327,12 @@ namespace sdk {
         nlohmann::json result(details);
         size_t j = 0;
         for (size_t i = 0; i < num_outputs; ++i) {
-            const auto& output = details["transaction_outputs"].at(i);
-            if (!output_contributes_to_last_vbf(output)) {
+            if (!output_contributes_to_last_vbf(transaction_outputs.at(i))) {
                 continue;
             }
-            result["transaction_outputs"][i]["assetblinder"] = b2h_rev(output_abfs.at(j));
-            result["transaction_outputs"][i]["amountblinder"] = b2h_rev(output_vbfs.at(j));
+            auto& output = result["transaction_outputs"].at(i);
+            output["assetblinder"] = b2h_rev(output_abfs.at(j));
+            output["amountblinder"] = b2h_rev(output_vbfs.at(j));
             ++j;
         }
         result["blinded"] = true;
