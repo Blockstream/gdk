@@ -26,6 +26,9 @@ static bool islower(const std::string& s)
 
 using namespace ga::sdk;
 
+// Note that if id_nonconfidential_addresses_not is returned in 'error', this
+// call still returns the resulting script. This behaviour is used by
+// add_tx_addressee when adding preblinded outputs (where is_blinded=true).
 static std::vector<unsigned char> output_script_for_address(
     const network_parameters& net_params, std::string address, std::string& error)
 {
