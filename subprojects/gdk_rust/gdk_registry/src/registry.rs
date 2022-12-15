@@ -160,8 +160,9 @@ fn fetch<T: Default + Serialize + DeserializeOwned>(
 
         Err(err) => {
             warn!("couldn't deserialize local {} due to {}", what, err);
-            file::write(&T::default(), file)?;
-            Ok(T::default())
+            let hard_coded = hard_coded::value(network, what);
+            file::write(&hard_coded, file)?;
+            serde_json::from_value(hard_coded).map_err(Into::into)
         }
     }
 }
