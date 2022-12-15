@@ -14,6 +14,7 @@
 #include "logging.hpp"
 #include "session.hpp"
 #include "signer.hpp"
+#include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
@@ -413,41 +414,20 @@ namespace sdk {
         auto addressees_p = result.find("addressees");
         if (addressees_p != result.end()) {
             for (auto& addressee : *addressees_p) {
-                // TODO: unify handling with add_tx_addressee
-                nlohmann::json uri_params;
-                try {
-                    uri_params = parse_bitcoin_uri(m_net_params, addressee.at("address"));
-                } catch (const std::exception& e) {
-                    result["error"] = e.what();
+                validate_tx_addressee(*this, result, addressee);
+                const std::string error = json_get_value(result, "error");
+                if (!error.empty()) {
+                    GDK_LOG_SEV(log_level::warning) << "ga_rust::create_transaction error: " << error;
                     return result;
                 }
-                if (!uri_params.empty()) {
-                    addressee["address"] = uri_params["address"];
-                    const auto& bip21_params = uri_params["bip21-params"];
-                    addressee["bip21-params"] = bip21_params;
-                    const auto uri_amount_p = bip21_params.find("amount");
-                    if (uri_amount_p != bip21_params.end()) {
-                        // Use the amount specified in the URI
-                        const nlohmann::json uri_amount = { { "btc", uri_amount_p->get<std::string>() } };
-                        addressee["satoshi"] = amount::convert(uri_amount, "", "")["satoshi"];
-                    }
-                    if (m_net_params.is_liquid()) {
-                        if (bip21_params.contains("amount") && !bip21_params.contains("assetid")) {
-                            result["error"] = res::id_invalid_payment_request_assetid;
-                            return result;
-                        } else if (bip21_params.contains("assetid")) {
-                            addressee["asset_id"] = bip21_params["assetid"];
-                        }
-                    }
-                }
                 if (!addressee.contains("satoshi")) {
+                    // TODO: unify amount handling between session types
                     result["error"] = res::id_no_amount_specified;
                     return result;
                 }
             }
         }
         GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction result: " << result.dump();
-
         return rust_call("create_transaction", result, m_session);
     }
 
