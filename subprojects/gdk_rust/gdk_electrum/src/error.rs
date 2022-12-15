@@ -260,6 +260,7 @@ impl Error {
             FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum",
             PinError => "id_connection_failed",
             InvalidPin => "id_invalid_pin",
+            EmptyAddressees => "id_no_recipients",
             _ => "id_unknown",
         }
         .to_string()
