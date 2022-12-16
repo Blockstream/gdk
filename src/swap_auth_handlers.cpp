@@ -334,6 +334,7 @@ namespace sdk {
     //
     // Validate
     //
+    bool validate_call::is_liquidex() const { return m_details.contains(LIQUIDEX_STR); }
     void validate_call::liquidex_impl()
     {
         const auto& proposal = m_details.at(LIQUIDEX_STR).at("proposal");

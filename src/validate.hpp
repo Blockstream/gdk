@@ -14,6 +14,10 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
+        bool is_addressees() const;
+        void addressees_impl();
+
+        bool is_liquidex() const; // in swap_auth_handlers.cpp
         void liquidex_impl(); // in swap_auth_handlers.cpp
 
         nlohmann::json m_details;

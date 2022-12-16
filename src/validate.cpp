@@ -1,5 +1,8 @@
 #include "validate.hpp"
+#include "containers.hpp"
+#include "exception.hpp"
 #include "ga_auth_handlers.hpp"
+#include "transaction_utils.hpp"
 
 namespace ga {
 namespace sdk {
@@ -17,12 +20,35 @@ namespace sdk {
         m_result["errors"] = nlohmann::json::array();
         m_result["is_valid"] = false;
         try {
-            liquidex_impl();
-            m_result["is_valid"] = true;
+            if (is_addressees()) {
+                addressees_impl();
+            } else if (is_liquidex()) {
+                liquidex_impl();
+            } else {
+                throw user_error("Unknown JSON type");
+            }
+            m_result["is_valid"] = m_result["errors"].empty();
         } catch (const std::exception& e) {
             m_result["errors"].emplace_back(e.what());
         }
         return state_type::done;
+    }
+
+    bool validate_call::is_addressees() const { return m_details.contains("addressees"); }
+    void validate_call::addressees_impl()
+    {
+        nlohmann::json::array_t errors;
+
+        for (auto& addressee : m_details["addressees"]) {
+            nlohmann::json result;
+            validate_tx_addressee(*m_session, result, addressee);
+            std::string error = json_get_value(result, "error");
+            if (!error.empty()) {
+                errors.emplace_back(std::move(error));
+            }
+        }
+        m_result["errors"] = std::move(errors);
+        m_result["addressees"] = std::move(m_details["addressees"]);
     }
 } // namespace sdk
 } // namespace ga
