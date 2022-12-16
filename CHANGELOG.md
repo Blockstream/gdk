@@ -3,6 +3,7 @@
 ## Release 0.0.58
 
 ### Added
+- GA_validate: Add support for validating transaction addressees.
 
 ### Changed
 - GA_create_transaction: Sweeping and re-deposit transactions now require the

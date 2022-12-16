@@ -1810,10 +1810,10 @@ Specifying multiple attributes is interpreted as a logical AND. For example,
 ``{"category": "with_icons", "tickers": ["LCAD"]}`` will return all the assets
 with ticker ``LCAD`` that also have an icon.
 
-.. _asset-informations:
+.. _asset-details:
 
-Asset informations JSON
---------------------------
+Asset details JSON
+------------------
 
 .. code-block:: json
 
@@ -1876,15 +1876,30 @@ Parameters controlling the `GA_get_subaccounts` call.
 Validate JSON
 -------------
 
-Validate a JSON.
-Currently it's only possible to validate a LiquiDEX version 1 proposal.
+Passed to `GA_validate` to check the validity of gdk input data.
+
+To validate addressees, for example prior to calling `GA_create_transaction`:
+
+.. code-block:: json
+
+  {
+    "addressees": {}
+  }
+
+:addressees: The ``"addressees"`` element as passed in :ref:`create-tx-details`.
+
+Validation includes that the address is correct and supported by the network,
+and for Liquid, that ``"asset_id"`` is present and a valid hex asset identifier.
+
+
+To validate a LiquiDEX version 1 proposal:
 
 .. code-block:: json
 
   {
     "liquidex_v1": {
-      "proposal": {},
-    },
+      "proposal": {}
+    }
   }
 
 :liquidex_v1/proposal: The LiquiDEX version 1 proposal to validate.
@@ -1894,12 +1909,19 @@ Currently it's only possible to validate a LiquiDEX version 1 proposal.
 Validate Result JSON
 --------------------
 
+Returned from `GA_validate` to indicate the validity of the given JSON document.
+
 .. code-block:: json
 
   {
     "is_valid": true,
-    "errors": []
+    "errors": [],
+    "addressees": {}
   }
 
-:is_valid: True if the JSON is valid.
-:errors: If the JSON is not valid, a list of error strings.
+:is_valid: ``true`` if the JSON is valid, ``false`` otherwise.
+:errors: An array of strings describing each error found in the given document;
+         Empty if ``"is_valid"`` is ``true``.
+:addressees: If validating addressees, the given addressee elements with data
+         sanitized and converted if required. For example, BIP21 URLs are
+         converted to addresses, plus amount/asset if applicable.

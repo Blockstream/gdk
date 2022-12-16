@@ -199,7 +199,7 @@ GDK_API int GA_refresh_assets(struct GA_session* session, const GA_json* params)
  *
  * :param session: The session to use.
  * :param params: the :ref:`get-assets-params` specifying the assets to query.
- * :param output: Destination for the output :ref:`asset-informations`.
+ * :param output: Destination for the output :ref:`asset-details`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_assets(struct GA_session* session, const GA_json* params, GA_json** output);
@@ -215,7 +215,7 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
  * Validate a gdk format JSON document.
  *
  * :param session: The session to use.
- * :param details: The :ref:`validate-details` for validation.
+ * :param details: The :ref:`validate-details` to validate.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
  *|     The call handlers result is :ref:`validate-result`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
