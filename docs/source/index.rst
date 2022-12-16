@@ -7,6 +7,7 @@ GDK documentation
 
    gdk
    gdk-json
+   gdk-create-tx
    gdk-ntf
    gdk-hw
 

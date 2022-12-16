@@ -543,7 +543,7 @@ Describes a transaction output in :ref:`tx-list`.
     "subtype": 0
   }
 
-:address: The output address.
+:address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
 :address_type: For user wallet output addresses, One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
     or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
 :is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
@@ -609,33 +609,6 @@ users wallet. Returned by `GA_get_transaction_details`.
     "txhash": "dc5c908a6c979211e6482766adb69cbcbe760c92923671f6304d12a3f462a2b0"
   }
 
-
-.. _create-tx-details:
-
-Create transaction JSON
------------------------
-
-.. code-block:: json
-
- {
-  "addressees": [
-    {
-      "address": "bitcoin:2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b?amount=0.001"
-    }
-  ],
-  "utxos": { }
- }
-
- {
-  "addressees": [
-    {
-      "address": "2NFHMw7GbqnQ3kTYMrA7MnHiYDyLy4EQH6b",
-      "satoshi": 100000
-    }
-  ],
-  "utxos": { }
-  "fee_rate": 1000
- }
 
 .. _sign-tx-details:
 
@@ -983,7 +956,7 @@ Describes the swap to be completed when calling `GA_complete_swap_transaction`.
 :liquidex_v1: The LiquiDEX v1 specific parameters, see :ref:`liquidex-v1-complete-details`.
               This field must included only if ``"input_type"`` is ``"liquidex_v1"``.
 :output_type: Pass ``"transaction"`` to return a transaction JSON that can be passed to `GA_sign_transaction`.
-:utxos: Mandatory. The UTXOs to fund the transaction with.
+:utxos: Mandatory. The UTXOs to fund the transaction with, :ref:`unspent-outputs` as returned by `GA_get_unspent_outputs`.
         Note that coin selection is not performed on the passed UTXOs.
         All passed UTXOs of the same asset as the receiving asset id will be included in the transaction.
 
@@ -1009,7 +982,7 @@ Sign PSBT JSON
   }
 
 :psbt: The PSBT or PSET encoded in base64 format.
-:utxos: The UTXOs that should be signed, in the format returned by `GA_get_unspent_outputs`.
+:utxos: Mandatory. The UTXOs that should be signed, :ref:`unspent-outputs` as returned by `GA_get_unspent_outputs`.
         UTXOs that are not inputs of the PSBT/PSET can be included.
         Caller can avoid signing an input by not passing in its UTXO.
 :blinding_nonces: For ``"2of2_no_recovery"`` subaccounts only, the blinding nonces in hex format for all outputs.
@@ -1045,7 +1018,7 @@ PSBT Get Details JSON
   }
 
 :psbt: The PSBT or PSET encoded in base64 format.
-:utxos: The UTXOs owned by the wallet, in the format returned by `GA_get_unspent_outputs`.
+:utxos: Mandatory. The UTXOs owned by the wallet, :ref:`unspent-outputs` as returned by `GA_get_unspent_outputs`.
         UTXOs that are not inputs of the PSBT/PSET can be included.
 
 
@@ -1886,10 +1859,13 @@ To validate addressees, for example prior to calling `GA_create_transaction`:
     "addressees": {}
   }
 
-:addressees: The ``"addressees"`` element as passed in :ref:`create-tx-details`.
+:addressees: An array of :ref:`addressee` elements.
 
 Validation includes that the address is correct and supported by the network,
 and for Liquid, that ``"asset_id"`` is present and a valid hex asset identifier.
+Currently the ``"satoshi"`` element is not checked although this may change in
+the future. To avoid potential breakage callers should add a non-dust satoshi
+amount if one is not present.
 
 
 To validate a LiquiDEX version 1 proposal:
@@ -1922,6 +1898,6 @@ Returned from `GA_validate` to indicate the validity of the given JSON document.
 :is_valid: ``true`` if the JSON is valid, ``false`` otherwise.
 :errors: An array of strings describing each error found in the given document;
          Empty if ``"is_valid"`` is ``true``.
-:addressees: If validating addressees, the given addressee elements with data
-         sanitized and converted if required. For example, BIP21 URLs are
+:addressees: If validating addressees, the given :ref:`addressee` elements with
+         data sanitized and converted if required. For example, BIP21 URLs are
          converted to addresses, plus amount/asset if applicable.
