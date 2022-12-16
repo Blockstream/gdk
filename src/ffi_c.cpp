@@ -13,6 +13,7 @@
 #include "session.hpp"
 #include "swap_auth_handlers.hpp"
 #include "utils.hpp"
+#include "validate.hpp"
 
 namespace {
 

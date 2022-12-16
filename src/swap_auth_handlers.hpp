@@ -40,18 +40,6 @@ namespace sdk {
         nlohmann::json m_create_details;
         wally_tx_ptr m_tx;
     };
-
-    class validate_call : public auth_handler_impl {
-    public:
-        validate_call(session& session, const nlohmann::json& details);
-
-    private:
-        state_type call_impl() override;
-
-        void liquidex_impl();
-
-        nlohmann::json m_details;
-    };
 } // namespace sdk
 } // namespace ga
-#endif
+#endif // GDK_SWAP_AUTH_HANDLERS_HPP

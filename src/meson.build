@@ -29,6 +29,7 @@ cpp_headers = [
            'threading.hpp',
            'transaction_utils.hpp',
            'utils.hpp',
+           'validate.hpp',
            'wamp_transport.hpp',
            'xpub_hdkey.hpp']
 
@@ -59,6 +60,7 @@ cpp_sources = [
            'swap_auth_handlers.cpp',
            'transaction_utils.cpp',
            'utils.cpp',
+           'validate.cpp',
            'wamp_transport.cpp',
            'xpub_hdkey.cpp']
 
