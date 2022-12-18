@@ -1792,4 +1792,15 @@ mod test {
             keys_from_credentials(&credentials, bitcoin::Network::Bitcoin).unwrap();
         assert_eq!(master_xprv.to_string(), "xprv9s21ZrQH143K3h3fDYiay8mocZ3afhfULfb5GX8kCBdno77K4HiA15Tg23wpbeF1pLfs1c5SPmYHrEpTuuRhxMwvKDwqdKiGJS9XFKzUsAF");
     }
+
+    #[test]
+    fn fetch_available_currencies() {
+        let map = super::fetch_available_currencies(
+            &ureq::Agent::new(),
+            "https://green-bitcoin-testnet.blockstream.com/prices/v0/venues",
+        )
+        .unwrap();
+
+        assert!(map.len() > 0);
+    }
 }
