@@ -57,6 +57,13 @@ namespace sdk {
             const std::string datadir = global_config["datadir"];
             global_config.emplace("registrydir", datadir + "/registry");
         }
+        if (!global_config.contains("share_tx_impl")) {
+            // "share_tx_impl" is a development setting, to share the
+            // create_transaction implementation between session types.
+            // TODO: Remove this setting and all references to it
+            //       once tx creation is shared.
+            global_config.emplace("share_tx_impl", false);
+        }
 
         // Set up logging. Default to fatal logging, effectively 'none',
         // since we don't use fatal severity for logging.
