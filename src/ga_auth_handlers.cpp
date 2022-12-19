@@ -315,9 +315,9 @@ namespace sdk {
             }
 
             m_signer = new_signer;
-            if (is_electrum) {
+            if (is_electrum && !gdk_config()["share_tx_impl"].get<bool>()) {
                 if (m_net_params.is_liquid()) {
-                    // FIXME: Implement rust liquid login via authenticate()
+                    // TODO: Remove this from all session types once tx creation is shared
                     m_result = m_session->login(new_signer);
                     return state_type::done;
                 }
