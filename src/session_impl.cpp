@@ -449,6 +449,7 @@ namespace sdk {
 
     std::vector<unsigned char> session_impl::output_script_from_utxo(const nlohmann::json& utxo)
     {
+        GDK_RUNTIME_ASSERT(m_net_params.is_electrum()); // Default impl is single sig
         const std::string addr_type = utxo.at("address_type");
         const auto pubkeys = pubkeys_from_utxo(utxo);
 
@@ -459,6 +460,7 @@ namespace sdk {
 
     std::vector<pub_key_t> session_impl::pubkeys_from_utxo(const nlohmann::json& utxo)
     {
+        GDK_RUNTIME_ASSERT(m_net_params.is_electrum()); // Default impl is single sig
         const uint32_t subaccount = utxo.at("subaccount");
         const uint32_t pointer = utxo.at("pointer");
         const bool is_internal = utxo.at("is_internal");
