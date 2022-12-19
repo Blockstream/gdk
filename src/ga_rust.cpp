@@ -11,6 +11,7 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
+#include "ga_tx.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "signer.hpp"
@@ -408,6 +409,17 @@ namespace sdk {
 
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
     {
+        if (gdk_config()["share_tx_impl"].get<bool>()) {
+            // Use the common implementation
+            try {
+                return create_ga_transaction(*this, details);
+            } catch (const user_error& e) {
+                return nlohmann::json({ { "error", e.what() } });
+            }
+        }
+
+        // TODO: Remove this derived impl and share one in session_impl
+        //       once tx creation is shared
         GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction:" << details.dump();
         nlohmann::json result(details);
 
