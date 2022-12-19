@@ -661,13 +661,15 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        if (json_get_value(m_tx_details, "is_sweep", false)
-            || (m_net_params.is_electrum() && m_net_params.is_liquid())) {
-            // For sweep txs and liquid electrum single sig, sign the tx in software.
+        // TODO: Remove shared_impl check once tx creation is shared
+        const bool use_shared_impl = gdk_config()["share_tx_impl"].get<bool>();
+        const bool is_sweep = json_get_value(m_tx_details, "is_sweep", false);
+        const bool is_liquid_electrum = m_net_params.is_liquid() && m_net_params.is_electrum();
+        if (is_sweep || (is_liquid_electrum && !use_shared_impl)) {
+            // Sign the tx in software.
             // TODO: Once tx aggregation is implemented, merge the sweep logic
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)
-            // FIXME: Sign rust liquid txs using the standard code path
             m_result = m_session->user_sign_transaction(m_tx_details);
             return state_type::done;
         }

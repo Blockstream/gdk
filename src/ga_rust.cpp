@@ -445,6 +445,9 @@ namespace sdk {
 
     nlohmann::json ga_rust::user_sign_transaction(const nlohmann::json& details)
     {
+        // TODO: Remove this derived impl and share one in session_impl
+        //       once tx creation is shared
+        GDK_RUNTIME_ASSERT(!gdk_config()["share_tx_impl"].get<bool>());
         return rust_call("sign_transaction", details, m_session);
     }
 
