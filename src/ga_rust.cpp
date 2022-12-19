@@ -452,9 +452,15 @@ namespace sdk {
         throw std::runtime_error("psbt_sign not implemented");
     }
 
-    nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& /*twofactor_data*/)
     {
-        return rust_call("send_transaction", details, m_session);
+        auto txhash_hex = broadcast_transaction(details.at("transaction"));
+        auto result = details;
+        if (details.contains("memo")) {
+            set_transaction_memo(txhash_hex, details.at("memo"));
+        }
+        result["txhash"] = std::move(txhash_hex);
+        return result;
     }
 
     std::string ga_rust::broadcast_transaction(const std::string& tx_hex)
