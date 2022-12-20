@@ -279,6 +279,7 @@ namespace sdk {
     auth_handler::state_type login_user_call::call_impl()
     {
         const bool is_electrum = m_net_params.is_electrum();
+        const bool is_liquid = m_net_params.is_liquid();
 
         if (!m_signer) {
             if (m_credential_data.contains("pin")) {
@@ -315,11 +316,14 @@ namespace sdk {
             }
 
             m_signer = new_signer;
-            if (is_electrum && !gdk_config()["share_tx_impl"].get<bool>()) {
-                if (m_net_params.is_liquid()) {
+            if (is_electrum && is_liquid) {
+                if (!gdk_config()["share_tx_impl"].get<bool>()) {
                     // TODO: Remove this from all session types once tx creation is shared
                     m_result = m_session->login(new_signer);
                     return state_type::done;
+                }
+                if (new_signer->is_hardware() && !gdk_config()["allow_ss_liquid_hww"].get<bool>()) {
+                    throw user_error("Hardware wallet support for Liquid is not yet enabled");
                 }
             }
 
