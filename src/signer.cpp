@@ -107,13 +107,16 @@ namespace sdk {
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
-            if (ret.at("device_type") == "hardware") {
+            const auto device_type = json_get_value(ret, "device_type");
+            if (device_type == "hardware") {
                 if (ret.value("name", std::string()).empty()) {
                     throw user_error("Hardware device JSON requires a non-empty 'name' element");
                 }
-            } else if (ret.at("device_type") == "green-backend") {
+            } else if (device_type == "green-backend") {
                 // Don't allow overriding Green backend settings
                 ret = GREEN_DEVICE_JSON;
+            } else if (device_type != "software" && device_type != "watch-only") {
+                throw user_error(std::string("Unknown device type ") + device_type);
             }
             return ret;
         }
