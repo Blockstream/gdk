@@ -233,6 +233,8 @@ namespace sdk {
 
     std::string base58check_from_bytes(byte_span_t data);
 
+    bool validate_base58check(const std::string& base58);
+
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58);
 
     wally_string_ptr base64_string_from_bytes(byte_span_t bytes);

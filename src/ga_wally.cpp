@@ -510,6 +510,16 @@ namespace sdk {
         return make_string(ret);
     }
 
+    bool validate_base58check(const std::string& base58)
+    {
+        try {
+            (void)base58check_to_bytes(base58);
+            return true;
+        } catch (const std::exception&) {
+            return false;
+        }
+    }
+
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58)
     {
         size_t written;
