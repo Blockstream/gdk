@@ -512,12 +512,9 @@ namespace sdk {
 
     bool validate_base58check(const std::string& base58)
     {
-        try {
-            (void)base58check_to_bytes(base58);
-            return true;
-        } catch (const std::exception&) {
-            return false;
-        }
+        std::vector<unsigned char> ret(BASE58_CHECKSUM_LEN + 1);
+        size_t written;
+        return wally_base58_to_bytes(base58.data(), BASE58_FLAG_CHECKSUM, &ret[0], ret.size(), &written) == WALLY_OK;
     }
 
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58)
