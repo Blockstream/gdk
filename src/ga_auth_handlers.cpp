@@ -317,12 +317,12 @@ namespace sdk {
 
             m_signer = new_signer;
             if (is_electrum && is_liquid) {
-                if (!gdk_config()["share_tx_impl"].get<bool>()) {
+                if (!gdk_config()["enable_shared_tx_impl"].get<bool>()) {
                     // TODO: Remove this from all session types once tx creation is shared
                     m_result = m_session->login(new_signer);
                     return state_type::done;
                 }
-                if (new_signer->is_hardware() && !gdk_config()["allow_ss_liquid_hww"].get<bool>()) {
+                if (new_signer->is_hardware() && !gdk_config()["enable_ss_liquid_hww"].get<bool>()) {
                     throw user_error("Hardware wallet support for Liquid is not yet enabled");
                 }
             }
@@ -666,7 +666,7 @@ namespace sdk {
     auth_handler::state_type sign_transaction_call::call_impl()
     {
         // TODO: Remove shared_impl check once tx creation is shared
-        const bool use_shared_impl = gdk_config()["share_tx_impl"].get<bool>();
+        const bool use_shared_impl = gdk_config()["enable_shared_tx_impl"].get<bool>();
         const bool is_sweep = json_get_value(m_tx_details, "is_sweep", false);
         const bool is_liquid_electrum = m_net_params.is_liquid() && m_net_params.is_electrum();
         if (is_sweep || (is_liquid_electrum && !use_shared_impl)) {

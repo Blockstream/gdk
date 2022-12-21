@@ -409,7 +409,7 @@ namespace sdk {
 
     nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
     {
-        if (gdk_config()["share_tx_impl"].get<bool>()) {
+        if (gdk_config()["enable_shared_tx_impl"].get<bool>()) {
             // Use the common implementation
             try {
                 return create_ga_transaction(*this, details);
@@ -447,7 +447,7 @@ namespace sdk {
     {
         // TODO: Remove this derived impl and share one in session_impl
         //       once tx creation is shared
-        GDK_RUNTIME_ASSERT(!gdk_config()["share_tx_impl"].get<bool>());
+        GDK_RUNTIME_ASSERT(!gdk_config()["enable_shared_tx_impl"].get<bool>());
         return rust_call("sign_transaction", details, m_session);
     }
 
