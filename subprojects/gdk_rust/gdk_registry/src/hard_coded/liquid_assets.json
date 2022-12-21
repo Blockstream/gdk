@@ -1,4 +1,33 @@
 {
+  "0a9d70b73863a8788672e461b59b23289a74eded16dfe210d1210da4d31c8800": {
+    "asset_id": "0a9d70b73863a8788672e461b59b23289a74eded16dfe210d1210da4d31c8800",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0339a28da1b961aad5a93fc813b82c92e142884453e007a738350991f63091579b",
+      "name": "MM-00041",
+      "precision": 0,
+      "ticker": "MM-00041",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "c26dcf0375bc28b33f12b94c6f36186f4267009cda006d1b769ddc68e9b624ab",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "003c6114344aa0e6011a07bb55b73fe05158180af89a17d4ac955314d78731b0",
+      "vin": 0
+    },
+    "issuer_pubkey": "0339a28da1b961aad5a93fc813b82c92e142884453e007a738350991f63091579b",
+    "name": "MM-00041",
+    "precision": 0,
+    "ticker": "MM-00041",
+    "version": 0
+  },
   "06d1085d6a3a1328fb8189d106c7a8afbef3d327e34504828c4cac2c74ac0802": {
     "asset_id": "06d1085d6a3a1328fb8189d106c7a8afbef3d327e34504828c4cac2c74ac0802",
     "contract": {
@@ -86,6 +115,35 @@
     "ticker": "MM-00142",
     "version": 0
   },
+  "9b38e22c79fbaff009321d2b275f7e14ced1b4c2079949f7890f6a18858b2305": {
+    "asset_id": "9b38e22c79fbaff009321d2b275f7e14ced1b4c2079949f7890f6a18858b2305",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "021b9011848225a261925ab4064f3c8fbbf96cd2c5caf32927f465bd8d09dcc30f",
+      "name": "MM-00054",
+      "precision": 0,
+      "ticker": "MM-00054",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "5df587671ac0d0015d51b426166fb0b39cbb56033fec67cc202fd5c02444a763",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "df7bbe051684635e09a89874b8478747c1c3c582595977a0c90043194f5ac8c6",
+      "vin": 0
+    },
+    "issuer_pubkey": "021b9011848225a261925ab4064f3c8fbbf96cd2c5caf32927f465bd8d09dcc30f",
+    "name": "MM-00054",
+    "precision": 0,
+    "ticker": "MM-00054",
+    "version": 0
+  },
   "8663d92a8cca1bf659d2824fbcf92ed107a52196d07ba12eaa63e8d07dd2ee05": {
     "asset_id": "8663d92a8cca1bf659d2824fbcf92ed107a52196d07ba12eaa63e8d07dd2ee05",
     "contract": {
@@ -113,6 +171,35 @@
     "name": "MM-00405",
     "precision": 0,
     "ticker": "MM-00405",
+    "version": 0
+  },
+  "a077374896fc014b312b511c5e82ffcfd81bb79ed1cbc3d576b7a446e9e88c08": {
+    "asset_id": "a077374896fc014b312b511c5e82ffcfd81bb79ed1cbc3d576b7a446e9e88c08",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0372d7ace08329eca9f91467e436f8ae9ae604146346b1e084b9fbd2a592d7e3ac",
+      "name": "MM-00623",
+      "precision": 0,
+      "ticker": "MM-00623",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "52d8732a2d93eddcb5075bcdce0ce49962561f070733d7bd21236168cc5749f0",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "630afc4452c1946c5308aa4fc824e7157bc319aebf528bd43e3b66b7e3aa2937",
+      "vin": 0
+    },
+    "issuer_pubkey": "0372d7ace08329eca9f91467e436f8ae9ae604146346b1e084b9fbd2a592d7e3ac",
+    "name": "MM-00623",
+    "precision": 0,
+    "ticker": "MM-00623",
     "version": 0
   },
   "ed500a2536a357be594eb273dda38ec103e71d8fa22a20f8259ab344d05c4d0a": {
@@ -294,6 +381,64 @@
     "ticker": "GIGL",
     "version": 0
   },
+  "86fe55b547956aab1bf5a6c2534e7fb0e5dda40161a11f67e4d16ec51fee3a1a": {
+    "asset_id": "86fe55b547956aab1bf5a6c2534e7fb0e5dda40161a11f67e4d16ec51fee3a1a",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02e346de5f0b1030bf55a9fd6a9191528884b05ded6c3093d597222764b1127f6c",
+      "name": "MM-00736-JR",
+      "precision": 0,
+      "ticker": "MM-00736-JR",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "a391cad521d5326ad132affc00eb448c0c774d9f749a7d1f2bc8cba31009a60d",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "0e74c4e5ed92fe6f6816e945a24532c6efb592983726235e3eec12dc1421ba6e",
+      "vin": 0
+    },
+    "issuer_pubkey": "02e346de5f0b1030bf55a9fd6a9191528884b05ded6c3093d597222764b1127f6c",
+    "name": "MM-00736-JR",
+    "precision": 0,
+    "ticker": "MM-00736-JR",
+    "version": 0
+  },
+  "8070be0b0359a8e753b8ebcfe46956e68c23bb2d25ef1b1139fbdedd47fd201c": {
+    "asset_id": "8070be0b0359a8e753b8ebcfe46956e68c23bb2d25ef1b1139fbdedd47fd201c",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02952b8fd1840d6848a473a9c85bb124ef6671004626652aedb200d8787914e03b",
+      "name": "MM-00644",
+      "precision": 0,
+      "ticker": "MM-00644",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "7a593f21d19c2e91c0871e75204a7757da3e4bdfef49a0234432183f8dadbaf7",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "3b0748a0fa7904c0874ce8e62a06a149c3260365925946e64a39b44522f72e0e",
+      "vin": 0
+    },
+    "issuer_pubkey": "02952b8fd1840d6848a473a9c85bb124ef6671004626652aedb200d8787914e03b",
+    "name": "MM-00644",
+    "precision": 0,
+    "ticker": "MM-00644",
+    "version": 0
+  },
   "0c38dad2b93373e4ab4fec854f39125f1004029677cc9e82505fc8f750be1920": {
     "asset_id": "0c38dad2b93373e4ab4fec854f39125f1004029677cc9e82505fc8f750be1920",
     "contract": {
@@ -350,6 +495,35 @@
     "name": "MM-01422",
     "precision": 3,
     "ticker": "MM-01422",
+    "version": 0
+  },
+  "1091cf3f0fdc08087feae82511654a068382593b2ca206807cf2a70fd998df20": {
+    "asset_id": "1091cf3f0fdc08087feae82511654a068382593b2ca206807cf2a70fd998df20",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "030de6e1a7ea25b361a702dee489e7e179ee77c3125bbcbff6af53b2358b2e22ce",
+      "name": "MM-00039",
+      "precision": 0,
+      "ticker": "MM-00039",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "828a452129af072ddf8687547930ad426c77aace3af87a9825796e1086e2a21d",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "c26dcf0375bc28b33f12b94c6f36186f4267009cda006d1b769ddc68e9b624ab",
+      "vin": 0
+    },
+    "issuer_pubkey": "030de6e1a7ea25b361a702dee489e7e179ee77c3125bbcbff6af53b2358b2e22ce",
+    "name": "MM-00039",
+    "precision": 0,
+    "ticker": "MM-00039",
     "version": 0
   },
   "c2cb4ca4a2da0c0d8eab84eab799c3fbb3ef2fcf3318fda7628e534557f93921": {
@@ -554,6 +728,35 @@
     "name": "MM-01339-10",
     "precision": 0,
     "ticker": "MM-01339-10",
+    "version": 0
+  },
+  "ba1a70e48af02a573a127a2d2fdae6e6544356d597460836c6a203baceee5727": {
+    "asset_id": "ba1a70e48af02a573a127a2d2fdae6e6544356d597460836c6a203baceee5727",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02bfc248005204de23e2aa2f8689022e94e9ca7dee0d8d32766c24b441ba8fc54b",
+      "name": "MM-00070",
+      "precision": 0,
+      "ticker": "MM-00070",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "773a821356dfdf75a44d1b5165111f80ccffd86e5f4949fa7787a26b516d4d96",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "8937a7f6df937ca40a81ab8032d0d4adc911fd9fd2b9b67d33cbbb28dc2d5deb",
+      "vin": 0
+    },
+    "issuer_pubkey": "02bfc248005204de23e2aa2f8689022e94e9ca7dee0d8d32766c24b441ba8fc54b",
+    "name": "MM-00070",
+    "precision": 0,
+    "ticker": "MM-00070",
     "version": 0
   },
   "0000b161ead41dbdfc3814078fdb02ee78f9697ffc7b15395db6c62fd1e7fe2c": {
@@ -790,6 +993,35 @@
     "ticker": "MM-01420",
     "version": 0
   },
+  "ef519d45b95ac1937d2d34482c31fcf80bee51bd8160e26f1dac47d2bc34e734": {
+    "asset_id": "ef519d45b95ac1937d2d34482c31fcf80bee51bd8160e26f1dac47d2bc34e734",
+    "contract": {
+      "entity": {
+        "domain": "zuliacoin.com"
+      },
+      "issuer_pubkey": "02e062758a02a03c9a76e323ca1afb3993c4cde8db9ada670149b55305041c2987",
+      "name": "ZULIA",
+      "precision": 0,
+      "ticker": "ZLD",
+      "version": 0
+    },
+    "entity": {
+      "domain": "zuliacoin.com"
+    },
+    "issuance_prevout": {
+      "txid": "656afb37e36ce98107728ec3c03e1ff8c8ec7087f8e1c4fa68bdde178348d3d5",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "92b825fbf55cdde43134d262d76198fb3d0a431eac17f1218b7c0db9f851fe35",
+      "vin": 0
+    },
+    "issuer_pubkey": "02e062758a02a03c9a76e323ca1afb3993c4cde8db9ada670149b55305041c2987",
+    "name": "ZULIA",
+    "precision": 0,
+    "ticker": "ZLD",
+    "version": 0
+  },
   "b036b6eef7bf7c936d99cff32d32284ec15478eab9f97f829bbaab3d5dae9435": {
     "asset_id": "b036b6eef7bf7c936d99cff32d32284ec15478eab9f97f829bbaab3d5dae9435",
     "contract": {
@@ -817,6 +1049,35 @@
     "name": "MM-00160",
     "precision": 0,
     "ticker": "MM-00160",
+    "version": 0
+  },
+  "db5d6a31f8b2a6dbc61d9e2e693a8b71b35399bf20ad3d8a162d7c95db5e0736": {
+    "asset_id": "db5d6a31f8b2a6dbc61d9e2e693a8b71b35399bf20ad3d8a162d7c95db5e0736",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03d857991e40ae7f6c8c807aaffb422214fba948852687acf8ba229d7fb52746fb",
+      "name": "MM-00696",
+      "precision": 0,
+      "ticker": "MM-00696",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "69fe1d7565d59a194f1a5910c46df4ed19f4a4c048b2c30405acc25aff73571d",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "7a593f21d19c2e91c0871e75204a7757da3e4bdfef49a0234432183f8dadbaf7",
+      "vin": 0
+    },
+    "issuer_pubkey": "03d857991e40ae7f6c8c807aaffb422214fba948852687acf8ba229d7fb52746fb",
+    "name": "MM-00696",
+    "precision": 0,
+    "ticker": "MM-00696",
     "version": 0
   },
   "d4ea35e1e91d537814c9097f575ef2083f67a7912abf697a6749b51bd661c636": {
@@ -904,6 +1165,64 @@
     "name": "MM-00140",
     "precision": 0,
     "ticker": "MM-00140",
+    "version": 0
+  },
+  "e543c28d35f2577b84a2055a076ddf52fd84325d20b882438263127b009a843c": {
+    "asset_id": "e543c28d35f2577b84a2055a076ddf52fd84325d20b882438263127b009a843c",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "025fdeab4138fb877735252d984450e15067edcf77375882b022f7da4209c76182",
+      "name": "MM-00067",
+      "precision": 0,
+      "ticker": "MM-00067",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "df7bbe051684635e09a89874b8478747c1c3c582595977a0c90043194f5ac8c6",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "773a821356dfdf75a44d1b5165111f80ccffd86e5f4949fa7787a26b516d4d96",
+      "vin": 0
+    },
+    "issuer_pubkey": "025fdeab4138fb877735252d984450e15067edcf77375882b022f7da4209c76182",
+    "name": "MM-00067",
+    "precision": 0,
+    "ticker": "MM-00067",
+    "version": 0
+  },
+  "294322f4780584e9ee5dfbecf64e3744c633ad13a9bb40c7192188d366ab473d": {
+    "asset_id": "294322f4780584e9ee5dfbecf64e3744c633ad13a9bb40c7192188d366ab473d",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03ae3d572a55ba1b7f3872fd10165d4fa10c807e62765cac89ea06e133b50e2d52",
+      "name": "MM-00428",
+      "precision": 0,
+      "ticker": "MM-00428",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "ab9daee9a5a7a483b7719ceab2344cd8219b4e662b876d6414690cbb0d021915",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "7ce27efb9efeb1ea876f7783ac93babc27690d55a02c4f3a7de4169f0737c5a8",
+      "vin": 0
+    },
+    "issuer_pubkey": "03ae3d572a55ba1b7f3872fd10165d4fa10c807e62765cac89ea06e133b50e2d52",
+    "name": "MM-00428",
+    "precision": 0,
+    "ticker": "MM-00428",
     "version": 0
   },
   "6273cfefcfe53663406aee1b65e9960275440e7d124bf2b3a28602070674873d": {
@@ -995,6 +1314,35 @@
     "ticker": "TEE",
     "version": 0
   },
+  "0a1ec561a0a54f0ff9993706c58de23a1a2adf79825aa4e70f7e79f8099a7b41": {
+    "asset_id": "0a1ec561a0a54f0ff9993706c58de23a1a2adf79825aa4e70f7e79f8099a7b41",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0293c817e0e78869c4d9a460f4c18dd177bdc6d1d9af70bcf4d95eccffd5da6678",
+      "name": "MM-00047",
+      "precision": 0,
+      "ticker": "MM-00047",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "0eec001f23233ce6e5c4898336c2a4e1dbb668f38c8fb62eecb34471ba5b97db",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "be0e443b7bc700463acc7471db030485e11aa16a75ebafaa44c1fdbfb5bf50fa",
+      "vin": 0
+    },
+    "issuer_pubkey": "0293c817e0e78869c4d9a460f4c18dd177bdc6d1d9af70bcf4d95eccffd5da6678",
+    "name": "MM-00047",
+    "precision": 0,
+    "ticker": "MM-00047",
+    "version": 0
+  },
   "1e00089f9787634eba82a876a17754c91431b910fea3623698480996a50bc241": {
     "asset_id": "1e00089f9787634eba82a876a17754c91431b910fea3623698480996a50bc241",
     "contract": {
@@ -1082,6 +1430,35 @@
     "ticker": "MM-01431",
     "version": 0
   },
+  "8cf89d46fc0f19bbb7cf1cd927d477380c7d6e137b34a8c9317fa37a8b9d8a48": {
+    "asset_id": "8cf89d46fc0f19bbb7cf1cd927d477380c7d6e137b34a8c9317fa37a8b9d8a48",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02f21e1f8372e881f5b2989e1d55e54c23c52b3c91c3cd8c988f8307dbadc80913",
+      "name": "MM-00037",
+      "precision": 0,
+      "ticker": "MM-00037",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "1340f9331d24bda207385fe0533fa4c3cac42714e3757ecb07f2c56bcb62a7be",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "828a452129af072ddf8687547930ad426c77aace3af87a9825796e1086e2a21d",
+      "vin": 0
+    },
+    "issuer_pubkey": "02f21e1f8372e881f5b2989e1d55e54c23c52b3c91c3cd8c988f8307dbadc80913",
+    "name": "MM-00037",
+    "precision": 0,
+    "ticker": "MM-00037",
+    "version": 0
+  },
   "179327503cf4485f7836f95c6a06c0533d0f182761fc33187b02f9c07dc3494a": {
     "asset_id": "179327503cf4485f7836f95c6a06c0533d0f182761fc33187b02f9c07dc3494a",
     "contract": {
@@ -1138,6 +1515,35 @@
     "name": "Honey Badger",
     "precision": 0,
     "ticker": "HBDG",
+    "version": 0
+  },
+  "3f3a2ba962899788f80ad22a201e27f51f06aa5a808304937d02f69f1f1ebd4b": {
+    "asset_id": "3f3a2ba962899788f80ad22a201e27f51f06aa5a808304937d02f69f1f1ebd4b",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03363515bac5feb9037d0ffcb222ee230fa57aff8b2aaac1042ed54476557291b1",
+      "name": "MM-00100",
+      "precision": 0,
+      "ticker": "MM-00100",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "2f01da744aae5599d7c289f70b169eb2e9a396842222ce9b82b2e4024fe4bea5",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "1340f9331d24bda207385fe0533fa4c3cac42714e3757ecb07f2c56bcb62a7be",
+      "vin": 0
+    },
+    "issuer_pubkey": "03363515bac5feb9037d0ffcb222ee230fa57aff8b2aaac1042ed54476557291b1",
+    "name": "MM-00100",
+    "precision": 0,
+    "ticker": "MM-00100",
     "version": 0
   },
   "28bd2f418bdb2801516120be1c5e4a135af41f70f63ee1864cde6d0e8660d04c": {
@@ -1256,6 +1662,35 @@
     "ticker": "B-SCH",
     "version": 0
   },
+  "e69854883711e9e22747c4093f8f872b378d800e2e276aef876d3385715d024f": {
+    "asset_id": "e69854883711e9e22747c4093f8f872b378d800e2e276aef876d3385715d024f",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "020c7b6d2ecc47044548ab5848eaacb83e6e88b32fe0567965c60a58ff58a598bb",
+      "name": "MM-00084",
+      "precision": 0,
+      "ticker": "MM-00084",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "2f01da744aae5599d7c289f70b169eb2e9a396842222ce9b82b2e4024fe4bea5",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "6d3d3c472553fc52c51e76f0820546a0326970c458f882d69b58c8dc53acd85c",
+      "vin": 0
+    },
+    "issuer_pubkey": "020c7b6d2ecc47044548ab5848eaacb83e6e88b32fe0567965c60a58ff58a598bb",
+    "name": "MM-00084",
+    "precision": 0,
+    "ticker": "MM-00084",
+    "version": 0
+  },
   "6f2cd03069fbb25327efb935713e199188711d04363a8fcbc4706e51fd39304f": {
     "asset_id": "6f2cd03069fbb25327efb935713e199188711d04363a8fcbc4706e51fd39304f",
     "contract": {
@@ -1312,6 +1747,64 @@
     "name": "MM-00133",
     "precision": 0,
     "ticker": "MM-00133",
+    "version": 0
+  },
+  "4fdf2dd96e7cfb0b5df036b64a73a168692fdab6da43297a8a3b7acca2b63850": {
+    "asset_id": "4fdf2dd96e7cfb0b5df036b64a73a168692fdab6da43297a8a3b7acca2b63850",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "026e6cad13f4ab3f2af43eee7db86f4fba292db85ef2c134878d97fab0ac72a5ec",
+      "name": "MM-00786",
+      "precision": 0,
+      "ticker": "MM-00786",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "03f09599f9cb36072834fc3de0b5335813b759dcbdc061a87b1720ce0c7ff80d",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "ab9daee9a5a7a483b7719ceab2344cd8219b4e662b876d6414690cbb0d021915",
+      "vin": 0
+    },
+    "issuer_pubkey": "026e6cad13f4ab3f2af43eee7db86f4fba292db85ef2c134878d97fab0ac72a5ec",
+    "name": "MM-00786",
+    "precision": 0,
+    "ticker": "MM-00786",
+    "version": 0
+  },
+  "15288716c6f6d3c12196c8e1097f373dfd9cdeba048c2319c3caecf386788c50": {
+    "asset_id": "15288716c6f6d3c12196c8e1097f373dfd9cdeba048c2319c3caecf386788c50",
+    "contract": {
+      "entity": {
+        "domain": "angelpreneur.stokr.io"
+      },
+      "issuer_pubkey": "026615e3094cfc45a999033a8ed4cd4f01f4214104c8a22290f8fb09713c3f9e75",
+      "name": "AngelToken",
+      "precision": 0,
+      "ticker": "AGT",
+      "version": 0
+    },
+    "entity": {
+      "domain": "angelpreneur.stokr.io"
+    },
+    "issuance_prevout": {
+      "txid": "c22eb7d1914fd3728c663bec4dd34d9cf477eebf25c66fb16df46a95cfba9874",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "1f09658f7e089b1c25a7312210232c3dc25ba2ff1bc7dc08a88ae60a65cb8024",
+      "vin": 0
+    },
+    "issuer_pubkey": "026615e3094cfc45a999033a8ed4cd4f01f4214104c8a22290f8fb09713c3f9e75",
+    "name": "AngelToken",
+    "precision": 0,
+    "ticker": "AGT",
     "version": 0
   },
   "3d7aacdfa75c8a7f377adc21f9a2663a308402cdc95afe3c657361d3398e8452": {
@@ -1546,6 +2039,35 @@
     "ticker": "MM-00553",
     "version": 0
   },
+  "75dc9654d3621fd268062c710c6b3d802aafe6eea741790543d03e0631510d60": {
+    "asset_id": "75dc9654d3621fd268062c710c6b3d802aafe6eea741790543d03e0631510d60",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "035b77d851d73bc5438f74e571279bc20201a86dd3024c88d4e5e111fc4c26440e",
+      "name": "MM-00046",
+      "precision": 0,
+      "ticker": "MM-00046",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "c51b1b86ea86c326f3351ed975efcbe23ad901a1da3b03ee84f912fdd697559e",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "c2c805ef599d1f6256ec7ad06b5d00219c278b94d8c2f3dddeac65d5def245a2",
+      "vin": 0
+    },
+    "issuer_pubkey": "035b77d851d73bc5438f74e571279bc20201a86dd3024c88d4e5e111fc4c26440e",
+    "name": "MM-00046",
+    "precision": 0,
+    "ticker": "MM-00046",
+    "version": 0
+  },
   "a8a50e1cd90b3185c0f1c63c8a2bb75e26390d07c53c5b28f5d9b3d43dc1aa61": {
     "asset_id": "a8a50e1cd90b3185c0f1c63c8a2bb75e26390d07c53c5b28f5d9b3d43dc1aa61",
     "contract": {
@@ -1691,6 +2213,35 @@
     "ticker": "MM-01423",
     "version": 0
   },
+  "f53fd208fb2bb470b6ff589fddc9c9ebdad2f58e3c1b8a3545e137132774a16c": {
+    "asset_id": "f53fd208fb2bb470b6ff589fddc9c9ebdad2f58e3c1b8a3545e137132774a16c",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02a44048b2b5f9fb4e9c8c27cd254c43f653d081eef302faacb2aa6f236b2eabcc",
+      "name": "MM-00767",
+      "precision": 0,
+      "ticker": "MM-00767",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "cc299432a5d5831590fd56f0ba67f6f9debcf92f0ba16ae25d86674042ed7e91",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "65cab9acfc7c7d15b861b17b5340390c48a2f8f60f37fdd6cbbd31b86a3813b0",
+      "vin": 0
+    },
+    "issuer_pubkey": "02a44048b2b5f9fb4e9c8c27cd254c43f653d081eef302faacb2aa6f236b2eabcc",
+    "name": "MM-00767",
+    "precision": 0,
+    "ticker": "MM-00767",
+    "version": 0
+  },
   "1dba49d38fb9773988f23b6e47b044e852064bfd0706485e61e61467b776196d": {
     "asset_id": "1dba49d38fb9773988f23b6e47b044e852064bfd0706485e61e61467b776196d",
     "contract": {
@@ -1767,6 +2318,35 @@
     "ticker": "MM-01433",
     "version": 0
   },
+  "90986ee71806f12229b4e7f2f88321e7c47b2a371d1510a08a1da5c8ab992b72": {
+    "asset_id": "90986ee71806f12229b4e7f2f88321e7c47b2a371d1510a08a1da5c8ab992b72",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03b6d60b07c20ed2aa2ca90151bffe64c64430d91417b7a59ca4bce1053d601bb5",
+      "name": "MM-00774",
+      "precision": 0,
+      "ticker": "MM-00774",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "3ef6c6035fc4308ef429774c850651d0896ec4be0159c4c39b974391925e588c",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "3ee989d9af72f8a786c9bf7d5a8b2e4f63dc8e02f59a51664c9ac5a062464ae8",
+      "vin": 0
+    },
+    "issuer_pubkey": "03b6d60b07c20ed2aa2ca90151bffe64c64430d91417b7a59ca4bce1053d601bb5",
+    "name": "MM-00774",
+    "precision": 0,
+    "ticker": "MM-00774",
+    "version": 0
+  },
   "a5f30509531e504f40d412eb874d4327ec2f041c9fffd3e2e93665bebde95073": {
     "asset_id": "a5f30509531e504f40d412eb874d4327ec2f041c9fffd3e2e93665bebde95073",
     "contract": {
@@ -1794,6 +2374,64 @@
     "name": "MM-01411",
     "precision": 0,
     "ticker": "MM-01411",
+    "version": 0
+  },
+  "93760899aeff5e0ecfa2afc51809f6816ef1d3ae8f5ffc552997bf65ceec1d78": {
+    "asset_id": "93760899aeff5e0ecfa2afc51809f6816ef1d3ae8f5ffc552997bf65ceec1d78",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "035b5c72c8e06ac7e2cad35c7e67e4bea42664900792b15e3d257a4f760816b49b",
+      "name": "MM-01442",
+      "precision": 0,
+      "ticker": "MM-01442",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "0e74c4e5ed92fe6f6816e945a24532c6efb592983726235e3eec12dc1421ba6e",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "238589ee4d7c45f8fd0d2d91501759839529a3b2727f05f5540b3010b00d202c",
+      "vin": 0
+    },
+    "issuer_pubkey": "035b5c72c8e06ac7e2cad35c7e67e4bea42664900792b15e3d257a4f760816b49b",
+    "name": "MM-01442",
+    "precision": 0,
+    "ticker": "MM-01442",
+    "version": 0
+  },
+  "44cb734074638f474af3b2973558d472af6a9dde805c69561fd8ac1c17324278": {
+    "asset_id": "44cb734074638f474af3b2973558d472af6a9dde805c69561fd8ac1c17324278",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "021c8fedd8276da136ee84853bfe85711c2edf9c28f7976efa1508dcf745c1c45b",
+      "name": "MM-00072",
+      "precision": 0,
+      "ticker": "MM-00072",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "79b98f958ae89e4a928cb7d8eceabd18c7ffdb512c5e26b59f13472bb6d4391e",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "87bfee3452122dd23d4c6ea1828be935fbbcc4e0d2c21a038ce8eca9655c5f22",
+      "vin": 0
+    },
+    "issuer_pubkey": "021c8fedd8276da136ee84853bfe85711c2edf9c28f7976efa1508dcf745c1c45b",
+    "name": "MM-00072",
+    "precision": 0,
+    "ticker": "MM-00072",
     "version": 0
   },
   "728448a0dbc0ee69a48ffc3e63c5d4d7cb53e3d7d365bd76013b44a001bc3579": {
@@ -1825,6 +2463,35 @@
     "ticker": "MM-00736-QC",
     "version": 0
   },
+  "580b98a9a38953101b5b41bc75c2cef1063f0ee3ccc000f1093c9517af766e79": {
+    "asset_id": "580b98a9a38953101b5b41bc75c2cef1063f0ee3ccc000f1093c9517af766e79",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "026b3b25a4eaddd8e3140e57a578674c5cfd9a8e45a5ad994981a46213d05002e6",
+      "name": "MM-00684",
+      "precision": 0,
+      "ticker": "MM-00684",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "090ce213baa171ef7e649ff3ee37e3dd23bc978f3c94dd4bcc51a2e41a97c8da",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "1291744d4d657fab0d57d5e16849caad82ecee528c954bf29e2b1aa885cc1360",
+      "vin": 0
+    },
+    "issuer_pubkey": "026b3b25a4eaddd8e3140e57a578674c5cfd9a8e45a5ad994981a46213d05002e6",
+    "name": "MM-00684",
+    "precision": 0,
+    "ticker": "MM-00684",
+    "version": 0
+  },
   "f8351b19d34eda0696972a7e00aa745e7630936eeb8645fcd34b3bc3a6cd827c": {
     "asset_id": "f8351b19d34eda0696972a7e00aa745e7630936eeb8645fcd34b3bc3a6cd827c",
     "contract": {
@@ -1852,6 +2519,35 @@
     "name": "MM-00545",
     "precision": 0,
     "ticker": "MM-00545",
+    "version": 0
+  },
+  "b93a5aa6be3b2c107c65d4a00ac39b337ba325328d1b8a7baf393e7b41ead87d": {
+    "asset_id": "b93a5aa6be3b2c107c65d4a00ac39b337ba325328d1b8a7baf393e7b41ead87d",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "026efc4da2d2137a3ba9151d203ad15e62df9277a26f08a8b08b1c61ebcbc3ff55",
+      "name": "MM-00631",
+      "precision": 0,
+      "ticker": "MM-00631",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "52d8732a2d93eddcb5075bcdce0ce49962561f070733d7bd21236168cc5749f0",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "919c086e23806b4d69aecd12658f8a4687dbd38eb8adad39d8aed83fbc0ea076",
+      "vin": 0
+    },
+    "issuer_pubkey": "026efc4da2d2137a3ba9151d203ad15e62df9277a26f08a8b08b1c61ebcbc3ff55",
+    "name": "MM-00631",
+    "precision": 0,
+    "ticker": "MM-00631",
     "version": 0
   },
   "6ddd5787d78d6ffae57a06f05fbc7b64088a5901198d5029434debf721b5247e": {
@@ -1941,6 +2637,35 @@
     "ticker": "B-SAT",
     "version": 0
   },
+  "0531e3ed19c12d0f803f28d1ec01b7be84392ee0a8efba4b4eac6eb419a76481": {
+    "asset_id": "0531e3ed19c12d0f803f28d1ec01b7be84392ee0a8efba4b4eac6eb419a76481",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "029e5edd446ac14c2ce32f7048de2467cd62bdcadedce8e41d0c1ecde9bfe141c2",
+      "name": "MM-00089",
+      "precision": 0,
+      "ticker": "MM-00089",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "9709df760f2bc1ea2e92b1355811d4440d1a69b759f96c1eb1c99ad04cf3705d",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "5df587671ac0d0015d51b426166fb0b39cbb56033fec67cc202fd5c02444a763",
+      "vin": 0
+    },
+    "issuer_pubkey": "029e5edd446ac14c2ce32f7048de2467cd62bdcadedce8e41d0c1ecde9bfe141c2",
+    "name": "MM-00089",
+    "precision": 0,
+    "ticker": "MM-00089",
+    "version": 0
+  },
   "dd1d06d871cd38cb0342a62ade5dfe1b44a05e9cf0a44e335d208d758d75c181": {
     "asset_id": "dd1d06d871cd38cb0342a62ade5dfe1b44a05e9cf0a44e335d208d758d75c181",
     "contract": {
@@ -1968,6 +2693,35 @@
     "name": "MM-00157",
     "precision": 0,
     "ticker": "MM-00157",
+    "version": 0
+  },
+  "b8d878eaf57adf70f50755ef342457cbe5009f734b15d656d7b000f899c6d081": {
+    "asset_id": "b8d878eaf57adf70f50755ef342457cbe5009f734b15d656d7b000f899c6d081",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0351854ba4557172a5d6d98072bea4d43b0553542720daccca0fd55d8f8e1c734a",
+      "name": "MM-00066",
+      "precision": 0,
+      "ticker": "MM-00066",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "63b0c8246126baa8111a1984f1642358afda74acba71a73db0c1f5cbb1a17870",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "df9666b4330792c37d29ca3c3220b97f5eb7f30ab552029684e584a148769f07",
+      "vin": 0
+    },
+    "issuer_pubkey": "0351854ba4557172a5d6d98072bea4d43b0553542720daccca0fd55d8f8e1c734a",
+    "name": "MM-00066",
+    "precision": 0,
+    "ticker": "MM-00066",
     "version": 0
   },
   "2e8f4c2b062d072cdf5f9ac372772137445de21a72c26cc6cfd7ea5b3031b583": {
@@ -2091,6 +2845,64 @@
     "ticker": "MM-01438",
     "version": 0
   },
+  "a50ee238ac0ad6dbe7a16900ebf759028ea07e335975f67799a7228406935e87": {
+    "asset_id": "a50ee238ac0ad6dbe7a16900ebf759028ea07e335975f67799a7228406935e87",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02caf1fd71aba50a04800067f365806e8a0853f25e0cf823c18f09bd280256d089",
+      "name": "MM-00048",
+      "precision": 0,
+      "ticker": "MM-00048",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "c2c805ef599d1f6256ec7ad06b5d00219c278b94d8c2f3dddeac65d5def245a2",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "2b2cfecb817f842efe79127eb28e6c4cad8ef84a9d88e62c6fd43cf542dd4c43",
+      "vin": 0
+    },
+    "issuer_pubkey": "02caf1fd71aba50a04800067f365806e8a0853f25e0cf823c18f09bd280256d089",
+    "name": "MM-00048",
+    "precision": 0,
+    "ticker": "MM-00048",
+    "version": 0
+  },
+  "8db94c81c4b5b5f52eb870308a9cda4e914bee056e976ac316a6329d9ba13388": {
+    "asset_id": "8db94c81c4b5b5f52eb870308a9cda4e914bee056e976ac316a6329d9ba13388",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0256f141e06e9a8b24da3d23c59e4b1366850bd65cc732f1deaa5511051f387283",
+      "name": "MM-00080",
+      "precision": 0,
+      "ticker": "MM-00080",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "8937a7f6df937ca40a81ab8032d0d4adc911fd9fd2b9b67d33cbbb28dc2d5deb",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "ef120c93a78cc6bafcc5a95f0ebed6adaffd0d62560fa42454b5bae7ec4fdce7",
+      "vin": 0
+    },
+    "issuer_pubkey": "0256f141e06e9a8b24da3d23c59e4b1366850bd65cc732f1deaa5511051f387283",
+    "name": "MM-00080",
+    "precision": 0,
+    "ticker": "MM-00080",
+    "version": 0
+  },
   "4ce86748049f9c52830b6ccf5bdc712bbe516b1cf9a70b4ed8c2164290cec189": {
     "asset_id": "4ce86748049f9c52830b6ccf5bdc712bbe516b1cf9a70b4ed8c2164290cec189",
     "contract": {
@@ -2118,6 +2930,93 @@
     "name": "MM-01362",
     "precision": 0,
     "ticker": "MM-01362",
+    "version": 0
+  },
+  "a1d0890a95e5ddd7970621c3c05fefe87a9690b4485326e93d525cf370f22c8c": {
+    "asset_id": "a1d0890a95e5ddd7970621c3c05fefe87a9690b4485326e93d525cf370f22c8c",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "024be7a4de02e9ef94b286109d4278cbdad96114cb4bd9f090b25f5fcba13fba1e",
+      "name": "MM-00701",
+      "precision": 0,
+      "ticker": "MM-00701",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "630afc4452c1946c5308aa4fc824e7157bc319aebf528bd43e3b66b7e3aa2937",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "2b8a1d3777f65a901bd2a5af76482b734eb4bbe95c9c3704e48a1e9163c1f066",
+      "vin": 0
+    },
+    "issuer_pubkey": "024be7a4de02e9ef94b286109d4278cbdad96114cb4bd9f090b25f5fcba13fba1e",
+    "name": "MM-00701",
+    "precision": 0,
+    "ticker": "MM-00701",
+    "version": 0
+  },
+  "db7bb3d290c2a1f3f8bc9f01a37ea6d1e37ff8a6ef1544c4b1efc31c62488b8f": {
+    "asset_id": "db7bb3d290c2a1f3f8bc9f01a37ea6d1e37ff8a6ef1544c4b1efc31c62488b8f",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "028ee1d4c558858f84fdcaf3606ee12ef68d5278329ebc75380dae69ddb9ff9b76",
+      "name": "MM-00614",
+      "precision": 0,
+      "ticker": "MM-00614",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "75df0f46601bf67d0dce715ac9ab0c55536ad0268f06740cd36b7c4963d57d7a",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "52d8732a2d93eddcb5075bcdce0ce49962561f070733d7bd21236168cc5749f0",
+      "vin": 0
+    },
+    "issuer_pubkey": "028ee1d4c558858f84fdcaf3606ee12ef68d5278329ebc75380dae69ddb9ff9b76",
+    "name": "MM-00614",
+    "precision": 0,
+    "ticker": "MM-00614",
+    "version": 0
+  },
+  "22abb400ad2c98509c24099f74f21a0067bd6fe98acede31c51cf49e3cf8dd8f": {
+    "asset_id": "22abb400ad2c98509c24099f74f21a0067bd6fe98acede31c51cf49e3cf8dd8f",
+    "contract": {
+      "entity": {
+        "domain": "alfredonh.com"
+      },
+      "issuer_pubkey": "0382cbd7236200c4419ec7d0f6e779afd314bfdb497d3a67fdd761ddfc527a60a7",
+      "name": "AlfShare",
+      "precision": 0,
+      "ticker": "ALF",
+      "version": 0
+    },
+    "entity": {
+      "domain": "alfredonh.com"
+    },
+    "issuance_prevout": {
+      "txid": "ffde41a500f50d6e87a78ae76d5d9c0f04ced898d7f0e91cb4532bb5a293fb8e",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "c4cd6d5276aab69e07c47ae12dfd4734cc732906c86145091cca3ec7c5c95435",
+      "vin": 0
+    },
+    "issuer_pubkey": "0382cbd7236200c4419ec7d0f6e779afd314bfdb497d3a67fdd761ddfc527a60a7",
+    "name": "AlfShare",
+    "precision": 0,
+    "ticker": "ALF",
     "version": 0
   },
   "e73d75039ba1372d7726b92463fe0f18dadc3d4586faa6a76457f922153e1890": {
@@ -2176,6 +3075,35 @@
     "name": "MM-00127",
     "precision": 0,
     "ticker": "MM-00127",
+    "version": 0
+  },
+  "1ec102cc5aa56a32efa28d50778601a6c18939d9e75b6dd4d13fe1aaf68a8390": {
+    "asset_id": "1ec102cc5aa56a32efa28d50778601a6c18939d9e75b6dd4d13fe1aaf68a8390",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "039ee7ffa11ef51331e39bf090a9faa368392c291bd3fa90136c8af13b2c3518b9",
+      "name": "MM-00053",
+      "precision": 0,
+      "ticker": "MM-00053",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "9709df760f2bc1ea2e92b1355811d4440d1a69b759f96c1eb1c99ad04cf3705d",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "63b0c8246126baa8111a1984f1642358afda74acba71a73db0c1f5cbb1a17870",
+      "vin": 0
+    },
+    "issuer_pubkey": "039ee7ffa11ef51331e39bf090a9faa368392c291bd3fa90136c8af13b2c3518b9",
+    "name": "MM-00053",
+    "precision": 0,
+    "ticker": "MM-00053",
     "version": 0
   },
   "ffaa3f1bd933446991ae516b3c9372c61c9736046f0a73f87f789c72f45e4493": {
@@ -2323,6 +3251,64 @@
     "ticker": "MM-01440",
     "version": 0
   },
+  "4e188aa769862608f60cff708625a5ccbe4ca2393c318bc4403f123b5cab9497": {
+    "asset_id": "4e188aa769862608f60cff708625a5ccbe4ca2393c318bc4403f123b5cab9497",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03e3fbde14f368e5b2e450956b372f14fd0d67d3199e567ca69fbf28569838a62c",
+      "name": "MM-00740",
+      "precision": 0,
+      "ticker": "MM-00740",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "282bf61c78d98697437e616f9c24e2cabc0cc8a53c57f6826879fcd68f9c4d5d",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "cfe1360e091830e45b3531a90d1a56b780b19fe31d5c3625a7e53eead696c61e",
+      "vin": 0
+    },
+    "issuer_pubkey": "03e3fbde14f368e5b2e450956b372f14fd0d67d3199e567ca69fbf28569838a62c",
+    "name": "MM-00740",
+    "precision": 0,
+    "ticker": "MM-00740",
+    "version": 0
+  },
+  "c5a8dfd177ad2d604cb86194b434904b4bbc55de4908e0beab104267a01cfb97": {
+    "asset_id": "c5a8dfd177ad2d604cb86194b434904b4bbc55de4908e0beab104267a01cfb97",
+    "contract": {
+      "entity": {
+        "domain": "raspitor.one"
+      },
+      "issuer_pubkey": "036f54e3488e2503df0e9b0ab554bafc5b13e46719838a8c0b8aff0388928ce11a",
+      "name": "One Two Coin",
+      "precision": 2,
+      "ticker": "1-2Coin",
+      "version": 0
+    },
+    "entity": {
+      "domain": "raspitor.one"
+    },
+    "issuance_prevout": {
+      "txid": "3c396b4d99040f1fcd463ae6cfe97825b56f6474dfea4dfe972cb895485b00e0",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "256f32b54f364c35a8b71cc66a4241ad2fbe1d8e5fd34313fbc0ebfedcbc1460",
+      "vin": 0
+    },
+    "issuer_pubkey": "036f54e3488e2503df0e9b0ab554bafc5b13e46719838a8c0b8aff0388928ce11a",
+    "name": "One Two Coin",
+    "precision": 2,
+    "ticker": "1-2Coin",
+    "version": 0
+  },
   "f4328dbf352adef4c6956d927c3084751c28ab7ded5b06d02457c29bc428c499": {
     "asset_id": "f4328dbf352adef4c6956d927c3084751c28ab7ded5b06d02457c29bc428c499",
     "contract": {
@@ -2379,6 +3365,64 @@
     "name": "MM-01406",
     "precision": 0,
     "ticker": "MM-01406",
+    "version": 0
+  },
+  "9eaf8cae8788abcde96a6722359619266d612a84db30cc6c77fe449db8eb4a9e": {
+    "asset_id": "9eaf8cae8788abcde96a6722359619266d612a84db30cc6c77fe449db8eb4a9e",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0361a0cb00b002a07be945e9bc4ebc42b06a53c4a679b21bf37759c3f495dbd49d",
+      "name": "MM-00044",
+      "precision": 0,
+      "ticker": "MM-00044",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "5740b56aa45345e76a7a0553dd8e062d14f14b3cec0ae0f98b1746714827785f",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "c51b1b86ea86c326f3351ed975efcbe23ad901a1da3b03ee84f912fdd697559e",
+      "vin": 0
+    },
+    "issuer_pubkey": "0361a0cb00b002a07be945e9bc4ebc42b06a53c4a679b21bf37759c3f495dbd49d",
+    "name": "MM-00044",
+    "precision": 0,
+    "ticker": "MM-00044",
+    "version": 0
+  },
+  "652dd8e0ce26a82de79326bef10d30bb24bf754ff65b01268e0b25dad34fe99e": {
+    "asset_id": "652dd8e0ce26a82de79326bef10d30bb24bf754ff65b01268e0b25dad34fe99e",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02782d6b80ec70ce715a9b07ff6e94b7abbb8eb235d1952b877ed42de0b0c036c0",
+      "name": "MM-00045",
+      "precision": 0,
+      "ticker": "MM-00045",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "ffabb87ad3d2a8eee19369b6a73e4cb6854e9e6118a55dd8f3367c3207f74214",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "0eec001f23233ce6e5c4898336c2a4e1dbb668f38c8fb62eecb34471ba5b97db",
+      "vin": 0
+    },
+    "issuer_pubkey": "02782d6b80ec70ce715a9b07ff6e94b7abbb8eb235d1952b877ed42de0b0c036c0",
+    "name": "MM-00045",
+    "precision": 0,
+    "ticker": "MM-00045",
     "version": 0
   },
   "1f529d9ed94c6cd09f280a843223c77d150327fe10647db2aec132113fdb179f": {
@@ -2584,6 +3628,35 @@
     "ticker": "MM-00736-JC",
     "version": 0
   },
+  "6fe8c45fd096380eaeaf28a084a65dc41d3b055286d227ab1a85b59e7c4e16a8": {
+    "asset_id": "6fe8c45fd096380eaeaf28a084a65dc41d3b055286d227ab1a85b59e7c4e16a8",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02c94dd08afcf0b3126c96abf5f96975ca7f7ca800988d85d010ac3e7674e71d6e",
+      "name": "MM-00050",
+      "precision": 0,
+      "ticker": "MM-00050",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "2b2cfecb817f842efe79127eb28e6c4cad8ef84a9d88e62c6fd43cf542dd4c43",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "70445dab1e379cd0062269b9a1a17e18077f84f21a91bc6fea114881eb312ea7",
+      "vin": 0
+    },
+    "issuer_pubkey": "02c94dd08afcf0b3126c96abf5f96975ca7f7ca800988d85d010ac3e7674e71d6e",
+    "name": "MM-00050",
+    "precision": 0,
+    "ticker": "MM-00050",
+    "version": 0
+  },
   "b026897f1451425a9b9c91885d28479bc14f04aed2da35ca04de0b9318176ea8": {
     "asset_id": "b026897f1451425a9b9c91885d28479bc14f04aed2da35ca04de0b9318176ea8",
     "contract": {
@@ -2787,6 +3860,35 @@
     "ticker": "MM-00521",
     "version": 0
   },
+  "0c74bfe9af718db54c9ea1f9d4d6b8d3bbfceb466f0bd8836140e4c2c3ff80af": {
+    "asset_id": "0c74bfe9af718db54c9ea1f9d4d6b8d3bbfceb466f0bd8836140e4c2c3ff80af",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02ace2b96356e7cd23d2ab62238b9f7e299aa9b80860197c697fb9e893ac9c97f7",
+      "name": "MM-00791",
+      "precision": 0,
+      "ticker": "MM-00791",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "65cab9acfc7c7d15b861b17b5340390c48a2f8f60f37fdd6cbbd31b86a3813b0",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "03f09599f9cb36072834fc3de0b5335813b759dcbdc061a87b1720ce0c7ff80d",
+      "vin": 0
+    },
+    "issuer_pubkey": "02ace2b96356e7cd23d2ab62238b9f7e299aa9b80860197c697fb9e893ac9c97f7",
+    "name": "MM-00791",
+    "precision": 0,
+    "ticker": "MM-00791",
+    "version": 0
+  },
   "fe8065b1c196b414d2e21edb4b5a9075e8165a37734bfaeadbb52ee8e91012b1": {
     "asset_id": "fe8065b1c196b414d2e21edb4b5a9075e8165a37734bfaeadbb52ee8e91012b1",
     "contract": {
@@ -2814,6 +3916,35 @@
     "name": "treetest",
     "precision": 0,
     "ticker": "TREETEST",
+    "version": 0
+  },
+  "2319fbf63b2edb3e80ff5dda6c5075c8cae6e24eae7988425feebd7b3dad4fb2": {
+    "asset_id": "2319fbf63b2edb3e80ff5dda6c5075c8cae6e24eae7988425feebd7b3dad4fb2",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0253007f6b86bcc3434fb12ae1b93ba345843dcdf3b12cddbfa55baa2661900cd4",
+      "name": "MM-00055",
+      "precision": 0,
+      "ticker": "MM-00055",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "13622f3678fec1a3c40a841efb68d7b65b348a9738670d61ebf58f3ae868b28c",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "9709df760f2bc1ea2e92b1355811d4440d1a69b759f96c1eb1c99ad04cf3705d",
+      "vin": 0
+    },
+    "issuer_pubkey": "0253007f6b86bcc3434fb12ae1b93ba345843dcdf3b12cddbfa55baa2661900cd4",
+    "name": "MM-00055",
+    "precision": 0,
+    "ticker": "MM-00055",
     "version": 0
   },
   "f266a3f15e78b71481adfedff9aefe47c69501a181ffc68527bb5fb26da6a4b2": {
@@ -3108,6 +4239,64 @@
     "ticker": "B-HAT",
     "version": 0
   },
+  "dd6e6115313923acb67f53392abace2088bbecd6f80742d56fe67e5f3847fcb9": {
+    "asset_id": "dd6e6115313923acb67f53392abace2088bbecd6f80742d56fe67e5f3847fcb9",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0310b1150cd49615027b9e6f5d56633a810a0b8cbd956fcefbd6c9accce2732c6e",
+      "name": "MM-00040",
+      "precision": 0,
+      "ticker": "MM-00040",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "828a452129af072ddf8687547930ad426c77aace3af87a9825796e1086e2a21d",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "b309d0e832a9ebbdcd55ed148686bcddd45bbe45b0b6d111dbae00313622a43b",
+      "vin": 0
+    },
+    "issuer_pubkey": "0310b1150cd49615027b9e6f5d56633a810a0b8cbd956fcefbd6c9accce2732c6e",
+    "name": "MM-00040",
+    "precision": 0,
+    "ticker": "MM-00040",
+    "version": 0
+  },
+  "c92fa06c843c949984dcd479e3b6de99fb45e33b89cf4724d4611e23cf1d71bd": {
+    "asset_id": "c92fa06c843c949984dcd479e3b6de99fb45e33b89cf4724d4611e23cf1d71bd",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03cf7ad88e19801ca99ffbc4e1ee74a59730dbc4444737697b5c9e9746082125ba",
+      "name": "MM-00051",
+      "precision": 0,
+      "ticker": "MM-00051",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "70445dab1e379cd0062269b9a1a17e18077f84f21a91bc6fea114881eb312ea7",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "7195ef0fa3bea860ae03aa5de5865566aa29969e66ca04f5027353aab044a521",
+      "vin": 0
+    },
+    "issuer_pubkey": "03cf7ad88e19801ca99ffbc4e1ee74a59730dbc4444737697b5c9e9746082125ba",
+    "name": "MM-00051",
+    "precision": 0,
+    "ticker": "MM-00051",
+    "version": 0
+  },
   "4788df7c428b6b0dce15a29116b4372af86474c1a5712f856754a5781c7db1be": {
     "asset_id": "4788df7c428b6b0dce15a29116b4372af86474c1a5712f856754a5781c7db1be",
     "contract": {
@@ -3280,6 +4469,35 @@
     "name": "Jimmy",
     "precision": 0,
     "ticker": "CJimm",
+    "version": 0
+  },
+  "0a19ed3e961e48fe7de022393de31b8f978ccad175c7680f77c3eb2c5e40c8c2": {
+    "asset_id": "0a19ed3e961e48fe7de022393de31b8f978ccad175c7680f77c3eb2c5e40c8c2",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "039e8542bfc37e19bf83223cb1efd627f9025991e8d684dc56b71bd5ea4b77f2bb",
+      "name": "MM-00052",
+      "precision": 0,
+      "ticker": "MM-00052",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "70445dab1e379cd0062269b9a1a17e18077f84f21a91bc6fea114881eb312ea7",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "e7f08de4f155077d3b1ee3066340585af9e5dc8e0dbc1f8ff7d77fe207988ad0",
+      "vin": 0
+    },
+    "issuer_pubkey": "039e8542bfc37e19bf83223cb1efd627f9025991e8d684dc56b71bd5ea4b77f2bb",
+    "name": "MM-00052",
+    "precision": 0,
+    "ticker": "MM-00052",
     "version": 0
   },
   "d0f5a85a4c07d567017c3fa5398462aa8e7745cdede0cb504dd957b6f35e99c3": {
@@ -3544,6 +4762,35 @@
     "ticker": "MM-00172",
     "version": 0
   },
+  "3782744b03e19c104c91076c2b977ef0e43758ea785ad242b87e725ba37d2cca": {
+    "asset_id": "3782744b03e19c104c91076c2b977ef0e43758ea785ad242b87e725ba37d2cca",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "030f3608fc21c7e1099c0cb189f877d41b53428a96be103b3cebbf5c386b52cd39",
+      "name": "MM-00083",
+      "precision": 0,
+      "ticker": "MM-00083",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "87bfee3452122dd23d4c6ea1828be935fbbcc4e0d2c21a038ce8eca9655c5f22",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "2f01da744aae5599d7c289f70b169eb2e9a396842222ce9b82b2e4024fe4bea5",
+      "vin": 0
+    },
+    "issuer_pubkey": "030f3608fc21c7e1099c0cb189f877d41b53428a96be103b3cebbf5c386b52cd39",
+    "name": "MM-00083",
+    "precision": 0,
+    "ticker": "MM-00083",
+    "version": 0
+  },
   "92dbe401135617326d09b2f0ba8ae35b2282d86cc8b8bbe38c057b1b3d8433cd": {
     "asset_id": "92dbe401135617326d09b2f0ba8ae35b2282d86cc8b8bbe38c057b1b3d8433cd",
     "contract": {
@@ -3629,6 +4876,35 @@
     "name": "MM-00153",
     "precision": 0,
     "ticker": "MM-00153",
+    "version": 0
+  },
+  "9f4704ef587f9378a510001eeef5bde9dd701e4bac307a4603f9e7ddb03f8cd0": {
+    "asset_id": "9f4704ef587f9378a510001eeef5bde9dd701e4bac307a4603f9e7ddb03f8cd0",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "020780b8f81093b7e6f947687cfd05190b56fad6652849902056d77e089ebe46a6",
+      "name": "MM-01443",
+      "precision": 0,
+      "ticker": "MM-01443",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "088fe2c277866b407a0235a4ffa216c118296bf939c7f0fc679d1d18300469cf",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "13622f3678fec1a3c40a841efb68d7b65b348a9738670d61ebf58f3ae868b28c",
+      "vin": 0
+    },
+    "issuer_pubkey": "020780b8f81093b7e6f947687cfd05190b56fad6652849902056d77e089ebe46a6",
+    "name": "MM-01443",
+    "precision": 0,
+    "ticker": "MM-01443",
     "version": 0
   },
   "75711f2c95ecb1e1e3e2f641d1abf9fe8875c33d022524849da81c26caa526d1": {
@@ -3816,6 +5092,35 @@
     "ticker": "B-WEB",
     "version": 0
   },
+  "3391f892ac09b29c9da11a21af36ac8cec1f598e3530c9d255f24851b66140d8": {
+    "asset_id": "3391f892ac09b29c9da11a21af36ac8cec1f598e3530c9d255f24851b66140d8",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02091bd01094b85e573f6391e40338c6e34eaad970277a89f26f816591d6946e6b",
+      "name": "MM-00036",
+      "precision": 0,
+      "ticker": "MM-00036",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "1340f9331d24bda207385fe0533fa4c3cac42714e3757ecb07f2c56bcb62a7be",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "1c557e924f2c44845a6052103fca7a510bb303c10bcfcbad50ef90c283bf813f",
+      "vin": 0
+    },
+    "issuer_pubkey": "02091bd01094b85e573f6391e40338c6e34eaad970277a89f26f816591d6946e6b",
+    "name": "MM-00036",
+    "precision": 0,
+    "ticker": "MM-00036",
+    "version": 0
+  },
   "0db21df3ca7d71f0fb9aafb019e67d0a23c3c79a11eb9e8c4e32e1cb5910e2da": {
     "asset_id": "0db21df3ca7d71f0fb9aafb019e67d0a23c3c79a11eb9e8c4e32e1cb5910e2da",
     "contract": {
@@ -3874,6 +5179,64 @@
     "ticker": "MM-01434",
     "version": 0
   },
+  "11f51c85b198df910787f19d6228336c85314b410ce57ce155459fe8d1ad8ddc": {
+    "asset_id": "11f51c85b198df910787f19d6228336c85314b410ce57ce155459fe8d1ad8ddc",
+    "contract": {
+      "entity": {
+        "domain": "cvmediasolusi.co.id"
+      },
+      "issuer_pubkey": "039a8cd8b95b5cf31bcc41d4fa4da4468dc25f7fb63366eec8a5fe11bdfb231ea0",
+      "name": "MEDIA SOLUSI",
+      "precision": 6,
+      "ticker": "MESI-ID",
+      "version": 0
+    },
+    "entity": {
+      "domain": "cvmediasolusi.co.id"
+    },
+    "issuance_prevout": {
+      "txid": "60475cf95ae0088f9e3ffdd33411c8dfc76b8a7b48ba9a6b17253eed3df34e17",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "954a6b4d0982a8df90d090ce240469b4ab12b549b38d98154ea069ed83e8fd2e",
+      "vin": 0
+    },
+    "issuer_pubkey": "039a8cd8b95b5cf31bcc41d4fa4da4468dc25f7fb63366eec8a5fe11bdfb231ea0",
+    "name": "MEDIA SOLUSI",
+    "precision": 6,
+    "ticker": "MESI-ID",
+    "version": 0
+  },
+  "a43ff123b78b172bf24d6c01e0b716fb5e213478e2c9e6b5ec4b594bc1d87ede": {
+    "asset_id": "a43ff123b78b172bf24d6c01e0b716fb5e213478e2c9e6b5ec4b594bc1d87ede",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03f46854f6469eb22e43169d7749c5c8d5bf049585ea52fe3797a9f00159a83bcb",
+      "name": "MM-01319-1",
+      "precision": 0,
+      "ticker": "MM-01319-1",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "3ee989d9af72f8a786c9bf7d5a8b2e4f63dc8e02f59a51664c9ac5a062464ae8",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "a0387bf1a1d73e03adebd9efdc3e231be282b513f037b6fd778953b46cc1a958",
+      "vin": 0
+    },
+    "issuer_pubkey": "03f46854f6469eb22e43169d7749c5c8d5bf049585ea52fe3797a9f00159a83bcb",
+    "name": "MM-01319-1",
+    "precision": 0,
+    "ticker": "MM-01319-1",
+    "version": 0
+  },
   "11f91cb5edd5d0822997ad81f068ed35002daec33986da173461a8427ac857e1": {
     "asset_id": "11f91cb5edd5d0822997ad81f068ed35002daec33986da173461a8427ac857e1",
     "contract": {
@@ -3901,6 +5264,64 @@
     "name": "BMN Series 1",
     "precision": 2,
     "ticker": "BMN1",
+    "version": 0
+  },
+  "2b0533a817e946a36b88296558771c2cefa776735b37ed51cc80741c982de1e1": {
+    "asset_id": "2b0533a817e946a36b88296558771c2cefa776735b37ed51cc80741c982de1e1",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "035b533d3573698371cfbb02c84734c34fe3871a71bf3d551d058c4ff8860bd001",
+      "name": "MM-00676",
+      "precision": 0,
+      "ticker": "MM-00676",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "f591c1b68550b99b4a6b9d180f7658b8542b6fe88f732aec172a17abd4b76546",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "69fe1d7565d59a194f1a5910c46df4ed19f4a4c048b2c30405acc25aff73571d",
+      "vin": 0
+    },
+    "issuer_pubkey": "035b533d3573698371cfbb02c84734c34fe3871a71bf3d551d058c4ff8860bd001",
+    "name": "MM-00676",
+    "precision": 0,
+    "ticker": "MM-00676",
+    "version": 0
+  },
+  "69024d1e0719c97f86372fc8b5c6f5867ba75228d942b3c78c2a4f211523b3e2": {
+    "asset_id": "69024d1e0719c97f86372fc8b5c6f5867ba75228d942b3c78c2a4f211523b3e2",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "039be32318e2f5d7b846587cbfb017e6fa469b8791537ab1d0f8ddf3f00ef1730b",
+      "name": "MM-00088",
+      "precision": 0,
+      "ticker": "MM-00088",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "238589ee4d7c45f8fd0d2d91501759839529a3b2727f05f5540b3010b00d202c",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "93fbfc170e48cd8f1404b348a5c71a74a3e2721b11ab862a0f5ac3062e297b96",
+      "vin": 0
+    },
+    "issuer_pubkey": "039be32318e2f5d7b846587cbfb017e6fa469b8791537ab1d0f8ddf3f00ef1730b",
+    "name": "MM-00088",
+    "precision": 0,
+    "ticker": "MM-00088",
     "version": 0
   },
   "183bdec1fff9c57cb4dbbf28a5d2caa7ddd9c7cd3753145d3be47a9778b708e5": {
@@ -3932,6 +5353,35 @@
     "ticker": "MM-00896-1",
     "version": 0
   },
+  "acd8e045977db078baff890a8a209fd9a6512cf5e0152d9f93e6aafc8be774e5": {
+    "asset_id": "acd8e045977db078baff890a8a209fd9a6512cf5e0152d9f93e6aafc8be774e5",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02e244b9972568d5b98312075388b9dbaf89d4c08508ad07c493585ae7ef2bd6eb",
+      "name": "MM-00068",
+      "precision": 0,
+      "ticker": "MM-00068",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "df9666b4330792c37d29ca3c3220b97f5eb7f30ab552029684e584a148769f07",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "79b98f958ae89e4a928cb7d8eceabd18c7ffdb512c5e26b59f13472bb6d4391e",
+      "vin": 0
+    },
+    "issuer_pubkey": "02e244b9972568d5b98312075388b9dbaf89d4c08508ad07c493585ae7ef2bd6eb",
+    "name": "MM-00068",
+    "precision": 0,
+    "ticker": "MM-00068",
+    "version": 0
+  },
   "8c6686a66f7242f8a7a53c919fe68819e27e424a70f8f5923cd7ba7d00fa20e6": {
     "asset_id": "8c6686a66f7242f8a7a53c919fe68819e27e424a70f8f5923cd7ba7d00fa20e6",
     "contract": {
@@ -3959,6 +5409,64 @@
     "name": "MM-01414",
     "precision": 0,
     "ticker": "MM-01414",
+    "version": 0
+  },
+  "902f41433cca9aa1f2b12059582c3c4ce5a5fe066b1aa09417d91f5fb6e64fe6": {
+    "asset_id": "902f41433cca9aa1f2b12059582c3c4ce5a5fe066b1aa09417d91f5fb6e64fe6",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "032197edbbf324e57a919f3a1943f0ddaf53e16b0c995f702135a17df18c38f983",
+      "name": "MM-00749",
+      "precision": 0,
+      "ticker": "MM-00749",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "919c086e23806b4d69aecd12658f8a4687dbd38eb8adad39d8aed83fbc0ea076",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "cc299432a5d5831590fd56f0ba67f6f9debcf92f0ba16ae25d86674042ed7e91",
+      "vin": 0
+    },
+    "issuer_pubkey": "032197edbbf324e57a919f3a1943f0ddaf53e16b0c995f702135a17df18c38f983",
+    "name": "MM-00749",
+    "precision": 0,
+    "ticker": "MM-00749",
+    "version": 0
+  },
+  "976c31c7f9ac33ba31b43710b81bfc4ababd5f4bcfe06dc19395f39e06b0f9e7": {
+    "asset_id": "976c31c7f9ac33ba31b43710b81bfc4ababd5f4bcfe06dc19395f39e06b0f9e7",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02c48b8b6ebced9035e999354bcdfdef3b44998e58a607ebf225ca5409965e221e",
+      "name": "MM-00042",
+      "precision": 0,
+      "ticker": "MM-00042",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "b309d0e832a9ebbdcd55ed148686bcddd45bbe45b0b6d111dbae00313622a43b",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "5740b56aa45345e76a7a0553dd8e062d14f14b3cec0ae0f98b1746714827785f",
+      "vin": 0
+    },
+    "issuer_pubkey": "02c48b8b6ebced9035e999354bcdfdef3b44998e58a607ebf225ca5409965e221e",
+    "name": "MM-00042",
+    "precision": 0,
+    "ticker": "MM-00042",
     "version": 0
   },
   "0420915238b70152a4c926bb4436d7ba51ce35b5870f7e7624b60e7e95d941e9": {
@@ -4077,6 +5585,35 @@
     "ticker": "EURx",
     "version": 0
   },
+  "b79653933614ace31efe845790b9f0c3a4ddafef88ef1c5b55bd41b6008273ec": {
+    "asset_id": "b79653933614ace31efe845790b9f0c3a4ddafef88ef1c5b55bd41b6008273ec",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0367e28bcd8cb723ac554402665f85a3b3b8d4631cfba64721e573d90588fa23f9",
+      "name": "MM-00669",
+      "precision": 0,
+      "ticker": "MM-00669",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "3b0748a0fa7904c0874ce8e62a06a149c3260365925946e64a39b44522f72e0e",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "f3f8073434597feda93e62db5f271529ae474166a0c3e4cceec39f7cb7ef57d0",
+      "vin": 0
+    },
+    "issuer_pubkey": "0367e28bcd8cb723ac554402665f85a3b3b8d4631cfba64721e573d90588fa23f9",
+    "name": "MM-00669",
+    "precision": 0,
+    "ticker": "MM-00669",
+    "version": 0
+  },
   "335eb2da7d8de461b8d0a1e19f5f67b053e14728faeb298fa241ea7edde661ed": {
     "asset_id": "335eb2da7d8de461b8d0a1e19f5f67b053e14728faeb298fa241ea7edde661ed",
     "contract": {
@@ -4104,6 +5641,35 @@
     "name": "MM-01415",
     "precision": 0,
     "ticker": "MM-01415",
+    "version": 0
+  },
+  "b95a8d8727cf81931b52536b51c2cc01df07acdc1a134ccbc7fd4c61c7c71ef0": {
+    "asset_id": "b95a8d8727cf81931b52536b51c2cc01df07acdc1a134ccbc7fd4c61c7c71ef0",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "03bf2251e370011256e907d96826d42af57f7c3cec1b470ad0e3f8757708339ddd",
+      "name": "MM-00758",
+      "precision": 0,
+      "ticker": "MM-00758",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "2b8a1d3777f65a901bd2a5af76482b734eb4bbe95c9c3704e48a1e9163c1f066",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "a2cbef4487c890e8a65be94915b5083288320f5e6f1217983f309f8156822b94",
+      "vin": 0
+    },
+    "issuer_pubkey": "03bf2251e370011256e907d96826d42af57f7c3cec1b470ad0e3f8757708339ddd",
+    "name": "MM-00758",
+    "precision": 0,
+    "ticker": "MM-00758",
     "version": 0
   },
   "1659bc74afbdc96fd387ea6945df7a3dc3f244fcb168e79117afa14c33fd6bf0": {
@@ -4310,6 +5876,35 @@
     "ticker": "MM-00132",
     "version": 0
   },
+  "7738a765fb977ac63eb25649d47efdca6c28fdf0374258f41f4420ac7e88fdf3": {
+    "asset_id": "7738a765fb977ac63eb25649d47efdca6c28fdf0374258f41f4420ac7e88fdf3",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02e816ab8332112a1aea5f58319bda6ff06420819e0fb7b31599a5ff32ad916e52",
+      "name": "MM-00043",
+      "precision": 0,
+      "ticker": "MM-00043",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "5740b56aa45345e76a7a0553dd8e062d14f14b3cec0ae0f98b1746714827785f",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "ffabb87ad3d2a8eee19369b6a73e4cb6854e9e6118a55dd8f3367c3207f74214",
+      "vin": 0
+    },
+    "issuer_pubkey": "02e816ab8332112a1aea5f58319bda6ff06420819e0fb7b31599a5ff32ad916e52",
+    "name": "MM-00043",
+    "precision": 0,
+    "ticker": "MM-00043",
+    "version": 0
+  },
   "bbecab6ec8d769067b7c37cdcaecb259bef1d870eeceece677e1af99665774f4": {
     "asset_id": "bbecab6ec8d769067b7c37cdcaecb259bef1d870eeceece677e1af99665774f4",
     "contract": {
@@ -4368,6 +5963,64 @@
     "ticker": "MM-00112",
     "version": 0
   },
+  "72ee5699bbd40138f1627968d1fbf81ac2b594c72fc286a725d62f8bd456c3f5": {
+    "asset_id": "72ee5699bbd40138f1627968d1fbf81ac2b594c72fc286a725d62f8bd456c3f5",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0262767dea73294e6b2b9df8b439c1611b4e9e3dc1c9dec38f29996d37393972c6",
+      "name": "MM-01307",
+      "precision": 0,
+      "ticker": "MM-01307",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "a0387bf1a1d73e03adebd9efdc3e231be282b513f037b6fd778953b46cc1a958",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "088fe2c277866b407a0235a4ffa216c118296bf939c7f0fc679d1d18300469cf",
+      "vin": 0
+    },
+    "issuer_pubkey": "0262767dea73294e6b2b9df8b439c1611b4e9e3dc1c9dec38f29996d37393972c6",
+    "name": "MM-01307",
+    "precision": 0,
+    "ticker": "MM-01307",
+    "version": 0
+  },
+  "2de7c17680ba2622d7fac60dd033707e5883c93eb093bc2b63122bd099c914f7": {
+    "asset_id": "2de7c17680ba2622d7fac60dd033707e5883c93eb093bc2b63122bd099c914f7",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02121fbca2d95b86956d3da0fcd8ceb8a673bfa179a8eb9b5ad6d20da6cbdeabc4",
+      "name": "MM-00647",
+      "precision": 0,
+      "ticker": "MM-00647",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "1291744d4d657fab0d57d5e16849caad82ecee528c954bf29e2b1aa885cc1360",
+      "vout": 0
+    },
+    "issuance_txin": {
+      "txid": "75df0f46601bf67d0dce715ac9ab0c55536ad0268f06740cd36b7c4963d57d7a",
+      "vin": 0
+    },
+    "issuer_pubkey": "02121fbca2d95b86956d3da0fcd8ceb8a673bfa179a8eb9b5ad6d20da6cbdeabc4",
+    "name": "MM-00647",
+    "precision": 0,
+    "ticker": "MM-00647",
+    "version": 0
+  },
   "7b75e3ed5b4d05b528189cc1ec05a3ecaa359c53b8f9abedeac9e333b21d15f8": {
     "asset_id": "7b75e3ed5b4d05b528189cc1ec05a3ecaa359c53b8f9abedeac9e333b21d15f8",
     "contract": {
@@ -4402,6 +6055,64 @@
     "ticker": "NFTC",
     "version": 0
   },
+  "fe7d0e0abcec714749f33c4477e4f8d2ed8ed6237f70475aabf4c9ba165505fa": {
+    "asset_id": "fe7d0e0abcec714749f33c4477e4f8d2ed8ed6237f70475aabf4c9ba165505fa",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02a711eae4f9beaf49d169117c6601c0bf8fe00e5bd8ea9e7667a9b2b02c79c4f7",
+      "name": "MM-00689",
+      "precision": 0,
+      "ticker": "MM-00689",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "f591c1b68550b99b4a6b9d180f7658b8542b6fe88f732aec172a17abd4b76546",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "090ce213baa171ef7e649ff3ee37e3dd23bc978f3c94dd4bcc51a2e41a97c8da",
+      "vin": 0
+    },
+    "issuer_pubkey": "02a711eae4f9beaf49d169117c6601c0bf8fe00e5bd8ea9e7667a9b2b02c79c4f7",
+    "name": "MM-00689",
+    "precision": 0,
+    "ticker": "MM-00689",
+    "version": 0
+  },
+  "2f4f13c7210db93436d6a6dc5394a05f178338537ed2f5edc089cce9759782fb": {
+    "asset_id": "2f4f13c7210db93436d6a6dc5394a05f178338537ed2f5edc089cce9759782fb",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "0392001048f3c4b439b8e0b471870c13c848caa9fe68269814736b912d5268910e",
+      "name": "MM-00049",
+      "precision": 0,
+      "ticker": "MM-00049",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "2b2cfecb817f842efe79127eb28e6c4cad8ef84a9d88e62c6fd43cf542dd4c43",
+      "vout": 2
+    },
+    "issuance_txin": {
+      "txid": "0e24159200a1adaddb5127602e90f464dfe0ed286bf4300d3f367af89daa973c",
+      "vin": 0
+    },
+    "issuer_pubkey": "0392001048f3c4b439b8e0b471870c13c848caa9fe68269814736b912d5268910e",
+    "name": "MM-00049",
+    "precision": 0,
+    "ticker": "MM-00049",
+    "version": 0
+  },
   "9d2460b57cde59900b8c3527f0aab379e09903e577ecbbc3f02573b4f13170fc": {
     "asset_id": "9d2460b57cde59900b8c3527f0aab379e09903e577ecbbc3f02573b4f13170fc",
     "contract": {
@@ -4431,6 +6142,35 @@
     "ticker": "MM-01413",
     "version": 0
   },
+  "0c40cdbc2eccfd2c77ef437bc4467b167f76be86700002cbd7c1b0618f0bfefc": {
+    "asset_id": "0c40cdbc2eccfd2c77ef437bc4467b167f76be86700002cbd7c1b0618f0bfefc",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02e39466a369af5d3ee2344fde66cf4a572b7f5634363ded8a8f80d2c00308b7a8",
+      "name": "MM-00662",
+      "precision": 0,
+      "ticker": "MM-00662",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "256f32b54f364c35a8b71cc66a4241ad2fbe1d8e5fd34313fbc0ebfedcbc1460",
+      "vout": 3
+    },
+    "issuance_txin": {
+      "txid": "f591c1b68550b99b4a6b9d180f7658b8542b6fe88f732aec172a17abd4b76546",
+      "vin": 0
+    },
+    "issuer_pubkey": "02e39466a369af5d3ee2344fde66cf4a572b7f5634363ded8a8f80d2c00308b7a8",
+    "name": "MM-00662",
+    "precision": 0,
+    "ticker": "MM-00662",
+    "version": 0
+  },
   "31ca8862263e73983667a425f2bf0c001010d922eec8892a0a4816483eeb51fd": {
     "asset_id": "31ca8862263e73983667a425f2bf0c001010d922eec8892a0a4816483eeb51fd",
     "contract": {
@@ -4458,6 +6198,35 @@
     "name": "Pirate",
     "precision": 0,
     "ticker": "CPira",
+    "version": 0
+  },
+  "fa81b89f709629a014760fe998f936b5d218f7b707eb00d9a60dee9b1d5e52fe": {
+    "asset_id": "fa81b89f709629a014760fe998f936b5d218f7b707eb00d9a60dee9b1d5e52fe",
+    "contract": {
+      "entity": {
+        "domain": "stevenminnaar.com"
+      },
+      "issuer_pubkey": "02f4a56971d9f1cda7d1c4ac117ab6bc209ae6eb352dd6ba4adc7e16e8e2300f84",
+      "name": "MM-00779",
+      "precision": 0,
+      "ticker": "MM-00779",
+      "version": 0
+    },
+    "entity": {
+      "domain": "stevenminnaar.com"
+    },
+    "issuance_prevout": {
+      "txid": "a2cbef4487c890e8a65be94915b5083288320f5e6f1217983f309f8156822b94",
+      "vout": 1
+    },
+    "issuance_txin": {
+      "txid": "025bb5515bf7dd4705417cd32d7152dcf7d4c23e63297dd7d0936cfe1a26fbdc",
+      "vin": 0
+    },
+    "issuer_pubkey": "02f4a56971d9f1cda7d1c4ac117ab6bc209ae6eb352dd6ba4adc7e16e8e2300f84",
+    "name": "MM-00779",
+    "precision": 0,
+    "ticker": "MM-00779",
     "version": 0
   }
 }
