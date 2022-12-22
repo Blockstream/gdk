@@ -26,10 +26,6 @@ impl AssetsOrIcons {
     pub(crate) const fn len() -> usize {
         2
     }
-
-    pub(crate) fn iter() -> impl ExactSizeIterator<Item = Self> {
-        [Self::Assets, Self::Icons].into_iter()
-    }
 }
 
 #[cfg(test)]
@@ -97,6 +93,10 @@ pub(crate) mod test {
     }
 
     impl AssetsOrIcons {
+        pub(crate) fn iter() -> impl ExactSizeIterator<Item = Self> {
+            [Self::Assets, Self::Icons].into_iter()
+        }
+
         pub(crate) fn liquid_data(&self) -> (String, String) {
             let data = match self {
                 Self::Assets => LIQUID_ASSETS.with(|map| to_string(&*map.borrow())),
