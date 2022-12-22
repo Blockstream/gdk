@@ -585,7 +585,12 @@ namespace sdk {
             if (is_partial) {
                 GDK_RUNTIME_ASSERT(manual_selection);
             }
-            if (!manual_selection) {
+            if (manual_selection) {
+                if (!result.contains("used_utxos") || !result["used_utxos"].is_array()
+                    || result["used_utxos"].empty()) {
+                    set_tx_error(result, res::id_no_utxos_found);
+                }
+            } else {
                 // We will recompute the used utxos
                 result.erase("used_utxos");
             }
