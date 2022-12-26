@@ -2651,26 +2651,6 @@ namespace sdk {
                 asset_utxos[utxo_asset_id].emplace_back(utxo);
             }
         }
-
-        // Sort the UTXOs such that the oldest are first, with the default
-        // UTXO selection strategy this reduces the number of re-deposits
-        // users have to do by recycling UTXOs that are closer to expiry.
-        // This also reduces the chance of spending unconfirmed outputs by
-        // pushing them to the end of the selection array.
-        std::for_each(std::begin(asset_utxos), std::end(asset_utxos), [](nlohmann::json& utxos) {
-            std::sort(std::begin(utxos), std::end(utxos), [](const nlohmann::json& lhs, const nlohmann::json& rhs) {
-                const uint32_t lbh = lhs["block_height"];
-                const uint32_t rbh = rhs["block_height"];
-                if (lbh == 0) {
-                    return false;
-                }
-                if (rbh == 0) {
-                    return true;
-                }
-                return lbh < rbh;
-            });
-        });
-
         utxos.swap(asset_utxos);
     }
 

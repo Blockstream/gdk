@@ -181,6 +181,7 @@ namespace sdk {
     private:
         void initialize();
         void filter_result(bool encache);
+        std::string get_sort_by() const;
 
         const nlohmann::json m_details;
         bool m_initialized;

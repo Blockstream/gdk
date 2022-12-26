@@ -4,6 +4,7 @@
 
 ### Added
 - GA_validate: Add support for validating transaction addressees.
+- GA_get_unspent_outputs: add a `sort_by` element to return sorted results.
 
 ### Changed
 - GA_create_transaction: Sweeping and re-deposit transactions now require the
@@ -12,6 +13,8 @@
 - GA_create_transaction: If addressees are not provided, some fields of the
   result transaction may not be populated.
 - GA_create_transaction: The `addressees_have_assets` element has been removed.
+- GA_get_unspent_outputs: The default sorting for multisig non-2of2
+  subaccounts has been changed from oldest-first to largest-first.
 
 ### Fixed
 - Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.

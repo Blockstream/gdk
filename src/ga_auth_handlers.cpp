@@ -1163,6 +1163,53 @@ namespace sdk {
         return state_type::make_call;
     }
 
+    struct utxo_sorter {
+        enum class sort_by_t : size_t { OLDEST = 0, NEWEST, LARGEST, SMALLEST };
+
+        utxo_sorter(const std::string& sort_by)
+        {
+            if (sort_by == "oldest") {
+                m_sort_by = sort_by_t::OLDEST;
+            } else if (sort_by == "newest") {
+                m_sort_by = sort_by_t::NEWEST;
+            } else if (sort_by == "largest") {
+                m_sort_by = sort_by_t::LARGEST;
+            } else if (sort_by == "smallest") {
+                m_sort_by = sort_by_t::SMALLEST;
+            } else {
+                throw user_error("invalid \"sort_by\" value");
+            }
+        }
+
+        static bool compare_blockheight(const nlohmann::json& lhs, const nlohmann::json& rhs)
+        {
+            const uint32_t max_bh = 0xffffffff;
+            const uint32_t lhs_bh = lhs.at("block_height");
+            const uint32_t rhs_bh = rhs.at("block_height");
+            return (lhs_bh ? lhs_bh : max_bh) < (rhs_bh ? rhs_bh : max_bh);
+        }
+
+        bool operator()(const nlohmann::json& lhs, const nlohmann::json& rhs) const
+        {
+            switch (m_sort_by) {
+            case sort_by_t::OLDEST:
+                return compare_blockheight(lhs, rhs);
+                break;
+            case sort_by_t::NEWEST:
+                return compare_blockheight(rhs, lhs);
+                break;
+            case sort_by_t::LARGEST:
+                return rhs.at("satoshi") < lhs.at("satoshi");
+                break;
+            case sort_by_t::SMALLEST:
+                return lhs.at("satoshi") < rhs.at("satoshi");
+                break;
+            }
+            return false; // Unreachable
+        };
+        sort_by_t m_sort_by;
+    };
+
     //
     // Get unspent outputs
     //
@@ -1243,6 +1290,8 @@ namespace sdk {
 
     void get_unspent_outputs_call::filter_result(bool encache)
     {
+        const utxo_sorter sorter(get_sort_by());
+
         if (encache && !m_net_params.is_electrum()) {
             // Encache the unfiltered results, and set our result to a copy
             // for filtering.
@@ -1289,6 +1338,26 @@ namespace sdk {
         // Remove any keys that have become empty
         auto&& filter = [](const auto& assets) { return assets.empty(); };
         outputs.erase(std::remove_if(outputs.begin(), outputs.end(), filter), outputs.end());
+
+        // Sort the results
+        for (auto& asset : outputs.items()) {
+            if (asset.key() != "error") {
+                auto& utxos = asset.value();
+                std::sort(utxos.begin(), utxos.end(), sorter);
+            }
+        }
+    }
+
+    std::string get_unspent_outputs_call::get_sort_by() const
+    {
+        auto sort_by = json_get_value(m_details, "sort_by");
+        if (sort_by.empty()) {
+            const auto sa_type = m_session->get_subaccount_type(m_details.at("subaccount"));
+            // For 2of2, spend older outputs first by default, to reduce redeposits.
+            // Otherwise, spend bigger outputs first by default to minimise fees.
+            sort_by = sa_type == "2of2" ? "oldest" : "largest";
+        }
+        return sort_by;
     }
 
     //
