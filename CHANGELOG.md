@@ -21,6 +21,9 @@
 - Liquid: Respect the dust limit for non-fee L-BTC outputs.
 - GA_create_transaction: `id_no_amount_specified` is now returned under all
   circumstances where an amount is not given in an addressee.
+- GA_create_transaction: Non-partial transactions where `utxo_strategy` is set
+  to `"manual"` now return an error if an asset is provided in `used_utxos`
+  that does not correspond to an adressee.
 
 ### Removed
 

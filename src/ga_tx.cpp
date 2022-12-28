@@ -676,8 +676,16 @@ namespace sdk {
                     // Add all selected utxos
                     for (auto& utxo : result.at("used_utxos")) {
                         v = add_utxo(session, tx, utxo);
-                        if (is_liquid && utxo.at("asset_id") != asset_id) {
-                            continue;
+                        if (is_liquid) {
+                            const std::string asset_id_hex = utxo.at("asset_id");
+                            if (!is_partial && asset_id_hex != policy_asset && !asset_ids.count(asset_id_hex)) {
+                                // The user has provided an asset UTXO without a recipient for it
+                                set_tx_error(result, "Missing recipient for asset " + asset_id_hex);
+                                break;
+                            }
+                            if (asset_id_hex != asset_id) {
+                                continue;
+                            }
                         }
                         available_total += v;
                         total += v;
