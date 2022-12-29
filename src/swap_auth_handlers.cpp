@@ -207,7 +207,8 @@ namespace sdk {
         constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
         m_create_details.at("used_utxos").at(0)["user_sighash"] = sighash;
         nlohmann::json::array_t sign_with = { "user" };
-        if (!tx_has_amp_inputs(*m_session_parent.get_nonnull_impl(), m_create_details)) {
+
+        if (!m_net_params.is_electrum() && !tx_has_amp_inputs(*m_session_parent.get_nonnull_impl(), m_create_details)) {
             sign_with.emplace_back("green-backend");
         }
         m_create_details["sign_with"] = std::move(sign_with);
