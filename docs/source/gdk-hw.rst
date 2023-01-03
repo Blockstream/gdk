@@ -104,13 +104,16 @@ a message using the given path.
      {
        "message": "A text message to sign",
        "path": [ 1195487518 ],
-       "use_ae_protocol": false
+       "use_ae_protocol": false,
+       "create_recoverable_sig": false
      }
 
 :message: The message to be utf-8 encoded and signed.
 :path: The path from the wallet's master key to the key that the message should be signed with.
 :use_ae_protocol: ``true`` if the hardware device advertises Anti-Exfil support and it should
     be used for signing, ``false`` otherwise.
+:create_recoverable_sig: ``true`` if the signature to produce should be recoverable.
+    Default ``false``.
 
 **Expected response**:
 
@@ -120,7 +123,8 @@ a message using the given path.
        "signature": "304402207c673ef4255873cf095016c98c4982cea9a5133060b66a380f1bf3880e54f6c8022056fd731cbd44cd96366212439717a888470ed481628cba81195c557d5c4fc39c"
      }
 
-:signature: The hex-encoded ECDSA signature in DER encoding corresponding to the given message.
+:signature: The ECDSA signature corresponding to the given message.
+    If ``"create_recoverable_sig"`` is ``false`` it must use DER encoding, otherwise it must be encoded in hex.
 
 
 .. _hw-action-get-blinding-public-keys:
