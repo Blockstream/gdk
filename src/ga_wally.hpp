@@ -50,6 +50,7 @@ namespace sdk {
     using uint64_span_t = gsl::span<const uint64_t>;
 
     using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
+    using ecdsa_sig_rec_t = std::array<unsigned char, EC_SIGNATURE_RECOVERABLE_LEN>;
     using sig_and_sighash_t = std::pair<ecdsa_sig_t, uint32_t>;
     using chain_code_t = std::array<unsigned char, 32>;
     using pbkdf2_hmac256_t = std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>;
@@ -252,6 +253,9 @@ namespace sdk {
 
     ecdsa_sig_t ec_sig_from_bytes(
         byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_GRIND_R);
+
+    ecdsa_sig_rec_t ec_sig_rec_from_bytes(
+        byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_RECOVERABLE);
 
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash = WALLY_SIGHASH_ALL);
     ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool sighash = false);

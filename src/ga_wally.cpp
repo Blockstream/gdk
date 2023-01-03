@@ -579,6 +579,15 @@ namespace sdk {
         return ret;
     }
 
+    ecdsa_sig_rec_t ec_sig_rec_from_bytes(byte_span_t private_key, byte_span_t hash, uint32_t flags)
+    {
+        ecdsa_sig_rec_t ret;
+        flags |= EC_FLAG_RECOVERABLE;
+        GDK_VERIFY(wally_ec_sig_from_bytes(
+            private_key.data(), private_key.size(), hash.data(), hash.size(), flags, ret.data(), ret.size()));
+        return ret;
+    }
+
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash)
     {
         std::vector<unsigned char> der(EC_SIGNATURE_DER_MAX_LEN + 1);
