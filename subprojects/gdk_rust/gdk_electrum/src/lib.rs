@@ -465,7 +465,10 @@ impl ElectrumSession {
             let tip_height = store_read.cache.tip_height();
             let tip_hash = store_read.cache.tip_block_hash();
             let tip_prev_hash = store_read.cache.tip_prev_block_hash();
-            self.notify.block_from_hashes(tip_height, &tip_hash, &tip_prev_hash);
+            // Do not notify a block if we haven't fetched one yet
+            if tip_hash != BEBlockHash::default() {
+                self.notify.block_from_hashes(tip_height, &tip_hash, &tip_prev_hash);
+            }
         };
 
         info!(
