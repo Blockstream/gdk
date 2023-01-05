@@ -118,6 +118,28 @@ Describes an intended recipient for a transaction.
 :asset_id: Mandatory for Liquid, must not be present for Bitcoin. The asset to be
            sent to the recipient, in display hex format.
 
+Coin selection
+--------------
+
+Callers can control the UTXOs used when creating a transaction. When using
+``"utxo_strategy"``: ``"default"``, UXTOs are selected in order from the
+``"utxos"`` element. The caller can reorder and filter these UTXOs using the
+query parameters to `GA_get_unspent_outputs` to control which UTXOs are used
+(and their ordering, if ``"randomize_inputs"`` is set to ``false``).
+
+For finer control, setting ``"utxo_strategy"`` to ``"manual"`` allows the
+UTXOs to be used to be placed in directly into the ``"used_utxos"`` element by
+the caller. In this case, ``"utxos"`` is unused.
+
+The sum of input UTXOs for a given asset must be sufficient to cover the
+amounts sent to any addressees receiving it, or an error will occur unless
+``"is_partial"`` is ``true``. Excess amounts will be returned to the wallet
+as change, and for ``"utxo_strategy"``: ``"default"`` some UTXOs may be
+omitted from the created transaction if they are not needed.
+
+Finally, creating a PSBT/PSET and using `GA_psbt_sign` to sign it allows
+exact specification of all transaction details including UTXOs.
+
 Re-deposit
 ----------
 

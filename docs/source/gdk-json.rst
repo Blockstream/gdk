@@ -1302,7 +1302,7 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
     by the given block are returned.
 :confidential: Pass ``true`` to include only confidential UTXOs. Defaults to ``false``.
 :dust_limit: If given, only UTXOs with a value greater than the limit value are returned.
-:sort_by: One of ``"oldest"``, ``"newset"``, ``"largest"``, ``"smallest"``. Returns the
+:sort_by: One of ``"oldest"``, ``"newest"``, ``"largest"``, ``"smallest"``. Returns the
      unspent outputs sorted by block height or value respectively. If not given, defaults
      to ``"oldest"`` for 2of2 subaccounts and ``"largest"`` for other subaccount types.
 
