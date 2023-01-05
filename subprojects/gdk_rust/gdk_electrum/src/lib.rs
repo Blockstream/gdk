@@ -1208,7 +1208,7 @@ impl Tipper {
         };
         if do_update {
             info!("saving in store new tip {:?}", new_height);
-            self.store.write()?.cache.tip_ = Some((new_height, new_header.clone()));
+            self.store.write()?.update_tip(new_height, new_header.clone())?;
             Ok(Some((new_height, new_header)))
         } else {
             Ok(None)

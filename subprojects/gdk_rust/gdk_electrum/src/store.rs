@@ -498,6 +498,12 @@ impl StoreMeta {
         }
         Err(Error::TxNotFound(txid.clone()))
     }
+
+    pub fn update_tip(&mut self, new_height: u32, new_header: BEBlockHeader) -> Result<(), Error> {
+        self.cache.tip_ = Some((new_height, new_header));
+        self.flush_cache()?;
+        Ok(())
+    }
 }
 
 impl RawAccountCache {
