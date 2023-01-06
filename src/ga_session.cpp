@@ -820,6 +820,14 @@ namespace sdk {
         });
     }
 
+    void ga_session::purge_tx_notification(const std::string& txhash_hex)
+    {
+        auto&& filter = [&txhash_hex](const auto& ntf) -> bool { return ntf.find(txhash_hex) != std::string::npos; };
+        locker_t locker(m_mutex);
+        m_tx_notifications.erase(
+            std::remove_if(m_tx_notifications.begin(), m_tx_notifications.end(), filter), m_tx_notifications.end());
+    }
+
     void ga_session::on_new_block(nlohmann::json details, bool is_relogin)
     {
         auto locker_p{ get_multi_call_locker(MC_TX_CACHE, false) };
@@ -3432,6 +3440,8 @@ namespace sdk {
         const amount::value_type decrease = tx_details.at("limit_decrease");
         const auto txhash_hex = tx_details["txhash"];
         result["txhash"] = txhash_hex;
+        purge_tx_notification(txhash_hex);
+
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
         const auto tx = tx_from_hex(tx_details["tx"], flags);
@@ -3463,10 +3473,11 @@ namespace sdk {
         return result;
     }
 
-    // Idempotent
     std::string ga_session::broadcast_transaction(const std::string& tx_hex)
     {
-        return wamp_cast(m_wamp->call("vault.broadcast_raw_tx", tx_hex));
+        const auto txhash_hex = wamp_cast(m_wamp->call("vault.broadcast_raw_tx", tx_hex));
+        purge_tx_notification(txhash_hex);
+        return txhash_hex;
     }
 
     // Idempotent
