@@ -412,7 +412,7 @@ impl Account {
                             let addr = self
                                 .derive_address(is_internal, pointer)
                                 .expect("deriving a relevant address");
-                            let script_pubkey = addr.script_pubkey().to_string();
+                            let script_pubkey = addr.script_pubkey().to_hex();
                             let address = addr.to_string();
                             let unblinded_address =
                                 addr.elements().map(|a| a.to_unconfidential().to_string());
@@ -506,7 +506,7 @@ impl Account {
                                 .derive_address(is_internal, pointer)
                                 .expect("deriving a relevant address");
                             let address = addr.to_string();
-                            let script_pubkey = addr.script_pubkey().to_string();
+                            let script_pubkey = addr.script_pubkey().to_hex();
                             let unblinded_address =
                                 addr.elements().map(|a| a.to_unconfidential().to_string());
                             let is_blinded = addr.elements().map(|_| true);
