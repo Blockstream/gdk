@@ -1116,6 +1116,16 @@ impl PsbtGetDetailsOut {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AddressDataRequest {
+    pub address: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AddressDataResult {
+    pub user_path: Vec<ChildNumber>,
+}
+
 #[cfg(test)]
 mod test {
     use crate::model::{parse_path, CreateTxUtxos, GetUnspentOutputs};

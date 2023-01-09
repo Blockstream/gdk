@@ -157,6 +157,7 @@ impl Session for ElectrumSession {
             }
             "start_threads" => self.start_threads().to_json(),
             "get_wallet_hash_id" => self.get_wallet_hash_id().to_json(),
+            "get_address_data" => self.get_address_data(serde_json::from_value(input)?).to_json(),
 
             "remove_account" => self.remove_account().to_json(),
 

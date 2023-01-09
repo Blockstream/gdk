@@ -24,7 +24,7 @@ use gdk_common::be::{
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
-    parse_path, AccountInfo, AddressAmount, AddressPointer, CreateTransaction,
+    parse_path, AccountInfo, AddressAmount, AddressDataResult, AddressPointer, CreateTransaction,
     GetPreviousAddressesOpt, GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses,
     SPVVerifyTxResult, TransactionMeta, TransactionOutput, TxListItem, Txo, UnspentOutput,
     UpdateAccountOpt, UtxoStrategy,
@@ -128,6 +128,10 @@ impl Account {
 
     pub fn num(&self) -> u32 {
         self.account_num
+    }
+
+    pub fn script_type(&self) -> ScriptType {
+        self.script_type
     }
 
     fn descriptor(&self, is_internal: bool) -> String {
@@ -903,6 +907,16 @@ impl Account {
             }
         }
         None
+    }
+
+    pub fn get_address_data(&self, address: &BEAddress) -> Result<AddressDataResult, Error> {
+        let store_read = self.store.read()?;
+        let acc_store = store_read.account_cache(self.account_num)?;
+        let script_pubkey = address.script_pubkey();
+        let account_path = acc_store.get_path(&script_pubkey)?;
+        Ok(AddressDataResult {
+            user_path: self.get_full_path(account_path).into(),
+        })
     }
 
     /// Verify that our own (outgoing) transactions were properly signed by the wallet.

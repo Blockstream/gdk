@@ -28,6 +28,9 @@ pub enum Error {
     Bitcoin(#[from] bitcoin::util::Error),
 
     #[error(transparent)]
+    BitcoinAddressError(#[from] bitcoin::util::address::Error),
+
+    #[error(transparent)]
     BitcoinBIP32Error(#[from] bitcoin::util::bip32::Error),
 
     #[error(transparent)]
@@ -47,6 +50,9 @@ pub enum Error {
 
     #[error(transparent)]
     Common(#[from] CommonError),
+
+    #[error(transparent)]
+    ElementsAddressError(#[from] elements::address::AddressError),
 
     #[error(transparent)]
     ElementsEncode(#[from] elements::encode::Error),

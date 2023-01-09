@@ -45,11 +45,13 @@ use gdk_common::elements::encode;
 use gdk_common::elements::pset::PartiallySignedTransaction;
 use gdk_common::exchange_rates::ExchangeRatesCache;
 use gdk_common::network;
+use gdk_common::scripts::ScriptType;
 use gdk_common::NetworkId;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 use std::{iter, thread};
 
@@ -1148,6 +1150,21 @@ impl ElectrumSession {
             (*unspent_outputs.entry(asset_id).or_insert(vec![])).push(utxo.try_into()?);
         }
         Ok(GetUnspentOutputs(unspent_outputs))
+    }
+
+    pub fn get_address_data(&self, opt: AddressDataRequest) -> Result<AddressDataResult, Error> {
+        let address = match self.network.id() {
+            NetworkId::Bitcoin(_) => BEAddress::Bitcoin(bitcoin::Address::from_str(&opt.address)?),
+            NetworkId::Elements(_) => {
+                BEAddress::Elements(elements::Address::from_str(&opt.address)?)
+            }
+        };
+        self.get_accounts()?
+            .into_iter()
+            .filter(|a| a.script_type() == ScriptType::P2pkh)
+            .filter_map(|a| a.get_address_data(&address).ok())
+            .next()
+            .ok_or(Error::ScriptPubkeyNotFound)
     }
 
     pub fn export_cache(&mut self) -> Result<RawCache, Error> {
