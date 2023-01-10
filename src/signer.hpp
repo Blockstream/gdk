@@ -114,6 +114,9 @@ namespace sdk {
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
 
+        // Return the recoverable ECDSA signature for a hash using the bip32 key 'm/<path>'
+        ecdsa_sig_rec_t sign_rec_hash(uint32_span_t path, byte_span_t hash);
+
         priv_key_t get_blinding_key_from_script(byte_span_t script);
 
         std::vector<unsigned char> get_blinding_pubkey_from_script(byte_span_t script);

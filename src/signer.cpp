@@ -291,6 +291,13 @@ namespace sdk {
         return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
     }
 
+    ecdsa_sig_rec_t signer::sign_rec_hash(uint32_span_t path, byte_span_t hash)
+    {
+        GDK_RUNTIME_ASSERT(m_master_key.get());
+        wally_ext_key_ptr derived = derive(m_master_key, path);
+        return ec_sig_rec_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
+    }
+
     bool signer::has_master_blinding_key() const
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
