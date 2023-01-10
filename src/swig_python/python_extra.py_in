@@ -247,6 +247,9 @@ class Session(object):
     def broadcast_transaction(self, tx_hex):
         return broadcast_transaction(self.session_obj, tx_hex)
 
+    def sign_message(self, details):
+        return Call(sign_message(self.session_obj, self._to_json(details)))
+
     def send_nlocktimes(self):
         return send_nlocktimes(self.session_obj)
 

@@ -1844,6 +1844,44 @@ namespace sdk {
     }
 
     //
+    // Sign Message
+    //
+    sign_message_call::sign_message_call(session& session, const nlohmann::json& details)
+        : auth_handler_impl(session, "sign_message")
+        , m_details(details)
+        , m_initialized(false)
+    {
+    }
+
+    auth_handler::state_type sign_message_call::call_impl()
+    {
+        GDK_RUNTIME_ASSERT_MSG(m_net_params.is_electrum() && !m_net_params.is_liquid(), "Invalid network");
+        auto signer = get_signer();
+
+        if (!m_initialized) {
+            // Create the data needed for user signing
+            const auto address_data = m_session->get_address_data(m_details);
+            signal_hw_request(hw_request::sign_message);
+            m_path = address_data.at("user_path").get<std::vector<uint32_t>>();
+            m_twofactor_data["path"] = m_path;
+            m_twofactor_data["message"] = m_details.at("message");
+            m_twofactor_data["recoverable"] = true;
+            add_required_ae_data(signer, m_twofactor_data);
+            m_initialized = true;
+            return m_state;
+        }
+
+        const auto& hw_reply = get_hw_reply();
+        if (signer->use_ae_protocol()) {
+            const auto bip32_xpub = signer->get_bip32_xpub(m_path);
+            verify_ae_message(m_twofactor_data, bip32_xpub, m_path, hw_reply);
+        }
+        const auto sig = base64_from_bytes(h2b(hw_reply.at("signature")));
+        m_result["signature"] = sig;
+        return state_type::done;
+    }
+
+    //
     // Request or undo a 2fa reset
     //
     twofactor_reset_call::twofactor_reset_call(

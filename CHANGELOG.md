@@ -5,6 +5,7 @@
 ### Added
 - GA_validate: Add support for validating transaction addressees.
 - GA_get_unspent_outputs: add a `sort_by` element to return sorted results.
+- Added new function GA_sign_message
 
 ### Changed
 - GA_create_transaction: Sweeping and re-deposit transactions now require the

@@ -321,6 +321,12 @@ namespace sdk {
         return nlohmann::json();
     }
 
+    nlohmann::json session_impl::get_address_data(const nlohmann::json& /*details*/)
+    {
+        GDK_RUNTIME_ASSERT(false); // Only used by rust
+        return nlohmann::json();
+    }
+
     nlohmann::json session_impl::psbt_get_details(const nlohmann::json& /*details*/) { return nlohmann::json(); }
 
     void session_impl::save_cache()

@@ -143,6 +143,8 @@ namespace sdk {
 
         void disable_all_pin_logins();
 
+        nlohmann::json get_address_data(const nlohmann::json& details);
+
     private:
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);

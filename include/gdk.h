@@ -592,6 +592,17 @@ GDK_API int GA_send_transaction(
     struct GA_session* session, const GA_json* transaction_details, struct GA_auth_handler** call);
 
 /**
+ * Sign a message with the private key of an address.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`sign-message-request` detailing the message to sign and how to sign it.
+ * :param call: Destination for the resulting GA_auth_handler to perform the signing.
+ *|     The call handlers result is :ref:`sign-message-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_sign_message(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Request an email containing the user's nLockTime transactions.
  *
  * :param session: The session to use.

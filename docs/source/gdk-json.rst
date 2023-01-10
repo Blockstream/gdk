@@ -1049,6 +1049,41 @@ PSBT Get Details Result JSON
 .. note:: Inputs and outputs might have additional fields that might be removed or changed in following releases.
 
 
+.. _sign-message-request:
+
+Sign Message JSON
+-----------------
+
+Describes a request for the wallet to sign a given message via `GA_sign_message`.
+
+.. code-block:: json
+
+  {
+    "address": "...",
+    "message": "..."
+  }
+
+:address: The address to use for the private key.
+    Must be a P2PKH address, and the address must belong to the wallet.
+:message: The message to sign.
+
+
+.. _sign-message-result:
+
+Sign Message Result JSON
+------------------------
+
+Returned by `GA_sign_message`.
+
+.. code-block:: json
+
+  {
+    "signature": "..."
+  }
+
+:message: The recoverable signature of the message encoded in base 64.
+
+
 .. _estimates:
 
 Fee estimates JSON

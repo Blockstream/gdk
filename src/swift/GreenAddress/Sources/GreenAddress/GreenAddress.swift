@@ -413,6 +413,10 @@ public class Session {
         return String(cString: buff!)
      }
 
+    public func signMessage(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_sign_message)
+    }
+
     public func sendNlocktimes() throws -> Void {
         try callWrapper(fun: GA_send_nlocktimes(session))
     }

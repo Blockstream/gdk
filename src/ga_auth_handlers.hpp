@@ -293,6 +293,18 @@ namespace sdk {
         bool m_initialized;
     };
 
+    class sign_message_call : public auth_handler_impl {
+    public:
+        sign_message_call(session& session, const nlohmann::json& details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+        std::vector<uint32_t> m_path;
+        bool m_initialized;
+    };
+
     class twofactor_reset_call : public auth_handler_impl {
     public:
         twofactor_reset_call(session& session, const std::string& email, bool is_dispute, bool is_undo);

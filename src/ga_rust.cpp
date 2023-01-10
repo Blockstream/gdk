@@ -569,5 +569,10 @@ namespace sdk {
 
     void ga_rust::disable_all_pin_logins() {}
 
+    nlohmann::json ga_rust::get_address_data(const nlohmann::json& details)
+    {
+        return rust_call("get_address_data", details, m_session);
+    }
+
 } // namespace sdk
 } // namespace ga
