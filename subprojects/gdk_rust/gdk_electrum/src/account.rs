@@ -222,9 +222,9 @@ impl Account {
     }
 
     pub fn get_next_address(&self, is_internal: bool) -> Result<AddressPointer, Error> {
+        let store = &mut self.store.write()?;
+        let acc_store = store.account_cache_mut(self.account_num)?;
         let pointer = {
-            let store = &mut self.store.write()?;
-            let acc_store = store.account_cache_mut(self.account_num)?;
             if is_internal {
                 acc_store.indexes.internal += 1;
                 acc_store.indexes.internal
@@ -237,6 +237,8 @@ impl Account {
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;
         let script_pubkey = &address.script_pubkey();
+        acc_store.scripts.insert(account_path.clone(), script_pubkey.clone());
+        acc_store.paths.insert(script_pubkey.clone(), account_path.clone());
         let script_pubkey_hex: Option<String> = match &address.blinding_pubkey() {
             None => None,
             Some(_pubkey) => Some(script_pubkey.to_hex()),
