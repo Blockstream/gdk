@@ -1361,6 +1361,7 @@ impl Headers {
 struct DownloadTxResult {
     txs: Vec<(BETxid, BETransaction)>,
     unblinds: Vec<(elements::OutPoint, elements::TxOutSecrets)>,
+    is_previous: HashSet<BETxid>,
 }
 
 impl Syncer {
@@ -1479,6 +1480,11 @@ impl Syncer {
                 acc_store.paths.extend(scripts.into_iter());
 
                 for tx in new_txs.txs.iter() {
+                    if new_txs.is_previous.contains(&tx.0) {
+                        // This is a previous transaction that we fetched to compute the fee,
+                        // do not emit a notification for it.
+                        continue;
+                    }
                     if let Some(ntf) = updated_txs.get_mut(&tx.0) {
                         // Make sure ntf.subaccounts is ordered and has no duplicates.
                         let subaccount = account.num();
@@ -1597,6 +1603,7 @@ impl Syncer {
     ) -> Result<DownloadTxResult, Error> {
         let mut txs = vec![];
         let mut unblinds = vec![];
+        let mut is_previous = HashSet::new();
 
         let mut txs_in_db =
             self.store.read()?.account_cache(account_num)?.all_txs.keys().cloned().collect();
@@ -1662,12 +1669,17 @@ impl Syncer {
                     client.batch_transaction_get_raw(txs_to_download.iter())?;
                 for vec in txs_bytes_downloaded {
                     let tx = BETransaction::deserialize(&vec, self.network.id())?;
-                    txs.push((tx.txid(), tx));
+                    let txid = tx.txid();
+                    if !txs.iter().any(|t| &t.0 == &txid) {
+                        is_previous.insert(txid);
+                    }
+                    txs.push((txid, tx));
                 }
             }
             Ok(DownloadTxResult {
                 txs,
                 unblinds,
+                is_previous,
             })
         } else {
             Ok(DownloadTxResult::default())

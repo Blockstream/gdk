@@ -35,6 +35,10 @@ fn roundtrip_bitcoin() {
     let node_legacy_address = test_session.node_getnewaddress(Some("legacy"));
 
     test_session.fund(100_000_000, None);
+    // We have a single transaction so far, so we expect exactly 1 tx notification
+    let events = test_session.session.filter_events("transaction");
+    assert_eq!(events.len(), 1);
+
     test_session.get_subaccount();
     let txid = test_session.send_tx(
         &node_address,
