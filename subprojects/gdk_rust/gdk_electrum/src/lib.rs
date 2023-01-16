@@ -1126,6 +1126,7 @@ impl ElectrumSession {
     ) -> Result<Value, Error> {
         let currencies = match &self.available_currencies {
             Some(map) => map,
+
             None => self.available_currencies.get_or_insert(fetch_available_currencies(
                 &self.build_request_agent()?,
                 &params.url,
@@ -1710,7 +1711,9 @@ fn fetch_available_currencies(
         pairs: Vec<(Currency, Currency)>,
     }
 
-    let response = agent.get(url).call()?.into_json::<HashMap<String, ExchangeInfos>>()?;
+    let endpoint = format!("{url}/v0/venues");
+
+    let response = agent.get(&endpoint).call()?.into_json::<HashMap<String, ExchangeInfos>>()?;
 
     let map = response.into_iter().map(|(exchange, infos)| {
         let currencies = infos.pairs.into_iter().map(|(first, second)| {
@@ -1797,7 +1800,7 @@ mod test {
     fn fetch_available_currencies() {
         let map = super::fetch_available_currencies(
             &ureq::Agent::new(),
-            "https://green-bitcoin-testnet.blockstream.com/prices/v0/venues",
+            "https://green-bitcoin-testnet.blockstream.com/prices",
         )
         .unwrap();
 
