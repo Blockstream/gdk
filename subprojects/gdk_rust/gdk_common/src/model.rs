@@ -759,7 +759,7 @@ impl Default for Settings {
             required_num_blocks: 12,
             altimeout: 5,
             pricing,
-            sound: false,
+            sound: true,
         }
     }
 }
