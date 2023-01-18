@@ -312,7 +312,9 @@ namespace sdk {
         const std::array<uint32_t, 2> sighashes = { { ga_sighash, user_sighash } };
         std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
         init_container(sigs, ga_sig, user_sig);
-        const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LEN : EC_SIGNATURE_DER_MAX_LOW_R_LEN;
+        const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LOW_R_LEN : EC_SIGNATURE_DER_MAX_LEN;
+        // OP_O [sig + sighash_byte] [sig + sighash_byte] [prevout_script]
+        // 3 below allows for up to an OP_PUSHDATA2 prevout script size.
         std::vector<unsigned char> script(1 + (sig_len + 2) * 2 + 3 + prevout_script.size());
         scriptsig_multisig_from_bytes(prevout_script, sigs, sighashes, script);
         return script;
