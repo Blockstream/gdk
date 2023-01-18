@@ -1161,7 +1161,6 @@ impl ElectrumSession {
         };
         self.get_accounts()?
             .into_iter()
-            .filter(|a| a.script_type() == ScriptType::P2pkh)
             .filter_map(|a| a.get_address_data(&address).ok())
             .next()
             .ok_or(Error::ScriptPubkeyNotFound)
