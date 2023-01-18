@@ -364,7 +364,16 @@ namespace sdk {
 
     nlohmann::json ga_rust::decrypt_with_pin(const nlohmann::json& details)
     {
-        return rust_call("decrypt_with_pin", details, m_session);
+        try {
+            return rust_call("decrypt_with_pin", details, m_session);
+        } catch (const std::exception& ex) {
+            // The data can decrypt "successfully" with a bad key; catch that here
+            // TODO: Store an HMAC so this failure mode can be eliminated.
+            if (boost::algorithm::starts_with(ex.what(), "expected value at line 1 column 1")) {
+                throw user_error(res::id_invalid_pin);
+            }
+            throw;
+        }
     }
 
     nlohmann::json ga_rust::get_unspent_outputs(
