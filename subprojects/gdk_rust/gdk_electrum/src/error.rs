@@ -130,7 +130,7 @@ pub enum Error {
     NonConfidentialAddress,
 
     #[error("id_connection_failed")]
-    PinError,
+    PinClient(#[from] gdk_pin_client::Error),
 
     #[error("PSET and Tx mismatch ({0} vs {1})")]
     PsetAndTxMismatch(Txid, Txid),
@@ -264,7 +264,7 @@ impl Error {
             InvalidAmount => "id_invalid_amount",
             InvalidAssetId => "id_invalid_asset_id",
             FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum",
-            PinError => "id_connection_failed",
+            PinClient(_) => "id_connection_failed",
             InvalidPin => "id_invalid_pin",
             EmptyAddressees => "id_no_recipients",
             _ => "id_unknown",

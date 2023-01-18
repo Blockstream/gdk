@@ -67,10 +67,10 @@ impl Session for ElectrumSession {
 
             "login" => self.login(serde_json::from_value(input)?).to_json(),
             "credentials_from_pin_data" => {
-                self.credentials_from_pin_data(serde_json::from_value(input)?).to_json()
+                self.credentials_from_pin_data(&serde_json::from_value(input)?).to_json()
             }
             "encrypt_with_pin" => self.encrypt_with_pin(&serde_json::from_value(input)?).to_json(),
-            "decrypt_with_pin" => self.decrypt_with_pin(serde_json::from_value(input)?).to_json(),
+            "decrypt_with_pin" => self.decrypt_with_pin(&serde_json::from_value(input)?).to_json(),
 
             "get_block_height" => self.get_block_height().to_json(),
 
@@ -261,6 +261,7 @@ pub fn fee_estimate_values(estimates: &[FeeEstimate]) -> Result<Value, JsonError
 
     Ok(json!({ "fees": estimates }))
 }
+
 trait ToJson {
     fn to_json(self) -> Result<Value, JsonError>;
 }

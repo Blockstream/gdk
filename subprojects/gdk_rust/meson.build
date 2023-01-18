@@ -32,6 +32,14 @@ endif
 
 rust_sources = [
   'Cargo.toml',
+  'gdk_pin_client/Cargo.toml',
+  'gdk_pin_client/src/crypto.rs',
+  'gdk_pin_client/src/error.rs',
+  'gdk_pin_client/src/lib.rs',
+  'gdk_pin_client/src/pin.rs',
+  'gdk_pin_client/src/pin_client.rs',
+  'gdk_pin_client/src/pin_data.rs',
+  'gdk_pin_client/src/pin_request.rs',
   'gdk_common/build.rs',
   'gdk_common/Cargo.toml',
   'gdk_common/src/be/address.rs',
@@ -66,7 +74,6 @@ rust_sources = [
   'gdk_electrum/src/headers/mod.rs',
   'gdk_electrum/src/interface.rs',
   'gdk_electrum/src/lib.rs',
-  'gdk_electrum/src/pin/mod.rs',
   'gdk_electrum/src/pset.rs',
   'gdk_electrum/src/session.rs',
   'gdk_electrum/src/spv.rs',

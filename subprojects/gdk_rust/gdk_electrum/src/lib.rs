@@ -7,14 +7,15 @@ extern crate serde_json;
 extern crate gdk_common;
 
 use gdk_common::log::{debug, info, trace, warn};
+use gdk_pin_client::{Pin, PinClient, PinData};
 use headers::bitcoin::HEADERS_FILE_MUTEX;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod account;
 pub mod error;
 pub mod headers;
 pub mod interface;
-pub mod pin;
 pub mod pset;
 pub mod session;
 pub mod spv;
@@ -28,7 +29,7 @@ use crate::interface::ElectrumUrl;
 use crate::store::*;
 
 use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
-use gdk_common::bitcoin::secp256k1::{self, SecretKey};
+use gdk_common::bitcoin::secp256k1;
 use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use gdk_common::{bitcoin, elements};
 
@@ -58,18 +59,12 @@ use std::{iter, thread};
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
-use crate::pin::PinManager;
 use crate::spv::SpvCrossValidator;
-use block_modes::block_padding::Pkcs7;
-use block_modes::BlockMode;
-use block_modes::Cbc;
 use electrum_client::{Client, ElectrumApi};
-use gdk_common::aes::Aes256;
 use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
 use gdk_common::rand::seq::SliceRandom;
 use gdk_common::rand::thread_rng;
-use gdk_common::rand::Rng;
 use gdk_common::ureq;
 use once_cell::sync::Lazy;
 use std::collections::hash_map::DefaultHasher;
@@ -86,8 +81,6 @@ static EC: Lazy<secp256k1::Secp256k1<secp256k1::All>> = Lazy::new(|| {
     ctx.randomize(&mut rng);
     ctx
 });
-
-type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,
@@ -199,6 +192,26 @@ fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
     Ok(estimates)
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct EncryptWithPinDetails {
+    /// The PIN to protect the server-provided encryption key with.
+    pin: Pin,
+
+    /// The plaintext to encrypt.
+    plaintext: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DecryptWithPinDetails {
+    /// The PIN used to encrypt the `PinData`.
+    pin: Pin,
+
+    /// The data containing the plaintext to decrypt. Can be obtained by
+    /// calling [`encrypt_with_pin`](ElectrumSession::encrypt_with_pin) with
+    /// the same PIN.
+    pin_data: PinData,
+}
+
 impl ElectrumSession {
     pub fn get_accounts(&self) -> Result<Vec<Account>, Error> {
         // The Account struct is immutable and we don't allow account deletion.
@@ -287,36 +300,32 @@ impl ElectrumSession {
         Ok(())
     }
 
-    fn inner_decrypt_with_pin(&mut self, details: PinGetDetails) -> Result<Vec<u8>, Error> {
+    fn inner_decrypt_with_pin(&self, details: &DecryptWithPinDetails) -> Result<Vec<u8>, Error> {
         let agent = self.build_request_agent()?;
-        let manager = PinManager::new(
+
+        let pin_client = PinClient::new(
             agent,
-            self.network.pin_server_url(),
-            &self.network.pin_manager_public_key()?,
-        )?;
-        let client_key =
-            SecretKey::from_slice(&Vec::<u8>::from_hex(&details.pin_data.pin_identifier)?)?;
-        let server_key = manager.get_pin(details.pin.as_bytes(), &client_key)?;
-        let iv = Vec::<u8>::from_hex(&details.pin_data.salt)?;
-        let decipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
-        // If the pin is wrong, pinserver returns a random key and decryption fails, return a
-        // specific error to signal the caller to update its pin counter.
-        decipher
-            .decrypt_vec(&Vec::<u8>::from_hex(&details.pin_data.encrypted_data)?)
-            .map_err(|_| Error::InvalidPin)
+            self.network.pin_server_url()?,
+            self.network.pin_server_public_key()?,
+        );
+
+        pin_client.decrypt(&details.pin_data, &details.pin).map_err(|_| Error::InvalidPin)
     }
 
-    pub fn decrypt_with_pin(&mut self, details: PinGetDetails) -> Result<Value, Error> {
+    pub fn decrypt_with_pin(
+        &self,
+        details: &DecryptWithPinDetails,
+    ) -> Result<serde_json::Value, Error> {
         let decrypted = self.inner_decrypt_with_pin(details)?;
-        Ok(serde_json::from_slice(&decrypted[..])?)
+        serde_json::from_slice(&decrypted).map_err(Into::into)
     }
 
     pub fn credentials_from_pin_data(
-        &mut self,
-        details: PinGetDetails,
+        &self,
+        details: &DecryptWithPinDetails,
     ) -> Result<Credentials, Error> {
         let decrypted = self.inner_decrypt_with_pin(details)?;
-        if let Ok(credentials) = serde_json::from_slice(&decrypted[..]) {
+        if let Ok(credentials) = serde_json::from_slice(&decrypted) {
             Ok(credentials)
         } else {
             // Some pin_data encrypt the bare mnemonic, not a json
@@ -750,24 +759,15 @@ impl ElectrumSession {
 
     pub fn encrypt_with_pin(&self, details: &EncryptWithPinDetails) -> Result<PinData, Error> {
         let agent = self.build_request_agent()?;
-        let manager = PinManager::new(
-            agent,
-            self.network.pin_server_url(),
-            &self.network.pin_manager_public_key()?,
-        )?;
-        let client_key = SecretKey::new(&mut thread_rng());
-        let server_key = manager.set_pin(details.pin.as_bytes(), &client_key)?;
-        let iv = thread_rng().gen::<[u8; 16]>();
-        let cipher = Aes256Cbc::new_from_slices(&server_key[..], &iv).unwrap();
-        let plaintext = serde_json::to_vec(&details.plaintext)?;
-        let encrypted = cipher.encrypt_vec(&plaintext);
 
-        let result = PinData {
-            salt: iv.to_hex(),
-            encrypted_data: encrypted.to_hex(),
-            pin_identifier: client_key.secret_bytes().to_hex(),
-        };
-        Ok(result)
+        let pin_client = PinClient::new(
+            agent,
+            self.network.pin_server_url()?,
+            self.network.pin_server_public_key()?,
+        );
+
+        let plaintext = serde_json::to_vec(&details.plaintext)?;
+        pin_client.encrypt(&plaintext, &details.pin).map_err(Into::into)
     }
 
     /// Get the subaccount pointers/numbers from the store

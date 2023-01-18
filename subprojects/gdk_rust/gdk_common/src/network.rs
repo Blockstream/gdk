@@ -148,16 +148,17 @@ impl NetworkParameters {
         self.asset_registry_onion_url = Some(url);
     }
 
-    pub fn pin_server_url(&self) -> &str {
-        if self.use_tor() {
-            if !self.pin_server_onion_url.is_empty() {
-                return &self.pin_server_onion_url;
-            }
-        }
-        &self.pin_server_url
+    pub fn pin_server_url(&self) -> Result<url::Url, Error> {
+        let url = if self.use_tor() && !self.pin_server_onion_url.is_empty() {
+            &self.pin_server_onion_url
+        } else {
+            &self.pin_server_url
+        };
+
+        url::Url::parse(url).map_err(|_| Error::InvalidUrl(url.clone()))
     }
 
-    pub fn pin_manager_public_key(&self) -> Result<PublicKey, Error> {
+    pub fn pin_server_public_key(&self) -> Result<PublicKey, Error> {
         Ok(PublicKey::from_str(&self.pin_server_public_key)?)
     }
 

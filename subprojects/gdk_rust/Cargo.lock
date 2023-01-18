@@ -633,6 +633,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "ureq",
+ "url",
 ]
 
 [[package]]
@@ -644,6 +645,7 @@ dependencies = [
  "electrum-client",
  "env_logger 0.10.0",
  "gdk-common",
+ "gdk-pin-client",
  "gdk-registry",
  "libc",
  "once_cell",
@@ -653,6 +655,20 @@ dependencies = [
  "tempfile",
  "thiserror",
  "zeroize",
+]
+
+[[package]]
+name = "gdk-pin-client"
+version = "0.1.0"
+dependencies = [
+ "block-modes",
+ "gdk-common",
+ "once_cell",
+ "rand",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "url",
 ]
 
 [[package]]

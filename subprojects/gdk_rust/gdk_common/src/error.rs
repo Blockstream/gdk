@@ -49,6 +49,9 @@ pub enum Error {
     #[error("Invalid sighash")]
     InvalidSigHash,
 
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(String),
+
     #[error(transparent)]
     Io(#[from] std::io::Error),
 

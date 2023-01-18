@@ -3,6 +3,7 @@
 members = [
     "gdk_common",
     "gdk_electrum",
+    "gdk_pin_client",
     "gdk_registry",
     "gdk_rust",
 ]
