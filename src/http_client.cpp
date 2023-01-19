@@ -235,7 +235,8 @@ namespace sdk {
 
         const auto data_p = params.find("data");
         if (data_p != params.end()) {
-            if (boost::algorithm::starts_with(content_type, "application/json")) {
+            if (content_type.empty() || data_p->type() == nlohmann::json::value_t::object
+                || boost::algorithm::starts_with(content_type, "application/json")) {
                 m_request.body() = data_p->dump();
             } else {
                 m_request.body() = data_p->get<std::string>();
