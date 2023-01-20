@@ -64,6 +64,23 @@ namespace sdk {
                     return { { "seed", mnemonic } };
                 }
             }
+
+            const auto core_descriptors_p = credentials.find("core_descriptors");
+            const auto slip132_extended_pubkeys_p = credentials.find("slip132_extended_pubkeys");
+            if (core_descriptors_p != credentials.end()) {
+                if (slip132_extended_pubkeys_p != credentials.end()) {
+                    throw user_error(
+                        "You can only provide either 'core_descriptors' or 'slip132_extended_pubkeys', not both");
+                }
+                // Watch-only login
+                return { { "core_descriptors", *core_descriptors_p } };
+            }
+
+            if (slip132_extended_pubkeys_p != credentials.end()) {
+                // Watch-only login
+                return { { "slip132_extended_pubkeys", *slip132_extended_pubkeys_p } };
+            }
+
             throw user_error("Invalid credentials");
         }
 
@@ -92,7 +109,8 @@ namespace sdk {
                 if (!credentials.empty()) {
                     throw user_error("HWW/remote signer and login credentials cannot be used together");
                 }
-            } else if (credentials.contains("username")) {
+            } else if (credentials.contains("username") || credentials.contains("slip132_extended_pubkeys")
+                || credentials.contains("core_descriptors")) {
                 ret = WATCH_ONLY_DEVICE_JSON;
             } else if (credentials.contains("seed")) {
                 ret = SOFTWARE_DEVICE_JSON;
