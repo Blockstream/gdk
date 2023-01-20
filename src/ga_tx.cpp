@@ -495,8 +495,40 @@ namespace sdk {
             return { is_rbf, is_cpfp };
         }
 
+        static void update_change_output(const amount& fee, const amount& total, const amount& required_total,
+            bool have_change_output, bool is_liquid, wally_tx_ptr& tx, uint32_t change_index,
+            const std::string& asset_id, nlohmann::json& result)
+        {
 
-        void create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
+            amount::value_type change_amount = 0;
+            if (have_change_output) {
+                // Set the change amount
+                change_amount = (total - required_total - fee).value();
+                if (is_liquid) {
+                    set_tx_output_commitment(tx, change_index, asset_id, change_amount);
+                } else {
+                    auto& change_output = tx->outputs[change_index];
+                    change_output.satoshi = change_amount;
+                    const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
+                    // Randomize change output
+                    // Move change output to random offset in tx outputs while
+                    // preserving the ordering of the other outputs
+                    while (change_index < new_change_index) {
+                        std::swap(tx->outputs[change_index], tx->outputs[change_index + 1]);
+                        ++change_index;
+                    }
+                    while (change_index > new_change_index) {
+                        std::swap(tx->outputs[change_index], tx->outputs[change_index - 1]);
+                        --change_index;
+                    }
+                }
+            }
+            // TODO: change amount should be liquid specific (blinded)
+            result["change_amount"][asset_id] = change_amount;
+            result["change_index"][asset_id] = change_index;
+        };
+
+        static void create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
             bool is_rbf, nlohmann::json& result, nlohmann::json::iterator addressees_p,
             nlohmann::json::array_t& reordered_addressees, session_impl& session, wally_tx_ptr& tx,
             const std::set<std::string>& asset_ids, std::vector<nlohmann::json>& used_utxos)
@@ -782,36 +814,8 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(false);
             }
 
-            auto&& update_change_output = [&](auto fee) {
-                amount::value_type change_amount = 0;
-                if (have_change_output) {
-                    // Set the change amount
-                    change_amount = (total - required_total - fee).value();
-                    if (is_liquid) {
-                        set_tx_output_commitment(tx, change_index, asset_id, change_amount);
-                    } else {
-                        auto& change_output = tx->outputs[change_index];
-                        change_output.satoshi = change_amount;
-                        const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
-                        // Randomize change output
-                        // Move change output to random offset in tx outputs while
-                        // preserving the ordering of the other outputs
-                        while (change_index < new_change_index) {
-                            std::swap(tx->outputs[change_index], tx->outputs[change_index + 1]);
-                            ++change_index;
-                        }
-                        while (change_index > new_change_index) {
-                            std::swap(tx->outputs[change_index], tx->outputs[change_index - 1]);
-                            --change_index;
-                        }
-                    }
-                }
-                // TODO: change amount should be liquid specific (blinded)
-                result["change_amount"][asset_id] = change_amount;
-                result["change_index"][asset_id] = change_index;
-            };
-
-            update_change_output(fee);
+            update_change_output(
+                fee, total, required_total, have_change_output, is_liquid, tx, change_index, asset_id, result);
 
             if (include_fee && is_liquid) {
                 set_tx_output_commitment(tx, fee_index, asset_id, fee.value());
