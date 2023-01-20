@@ -1,4 +1,3 @@
-use gdk_common::bitcoin;
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::{ClientKey, Salt};
@@ -62,7 +61,6 @@ where
 mod tests {
     use std::str::FromStr;
 
-    use gdk_common::{bitcoin, ureq};
     use serde_json::json;
 
     use super::*;

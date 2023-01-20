@@ -661,13 +661,15 @@ dependencies = [
 name = "gdk-pin-client"
 version = "0.1.0"
 dependencies = [
+ "aes",
+ "bitcoin",
  "block-modes",
- "gdk-common",
  "once_cell",
  "rand",
  "serde",
  "serde_json",
  "thiserror",
+ "ureq",
  "url",
 ]
 

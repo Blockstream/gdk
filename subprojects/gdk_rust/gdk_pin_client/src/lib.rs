@@ -19,7 +19,6 @@ mod tests {
     use std::env;
     use std::str::FromStr;
 
-    use gdk_common::bitcoin;
     use once_cell::sync::Lazy;
 
     /// A dummy Result type to be returned from unit tests.

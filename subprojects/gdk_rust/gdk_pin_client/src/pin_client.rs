@@ -1,7 +1,5 @@
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::PublicKey;
-use gdk_common::bitcoin;
-use gdk_common::ureq;
 use url::Url;
 
 use crate::crypto;
@@ -163,7 +161,6 @@ mod tests {
     use std::str::FromStr;
 
     use bitcoin::hashes::hex::FromHex;
-    use gdk_common::bitcoin;
     use serde_json::json;
 
     use super::*;

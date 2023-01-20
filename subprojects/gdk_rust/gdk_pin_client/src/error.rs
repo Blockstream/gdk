@@ -1,4 +1,4 @@
-use gdk_common::bitcoin;
+use bitcoin;
 use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError)]

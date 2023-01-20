@@ -1,10 +1,9 @@
 use rand::Rng;
 
+use bitcoin::{self, secp256k1::SecretKey};
 use block_modes::BlockMode;
-use gdk_common::bitcoin::{self, secp256k1::SecretKey};
 
-pub(crate) type Aes256Cbc =
-    block_modes::Cbc<gdk_common::aes::Aes256, block_modes::block_padding::Pkcs7>;
+pub(crate) type Aes256Cbc = block_modes::Cbc<aes::Aes256, block_modes::block_padding::Pkcs7>;
 
 /// A client-generated key.
 #[derive(Debug, Clone)]

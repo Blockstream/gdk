@@ -4,7 +4,6 @@ use bitcoin::secp256k1::{
     ecdh::SharedSecret, ecdsa::Signature, Message, PublicKey, Secp256k1, SecretKey,
 };
 use block_modes::BlockMode;
-use gdk_common::{bitcoin, rand};
 use once_cell::sync::Lazy;
 
 use crate::crypto::{Aes256Cbc, ClientKey, Salt};
