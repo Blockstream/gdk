@@ -85,6 +85,10 @@ pub(crate) struct ConvertAmountParams {
     #[serde(deserialize_with = "deserialize_rate")]
     fallback_rate: Option<f64>,
 
+    /// The name of the currency exchange to use for the `BTC-currency`
+    /// exchange rate.
+    exchange: String,
+
     #[serde(default = "one_minute")]
     cache_limit: Duration,
 }

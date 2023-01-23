@@ -548,6 +548,7 @@ namespace sdk {
         auto currency_query = nlohmann::json({ { "currencies", currency } });
         currency_query["price_url"] = m_net_params.get_price_url();
         currency_query["fallback_rate"] = amount_json.value("fiat_rate", "");
+        currency_query["exchange"] = get_settings()["pricing"]["exchange"];
         std::string fetched_rate;
         try {
             auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
