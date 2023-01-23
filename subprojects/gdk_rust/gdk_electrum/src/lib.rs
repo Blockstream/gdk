@@ -46,7 +46,6 @@ use gdk_common::elements::encode;
 use gdk_common::elements::pset::PartiallySignedTransaction;
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
 use gdk_common::network;
-use gdk_common::scripts::ScriptType;
 use gdk_common::NetworkId;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
