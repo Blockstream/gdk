@@ -15,7 +15,7 @@ pub enum Error {
     #[error(transparent)]
     Json(#[from] serde_json::Error),
 
-    #[error("A response from the PIN server didn't verify")]
+    #[error("Received an invalid response from the PIN server")]
     InvalidResponse,
 
     #[error(transparent)]

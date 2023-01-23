@@ -117,6 +117,11 @@ impl PinServerResponse {
 
         let (salt, encrypted) = {
             let salt_bytes = 32;
+
+            if self.encrypted_key.len() < salt_bytes {
+                return Err(crate::Error::InvalidResponse);
+            }
+
             let s = Vec::<u8>::from_hex(&self.encrypted_key[..salt_bytes])?;
             let e = Vec::<u8>::from_hex(&self.encrypted_key[salt_bytes..])?;
             (s, e)
