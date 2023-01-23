@@ -22,12 +22,6 @@ pub(crate) fn fetch_cached<S: Session>(
         return Ok(Some(Ticker::new(pair, rate)));
     }
 
-    if !sess.is_mainnet() {
-        let ticker = Ticker::new(pair, 1.1);
-        sess.cache_ticker(ticker);
-        return Ok(Some(ticker));
-    }
-
     info!("missed exchange rate cache");
 
     let agent = sess.build_request_agent()?;
