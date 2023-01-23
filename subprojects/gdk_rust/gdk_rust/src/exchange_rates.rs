@@ -6,7 +6,6 @@ use gdk_common::log::{debug, info};
 use gdk_common::session::Session;
 use gdk_common::ureq;
 use serde::{de::Deserializer, Deserialize};
-use serde_json::Value;
 
 use crate::Error;
 
@@ -27,9 +26,10 @@ pub(crate) fn fetch_cached<S: Session>(
     let agent = sess.build_request_agent()?;
     let cache = sess.xr_cache();
     let url = params.url.clone();
+    let exchange = params.exchange.clone();
 
     let handle = thread::spawn(move || {
-        let ticker = self::fetch(&agent, pair, &url)?;
+        let ticker = self::fetch(&agent, pair, &url, &exchange)?;
         let cache = &mut *cache.lock().unwrap();
         cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
         Ok::<_, Error>(Some(ticker))
@@ -42,7 +42,12 @@ pub(crate) fn fetch_cached<S: Session>(
     Ok(None)
 }
 
-pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker, Error> {
+pub(crate) fn fetch(
+    agent: &ureq::Agent,
+    pair: Pair,
+    url: &str,
+    exchange: &str,
+) -> Result<Ticker, Error> {
     if !matches!(
         (pair.first(), pair.second()),
         (Currency::USD, Currency::BTC) | (Currency::BTC, Currency::USD),
@@ -50,27 +55,29 @@ pub(crate) fn fetch(agent: &ureq::Agent, pair: Pair, url: &str) -> Result<Ticker
         return Err(Error::UnsupportedCurrencyPair(pair));
     };
 
-    let (endpoint, price_field) = Currency::endpoint(pair.first(), pair.second(), url);
+    #[derive(serde::Deserialize)]
+    struct ExchangeRateResponse {
+        // TODO: this should be returned as a number by the server.
+        // rate: f64,
+        rate: String,
+    }
+
+    let endpoint = format!(
+        "{}/v0/venues/{}/pairs/{}/{}",
+        url,
+        exchange.to_ascii_uppercase(),
+        pair.first().endpoint_name(),
+        pair.second().endpoint_name()
+    );
+
     info!("fetching {} price data from {}", pair, endpoint);
 
-    agent
-        .get(&endpoint)
-        .call()?
-        .into_json::<serde_json::Map<String, Value>>()?
-        .get(price_field)
-        .ok_or_else(|| Error::ExchangeRateBadResponse {
-            expected: format!("field `{}` to be set", price_field),
-        })?
-        .as_str()
-        .and_then(|str| str.parse::<f64>().ok())
-        .ok_or(Error::ExchangeRateBadResponse {
-            expected: "string representing a price".into(),
-        })
-        .map(|rate| {
-            let ticker = Ticker::new(pair, rate);
-            info!("got exchange rate {:?}", ticker);
-            ticker
-        })
+    let response = agent.get(&endpoint).call()?.into_json::<ExchangeRateResponse>()?;
+
+    let ticker = Ticker::new(pair, response.rate.parse::<f64>().unwrap());
+
+    info!("got exchange rate {:?}", ticker);
+    Ok(ticker)
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -121,6 +128,7 @@ mod tests {
     use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
     use gdk_common::network::NetworkParameters;
     use gdk_common::notification::NativeNotif;
+    use serde_json::Value;
 
     #[derive(Default)]
     struct TestSession {
@@ -171,8 +179,9 @@ mod tests {
 
         let params = ConvertAmountParams {
             currency: Currency::USD,
-            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            url: "https://green-bitcoin-testnet.blockstream.com/prices".into(),
             fallback_rate: Some(1.0),
+            exchange: "bitfinex".to_owned(),
             cache_limit: one_minute(),
         };
 
@@ -204,8 +213,9 @@ mod tests {
 
         let params = ConvertAmountParams {
             currency: Currency::USD,
-            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            url: "https://green-bitcoin-testnet.blockstream.com/prices".into(),
             fallback_rate: None,
+            exchange: "bitfinex".to_owned(),
             cache_limit: one_minute(),
         };
 
@@ -219,8 +229,9 @@ mod tests {
 
         let params = ConvertAmountParams {
             currency: Currency::USD,
-            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            url: "https://green-bitcoin-testnet.blockstream.com/prices".into(),
             fallback_rate: None,
+            exchange: "bitstamp".to_owned(),
             cache_limit: one_minute(),
         };
 
@@ -230,8 +241,9 @@ mod tests {
         // A new request with a cache limit of 0 should return None.
         let params = ConvertAmountParams {
             currency: Currency::USD,
-            url: "https://deluge-green.blockstream.com/feed/del-v0r7-green".into(),
+            url: "https://green-bitcoin-testnet.blockstream.com/prices".into(),
             fallback_rate: Some(1.0),
+            exchange: "bitstamp".to_owned(),
             cache_limit: Duration::from_millis(0),
         };
 

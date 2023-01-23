@@ -36,11 +36,6 @@ pub enum Error {
     #[error("Greenlight method not found {0}")]
     GreenlightMethodNotFound(String),
 
-    #[error("Expected a {expected}")]
-    ExchangeRateBadResponse {
-        expected: String,
-    },
-
     #[error("The {0} currency pair is not currently supported")]
     UnsupportedCurrencyPair(exchange_rates::Pair),
 

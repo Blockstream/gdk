@@ -112,24 +112,6 @@ impl Currency {
         }
     }
 
-    /// Returns a `(url, field)` pair, where `url` is the endpoint used to
-    /// fetch the rate between the two currencies and `field` is the name of
-    /// the JSON field where the price is defined.
-    pub fn endpoint(a: Self, b: Self, endpoint_url: &str) -> (String, &'static str) {
-        use Currency::*;
-        match (a, b) {
-            (BTC, USD) | (USD, BTC) => (
-                format!("{}/index/{}{}", endpoint_url, BTC.endpoint_name(), USD.endpoint_name()),
-                "price",
-            ),
-
-            _ => (
-                format!("{}/price/{}{}", endpoint_url, a.endpoint_name(), b.endpoint_name()),
-                "last-trade",
-            ),
-        }
-    }
-
     pub fn is_fiat(&self) -> bool {
         !matches!(self, Self::BTC)
     }
