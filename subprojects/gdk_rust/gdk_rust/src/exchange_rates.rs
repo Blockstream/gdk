@@ -25,11 +25,12 @@ pub(crate) fn fetch_cached<S: Session>(
 
     let agent = sess.build_request_agent()?;
     let cache = sess.xr_cache();
+    let currency = params.currency;
     let url = params.url.clone();
     let exchange = params.exchange.clone();
 
     let handle = thread::spawn(move || {
-        let ticker = self::fetch(&agent, pair, &url, &exchange)?;
+        let ticker = self::fetch(&agent, currency, &url, &exchange)?;
         let cache = &mut *cache.lock().unwrap();
         cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
         Ok::<_, Error>(Some(ticker))
@@ -44,17 +45,10 @@ pub(crate) fn fetch_cached<S: Session>(
 
 pub(crate) fn fetch(
     agent: &ureq::Agent,
-    pair: Pair,
+    currency: Currency,
     url: &str,
     exchange: &str,
 ) -> Result<Ticker, Error> {
-    if !matches!(
-        (pair.first(), pair.second()),
-        (Currency::USD, Currency::BTC) | (Currency::BTC, Currency::USD),
-    ) {
-        return Err(Error::UnsupportedCurrencyPair(pair));
-    };
-
     #[derive(serde::Deserialize)]
     struct ExchangeRateResponse {
         // TODO: this should be returned as a number by the server.
@@ -66,9 +60,11 @@ pub(crate) fn fetch(
         "{}/v0/venues/{}/pairs/{}/{}",
         url,
         exchange.to_ascii_uppercase(),
-        pair.first().endpoint_name(),
-        pair.second().endpoint_name()
+        Currency::BTC.endpoint_name(),
+        currency.endpoint_name()
     );
+
+    let pair = Pair::new(Currency::BTC, currency);
 
     info!("fetching {} price data from {}", pair, endpoint);
 
